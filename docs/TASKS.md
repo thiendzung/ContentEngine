@@ -17,22 +17,11 @@
 - [x] T00.13 Add AGENTS.md governance.
 - [x] T00.14 Final cross-document consistency review.
 
-### T00.14 xác nhận
-
-- [x] ContentCase/LocaleVariant thống nhất ở mọi spec.
-- [x] ContentItem/ContentVersion thống nhất ở mọi spec.
-- [x] EvidenceSet/ContextManifest/ContentAssertion không còn reference mồ côi.
-- [x] Discovery Research và Evidence Research được tách rõ.
-- [x] Media Evidence khớp Artwork/Data/Quality.
-- [x] Worker lease/outbox/reconciliation khớp Architecture/Harness/Plan.
-- [x] Quality tối thiểu có trước Journal production.
-- [x] Walking Skeleton nằm trong CE01.
-- [x] Settings source of truth chỉ có một.
-- [x] AGENTS Contract Change Mode khớp governance.
+Status: **CLOSED**.
 
 ---
 
-## CE01 — Repository Skeleton + Walking Skeleton
+## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
 
 ### Repository
 
@@ -42,7 +31,7 @@
 - [ ] T01.4 Add root developer scripts.
 - [ ] T01.5 Add `.env.example`, never secrets.
 - [ ] T01.6 Add PostgreSQL connection + migration framework.
-- [ ] T01.7 Add module directories matching Architecture Spec.
+- [ ] T01.7 Add module directories matching Architecture Spec, including `research/`.
 - [ ] T01.8 Add health/version endpoint.
 - [ ] T01.9 Add backend lint/type/test baseline.
 - [ ] T01.10 Add frontend lint/type/build baseline.
@@ -50,25 +39,57 @@
 - [ ] T01.12 Add CI required checks.
 - [ ] T01.13 Verify clean install from fresh checkout.
 
+### Research/Search spike
+
+- [ ] T01.14 Add provider config/secret references for Serper, Tavily, Exa, Jina; Brave optional only.
+- [ ] T01.15 Add SearchProvider seam and minimal Serper discovery adapter.
+- [ ] T01.16 Add minimal Tavily/Exa source-discovery adapters or one common source-discovery seam proven with both providers.
+- [ ] T01.17 Add Jina selected-URL reader adapter.
+- [ ] T01.18 Store raw research result as bounded artifact with provider/query/source refs; do not write raw SERP payload to Obsidian.
+- [ ] T01.19 Add one-step second-hop extraction: cited URL/expert/report candidates from a selected source.
+- [ ] T01.20 Add manual Deep Research import shape: report + original source URLs; report itself is not factual authority.
+- [ ] T01.21 Add provider budget/stop-when-sufficient rule for the spike.
+
+### Keyword Plan mini
+
+- [ ] T01.22 Collect PAA/Related/Autocomplete/organic signals from one real seed.
+- [ ] T01.23 Normalize + dedupe query/question signals.
+- [ ] T01.24 Classify question type, intent, audience stage and problem/desire with confidence.
+- [ ] T01.25 Build simple clusters by problem + intent + answer overlap, not string similarity only.
+- [ ] T01.26 Produce pillar/cluster candidates.
+- [ ] T01.27 Produce Niche Candidates with MOTGU Right-to-Win reason.
+- [ ] T01.28 Produce content decision: CREATE/UPDATE/REFRESH/MERGE/LINK_ONLY/DO_NOT_WRITE.
+- [ ] T01.29 Produce priority: NOW/NEXT/LATER/NO with short reasons; no fake 0–100 precision.
+- [ ] T01.30 Human review one Keyword Plan and select one opportunity for the Golden Journal.
+
 ### Editorial calibration
 
-- [ ] T01.14 Collect 3–5 approved positive MOTGU excerpts for first locale.
-- [ ] T01.15 Collect 3–5 approved negative examples for first locale.
-- [ ] T01.16 Define short human editorial review form.
-- [ ] T01.17 Define one real MOTGU ContentCase.
-- [ ] T01.18 Define one real LocaleVariant.
-- [ ] T01.19 Build Manual EvidenceSet.
-- [ ] T01.20 Build Manual OriginalityPack.
+- [ ] T01.31 Collect 3–5 approved positive MOTGU excerpts for first locale.
+- [ ] T01.32 Collect 3–5 approved negative examples for first locale.
+- [ ] T01.33 Define short human editorial review form.
+- [ ] T01.34 Define one real MOTGU ContentCase from selected Keyword Plan opportunity.
+- [ ] T01.35 Define one real LocaleVariant.
+- [ ] T01.36 Build selected/manual EvidenceSet from higher-quality sources, not default Google top 1–5.
+- [ ] T01.37 Build Manual OriginalityPack.
 
 ### Walking Skeleton
 
-- [ ] T01.21 Implement/manual-drive Angle step.
-- [ ] T01.22 Implement/manual-drive Outline step.
-- [ ] T01.23 Implement Draft step through ModelRouter seam or temporary single adapter.
-- [ ] T01.24 Add basic assertion audit.
-- [ ] T01.25 Run human editorial review.
-- [ ] T01.26 Record failure/learning notes without auto-changing contract.
-- [ ] T01.27 Gate: decide whether content contract is good enough for CE02.
+- [ ] T01.38 Implement/manual-drive Angle step.
+- [ ] T01.39 Implement/manual-drive Outline step.
+- [ ] T01.40 Implement Draft step through ModelRouter seam or temporary single adapter.
+- [ ] T01.41 Add basic assertion audit.
+- [ ] T01.42 Run human editorial review.
+- [ ] T01.43 Record research/content failure notes without auto-changing contract.
+- [ ] T01.44 Gate: decide whether Research + Keyword Plan + content contract is good enough for CE02.
+
+### CE01 exit gate
+
+- [ ] Repo build/test clean.
+- [ ] One real seed produces a readable Keyword Plan.
+- [ ] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
+- [ ] Selected research sources are demonstrably better than blindly taking Google top results.
+- [ ] One real Journal reaches human review.
+- [ ] Zero critical unsupported assertion in the reviewed candidate.
 
 ---
 
@@ -94,6 +115,9 @@
 - [ ] T02.18 Add settings snapshot reproducibility tests.
 - [ ] T02.19 Add ContentCase → two LocaleVariant contract test.
 - [ ] T02.20 Add ContentItem version lineage test.
+- [ ] T02.21 Add versioned Research artifact/source-ref contract.
+- [ ] T02.22 Add Keyword Plan artifact/version contract with locale + source refs.
+- [ ] T02.23 Add Knowledge Candidate status/provenance contract for later Obsidian mirror.
 
 ---
 
@@ -122,7 +146,7 @@
 
 ---
 
-## CE04 — Knowledge + Discovery + Evidence
+## CE04 — Knowledge + Production Research
 
 - [ ] T04.1 Source registry.
 - [ ] T04.2 Canonicalize source into normalized text/Markdown.
@@ -132,16 +156,29 @@
 - [ ] T04.6 Entity linking baseline.
 - [ ] T04.7 Retrieval interface.
 - [ ] T04.8 Authority-aware ranking.
-- [ ] T04.9 Discovery Research workflow.
-- [ ] T04.10 Evidence Research workflow.
-- [ ] T04.11 Claim extraction workflow.
-- [ ] T04.12 Evidence linking workflow.
-- [ ] T04.13 Contradiction representation.
-- [ ] T04.14 EvidenceSet lock/version.
-- [ ] T04.15 OriginalityPack builder.
-- [ ] T04.16 Memory gap/create-update-refresh recommendation.
-- [ ] T04.17 Provenance end-to-end test.
-- [ ] T04.18 Test Discovery signal cannot silently become factual evidence.
+- [ ] T04.9 Production ResearchRouter with provider budget/fallback rules.
+- [ ] T04.10 Production Serper discovery adapter.
+- [ ] T04.11 Production Tavily source discovery adapter.
+- [ ] T04.12 Production Exa semantic/second-hop adapter.
+- [ ] T04.13 Production Jina selected-page reader.
+- [ ] T04.14 Keep Brave optional; implement only if coverage/outage evidence justifies it.
+- [ ] T04.15 Discovery Research workflow.
+- [ ] T04.16 Keyword Plan workflow.
+- [ ] T04.17 Source commercial-bias/type/authority metadata.
+- [ ] T04.18 Evidence Research workflow.
+- [ ] T04.19 Claim extraction workflow.
+- [ ] T04.20 Evidence linking workflow.
+- [ ] T04.21 Contradiction representation.
+- [ ] T04.22 EvidenceSet lock/version.
+- [ ] T04.23 OriginalityPack builder.
+- [ ] T04.24 Knowledge Candidate extraction.
+- [ ] T04.25 Candidate → approved admission flow.
+- [ ] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
+- [ ] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
+- [ ] T04.28 Memory gap/create-update-refresh recommendation.
+- [ ] T04.29 Provenance end-to-end test.
+- [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
+- [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
 
 ---
 
@@ -151,18 +188,19 @@
 - [ ] T05.2 Internal knowledge recall.
 - [ ] T05.3 Content Memory overlap check stub.
 - [ ] T05.4 Discovery Research step.
-- [ ] T05.5 Evidence Research + EvidenceSet step.
-- [ ] T05.6 OriginalityPack step.
-- [ ] T05.7 Angle generator structured output.
-- [ ] T05.8 Angle approval UI/state.
-- [ ] T05.9 Outline with evidence mapping.
-- [ ] T05.10 Draft writer `vi-VN`.
-- [ ] T05.11 Draft writer `en` independent from Vietnamese.
-- [ ] T05.12 Review/revise bounded loop.
-- [ ] T05.13 Assertion Audit.
-- [ ] T05.14 Basic source-copy check.
-- [ ] T05.15 Final content package.
-- [ ] T05.16 One real MOTGU Journal end-to-end candidate.
+- [ ] T05.5 Keyword Plan/opportunity selection handoff.
+- [ ] T05.6 Evidence Research + EvidenceSet step.
+- [ ] T05.7 OriginalityPack step.
+- [ ] T05.8 Angle generator structured output.
+- [ ] T05.9 Angle approval UI/state.
+- [ ] T05.10 Outline with evidence mapping.
+- [ ] T05.11 Draft writer `vi-VN`.
+- [ ] T05.12 Draft writer `en` independent from Vietnamese.
+- [ ] T05.13 Review/revise bounded loop.
+- [ ] T05.14 Assertion Audit.
+- [ ] T05.15 Basic source-copy check.
+- [ ] T05.16 Final content package.
+- [ ] T05.17 One real MOTGU Journal end-to-end candidate.
 
 ---
 
@@ -217,6 +255,7 @@
 - [ ] T08.9 Preserve raw provider PerformanceSnapshot.
 - [ ] T08.10 Rank Math signal feasibility spike.
 - [ ] T08.11 Content hypothesis → metrics traceability.
+- [ ] T08.12 Feed real Search Console queries back as Discovery/Keyword Plan signals, not automatic strategy changes.
 
 ---
 
@@ -234,6 +273,7 @@
 - [ ] T09.10 Month 1 review report.
 - [ ] T09.11 Month 3 review report.
 - [ ] T09.12 Month 6 audience narrowing report.
+- [ ] T09.13 Compare planned keyword/question map with real queries and update signal strength.
 
 ---
 
@@ -244,7 +284,8 @@
 - [ ] T10.3 Run production pilot.
 - [ ] T10.4 Review quality failures.
 - [ ] T10.5 Review human editing burden.
-- [ ] T10.6 Review cost/latency.
-- [ ] T10.7 Promote first stable Golden Set.
-- [ ] T10.8 Review audience signals and evidence strength.
-- [ ] T10.9 Decide next roadmap only from pilot evidence.
+- [ ] T10.6 Review research provider cost/quality and remove redundant provider calls.
+- [ ] T10.7 Review cost/latency overall.
+- [ ] T10.8 Promote first stable Golden Set.
+- [ ] T10.9 Review audience signals and evidence strength.
+- [ ] T10.10 Decide next roadmap only from pilot evidence.

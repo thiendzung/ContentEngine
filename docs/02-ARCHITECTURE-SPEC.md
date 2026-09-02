@@ -17,7 +17,13 @@ Configuration
     ↓
 Content Case + Locale Variant
     ↓
-Knowledge / Discovery Research / Evidence Research
+Knowledge Recall
+    ↓
+Discovery Research
+    ↓
+Keyword / Question / Opportunity Map
+    ↓
+Evidence Research
     ↓
 Evidence Set + Originality Pack
     ↓
@@ -68,7 +74,44 @@ Sở hữu:
 - evidence sets;
 - media evidence;
 - retrieval;
-- content memory index.
+- content memory index;
+- approved/candidate knowledge state;
+- Obsidian mirror/export contract.
+
+`knowledge` không quyết định query nào đáng viết thành bài.
+
+### `research`
+
+Sở hữu research workflow và provider adapters:
+
+- Discovery Research;
+- Evidence Research;
+- Search provider routing;
+- source discovery;
+- second-hop research;
+- source selection metadata;
+- Keyword Plan mini;
+- Knowledge Candidate extraction handoff.
+
+Cấu trúc logic:
+
+```text
+research/
+├── discovery/
+├── evidence/
+├── keyword_plan/
+├── knowledge_ingest/
+└── providers/
+    ├── serper
+    ├── tavily
+    ├── exa
+    ├── jina
+    └── brave_optional
+```
+
+Default provider roles được khóa ở `docs/11-RESEARCH-SEARCH-SPEC.md`.
+
+`research` không được coi search position là authority và không tự promote Knowledge Candidate thành truth.
 
 ### `harness`
 
@@ -86,22 +129,22 @@ Sở hữu:
 - cancellation;
 - side-effect idempotency/reconciliation.
 
-Harness không sở hữu Journal/Artwork prompts.
+Harness không sở hữu Journal/Artwork prompts hoặc search strategy business rule.
 
 ### `content_engine`
 
 Sở hữu:
 
 - ContentCase/LocaleVariant orchestration;
-- Discovery Research;
-- Evidence Research;
-- Evidence selection;
+- Evidence selection handoff;
 - Originality Pack;
 - Angle;
 - Outline;
 - Draft;
 - Review;
 - Final package.
+
+`content_engine` gọi `research` qua contract, không tự viết provider-specific search code.
 
 Bên trong chia `journal` và `artwork` theo vertical slice khi logic khác nhau.
 
@@ -154,7 +197,68 @@ Sở hữu normalized metrics từ:
 
 Measurement chỉ cung cấp signal, không tự thay đổi strategy.
 
-## 4. Kiến trúc triển khai đề xuất
+## 4. Search provider contract V1
+
+Default stack:
+
+```text
+SERPER
+→ Google PAA / Related / Autocomplete / organic discovery
+
+TAVILY
+→ source discovery khi SERP nhiều sales/SEO noise
+
+EXA
+→ semantic / second-hop source discovery
+
+JINA
+→ đọc sạch selected URL
+
+BRAVE
+→ optional fallback / coverage check
+```
+
+Không gọi tất cả provider cho mọi query.
+
+Flow mặc định:
+
+```text
+Knowledge Recall
+→ Serper
+→ đủ signal thì dừng mở rộng
+→ Tavily nếu cần nguồn tốt hơn
+→ Exa nếu cần nguồn sâu/second-hop
+→ source selection
+→ Jina read
+```
+
+Search provider trả signal/source candidate. Authority được xử lý theo Research/Evidence contract, không theo rank.
+
+## 5. Keyword Plan mini boundary
+
+`keyword_plan` là một mini module bên trong `research`, không phải một SEO suite độc lập.
+
+Nó nhận Discovery signals và tạo:
+
+- normalized questions/queries;
+- audience/problem/intent classification;
+- topic clusters;
+- pillar candidates;
+- cluster candidates;
+- niche candidates;
+- content decision: `CREATE | UPDATE | REFRESH | MERGE | LINK_ONLY | DO_NOT_WRITE`;
+- priority: `NOW | NEXT | LATER | NO`.
+
+Không sở hữu:
+
+- paid keyword volume database;
+- backlink analysis;
+- auto content calendar;
+- auto publish.
+
+Contract chi tiết: `docs/12-KEYWORD-PLAN-SPEC.md`.
+
+## 6. Kiến trúc triển khai đề xuất
 
 - Backend: Python + FastAPI;
 - Frontend: Next.js + React;
@@ -168,7 +272,7 @@ Không đưa Rust/Tauri hoặc generic workflow platform từ OpenHuman vào V1.
 
 Không cần framework graph phức tạp nếu state machine đơn giản đáp ứng đủ checkpoint/resume.
 
-## 5. Repository target structure
+## 7. Repository target structure
 
 ```text
 ContentEngine/
@@ -182,6 +286,12 @@ ContentEngine/
 │   │   └── modules/
 │   │       ├── system/
 │   │       ├── knowledge/
+│   │       ├── research/
+│   │       │   ├── discovery/
+│   │       │   ├── evidence/
+│   │       │   ├── keyword_plan/
+│   │       │   ├── knowledge_ingest/
+│   │       │   └── providers/
 │   │       ├── harness/
 │   │       ├── content_engine/
 │   │       │   ├── journal/
@@ -203,15 +313,18 @@ ContentEngine/
 └── scripts/
 ```
 
-## 6. Walking Skeleton — bắt buộc làm sớm
+## 8. Walking Skeleton — bắt buộc làm sớm
 
 Trước khi hoàn thiện toàn bộ hạ tầng, phải có một đường mỏng dùng dữ liệu thật:
 
 ```text
-Real MOTGU Brief
-+ Manual EvidenceSet
+Real MOTGU Seed / Problem
++ Mini Keyword Plan
++ Manual/Selected EvidenceSet
 + Manual OriginalityPack
 + Real Brand/Language Examples
+    ↓
+Human chọn 1 Content Opportunity
     ↓
 Angle
     ↓
@@ -224,18 +337,24 @@ Basic Assertion Audit
 Human Editorial Review
 ```
 
-Walking Skeleton không cần publish, memory thông minh hoặc auto research.
+Walking Skeleton không cần publish, Content Memory thông minh hoặc full auto research.
 
-Mục tiêu duy nhất: chứng minh content contract có thể tạo một bài đáng đăng.
+Research/Search có thể chạy manual/scripted ở CE01; chưa cần durable worker đầy đủ.
+
+Mục tiêu duy nhất: chứng minh research + content contract có thể tạo một bài đáng đăng.
 
 Nếu không đạt, sửa spec/content logic trước khi mở rộng hạ tầng.
 
-## 7. Durable Run Graph production
+## 9. Durable Run Graph production
 
 ```text
 CREATE_RUN
   ↓
-DISCOVERY_RESEARCH / KNOWLEDGE_RECALL
+KNOWLEDGE_RECALL
+  ↓
+DISCOVERY_RESEARCH
+  ↓
+KEYWORD_PLAN / OPPORTUNITY_SELECTION
   ↓
 EVIDENCE_RESEARCH
   ↓
@@ -268,7 +387,9 @@ MEASURE
 
 Mỗi node persist output trước state transition.
 
-## 8. Worker model V1
+Keyword Plan có thể được bỏ qua khi ContentCase đã do human xác định trực tiếp và không cần discovery mới.
+
+## 10. Worker model V1
 
 Production run không giữ một HTTP request dài.
 
@@ -293,7 +414,7 @@ Nếu worker chết:
 
 V1 không cần nhiều worker để chạy; nhưng contract phải an toàn khi có nhiều worker sau này.
 
-## 9. Outbox cho side effect quan trọng
+## 11. Outbox cho side effect quan trọng
 
 Các side effect như publish nên dùng durable intent/outbox hoặc cơ chế tương đương:
 
@@ -307,7 +428,7 @@ DB records publish intent
 
 Mục tiêu: service chết giữa chừng không tạo publish mù hoặc publish trùng.
 
-## 10. State tối thiểu
+## 12. State tối thiểu
 
 `Run.status`:
 
@@ -329,7 +450,7 @@ Mục tiêu: service chết giữa chừng không tạo publish mù hoặc publi
 
 Retry history không bị overwrite.
 
-## 11. Content lineage
+## 13. Content lineage
 
 Một content flow phải phân biệt:
 
@@ -343,7 +464,7 @@ ContentCase
 
 `ContentRun.mode` xác định: `create | update | refresh | localize`.
 
-## 12. Context Builder
+## 14. Context Builder
 
 Thứ tự ưu tiên:
 
@@ -357,15 +478,34 @@ Thứ tự ưu tiên:
 8. limited Golden Examples;
 9. task instruction.
 
+Discovery/Keyword raw signals không được dump toàn bộ vào writer context. Chỉ summary/candidates đã chọn đi tiếp khi cần.
+
 Mỗi model call quan trọng tạo `ContextManifest` để biết chính xác model đã nhìn thấy gì.
 
-## 13. Học từ OpenHuman — phần áp dụng
+## 15. Knowledge / Obsidian boundary
+
+Raw SERP/API payload không đưa vào Obsidian mặc định.
+
+```text
+Raw result/page
+→ Source/SourceDocument
+→ Knowledge Candidate
+→ dedupe + provenance + review
+→ Approved Knowledge
+→ Obsidian mirror nếu hữu ích
+```
+
+Obsidian là human-readable workspace/mirror. Một note không tự trở thành canonical truth chỉ vì tồn tại.
+
+## 16. Học từ OpenHuman — phần áp dụng
 
 Áp dụng nguyên lý:
 
 - canonicalize trước memory;
 - deterministic IDs/fingerprints;
 - provenance xuyên suốt;
+- search memory trước external research;
+- chỉ external-search phần còn thiếu;
 - checkpointed durable runs;
 - worker recovery;
 - bounded context;
@@ -383,7 +523,7 @@ Không áp dụng V1:
 - desktop local-first app;
 - auto-fetch hàng trăm integrations.
 
-## 14. Failure design
+## 17. Failure design
 
 Mọi external call phải có:
 
@@ -393,24 +533,32 @@ Mọi external call phải có:
 - error payload đã làm sạch secret;
 - fail-fast/circuit protection khi provider lỗi lặp;
 - user-visible root cause;
-- reconciliation cho side effect không rõ kết quả.
+- reconciliation cho side effect không rõ kết quả;
+- explicit provider budget/quota exhaustion.
 
-## 15. Security
+Research provider fallback phải có giới hạn, không tạo loop gọi nhiều API vô tận.
+
+## 18. Security
 
 - secrets chỉ ở environment/secret manager;
 - sanitize prompt/tool logs;
+- search API keys không ghi vào artifacts;
 - publishing credential có quyền tối thiểu;
 - external research content là untrusted input;
 - retrieved content không được ghi đè system/settings;
 - media rights/status phải được giữ nếu dùng asset để publish.
 
-## 16. API contract
+## 19. API contract
 
 Ví dụ:
 
 ```text
 POST   /projects/{project_id}/content-cases
 POST   /content-cases/{case_id}/locale-variants
+POST   /research/discovery-runs
+GET    /research/discovery-runs/{run_id}
+POST   /research/keyword-plans
+GET    /research/keyword-plans/{plan_id}
 POST   /locale-variants/{variant_id}/runs
 GET    /content-runs/{run_id}
 POST   /content-runs/{run_id}/actions/approve
@@ -422,11 +570,14 @@ GET    /content-runs/{run_id}/evidence
 
 Không có production endpoint `/generate-all` đồng bộ.
 
-## 17. Definition of architectural done
+## 20. Definition of architectural done
 
 Architecture V1 chỉ được coi là khóa khi:
 
 - module ownership rõ;
+- Research vs Knowledge vs ContentEngine boundary rõ;
+- default search provider roles rõ;
+- Keyword Plan là mini module có scope giới hạn;
 - content identity/version rõ;
 - state + worker recovery rõ;
 - source of truth rõ;

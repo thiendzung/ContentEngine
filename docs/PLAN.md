@@ -13,11 +13,15 @@ B. Tự động hóa và làm hệ thống bền dần từng lớp
 
 Mỗi phase chỉ thêm những viên cần cho phase kế tiếp.
 
+Research/Keyword Plan phải phục vụ trực tiếp một bài thật; không được biến thành dự án SEO riêng trước Golden Journal.
+
 ---
 
 ## CE00 — Foundation Contracts
 
 Mục tiêu: khóa sản phẩm và kiến trúc trước code.
+
+Status: **CLOSED**.
 
 Deliverables:
 
@@ -36,7 +40,7 @@ Deliverables:
 - implementation task map;
 - consistency review.
 
-Exit gate:
+Exit gate đã đạt:
 
 - content identity/version rõ;
 - song ngữ ContentCase/LocaleVariant rõ;
@@ -44,15 +48,15 @@ Exit gate:
 - settings source of truth rõ;
 - worker/retry/idempotency rõ;
 - quality tối thiểu xuất hiện trước Journal đầu tiên;
-- Walking Skeleton đã nằm trong CE01.
+- Walking Skeleton nằm trong CE01.
 
 ---
 
-## CE01 — Repository Skeleton + Walking Skeleton
+## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
 
 Mục tiêu: repo chạy được và tạo **một Journal MOTGU thật ở mức thử nghiệm** càng sớm càng tốt.
 
-Hạ tầng tối thiểu:
+### A. Hạ tầng tối thiểu
 
 - backend FastAPI skeleton;
 - frontend Next.js shell tối thiểu;
@@ -62,20 +66,72 @@ Hạ tầng tối thiểu:
 - health endpoints;
 - test/lint/build/CI cơ bản.
 
-Editorial calibration tối thiểu:
+### B. Research/Search spike tối thiểu
+
+Không làm full CE04 ở đây.
+
+Chỉ chứng minh đường:
+
+```text
+1 seed thật
+→ Serper discovery
+→ Tavily/Exa khi Google nhiều sales/SEO noise
+→ chọn vài URL tốt
+→ Jina đọc selected URLs
+→ structured Discovery Report
+```
+
+Default stack:
+
+- Serper = Google/PAA/Related/Autocomplete/organic discovery;
+- Tavily = source discovery;
+- Exa = semantic/second-hop discovery;
+- Jina = selected URL reader;
+- Brave = optional fallback, chưa cần build nếu chưa có use case.
+
+Manual ChatGPT/Gemini Deep Research được phép dùng cho topic khó và nhập lại dưới dạng research artifact + source URLs.
+
+### C. Keyword Plan mini
+
+Từ cùng seed thật tạo:
+
+```text
+PAA / Related / Autocomplete / query signals
+→ normalize + dedupe
+→ problem / intent classification
+→ simple topic clusters
+→ pillar / cluster suggestions
+→ niche candidates
+→ CREATE / UPDATE / MERGE / DO_NOT_WRITE
+→ human chọn 1 opportunity
+```
+
+Không cần:
+
+- keyword-volume database;
+- paid difficulty score;
+- backlink analysis;
+- crawl competitor lớn;
+- auto content calendar.
+
+### D. Editorial calibration tối thiểu
 
 - 3–5 positive excerpts cho locale được thử;
 - 3–5 negative excerpts;
 - human review rubric;
-- một ContentCase thật;
+- một ContentCase thật từ opportunity được chọn;
 - một LocaleVariant thật;
-- Manual EvidenceSet;
+- selected/manual EvidenceSet;
 - Manual OriginalityPack.
 
-Walking Skeleton:
+### E. Walking Skeleton
 
 ```text
-Brief/Case
+Seed / Problem
+→ Mini Keyword Plan
+→ Human chọn opportunity
+→ ContentCase / LocaleVariant
+→ EvidenceSet + OriginalityPack
 → Angle
 → Outline
 → Draft
@@ -85,20 +141,23 @@ Brief/Case
 
 Chưa cần:
 
-- auto research đầy đủ;
 - Content Memory thông minh;
 - WordPress publish;
 - durable worker hoàn chỉnh;
-- multi-project.
+- multi-project;
+- full automatic research orchestration.
 
 Exit gate:
 
 1. repo build/test sạch;
-2. một Journal thật được tạo từ dữ liệu thật;
-3. người duyệt xác định rõ bài có đáng tiếp tục phát triển không;
-4. các lỗi content contract được ghi lại trước khi tự động hóa thêm.
+2. một seed thật tạo được Keyword Plan dễ hiểu;
+3. human chọn được ít nhất một opportunity có lý do rõ;
+4. selected sources tốt hơn việc lấy mặc định top 1–5 Google;
+5. một Journal thật được tạo từ dữ liệu thật;
+6. người duyệt xác định rõ bài có đáng tiếp tục phát triển không;
+7. các lỗi research/content contract được ghi lại trước khi tự động hóa thêm.
 
-Nếu chất lượng chưa đạt, sửa Content/Settings/Quality contract trước khi sang CE02.
+Nếu chất lượng chưa đạt, sửa Research/Content/Settings/Quality contract trước khi sang CE02.
 
 ---
 
@@ -123,14 +182,17 @@ Deliverables:
 - ContentRun/StepRun/Artifact/Approval;
 - ContextManifest;
 - ModelCall/ToolCall;
-- QualityEvaluation.
+- QualityEvaluation;
+- structured Research artifacts;
+- Keyword Plan artifact/version contract.
 
 Exit gate:
 
 - core data create/read/version được;
 - run giữ settings snapshot bất biến;
 - ContextManifest tái hiện được input quan trọng;
-- vi/en chia sẻ ContentCase nhưng có LocaleVariant riêng.
+- vi/en chia sẻ ContentCase nhưng có LocaleVariant riêng;
+- research/keyword artifacts giữ source refs và locale.
 
 ---
 
@@ -163,9 +225,9 @@ Exit gate:
 
 ---
 
-## CE04 — Knowledge + Discovery Research + Evidence Research
+## CE04 — Knowledge + Production Research
 
-Mục tiêu: tự động hóa việc tìm đúng thông tin mà không trộn “khách đang hỏi gì” với “fact có đúng không”.
+Mục tiêu: nâng Research Spike CE01 thành workflow có thể chạy lặp lại, giữ provenance và tái sử dụng knowledge.
 
 Deliverables:
 
@@ -175,12 +237,19 @@ Deliverables:
 - chunking;
 - entity refs;
 - retrieval;
+- provider routing/budget/fallback production;
 - Discovery Research workflow;
+- Keyword Plan workflow;
 - Evidence Research workflow;
+- source selection + commercial-bias/authority metadata;
+- second-hop research;
 - authority rules;
 - Claim/Evidence ledger;
 - EvidenceSet lock;
 - OriginalityPack builder;
+- Knowledge Candidate extraction;
+- candidate/approved admission;
+- Obsidian mirror/export;
 - memory gap report;
 - basic contradiction handling.
 
@@ -190,7 +259,10 @@ Exit gate:
 - retrieved item có provenance;
 - Discovery output không bị dùng nhầm làm factual evidence;
 - unsupported claim detectable;
-- EvidenceSet bất biến sau lock.
+- EvidenceSet bất biến sau lock;
+- raw SERP/API payload không làm bẩn Obsidian;
+- một research run có thể giải thích provider nào được gọi và vì sao;
+- Keyword Plan giữ được nguồn signal cho từng opportunity.
 
 ---
 
@@ -203,6 +275,7 @@ Deliverables:
 - ContentCase/LocaleVariant UI;
 - memory overlap check stub;
 - research workflows;
+- opportunity selection handoff;
 - angle generation/approval;
 - outline;
 - draft;
@@ -335,12 +408,14 @@ Không mở CRM/Sales Agent trước CE10 review.
 Giữ trước:
 
 1. chất lượng một bài thật;
-2. evidence/assertion correctness;
-3. human approval;
-4. content identity/version;
-5. reproducibility;
-6. durable run;
-7. measurement/learning.
+2. audience/problem đúng;
+3. source/evidence đúng;
+4. MOTGU originality;
+5. human approval;
+6. content identity/version;
+7. reproducibility;
+8. durable run;
+9. measurement/learning.
 
 Hoãn trước:
 
@@ -348,5 +423,7 @@ Hoãn trước:
 2. generic workflow builder;
 3. full Memory Tree;
 4. nhiều integrations;
-5. nhiều model/provider chỉ để có lựa chọn;
-6. automation publish hoàn toàn.
+5. Brave/default extra providers khi chưa có use case;
+6. keyword volume/backlink suite;
+7. nhiều model/provider chỉ để có lựa chọn;
+8. automation publish hoàn toàn.

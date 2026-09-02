@@ -24,8 +24,11 @@ Trong phạm vi:
 - MOTGU-first, kiến trúc sẵn sàng mở rộng project sau này;
 - Journal;
 - Artwork content;
-- tiếng Việt và tiếng Anh được viết độc lập từ cùng Brief + Evidence;
+- tiếng Việt và tiếng Anh dùng chung ContentCase/Evidence nhưng có LocaleVariant và cách viết riêng;
 - Brand DNA và Language DNA cấu hình được;
+- Discovery Research + Evidence Research;
+- Search stack tiết kiệm: Serper + Tavily + Exa + Jina, Brave chỉ fallback/coverage check;
+- Keyword Plan mini theo hướng Question & Opportunity Map;
 - Research + Evidence Ledger;
 - durable run harness có checkpoint;
 - quality evaluation;
@@ -43,6 +46,8 @@ Ngoài phạm vi V1:
 - vận hành đa kênh;
 - workflow automation tổng quát;
 - multi-project UI;
+- database keyword hàng chục nghìn từ;
+- backlink/keyword-difficulty suite;
 - tự động thay đổi luật hoặc prompt mà không có người duyệt.
 
 ## Tài liệu canonical
@@ -62,23 +67,35 @@ Thứ tự đọc:
 9. `docs/08-JOURNAL-SPEC.md`
 10. `docs/09-ARTWORK-SPEC.md`
 11. `docs/10-PUBLISH-MEASURE-SPEC.md`
-12. `docs/PLAN.md`
-13. `docs/TASKS.md`
-14. `docs/CHECKLIST.md`
-15. `AGENTS.md`
+12. `docs/11-RESEARCH-SEARCH-SPEC.md`
+13. `docs/12-KEYWORD-PLAN-SPEC.md`
+14. `docs/PLAN.md`
+15. `docs/TASKS.md`
+16. `docs/CHECKLIST.md`
+17. `AGENTS.md`
 
 ## Kiến trúc tổng quát
 
 ```text
 Configuration
     ↓
-Knowledge + Evidence
+ContentCase + LocaleVariant
+    ↓
+Knowledge Recall
+    ↓
+Discovery Research
+    ↓
+Keyword / Question / Opportunity Map
+    ↓
+Evidence Research
+    ↓
+EvidenceSet + OriginalityPack
     ↓
 Durable Harness
     ↓
 Content Workflow
     ↓
-Human Approval
+Assertion Audit + Human Approval
     ↓
 Publish
     ↓
@@ -88,6 +105,41 @@ Learning Loop
     ↓
 Approved Settings / Memory / Golden Content
 ```
+
+## Search stack V1
+
+```text
+Serper
+→ nhìn Google: PAA / Related / Autocomplete / organic
+
+Tavily
+→ tìm nguồn nghiên cứu phù hợp khi Google nhiều sales/SEO noise
+
+Exa
+→ tìm nguồn sâu, nguồn tương tự và second-hop
+
+Jina
+→ đọc sạch các URL đã chọn
+
+Brave
+→ optional fallback / coverage check
+```
+
+Không dùng search ranking như thước đo độ tin cậy của nguồn.
+
+## Knowledge sau research
+
+Không đổ raw SERP/API data vào Obsidian.
+
+```text
+Raw source
+→ Knowledge Candidate
+→ dedupe + provenance + review
+→ Approved Knowledge
+→ Obsidian mirror khi hữu ích
+```
+
+Obsidian là workspace/mirror dễ đọc cho người, không tự trở thành source of truth chỉ vì một note tồn tại.
 
 ## Nguyên tắc học từ OpenHuman
 
@@ -105,6 +157,7 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 
 ## Trạng thái
 
-`CE00 — Content North Star & Scope`: ACTIVE.
+- `CE00 — Foundation Contracts`: CLOSED.
+- `CE01 — Repository Skeleton + Walking Skeleton`: NEXT.
 
-Chưa implementation product code trước khi bộ contract nền được duyệt.
+Research/Search và Keyword Plan mini được đưa vào CE01 để phục vụ trực tiếp Golden Journal đầu tiên, không mở thành dự án riêng.
