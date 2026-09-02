@@ -19,14 +19,14 @@ Mỗi nội dung phải đạt 5 mục tiêu cùng lúc:
 
 ContentEngine không được đánh giá bằng số bài tạo ra.
 
-North Star Metric dài hạn là:
+North Star dài hạn là:
 
-> Tốc độ tạo ra nội dung có ích và tốc độ học được điều gì đúng hơn về người đọc, khách tiềm năng và khách hàng phù hợp với MOTGU.
+> Tạo ra nội dung có ích ngày càng nhanh hơn, đồng thời học được ngày càng chính xác hơn người đọc nào phù hợp với MOTGU và họ thực sự cần gì.
 
 Các chỉ số vận hành hỗ trợ:
 
 - tỷ lệ bài qua Quality Gate;
-- tỷ lệ claim có evidence;
+- tỷ lệ claim quan trọng có evidence;
 - tỷ lệ human edit sau draft;
 - mức độ tái sử dụng evidence và knowledge đúng ngữ cảnh;
 - số query/search intent mới mà nội dung bắt được;
@@ -35,7 +35,27 @@ Các chỉ số vận hành hỗ trợ:
 - số learning candidate được xác nhận thành rule;
 - regression pass rate sau mỗi thay đổi prompt/model/settings.
 
-## 3. Đường học khách hàng 1–3–6 tháng
+## 3. Reader Transformation
+
+Mỗi content case phải mô tả người đọc trước và sau khi đọc.
+
+Ví dụ:
+
+```text
+BEFORE
+"Tôi thích tranh nhưng sợ mình không đủ hiểu để chọn."
+
+↓ nội dung
+
+AFTER
+"Tôi có thể tự tin nhìn, cảm nhận và bắt đầu chọn tác phẩm phù hợp với mình."
+```
+
+Mục tiêu cảm xúc không phải “bơm cảm xúc”. Nó là giúp người đọc chuyển từ một trạng thái thật sang một trạng thái hữu ích hơn.
+
+Mỗi locale có thể có cách diễn đạt khác nhưng không được làm sai reader value cốt lõi.
+
+## 4. Đường học khách hàng 1–3–6 tháng
 
 ### 0–1 tháng — khám phá rộng
 
@@ -64,8 +84,6 @@ Mục tiêu: tìm nhóm nội dung và nhóm người có tín hiệu tốt hơn
 
 Mục tiêu: chuyển từ khách tiềm năng rộng sang nhóm có xác suất phù hợp cao hơn.
 
-Chuỗi học:
-
 ```text
 Potential audience
     ↓
@@ -76,38 +94,41 @@ Core audience
 Actual user / buyer / visitor
 ```
 
-## 4. Nguyên tắc ngôn ngữ
+Không thu hẹp chỉ từ một bài hoặc một tín hiệu nhỏ. Hệ thống phải biết nói “chưa đủ dữ liệu để kết luận”.
+
+## 5. Nguyên tắc ngôn ngữ
 
 ContentEngine không dùng quy trình “viết tiếng Việt rồi dịch sang tiếng Anh” làm mặc định.
 
-Hai ngôn ngữ dùng chung:
+Một `ContentCase` giữ phần chung:
 
-- Brief;
-- Facts;
-- Evidence;
-- entities;
-- business goal.
+- audience/problem;
+- business goal;
+- core facts;
+- evidence;
+- originality;
+- content hypothesis.
 
-Nhưng mỗi ngôn ngữ có writer riêng:
+Mỗi ngôn ngữ có `LocaleVariant` riêng:
 
 ```text
-Shared Brief + Evidence
-        ├── vi-VN Writer
-        └── en Writer
+ContentCase
+    ├── vi-VN LocaleVariant
+    └── en LocaleVariant
 ```
 
-Mỗi bản được phép có:
+Mỗi variant được phép có:
 
 - title khác;
-- keyword khác;
-- query intent khác;
+- keyword/query khác;
+- intent nuance khác;
 - ví dụ khác;
 - nhịp câu khác;
 - cấu trúc nhỏ khác;
 
 miễn không làm thay đổi sự thật cốt lõi.
 
-## 5. Content Engine không phải gì
+## 6. Content Engine không phải gì
 
 Không phải:
 
@@ -118,13 +139,15 @@ Không phải:
 - CRM;
 - sales automation;
 - kho vector không kiểm soát;
-- hệ thống tự sửa prompt mà không có người duyệt.
+- hệ thống tự sửa prompt mà không có người duyệt;
+- hệ thống tự chấm điểm rồi tự tin rằng output đã tốt.
 
-## 6. Công thức North Star
+## 7. Công thức North Star
 
 ```text
 Useful Problem
 + Specific Audience
++ Reader Transformation
 + Reliable Evidence
 + MOTGU Originality
 + Human Voice
