@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, ce01-walking-skeleton]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: contentengine
+          POSTGRES_USER: contentengine
+          POSTGRES_PASSWORD: contentengine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U contentengine -d contentengine"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      APP_ENV: test
+      APP_VERSION: 0.1.0-ce01
+      DATABASE_URL: postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend
+        run: pip install -r backend/requirements-dev.txt
+
+      - name: Backend lint
+        working-directory: backend
+        run: ruff check app tests scripts migrations
+
+      - name: Backend types
+        working-directory: backend
+        run: mypy app
+
+      - name: Run migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Backend tests
+        working-directory: backend
+        run: pytest
+
+      - name: Export OpenAPI
+        working-directory: backend
+        run: python scripts/dump_openapi.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package.json
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm install --no-audit --no-fund
+
+      - name: Generate frontend API types
+        working-directory: frontend
+        run: npm run gen:types
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Frontend typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
