@@ -1,0 +1,1 @@
+"""Knowledge candidate handoff boundary."""
