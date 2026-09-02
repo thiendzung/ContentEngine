@@ -1,0 +1,460 @@
+# CE01 — WALKING SKELETON RUNBOOK
+
+## 1. Mục tiêu duy nhất
+
+CE01 chỉ có một mục tiêu:
+
+> Từ một nhu cầu/nỗi đau thật của khách MOTGU, hệ thống tạo được một Keyword Plan dễ hiểu, chọn được một cơ hội nội dung tốt, research được nguồn tốt và tạo một Journal thật để người duyệt đánh giá.
+
+Không coi “backend chạy được” hay “API gọi được” là hoàn thành CE01.
+
+## 2. Kết quả cuối CE01
+
+Phải có đủ:
+
+1. repo chạy sạch;
+2. một seed thật;
+3. một Keyword Plan mini;
+4. một opportunity được người duyệt chọn;
+5. một ContentCase + LocaleVariant;
+6. một EvidenceSet thủ công/chọn lọc;
+7. một OriginalityPack MOTGU;
+8. Angle;
+9. Outline;
+10. Draft;
+11. basic assertion audit;
+12. human review;
+13. danh sách lỗi/học được để quyết định CE02.
+
+## 3. Luồng thực thi
+
+```text
+PHASE A — FOUNDATION
+repo chạy được
+        ↓
+PHASE B — RESEARCH SPIKE
+1 seed thật → search → selected sources
+        ↓
+PHASE C — KEYWORD PLAN MINI
+questions → clusters → opportunities
+        ↓
+HUMAN GATE 1
+chọn 1 opportunity
+        ↓
+PHASE D — CONTENT INPUT
+ContentCase + LocaleVariant + EvidenceSet + OriginalityPack
+        ↓
+PHASE E — WALKING SKELETON
+Angle → Outline → Draft → Assertion Audit
+        ↓
+HUMAN GATE 2
+đánh giá bài
+        ↓
+PHASE F — CE01 REVIEW
+GO / FIX / STOP
+```
+
+---
+
+# PHASE A — FOUNDATION
+
+## A1. Repository skeleton
+
+Task:
+
+- T01.1 xác nhận branch `ce01-walking-skeleton` từ `main` sạch;
+- T01.2 FastAPI backend tối thiểu;
+- T01.3 Next.js frontend shell tối thiểu;
+- T01.4 root scripts;
+- T01.5 `.env.example`;
+- T01.6 PostgreSQL + migration framework;
+- T01.7 module directories;
+- T01.8 health/version endpoint.
+
+### Checklist A1
+
+- [ ] backend start được;
+- [ ] frontend start được;
+- [ ] database connect được;
+- [ ] `/health` trả OK;
+- [ ] không có API key trong Git;
+- [ ] module `research` tồn tại;
+- [ ] chưa thêm logic ngoài CE01.
+
+## A2. Quality baseline
+
+Task:
+
+- T01.9 backend lint/type/test;
+- T01.10 frontend lint/type/build;
+- T01.11 OpenAPI + frontend generated types;
+- T01.12 CI;
+- T01.13 clean install test.
+
+### Gate A
+
+Chỉ sang Research khi:
+
+- [ ] install từ đầu được;
+- [ ] build sạch;
+- [ ] tests nền pass;
+- [ ] CI pass;
+- [ ] repo không có file tạm/debug.
+
+---
+
+# PHASE B — RESEARCH SPIKE
+
+## B1. Provider seam
+
+Task:
+
+- T01.14 config keys: Serper, Tavily, Exa, Jina; Brave optional;
+- T01.15 SearchProvider + Serper adapter;
+- T01.16 Tavily/Exa source-discovery seam;
+- T01.17 Jina selected URL reader;
+- T01.18 bounded raw research artifact;
+- T01.21 budget + stop-when-sufficient.
+
+Default rule:
+
+```text
+MOTGU knowledge trước
+→ Serper
+→ đủ thì dừng
+→ Tavily nếu Google nhiều sales/SEO noise
+→ Exa nếu cần nguồn sâu/second-hop
+→ Jina chỉ đọc URL đã chọn
+```
+
+### Checklist B1
+
+- [ ] không gọi mọi provider cho mọi query;
+- [ ] mỗi call giữ provider/query/result refs;
+- [ ] timeout/error không làm mất run;
+- [ ] search position không dùng làm authority score;
+- [ ] raw SERP không ghi vào Obsidian;
+- [ ] có giới hạn số query/pages/calls.
+
+## B2. One real seed
+
+Chỉ chọn **một** seed thật cho CE01.
+
+Seed phải bắt đầu từ pain/desire/question, không bắt đầu từ search volume.
+
+Ví dụ dạng seed:
+
+> First-time art buyer worries about choosing the wrong painting.
+
+Output tối thiểu:
+
+- PAA;
+- Related Searches;
+- Autocomplete;
+- organic titles/snippets/domains;
+- vài source candidates ngoài top sales pages.
+
+## B3. Source quality spike
+
+Task:
+
+- T01.19 one-step second-hop;
+- T01.20 manual Deep Research import shape.
+
+Phải chứng minh ít nhất một ví dụ:
+
+```text
+Google sales/SEO page
+→ citation / expert / report
+→ source gốc tốt hơn
+```
+
+### Gate B
+
+- [ ] một seed thật chạy được;
+- [ ] Serper trả discovery signals;
+- [ ] ít nhất một source tốt hơn top 1–5 Google mặc định;
+- [ ] selected URLs đọc được qua Jina hoặc manual fallback;
+- [ ] biết provider nào được gọi và vì sao.
+
+---
+
+# PHASE C — KEYWORD PLAN MINI
+
+Task:
+
+- T01.22 collect signals;
+- T01.23 normalize/dedupe;
+- T01.24 classify problem/intent/audience stage;
+- T01.25 simple clustering;
+- T01.26 pillar/cluster candidates;
+- T01.27 Niche Candidates;
+- T01.28 content decision;
+- T01.29 priority.
+
+## Output phải dễ đọc
+
+Không trả bảng hàng nghìn keyword.
+
+Một plan tốt phải cho người duyệt thấy:
+
+```text
+Audience
+→ Problem / Desire
+→ Question Cluster
+→ Search Signals
+→ MOTGU Right-to-Win
+→ Suggested Content Role
+→ Decision
+→ Priority
+```
+
+Mỗi opportunity phải có:
+
+- audience;
+- problem/desire;
+- primary question;
+- intent;
+- pillar / cluster / artwork / other suggestion;
+- MOTGU advantage;
+- evidence feasibility;
+- CREATE / UPDATE / REFRESH / MERGE / LINK_ONLY / DO_NOT_WRITE;
+- NOW / NEXT / LATER / NO;
+- source/signal refs.
+
+## HUMAN GATE 1 — T01.30
+
+Người duyệt chọn **một** opportunity.
+
+Không được tự động chọn Golden Journal trong CE01.
+
+Người duyệt chỉ cần trả lời:
+
+1. vấn đề này có đúng với khách MOTGU không?;
+2. MOTGU có điều gì thật sự riêng để nói?;
+3. bài này có đáng chăm chút không?;
+4. chọn: GO / RESEARCH MORE / NO.
+
+---
+
+# PHASE D — CONTENT INPUT
+
+## D1. Editorial calibration
+
+Task:
+
+- T01.31 3–5 positive excerpts;
+- T01.32 3–5 negative examples;
+- T01.33 short human review form.
+
+Không cần bài mẫu hoàn chỉnh. Đoạn ngắn đúng/sai giọng MOTGU là đủ.
+
+## D2. ContentCase
+
+Task:
+
+- T01.34 one real ContentCase;
+- T01.35 one LocaleVariant.
+
+ContentCase tối thiểu phải rõ:
+
+- audience;
+- pain/desire;
+- primary question;
+- reader before;
+- reader after;
+- desired action;
+- content hypothesis.
+
+LocaleVariant tối thiểu:
+
+- locale;
+- query language;
+- title direction;
+- language/voice notes.
+
+## D3. EvidenceSet
+
+Task T01.36.
+
+Không cần tự động hóa full Evidence Research ở CE01.
+
+Chọn thủ công nguồn đủ tốt rồi khóa một EvidenceSet nhỏ.
+
+Mỗi critical fact phải biết:
+
+```text
+claim
+→ source
+→ locator
+```
+
+## D4. OriginalityPack
+
+Task T01.37.
+
+Phải có ít nhất một nguyên liệu MOTGU riêng:
+
+- artist knowledge;
+- Artwork thật;
+- studio/process;
+- visitor question;
+- local Hanoi experience;
+- practical viewing/shipping knowledge;
+- first-party observation.
+
+Nếu OriginalityPack rỗng, không viết chỉ để hoàn thành task.
+
+### Gate D
+
+- [ ] ContentCase rõ;
+- [ ] locale rõ;
+- [ ] EvidenceSet đủ cho critical facts;
+- [ ] OriginalityPack có ít nhất một giá trị riêng;
+- [ ] positive/negative voice examples đã có.
+
+---
+
+# PHASE E — WALKING SKELETON
+
+## E1. Angle — T01.38
+
+Sinh ít angle, mỗi angle phải trả lời:
+
+- reader nhận được gì;
+- khác web chung ở đâu;
+- evidence có đủ không;
+- MOTGU có quyền nói gì;
+- risk nào còn thiếu.
+
+Human chọn một angle.
+
+## E2. Outline — T01.39
+
+Mỗi section phải có purpose rõ.
+
+Critical section map được tới evidence hoặc OriginalityPack.
+
+Human duyệt outline trước Draft.
+
+## E3. Draft — T01.40
+
+V1 cho phép một model adapter tạm thời.
+
+Không xây model router phức tạp nếu chưa cần.
+
+Writer chỉ nhận:
+
+- ContentCase;
+- LocaleVariant;
+- approved Angle;
+- approved Outline;
+- EvidenceSet;
+- OriginalityPack;
+- editorial calibration excerpts.
+
+## E4. Assertion Audit — T01.41
+
+Sau Draft:
+
+- bóc các factual assertions quan trọng;
+- map lại EvidenceSet;
+- unsupported critical assertion → BLOCK/REVIEW;
+- interpretation phải được viết như interpretation.
+
+## HUMAN GATE 2 — T01.42
+
+Người duyệt trả lời:
+
+1. bài có giúp đúng người đọc không?;
+2. có gì mới/riêng của MOTGU không?;
+3. có đoạn nào nghe chung chung/AI không?;
+4. có fact nào đáng nghi không?;
+5. có cảm xúc nhưng vẫn tự nhiên không?;
+6. nếu là website thật, có muốn đăng không?
+
+Kết quả:
+
+- `PUBLISHABLE_DIRECTION`;
+- `NEEDS_CHANGES`;
+- `REJECT_DIRECTION`.
+
+Không publish WordPress trong CE01.
+
+---
+
+# PHASE F — REVIEW & CLOSE
+
+Task:
+
+- T01.43 record failure notes;
+- T01.44 CE01 gate decision.
+
+Phải ghi riêng:
+
+- research failure;
+- keyword-plan failure;
+- source-quality failure;
+- evidence gap;
+- voice failure;
+- originality failure;
+- content workflow failure;
+- technical failure.
+
+Không tự sửa global settings từ một bài thử.
+
+## CE01 EXIT GATE
+
+Chỉ đóng CE01 khi tất cả điều sau đúng:
+
+- [ ] repo build/test sạch;
+- [ ] một seed thật tạo Keyword Plan dễ hiểu;
+- [ ] human chọn được một opportunity có lý do rõ;
+- [ ] selected research sources tốt hơn việc lấy top Google mặc định;
+- [ ] có ContentCase + LocaleVariant thật;
+- [ ] có EvidenceSet + OriginalityPack;
+- [ ] một Journal thật tới human review;
+- [ ] zero critical unsupported assertion trong candidate được review;
+- [ ] failure notes rõ;
+- [ ] có quyết định GO / FIX BEFORE CE02 / STOP.
+
+## CE01 NON-GOALS
+
+Không làm trong phase này:
+
+- production Content Memory;
+- WordPress publish;
+- Artwork engine;
+- full worker/queue durability;
+- full automatic Obsidian knowledge ingest;
+- multi-project;
+- full bilingual production;
+- keyword volume database;
+- backlinks/difficulty suite;
+- autonomous approval;
+- tự học và tự sửa prompt/settings.
+
+## Quy tắc chia PR
+
+Không gom CE01 thành một PR khổng lồ.
+
+Khuyến nghị:
+
+1. PR-A — repository skeleton;
+2. PR-B — research spike;
+3. PR-C — keyword plan mini;
+4. PR-D — editorial/content inputs;
+5. PR-E — walking skeleton + CE01 review.
+
+Mỗi PR phải có:
+
+```text
+GOAL
+FILES CHANGED
+EVIDENCE
+RISKS / BLOCKERS
+STATUS
+NEXT
+```
+
+Không merge nếu task chưa có bằng chứng rõ.
