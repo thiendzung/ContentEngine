@@ -13,7 +13,7 @@ backend-install:
 	$(BACKEND_PIP) install -r backend/requirements-dev.txt
 
 frontend-install:
-	cd frontend && npm ci
+	cd frontend && npm install --no-audit --no-fund
 
 db-up:
 	docker compose up -d postgres
