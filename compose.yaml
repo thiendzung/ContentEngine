@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: contentengine
+      POSTGRES_USER: contentengine
+      POSTGRES_PASSWORD: contentengine
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentengine -d contentengine"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - contentengine_postgres:/var/lib/postgresql/data
+
+volumes:
+  contentengine_postgres:
