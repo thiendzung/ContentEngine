@@ -21,13 +21,15 @@ Ví dụ:
 
 ## 3. Evidence before assertion
 
-Một claim có tính factual quan trọng chỉ được xuất bản khi:
+Một claim factual quan trọng chỉ được xuất bản khi:
 
 - có evidence hợp lệ; hoặc
 - được đánh dấu rõ là opinion/interpretation; hoặc
 - do MOTGU cung cấp và có authority phù hợp.
 
 Không dùng quy trình “viết trước rồi tìm nguồn để hợp thức hóa”.
+
+Final content phải qua assertion audit để phát hiện factual statement mới không nằm trong evidence đã khóa.
 
 ## 4. Provenance bắt buộc
 
@@ -70,6 +72,7 @@ Mỗi run phải có:
 - checkpoint;
 - input snapshot;
 - settings version;
+- context manifest;
 - model/tool call ledger;
 - output từng bước;
 - error/retry state.
@@ -82,6 +85,8 @@ Các thao tác ingest và publish phải thiết kế để chạy lại không 
 
 Nguồn giống nhau phải có stable fingerprint hoặc deterministic ID để dedupe.
 
+Worker/job chạy lại cũng không được làm side effect lặp.
+
 ## 9. Context có giới hạn
 
 Không đẩy toàn bộ knowledge/content memory vào model.
@@ -89,10 +94,12 @@ Không đẩy toàn bộ knowledge/content memory vào model.
 Mỗi task chỉ nhận context tối thiểu cần thiết:
 
 - Brand/Language DNA liên quan;
-- Brief;
+- Brief/Locale Variant;
 - evidence đã chọn;
 - content memory có liên quan;
 - số Golden Examples giới hạn.
+
+Mọi context quan trọng phải có ID/hash để truy lại được model đã nhìn thấy gì.
 
 ## 10. Prompt và Settings phải versioned
 
@@ -102,7 +109,10 @@ Mọi output quan trọng phải truy ra được:
 - settings version;
 - recipe version;
 - model;
-- evidence set.
+- evidence set;
+- context manifest.
+
+Không được có nhiều nguồn sự thật cho cùng một setting/prompt.
 
 ## 11. Quality không đồng nghĩa điểm SEO plugin
 
@@ -123,13 +133,29 @@ Không:
 
 ## 13. Originality Gate bắt buộc
 
-Mỗi content brief phải trả lời:
+Mỗi content case phải trả lời:
 
 > MOTGU có thể nói điều gì ở bài này mà một bài tổng hợp chung trên Internet không thể nói tốt bằng?
 
-Nếu không có câu trả lời hợp lý, ưu tiên research thêm, đổi angle, cập nhật nội dung cũ hoặc không viết.
+Writer phải nhận một `OriginalityPack` cụ thể, không chỉ một câu mô tả chung.
 
-## 14. Regression trước promotion
+Nếu không có nguyên liệu riêng đủ tốt, ưu tiên research thêm, đổi angle, cập nhật nội dung cũ hoặc không viết.
+
+## 14. Content identity phải bền qua thời gian
+
+Không coi mỗi lần sửa bài là một bài mới.
+
+Hệ thống phải phân biệt:
+
+- ý tưởng/content case;
+- bản ngôn ngữ;
+- content item ổn định;
+- version của content item;
+- run tạo hoặc cập nhật version đó.
+
+Điều này là bắt buộc để đo hiệu quả và học đúng sau 1–3–6 tháng.
+
+## 15. Regression trước promotion
 
 Thay đổi lớn ở:
 
@@ -142,7 +168,9 @@ Thay đổi lớn ở:
 
 phải chạy regression trên Golden Set trước khi promote production.
 
-## 15. Observability và cost là một phần của product
+Regression ưu tiên so sánh candidate với baseline, không chỉ nhìn một điểm số tuyệt đối.
+
+## 16. Observability và cost là một phần của product
 
 Mỗi run phải đo tối thiểu:
 
@@ -155,3 +183,32 @@ Mỗi run phải đo tối thiểu:
 - human edit delta.
 
 Không tối ưu cost bằng cách làm giảm chất lượng dưới gate.
+
+## 17. Contract Change Mode
+
+Nếu yêu cầu mới xung đột với tài liệu canonical:
+
+1. xác định rõ conflict;
+2. coi đây là thay đổi contract;
+3. cập nhật tài liệu canonical cùng task hoặc trước implementation;
+4. chỉ code sau khi contract mới rõ.
+
+Không silently bypass tài liệu chỉ vì một cách làm nhanh hơn.
+
+## 18. Chất lượng phải được kiểm chứng sớm
+
+Không đợi xây xong toàn bộ hạ tầng mới thử chất lượng bài viết.
+
+Ngay giai đoạn đầu phải có một đường rất mỏng:
+
+```text
+Real Brief
++ Manual Evidence
++ Real Brand Examples
+→ Angle
+→ Outline
+→ Draft
+→ Human Review
+```
+
+Nếu đường này không tạo ra nội dung đáng đăng, phải sửa content contract trước khi mở rộng hạ tầng.

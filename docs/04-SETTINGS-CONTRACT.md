@@ -6,7 +6,26 @@ Settings phải cho phép thay đổi hành vi ContentEngine mà không hardcode
 
 Settings được tổ chức theo các khối nhỏ, có version, có scope và có override rõ ràng.
 
-## 2. Precedence
+## 2. Nguồn sự thật duy nhất
+
+V1 chốt như sau:
+
+```text
+Git
+= schema + migration + seed mặc định
+
+Database
+= settings/prompt/recipe đang hoạt động + lịch sử version
+
+SettingsSnapshot
+= cấu hình hiệu lực bất biến của một run
+```
+
+Không duy trì cùng một setting/prompt ở nhiều nơi khác nhau.
+
+Code không được chứa bản sao “ẩn” của prompt production.
+
+## 3. Precedence
 
 ```text
 SYSTEM DEFAULT
@@ -22,9 +41,9 @@ RUN OVERRIDE
 
 Tầng dưới chỉ override key được cho phép.
 
-Mỗi `ContentRun` phải lưu `settings_snapshot_id` bất biến để có thể tái hiện.
+Mỗi ContentRun lưu `settings_snapshot_id` bất biến.
 
-## 3. Project Settings
+## 4. Project Settings
 
 V1 project duy nhất: `motgu`.
 
@@ -39,7 +58,7 @@ Tối thiểu:
 - measurement providers;
 - feature flags.
 
-## 4. Brand DNA
+## 5. Brand DNA
 
 Brand DNA không phải một đoạn mô tả tự do duy nhất.
 
@@ -57,18 +76,11 @@ brand:
       - "..."
 
   voice:
-    calm: 0.9
-    intimate: 0.8
-    poetic: 0.5
-    commercial: 0.2
-    academic: 0.3
-
-  emotional_signature:
-    curiosity: 0.8
-    discovery: 0.8
-    intimacy: 0.8
-    trust: 0.9
-    urgency: 0.1
+    calm: high
+    intimate: high
+    poetic: medium
+    commercial: low
+    academic: low
 
   boundaries:
     avoid:
@@ -85,15 +97,34 @@ brand:
       - studio/process evidence
 ```
 
-Các giá trị số là preference, không phải công thức máy móc để tính câu chữ.
+Các mức `high/medium/low` chỉ là gợi ý. Ví dụ thật được ưu tiên hơn slider/số điểm.
 
-## 5. Language DNA
+## 6. Editorial Calibration Pack — nguồn chính cho giọng văn
+
+Trước khi tự động hóa sâu, mỗi locale phải có một gói mẫu được người duyệt.
+
+Tối thiểu khuyến nghị:
+
+- 3–5 positive examples;
+- 3–5 negative examples;
+- có thể là đoạn ngắn, không cần bài hoàn chỉnh;
+- tags theo `locale`, `content_type`, `intent`, `example_type`;
+- ghi lý do tại sao tốt/xấu.
+
+Ví dụ loại mẫu:
+
+- opening;
+- direct answer;
+- artwork description;
+- artist/context paragraph;
+- CTA;
+- full content khi có.
+
+Không tự đưa mọi bài publish vào Calibration Pack.
+
+## 7. Language DNA
 
 Mỗi locale có Language DNA riêng.
-
-Mục tiêu: tạo văn phong tự nhiên trong chính ngôn ngữ đó, không dịch máy từ một bản gốc.
-
-Schema đề xuất:
 
 ```yaml
 language_dna:
@@ -123,21 +154,27 @@ language_dna:
 
 `vi-VN` và `en` có config riêng.
 
-## 6. Golden Style Examples
+## 8. Reader Transformation
 
-Brand/Language DNA phải hỗ trợ examples có kiểm soát:
+Mỗi LocaleVariant nên có:
 
-- `positive_examples`;
-- `negative_examples`;
-- tags theo locale/content_type/intent;
-- giới hạn số example đưa vào context;
-- human approved only.
+- `reader_before` từ ContentCase;
+- `reader_after` từ ContentCase;
+- `primary_emotion`;
+- tối đa 2 `secondary_emotions`;
+- `emotional_arc`.
 
-Không tự đưa mọi bài đã publish vào style examples.
+Ví dụ:
 
-## 7. Audience Settings
+```text
+uncertainty → recognition → discovery → confidence
+```
 
-Audience được lưu như giả thuyết, không phải chân lý.
+Không ép writer nhắc tên cảm xúc. Đây là hướng chuyển trạng thái của người đọc.
+
+## 9. Audience Settings
+
+Audience là giả thuyết, không phải chân lý.
 
 Mỗi audience profile có:
 
@@ -151,7 +188,7 @@ Mỗi audience profile có:
 - confidence;
 - last reviewed date.
 
-## 8. Problem / Desire Library
+## 10. Problem / Desire Library
 
 Các nhóm:
 
@@ -163,13 +200,11 @@ Các nhóm:
 
 Mỗi item có provenance nếu đến từ query, interview, behaviour hoặc customer interaction.
 
-## 9. Content Type
+## 11. Content Type
 
 V1:
 
 ### Journal
-
-Mục tiêu chính:
 
 - answer/explain;
 - build trust;
@@ -178,24 +213,24 @@ Mục tiêu chính:
 
 ### Artwork
 
-Mục tiêu chính:
-
 - explain the work;
 - provide concrete facts;
 - build trust;
 - reduce buying/visiting uncertainty;
 - connect to artist/story/context.
 
-## 10. Content Role
+## 12. Content Role
 
-- `pillar`: trang/bài rộng, làm nền một chủ đề;
+- `pillar`: bài rộng, làm nền một chủ đề;
 - `cluster`: giải quyết một câu hỏi/ngách cụ thể và nối về pillar/related entity.
 
-Content role không được chọn chỉ theo keyword volume.
+Role không chọn chỉ theo keyword volume.
 
-## 11. Intent
+Topic/cluster relation phải map được về ContentItem sau khi bài tồn tại.
 
-Taxonomy V1 đề xuất:
+## 13. Intent
+
+Taxonomy V1:
 
 - `learn`;
 - `understand`;
@@ -206,13 +241,13 @@ Taxonomy V1 đề xuất:
 - `consider_purchase`;
 - `post_purchase`.
 
-Một brief có primary intent và optional secondary intent.
+Một LocaleVariant có primary intent và optional secondary intent.
 
-## 12. Writing Recipe
+## 14. Writing Recipe
 
 Recipe là cấu trúc chiến thuật, không phải template cứng.
 
-Recipe selector dùng:
+Selector dùng:
 
 ```text
 content_type
@@ -220,9 +255,10 @@ content_type
 + intent
 + audience stage
 + problem/desire type
++ locale
 ```
 
-Ví dụ recipe:
+Ví dụ:
 
 ### `journal_direct_answer_story`
 
@@ -251,31 +287,29 @@ Ví dụ recipe:
 - ownership/visit practical information;
 - related content.
 
-Recipe phải cho phép writer phá cấu trúc nhỏ nếu evaluator xác nhận output tốt hơn và vẫn đúng intent.
+Writer được phép phá cấu trúc nhỏ nếu output tốt hơn và vẫn đúng intent/gates.
 
-## 13. Emotion Palette
+## 15. Originality Pack policy
 
-Không “bơm cảm xúc” tùy ý.
+Mỗi ContentCase phải có `OriginalityPack` trước Draft.
 
-Mỗi brief chọn tối đa 1 primary + 2 secondary emotions.
+Pack ưu tiên:
 
-Ví dụ:
+- first-party MOTGU facts;
+- artist quote có nguồn;
+- artwork-specific observation;
+- studio/process detail;
+- visitor/customer question;
+- practical MOTGU knowledge;
+- synthesis mới có evidence.
 
-- curiosity;
-- calm;
-- intimacy;
-- wonder;
-- confidence;
-- belonging;
-- discovery.
+Pack rỗng hoặc quá yếu → research thêm, đổi angle, update bài cũ hoặc không viết.
 
-Không dùng fear/urgency giả để tăng conversion.
-
-## 14. NLP / Language Rules
+## 16. Language rules
 
 Không dùng “NLP tricks” để giả giống người.
 
-Thay bằng rules có thể kiểm tra:
+Dùng rules kiểm tra được:
 
 - sentence rhythm variation;
 - concrete nouns over vague claims;
@@ -286,19 +320,35 @@ Thay bằng rules có thể kiểm tra:
 - avoid unsupported superlatives;
 - entity names clear and consistent;
 - pronoun references unambiguous;
-- concise direct answers where query demands.
+- concise direct answers khi query cần.
 
-## 15. Model Routing
+## 17. Prompt Registry
 
-Settings map task → provider/model policy.
+Prompt production được lưu/version trong Database qua registry rõ ràng.
 
-Ví dụ:
+Mỗi prompt có tối thiểu:
+
+- `prompt_key`;
+- `version`;
+- `purpose`;
+- `template/body`;
+- `input contract`;
+- `output schema`;
+- `status`: draft/active/retired;
+- change reason;
+- approved_by/approved_at khi promote production.
+
+Không hardcode prompt production trong workflow.
+
+## 18. Model Routing
+
+Settings map task → model policy.
 
 ```yaml
 models:
-  research:
-    route: deep_research
-  evidence_review:
+  discovery_research:
+    route: research
+  evidence_research:
     route: high_precision
   angle:
     route: creative_reasoning
@@ -312,27 +362,44 @@ models:
 
 Không hardcode tên model trong workflow business logic.
 
-Router phải có fallback policy và cost/budget limits.
+Router có fallback policy và budget.
 
-## 16. Quality Thresholds
+## 19. Context Manifest
 
-Thresholds được versioned nhưng các hard gates quan trọng không được biến thành một điểm trung bình duy nhất.
+SettingsSnapshot không đủ để tái hiện output vì retrieval có thể thay đổi.
+
+Mỗi model call quan trọng phải tham chiếu ContextManifest chứa:
+
+- settings snapshot;
+- prompt/recipe version;
+- EvidenceSet;
+- OriginalityPack;
+- knowledge chunk IDs/hashes;
+- Golden Example IDs;
+- tool result refs/hashes.
+
+## 20. Quality Thresholds
+
+Hard gates không được biến thành một điểm trung bình duy nhất.
 
 Ví dụ:
 
-- unsupported critical factual claim → FAIL;
-- missing target audience/problem → FAIL;
+- unsupported critical factual assertion → FAIL;
+- missing audience/problem → FAIL;
 - originality absent → FAIL hoặc NEEDS_RESEARCH;
+- source-copy risk cao → FAIL/REVIEW;
 - minor style issue → WARN;
-- Rank Math technical warning → WARN/FAIL theo loại lỗi, không theo overall score.
+- Rank Math warning → WARN/FAIL theo loại lỗi, không theo overall score.
 
-## 17. Change control
+## 21. Change control
 
 Mỗi thay đổi Settings production cần:
 
 1. reason;
 2. source/evidence;
 3. version bump;
-4. regression run nếu ảnh hưởng output;
+4. regression nếu ảnh hưởng output;
 5. human approval;
 6. rollout record.
+
+Nếu thay đổi phá contract canonical, phải vào Contract Change Mode trước code.
