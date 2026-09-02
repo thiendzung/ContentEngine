@@ -10,13 +10,13 @@ Kho nội dung phải giúp ContentEngine tốt hơn theo thời gian nhưng kh�
 Nguồn đã canonicalize, có provenance và fingerprint.
 
 ### Content Memory
-Index các bài đã publish cùng topic, intent, audience, entities, claims, links và performance.
+Index `ContentItem` + `ContentVersion` đã publish cùng topic, intent, audience, entities, claims, links và performance.
 
 ### Golden Memory
-Tập nhỏ các bài/mẫu được human approve để làm baseline chất lượng và style.
+Tập nhỏ ví dụ được human approve để làm baseline chất lượng/style.
 
 ### Learning Memory
-Các learning candidate, decision và experiment result.
+Learning candidate, decision và experiment result.
 
 ## 3. Ingest pipeline
 
@@ -32,7 +32,7 @@ Source
 → optional summaries
 ```
 
-Nguyên tắc học từ OpenHuman:
+Nguyên tắc:
 
 - deterministic IDs khi có thể;
 - raw source vẫn giữ để truy nguyên;
@@ -66,64 +66,88 @@ Không để similarity score một mình quyết định truth.
 
 ## 5. Content Memory fields
 
-Mỗi bài published nên index:
+Mỗi ContentItem/Version nên index:
 
+- ContentCase;
+- LocaleVariant;
 - topic;
 - primary/secondary queries;
 - intent;
 - audience hypothesis;
 - problem/desire;
-- content role pillar/cluster;
+- pillar/cluster relation;
 - entities;
-- claims;
-- evidence set;
+- claims/evidence set;
 - internal links;
 - angle;
 - language/style tags;
-- publish date;
-- performance snapshots.
+- publish/update date;
+- performance metrics.
+
+Không coi version mới là một bài mới nếu vẫn cùng ContentItem.
 
 ## 6. Pre-write memory check
 
-Trước khi research sâu, workflow phải kiểm tra:
+Trước research sâu, workflow kiểm tra:
 
-- đã có bài giải quyết câu hỏi này chưa;
-- có bài cần update thay vì viết mới không;
+- đã có ContentItem giải quyết câu hỏi này chưa;
+- nên update/refresh thay vì tạo mới không;
 - có nguy cơ trùng intent/cannibalization không;
 - evidence nào có thể tái dùng;
-- entity nào còn thiếu coverage;
-- angle nào đã dùng quá nhiều.
+- entity/topic nào còn thiếu coverage;
+- angle/cấu trúc nào đã dùng quá nhiều.
 
-Output: `memory_gap_report`.
+Output: `memory_gap_report` + recommendation:
 
-## 7. Golden Set
+- `create_new`;
+- `update_existing`;
+- `refresh_existing`;
+- `merge`;
+- `do_not_write`.
 
-Chỉ bài được human approve mới có thể vào Golden Set.
+## 7. Editorial Calibration Pack và Golden Set
 
-Tiêu chí nên gồm:
+### Seed Calibration Pack
+
+Có ngay trước bài AI đầu tiên:
+
+- positive excerpts;
+- negative excerpts;
+- human approved;
+- theo locale/content type.
+
+Mục tiêu: cho writer/evaluator một chuẩn giọng thật của MOTGU từ đầu.
+
+### Golden Set
+
+Sau khi có bài thật, chỉ item/version được human approve mới có thể vào Golden Set.
+
+Tiêu chí:
 
 - factual/evidence pass;
 - brand pass;
 - useful/originality pass;
-- human edit thấp hoặc edit cải thiện rõ;
-- performance tốt hoặc được đánh giá editorial xuất sắc;
+- human edit hợp lý;
+- performance tốt hoặc editorial quality xuất sắc;
 - đại diện cho locale/content type/intent cần regression.
 
 Golden Set nhỏ, đa dạng, versioned.
 
 ## 8. Weak/Failure Set
 
-Lưu các ví dụ lỗi có giá trị học:
+Lưu ví dụ lỗi có giá trị học:
 
 - hallucination;
+- unsupported assertion;
 - generic AI tone;
 - over-SEO;
 - wrong audience;
 - weak originality;
+- source-copy/phrase-copy;
 - misleading emotion;
 - poor internal linking.
 
-Dùng làm negative fixtures cho evaluator/regression.
+Dùng làm negative fixtures.
 
 ## 9. Human Edit Delta
 
@@ -133,7 +157,7 @@ Sau final edit:
 - phân loại edit: fact, tone, structure, wording, omission, CTA, source;
 - tạo candidate patterns nếu lặp lại.
 
-Không học trực tiếp từ một edit đơn lẻ thành global rule.
+Không học một edit đơn lẻ thành global rule.
 
 ## 10. Learning Candidate lifecycle
 
@@ -144,19 +168,42 @@ observed
 → human review
 → approved / rejected
 → experiment
+→ regression
 → promoted setting/rule OR archived
 ```
 
-Mỗi candidate phải có:
+Mỗi candidate có:
 
 - statement;
 - scope;
 - evidence refs;
+- sample size khi có;
+- observation window;
 - confidence;
 - expected benefit;
 - regression risk.
 
-## 11. Learning loops
+## 11. Minimum-evidence rule
+
+Hệ thống phải phân biệt:
+
+- signal thú vị;
+- pattern lặp lại;
+- learning đủ mạnh để đổi strategy.
+
+Một learning candidate không được promote chỉ vì một bài tốt/xấu.
+
+Tùy loại learning, settings có thể định nghĩa:
+
+- minimum sample;
+- minimum time window;
+- minimum repeated observations;
+- required human review;
+- required regression.
+
+Nếu chưa đủ, output phải nói rõ: `INSUFFICIENT_EVIDENCE`.
+
+## 12. Learning loops
 
 ### Per-run
 Human edits + evaluator findings + cost/latency.
@@ -167,35 +214,52 @@ Tìm pattern về angle, problem, intent, model, recipe, edits.
 ### 1–3–6 tháng
 Kết hợp Search + behaviour + conversion signals để cập nhật audience/problem hypotheses.
 
-## 12. Anti-self-copy rules
+## 13. Anti-self-copy và anti-source-copy
 
 - không dùng toàn bộ published corpus làm few-shot;
-- giới hạn số Golden Examples;
+- giới hạn Golden Examples;
 - ưu tiên đa dạng examples;
-- detect phrase/structure reuse;
-- originality evaluator so với internal corpus;
-- nếu similarity quá cao, yêu cầu rewrite hoặc đổi angle.
+- detect phrase/structure reuse với corpus nội bộ;
+- detect phrase overlap với research/source excerpts;
+- không paraphrase sát nguồn chỉ để “trông khác”;
+- originality evaluator so với internal corpus + external source set;
+- similarity cao → review/rewrite/đổi angle.
 
-## 13. Summary tree — khi nào dùng
+## 14. Context Memory
 
-Không cần xây Memory Tree đầy đủ ngay V1.
+Mỗi model call quan trọng phải có `ContextManifest`.
+
+Learning không chỉ hỏi “model nào tốt”, mà còn phải hỏi:
+
+- model thấy evidence nào;
+- Golden Examples nào được đưa vào;
+- knowledge chunks nào được dùng;
+- context quá nhiều/thiếu ở đâu.
+
+Không kết luận model/prompt từ output nếu không biết context đã dùng.
+
+## 15. Summary tree — khi nào dùng
+
+Không xây Memory Tree đầy đủ ngay V1.
 
 Chỉ thêm hierarchical summaries khi corpus đủ lớn và retrieval latency/context bắt đầu xấu.
 
-Thứ tự mở rộng:
+Thứ tự:
 
 1. raw sources + search;
 2. entity/topic summaries;
 3. content-cluster summaries;
 4. global/project digest nếu có giá trị thật.
 
-## 14. Definition of done
+## 16. Definition of done
 
 Memory/Learning V1 đạt khi:
 
 - ingest chống trùng;
 - provenance giữ xuyên suốt;
+- ContentItem/version không bị nhầm thành bài mới;
 - pre-write duplicate/gap check hoạt động;
-- Golden/Weak Set có lifecycle;
+- Calibration/Golden/Weak Set có lifecycle;
 - learning candidate không tự promote;
+- candidate biết khi nào chưa đủ evidence;
 - regression dùng được trước settings rollout.
