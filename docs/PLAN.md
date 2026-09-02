@@ -1,6 +1,21 @@
 # PLAN — CONTENTENGINE V1
 
-## Phase CE00 — Foundation Contracts
+## Nguyên tắc lộ trình
+
+Không xây toàn bộ máy rồi mới kiểm tra bài viết có tốt hay không.
+
+Lộ trình V1 dùng hai đường song song:
+
+```text
+A. Chứng minh chất lượng nội dung thật sớm
+B. Tự động hóa và làm hệ thống bền dần từng lớp
+```
+
+Mỗi phase chỉ thêm những viên cần cho phase kế tiếp.
+
+---
+
+## CE00 — Foundation Contracts
 
 Mục tiêu: khóa sản phẩm và kiến trúc trước code.
 
@@ -18,181 +33,320 @@ Deliverables:
 - Artwork spec;
 - publish/measure spec;
 - AGENTS.md;
-- implementation task map.
+- implementation task map;
+- consistency review.
 
 Exit gate:
 
-- không còn ambiguity lớn về ownership, state, source of truth, approval, versioning, retry, idempotency.
+- content identity/version rõ;
+- song ngữ ContentCase/LocaleVariant rõ;
+- EvidenceSet/Assertion Audit rõ;
+- settings source of truth rõ;
+- worker/retry/idempotency rõ;
+- quality tối thiểu xuất hiện trước Journal đầu tiên;
+- Walking Skeleton đã nằm trong CE01.
 
-## Phase CE01 — Repository Skeleton
+---
 
-Mục tiêu: tạo nền chạy được, chưa có AI workflow đầy đủ.
+## CE01 — Repository Skeleton + Walking Skeleton
 
-Deliverables:
+Mục tiêu: repo chạy được và tạo **một Journal MOTGU thật ở mức thử nghiệm** càng sớm càng tốt.
+
+Hạ tầng tối thiểu:
 
 - backend FastAPI skeleton;
-- frontend Next.js skeleton;
-- database connection + migrations;
+- frontend Next.js shell tối thiểu;
+- PostgreSQL + migrations;
 - module boundaries;
-- config/settings loader;
+- config loader;
 - health endpoints;
-- test/lint/build pipeline;
-- CI.
+- test/lint/build/CI cơ bản.
+
+Editorial calibration tối thiểu:
+
+- 3–5 positive excerpts cho locale được thử;
+- 3–5 negative excerpts;
+- human review rubric;
+- một ContentCase thật;
+- một LocaleVariant thật;
+- Manual EvidenceSet;
+- Manual OriginalityPack.
+
+Walking Skeleton:
+
+```text
+Brief/Case
+→ Angle
+→ Outline
+→ Draft
+→ Basic Assertion Audit
+→ Human Review
+```
+
+Chưa cần:
+
+- auto research đầy đủ;
+- Content Memory thông minh;
+- WordPress publish;
+- durable worker hoàn chỉnh;
+- multi-project.
 
 Exit gate:
 
-- backend/frontend build;
-- database migrate clean;
-- tests pass;
-- OpenAPI generation stable.
+1. repo build/test sạch;
+2. một Journal thật được tạo từ dữ liệu thật;
+3. người duyệt xác định rõ bài có đáng tiếp tục phát triển không;
+4. các lỗi content contract được ghi lại trước khi tự động hóa thêm.
 
-## Phase CE02 — Core Data + Settings
+Nếu chất lượng chưa đạt, sửa Content/Settings/Quality contract trước khi sang CE02.
+
+---
+
+## CE02 — Core Data + Settings
+
+Mục tiêu: biến dữ liệu thử nghiệm CE01 thành dữ liệu có cấu trúc/version.
 
 Deliverables:
 
 - Project;
-- versioned Settings + snapshot;
+- ContentCase;
+- LocaleVariant;
+- ContentItem/ContentVersion;
+- versioned Settings + immutable SettingsSnapshot;
+- Prompt/Recipe Registry;
+- Brand/Language DNA;
+- Editorial Calibration Pack storage;
 - Source/SourceDocument;
-- Entity/Claim/Evidence;
-- ContentBrief;
+- Entity/Claim/Evidence/EvidenceSet;
+- OriginalityPack;
+- MediaAsset/MediaObservation;
 - ContentRun/StepRun/Artifact/Approval;
-- ModelCall/QualityEvaluation;
-- Settings UI tối thiểu.
+- ContextManifest;
+- ModelCall/ToolCall;
+- QualityEvaluation.
 
 Exit gate:
 
-- create/read/version core data;
-- run giữ settings snapshot bất biến.
+- core data create/read/version được;
+- run giữ settings snapshot bất biến;
+- ContextManifest tái hiện được input quan trọng;
+- vi/en chia sẻ ContentCase nhưng có LocaleVariant riêng.
 
-## Phase CE03 — Durable Harness
+---
+
+## CE03 — Durable Harness
+
+Mục tiêu: workflow chạy bền, dừng rồi tiếp tục được, không làm trùng việc ngoài hệ thống.
 
 Deliverables:
 
 - run state machine;
-- step runner;
+- durable job queue;
+- worker claim/lease/heartbeat;
 - checkpoints;
 - retry/error classes;
 - approval pause/resume;
 - budgets;
-- model router interface;
-- tool adapter interface;
+- model router/tool adapter;
 - telemetry;
-- restart/resume tests.
+- outbox/reconciliation cho side effect;
+- restart/resume tests;
+- replay/eval mode.
 
 Exit gate:
 
 - synthetic workflow survive restart;
+- expired worker lease được lấy lại an toàn;
 - bounded retry;
-- no duplicate side effects.
+- no duplicate side effects;
+- biết chính xác model đã nhận context nào.
 
-## Phase CE04 — Knowledge + Evidence
+---
+
+## CE04 — Knowledge + Discovery Research + Evidence Research
+
+Mục tiêu: tự động hóa việc tìm đúng thông tin mà không trộn “khách đang hỏi gì” với “fact có đúng không”.
 
 Deliverables:
 
-- ingest pipeline;
+- source ingest;
 - fingerprint/dedupe;
-- canonical Markdown/text;
+- canonical text/Markdown;
 - chunking;
 - entity refs;
 - retrieval;
-- Claim/Evidence ledger;
+- Discovery Research workflow;
+- Evidence Research workflow;
 - authority rules;
-- memory gap report.
+- Claim/Evidence ledger;
+- EvidenceSet lock;
+- OriginalityPack builder;
+- memory gap report;
+- basic contradiction handling.
 
 Exit gate:
 
 - same source ingest twice no duplicate;
-- every retrieved item has provenance;
-- unsupported claim detectable.
+- retrieved item có provenance;
+- Discovery output không bị dùng nhầm làm factual evidence;
+- unsupported claim detectable;
+- EvidenceSet bất biến sau lock.
 
-## Phase CE05 — Journal Engine V1
+---
+
+## CE05 — Journal Engine V1
+
+Mục tiêu: nâng Walking Skeleton thành workflow Journal dùng được lặp lại.
 
 Deliverables:
 
-- Brief UI;
-- research workflow;
+- ContentCase/LocaleVariant UI;
+- memory overlap check stub;
+- research workflows;
 - angle generation/approval;
 - outline;
 - draft;
-- review/revise;
-- bilingual independent writers;
-- final package.
+- bounded review/revise;
+- independent `vi-VN`/`en` writers;
+- assertion audit;
+- final package;
+- basic source-copy check.
 
 Exit gate:
 
-- one real MOTGU Journal runs end-to-end to final approval without publish.
+- ít nhất một Journal thật chạy end-to-end tới final approval;
+- zero critical unsupported assertion;
+- human review đạt chuẩn tối thiểu đã đặt ở CE01.
 
-## Phase CE06 — Quality + Golden Set
+---
+
+## CE06 — Full Quality + Golden Regression
+
+Mục tiêu: biến đánh giá thủ công ban đầu thành hệ thống so sánh và chống đi lùi.
 
 Deliverables:
 
-- core evaluators;
+- deterministic quality checks;
+- model-based evaluators;
 - human evaluation UI;
+- source-copy evaluator;
 - Golden/Weak fixtures;
-- regression runner;
+- pairwise regression runner;
 - candidate vs baseline report.
 
 Exit gate:
 
-- model/prompt/settings candidate cannot promote without regression report.
+- model/prompt/settings candidate không promote nếu chưa có regression report;
+- hard fact gates không phụ thuộc hoàn toàn vào model judge;
+- Golden Set có human approval.
 
-## Phase CE07 — Artwork Engine V1
+---
+
+## CE07 — Artwork Engine V1
+
+Mục tiêu: tạo Artwork content chính xác, giàu giá trị riêng và có căn cứ từ ảnh/dữ liệu thật.
 
 Deliverables:
 
-- canonical Artwork ingest/adapter;
-- artwork brief/workflow;
-- fact lock;
-- artist intent distinction;
+- WordPress/WooCommerce canonical Artwork adapter;
+- artwork fact lock;
+- MediaAsset/MediaObservation flow;
+- artist context retrieval;
+- artist-intent provenance rule;
 - bilingual output;
+- assertion audit;
 - related content/link package.
 
 Exit gate:
 
-- one real MOTGU Artwork content runs end-to-end with zero canonical fact drift.
+- một Artwork thật chạy end-to-end;
+- zero canonical fact drift;
+- mọi mô tả hình ảnh quan trọng map được về media evidence.
 
-## Phase CE08 — WordPress Publish + Measurement
+---
+
+## CE08 — WordPress Draft + Measurement Foundation
+
+Mục tiêu: đưa bài sang web an toàn và chuẩn bị đo kết quả.
 
 Deliverables:
 
 - WordPress draft adapter;
-- idempotent mapping;
+- ContentItem ↔ WordPress mapping;
+- ContentVersion publish history;
+- idempotency/outbox/reconciliation;
 - Search Console import;
 - Analytics import;
-- Rank Math technical signal adapter if stable access exists;
-- audience/content hypothesis mapping.
+- normalized core metrics;
+- Rank Math technical signal spike nếu truy cập ổn định;
+- hypothesis mapping.
 
 Exit gate:
 
-- Journal + Artwork publish as drafts safely;
-- metrics trace back to content hypothesis.
+- Journal + Artwork tạo draft WordPress an toàn;
+- retry không tạo duplicate;
+- metrics trace về ContentCase/LocaleVariant/content hypothesis.
 
-## Phase CE09 — Content Memory + Learning Loop
+---
+
+## CE09 — Content Memory + Learning Loop
+
+Mục tiêu: dùng kho bài và dữ liệu thật để tránh trùng, tìm pattern và học có kiểm soát.
 
 Deliverables:
 
-- published content memory;
-- duplicate/intent overlap check;
+- ContentItem/Version memory;
+- duplicate/intent overlap detector;
+- update/refresh/merge/do-not-write recommendation;
 - human edit delta;
 - learning candidates;
 - audience signals;
+- minimum-evidence rules;
 - 1/3/6-month review reports.
 
 Exit gate:
 
-- system can explain what it learned and evidence behind each candidate without auto-changing production rules.
+- system giải thích được học gì và dựa trên dữ liệu nào;
+- biết khi nào dữ liệu chưa đủ;
+- không tự đổi production settings.
 
-## Phase CE10 — Pilot
+---
 
-Run 10–20 hypothesis-driven contents.
+## CE10 — Production Pilot
+
+Run 10–20 content hypotheses có chủ đích.
 
 Mục tiêu:
 
 - kiểm chứng quality process;
 - tìm failure modes;
-- tune costs;
-- tune approval load;
-- establish first Golden Set;
-- collect first real audience signals.
+- tune cost;
+- tune human approval load;
+- establish first stable Golden Set;
+- collect first real audience signals;
+- quyết định nên đào sâu ngách nào.
 
 Không mở CRM/Sales Agent trước CE10 review.
+
+---
+
+## Thứ tự ưu tiên nếu phải cắt scope
+
+Giữ trước:
+
+1. chất lượng một bài thật;
+2. evidence/assertion correctness;
+3. human approval;
+4. content identity/version;
+5. reproducibility;
+6. durable run;
+7. measurement/learning.
+
+Hoãn trước:
+
+1. multi-project UI;
+2. generic workflow builder;
+3. full Memory Tree;
+4. nhiều integrations;
+5. nhiều model/provider chỉ để có lựa chọn;
+6. automation publish hoàn toàn.
