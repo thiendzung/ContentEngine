@@ -27,6 +27,74 @@ Tối thiểu:
 
 V1 chỉ dùng `motgu`.
 
+### SettingsVersion
+
+Một version cấu hình có thể được activate/retire.
+
+- `id`
+- `project_id` nullable cho system default
+- `scope_type`: `system | project | content_type | locale`
+- `scope_key`
+- `version`
+- `settings_json`
+- `status`: `draft | active | retired`
+- `change_reason`
+- `approved_by` nullable
+- timestamps
+
+### SettingsSnapshot
+
+Cấu hình hiệu lực bất biến của một run sau khi resolve precedence.
+
+- `id`
+- `project_id`
+- `resolved_settings_json`
+- `source_version_refs_json`
+- `content_hash`
+- `created_at`
+
+### PromptDefinition
+
+- `id`
+- `prompt_key`
+- `version`
+- `purpose`
+- `body`
+- `input_contract_json`
+- `output_schema_json`
+- `status`: `draft | active | retired`
+- `change_reason`
+- `approved_by` nullable
+- timestamps
+
+### RecipeDefinition
+
+- `id`
+- `recipe_key`
+- `version`
+- `selector_json`
+- `recipe_json`
+- `status`: `draft | active | retired`
+- `approved_by` nullable
+- timestamps
+
+### CalibrationExample
+
+Ví dụ giọng văn/chất lượng được human approve, có thể tồn tại trước PublishedContent.
+
+- `id`
+- `project_id`
+- `locale`
+- `content_type` nullable
+- `intent` nullable
+- `example_type`
+- `polarity`: `positive | negative`
+- `content_text`
+- `reason`
+- `status`
+- `approved_by`
+- timestamps
+
 ### ContentCase
 
 Đại diện bài toán nội dung chung, chưa gắn cứng vào một ngôn ngữ.
@@ -425,6 +493,38 @@ Critical unsupported assertion → hard fail.
 - `error_class` nullable
 - timestamps
 
+### HarnessJob
+
+Operational record cho durable job queue.
+
+- `id`
+- `run_id`
+- `step_run_id`
+- `status`: `pending | leased | completed | failed | cancelled`
+- `available_at`
+- `attempt`
+- `dedupe_key`
+- `lease_owner` nullable
+- `lease_expires_at` nullable
+- `last_heartbeat_at` nullable
+- `error_json` nullable
+- timestamps
+
+### OutboxIntent
+
+Durable intent cho side effect quan trọng như publish.
+
+- `id`
+- `run_id`
+- `intent_type`
+- `idempotency_key`
+- `payload_ref`
+- `status`: `pending | processing | completed | failed | needs_reconciliation`
+- `external_ref` nullable
+- `attempt`
+- `error_json` nullable
+- timestamps
+
 ### QualityEvaluation
 
 - `id`
@@ -492,6 +592,19 @@ Các chỉ số lõi được chuẩn hóa để so giữa bài.
 - `dimensions_json`
 
 Metric V1 ưu tiên: `impressions`, `clicks`, `sessions`, `engaged_sessions`, `artwork_transition`, `visit_transition`, `workshop_transition`, `inquiry`.
+
+### ContentPerformanceObservation
+
+Một nhận xét có cấu trúc từ metrics, chưa phải learning rule.
+
+- `id`
+- `published_content_id`
+- `content_version_id` nullable
+- `observation_type`
+- `statement`
+- `metric_refs_json`
+- `data_status`: `insufficient | early_signal | repeated_pattern`
+- `observed_at`
 
 ### AudienceSignal
 
