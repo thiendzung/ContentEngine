@@ -14,7 +14,7 @@
 - [x] T00.10 Define Journal spec.
 - [x] T00.11 Define Artwork spec.
 - [x] T00.12 Define publish/measure spec.
-- [ ] T00.13 Add AGENTS.md governance.
+- [x] T00.13 Add AGENTS.md governance.
 - [ ] T00.14 Final cross-document consistency review.
 
 ## CE01 — Repository Skeleton
