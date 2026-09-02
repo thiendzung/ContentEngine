@@ -61,7 +61,7 @@ jobs:
 
       - name: Export OpenAPI
         working-directory: backend
-        run: python scripts/dump_openapi.py
+        run: python -m scripts.dump_openapi
 
       - uses: actions/setup-node@v4
         with:
