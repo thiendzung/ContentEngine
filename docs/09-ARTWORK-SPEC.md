@@ -4,20 +4,36 @@
 
 Artwork content phải vừa là trang sản phẩm có facts rõ, vừa là trang kiến thức và trust page cho người đang cân nhắc xem/mua tác phẩm.
 
-## 2. Required inputs
+## 2. Content identity
+
+Artwork content cũng dùng:
+
+```text
+ContentCase
+→ LocaleVariant
+→ ContentItem
+→ ContentVersion
+```
+
+Khi sửa nội dung Artwork, không tạo bài mới nếu vẫn là cùng một trang/tác phẩm và cùng locale.
+
+## 3. Required inputs
 
 - canonical Artwork entity;
 - Artist entity;
 - verified material/size/year/status;
-- image assets refs;
+- MediaAsset refs;
+- MediaObservation đã được chấp nhận khi dùng mô tả hình ảnh;
 - related Journal/Artist links;
 - audience/problem hypothesis nếu có;
 - locale;
-- source authority map.
+- source authority map;
+- EvidenceSet;
+- OriginalityPack.
 
-## 3. Questions phải trả lời
+## 4. Questions phải trả lời
 
-Tùy tác phẩm, ưu tiên trả lời:
+Tùy tác phẩm, ưu tiên:
 
 - đây là tác phẩm gì;
 - ai làm;
@@ -26,25 +42,25 @@ Tùy tác phẩm, ưu tiên trả lời:
 - yếu tố thị giác/chất liệu nào đáng chú ý;
 - context nào được artist/MOTGU xác nhận;
 - tác phẩm có duy nhất không;
-- practical info: viewing, shipping, availability nếu hệ thống canonical cung cấp;
+- practical info: viewing, shipping, availability nếu canonical source cung cấp;
 - nội dung liên quan nào giúp hiểu sâu hơn.
 
-## 4. Không được bịa interpretation
+## 5. Phân biệt 4 loại phát biểu
 
-Phân biệt rõ:
+Không trộn lẫn:
 
-- verified artist intent;
-- MOTGU editorial interpretation;
-- visual observation;
-- factual property.
+- `factual property` — dữ liệu canonical;
+- `verified artist intent` — ý định nghệ sĩ có nguồn;
+- `visual observation` — điều nhìn thấy từ MediaAsset cụ thể;
+- `MOTGU editorial interpretation` — diễn giải của MOTGU, không trình bày như fact.
 
 Nếu ý định nghệ sĩ không có nguồn, không viết như fact.
 
-## 5. Source priority
+## 6. Source priority
 
-Artwork factual fields phải ưu tiên canonical WordPress/WooCommerce/MOTGU source.
+Artwork factual fields ưu tiên canonical WordPress/WooCommerce/MOTGU source.
 
-Không dùng external web để override:
+External web không được override:
 
 - title;
 - artist;
@@ -55,9 +71,27 @@ Không dùng external web để override:
 - edition/uniqueness;
 - official story.
 
-## 6. Content structure
+Live fields như price/availability phải lấy lại từ hệ thống vận hành phù hợp khi package/publish cần dùng; không dùng memory stale.
 
-Không bắt buộc template cứng, nhưng package phải có:
+## 7. Media Evidence
+
+Mọi mô tả chi tiết từ ảnh phải truy được về `MediaAsset`.
+
+`MediaObservation` phải ghi:
+
+- asset nào;
+- observation gì;
+- do human/model/metadata tạo;
+- confidence;
+- approved/candidate/rejected.
+
+Model observation chưa approved không được tự trở thành canonical fact.
+
+Nếu ảnh không đủ rõ để kết luận, writer phải dùng ngôn ngữ thận trọng hoặc bỏ chi tiết đó.
+
+## 8. Content structure
+
+Không template cứng, nhưng package phải có:
 
 - immediate orientation;
 - factual block;
@@ -67,9 +101,9 @@ Không bắt buộc template cứng, nhưng package phải có:
 - related links;
 - clear next action.
 
-## 7. Artwork originality
+## 9. Artwork originality
 
-Ưu tiên dữ liệu không thể tổng hợp chung từ Internet:
+`OriginalityPack` ưu tiên:
 
 - artwork-specific observation;
 - artist-approved story;
@@ -78,7 +112,19 @@ Không bắt buộc template cứng, nhưng package phải có:
 - verified provenance/context;
 - practical MOTGU experience.
 
-## 8. Search/AI clarity
+Nếu chỉ có generic artist biography và facts cơ bản, cần bổ sung nguyên liệu trước khi viết dài.
+
+## 10. Assertion Audit
+
+Sau Draft/Revision:
+
+- canonical facts phải khớp source;
+- artist intent phải có provenance;
+- visual observation phải map MediaObservation;
+- practical/live info phải có source phù hợp;
+- unsupported critical assertion → block.
+
+## 11. Search/AI clarity
 
 Entity phải rõ:
 
@@ -92,19 +138,36 @@ Entity phải rõ:
 
 Structured data chỉ phản ánh dữ liệu thật trên trang.
 
-## 9. Bilingual
+## 12. Bilingual
 
-Cùng facts/evidence, writer riêng theo locale.
+Cùng ContentCase/core facts/evidence, writer riêng theo LocaleVariant.
 
 Tên riêng, medium hoặc thuật ngữ có canonical translation map nếu cần.
 
 Không tự dịch tên tác phẩm nếu MOTGU chưa định nghĩa translation policy.
 
-## 10. Hard fails
+## 13. Final package
+
+Tối thiểu:
+
+- ContentCase/LocaleVariant/ContentItem refs;
+- canonical Artwork/Artist refs;
+- title/slug/body/meta;
+- factual block;
+- media refs;
+- related content links;
+- EvidenceSet ref;
+- Assertion Audit ref;
+- structured-data recommendation;
+- measurement plan.
+
+## 14. Hard fails
 
 - sai canonical facts;
 - bịa artist intent;
 - dùng scarcity giả;
-- mô tả ảnh không có evidence từ image/metadata;
+- mô tả ảnh không map về MediaAsset/approved observation;
 - price/availability lấy từ memory stale;
+- unsupported factual assertion;
+- copy/paraphrase quá sát nguồn;
 - copy generic artist biography thay vì artwork-specific value.
