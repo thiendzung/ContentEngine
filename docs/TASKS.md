@@ -15,20 +15,20 @@
 - [x] T00.11 Define Artwork spec.
 - [x] T00.12 Define publish/measure spec.
 - [x] T00.13 Add AGENTS.md governance.
-- [ ] T00.14 Final cross-document consistency review.
+- [x] T00.14 Final cross-document consistency review.
 
-### T00.14 phải xác nhận
+### T00.14 xác nhận
 
-- [ ] ContentCase/LocaleVariant thống nhất ở mọi spec.
-- [ ] ContentItem/ContentVersion thống nhất ở mọi spec.
-- [ ] EvidenceSet/ContextManifest/ContentAssertion không còn reference mồ côi.
-- [ ] Discovery Research và Evidence Research được tách rõ.
-- [ ] Media Evidence khớp Artwork/Data/Quality.
-- [ ] Worker lease/outbox/reconciliation khớp Architecture/Harness/Plan.
-- [ ] Quality tối thiểu có trước Journal production.
-- [ ] Walking Skeleton nằm trong CE01.
-- [ ] Settings source of truth chỉ có một.
-- [ ] AGENTS Contract Change Mode khớp governance.
+- [x] ContentCase/LocaleVariant thống nhất ở mọi spec.
+- [x] ContentItem/ContentVersion thống nhất ở mọi spec.
+- [x] EvidenceSet/ContextManifest/ContentAssertion không còn reference mồ côi.
+- [x] Discovery Research và Evidence Research được tách rõ.
+- [x] Media Evidence khớp Artwork/Data/Quality.
+- [x] Worker lease/outbox/reconciliation khớp Architecture/Harness/Plan.
+- [x] Quality tối thiểu có trước Journal production.
+- [x] Walking Skeleton nằm trong CE01.
+- [x] Settings source of truth chỉ có một.
+- [x] AGENTS Contract Change Mode khớp governance.
 
 ---
 
