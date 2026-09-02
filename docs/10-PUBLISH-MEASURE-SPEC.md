@@ -8,7 +8,11 @@
 
 Mỗi package tối thiểu có:
 
-- project/content ID;
+- project ID;
+- ContentCase ID;
+- LocaleVariant ID;
+- ContentItem ID;
+- ContentVersion ID;
 - content type;
 - locale;
 - title;
@@ -20,6 +24,7 @@ Mỗi package tối thiểu có:
 - media references;
 - structured-data recommendation;
 - final artifact hash;
+- EvidenceSet/Assertion Audit refs;
 - approval reference;
 - content hypothesis ID.
 
@@ -30,30 +35,44 @@ Adapter phải:
 - idempotent;
 - validate target/content type;
 - hỗ trợ draft trước publish;
-- lưu mapping internal ID ↔ WordPress ID;
+- lưu mapping `ContentItem ↔ WordPress ID`;
+- lưu lịch sử ContentVersion nào đã đẩy;
 - không overwrite thay đổi ngoài hệ thống nếu chưa reconciliation;
-- trả canonical URL và post status.
+- trả canonical URL/post status/revision khi có.
 
 V1 ưu tiên handoff/draft an toàn trước full auto-publish.
 
-## 4. Rank Math
+## 4. Publish flow an toàn
+
+```text
+Final Human Approval
+→ create ContentVersion
+→ persist publish intent + idempotency key
+→ worker sends to WordPress
+→ reconcile WordPress result
+→ save external ID/revision
+→ mark PublishEvent complete
+```
+
+Nếu không biết WordPress đã nhận request hay chưa, phải reconcile trước khi gửi lại.
+
+## 5. Rank Math
 
 Rank Math Pro dùng như nguồn kiểm tra phụ sau khi content lên WordPress.
 
-Các signal hữu ích được normalize khi có cách truy cập ổn định:
+Signal hữu ích khi có cách truy cập ổn định:
 
 - metadata/config warning;
 - on-page hygiene;
 - indexability-related checks;
 - technical SEO findings.
 
-Không lưu overall Rank Math score như mục tiêu kinh doanh chính.
+Không lưu/đẩy overall score thành mục tiêu kinh doanh chính.
 
-## 5. Measurement sources
-
-Ưu tiên:
+## 6. Measurement sources
 
 ### Search Console
+
 - queries;
 - impressions;
 - clicks;
@@ -62,72 +81,118 @@ Không lưu overall Rank Math score như mục tiêu kinh doanh chính.
 - page/query mapping.
 
 ### Analytics
+
 - landing sessions/users;
-- engagement signals phù hợp;
+- engagement phù hợp;
 - transitions sang Artist/Artwork/Visit/Workshop;
 - return visits khi đo được hợp lệ.
 
 ### MOTGU conversion events
+
 - artwork inquiry;
 - visit intent/action;
 - workshop intent/action;
 - other approved business events.
 
-## 6. Measurement identity
+## 7. Normalized core metrics
 
-Mỗi published content phải map được:
+Không chỉ lưu một JSON blob khó so sánh.
+
+V1 chuẩn hóa ít nhất:
+
+- `impressions`;
+- `clicks`;
+- `sessions`;
+- `engaged_sessions`;
+- `artwork_transition`;
+- `visit_transition`;
+- `workshop_transition`;
+- `inquiry`.
+
+Raw provider payload vẫn được giữ khi cần audit/debug.
+
+## 8. Measurement identity
+
+Mỗi published content map được:
 
 ```text
-PublishedContent
+PublishedContent / ContentItem
+↔ ContentVersion
 ↔ canonical_url
+↔ ContentCase
+↔ LocaleVariant
 ↔ content_hypothesis
 ↔ audience_hypothesis
 ↔ problem/desire
 ↔ intent
-↔ content role
+↔ content role/topic relation
 ```
 
-Nếu không map được thì dữ liệu traffic khó biến thành learning.
+Nếu không map được thì traffic khó biến thành learning.
 
-## 7. Snapshot cadence
+## 9. Snapshot cadence
 
-Khuyến nghị snapshot theo cửa sổ:
+Khuyến nghị:
 
 - early: 7/14/30 ngày;
 - learning: tháng 1;
 - pattern: tháng 3;
 - narrowing: tháng 6.
 
-Điều chỉnh theo lượng traffic thực tế; tránh kết luận mạnh từ mẫu quá nhỏ.
+Điều chỉnh theo traffic thực tế.
 
-## 8. Learning output
+Không kết luận mạnh từ mẫu nhỏ.
 
-Measurement không tự sửa content strategy.
+## 10. Sufficiency / đủ dữ liệu để học
 
-Nó tạo:
+Measurement phải có khả năng báo:
+
+- `INSUFFICIENT_DATA`;
+- `EARLY_SIGNAL`;
+- `REPEATED_PATTERN`;
+- `LEARNING_CANDIDATE_READY`.
+
+Rule có thể dùng:
+
+- minimum sample;
+- minimum time window;
+- minimum repeated observations;
+- required conversion/search signal.
+
+Không tự biến một bài thắng/thua thành thay đổi strategy.
+
+## 11. Learning output
+
+Measurement tạo:
 
 - `AudienceSignal`;
 - `ContentPerformanceObservation`;
 - `LearningCandidate`.
 
-Human review + batch evidence quyết định promote.
+Human review + batch evidence + regression quyết định promote.
 
-## 9. Update vs new content
+## 12. Update vs new content
 
-Khi memory cho thấy nội dung cũ đã có intent giống bài dự kiến, hệ thống phải cho phép đề xuất:
+Khi memory cho thấy nội dung cũ có intent giống bài dự kiến, hệ thống đề xuất:
 
-- update existing;
+- update existing ContentItem;
+- refresh existing ContentItem;
 - merge;
-- create new cluster với angle khác;
+- create new cluster với angle rõ khác;
 - do not write.
 
-## 10. Definition of done
+Mọi update tạo ContentVersion mới, không tạo danh tính bài mới tùy tiện.
+
+## 13. Definition of done
 
 Publish/Measure V1 đạt khi:
 
-- publish mapping idempotent;
+- ContentItem ↔ WordPress mapping idempotent;
+- ContentVersion publish history rõ;
 - final approval bắt buộc;
+- side-effect không tạo duplicate khi retry;
 - URL/content ID gắn được metrics;
-- Search/Analytics signals normalize được;
+- core metrics được normalize;
 - Rank Math chỉ là technical signal;
-- learning output trace về content hypothesis ban đầu.
+- learning trace về content hypothesis ban đầu;
+- system biết nói khi dữ liệu chưa đủ để kết luận.
