@@ -31,7 +31,7 @@ frontend-dev:
 	cd frontend && npm run dev
 
 openapi:
-	cd backend && .venv/bin/python scripts/dump_openapi.py
+	cd backend && .venv/bin/python -m scripts.dump_openapi
 
 types: openapi
 	cd frontend && npm run gen:types
@@ -40,7 +40,7 @@ backend-check:
 	cd backend && .venv/bin/ruff check app tests scripts migrations
 	cd backend && .venv/bin/mypy app
 	cd backend && .venv/bin/pytest
-	cd backend && .venv/bin/python scripts/dump_openapi.py
+	cd backend && .venv/bin/python -m scripts.dump_openapi
 
 frontend-check:
 	cd frontend && npm run lint
