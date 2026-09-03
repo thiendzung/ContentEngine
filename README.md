@@ -17,6 +17,45 @@ ContentEngine không được tối ưu cho số lượng bài. Hệ thống ph�
 
 > Mỗi nội dung phải giải quyết một nhu cầu hoặc câu hỏi cụ thể của một nhóm người cụ thể, dựa trên bằng chứng, có giá trị riêng của MOTGU, có thể đo kết quả và tạo thêm hiểu biết về khách hàng.
 
+## CE01 local quickstart
+
+PR-A chỉ dựng nền chạy được; chưa có logic Research.
+
+```bash
+cp .env.example .env
+make setup
+make db-up
+make migrate
+```
+
+Chạy backend:
+
+```bash
+make backend-dev
+```
+
+Chạy frontend ở terminal khác:
+
+```bash
+make frontend-dev
+```
+
+Kiểm tra:
+
+- frontend: `http://localhost:3000`
+- backend health: `http://localhost:8000/health`
+- backend database health: `http://localhost:8000/health/db`
+- backend version: `http://localhost:8000/version`
+
+Chạy bộ kiểm tra:
+
+```bash
+make types
+make check
+```
+
+Không commit `.env` hoặc API key thật.
+
 ## Phạm vi V1
 
 Trong phạm vi:
@@ -72,7 +111,8 @@ Thứ tự đọc:
 14. `docs/PLAN.md`
 15. `docs/TASKS.md`
 16. `docs/CHECKLIST.md`
-17. `AGENTS.md`
+17. `docs/CE01-WALKING-SKELETON-RUNBOOK.md`
+18. `AGENTS.md`
 
 ## Kiến trúc tổng quát
 
@@ -158,6 +198,6 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 ## Trạng thái
 
 - `CE00 — Foundation Contracts`: CLOSED.
-- `CE01 — Repository Skeleton + Walking Skeleton`: NEXT.
+- `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: ACTIVE.
 
 Research/Search và Keyword Plan mini được đưa vào CE01 để phục vụ trực tiếp Golden Journal đầu tiên, không mở thành dự án riêng.

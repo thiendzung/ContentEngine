@@ -1,0 +1,1 @@
+"""Artwork workflow slice."""

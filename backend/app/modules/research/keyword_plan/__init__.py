@@ -1,0 +1,1 @@
+"""Keyword Plan mini slice."""
