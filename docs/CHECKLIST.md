@@ -92,7 +92,18 @@
 - [ ] Candidate không tự thành Approved Knowledge.
 - [ ] Obsidian note không tự trở thành source of truth chỉ vì tồn tại.
 
-## G. Keyword Plan mini
+## G. Opportunity Map Mini
+
+### Opportunity Map contract (PR-C)
+
+- [ ] Signal source_kind/scope tách biệt với NeedHypothesis status.
+- [ ] Observation không chứa interpretation như fact; provenance và dedupe giữ đủ.
+- [ ] Support/contradiction/alternative explanations/missing evidence được ghi rõ.
+- [ ] Founder seed không được gọi là nhu cầu khách MOTGU đã xác nhận.
+- [ ] ContentOpportunity có editorial contract, decision, target refs và human selection.
+- [ ] ContentExperiment có hypothesis version, expected behaviour và review window.
+- [ ] Signal không tự promote thành customer truth từ một click/inquiry/dwell time.
+- [ ] Jina structured provenance/links và token-budget failure đã test trước real seed.
 
 - [ ] Có seed topic/question rõ.
 - [ ] PAA/Related/Autocomplete/organic signals được normalize + dedupe.

@@ -190,9 +190,16 @@ def extract_second_hop_candidates(
     parent_url: str,
     query: str,
     limit: int,
+    linked_urls: Iterable[str] = (),
 ) -> list[SourceCandidate]:
+    if limit <= 0:
+        return []
     parent_host = (urlparse(parent_url).hostname or "").lower()
-    raw_urls = list(_MARKDOWN_LINK_RE.findall(content)) + list(_BARE_URL_RE.findall(content))
+    raw_urls = (
+        list(linked_urls)
+        + list(_MARKDOWN_LINK_RE.findall(content))
+        + list(_BARE_URL_RE.findall(content))
+    )
     candidates: list[SourceCandidate] = []
     seen: set[str] = set()
 

@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     research_max_pages_read: int = 3
     research_max_second_hop_candidates: int = 8
     research_max_raw_excerpt_chars: int = 8000
+    research_jina_token_budget: int = Field(default=20_000, gt=0)
+    research_jina_max_links: int = Field(default=100, ge=0)
 
     model_config = SettingsConfigDict(
         env_file=("../.env", ".env"),

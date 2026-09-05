@@ -15,6 +15,12 @@ ContentEngine không được tối ưu cho số lượng bài. Hệ thống ph�
 
 ## North Star
 
+Planning contract: MARKET / SEARCH / MOTGU Signal → NeedHypothesis → Opportunity Map
+→ human selection → Research + MOTGU material → Journal/Artwork → ContentExperiment
+→ Measure → reviewed hypothesis revision. Keyword Plan là công cụ con trong Research.
+PR #5 cập nhật contract và Jina reader trước real-seed Gate B; PR-C là Opportunity Map
+Mini. Seed ban đầu là founder-proposed need hypothesis, chưa phải customer truth.
+
 > Mỗi nội dung phải giải quyết một nhu cầu hoặc câu hỏi cụ thể của một nhóm người cụ thể, dựa trên bằng chứng, có giá trị riêng của MOTGU, có thể đo kết quả và tạo thêm hiểu biết về khách hàng.
 
 ## CE01 local quickstart
@@ -67,7 +73,7 @@ Trong phạm vi:
 - Brand DNA và Language DNA cấu hình được;
 - Discovery Research + Evidence Research;
 - Search stack tiết kiệm: Serper + Tavily + Exa + Jina, Brave chỉ fallback/coverage check;
-- Keyword Plan mini theo hướng Question & Opportunity Map;
+- Opportunity Map mini với Keyword/Question Map là công cụ con;
 - Research + Evidence Ledger;
 - durable run harness có checkpoint;
 - quality evaluation;
@@ -107,7 +113,7 @@ Thứ tự đọc:
 10. `docs/09-ARTWORK-SPEC.md`
 11. `docs/10-PUBLISH-MEASURE-SPEC.md`
 12. `docs/11-RESEARCH-SEARCH-SPEC.md`
-13. `docs/12-KEYWORD-PLAN-SPEC.md`
+13. `docs/12-OPPORTUNITY-MAP-SPEC.md`
 14. `docs/PLAN.md`
 15. `docs/TASKS.md`
 16. `docs/CHECKLIST.md`
@@ -200,4 +206,4 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE00 — Foundation Contracts`: CLOSED.
 - `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: ACTIVE.
 
-Research/Search và Keyword Plan mini được đưa vào CE01 để phục vụ trực tiếp Golden Journal đầu tiên, không mở thành dự án riêng.
+Research/Search và Opportunity Map Mini được đưa vào CE01 để phục vụ trực tiếp Golden Journal đầu tiên, không mở thành dự án riêng.

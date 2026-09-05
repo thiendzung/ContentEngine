@@ -13,15 +13,17 @@ Nguyên tắc quan trọng:
 ## 2. Kiến trúc logic
 
 ```text
-Configuration
+Configuration + MARKET / SEARCH / MOTGU Signals
     ↓
-Content Case + Locale Variant
+NeedHypothesis (founder-proposed hoặc signal-derived)
     ↓
 Knowledge Recall
     ↓
 Discovery Research
     ↓
-Keyword / Question / Opportunity Map
+Opportunity Map (Keyword/Question Map là công cụ con)
+    ↓
+Human Selection → ContentCase + LocaleVariant
     ↓
 Evidence Research
     ↓
@@ -39,9 +41,9 @@ Content Item + Version
     ↓
 WordPress Draft/Publish
     ↓
-Measurement
+ContentExperiment + Measurement
     ↓
-Learning Candidate
+Hypothesis Review + Learning Candidate
 ```
 
 ## 3. Các module chính
@@ -234,7 +236,14 @@ Knowledge Recall
 
 Search provider trả signal/source candidate. Authority được xử lý theo Research/Evidence contract, không theo rank.
 
-## 5. Keyword Plan mini boundary
+## 5. Opportunity Map mini boundary
+
+`research` sở hữu Signal normalization, NeedHypothesis proposal và ContentOpportunity
+planning; `keyword_plan` vẫn là công cụ con cho query/question map. `knowledge` giữ
+source/document/provenance. `measurement` giữ observation/metrics; `learning` sở hữu
+ContentExperiment review và lịch sử hypothesis. Không xây generic experiment platform.
+PR-B chỉ nâng reader và khóa ranh giới payload; PR-C thực thi Opportunity Map Mini;
+CE02 mới persist bốn đối tượng. `SearchSignal ≠ customer truth ≠ NeedHypothesis`.
 
 `keyword_plan` là một mini module bên trong `research`, không phải một SEO suite độc lập.
 
@@ -256,7 +265,7 @@ Không sở hữu:
 - auto content calendar;
 - auto publish.
 
-Contract chi tiết: `docs/12-KEYWORD-PLAN-SPEC.md`.
+Contract chi tiết: `docs/12-OPPORTUNITY-MAP-SPEC.md`.
 
 ## 6. Kiến trúc triển khai đề xuất
 

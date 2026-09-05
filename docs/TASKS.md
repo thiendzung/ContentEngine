@@ -64,9 +64,18 @@ Status: **NEXT**.
 - [ ] T01.20 Add manual Deep Research import shape: report + original source URLs; report itself is not factual authority.
 - [ ] T01.21 Add provider budget/stop-when-sufficient rule for the spike.
 
-### Keyword Plan mini
+### PR-C — Opportunity Map Mini
 
-- [ ] T01.22 Collect PAA/Related/Autocomplete/organic signals from one real seed.
+Status: **PENDING**. Keyword Plan remains a supporting tool in Research.
+
+- [ ] Normalize MARKET/SEARCH/MOTGU Signal with scope, observation, provenance and dedupe.
+- [ ] Create NeedHypothesis with support/contradiction/alternatives/missing evidence.
+- [ ] Keep founder-proposed seeds PROPOSED until reviewed evidence supports a change.
+- [ ] Build ContentOpportunity editorial contract + existing-content decision.
+- [ ] Suggest Journal pillar/cluster or Artwork without creating new Artist/Visit engines.
+- [ ] Preserve human selection record and draft ContentExperiment measurement plan.
+
+- [ ] T01.22 Collect MARKET/SEARCH signals for one founder-proposed NeedHypothesis.
 - [ ] T01.23 Normalize + dedupe query/question signals.
 - [ ] T01.24 Classify question type, intent, audience stage and problem/desire with confidence.
 - [ ] T01.25 Build simple clusters by problem + intent + answer overlap, not string similarity only.
@@ -74,14 +83,14 @@ Status: **NEXT**.
 - [ ] T01.27 Produce Niche Candidates with MOTGU Right-to-Win reason.
 - [ ] T01.28 Produce content decision: CREATE/UPDATE/REFRESH/MERGE/LINK_ONLY/DO_NOT_WRITE.
 - [ ] T01.29 Produce priority: NOW/NEXT/LATER/NO with short reasons; no fake 0–100 precision.
-- [ ] T01.30 Human review one Keyword Plan and select one opportunity for the Golden Journal.
+- [ ] T01.30 Human review one Opportunity Map and select one opportunity for the Golden Journal.
 
 ### Editorial calibration
 
 - [ ] T01.31 Collect 3–5 approved positive MOTGU excerpts for first locale.
 - [ ] T01.32 Collect 3–5 approved negative examples for first locale.
 - [ ] T01.33 Define short human editorial review form.
-- [ ] T01.34 Define one real MOTGU ContentCase from selected Keyword Plan opportunity.
+- [ ] T01.34 Define one MOTGU ContentCase from selected ContentOpportunity.
 - [ ] T01.35 Define one real LocaleVariant.
 - [ ] T01.36 Build selected/manual EvidenceSet from higher-quality sources, not default Google top 1–5.
 - [ ] T01.37 Build Manual OriginalityPack.
@@ -94,12 +103,12 @@ Status: **NEXT**.
 - [ ] T01.41 Add basic assertion audit.
 - [ ] T01.42 Run human editorial review.
 - [ ] T01.43 Record research/content failure notes without auto-changing contract.
-- [ ] T01.44 Gate: decide whether Research + Keyword Plan + content contract is good enough for CE02.
+- [ ] T01.44 Gate: decide whether Research + Opportunity Map + content contract is good enough for CE02.
 
 ### CE01 exit gate
 
 - [x] Repo build/test clean.
-- [ ] One real seed produces a readable Keyword Plan.
+- [ ] One founder-proposed NeedHypothesis + real signals produces a readable Opportunity Map.
 - [ ] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
 - [ ] Selected research sources are demonstrably better than blindly taking Google top results.
 - [ ] One real Journal reaches human review.
@@ -110,6 +119,8 @@ Status: **NEXT**.
 ## CE02 — Core Data + Settings
 
 - [ ] T02.1 Implement Project.
+- [ ] Implement Signal, NeedHypothesis, ContentOpportunity and ContentExperiment contracts;
+      do not create legacy ProblemDesire/AudienceSignal models. Update ContentCase refs.
 - [ ] T02.2 Implement ContentCase.
 - [ ] T02.3 Implement LocaleVariant.
 - [ ] T02.4 Implement ContentItem/ContentVersion.
@@ -130,7 +141,7 @@ Status: **NEXT**.
 - [ ] T02.19 Add ContentCase → two LocaleVariant contract test.
 - [ ] T02.20 Add ContentItem version lineage test.
 - [ ] T02.21 Add versioned Research artifact/source-ref contract.
-- [ ] T02.22 Add Keyword Plan artifact/version contract with locale + source refs.
+- [ ] T02.22 Add Opportunity Map artifact/version contract with locale + signal/source refs.
 - [ ] T02.23 Add Knowledge Candidate status/provenance contract for later Obsidian mirror.
 
 ---
@@ -177,7 +188,7 @@ Status: **NEXT**.
 - [ ] T04.13 Production Jina selected-page reader.
 - [ ] T04.14 Keep Brave optional; implement only if coverage/outage evidence justifies it.
 - [ ] T04.15 Discovery Research workflow.
-- [ ] T04.16 Keyword Plan workflow.
+- [ ] T04.16 Opportunity Map workflow with Keyword/Question Map tool.
 - [ ] T04.17 Source commercial-bias/type/authority metadata.
 - [ ] T04.18 Evidence Research workflow.
 - [ ] T04.19 Claim extraction workflow.
@@ -202,7 +213,7 @@ Status: **NEXT**.
 - [ ] T05.2 Internal knowledge recall.
 - [ ] T05.3 Content Memory overlap check stub.
 - [ ] T05.4 Discovery Research step.
-- [ ] T05.5 Keyword Plan/opportunity selection handoff.
+- [ ] T05.5 Opportunity Map selection handoff.
 - [ ] T05.6 Evidence Research + EvidenceSet step.
 - [ ] T05.7 OriginalityPack step.
 - [ ] T05.8 Angle generator structured output.
@@ -279,7 +290,7 @@ Status: **NEXT**.
 - [ ] T09.2 Duplicate/intent overlap detector.
 - [ ] T09.3 Create/update/refresh/merge/do-not-write recommendation.
 - [ ] T09.4 Human edit delta classifier.
-- [ ] T09.5 AudienceSignal model/service.
+- [ ] T09.5 Signal model/service.
 - [ ] T09.6 LearningCandidate lifecycle.
 - [ ] T09.7 Minimum-evidence/sufficiency rules.
 - [ ] T09.8 Approved learning change workflow.

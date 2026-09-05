@@ -161,6 +161,7 @@ class ResearchSpikeService:
                     parent_url=document.url,
                     query=request.query,
                     limit=remaining,
+                    linked_urls=(link.url for link in document.links),
                 )
             )
         result.second_hop_candidates = dedupe_sources(second_hop)

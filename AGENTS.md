@@ -39,7 +39,7 @@ Always read:
 For research/search work also read:
 
 - `docs/11-RESEARCH-SEARCH-SPEC.md`;
-- `docs/12-KEYWORD-PLAN-SPEC.md` when Keyword Plan is touched.
+- `docs/12-OPPORTUNITY-MAP-SPEC.md` when Keyword Plan is touched.
 
 ## 4. Working mode
 
@@ -184,7 +184,20 @@ Rules:
 - raw SERP/API payload must not be mirrored into Obsidian by default;
 - Knowledge Candidate must keep provenance before it can be approved/reused.
 
-## 12. Keyword Plan rules
+## 12. Opportunity Map rules
+
+The planning center is Signal → NeedHypothesis → ContentOpportunity → human selection;
+ContentExperiment links published versions and behaviour to reviewed hypothesis changes.
+Source kind MARKET/SEARCH/MOTGU is independent of hypothesis status
+PROPOSED/TESTING/SUPPORTED/REJECTED/INSUFFICIENT_EVIDENCE. Never use VALIDATED as a
+universal customer truth. Founder-proposed seeds are hypotheses, not observed MOTGU needs.
+Preserve observation, provenance, duplicates, support, contradiction, alternative
+explanations and missing evidence. SearchSignal is a provider payload, not customer truth.
+Do not count reposts as independent observations or infer fraud anxiety from a shipping
+question. No automatic hypothesis promotion from dwell time or one inquiry.
+PR-C is Opportunity Map Mini; keyword_plan remains a supporting Research tool.
+Use the replacement models in Data Contract before CE02; do not implement parallel
+ProblemDesire/AudienceSignal tables. No new providers in this contract change.
 
 Keyword Plan is a mini module inside Research, not a standalone SEO suite.
 
@@ -296,8 +309,8 @@ No infinite loops or hidden retries.
 CE01 must prove a real content path before large automation work:
 
 ```text
-Real Seed / Problem
-→ Mini Keyword Plan
+Founder-proposed need hypothesis + traceable MARKET/SEARCH/MOTGU signals
+→ Opportunity Map Mini (including Keyword/Question Map)
 → Human selects opportunity
 → Real ContentCase
 + Selected/Manual EvidenceSet
@@ -387,4 +400,4 @@ Current priority:
 
 `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`
 
-Research/Search and Keyword Plan mini serve the first Golden Journal; they are not separate expansion projects.
+Research/Search and Opportunity Map Mini serve the first Golden Journal; they are not separate expansion projects.

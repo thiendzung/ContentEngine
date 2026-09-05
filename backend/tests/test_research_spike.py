@@ -6,6 +6,7 @@ from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
     PageDocument,
+    PageLink,
     PageReadResponse,
     ProviderCallArtifact,
     ProviderResponse,
@@ -136,13 +137,28 @@ async def test_source_discovery_adapters_normalize_results() -> None:
 async def test_jina_reader_reads_selected_public_url() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == "Bearer jina-key"
-        return httpx.Response(200, text="# Guide\nSee [source](https://museum.example/report).")
+        assert request.headers["Accept"] == "application/json"
+        assert request.headers["X-With-Links-Summary"] == "true"
+        assert request.headers["X-Base"] == "final"
+        assert request.headers["X-Token-Budget"] == "1234"
+        return httpx.Response(200, json={"code": 200, "data": {
+            "url": "https://example.org/final/article",
+            "title": "Guide",
+            "publishedTime": "2026-09-05T00:00:00Z",
+            "content": "# Guide\nSee the report.",
+            "links": {"report": "https://museum.example/report", "local": "../other"},
+        }})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        reader = JinaReader(client, "jina-key")
+        reader = JinaReader(client, "jina-key", token_budget=1234)
         response = await reader.read("https://example.org/article", query="art buyer")
 
-    assert "museum.example" in response.document.content
+    assert response.document.requested_url == "https://example.org/article"
+    assert response.document.final_url == "https://example.org/final/article"
+    assert response.document.title == "Guide"
+    assert response.document.provider_timestamp == "2026-09-05T00:00:00Z"
+    assert response.document.captured_at
+    assert response.document.links[1].url == "https://example.org/other"
     assert response.call.provider == "jina"
 
 
@@ -197,7 +213,8 @@ class FakeReader:
             document=PageDocument(
                 provider="jina",
                 url=url,
-                content="See [original](https://museum.example/original-report).",
+                content="See original report (link provided in JSON summary only).",
+                links=(PageLink("https://museum.example/original-report", "Original"),),
             ),
             call=ProviderCallArtifact(
                 provider="jina",
@@ -268,6 +285,8 @@ async def test_spike_stops_when_serper_is_sufficient() -> None:
 
     assert serper.invocations == 1
     assert tavily.invocations == 0
+    assert result.seed_origin == "founder_proposed"
+    assert result.hypothesis_status == "PROPOSED"
     assert len(result.documents) == 1
     assert result.second_hop_candidates[0].relation.value == "second_hop"
     assert result.budget_usage is not None

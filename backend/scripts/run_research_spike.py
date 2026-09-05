@@ -17,6 +17,7 @@ from app.modules.research.providers.serper import SerperProvider
 from app.modules.research.providers.tavily import TavilyProvider
 from app.modules.research.spike import ResearchSpikeService, import_manual_deep_research
 
+# Founder-proposed need hypothesis; this is not an observed MOTGU customer fact.
 DEFAULT_SEED = "First-time art buyer worries about choosing the wrong painting."
 
 
@@ -91,6 +92,8 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                 client,
                 jina_key,
                 raw_excerpt_chars=settings.research_max_raw_excerpt_chars,
+                token_budget=settings.research_jina_token_budget,
+                max_links=settings.research_jina_max_links,
             ),
             budget=ResearchBudget(
                 max_provider_calls=settings.research_max_provider_calls,

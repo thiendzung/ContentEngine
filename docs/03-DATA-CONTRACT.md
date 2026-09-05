@@ -103,7 +103,8 @@ Ví dụ giọng văn/chất lượng được human approve, có thể tồn t�
 - `project_id`
 - `content_type`: `journal | artwork`
 - `audience_hypothesis_id`
-- `problem_desire_id`
+- `need_hypothesis_id`
+- `content_opportunity_id`
 - `desired_action`
 - `content_hypothesis`
 - `originality_statement`
@@ -348,15 +349,85 @@ Artwork writer không được biến model observation chưa được chấp nh
 - `confidence`
 - timestamps
 
-### ProblemDesire
+### Signal
+
+Quan sát gốc, không chứa diễn giải như fact. `SearchSignal` của provider là payload thấp
+tầng; PR-C normalize vào Signal với nguồn, scope và provenance, không thành customer truth.
+
+- `id`, `project_id`
+- `source_kind`: `MARKET | SEARCH | MOTGU`
+- `scope`: `market_web | motgu_site | motgu_direct`
+- `observed_text` (trích dẫn/quan sát có giới hạn)
+- `source_url` / `external_id` (ít nhất một locator truy được về nguồn)
+- `locale`, `context`, `captured_at`, `observed_at` nullable
+- `fingerprint`, `duplicate_of` nullable, `independence_group` nullable
+- `provenance`: provider/method, source/document/artifact ref, locator, hash/version
+- `published_content_id` / `content_version_id` nullable cho hành vi tại MOTGU
+- `metric_refs` nullable
+
+Source kind không phải cấp độ tin cậy. Search Console = SEARCH/motgu_site;
+PAA = SEARCH/market_web; review bên ngoài = MARKET/market_web;
+inquiry = MOTGU/motgu_direct. Giữ dữ liệu trực tiếp riêng tư bằng locator nội bộ,
+ẩn thông tin nhận dạng không cần thiết, không đưa nguyên tin nhắn/email vào public content.
+Fingerprint hỗ trợ dedupe; cùng review được repost không tăng số nguồn độc lập.
+Không tự khẳng định independence chỉ vì URL khác nhau.
+
+### NeedHypothesis
 
 - `id`
 - `project_id`
 - `audience_hypothesis_id` nullable
 - `type`: `pain | desire | question | curiosity | objection`
 - `statement`
-- `source`
-- `status`
+- `audience_scope`, `situation`
+- `origin`: `founder_proposed | signal_derived`
+- `status`: `PROPOSED | TESTING | SUPPORTED | REJECTED | INSUFFICIENT_EVIDENCE`
+- `support_signal_refs`, `contradict_signal_refs`
+- `alternative_explanations`, `missing_evidence`
+- `version`, `reviewed_by`, `reviewed_at`, `review_reason`
+
+Founder hypothesis được phép chưa có signal; phải ghi thiếu evidence.
+SUPPORTED cần review có phạm vi, tín hiệu độc lập lặp lại và tín hiệu khách MOTGU phù hợp.
+Không có ngưỡng số review tự động; thiếu/ít hành vi không tự chứng minh REJECTED.
+Mọi thay đổi trạng thái giữ lịch sử và source refs, không overwrite observation.
+
+### ContentOpportunity
+
+- `id`, `project_id`, `need_hypothesis_id`, `locale`
+- `reader`, `situation`, `need`, `question`, `intent`, `promise`
+- `motgu_material_refs`, `material_gaps`, `existing_content_refs`
+- `what_is_actually_new`, `next_discovery_step`
+- `decision`: `CREATE | UPDATE | REFRESH | MERGE | LINK_ONLY | DO_NOT_WRITE`
+- `priority`: `NOW | NEXT | LATER | NO`, `reasons`
+- `signal_refs`, `suggested_content_type`, `suggested_role` nullable
+- `version`, `selected_by`, `selected_at`, `selection_reason`
+
+UPDATE/REFRESH/MERGE/LINK_ONLY yêu cầu existing target refs. Human selection là quyết
+định thử nội dung, không phải xác nhận hypothesis. Không tạo bài chỉ vì còn keyword.
+
+### ContentExperiment
+
+- `id`, `project_id`, `content_opportunity_id`, `need_hypothesis_id`, `hypothesis_version`
+- `content_item_id`, `content_version_id`, `published_content_id` nullable trước publish
+- `expected_behaviour`, `measurement_plan`, `metric_definitions`, `minimum_evidence`
+- `review_window_start`, `review_window_end`
+- `status`: `PLANNED | RUNNING | REVIEWED`
+- `result`: `PENDING | SUPPORTS | CONTRADICTS | INCONCLUSIVE`
+- `observation_refs`, `alternative_explanations`, `reviewed_by`, `reviewed_at`
+
+Định nghĩa expected behaviour/cách đo trước publish; review gắn đúng version và cửa sổ.
+Result bổ sung evidence qua Signal/ContentPerformanceObservation; không tự đổi hypothesis
+hoặc settings. Dwell time không tự chứng minh interest; shipping inquiry không tự chứng
+minh fear of fraud. Không có conversion khi traffic ít là INCONCLUSIVE.
+
+### Thay thế model cũ trước CE02
+
+`ProblemDesire` được thay bằng NeedHypothesis (giữ `type` pain/desire/question/... như
+taxonomy). `AudienceSignal` được thay bằng Signal có source_kind/scope rõ. Không tạo
+hai bảng song song. `AudienceHypothesis` vẫn mô tả nhóm người; `LearningCandidate` vẫn
+là đề xuất thay đổi quy tắc. `ContentCase.content_hypothesis` là giả thuyết hiệu quả
+biên tập, không thay NeedHypothesis. CE01 chưa có các bảng cũ nên không cần migration
+runtime trong PR-B; CE02 tạo schema mới và cập nhật mọi foreign key theo contract này.
 
 ### ContentRun
 
@@ -605,20 +676,6 @@ Một nhận xét có cấu trúc từ metrics, chưa phải learning rule.
 - `metric_refs_json`
 - `data_status`: `insufficient | early_signal | repeated_pattern`
 - `observed_at`
-
-### AudienceSignal
-
-- `id`
-- `project_id`
-- `published_content_id` nullable
-- `audience_hypothesis_id` nullable
-- `signal_type`
-- `signal_value`
-- `strength`
-- `sample_size` nullable
-- `source_provider`
-- `observed_at`
-- `evidence_json`
 
 ### LearningCandidate
 

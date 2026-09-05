@@ -113,6 +113,10 @@ Raw provider payload vẫn được giữ khi cần audit/debug.
 
 ## 8. Measurement identity
 
+ContentExperiment nối ContentOpportunity → NeedHypothesis version → ContentItem/Version
+→ PublishedContent → metrics/Signal observations. Chốt expected behaviour và review window
+trước publish; thiếu dữ liệu = INCONCLUSIVE. Metrics không tự sửa hypothesis hoặc settings.
+
 Mỗi published content map được:
 
 ```text
@@ -165,7 +169,7 @@ Không tự biến một bài thắng/thua thành thay đổi strategy.
 
 Measurement tạo:
 
-- `AudienceSignal`;
+- `Signal`;
 - `ContentPerformanceObservation`;
 - `LearningCandidate`.
 

@@ -44,6 +44,8 @@ class SearchRequest:
 
 @dataclass(slots=True, frozen=True)
 class SearchSignal:
+    """Provider observation; not a normalized Signal or a validated customer need."""
+
     provider: str
     query: str
     kind: ResearchSignalKind
@@ -90,11 +92,24 @@ class ProviderResponse:
 
 
 @dataclass(slots=True, frozen=True)
+class PageLink:
+    url: str
+    text: str = ""
+
+
+@dataclass(slots=True, frozen=True)
 class PageDocument:
     provider: str
     url: str
     content: str
     title: str | None = None
+    requested_url: str | None = None
+    final_url: str | None = None
+    provider_timestamp: str | int | float | None = None
+    captured_at: str = field(default_factory=utc_now_iso)
+    links: tuple[PageLink, ...] = ()
+    content_truncated: bool = False
+    links_truncated: bool = False
 
 
 @dataclass(slots=True, frozen=True)
@@ -120,6 +135,8 @@ class ResearchBudgetUsage:
 @dataclass(slots=True)
 class ResearchSpikeResult:
     seed: str
+    seed_origin: str = "founder_proposed"
+    hypothesis_status: str = "PROPOSED"
     created_at: str = field(default_factory=utc_now_iso)
     calls: list[ProviderCallArtifact] = field(default_factory=list)
     signals: list[SearchSignal] = field(default_factory=list)
