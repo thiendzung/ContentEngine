@@ -8,7 +8,26 @@ CE01 chỉ có một mục tiêu:
 
 Không coi “backend chạy được” hay “API gọi được” là hoàn thành CE01.
 
-## 2. Kết quả cuối CE01
+## 2. Trạng thái hiện tại
+
+```text
+PHASE A — FOUNDATION       CLOSED
+PHASE B — RESEARCH SPIKE  NEXT
+PHASE C — KEYWORD PLAN    PENDING
+PHASE D — CONTENT INPUT   PENDING
+PHASE E — GOLDEN JOURNAL  PENDING
+PHASE F — CE01 REVIEW     PENDING
+```
+
+PR-A đã merge:
+
+- PR: `#3 — CE01 PR-A — repository skeleton`;
+- merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`;
+- toàn bộ baseline checks PASS trước merge.
+
+Bước kế tiếp sau khi trạng thái tài liệu này được merge về `main`: tạo branch mới `ce01-research-spike` từ `main` sạch.
+
+## 3. Kết quả cuối CE01
 
 Phải có đủ:
 
@@ -26,7 +45,7 @@ Phải có đủ:
 12. human review;
 13. danh sách lỗi/học được để quyết định CE02.
 
-## 3. Luồng thực thi
+## 4. Luồng thực thi
 
 ```text
 PHASE A — FOUNDATION
@@ -56,7 +75,7 @@ GO / FIX / STOP
 
 ---
 
-# PHASE A — FOUNDATION
+# PHASE A — FOUNDATION — CLOSED
 
 ## A1. Repository skeleton
 
@@ -73,13 +92,13 @@ Task:
 
 ### Checklist A1
 
-- [ ] backend start được;
-- [ ] frontend start được;
-- [ ] database connect được;
-- [ ] `/health` trả OK;
-- [ ] không có API key trong Git;
-- [ ] module `research` tồn tại;
-- [ ] chưa thêm logic ngoài CE01.
+- [x] backend start được;
+- [x] frontend start được;
+- [x] database connect được;
+- [x] `/health` trả OK;
+- [x] không có API key trong Git;
+- [x] module `research` tồn tại;
+- [x] chưa thêm logic ngoài CE01.
 
 ## A2. Quality baseline
 
@@ -91,19 +110,19 @@ Task:
 - T01.12 CI;
 - T01.13 clean install test.
 
-### Gate A
+### Gate A — PASS
 
-Chỉ sang Research khi:
+- [x] install từ đầu được;
+- [x] build sạch;
+- [x] tests nền pass;
+- [x] CI pass;
+- [x] repo không có file tạm/debug theo verification của PR-A.
 
-- [ ] install từ đầu được;
-- [ ] build sạch;
-- [ ] tests nền pass;
-- [ ] CI pass;
-- [ ] repo không có file tạm/debug.
+Evidence chính: PR #3 merge thành công sau khi backend install/lint/typecheck/migration/tests/OpenAPI và frontend install/type generation/lint/typecheck/build đều PASS.
 
 ---
 
-# PHASE B — RESEARCH SPIKE
+# PHASE B — RESEARCH SPIKE — NEXT
 
 ## B1. Provider seam
 
@@ -142,9 +161,11 @@ Chỉ chọn **một** seed thật cho CE01.
 
 Seed phải bắt đầu từ pain/desire/question, không bắt đầu từ search volume.
 
-Ví dụ dạng seed:
+Seed mặc định cho PR-B:
 
 > First-time art buyer worries about choosing the wrong painting.
+
+Đây là **giả thuyết để test Research**, chưa được coi là customer truth.
 
 Output tối thiểu:
 
@@ -169,13 +190,36 @@ Google sales/SEO page
 → source gốc tốt hơn
 ```
 
+Mỗi selected source tối thiểu phải giữ:
+
+- URL;
+- source type;
+- commercial bias: low / medium / high / unknown;
+- why selected;
+- found via provider/method;
+- original / second-hop / intermediate;
+- intended use: discovery / evidence candidate / context only.
+
+Không cần tạo điểm authority giả chính xác kiểu 83/100.
+
+Manual ChatGPT/Gemini Deep Research được phép nhập dưới dạng:
+
+```text
+Research Report
++ Original Source URLs
+```
+
+Report AI không tự trở thành factual authority. Muốn dùng fact phải lần về source gốc.
+
 ### Gate B
 
 - [ ] một seed thật chạy được;
 - [ ] Serper trả discovery signals;
 - [ ] ít nhất một source tốt hơn top 1–5 Google mặc định;
 - [ ] selected URLs đọc được qua Jina hoặc manual fallback;
-- [ ] biết provider nào được gọi và vì sao.
+- [ ] biết provider nào được gọi và vì sao;
+- [ ] source đã chọn giữ provenance và lý do chọn;
+- [ ] ít nhất một second-hop trace được tới original-source candidate khi có đường dẫn phù hợp.
 
 ---
 
@@ -407,7 +451,7 @@ Không tự sửa global settings từ một bài thử.
 
 Chỉ đóng CE01 khi tất cả điều sau đúng:
 
-- [ ] repo build/test sạch;
+- [x] repo build/test sạch;
 - [ ] một seed thật tạo Keyword Plan dễ hiểu;
 - [ ] human chọn được một opportunity có lý do rõ;
 - [ ] selected research sources tốt hơn việc lấy top Google mặc định;
@@ -438,10 +482,8 @@ Không làm trong phase này:
 
 Không gom CE01 thành một PR khổng lồ.
 
-Khuyến nghị:
-
-1. PR-A — repository skeleton;
-2. PR-B — research spike;
+1. PR-A — repository skeleton — **MERGED / CLOSED**;
+2. PR-B — research spike — **NEXT**;
 3. PR-C — keyword plan mini;
 4. PR-D — editorial/content inputs;
 5. PR-E — walking skeleton + CE01 review.

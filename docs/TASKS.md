@@ -23,23 +23,37 @@ Status: **CLOSED**.
 
 ## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
 
+Status: **ACTIVE**.
+
+### PR-A — Repository Skeleton
+
+Status: **CLOSED / MERGED**.
+
+PR: `#3 — CE01 PR-A — repository skeleton`
+
+Merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`
+
 ### Repository
 
-- [ ] T01.1 Create branch `ce01-walking-skeleton` from clean main.
-- [ ] T01.2 Create backend FastAPI package.
-- [ ] T01.3 Create frontend Next.js shell tối thiểu.
-- [ ] T01.4 Add root developer scripts.
-- [ ] T01.5 Add `.env.example`, never secrets.
-- [ ] T01.6 Add PostgreSQL connection + migration framework.
-- [ ] T01.7 Add module directories matching Architecture Spec, including `research/`.
-- [ ] T01.8 Add health/version endpoint.
-- [ ] T01.9 Add backend lint/type/test baseline.
-- [ ] T01.10 Add frontend lint/type/build baseline.
-- [ ] T01.11 Add OpenAPI generation + generated frontend types.
-- [ ] T01.12 Add CI required checks.
-- [ ] T01.13 Verify clean install from fresh checkout.
+- [x] T01.1 Create branch `ce01-walking-skeleton` from clean main.
+- [x] T01.2 Create backend FastAPI package.
+- [x] T01.3 Create frontend Next.js shell tối thiểu.
+- [x] T01.4 Add root developer scripts.
+- [x] T01.5 Add `.env.example`, never secrets.
+- [x] T01.6 Add PostgreSQL connection + migration framework.
+- [x] T01.7 Add module directories matching Architecture Spec, including `research/`.
+- [x] T01.8 Add health/version endpoint.
+- [x] T01.9 Add backend lint/type/test baseline.
+- [x] T01.10 Add frontend lint/type/build baseline.
+- [x] T01.11 Add OpenAPI generation + generated frontend types.
+- [x] T01.12 Add CI required checks.
+- [x] T01.13 Verify clean install from fresh checkout.
 
-### Research/Search spike
+PR-A verification: backend install/lint/typecheck/migration/tests/OpenAPI and frontend install/type generation/lint/typecheck/build đều PASS trước merge.
+
+### PR-B — Research/Search spike
+
+Status: **NEXT**.
 
 - [ ] T01.14 Add provider config/secret references for Serper, Tavily, Exa, Jina; Brave optional only.
 - [ ] T01.15 Add SearchProvider seam and minimal Serper discovery adapter.
@@ -84,7 +98,7 @@ Status: **CLOSED**.
 
 ### CE01 exit gate
 
-- [ ] Repo build/test clean.
+- [x] Repo build/test clean.
 - [ ] One real seed produces a readable Keyword Plan.
 - [ ] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
 - [ ] Selected research sources are demonstrably better than blindly taking Google top results.
