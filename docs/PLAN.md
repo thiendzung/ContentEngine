@@ -1,5 +1,16 @@
 # PLAN — CONTENTENGINE V1
 
+## Contract update — PR #5 before real-seed Gate B
+
+Planning center: Signal → NeedHypothesis → Opportunity Map → human selection → content
+→ ContentExperiment → measured observations → reviewed hypothesis changes.
+PR-B upgrades Jina structured provenance/links/token budget; no new provider.
+PR-C is **Opportunity Map Mini**, including the existing Keyword/Question Map tool.
+CE02 implements Signal/NeedHypothesis/ContentOpportunity/ContentExperiment, replacing
+legacy ProblemDesire/AudienceSignal before persistence. Existing keyword tasks below
+are substeps, not a separate customer-truth pipeline. Real seed is a founder-proposed
+need hypothesis. CI must pass before the bounded live Gate B run; merge stays gated.
+
 ## Nguyên tắc lộ trình
 
 Không xây toàn bộ máy rồi mới kiểm tra bài viết có tốt hay không.
@@ -91,13 +102,15 @@ Default stack:
 
 Manual ChatGPT/Gemini Deep Research được phép dùng cho topic khó và nhập lại dưới dạng research artifact + source URLs.
 
-### C. Keyword Plan mini
+### C. Opportunity Map Mini
 
-Từ cùng seed thật tạo:
+Từ founder-proposed NeedHypothesis và các signals thật tạo:
 
 ```text
-PAA / Related / Autocomplete / query signals
-→ normalize + dedupe
+MARKET / SEARCH / MOTGU Signal
+→ normalize + provenance + dedupe/repost grouping
+→ NeedHypothesis + support/contradiction/alternatives/gaps
+→ Keyword/Question Map
 → problem / intent classification
 → simple topic clusters
 → pillar / cluster suggestions
@@ -127,8 +140,8 @@ Không cần:
 ### E. Walking Skeleton
 
 ```text
-Seed / Problem
-→ Mini Keyword Plan
+NeedHypothesis + traceable Signals
+→ Opportunity Map Mini
 → Human chọn opportunity
 → ContentCase / LocaleVariant
 → EvidenceSet + OriginalityPack

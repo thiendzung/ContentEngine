@@ -1,5 +1,54 @@
 # 11 — RESEARCH & SEARCH SPEC
 
+## Signal → Hypothesis → Opportunity boundary
+
+Discovery đầu ra là Signal/NeedHypothesis proposal → Opportunity Map → human selection.
+Keyword Plan là công cụ con. Observation không chứa diễn giải như fact; SearchSignal
+là payload provider, chưa phải Signal normalized hoặc nhu cầu khách đã kiểm chứng.
+
+Ưu tiên tìm tín hiệu khách tiềm năng: (1) Reddit/travel forums; (2) TripAdvisor/Google
+Maps reviews; (3) gallery/workshop/art-tour reviews; (4) YouTube/public communities;
+(5) PAA/Related/Autocomplete; (6) competitor FAQ/sales pages. Đây là thứ tự khám phá,
+không phải authority ranking. Không coi vài review là đại diện thị trường/MOTGU.
+
+Mọi Deep Research về nhu cầu phải trả SUPPORT, CONTRADICTION, ALTERNATIVE EXPLANATION
+và MISSING EVIDENCE, kèm source refs; nếu chưa tìm được phản bác thì ghi rõ phạm vi đã
+tìm, không bịa một phản bác. Report tổng hợp không thay nguồn gốc.
+
+Ví dụ inquiry "Can you ship this to Australia?" hỗ trợ nhu cầu thông tin giao hàng,
+không tự chứng minh sợ lừa đảo. Xem Artwork bốn phút có thể là quan tâm, khó hiểu hoặc
+tab mở. Số nguồn độc lập phải loại repost/cùng lời kể; không chỉ đếm URL.
+
+### Provider scope trong PR-B / PR-C
+
+Giữ Serper → Tavily → Exa → Jina, Brave optional; không thêm provider mới.
+Serper dùng SEARCH DISCOVERY cho PAA/Related/Autocomplete và MARKET DISCOVERY với query
+nhắm forum/review như `site:reddit.com buying art Hanoi`. Hai chế độ query không biến
+search snippet thành review gốc: chỉ normalize MARKET khi đọc được observation có locator.
+PR-B vẫn chỉ chạy provider spike; orchestration hai hướng và Signal extraction thuộc PR-C.
+
+Tavily domain filters và Exa specialized search là ứng viên tối ưu sau pilot, không phải
+dependency mới hoặc mặc định gọi deep. Chỉ cân nhắc adapter chuyên biệt sau 3–5 runs có
+evidence về coverage thiếu. Trang bị chặn/không đọc được phải ghi gap hoặc manual review.
+
+### Jina structured reader contract (PR-B)
+
+- Request `Accept: application/json`, `X-With-Links-Summary: true`, `X-Base: final`.
+- Giữ requested URL và URL provider trả (nullable khi thiếu), title, content,
+  `publishedTime`/provider timestamp nếu có và captured_at của hệ thống; không bịa
+  publication date. Nếu provider trả upstream `httpStatus >= 400`, coi là read failure.
+- Normalize links có giới hạn; feed cả links và content vào second-hop, giữ parent URL.
+- Lọc navigation/share/login/profile/social noise trước khi giới hạn second-hop; gom link
+  từ mọi selected document rồi ưu tiên source có bias/authority signal tốt hơn.
+- `X-Token-Budget` cấu hình theo request; vượt budget làm request FAIL, không tự cắt
+  token hay tự retry với budget cao hơn. Local content/raw-excerpt bounds vẫn độc lập.
+- Malformed/empty/non-JSON response hoặc unsafe final URL phải thành error artifact;
+  không đánh dấu HTML lỗi/challenge là document đã đọc thành công.
+- Link chỉ là candidate, không phải factual evidence; metadata/raw payload giữ bounded.
+
+Nguồn kỹ thuật: https://jina.ai/reader/ và
+https://github.com/jina-ai/reader/blob/main/README.md (kiểm tra 2026-09-05).
+
 ## 1. Mục tiêu
 
 Research của ContentEngine phải giúp trả lời hai câu hỏi khác nhau:

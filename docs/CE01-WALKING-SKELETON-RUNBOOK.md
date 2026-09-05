@@ -4,7 +4,18 @@
 
 CE01 chỉ có một mục tiêu:
 
-> Từ một nhu cầu/nỗi đau thật của khách MOTGU, hệ thống tạo được một Keyword Plan dễ hiểu, chọn được một cơ hội nội dung tốt, research được nguồn tốt và tạo một Journal thật để người duyệt đánh giá.
+> Từ một NeedHypothesis do founder đề xuất và các MARKET/SEARCH/MOTGU Signal truy nguyên
+> được, hệ thống tạo Opportunity Map dễ hiểu, chọn được một cơ hội nội dung tốt, research
+> được nguồn tốt và tạo một Journal thật để người duyệt đánh giá.
+
+Seed đầu tiên chưa được gọi là nhu cầu khách MOTGU đã xác nhận. CE01 phải giữ ranh giới:
+
+```text
+Signal = điều quan sát được
+NeedHypothesis = điều có thể đúng
+ContentOpportunity = điều đáng thử
+ContentExperiment = cách học sau publish
+```
 
 Không coi “backend chạy được” hay “API gọi được” là hoàn thành CE01.
 
@@ -12,8 +23,8 @@ Không coi “backend chạy được” hay “API gọi được” là hoàn 
 
 ```text
 PHASE A — FOUNDATION       CLOSED
-PHASE B — RESEARCH SPIKE  NEXT
-PHASE C — KEYWORD PLAN    PENDING
+PHASE B — RESEARCH SPIKE  CLOSED / PASS
+PHASE C — OPPORTUNITY MAP  PENDING
 PHASE D — CONTENT INPUT   PENDING
 PHASE E — GOLDEN JOURNAL  PENDING
 PHASE F — CE01 REVIEW     PENDING
@@ -32,8 +43,8 @@ Bước kế tiếp sau khi trạng thái tài liệu này được merge về `
 Phải có đủ:
 
 1. repo chạy sạch;
-2. một seed thật;
-3. một Keyword Plan mini;
+2. một founder-proposed NeedHypothesis và Signal thật;
+3. một Opportunity Map mini gồm Keyword/Question Map;
 4. một opportunity được người duyệt chọn;
 5. một ContentCase + LocaleVariant;
 6. một EvidenceSet thủ công/chọn lọc;
@@ -52,7 +63,7 @@ PHASE A — FOUNDATION
 repo chạy được
         ↓
 PHASE B — RESEARCH SPIKE
-1 seed thật → search → selected sources
+1 founder-proposed hypothesis → search → traceable signals/sources
         ↓
 PHASE C — KEYWORD PLAN MINI
 questions → clusters → opportunities
@@ -155,17 +166,18 @@ MOTGU knowledge trước
 - [ ] raw SERP không ghi vào Obsidian;
 - [ ] có giới hạn số query/pages/calls.
 
-## B2. One real seed
+## B2. One founder-proposed hypothesis + real signals
 
-Chỉ chọn **một** seed thật cho CE01.
+Chỉ chọn **một** NeedHypothesis do founder đề xuất cho CE01.
 
-Seed phải bắt đầu từ pain/desire/question, không bắt đầu từ search volume.
+Hypothesis phải bắt đầu từ pain/desire/question, không bắt đầu từ search volume.
 
 Seed mặc định cho PR-B:
 
 > First-time art buyer worries about choosing the wrong painting.
 
-Đây là **giả thuyết để test Research**, chưa được coi là customer truth.
+Đây là **founder-proposed hypothesis để test Research**, giữ status `PROPOSED`;
+MARKET/SEARCH signals tìm thấy chưa biến nó thành MOTGU customer truth.
 
 Output tối thiểu:
 
@@ -211,19 +223,23 @@ Research Report
 
 Report AI không tự trở thành factual authority. Muốn dùng fact phải lần về source gốc.
 
-### Gate B
+### Gate B — PASS
 
-- [ ] một seed thật chạy được;
-- [ ] Serper trả discovery signals;
-- [ ] ít nhất một source tốt hơn top 1–5 Google mặc định;
-- [ ] selected URLs đọc được qua Jina hoặc manual fallback;
-- [ ] biết provider nào được gọi và vì sao;
-- [ ] source đã chọn giữ provenance và lý do chọn;
-- [ ] ít nhất một second-hop trace được tới original-source candidate khi có đường dẫn phù hợp.
+- [x] một founder-proposed hypothesis chạy được;
+- [x] Serper trả discovery signals;
+- [x] có Artsy editorial candidate tốt hơn nhóm sales-heavy để discovery/context;
+- [x] 3 selected URLs đọc được qua Jina;
+- [x] biết provider nào được gọi và vì sao;
+- [x] source đã chọn giữ provenance và lý do chọn;
+- [x] second-hop candidates được trích xuất, giữ parent URL và lọc social/share/CDN noise.
+
+Evidence run: 6 provider calls, 27 signals, 17 source candidates, 3 documents,
+8 second-hop candidates; CI `33999734730` PASS. Artsy chưa được dùng như factual
+authority; authority verification thuộc Evidence Research sau PR-B.
 
 ---
 
-# PHASE C — KEYWORD PLAN MINI
+# PHASE C — OPPORTUNITY MAP MINI
 
 Task:
 
@@ -236,15 +252,15 @@ Task:
 - T01.28 content decision;
 - T01.29 priority.
 
-## Output phải dễ đọc
+Keyword/Question Map là công cụ con. Output chính phải dễ đọc và truy nguyên:
 
 Không trả bảng hàng nghìn keyword.
 
 Một plan tốt phải cho người duyệt thấy:
 
 ```text
-Audience
-→ Problem / Desire
+Signal refs
+→ NeedHypothesis + support/contradiction/alternatives/gaps
 → Question Cluster
 → Search Signals
 → MOTGU Right-to-Win
@@ -270,11 +286,13 @@ Mỗi opportunity phải có:
 
 Người duyệt chọn **một** opportunity.
 
+Selection cho phép thử content; không tự đổi NeedHypothesis sang SUPPORTED.
+
 Không được tự động chọn Golden Journal trong CE01.
 
 Người duyệt chỉ cần trả lời:
 
-1. vấn đề này có đúng với khách MOTGU không?;
+1. tín hiệu hiện tại có đủ để đáng thử hypothesis này không?;
 2. MOTGU có điều gì thật sự riêng để nói?;
 3. bài này có đáng chăm chút không?;
 4. chọn: GO / RESEARCH MORE / NO.
@@ -452,7 +470,7 @@ Không tự sửa global settings từ một bài thử.
 Chỉ đóng CE01 khi tất cả điều sau đúng:
 
 - [x] repo build/test sạch;
-- [ ] một seed thật tạo Keyword Plan dễ hiểu;
+- [ ] một founder-proposed NeedHypothesis + signals tạo Opportunity Map dễ hiểu;
 - [ ] human chọn được một opportunity có lý do rõ;
 - [ ] selected research sources tốt hơn việc lấy top Google mặc định;
 - [ ] có ContentCase + LocaleVariant thật;
@@ -484,7 +502,7 @@ Không gom CE01 thành một PR khổng lồ.
 
 1. PR-A — repository skeleton — **MERGED / CLOSED**;
 2. PR-B — research spike — **NEXT**;
-3. PR-C — keyword plan mini;
+3. PR-C — Opportunity Map Mini (gồm Keyword/Question Map);
 4. PR-D — editorial/content inputs;
 5. PR-E — walking skeleton + CE01 review.
 

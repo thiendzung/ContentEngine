@@ -1,4 +1,67 @@
-# 12 — KEYWORD PLAN SPEC
+# 12 — OPPORTUNITY MAP SPEC
+
+## Contract chính — Opportunity Map Mini
+
+Opportunity Map là đầu ra planning của Research. Keyword/Question Map là công cụ con,
+không phải trung tâm quyết định viết bài. Giữ package `research/keyword_plan/` hiện có.
+
+```text
+MARKET / SEARCH / MOTGU Signal
+→ dedupe + provenance
+→ NeedHypothesis
+→ support / contradiction / alternative explanations / missing evidence
+→ Question Map + existing content check + MOTGU Right-to-Win
+→ ContentOpportunity
+→ Human Selection
+→ Research + approved MOTGU material
+→ Journal / Artwork
+→ ContentExperiment → Measure → reviewed hypothesis revision
+```
+
+Nguồn và trạng thái kiểm chứng là hai trục độc lập:
+
+- source_kind: `MARKET | SEARCH | MOTGU`;
+- scope: `market_web | motgu_site | motgu_direct`;
+- NeedHypothesis status: `PROPOSED | TESTING | SUPPORTED | REJECTED | INSUFFICIENT_EVIDENCE`.
+
+Search Console là `SEARCH / motgu_site`; PAA là `SEARCH / market_web`;
+review gallery khác là `MARKET / market_web`; inquiry là `MOTGU / motgu_direct`.
+SUPPORTED không đổi nguồn MARKET thành MOTGU và không có nghĩa đúng với mọi khách.
+Founder-proposed hypothesis được phép chưa có signal, nhưng phải ghi rõ missing evidence.
+
+### Hợp đồng biên tập của ContentOpportunity
+
+- reader + audience scope;
+- situation + need_hypothesis_id;
+- question/intent/locale;
+- promise / reader transformation;
+- MOTGU material refs và gaps;
+- existing ContentItem refs;
+- what_is_actually_new;
+- next_discovery_step (bài khác/entity/Visit, không ép mua);
+- decision: `CREATE | UPDATE | REFRESH | MERGE | LINK_ONLY | DO_NOT_WRITE`;
+- priority: `NOW | NEXT | LATER | NO` + reasons;
+- signal refs / support / contradiction / alternative explanations;
+- suggested content_type: `journal | artwork`; pillar/cluster chỉ là role của Journal;
+- human selection record.
+
+Mỗi cơ hội phải có giá trị riêng; thay keyword, format hoặc Artist không tự đủ lý do CREATE.
+UPDATE/REFRESH/MERGE/LINK_ONLY cần target refs. Không bắt buộc viết pillar trước cluster.
+Artist/Visit là entity/link target trong V1, không mở thêm engine sản xuất.
+
+### PR-C output và acceptance
+
+`opportunity_map` versioned artifact gồm signals, need_hypotheses, question_map,
+opportunities, research_gaps và human_selection. CE01 dùng JSON/Markdown/manual refs;
+CE02 mới persist theo `03-DATA-CONTRACT.md`.
+
+Phải chứng minh: dedupe không đếm repost là nguồn độc lập; observation không biến thành
+interpretation; founder hypothesis vẫn PROPOSED khi thiếu evidence; có cả phản bác và
+alternative explanations hoặc ghi rõ chưa tìm thấy; mỗi opportunity truy về hypothesis
+và signals; non-CREATE có target/reason; human chọn một cơ hội trước ContentCase.
+Human selection không tự đổi hypothesis sang SUPPORTED.
+
+Các phần bên dưới là contract của công cụ Keyword/Question Map bên trong Opportunity Map.
 
 ## 1. Mục tiêu
 
@@ -41,7 +104,7 @@ Một Keyword Plan run nhận tối thiểu:
 - locale;
 - seed topic hoặc seed question;
 - optional AudienceHypothesis;
-- optional ProblemDesire;
+- optional NeedHypothesis;
 - optional MOTGU entity: Artist/Artwork/Workshop/Visit;
 - optional desired action;
 - existing Content Memory summary nếu có.
@@ -377,7 +440,7 @@ Shared Topic / Problem
        └── VI Query Map
 ```
 
-Có thể link hai map về cùng `ContentCase`/ProblemDesire nhưng signals phải giữ locale riêng.
+Có thể link hai map về cùng `ContentCase`/NeedHypothesis nhưng signals phải giữ locale riêng.
 
 ## 15. Existing content check
 

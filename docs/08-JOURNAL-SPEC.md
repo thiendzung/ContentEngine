@@ -8,6 +8,10 @@ Journal không bắt đầu từ keyword đơn lẻ. Nó bắt đầu từ `Cont
 
 ## 2. ContentCase — phần chung
 
+Case bắt đầu từ ContentOpportunity được human chọn, tham chiếu NeedHypothesis có phạm vi
+và provenance. Founder-proposed need không được diễn đạt như customer truth. Keyword Plan
+là công cụ khám phá trong Opportunity Map; không phải bước bắt buộc cho mọi case.
+
 Mỗi Journal case phải có:
 
 - audience hypothesis;

@@ -190,6 +190,10 @@ Mỗi audience profile có:
 
 ## 10. Problem / Desire Library
 
+Đây là taxonomy của NeedHypothesis, không phải bảng ProblemDesire riêng. Mỗi hypothesis
+giữ source refs hoặc origin=founder_proposed, cùng support/contradiction/alternatives/gaps.
+Observation nằm trong Signal; confidence không thay human review hoặc provenance.
+
 Các nhóm:
 
 - `pain`;

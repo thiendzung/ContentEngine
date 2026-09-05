@@ -1,0 +1,284 @@
+import ipaddress
+import json
+import re
+from collections.abc import Iterable
+from urllib.parse import urlparse
+
+from app.modules.research.contracts import (
+    CommercialBias,
+    IntendedUse,
+    SourceCandidate,
+    SourceRelation,
+)
+
+_INSTITUTIONAL_HINTS = (
+    ".edu",
+    ".gov",
+    "museum",
+    "university",
+    "institute",
+    "institution",
+    "foundation",
+    "archive",
+)
+_COMMERCIAL_HINTS = (
+    "/shop",
+    "/store",
+    "/product",
+    "/products",
+    "/booking",
+    "checkout",
+    "add-to-cart",
+)
+_SECOND_HOP_NOISE_HOSTS = (
+    "facebook.com",
+    "fbcdn.net",
+    "fna.fbcdn.net",
+    "twitter.com",
+    "x.com",
+    "pinterest.com",
+    "linkedin.com",
+    "blogger.com",
+    "instagram.com",
+    "cdninstagram.com",
+    "youtube.com",
+    "youtu.be",
+)
+_SECOND_HOP_NOISE_PATHS = ("/share", "/share-post", "/profile", "/login", "/signup")
+_SECOND_HOP_NOISE_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".css", ".js")
+_MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+)\)")
+_BARE_URL_RE = re.compile(r"https?://[^\s<>()\]\[\]{}\"']+")
+
+
+def as_dict(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    return {str(key): item for key, item in value.items()}
+
+
+def list_items(value: object) -> list[object]:
+    return list(value) if isinstance(value, list) else []
+
+
+def dict_items(value: object) -> list[dict[str, object]]:
+    result: list[dict[str, object]] = []
+    for item in list_items(value):
+        parsed = as_dict(item)
+        if parsed is not None:
+            result.append(parsed)
+    return result
+
+
+def string_value(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def suggestion_values(value: object) -> list[str]:
+    result: list[str] = []
+    for item in list_items(value):
+        if isinstance(item, str):
+            result.append(item)
+            continue
+        parsed = as_dict(item)
+        if parsed is None:
+            continue
+        suggestion = (
+            string_value(parsed.get("value"))
+            or string_value(parsed.get("query"))
+            or string_value(parsed.get("text"))
+        )
+        if suggestion:
+            result.append(suggestion)
+    return result
+
+
+def int_value(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    return None
+
+
+def bounded_json_excerpt(payload: object, max_chars: int) -> str:
+    text = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+    if len(text) <= max_chars:
+        return text
+    return f"{text[: max_chars - 15]}...[truncated]"
+
+
+def validate_public_http_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("url_must_be_public_http")
+
+    hostname = parsed.hostname.lower()
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        raise ValueError("local_url_not_allowed")
+
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return url
+
+    if not address.is_global:
+        raise ValueError("private_or_local_ip_not_allowed")
+    return url
+
+
+def annotate_source(
+    *,
+    provider: str,
+    query: str,
+    url: str,
+    title: str,
+    snippet: str,
+    found_via: str,
+    relation: SourceRelation = SourceRelation.DIRECT,
+) -> SourceCandidate:
+    parsed = urlparse(url)
+    haystack = f"{parsed.hostname or ''} {parsed.path} {title}".lower()
+
+    hostname = (parsed.hostname or "").lower().removeprefix("www.")
+    if any(hint in haystack for hint in _INSTITUTIONAL_HINTS):
+        source_type = "institutional"
+        bias = CommercialBias.LOW
+        intended_use = IntendedUse.EVIDENCE_CANDIDATE
+        why = (
+            "Institutional/primary-looking source candidate; "
+            "verify claim-level authority before use."
+        )
+    elif hostname in {"reddit.com", "facebook.com", "tripadvisor.com"} or hostname.endswith(
+        ".reddit.com"
+    ):
+        source_type = "community_or_review"
+        bias = CommercialBias.UNKNOWN
+        intended_use = IntendedUse.DISCOVERY
+        why = "Community/review source; useful for market signals, not automatic factual authority."
+    elif hostname == "artsy.net" or hostname.endswith(".artsy.net"):
+        source_type = "editorial"
+        bias = CommercialBias.MEDIUM
+        intended_use = IntendedUse.DISCOVERY
+        why = "Editorial art source; useful for discovery/context, verify claim-level authority."
+    elif any(hint in haystack for hint in _COMMERCIAL_HINTS):
+        source_type = "commercial"
+        bias = CommercialBias.HIGH
+        intended_use = IntendedUse.CONTEXT_ONLY
+        why = (
+            "Commercial source; useful for market/discovery context, "
+            "not automatic factual authority."
+        )
+    else:
+        source_type = "editorial_or_unknown"
+        bias = CommercialBias.UNKNOWN
+        intended_use = IntendedUse.DISCOVERY
+        why = "Potentially relevant source; authority remains unverified until source review."
+
+    return SourceCandidate(
+        provider=provider,
+        query=query,
+        url=url,
+        title=title or url,
+        snippet=snippet,
+        source_type=source_type,
+        commercial_bias=bias,
+        found_via=found_via,
+        relation=relation,
+        intended_use=intended_use,
+        why_selected=why,
+    )
+
+
+def dedupe_sources(sources: Iterable[SourceCandidate]) -> list[SourceCandidate]:
+    seen: set[str] = set()
+    result: list[SourceCandidate] = []
+    for source in sources:
+        key = source.url.rstrip("/").lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(source)
+    return result
+
+
+def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[SourceCandidate]:
+    unique = dedupe_sources(sources)
+    bias_order = {
+        CommercialBias.LOW: 0,
+        CommercialBias.UNKNOWN: 1,
+        CommercialBias.MEDIUM: 2,
+        CommercialBias.HIGH: 3,
+    }
+    source_type_order = {
+        "institutional": 0,
+        "editorial": 1,
+        "review": 2,
+        "community_or_review": 3,
+        "editorial_or_unknown": 4,
+        "commercial": 5,
+        "unknown": 6,
+    }
+    # Python's sort is stable: preserve provider relevance/order within each bias bucket.
+    unique.sort(
+        key=lambda source: (
+            source_type_order.get(source.source_type, 6),
+            bias_order[source.commercial_bias],
+        )
+    )
+    return unique[:limit]
+
+
+def extract_second_hop_candidates(
+    content: str,
+    *,
+    parent_url: str,
+    query: str,
+    limit: int,
+    linked_urls: Iterable[str] = (),
+) -> list[SourceCandidate]:
+    if limit <= 0:
+        return []
+    parent_host = (urlparse(parent_url).hostname or "").lower()
+    raw_urls = (
+        list(linked_urls)
+        + list(_MARKDOWN_LINK_RE.findall(content))
+        + list(_BARE_URL_RE.findall(content))
+    )
+    candidates: list[SourceCandidate] = []
+    seen: set[str] = set()
+
+    for raw_url in raw_urls:
+        url = raw_url.rstrip(".,;:")
+        if url in seen:
+            continue
+        seen.add(url)
+        try:
+            validate_public_http_url(url)
+        except ValueError:
+            continue
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        if host == parent_host:
+            continue
+        normalized_host = host.removeprefix("www.")
+        path = parsed.path.lower()
+        if any(
+            normalized_host == noise or normalized_host.endswith(f".{noise}")
+            for noise in _SECOND_HOP_NOISE_HOSTS
+        ) or any(noise in path for noise in _SECOND_HOP_NOISE_PATHS):
+            continue
+        if path.endswith(_SECOND_HOP_NOISE_SUFFIXES) or host.startswith(("static.", "scontent.")):
+            continue
+        candidate = annotate_source(
+            provider="second_hop",
+            query=query,
+            url=url,
+            title=url,
+            snippet="Linked from selected source",
+            found_via=f"linked_from:{parent_url}",
+            relation=SourceRelation.SECOND_HOP,
+        )
+        candidates.append(candidate)
+        if len(candidates) >= limit:
+            break
+    return candidates

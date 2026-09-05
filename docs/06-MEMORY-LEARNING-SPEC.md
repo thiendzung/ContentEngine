@@ -185,6 +185,12 @@ Mỗi candidate có:
 
 ## 11. Minimum-evidence rule
 
+ContentExperiment phải khóa hypothesis version, expected behaviour, metric definitions,
+minimum evidence và review window trước publish. Kết quả SUPPORTS/CONTRADICTS/INCONCLUSIVE
+bổ sung observation refs, không tự promote hypothesis/settings. Giữ alternative explanations
+và negative evidence. SUPPORTED chỉ dùng sau human review với phạm vi rõ và tín hiệu MOTGU
+phù hợp; thiếu traffic không đồng nghĩa bác bỏ nhu cầu. Signal luôn giữ nguồn ban đầu.
+
 Hệ thống phải phân biệt:
 
 - signal thú vị;
