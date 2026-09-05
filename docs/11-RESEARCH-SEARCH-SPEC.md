@@ -38,6 +38,8 @@ evidence về coverage thiếu. Trang bị chặn/không đọc được phải 
   `publishedTime`/provider timestamp nếu có và captured_at của hệ thống; không bịa
   publication date. Nếu provider trả upstream `httpStatus >= 400`, coi là read failure.
 - Normalize links có giới hạn; feed cả links và content vào second-hop, giữ parent URL.
+- Lọc navigation/share/login/profile/social noise trước khi giới hạn second-hop; gom link
+  từ mọi selected document rồi ưu tiên source có bias/authority signal tốt hơn.
 - `X-Token-Budget` cấu hình theo request; vượt budget làm request FAIL, không tự cắt
   token hay tự retry với budget cao hơn. Local content/raw-excerpt bounds vẫn độc lập.
 - Malformed/empty/non-JSON response hoặc unsafe final URL phải thành error artifact;

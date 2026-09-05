@@ -10,7 +10,7 @@ from app.modules.research.contracts import (
 from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.spike import ResearchSpikeService
-from app.modules.research.utils import extract_second_hop_candidates
+from app.modules.research.utils import choose_sources, extract_second_hop_candidates
 
 
 @pytest.mark.asyncio
@@ -112,3 +112,31 @@ def test_zero_second_hop_limit_and_duplicate_links() -> None:
         "https://museum.example", linked_urls=["https://museum.example"], limit=2, **args
     )
     assert len(candidates) == 1
+
+
+def test_second_hop_filters_share_profile_and_social_noise() -> None:
+    candidates = extract_second_hop_candidates(
+        "\n".join((
+            "https://www.blogger.com/share-post.g?target=facebook",
+            "https://facebook.com/share/example",
+            "https://example.net/profile/author",
+            "https://museum.example/research/report",
+        )),
+        parent_url="https://example.org/article",
+        query="seed",
+        limit=10,
+    )
+    assert [candidate.url for candidate in candidates] == [
+        "https://museum.example/research/report"
+    ]
+
+
+def test_source_selection_keeps_provider_relevance_order_within_bias() -> None:
+    sources = [
+        SourceCandidate(provider="serper", query="q", url="https://z.example", title="z"),
+        SourceCandidate(provider="serper", query="q", url="https://a.example", title="a"),
+    ]
+    assert [source.url for source in choose_sources(sources, 2)] == [
+        "https://z.example",
+        "https://a.example",
+    ]

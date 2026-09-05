@@ -152,19 +152,19 @@ class ResearchSpikeService:
 
         second_hop: list[SourceCandidate] = []
         for document in result.documents:
-            remaining = self._budget.max_second_hop_candidates - len(second_hop)
-            if remaining <= 0:
-                break
             second_hop.extend(
                 extract_second_hop_candidates(
                     document.content,
                     parent_url=document.url,
                     query=request.query,
-                    limit=remaining,
+                    limit=self._budget.max_second_hop_candidates,
                     linked_urls=(link.url for link in document.links),
                 )
             )
-        result.second_hop_candidates = dedupe_sources(second_hop)
+        result.second_hop_candidates = choose_sources(
+            second_hop,
+            self._budget.max_second_hop_candidates,
+        )
         result.budget_usage = ResearchBudgetUsage(
             max_provider_calls=self._budget.max_provider_calls,
             provider_calls_used=ledger.provider_calls_used,

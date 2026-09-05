@@ -30,6 +30,15 @@ _COMMERCIAL_HINTS = (
     "checkout",
     "add-to-cart",
 )
+_SECOND_HOP_NOISE_HOSTS = (
+    "facebook.com",
+    "twitter.com",
+    "x.com",
+    "pinterest.com",
+    "linkedin.com",
+    "blogger.com",
+)
+_SECOND_HOP_NOISE_PATHS = ("/share", "/share-post", "/profile", "/login", "/signup")
 _MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+)\)")
 _BARE_URL_RE = re.compile(r"https?://[^\s<>()\]\[\]{}\"']+")
 
@@ -180,7 +189,8 @@ def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[Sourc
         CommercialBias.MEDIUM: 2,
         CommercialBias.HIGH: 3,
     }
-    unique.sort(key=lambda source: (bias_order[source.commercial_bias], source.url))
+    # Python's sort is stable: preserve provider relevance/order within each bias bucket.
+    unique.sort(key=lambda source: bias_order[source.commercial_bias])
     return unique[:limit]
 
 
@@ -212,8 +222,16 @@ def extract_second_hop_candidates(
             validate_public_http_url(url)
         except ValueError:
             continue
-        host = (urlparse(url).hostname or "").lower()
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
         if host == parent_host:
+            continue
+        normalized_host = host.removeprefix("www.")
+        path = parsed.path.lower()
+        if any(
+            normalized_host == noise or normalized_host.endswith(f".{noise}")
+            for noise in _SECOND_HOP_NOISE_HOSTS
+        ) or any(noise in path for noise in _SECOND_HOP_NOISE_PATHS):
             continue
         candidate = annotate_source(
             provider="second_hop",
