@@ -23,8 +23,8 @@ Không coi “backend chạy được” hay “API gọi được” là hoàn 
 
 ```text
 PHASE A — FOUNDATION       CLOSED
-PHASE B — RESEARCH SPIKE  NEXT
-PHASE C — KEYWORD PLAN    PENDING
+PHASE B — RESEARCH SPIKE  CLOSED / PASS
+PHASE C — OPPORTUNITY MAP  PENDING
 PHASE D — CONTENT INPUT   PENDING
 PHASE E — GOLDEN JOURNAL  PENDING
 PHASE F — CE01 REVIEW     PENDING
@@ -223,15 +223,19 @@ Research Report
 
 Report AI không tự trở thành factual authority. Muốn dùng fact phải lần về source gốc.
 
-### Gate B
+### Gate B — PASS
 
-- [ ] một seed thật chạy được;
-- [ ] Serper trả discovery signals;
-- [ ] ít nhất một source tốt hơn top 1–5 Google mặc định;
-- [ ] selected URLs đọc được qua Jina hoặc manual fallback;
-- [ ] biết provider nào được gọi và vì sao;
-- [ ] source đã chọn giữ provenance và lý do chọn;
-- [ ] ít nhất một second-hop trace được tới original-source candidate khi có đường dẫn phù hợp.
+- [x] một founder-proposed hypothesis chạy được;
+- [x] Serper trả discovery signals;
+- [x] có Artsy editorial candidate tốt hơn nhóm sales-heavy để discovery/context;
+- [x] 3 selected URLs đọc được qua Jina;
+- [x] biết provider nào được gọi và vì sao;
+- [x] source đã chọn giữ provenance và lý do chọn;
+- [x] second-hop candidates được trích xuất, giữ parent URL và lọc social/share/CDN noise.
+
+Evidence run: 6 provider calls, 27 signals, 17 source candidates, 3 documents,
+8 second-hop candidates; CI `33999734730` PASS. Artsy chưa được dùng như factual
+authority; authority verification thuộc Evidence Research sau PR-B.
 
 ---
 

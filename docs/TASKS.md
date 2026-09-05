@@ -53,16 +53,16 @@ PR-A verification: backend install/lint/typecheck/migration/tests/OpenAPI and fr
 
 ### PR-B — Research/Search spike
 
-Status: **NEXT**.
+Status: **CLOSED / PASS**.
 
-- [ ] T01.14 Add provider config/secret references for Serper, Tavily, Exa, Jina; Brave optional only.
-- [ ] T01.15 Add SearchProvider seam and minimal Serper discovery adapter.
-- [ ] T01.16 Add minimal Tavily/Exa source-discovery adapters or one common source-discovery seam proven with both providers.
-- [ ] T01.17 Add Jina selected-URL reader adapter.
-- [ ] T01.18 Store raw research result as bounded artifact with provider/query/source refs; do not write raw SERP payload to Obsidian.
-- [ ] T01.19 Add one-step second-hop extraction: cited URL/expert/report candidates from a selected source.
-- [ ] T01.20 Add manual Deep Research import shape: report + original source URLs; report itself is not factual authority.
-- [ ] T01.21 Add provider budget/stop-when-sufficient rule for the spike.
+- [x] T01.14 Add provider config/secret references for Serper, Tavily, Exa, Jina; Brave optional only.
+- [x] T01.15 Add SearchProvider seam and minimal Serper discovery adapter.
+- [x] T01.16 Add minimal Tavily/Exa source-discovery adapters or one common source-discovery seam proven with both providers.
+- [x] T01.17 Add Jina selected-URL reader adapter.
+- [x] T01.18 Store raw research result as bounded artifact with provider/query/source refs; do not write raw SERP payload to Obsidian.
+- [x] T01.19 Add one-step second-hop extraction: cited URL/expert/report candidates from a selected source.
+- [x] T01.20 Add manual Deep Research import shape: report + original source URLs; report itself is not factual authority.
+- [x] T01.21 Add provider budget/stop-when-sufficient rule for the spike.
 
 ### PR-C — Opportunity Map Mini
 
