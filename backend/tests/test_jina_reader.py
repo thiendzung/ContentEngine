@@ -3,6 +3,7 @@ import pytest
 
 from app.modules.research.budget import ResearchBudget
 from app.modules.research.contracts import (
+    CommercialBias,
     ProviderResponse,
     SearchRequest,
     SourceCandidate,
@@ -119,6 +120,8 @@ def test_second_hop_filters_share_profile_and_social_noise() -> None:
         "\n".join((
             "https://www.blogger.com/share-post.g?target=facebook",
             "https://facebook.com/share/example",
+            "https://scontent.fros2-2.fna.fbcdn.net/image.jpg",
+            "https://static.xx.fbcdn.net/rsrc.php/image.webp",
             "https://example.net/profile/author",
             "https://museum.example/research/report",
         )),
@@ -140,3 +143,17 @@ def test_source_selection_keeps_provider_relevance_order_within_bias() -> None:
         "https://z.example",
         "https://a.example",
     ]
+
+
+def test_source_selection_prefers_editorial_over_community_market_pages() -> None:
+    sources = [
+        SourceCandidate(
+            provider="serper", query="q", url="https://reddit.com/r/art", title="community",
+            source_type="community_or_review",
+        ),
+        SourceCandidate(
+            provider="serper", query="q", url="https://artsy.net/article/guide", title="editorial",
+            source_type="editorial", commercial_bias=CommercialBias.MEDIUM,
+        ),
+    ]
+    assert choose_sources(sources, 1)[0].source_type == "editorial"

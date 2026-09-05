@@ -32,13 +32,20 @@ _COMMERCIAL_HINTS = (
 )
 _SECOND_HOP_NOISE_HOSTS = (
     "facebook.com",
+    "fbcdn.net",
+    "fna.fbcdn.net",
     "twitter.com",
     "x.com",
     "pinterest.com",
     "linkedin.com",
     "blogger.com",
+    "instagram.com",
+    "cdninstagram.com",
+    "youtube.com",
+    "youtu.be",
 )
 _SECOND_HOP_NOISE_PATHS = ("/share", "/share-post", "/profile", "/login", "/signup")
+_SECOND_HOP_NOISE_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".css", ".js")
 _MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+)\)")
 _BARE_URL_RE = re.compile(r"https?://[^\s<>()\]\[\]{}\"']+")
 
@@ -132,6 +139,7 @@ def annotate_source(
     parsed = urlparse(url)
     haystack = f"{parsed.hostname or ''} {parsed.path} {title}".lower()
 
+    hostname = (parsed.hostname or "").lower().removeprefix("www.")
     if any(hint in haystack for hint in _INSTITUTIONAL_HINTS):
         source_type = "institutional"
         bias = CommercialBias.LOW
@@ -140,6 +148,18 @@ def annotate_source(
             "Institutional/primary-looking source candidate; "
             "verify claim-level authority before use."
         )
+    elif hostname in {"reddit.com", "facebook.com", "tripadvisor.com"} or hostname.endswith(
+        ".reddit.com"
+    ):
+        source_type = "community_or_review"
+        bias = CommercialBias.UNKNOWN
+        intended_use = IntendedUse.DISCOVERY
+        why = "Community/review source; useful for market signals, not automatic factual authority."
+    elif hostname == "artsy.net" or hostname.endswith(".artsy.net"):
+        source_type = "editorial"
+        bias = CommercialBias.MEDIUM
+        intended_use = IntendedUse.DISCOVERY
+        why = "Editorial art source; useful for discovery/context, verify claim-level authority."
     elif any(hint in haystack for hint in _COMMERCIAL_HINTS):
         source_type = "commercial"
         bias = CommercialBias.HIGH
@@ -189,8 +209,22 @@ def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[Sourc
         CommercialBias.MEDIUM: 2,
         CommercialBias.HIGH: 3,
     }
+    source_type_order = {
+        "institutional": 0,
+        "editorial": 1,
+        "review": 2,
+        "community_or_review": 3,
+        "editorial_or_unknown": 4,
+        "commercial": 5,
+        "unknown": 6,
+    }
     # Python's sort is stable: preserve provider relevance/order within each bias bucket.
-    unique.sort(key=lambda source: bias_order[source.commercial_bias])
+    unique.sort(
+        key=lambda source: (
+            source_type_order.get(source.source_type, 6),
+            bias_order[source.commercial_bias],
+        )
+    )
     return unique[:limit]
 
 
@@ -232,6 +266,8 @@ def extract_second_hop_candidates(
             normalized_host == noise or normalized_host.endswith(f".{noise}")
             for noise in _SECOND_HOP_NOISE_HOSTS
         ) or any(noise in path for noise in _SECOND_HOP_NOISE_PATHS):
+            continue
+        if path.endswith(_SECOND_HOP_NOISE_SUFFIXES) or host.startswith(("static.", "scontent.")):
             continue
         candidate = annotate_source(
             provider="second_hop",
