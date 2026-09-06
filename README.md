@@ -203,7 +203,8 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 
 - `CE00 — Foundation Contracts`: CLOSED.
 - `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: CLOSED / PASS.
-- `CE02 — Core Data + Settings`: READY FOR REVIEW.
-- Current PR: `CE02 Final PR — Contract Integration`.
+- `CE02 — Core Data + Settings`: CLOSED / PASS.
+- `CE03 — Durable Harness`: ACTIVE.
+- Current PR: `CE03 PR-A — Durable Queue + Lease Core`.
 
-CE02 đã chuyển core data, settings, evidence, media, run records và version lineage thành persistence có cấu trúc, provenance và immutable snapshots. CE03 bắt đầu từ durable runtime orchestration, không lặp lại data layer này.
+CE02 đã chuyển core data, settings, evidence, media, run records và version lineage thành persistence có cấu trúc, provenance và immutable snapshots. CE03 đang xây durable runtime orchestration, không lặp lại data layer này.

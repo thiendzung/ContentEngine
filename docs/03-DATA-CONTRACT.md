@@ -564,21 +564,19 @@ Critical unsupported assertion → hard fail.
 - `error_class` nullable
 - timestamps
 
-### HarnessJob
+### Job
 
 Operational record cho durable job queue.
 
 - `id`
 - `run_id`
 - `step_run_id`
-- `status`: `pending | leased | completed | failed | cancelled`
+- `status`: `queued | leased | completed | failed | cancelled`
 - `available_at`
 - `attempt`
 - `dedupe_key`
 - `lease_owner` nullable
 - `lease_expires_at` nullable
-- `last_heartbeat_at` nullable
-- `error_json` nullable
 - timestamps
 
 ### OutboxIntent
