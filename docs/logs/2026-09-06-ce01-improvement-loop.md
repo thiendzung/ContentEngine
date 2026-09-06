@@ -202,7 +202,7 @@ Likely phase:
 
 CE04 / CE05.
 
-Status: `BLOCKS DRAFT UNTIL RESOLVED`.
+Status: `RESOLVED IN CE01 BY RUNTIME-VERIFIED ARTWORK ANCHOR`.
 
 ---
 
@@ -218,7 +218,7 @@ Embedding remembered commerce facts risks stale or false statements.
 
 Decision now:
 
-Outline may reserve a real Artwork section, but Draft cannot state current price/status unless read from canonical data at drafting time.
+Use a runtime/product component for dynamic facts and keep durable Journal prose evergreen. Draft V1 isolates the runtime snapshot as an internal editorial block rather than durable public prose.
 
 Candidate upgrade:
 
@@ -228,7 +228,7 @@ Likely phase:
 
 CE07 / CE08.
 
-Status: `OPEN`.
+Status: `PROCESS DESIGN APPLIED / PRODUCTION IMPLEMENTATION LATER`.
 
 ---
 
@@ -368,20 +368,60 @@ Status: `OPEN / DESIGN PRINCIPLE`.
 
 ---
 
-## Current PR-E checkpoint
-
-- Angle A selected;
-- Outline V2 revised for human behaviour + search/AI retrieval and awaits founder review;
-- Draft not started;
-- real Artwork anchor not yet resolved;
-- NeedHypothesis remains `PROPOSED`.
-
-This log is living evidence for T01.43. Do not mark T01.43 complete until the Golden Journal has reached human editorial review and final CE01 failures/lessons are added.
-
 ## LOOP-13 — Runtime verification closes the seed/data boundary
 
 Lesson:
 
 `Static seed data identifies the entity, but dynamic commerce facts require runtime verification.`
 
-Applied to CE01: the Golden importer seed identified the Artwork, while the current WordPress/WooCommerce runtime locked the facts used for T01.40. Price, stock, sale status and physical location remain dynamic. T01.43 remains open.
+Applied to CE01: the Golden importer seed identified the Artwork, while the current WordPress/WooCommerce runtime locked the facts used for T01.40. Price, stock, sale status and physical location remain dynamic.
+
+Status: `APPLIED`.
+
+---
+
+## LOOP-14 — Demo/seed content must not become production Content Memory
+
+Observed:
+
+The canonical local WordPress Golden Content contains test Journal content, while Founder confirmed the real MOTGU website is still being built and currently has no real published Journal posts.
+
+Impact:
+
+If environment/source status is ignored, Content Memory can produce false duplicate detection, wrong CREATE/UPDATE/REFRESH decisions and internal links to content that does not actually exist for users.
+
+Decision now:
+
+For CE01, treat Golden/demo content as `TEST_ONLY`. The Golden Journal under PR-E is the first real production candidate. Do not add Journal-to-Journal links yet.
+
+Candidate upgrade:
+
+Content Memory records should preserve:
+
+- environment/source kind;
+- actual publish state;
+- canonical public URL when one exists;
+- test/demo/fixture flag;
+- eligibility for overlap detection;
+- eligibility for internal linking.
+
+Likely phase:
+
+CE02 / CE05 / CE08.
+
+Status: `OPEN / IMPORTANT DATA-BOUNDARY RULE`.
+
+---
+
+## Current PR-E checkpoint
+
+- Angle A selected;
+- Outline V2 Founder approved;
+- runtime Artwork fact lock PASS;
+- Draft EN V1 created;
+- basic Assertion Audit PASS;
+- critical unsupported assertions: `0`;
+- Human Editorial Review T01.42: `NEXT`;
+- NeedHypothesis remains `PROPOSED`.
+
+This log is living evidence for T01.43. Do not mark T01.43 complete until the Founder editorial review is finished and final CE01 failures/lessons are added.
