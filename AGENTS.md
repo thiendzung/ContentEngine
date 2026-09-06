@@ -398,10 +398,10 @@ Never claim completion without evidence.
 
 Current priority:
 
-`CE03 — Durable Harness`
+`CE03 — Durable Harness — CLOSED / PASS`
 
 Current implementation slice:
 
-`CE03 PR-D — Outbox + Reconciliation + Restart/Resume`
+`None — CE04 is not started`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = ACTIVE. PR-D owns durable outbox, reconciliation, restart/resume integration and duplicate side-effect prevention; replay/eval remains PR-E.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = PASS / READY FOR REVIEW. CE04 is not started.

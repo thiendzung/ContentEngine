@@ -170,12 +170,13 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 
 ## CE03 — Durable Harness
 
-Status: **ACTIVE — PR-D Outbox + Reconciliation + Restart/Resume**.
+Status: **CLOSED / PASS**.
 
 - PR-A = CLOSED / MERGED / PASS.
 - PR-B = CLOSED / MERGED / PASS.
 - PR-C = CLOSED / MERGED / PASS.
-- PR-D = ACTIVE.
+- PR-D = CLOSED / MERGED / PASS.
+- PR-E = PASS / READY FOR REVIEW.
 
 - [x] T03.1 Implement Run state machine.
 - [x] T03.2 Implement StepRun attempt lifecycle.
@@ -196,7 +197,7 @@ Status: **ACTIVE — PR-D Outbox + Reconciliation + Restart/Resume**.
 - [x] T03.17 Implement reconciliation contract.
 - [x] T03.18 Implement restart/resume integration test.
 - [x] T03.19 Implement duplicate side-effect prevention test.
-- [ ] T03.20 Implement replay/eval run mode.
+- [x] T03.20 Implement replay/eval run mode.
 
 ---
 

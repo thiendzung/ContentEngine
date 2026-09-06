@@ -436,7 +436,16 @@ runtime trong PR-B; CE02 tạo schema mới và cập nhật mọi foreign key t
 - `content_case_id`
 - `locale_variant_id`
 - `content_item_id` nullable
-- `run_mode`: `create | update | refresh | localize`
+- `run_mode`: `create | update | refresh | localize | eval`
+
+Replay creates an `eval` ContentRun from frozen baseline inputs/context.
+
+An `eval` run is comparison-only:
+
+- it must not publish;
+- it must not create durable external side effects;
+- it must not automatically promote settings, prompts, recipes, or models.
+
 - `status`
 - `current_step`
 - `settings_snapshot_id`
