@@ -50,14 +50,10 @@ class AudienceHypothesis(TimestampMixin, Base):
     __tablename__ = "audience_hypotheses"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="PROPOSED"
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PROPOSED")
     evidence_summary: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[str | None] = mapped_column(String(32))
 
@@ -68,9 +64,7 @@ class Signal(TimestampMixin, Base):
     __tablename__ = "signals"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     source_kind: Mapped[str] = mapped_column(String(16), nullable=False)
     scope: Mapped[str] = mapped_column(String(32), nullable=False)
     observed_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -78,9 +72,7 @@ class Signal(TimestampMixin, Base):
     external_id: Mapped[str | None] = mapped_column(String(255))
     locale: Mapped[str] = mapped_column(String(32), nullable=False)
     context: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    captured_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
     duplicate_of_id: Mapped[UUID | None] = mapped_column(ForeignKey("signals.id"))
@@ -104,9 +96,7 @@ class NeedHypothesis(TimestampMixin, Base):
     __tablename__ = "need_hypotheses"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     audience_hypothesis_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("audience_hypotheses.id")
     )
@@ -115,15 +105,11 @@ class NeedHypothesis(TimestampMixin, Base):
     audience_scope: Mapped[str] = mapped_column(Text, nullable=False)
     situation: Mapped[str] = mapped_column(Text, nullable=False)
     origin: Mapped[str] = mapped_column(String(32), nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="PROPOSED"
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PROPOSED")
     alternative_explanations_json: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list
     )
-    missing_evidence_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    missing_evidence_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     reviewed_by: Mapped[str | None] = mapped_column(String(200))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -131,13 +117,10 @@ class NeedHypothesis(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "status in ('PROPOSED','TESTING','SUPPORTED','REJECTED',"
-            "'INSUFFICIENT_EVIDENCE')",
+            "status in ('PROPOSED','TESTING','SUPPORTED','REJECTED','INSUFFICIENT_EVIDENCE')",
             name="ck_need_hypotheses_status",
         ),
-        CheckConstraint(
-            "version > 0", name="ck_need_hypotheses_version_positive"
-        ),
+        CheckConstraint("version > 0", name="ck_need_hypotheses_version_positive"),
         Index("ix_need_hypotheses_project", "project_id"),
     )
 
@@ -172,9 +155,7 @@ class NeedHypothesisReview(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     reviewed_by: Mapped[str] = mapped_column(String(200), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    support_signal_refs_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    support_signal_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     contradict_signal_refs_json: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list
     )
@@ -195,9 +176,7 @@ class ContentOpportunity(TimestampMixin, Base):
     __tablename__ = "content_opportunities"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     need_hypothesis_id: Mapped[UUID] = mapped_column(
         ForeignKey("need_hypotheses.id"), nullable=False
     )
@@ -208,12 +187,8 @@ class ContentOpportunity(TimestampMixin, Base):
     question: Mapped[str] = mapped_column(Text, nullable=False)
     intent: Mapped[str] = mapped_column(String(64), nullable=False)
     promise: Mapped[str] = mapped_column(Text, nullable=False)
-    motgu_material_refs_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    material_gaps_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    motgu_material_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    material_gaps_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     existing_content_refs_json: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list
     )
@@ -221,12 +196,8 @@ class ContentOpportunity(TimestampMixin, Base):
     next_discovery_step: Mapped[str] = mapped_column(Text, nullable=False)
     decision: Mapped[str] = mapped_column(String(32), nullable=False)
     priority: Mapped[str] = mapped_column(String(16), nullable=False)
-    reasons_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    suggested_content_type: Mapped[str] = mapped_column(
-        String(32), nullable=False
-    )
+    reasons_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    suggested_content_type: Mapped[str] = mapped_column(String(32), nullable=False)
     suggested_role: Mapped[str | None] = mapped_column(String(32))
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     selected_by: Mapped[str | None] = mapped_column(String(200))
@@ -235,8 +206,7 @@ class ContentOpportunity(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "decision in ('CREATE','UPDATE','REFRESH','MERGE','LINK_ONLY',"
-            "'DO_NOT_WRITE')",
+            "decision in ('CREATE','UPDATE','REFRESH','MERGE','LINK_ONLY','DO_NOT_WRITE')",
             name="ck_content_opportunities_decision",
         ),
         CheckConstraint(
@@ -248,9 +218,7 @@ class ContentOpportunity(TimestampMixin, Base):
             "or json_array_length(existing_content_refs_json) > 0",
             name="ck_content_opportunities_existing_target",
         ),
-        CheckConstraint(
-            "version > 0", name="ck_content_opportunities_version_positive"
-        ),
+        CheckConstraint("version > 0", name="ck_content_opportunities_version_positive"),
         Index("ix_content_opportunities_project", "project_id"),
     )
 
@@ -280,18 +248,14 @@ class HumanSelection(TimestampMixin, Base):
         DateTime(timezone=True), nullable=False, default=utc_now
     )
 
-    __table_args__ = (
-        Index("ix_human_selections_opportunity", "content_opportunity_id"),
-    )
+    __table_args__ = (Index("ix_human_selections_opportunity", "content_opportunity_id"),)
 
 
 class ContentExperiment(TimestampMixin, Base):
     __tablename__ = "content_experiments"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     content_opportunity_id: Mapped[UUID] = mapped_column(
         ForeignKey("content_opportunities.id"), nullable=False
     )
@@ -300,30 +264,14 @@ class ContentExperiment(TimestampMixin, Base):
     )
     hypothesis_version: Mapped[int] = mapped_column(Integer, nullable=False)
     expected_behaviour: Mapped[str] = mapped_column(Text, nullable=False)
-    measurement_plan_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    metric_definitions_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    minimum_evidence_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    review_window_start: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
-    review_window_end: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="PLANNED"
-    )
-    result: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="PENDING"
-    )
-    observation_refs_json: Mapped[list[str]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    measurement_plan_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    metric_definitions_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    minimum_evidence_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    review_window_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_window_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PLANNED")
+    result: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
+    observation_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     alternative_explanations_json: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list
     )
@@ -350,9 +298,7 @@ class ContentCase(TimestampMixin, Base):
     __tablename__ = "content_cases"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     content_type: Mapped[str] = mapped_column(String(32), nullable=False)
     audience_hypothesis_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("audience_hypotheses.id")
@@ -368,9 +314,7 @@ class ContentCase(TimestampMixin, Base):
     originality_statement: Mapped[str] = mapped_column(Text, nullable=False)
     reader_before: Mapped[str] = mapped_column(Text, nullable=False)
     reader_after: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="draft"
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
 
     __table_args__ = (
         CheckConstraint(
@@ -385,35 +329,21 @@ class LocaleVariant(TimestampMixin, Base):
     __tablename__ = "locale_variants"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    content_case_id: Mapped[UUID] = mapped_column(
-        ForeignKey("content_cases.id"), nullable=False
-    )
+    content_case_id: Mapped[UUID] = mapped_column(ForeignKey("content_cases.id"), nullable=False)
     locale: Mapped[str] = mapped_column(String(32), nullable=False)
     content_role: Mapped[str] = mapped_column(String(32), nullable=False)
     primary_question: Mapped[str] = mapped_column(Text, nullable=False)
     primary_intent: Mapped[str] = mapped_column(String(64), nullable=False)
     secondary_intent: Mapped[str | None] = mapped_column(String(64))
     primary_query: Mapped[str | None] = mapped_column(Text)
-    keyword_notes_json: Mapped[list[object]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    emotion_arc_json: Mapped[list[object]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    must_include_json: Mapped[list[object]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    must_not_claim_json: Mapped[list[object]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="draft"
-    )
+    keyword_notes_json: Mapped[list[object]] = mapped_column(JSON, nullable=False, default=list)
+    emotion_arc_json: Mapped[list[object]] = mapped_column(JSON, nullable=False, default=list)
+    must_include_json: Mapped[list[object]] = mapped_column(JSON, nullable=False, default=list)
+    must_not_claim_json: Mapped[list[object]] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
 
     __table_args__ = (
-        UniqueConstraint(
-            "content_case_id", "locale", name="uq_locale_variant_case_locale"
-        ),
+        UniqueConstraint("content_case_id", "locale", name="uq_locale_variant_case_locale"),
     )
 
 
@@ -421,28 +351,18 @@ class ContentItem(TimestampMixin, Base):
     __tablename__ = "content_items"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    project_id: Mapped[UUID] = mapped_column(
-        ForeignKey("projects.id"), nullable=False
-    )
-    content_case_id: Mapped[UUID] = mapped_column(
-        ForeignKey("content_cases.id"), nullable=False
-    )
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    content_case_id: Mapped[UUID] = mapped_column(ForeignKey("content_cases.id"), nullable=False)
     locale_variant_id: Mapped[UUID] = mapped_column(
         ForeignKey("locale_variants.id"), nullable=False
     )
     content_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="draft"
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
     canonical_key: Mapped[str] = mapped_column(String(255), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint(
-            "project_id", "canonical_key", name="uq_content_item_canonical_key"
-        ),
-        UniqueConstraint(
-            "locale_variant_id", name="uq_content_item_locale_variant"
-        ),
+        UniqueConstraint("project_id", "canonical_key", name="uq_content_item_canonical_key"),
+        UniqueConstraint("locale_variant_id", name="uq_content_item_locale_variant"),
         CheckConstraint(
             "content_type in ('journal','artwork')",
             name="ck_content_items_type",
@@ -454,28 +374,117 @@ class ContentVersion(TimestampMixin, Base):
     __tablename__ = "content_versions"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
-    content_item_id: Mapped[UUID] = mapped_column(
-        ForeignKey("content_items.id"), nullable=False
-    )
+    content_item_id: Mapped[UUID] = mapped_column(ForeignKey("content_items.id"), nullable=False)
     version_no: Mapped[int] = mapped_column(Integer, nullable=False)
     change_reason: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="draft"
-    )
-    content_json: Mapped[dict[str, object]] = mapped_column(
-        JSON, nullable=False, default=dict
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    content_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
 
     __table_args__ = (
-        UniqueConstraint(
-            "content_item_id", "version_no", name="uq_content_version_number"
-        ),
+        UniqueConstraint("content_item_id", "version_no", name="uq_content_version_number"),
         CheckConstraint("version_no > 0", name="ck_content_version_positive"),
         CheckConstraint(
             "status in ('draft','approved','published','superseded')",
             name="ck_content_version_status",
         ),
         Index("ix_content_versions_item", "content_item_id"),
+    )
+
+
+class SettingsVersion(TimestampMixin, Base):
+    __tablename__ = "settings_versions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID | None] = mapped_column(ForeignKey("projects.id"))
+    scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    settings_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    change_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id", "scope_type", "scope_key", "version", name="uq_settings_version"
+        ),
+        CheckConstraint(
+            "scope_type in ('system','project','content_type','locale')", name="ck_settings_scope"
+        ),
+        CheckConstraint("status in ('draft','active','retired')", name="ck_settings_status"),
+        CheckConstraint("version > 0", name="ck_settings_version_positive"),
+    )
+
+
+class SettingsSnapshot(TimestampMixin, Base):
+    __tablename__ = "settings_snapshots"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    resolved_settings_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    source_version_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PromptDefinition(TimestampMixin, Base):
+    __tablename__ = "prompt_definitions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    prompt_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    input_contract_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    output_schema_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    change_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        UniqueConstraint("prompt_key", "version", name="uq_prompt_definition_version"),
+        CheckConstraint("status in ('draft','active','retired')", name="ck_prompt_status"),
+        CheckConstraint("version > 0", name="ck_prompt_version_positive"),
+    )
+
+
+class RecipeDefinition(TimestampMixin, Base):
+    __tablename__ = "recipe_definitions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    recipe_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    selector_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    recipe_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        UniqueConstraint("recipe_key", "version", name="uq_recipe_definition_version"),
+        CheckConstraint("status in ('draft','active','retired')", name="ck_recipe_status"),
+        CheckConstraint("version > 0", name="ck_recipe_version_positive"),
+    )
+
+
+class CalibrationExample(TimestampMixin, Base):
+    __tablename__ = "calibration_examples"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    locale: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(32))
+    intent: Mapped[str | None] = mapped_column(String(64))
+    example_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    polarity: Mapped[str] = mapped_column(String(16), nullable=False)
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="approved")
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        CheckConstraint("polarity in ('positive','negative')", name="ck_calibration_polarity"),
+        CheckConstraint(
+            "status in ('candidate','approved','retired')", name="ck_calibration_status"
+        ),
     )
 
 

@@ -146,10 +146,10 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 - [ ] T02.2 Implement ContentCase.
 - [ ] T02.3 Implement LocaleVariant.
 - [ ] T02.4 Implement ContentItem/ContentVersion.
-- [ ] T02.5 Implement SettingsVersion/SettingsSnapshot.
-- [ ] T02.6 Implement Prompt/Recipe Registry.
-- [ ] T02.7 Implement Brand DNA/Language DNA validation.
-- [ ] T02.8 Implement Calibration Example storage.
+- [x] T02.5 Implement SettingsVersion/SettingsSnapshot.
+- [x] T02.6 Implement Prompt/Recipe Registry.
+- [x] T02.7 Implement Brand DNA/Language DNA validation.
+- [x] T02.8 Implement Calibration Example storage.
 - [ ] T02.9 Implement Source/SourceDocument/KnowledgeChunk.
 - [ ] T02.10 Implement Entity/Claim/Evidence/EvidenceSet.
 - [ ] T02.11 Implement OriginalityPack.
@@ -157,9 +157,9 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 - [ ] T02.13 Implement ContentRun/StepRun/Artifact/Approval.
 - [ ] T02.14 Implement ContextManifest.
 - [ ] T02.15 Implement ModelCall/ToolCall/QualityEvaluation.
-- [ ] T02.16 Seed project `motgu`.
-- [ ] T02.17 Seed `vi-VN` and `en` locale settings.
-- [ ] T02.18 Add settings snapshot reproducibility tests.
+- [x] T02.16 Seed project `motgu`.
+- [x] T02.17 Seed `vi-VN` and `en` locale settings.
+- [x] T02.18 Add settings snapshot reproducibility tests.
 - [ ] T02.19 Add ContentCase → two LocaleVariant contract test.
 - [ ] T02.20 Add ContentItem version lineage test.
 - [ ] T02.21 Add versioned Research artifact/source-ref contract.
