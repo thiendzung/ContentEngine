@@ -226,8 +226,7 @@ def test_truncated_query_is_kept_as_signal_but_excluded_from_questions_and_pilla
 
     assert len(result.signals) == 3
     assert truncated not in {item.query for item in result.questions}
-    assert result.opportunities[0].suggested_role is JournalRole.PILLAR
-    assert truncated not in result.opportunities[0].question
+    assert all(item.suggested_role is not JournalRole.PILLAR for item in result.opportunities)
     assert all(truncated not in item.question for item in result.opportunities)
 
 
@@ -270,7 +269,7 @@ def test_negotiation_is_a_purchase_objection() -> None:
 
 def test_pillar_only_counts_buyer_relevant_clusters() -> None:
     research = _research(
-        _signal("How do I know what art I like?"),
+        _signal("How can I tell if a painting is original?"),
         _signal("How much should I spend on my first painting?"),
         _signal("What is the 1/3 rule in painting?"),
         _signal("What do painters do when they make a mistake?"),
@@ -292,3 +291,22 @@ def test_pillar_only_counts_buyer_relevant_clusters() -> None:
         item.topic_key not in {"painting_technique", "artist_process"}
         for item in result.opportunities[:1]
     )
+
+
+def test_pillar_requires_direct_core_cluster_support() -> None:
+    research = _research(
+        _signal("Can you negotiate with art galleries"),
+        _signal("How much should I spend on my first painting?"),
+    )
+
+    result = OpportunityMapService().build(
+        research,
+        _request(
+            pillar_question=(
+                "How can a first-time buyer choose an original painting with confidence?"
+            )
+        ),
+    )
+
+    assert {item.topic_key for item in result.opportunities} == {"negotiation", "price"}
+    assert all(item.suggested_role is not JournalRole.PILLAR for item in result.opportunities)
