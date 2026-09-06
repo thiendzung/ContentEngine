@@ -1,6 +1,6 @@
 # CE01 — GOLDEN JOURNAL — ANGLE
 
-Status: **FOUNDER REVIEW REQUIRED**
+Status: **ANGLE A SELECTED / T01.38 PASS**
 
 Phase: `CE01 / PR-E — Walking Skeleton`
 
@@ -15,7 +15,7 @@ Starting checkpoint:
 - OriginalityPack: `opack_ce01_price_v1` — `APPROVED_FOR_CE01`;
 - NeedHypothesis: `need_fc6259977d637e6f` — remains `PROPOSED`.
 
-This file only selects the editorial Angle. It does not create the Outline or Draft.
+This file selects the editorial Angle. It does not approve the Outline or Draft.
 
 ## Angle contract
 
@@ -35,7 +35,7 @@ The Angle must stay inside the locked CE01 evidence boundary. If it needs a new 
 
 # ANGLE A — READ THE PRICE WITHOUT TREATING IT AS A SCORE
 
-**Recommended**
+**SELECTED**
 
 ### Working title direction
 
@@ -102,7 +102,8 @@ The Artwork remains the centre of gravity.
 - could become a generic valuation explainer if it spends too long listing factors;
 - must not imply every factor determines a MOTGU price;
 - must not imply price predicts quality, future value or investment return;
-- current price/availability cannot be written from memory.
+- current price/availability cannot be written from memory;
+- a specific real MOTGU Artwork still needs to be selected and verified before Draft so the article does not remain generic.
 
 ### Guard
 
@@ -156,7 +157,7 @@ To stay valid, the article would need repeated qualification and could become aw
 
 ### Decision note
 
-Usable, but not preferred for CE01 because the title creates a stronger factual promise than the locked evidence comfortably supports.
+Usable, but not selected for CE01 because the title creates a stronger factual promise than the locked evidence comfortably supports.
 
 ---
 
@@ -209,39 +210,37 @@ Excellent natural CTA: see a work, ask about it, take time, understand what brin
 
 ### Decision note
 
-Good future cluster/pillar input, but not the best first CE01 test for the selected `price` opportunity.
+Good future cluster/pillar input, but not selected for the first CE01 `price` test.
 
 ---
 
 # COMPARISON
 
-| Angle | Search/need fit | Evidence fit | MOTGU originality | Scope risk | Recommendation |
+| Angle | Search/need fit | Evidence fit | MOTGU originality | Scope risk | Result |
 |---|---|---|---|---|---|
-| A — Read the price without treating it as a score | High | High | High | Low | **SELECT** |
+| A — Read the price without treating it as a score | High | High | High | Low | **SELECTED** |
 | B — What are you actually paying for? | High | Medium | High | Medium/High | Hold |
 | C — Six questions before buying | Medium | High | High | Medium | Future candidate |
 
-## Recommendation
+## Human selection record
 
-Select **ANGLE A**.
+Founder confirmed continuation after reviewing the purpose of the Angle step on `2026-09-06`. The recommended **ANGLE A** is therefore selected for CE01.
 
-Reason:
+Selection reason:
 
 - closest to the human-selected `price` opportunity;
-- fully compatible with the locked EvidenceSet;
+- compatible with the locked EvidenceSet;
 - gives MOTGU a clear role without inventing a pricing formula;
 - keeps the Artwork central;
 - creates a useful reader transformation;
 - lowest scope/unsupported-claim risk of the three.
 
-## Human gate
+## Result
 
-Founder returns one of:
+`T01.38 PASS / ANGLE A SELECTED`
 
-1. `SELECT ANGLE A`
-2. `SELECT ANGLE B`
-3. `SELECT ANGLE C`
-4. `SELECT WITH CHANGES: ...`
-5. `REWORK ANGLES`
+Next:
 
-Only after selection should T01.38 be marked complete and T01.39 Outline begin.
+`T01.39 — build and human-review the Outline`
+
+No Draft before Outline approval.
