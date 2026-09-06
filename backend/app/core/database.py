@@ -12,10 +12,9 @@ class Base(DeclarativeBase):
 
 
 settings = get_settings()
-if settings.app_env == "test":
-    engine = create_async_engine(settings.database_url, poolclass=NullPool)
-else:
-    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+# NullPool keeps async connections bound to the active event loop and is sufficient
+# for the current small CE02 service. A tuned pool belongs to a later runtime task.
+engine = create_async_engine(settings.database_url, poolclass=NullPool)
 
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
