@@ -392,7 +392,7 @@ async def test_migration_0007_translates_real_paused_run_data_safely() -> None:
             )
             assert status == "paused"
     finally:
-        run_alembic("upgrade", "20260906_0007")
+        run_alembic("upgrade", "head")
         async with engine.begin() as connection:
             await connection.execute(delete(ContentRun).where(ContentRun.id == identifiers["run"]))
             await connection.execute(

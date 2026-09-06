@@ -205,6 +205,9 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: CLOSED / PASS.
 - `CE02 — Core Data + Settings`: CLOSED / PASS.
 - `CE03 — Durable Harness`: ACTIVE.
-- Current PR: `CE03 PR-B — Checkpoint + Approval + Retry + Budget`.
+- `CE03 PR-A — Durable Queue + Lease Core`: CLOSED / MERGED / PASS.
+- `CE03 PR-B — Checkpoint + Approval + Retry + Budget`: CLOSED / MERGED / PASS.
+- `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`: ACTIVE.
+- Current PR: `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`.
 
-CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai.
+CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C tiếp tục với ModelRouter, ToolAdapter, ContextManifest và telemetry.

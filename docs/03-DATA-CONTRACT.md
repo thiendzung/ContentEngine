@@ -500,6 +500,7 @@ Snapshot model đã nhìn thấy gì cho một call/step quan trọng.
 - `prompt_version`
 - `recipe_version`
 - `evidence_set_id`
+- `originality_pack_id` nullable
 - `knowledge_chunk_ids_json`
 - `golden_example_ids_json`
 - `tool_result_refs_json`
