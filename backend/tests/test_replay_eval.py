@@ -18,6 +18,7 @@ from app.modules.content_engine.models import (
 from app.modules.harness.models import (
     Artifact,
     ContentRun,
+    ContextManifest,
     QualityEvaluation,
     StepRun,
 )
@@ -47,6 +48,7 @@ async def _create_baseline(
     ContentRun,
     StepRun,
     Artifact,
+    ContextManifest,
     SettingsSnapshot,
     SettingsSnapshot,
 ]:
@@ -244,6 +246,7 @@ async def _create_baseline(
         baseline,
         baseline_step,
         baseline_artifact,
+        baseline_manifest,
         baseline_snapshot,
         candidate_snapshot,
     )
@@ -259,23 +262,10 @@ async def test_replay_eval_uses_frozen_context_reports_delta_and_never_publishes
                 baseline,
                 baseline_step,
                 baseline_artifact,
+                baseline_manifest,
                 baseline_snapshot,
                 candidate_snapshot,
             ) = await _create_baseline(session)
-            baseline_manifest = (
-                await session.execute(
-                    select(__import__(
-                        "app.modules.harness.models",
-                        fromlist=["ContextManifest"],
-                    ).ContextManifest).where(
-                        __import__(
-                            "app.modules.harness.models",
-                            fromlist=["ContextManifest"],
-                        ).ContextManifest.run_id
-                        == baseline.id
-                    )
-                )
-            ).scalar_one()
 
             fixture = await create_eval_run(
                 session,
@@ -287,7 +277,10 @@ async def test_replay_eval_uses_frozen_context_reports_delta_and_never_publishes
             assert fixture.run.run_mode == "eval"
             assert fixture.fixture.content_json is not None
             assert fixture.fixture.content_json["frozen"] is True
-            assert fixture.fixture.content_json["baseline_artifact_hash"] == baseline_artifact.content_hash
+            assert (
+                fixture.fixture.content_json["baseline_artifact_hash"]
+                == baseline_artifact.content_hash
+            )
 
             await transition_run(session, run_id=fixture.run.id, status="running")
             eval_step = StepRun(
@@ -390,16 +383,18 @@ async def test_replay_eval_uses_frozen_context_reports_delta_and_never_publishes
                 candidate_artifact_id=candidate_artifact.id,
             )
             assert report.content_json is not None
-            assert report.content_json["baseline"]["settings_snapshot_id"] == str(
-                baseline_snapshot.id
-            )
-            assert report.content_json["candidate"]["settings_snapshot_id"] == str(
-                candidate_snapshot.id
-            )
-            assert report.content_json["comparison"]["content_changed"] is True
-            assert report.content_json["comparison"]["average_score_delta"] == pytest.approx(0.1)
-            assert report.content_json["comparison"]["output_tokens_delta"] == -20
-            assert report.content_json["comparison"]["cost_delta"] == "-0.050000"
+            baseline_report = report.content_json["baseline"]
+            candidate_report = report.content_json["candidate"]
+            comparison = report.content_json["comparison"]
+            assert isinstance(baseline_report, dict)
+            assert isinstance(candidate_report, dict)
+            assert isinstance(comparison, dict)
+            assert baseline_report["settings_snapshot_id"] == str(baseline_snapshot.id)
+            assert candidate_report["settings_snapshot_id"] == str(candidate_snapshot.id)
+            assert comparison["content_changed"] is True
+            assert comparison["average_score_delta"] == pytest.approx(0.1)
+            assert comparison["output_tokens_delta"] == -20
+            assert comparison["cost_delta"] == "-0.050000"
             assert report.content_json["promotion"] == {
                 "mode": "manual_only",
                 "auto_promoted": False,
@@ -420,31 +415,24 @@ async def test_replay_eval_rejects_unfinished_baseline() -> None:
         transaction = await connection.begin()
         session = AsyncSession(bind=connection, expire_on_commit=False)
         try:
-            baseline, _, artifact, _, candidate_snapshot = await _create_baseline(session)
+            (
+                baseline,
+                _,
+                artifact,
+                baseline_manifest,
+                _,
+                candidate_snapshot,
+            ) = await _create_baseline(session)
             baseline.status = "running"
             baseline.completed_at = None
             await session.flush()
-            manifest_id = (
-                await session.execute(
-                    select(__import__(
-                        "app.modules.harness.models",
-                        fromlist=["ContextManifest"],
-                    ).ContextManifest.id).where(
-                        __import__(
-                            "app.modules.harness.models",
-                            fromlist=["ContextManifest"],
-                        ).ContextManifest.run_id
-                        == baseline.id
-                    )
-                )
-            ).scalar_one()
             with pytest.raises(ReplayEvalError, match="must be completed"):
                 await create_eval_run(
                     session,
                     baseline_run_id=baseline.id,
                     candidate_settings_snapshot_id=candidate_snapshot.id,
                     baseline_artifact_id=artifact.id,
-                    baseline_context_manifest_id=manifest_id,
+                    baseline_context_manifest_id=baseline_manifest.id,
                 )
         finally:
             await session.close()
