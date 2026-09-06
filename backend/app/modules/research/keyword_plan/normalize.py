@@ -11,12 +11,12 @@ from app.modules.research.keyword_plan.contracts import (
 )
 
 _SPACE_RE = re.compile(r"\s+")
-_NON_WORD_RE = re.compile(r"[^a-z0-9\s]+")
+_NON_WORD_RE = re.compile(r"[^\w\s]+", flags=re.UNICODE)
 
 
 def normalize_text(value: str) -> str:
     lowered = value.casefold().strip()
-    lowered = _NON_WORD_RE.sub(" ", lowered)
+    lowered = _NON_WORD_RE.sub(" ", lowered).replace("_", " ")
     return _SPACE_RE.sub(" ", lowered).strip()
 
 
