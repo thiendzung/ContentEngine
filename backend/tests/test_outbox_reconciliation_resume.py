@@ -26,6 +26,7 @@ from app.modules.harness.outbox import (
     complete_outbox_intent,
     create_outbox_intent,
     get_outbox_intent,
+    mark_outbox_needs_reconciliation,
     prepare_outbox_dispatch,
     requires_reconciliation,
     side_effect_request,
@@ -239,6 +240,15 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
                 )
 
             reconciliation = await fake.reconcile(side_effect_request(after_restart))
+            with pytest.raises(OutboxStateError, match="valid job lease"):
+                await apply_reconciliation_result(
+                    session,
+                    intent_id=intent.id,
+                    job_id=job.id,
+                    worker_id="worker-1",
+                    result=reconciliation,
+                )
+
             completed = await apply_reconciliation_result(
                 session,
                 intent_id=intent.id,
@@ -248,9 +258,8 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
             )
             assert completed.status == "completed"
             assert completed.external_ref == accepted.external_ref
-            await complete_job(session, job_id=job.id, worker_id="worker-2")
-            assert fake.execute_count == 1
 
+            # Even while worker-2 still owns the lease, completed intent blocks resend.
             with pytest.raises(OutboxStateError, match="completed"):
                 await prepare_outbox_dispatch(
                     session,
@@ -258,6 +267,20 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
                     job_id=job.id,
                     worker_id="worker-2",
                 )
+            assert fake.execute_count == 1
+
+            await complete_job(session, job_id=job.id, worker_id="worker-2")
+            assert fake.execute_count == 1
+
+            # Once the job is complete, lack of a valid lease independently blocks resend.
+            with pytest.raises(OutboxStateError, match="valid job lease"):
+                await prepare_outbox_dispatch(
+                    session,
+                    intent_id=intent.id,
+                    job_id=job.id,
+                    worker_id="worker-2",
+                )
+            assert fake.execute_count == 1
         finally:
             await session.close()
             await transaction.rollback()
@@ -349,6 +372,15 @@ async def test_confirmed_absent_can_retry_but_unknown_cannot_blind_retry() -> No
                 job_id=job2.id,
                 worker_id="worker-b",
             )
+            ambiguous = await mark_outbox_needs_reconciliation(
+                session,
+                intent_id=intent2.id,
+                job_id=job2.id,
+                worker_id="worker-b",
+                error_class="tool_transient",
+                message="provider timeout after send",
+            )
+            assert ambiguous.status == "needs_reconciliation"
             fake.force_unknown = True
             unknown = await fake.reconcile(side_effect_request(processing2))
             unresolved = await apply_reconciliation_result(
@@ -367,6 +399,66 @@ async def test_confirmed_absent_can_retry_but_unknown_cannot_blind_retry() -> No
                     worker_id="worker-b",
                 )
             assert fake.execute_count == 1
+        finally:
+            await session.close()
+            await transaction.rollback()
+
+
+@pytest.mark.asyncio
+async def test_reconciliation_conflict_stops_side_effect_explicitly() -> None:
+    fake = FakeExternalSideEffect()
+    async with engine.connect() as connection:
+        transaction = await connection.begin()
+        session = AsyncSession(bind=connection, expire_on_commit=False)
+        try:
+            run, step = await _create_run_and_step(session)
+            intent = await create_outbox_intent(
+                session,
+                run_id=run.id,
+                intent_type="publish",
+                idempotency_key=f"publish:{run.id}",
+                payload_ref="artifact://final-v1",
+            )
+            job = await enqueue_job(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                dedupe_key=f"outbox:{intent.idempotency_key}",
+            )
+            claimed = await claim_next_job(
+                session,
+                worker_id="worker-conflict",
+                lease_duration=timedelta(seconds=30),
+            )
+            assert claimed is not None
+            await prepare_outbox_dispatch(
+                session,
+                intent_id=intent.id,
+                job_id=job.id,
+                worker_id="worker-conflict",
+            )
+            failed = await apply_reconciliation_result(
+                session,
+                intent_id=intent.id,
+                job_id=job.id,
+                worker_id="worker-conflict",
+                result=ReconciliationResult(
+                    outcome="conflict",
+                    external_ref="external://different-record",
+                    message="external payload does not match durable intent",
+                ),
+            )
+            assert failed.status == "failed"
+            assert failed.error_json is not None
+            assert failed.error_json["class"] == "publish_conflict"
+            with pytest.raises(OutboxStateError, match="status: failed"):
+                await prepare_outbox_dispatch(
+                    session,
+                    intent_id=intent.id,
+                    job_id=job.id,
+                    worker_id="worker-conflict",
+                )
+            assert fake.execute_count == 0
         finally:
             await session.close()
             await transaction.rollback()
