@@ -65,7 +65,7 @@ Draft PR:
 
 Code gate CI:
 
-`34000730552 — PASS`
+`34004429733 — PASS`
 
 Evidence:
 
@@ -123,3 +123,56 @@ Do not select an opportunity yet. Human selection comes after review of this fir
 `First-time art buyer worries about choosing the wrong painting.`
 
 It remains a hypothesis until reviewed evidence supports a status change.
+
+---
+
+## Final real-seed checkpoint
+
+Canonical Research artifact after Founder configured local API keys:
+
+`artifacts/research/ce01-research-spike-20260906T013152Z.json`
+
+SHA-256:
+
+`7d8b1b59f735a69b7b4f84b08ad5d2af33246a9545f20e8fad15df61c09b682a`
+
+Verified live provider path:
+
+- Serper;
+- Tavily;
+- Exa;
+- Jina;
+- Brave not called because fallback was not required.
+
+Final cleaned Opportunity Map after Pillar coherence guard:
+
+`artifacts/research/ce01-opportunity-map-20260906T014147Z.json`
+
+Result:
+
+- Signals: 34;
+- Questions: 9;
+- Clusters: 4;
+- Opportunities: 4;
+- broad unsupported Pillar: not created;
+- `artist_process`: DO_NOT_WRITE / NO;
+- `painting_technique`: DO_NOT_WRITE / NO;
+- `negotiation`: CREATE / LATER;
+- `price`: CREATE / LATER;
+- NeedHypothesis: PROPOSED.
+
+## Human selection — 2026-09-06
+
+Founder selected the `price` opportunity for the first Golden Journal experiment.
+
+Stable opportunity ID:
+
+`opp_c120c916c93b5e08`
+
+Selection reason:
+
+> Price is the strongest buyer-relevant cluster in the verified real-seed run, with repeated search signals and clear purchase-evaluation intent. It is selected for the first Golden Journal experiment, subject to MOTGU-owned material, stronger evidence and editorial review before drafting.
+
+Selection does **not** mean the underlying NeedHypothesis is proven. Status must remain `PROPOSED` until reviewed evidence supports a later change.
+
+Before T01.30 is marked complete, rerun the canonical artifact with this selection so the local Opportunity Map records HumanSelection and creates the ContentExperiment draft. Do not add MOTGU-owned material yet and do not call Research APIs again.
