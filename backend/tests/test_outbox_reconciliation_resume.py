@@ -1,11 +1,11 @@
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import engine
+from app.core.database import SessionLocal, engine
 from app.modules.content_engine.models import (
     ContentCase,
     ContentOpportunity,
@@ -17,6 +17,7 @@ from app.modules.content_engine.models import (
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.outbox import (
     IdempotencyConflictError,
+    OutboxIntent,
     OutboxStateError,
     ReconciliationRequiredError,
     ReconciliationResult,
@@ -462,3 +463,150 @@ async def test_reconciliation_conflict_stops_side_effect_explicitly() -> None:
         finally:
             await session.close()
             await transaction.rollback()
+
+
+@pytest.mark.asyncio
+async def test_processing_state_is_committed_before_external_call_and_survives_restart() -> None:
+    fake = FakeExternalSideEffect()
+    cleanup_ids: dict[str, UUID] = {}
+    request: SideEffectRequest | None = None
+    external_ref: str | None = None
+    try:
+        async with SessionLocal() as session:
+            run, step = await _create_run_and_step(session)
+            content_case = await session.get(ContentCase, run.content_case_id)
+            assert content_case is not None
+            intent = await create_outbox_intent(
+                session,
+                run_id=run.id,
+                intent_type="publish",
+                idempotency_key=f"publish:{run.id}",
+                payload_ref="artifact://committed-final-v1",
+            )
+            job = await enqueue_job(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                dedupe_key=f"outbox:{intent.idempotency_key}",
+            )
+            cleanup_ids = {
+                "intent": intent.id,
+                "job": job.id,
+                "step": step.id,
+                "run": run.id,
+                "locale_variant": run.locale_variant_id,
+                "settings_snapshot": run.settings_snapshot_id,
+                "content_case": run.content_case_id,
+                "opportunity": content_case.content_opportunity_id,
+                "hypothesis": content_case.need_hypothesis_id,
+            }
+            await session.commit()
+
+        async with SessionLocal() as session:
+            claimed = await claim_next_job(
+                session,
+                worker_id="commit-worker-1",
+                lease_duration=timedelta(seconds=30),
+            )
+            assert claimed is not None and claimed.id == cleanup_ids["job"]
+            processing = await prepare_outbox_dispatch(
+                session,
+                intent_id=cleanup_ids["intent"],
+                job_id=cleanup_ids["job"],
+                worker_id="commit-worker-1",
+            )
+            request = side_effect_request(processing)
+            await session.commit()
+
+        # The external call happens only after `processing` is durably committed.
+        assert request is not None
+        accepted = await fake.execute(request)
+        external_ref = accepted.external_ref
+        assert fake.execute_count == 1
+
+        async with SessionLocal() as session:
+            persisted = await get_outbox_intent(
+                session,
+                intent_id=cleanup_ids["intent"],
+            )
+            assert persisted.status == "processing"
+            job = await session.get(Job, cleanup_ids["job"])
+            assert job is not None
+            job.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+            await session.commit()
+
+        async with SessionLocal() as session:
+            reclaimed = await reclaim_expired_job(
+                session,
+                worker_id="commit-worker-2",
+                lease_duration=timedelta(seconds=30),
+            )
+            assert reclaimed is not None and reclaimed.id == cleanup_ids["job"]
+            persisted = await get_outbox_intent(
+                session,
+                intent_id=cleanup_ids["intent"],
+            )
+            assert requires_reconciliation(persisted)
+            reconciliation = await fake.reconcile(side_effect_request(persisted))
+            completed = await apply_reconciliation_result(
+                session,
+                intent_id=cleanup_ids["intent"],
+                job_id=cleanup_ids["job"],
+                worker_id="commit-worker-2",
+                result=reconciliation,
+            )
+            assert completed.status == "completed"
+            await complete_job(
+                session,
+                job_id=cleanup_ids["job"],
+                worker_id="commit-worker-2",
+            )
+            await session.commit()
+
+        async with SessionLocal() as session:
+            final_intent = await get_outbox_intent(
+                session,
+                intent_id=cleanup_ids["intent"],
+            )
+            assert final_intent.status == "completed"
+            assert final_intent.external_ref == external_ref
+            assert fake.execute_count == 1
+    finally:
+        if cleanup_ids:
+            async with SessionLocal() as session:
+                await session.execute(
+                    delete(OutboxIntent).where(OutboxIntent.id == cleanup_ids["intent"])
+                )
+                await session.execute(delete(Job).where(Job.id == cleanup_ids["job"]))
+                await session.execute(
+                    delete(StepRun).where(StepRun.id == cleanup_ids["step"])
+                )
+                await session.execute(
+                    delete(ContentRun).where(ContentRun.id == cleanup_ids["run"])
+                )
+                await session.execute(
+                    delete(LocaleVariant).where(
+                        LocaleVariant.id == cleanup_ids["locale_variant"]
+                    )
+                )
+                await session.execute(
+                    delete(ContentCase).where(
+                        ContentCase.id == cleanup_ids["content_case"]
+                    )
+                )
+                await session.execute(
+                    delete(ContentOpportunity).where(
+                        ContentOpportunity.id == cleanup_ids["opportunity"]
+                    )
+                )
+                await session.execute(
+                    delete(NeedHypothesis).where(
+                        NeedHypothesis.id == cleanup_ids["hypothesis"]
+                    )
+                )
+                await session.execute(
+                    delete(SettingsSnapshot).where(
+                        SettingsSnapshot.id == cleanup_ids["settings_snapshot"]
+                    )
+                )
+                await session.commit()
