@@ -13,8 +13,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("UPDATE content_runs SET status = 'waiting_approval' WHERE status = 'paused'")
     op.drop_constraint("ck_content_run_status", "content_runs", type_="check")
+    op.execute("UPDATE content_runs SET status = 'waiting_approval' WHERE status = 'paused'")
     op.create_check_constraint(
         "ck_content_run_status",
         "content_runs",
@@ -69,8 +69,8 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS validate_step_run_status_transition")
     op.execute("DROP TRIGGER IF EXISTS content_run_status_transition_guard ON content_runs")
     op.execute("DROP FUNCTION IF EXISTS validate_content_run_status_transition")
-    op.execute("UPDATE content_runs SET status = 'paused' WHERE status = 'waiting_approval'")
     op.drop_constraint("ck_content_run_status", "content_runs", type_="check")
+    op.execute("UPDATE content_runs SET status = 'paused' WHERE status = 'waiting_approval'")
     op.create_check_constraint(
         "ck_content_run_status",
         "content_runs",
