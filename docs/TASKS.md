@@ -23,7 +23,7 @@ Status: **CLOSED**.
 
 ## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
 
-Status: **ACTIVE**.
+Status: **PASS / PR-E READY FOR REVIEW**.
 
 ### PR-A — Repository Skeleton
 
@@ -113,11 +113,13 @@ PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved 
 
 - [x] T01.38 Implement/manual-drive Angle step.
 - [x] T01.39 Implement/manual-drive Outline step.
-- [ ] T01.40 Implement Draft step through ModelRouter seam or temporary single adapter.
-- [ ] T01.41 Add basic assertion audit.
-- [ ] T01.42 Run human editorial review.
-- [ ] T01.43 Record research/content failure notes without auto-changing contract.
-- [ ] T01.44 Gate: decide whether Research + Opportunity Map + content contract is good enough for CE02.
+- [x] T01.40 Implement Draft step through ModelRouter seam or temporary single adapter.
+- [x] T01.41 Add basic assertion audit.
+- [x] T01.42 Run human editorial review.
+- [x] T01.43 Record research/content failure notes without auto-changing contract.
+- [x] T01.44 Gate: decide whether Research + Opportunity Map + content contract is good enough for CE02.
+
+PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journal V2 on `2026-09-06`. Runtime Artwork anchor `Tranh đường tàu phố cổ Hà Nội — Hoa Lê` was verified before Draft. Draft EN V2 is `docs/17-CE01-GOLDEN-JOURNAL-DRAFT-EN.md`; Assertion Audit V2 is `docs/18-CE01-GOLDEN-JOURNAL-ASSERTION-AUDIT.md` with zero critical unsupported assertions. Failure/improvement notes are preserved in `docs/logs/2026-09-06-ce01-improvement-loop.md` and final closeout in `docs/logs/2026-09-06-ce01-closeout.md`. T01.44 decision: `GO TO CE02`. NeedHypothesis remains `PROPOSED`.
 
 ### CE01 exit gate
 
@@ -125,8 +127,8 @@ PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved 
 - [x] One founder-proposed NeedHypothesis + real signals produces a readable Opportunity Map.
 - [x] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
 - [x] Selected research/evidence sources are demonstrably better than blindly taking Google top results.
-- [ ] One real Journal reaches human review.
-- [ ] Zero critical unsupported assertion in the reviewed candidate.
+- [x] One real Journal reaches human review.
+- [x] Zero critical unsupported assertion in the reviewed candidate.
 
 ---
 
