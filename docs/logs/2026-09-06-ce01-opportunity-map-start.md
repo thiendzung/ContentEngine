@@ -72,51 +72,9 @@ Evidence:
 - backend lint: PASS;
 - backend strict typecheck: PASS — 39 source files;
 - database migration: PASS;
-- backend tests: PASS — 35 tests;
+- backend tests: PASS — 41 tests after final Pillar guard;
 - OpenAPI export: PASS;
 - frontend install/type generation/lint/typecheck/build: PASS.
-
-Status at this checkpoint:
-
-`CODE GATE PASS / REAL-SEED GATE PENDING`
-
-## Remaining gate work
-
-1. Run the real PR-B research artifact through the Opportunity Map runner.
-2. Add reviewed MARKET observation(s) only when literal source support exists; search results alone must not become customer truth.
-3. Attach only project-known/approved MOTGU material; do not invent Right-to-Win proof.
-4. Produce and inspect the readable Markdown Opportunity Map.
-5. Human selects one opportunity for T01.30.
-6. Re-run with that selection so a ContentExperiment draft is recorded.
-7. Confirm selection does not promote the NeedHypothesis.
-8. Only then mark T01.22–T01.30 complete and make PR #6 ready for review.
-
-## Local Agent task
-
-Use the existing local artifact from PR-B:
-
-`artifacts/research/ce01-research-spike-20260905T235245Z.json`
-
-After syncing `ce01-opportunity-map`, run the standard local checks, then from `backend/` run:
-
-```bash
-python -m scripts.run_opportunity_map \
-  ../artifacts/research/ce01-research-spike-20260905T235245Z.json
-```
-
-This first run intentionally uses no invented MOTGU material.
-
-Return:
-
-- local lint/type/test result;
-- generated JSON path;
-- generated Markdown path;
-- full sanitized Markdown Opportunity Map or its opportunity sections;
-- counts: signals/questions/clusters/opportunities;
-- hypothesis status;
-- any classification that looks obviously wrong.
-
-Do not select an opportunity yet. Human selection comes after review of this first real map.
 
 ## Locked founder-proposed hypothesis
 
@@ -173,7 +131,7 @@ Selection reason:
 
 > Price is the strongest buyer-relevant cluster in the verified real-seed run, with repeated search signals and clear purchase-evaluation intent. It is selected for the first Golden Journal experiment, subject to MOTGU-owned material, stronger evidence and editorial review before drafting.
 
-Selection does **not** mean the underlying NeedHypothesis is proven. Status must remain `PROPOSED` until reviewed evidence supports a later change.
+Selection does **not** mean the underlying NeedHypothesis is proven. Status remains `PROPOSED`.
 
 ### ID correction
 
@@ -181,4 +139,68 @@ A previous log/PR update incorrectly recorded `opp_c120c916c93b5e08`, derived ma
 
 Rule going forward: selection IDs must be copied from the generated Opportunity Map artifact for the exact code/input combination; do not derive them manually.
 
-Before T01.30 is marked complete, rerun the canonical artifact with `opp_ea484183ba36c6b2` so the local Opportunity Map records HumanSelection and creates the ContentExperiment draft. Do not add MOTGU-owned material yet and do not call Research APIs again.
+## Selected artifact — PASS
+
+Selected rerun used the canonical Research artifact and made zero Research API calls.
+
+Artifacts:
+
+- JSON: `artifacts/research/ce01-opportunity-map-20260906T020602Z.json`;
+- Markdown: `artifacts/research/ce01-opportunity-map-20260906T020602Z.md`;
+- JSON SHA-256: `55c5657ce6a2fb54f2b8328405bddea727dd634a23fdf33b1ba841845a5c4a2e`.
+
+Counts stayed stable:
+
+- Signals: 34;
+- Questions: 9;
+- Clusters: 4;
+- Opportunities: 4;
+- Pillar: not created.
+
+HumanSelection recorded:
+
+- opportunity: `opp_ea484183ba36c6b2`;
+- selected by: `founder`;
+- selected at: `2026-09-06T02:06:02.678002+00:00`.
+
+ContentExperiment draft recorded:
+
+- ID: `exp_cdc69b59a413393c`;
+- content opportunity: `opp_ea484183ba36c6b2`;
+- need hypothesis: `need_fc6259977d637e6f`;
+- hypothesis version: `1`;
+- status: `PLANNED`;
+- result: `PENDING`.
+
+Measurement rules explicitly avoid concluding from one click/inquiry and require `INCONCLUSIVE` when exposure is insufficient.
+
+## PR-C gate result
+
+`PASS / READY FOR REVIEW`
+
+T01.22–T01.30 are complete.
+
+Important open gap for PR-D:
+
+- no reviewed MOTGU-direct signal yet;
+- no contradiction signal yet;
+- no direct MARKET observation outside search-result signals yet;
+- no MOTGU Right-to-Win material yet;
+- no MOTGU-site behaviour signal yet.
+
+Therefore `price` is a selected content experiment candidate, not a proven customer truth and not yet approved for drafting.
+
+## NEXT
+
+After PR #6 review/merge:
+
+`PR-D — editorial/content inputs`
+
+Tasks T01.31–T01.37:
+
+- positive/negative MOTGU calibration excerpts;
+- human editorial review form;
+- one real ContentCase;
+- one LocaleVariant;
+- selected/manual EvidenceSet;
+- Manual OriginalityPack with real MOTGU-owned material.
