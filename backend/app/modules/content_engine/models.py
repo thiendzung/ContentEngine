@@ -490,3 +490,4 @@ class CalibrationExample(TimestampMixin, Base):
 
 def register_models() -> None:
     """Import hook used by migration metadata discovery."""
+    from app.modules.knowledge import models as _knowledge_models  # noqa: F401
