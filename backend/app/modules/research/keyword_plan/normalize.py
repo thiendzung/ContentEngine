@@ -21,15 +21,14 @@ def normalize_text(value: str) -> str:
 
 
 def stable_id(prefix: str, *parts: str) -> str:
-    payload = "\x1f".join(parts).encode("utf-8")
+    payload = "\x1f".join(parts).encode()
     digest = hashlib.sha256(payload).hexdigest()[:16]
     return f"{prefix}_{digest}"
 
 
 def signal_fingerprint(*, locale: str, observed_text: str) -> str:
-    return hashlib.sha256(
-        f"{locale.casefold()}\x1f{normalize_text(observed_text)}".encode("utf-8")
-    ).hexdigest()
+    payload = f"{locale.casefold()}\x1f{normalize_text(observed_text)}".encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _search_signal_observation(signal: SearchSignal) -> str:
