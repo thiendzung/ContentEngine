@@ -1,6 +1,6 @@
 # CE01 — GOLDEN JOURNAL — DRAFT EN V1
 
-Status: **DRAFT / T01.40 CANDIDATE / NOT YET HUMAN-APPROVED**
+Status: **DRAFT / T01.40 PASS / READY FOR HUMAN EDITORIAL REVIEW AFTER ASSERTION AUDIT**
 
 Phase: `CE01 / PR-E — Walking Skeleton`
 
@@ -21,6 +21,7 @@ This file is the first real Journal candidate for ContentEngine. It is not a Wor
 - OriginalityPack: `opack_ce01_price_v1` — `APPROVED_FOR_CE01`
 - Outline: `docs/15-CE01-GOLDEN-JOURNAL-OUTLINE.md` — Founder approved V2
 - Artwork fact lock: `docs/16-CE01-ARTWORK-ANCHOR.md`
+- Assertion Audit: `docs/18-CE01-GOLDEN-JOURNAL-ASSERTION-AUDIT.md` — PASS for human editorial review
 
 ## Content Memory state for this draft
 
@@ -259,6 +260,8 @@ After publication and enough exposure:
 
 ## Next gate
 
-Run T01.41 Assertion Audit before asking for final human editorial review.
+T01.41 Assertion Audit: `PASS FOR HUMAN EDITORIAL REVIEW`.
 
-This Draft must not be marked publishable until zero critical unsupported assertions remain.
+Next: T01.42 Founder human editorial review.
+
+This Draft must not be marked publishable until the Founder review verdict is recorded.
