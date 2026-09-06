@@ -398,10 +398,10 @@ Never claim completion without evidence.
 
 Current priority:
 
-`CE02 — Core Data + Settings`
+`CE03 — Durable Harness`
 
 Current implementation slice:
 
-`CE02 PR-A — Core Content Data`
+`CE02 Final PR — Contract Integration`
 
-CE01 is CLOSED / PASS. CE02 is converting the proven CE01 content-planning contracts into structured, versioned persistence. Do not scope-creep PR-A into Settings, Evidence/Knowledge, Run records, WordPress or large UI.
+CE01 is CLOSED / PASS. CE02 is READY FOR REVIEW with structured, versioned persistence from planning signals through run records and final content lineage. CE03 owns durable runtime orchestration only: queue, worker, lease, retry, resume, outbox and reconciliation.

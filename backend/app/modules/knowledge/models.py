@@ -146,6 +146,7 @@ class Evidence(TimestampMixin, Base):
     claim_id: Mapped[UUID] = mapped_column(ForeignKey("claims.id"), nullable=False)
     source_document_id: Mapped[UUID | None] = mapped_column(ForeignKey("source_documents.id"))
     chunk_id: Mapped[UUID | None] = mapped_column(ForeignKey("knowledge_chunks.id"))
+    media_observation_id: Mapped[UUID | None] = mapped_column(ForeignKey("media_observations.id"))
     locator: Mapped[str] = mapped_column(Text, nullable=False)
     excerpt: Mapped[str] = mapped_column(Text, nullable=False)
     relation: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -160,7 +161,51 @@ class Evidence(TimestampMixin, Base):
             name="ck_evidence_relation",
         ),
         CheckConstraint(
-            "source_document_id is not null or chunk_id is not null", name="ck_evidence_source_ref"
+            "source_document_id is not null or chunk_id is not null "
+            "or media_observation_id is not null",
+            name="ck_evidence_source_ref",
+        ),
+    )
+
+
+class MediaAsset(TimestampMixin, Base):
+    __tablename__ = "media_assets"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    entity_id: Mapped[UUID | None] = mapped_column(ForeignKey("entities.id"))
+    source_id: Mapped[UUID] = mapped_column(ForeignKey("sources.id"), nullable=False)
+    external_id: Mapped[str | None] = mapped_column(String(255))
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    rights_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("source_id", "content_hash", name="uq_media_asset_source_content"),
+    )
+
+
+class MediaObservation(TimestampMixin, Base):
+    __tablename__ = "media_observations"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    media_asset_id: Mapped[UUID] = mapped_column(ForeignKey("media_assets.id"), nullable=False)
+    observation_text: Mapped[str] = mapped_column(Text, nullable=False)
+    method: Mapped[str] = mapped_column(String(16), nullable=False)
+    confidence: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="candidate")
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        CheckConstraint(
+            "method in ('human','model','metadata')", name="ck_media_observation_method"
+        ),
+        CheckConstraint(
+            "status in ('candidate','approved','rejected')", name="ck_media_observation_status"
+        ),
+        CheckConstraint(
+            "status <> 'approved' or approved_by is not null",
+            name="ck_media_observation_approved_by",
         ),
     )
 

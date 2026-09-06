@@ -203,7 +203,7 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 
 - `CE00 — Foundation Contracts`: CLOSED.
 - `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: CLOSED / PASS.
-- `CE02 — Core Data + Settings`: ACTIVE.
-- Current PR: `CE02 PR-A — Core Content Data`.
+- `CE02 — Core Data + Settings`: READY FOR REVIEW.
+- Current PR: `CE02 Final PR — Contract Integration`.
 
-CE02 đang chuyển các dữ liệu/contract đã được CE01 chứng minh thành dữ liệu PostgreSQL có cấu trúc và có version. CE02 không nhằm tăng số lượng bài viết.
+CE02 đã chuyển core data, settings, evidence, media, run records và version lineage thành persistence có cấu trúc, provenance và immutable snapshots. CE03 bắt đầu từ durable runtime orchestration, không lặp lại data layer này.
