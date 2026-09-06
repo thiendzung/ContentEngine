@@ -23,7 +23,7 @@ Status: **CLOSED**.
 
 ## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
 
-Status: **PASS / PR-E READY FOR REVIEW**.
+Status: **CLOSED / PASS / GO TO CE02**.
 
 ### PR-A — Repository Skeleton
 
@@ -109,7 +109,13 @@ Merge commit: `fd86b67d587fdab663915fac106f751f34551c59`
 
 PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved positive English examples, 4 founder-approved negative examples, the human editorial review form, ContentCase `cc_ce01_price_001`, English LocaleVariant `lv_ce01_price_en_001`, locked EvidenceSet `es_ce01_price_v1`, and approved OriginalityPack `opack_ce01_price_v1`. Founder decision on `2026-09-06`: `APPROVE CALIBRATION + CONTENT DIRECTION`. The approved scope is limited to helping a first-time buyer understand/evaluate a displayed artwork price; it does not claim an exact MOTGU/artist pricing formula. NeedHypothesis remains `PROPOSED`.
 
-### Walking Skeleton
+### PR-E — Golden Journal Walking Skeleton
+
+Status: **CLOSED / MERGED / PASS**.
+
+PR: `#8 — CE01 PR-E — Golden Journal walking skeleton`
+
+Merge commit: `b9b9d94c6052750215194db66f25003280489cbc`
 
 - [x] T01.38 Implement/manual-drive Angle step.
 - [x] T01.39 Implement/manual-drive Outline step.
