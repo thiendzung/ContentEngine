@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.modules.harness.models import Job, TimestampMixin, new_id, utc_now
+from app.modules.harness.models import ContentRun, Job, TimestampMixin, new_id, utc_now
 
 ReconciliationOutcome = Literal[
     "confirmed_success",
@@ -111,6 +111,12 @@ async def create_outbox_intent(
         raise ValueError("idempotency_key is required")
     if not payload_ref:
         raise ValueError("payload_ref is required")
+
+    run = await session.get(ContentRun, run_id)
+    if run is None:
+        raise ValueError("ContentRun not found")
+    if run.run_mode == "eval":
+        raise OutboxStateError("eval ContentRun cannot create external side effects")
 
     statement = (
         insert(OutboxIntent)
