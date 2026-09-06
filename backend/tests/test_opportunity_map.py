@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from app.modules.research.artifact import research_spike_json
-from app.modules.research.contracts import ResearchSignalKind, ResearchSpikeResult, SearchSignal
+from app.modules.research.contracts import (
+    ResearchSignalKind,
+    ResearchSpikeResult,
+    SearchSignal,
+)
 from app.modules.research.keyword_plan.artifact import (
     load_research_spike_for_opportunity_map,
     opportunity_map_markdown,
@@ -17,7 +21,10 @@ from app.modules.research.keyword_plan.contracts import (
     OpportunityPriority,
 )
 from app.modules.research.keyword_plan.normalize import normalize_text
-from app.modules.research.keyword_plan.service import OpportunityMapRequest, OpportunityMapService
+from app.modules.research.keyword_plan.service import (
+    OpportunityMapRequest,
+    OpportunityMapService,
+)
 
 SEED = "First-time art buyer worries about choosing the wrong painting."
 
@@ -74,16 +81,22 @@ def test_search_duplicates_are_retained_but_not_counted_as_independent() -> None
 
     assert result.need_hypothesis.status is HypothesisStatus.PROPOSED
     assert len(result.signals) == 3
-    assert sum(signal.duplicate_of is not None for signal in result.signals) == 1
+    assert sum(item.duplicate_of is not None for item in result.signals) == 1
     assert len(result.questions) == 2
-    assert all(opportunity.priority is OpportunityPriority.LATER for opportunity in result.opportunities)
+    assert all(
+        item.priority is OpportunityPriority.LATER
+        for item in result.opportunities
+    )
 
 
 def test_opportunity_map_builds_pillar_clusters_and_niche_from_owned_material() -> None:
     material = MotguMaterial(
         ref="motgu:real-artwork-viewing",
         kind="first_party_experience",
-        description="MOTGU can show real original artworks and explain practical viewing choices in Hanoi.",
+        description=(
+            "MOTGU can show real original artworks and explain practical "
+            "viewing choices in Hanoi."
+        ),
     )
     research = _research(
         _signal("How do I know what art I like?"),
@@ -91,12 +104,15 @@ def test_opportunity_map_builds_pillar_clusters_and_niche_from_owned_material() 
         _signal("How much should I spend on my first painting?"),
         _signal("How do I bring a painting home from Vietnam?"),
     )
+    pillar_question = (
+        "How can a first-time buyer choose an original painting with confidence?"
+    )
 
     result = OpportunityMapService().build(
         research,
         _request(
             materials=(material,),
-            pillar_question="How can a first-time buyer choose an original painting with confidence?",
+            pillar_question=pillar_question,
         ),
     )
 
@@ -118,7 +134,9 @@ def test_existing_content_changes_create_decision_to_refresh_or_link_only() -> N
         stale=True,
     )
     result = OpportunityMapService().build(research, _request(existing=(stale,)))
-    authenticity = next(item for item in result.opportunities if item.topic_key == "authenticity")
+    authenticity = next(
+        item for item in result.opportunities if item.topic_key == "authenticity"
+    )
     assert authenticity.decision is ContentDecision.REFRESH
 
     covered = ExistingContentRef(
@@ -129,7 +147,9 @@ def test_existing_content_changes_create_decision_to_refresh_or_link_only() -> N
         covers_answer=True,
     )
     result = OpportunityMapService().build(research, _request(existing=(covered,)))
-    authenticity = next(item for item in result.opportunities if item.topic_key == "authenticity")
+    authenticity = next(
+        item for item in result.opportunities if item.topic_key == "authenticity"
+    )
     assert authenticity.decision is ContentDecision.LINK_ONLY
 
 
