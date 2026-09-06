@@ -37,7 +37,7 @@ Merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`
 
 - [x] T01.1 Create branch `ce01-walking-skeleton` from clean main.
 - [x] T01.2 Create backend FastAPI package.
-- [x] T01.3 Create Next.js frontend shell tối thiểu.
+- [x] T01.3 Create frontend Next.js shell tối thiểu.
 - [x] T01.4 Add root developer scripts.
 - [x] T01.5 Add `.env.example`, never secrets.
 - [x] T01.6 Add PostgreSQL connection + migration framework.
@@ -137,7 +137,7 @@ PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved 
 - [ ] T02.5 Implement SettingsVersion/SettingsSnapshot.
 - [ ] T02.6 Implement Prompt/Recipe Registry.
 - [ ] T02.7 Implement Brand DNA/Language DNA validation.
-- [ ] T02.8 Add Calibration Example storage.
+- [ ] T02.8 Implement Calibration Example storage.
 - [ ] T02.9 Implement Source/SourceDocument/KnowledgeChunk.
 - [ ] T02.10 Implement Entity/Claim/Evidence/EvidenceSet.
 - [ ] T02.11 Implement OriginalityPack.
@@ -252,7 +252,7 @@ PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved 
 - [ ] T06.9 Source-copy/phrase-overlap evaluator.
 - [ ] T06.10 Human review form/UI.
 - [ ] T06.11 Golden Set storage/versioning.
-- [ ] T06.12 Weak/Failure Set storage/versioning.
+- [ ] T06.12 Weak/Failure Set storage.
 - [ ] T06.13 Pairwise regression runner.
 - [ ] T06.14 Candidate vs baseline report.
 - [ ] T06.15 Regression promotion gate.
