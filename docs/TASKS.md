@@ -170,7 +170,7 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 
 ## CE03 — Durable Harness
 
-Status: **ACTIVE — PR-A Durable Queue + Lease Core**.
+Status: **ACTIVE — PR-B Checkpoint + Approval + Retry + Budget**.
 
 - [x] T03.1 Implement Run state machine.
 - [x] T03.2 Implement StepRun attempt lifecycle.
@@ -178,11 +178,11 @@ Status: **ACTIVE — PR-A Durable Queue + Lease Core**.
 - [x] T03.4 Implement atomic worker claim.
 - [x] T03.5 Implement worker lease/heartbeat.
 - [x] T03.6 Implement expired lease reclaim.
-- [ ] T03.7 Implement checkpoints.
-- [ ] T03.8 Implement approval pause/resume.
-- [ ] T03.9 Implement artifact version invalidation of approval.
-- [ ] T03.10 Implement error classification + bounded retry.
-- [ ] T03.11 Implement per-run/per-step budget.
+- [x] T03.7 Implement checkpoints.
+- [x] T03.8 Implement approval pause/resume.
+- [x] T03.9 Implement artifact version invalidation of approval.
+- [x] T03.10 Implement error classification + bounded retry.
+- [x] T03.11 Implement per-run/per-step budget.
 - [ ] T03.12 Implement ModelRouter interface.
 - [ ] T03.13 Implement ToolAdapter interface.
 - [ ] T03.14 Implement ContextManifest creation/use.
