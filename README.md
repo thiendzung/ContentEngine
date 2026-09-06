@@ -207,7 +207,8 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE03 — Durable Harness`: ACTIVE.
 - `CE03 PR-A — Durable Queue + Lease Core`: CLOSED / MERGED / PASS.
 - `CE03 PR-B — Checkpoint + Approval + Retry + Budget`: CLOSED / MERGED / PASS.
-- `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`: ACTIVE.
-- Current PR: `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`.
+- `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`: CLOSED / MERGED / PASS.
+- `CE03 PR-D — Outbox + Reconciliation + Restart/Resume`: ACTIVE.
+- Current PR: `CE03 PR-D — Outbox + Reconciliation + Restart/Resume`.
 
-CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C tiếp tục với ModelRouter, ToolAdapter, ContextManifest và telemetry.
+CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D tiếp tục với outbox, reconciliation và restart/resume.

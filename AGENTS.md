@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`
+`CE03 PR-D — Outbox + Reconciliation + Restart/Resume`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = ACTIVE. PR-C owns ModelRouter, ToolAdapter, ContextManifest and ModelCall/ToolCall telemetry; outbox, reconciliation, restart/resume, duplicate side-effect prevention and replay/eval remain later CE03 slices.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = ACTIVE. PR-D owns durable outbox, reconciliation, restart/resume integration and duplicate side-effect prevention; replay/eval remains PR-E.
