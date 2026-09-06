@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
@@ -147,8 +148,15 @@ async def test_content_run_keeps_case_locale_and_settings_snapshot() -> None:
 async def test_step_attempt_is_unique() -> None:
     async with isolated_session() as session:
         _, run, _ = await create_run(session)
-        session.add(StepRun(run_id=run.id, step_key="outline", attempt=1))
+        step = StepRun(
+            run_id=run.id,
+            step_key="outline",
+            attempt=1,
+            error_json={"class": "temporary"},
+        )
+        session.add(step)
         await session.flush()
+        assert step.error_json == {"class": "temporary"}
         with pytest.raises(IntegrityError):
             async with session.begin_nested():
                 session.add(StepRun(run_id=run.id, step_key="outline", attempt=1))
@@ -156,7 +164,47 @@ async def test_step_attempt_is_unique() -> None:
 
 
 @pytest.mark.asyncio
-async def test_artifact_versions_are_append_only_and_approval_is_versioned() -> None:
+async def test_artifact_is_append_only_and_v2_does_not_inherit_v1_approval() -> None:
+    async with isolated_session() as session:
+        _, run, _ = await create_run(session)
+        first = artifact_row(run, 1)
+        session.add(first)
+        await session.flush()
+        approval = Approval(
+            run_id=run.id,
+            step_key="draft",
+            artifact_id=first.id,
+            decision="approved",
+            actor_id="reviewer-1",
+        )
+        session.add(approval)
+        await session.flush()
+        with pytest.raises(DBAPIError, match="artifact_is_immutable"):
+            async with session.begin_nested():
+                await session.execute(
+                    update(Artifact)
+                    .where(Artifact.id == first.id)
+                    .values(content_json={"version": 99})
+                )
+        with pytest.raises(DBAPIError, match="artifact_is_immutable"):
+            async with session.begin_nested():
+                await session.delete(first)
+                await session.flush()
+        second = artifact_row(run, 2)
+        session.add(second)
+        await session.flush()
+        stored_first = (
+            await session.execute(select(Artifact).where(Artifact.id == first.id))
+        ).scalar_one()
+        assert stored_first.content_json == {"version": 1, "body": "draft 1"}
+        assert second.version == 2
+        assert (
+            await session.execute(select(Approval).where(Approval.artifact_id == second.id))
+        ).scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_artifact_versions_are_append_only_and_approval_targets_artifact() -> None:
     async with isolated_session() as session:
         _, run, _ = await create_run(session)
         first = artifact_row(run, 1)
@@ -165,10 +213,10 @@ async def test_artifact_versions_are_append_only_and_approval_is_versioned() -> 
         await session.flush()
         approval = Approval(
             run_id=run.id,
+            step_key="draft",
             artifact_id=first.id,
-            artifact_version=first.version,
-            action="approve",
-            actor="reviewer",
+            decision="approved",
+            actor_id="reviewer",
         )
         session.add(approval)
         await session.flush()
@@ -177,7 +225,8 @@ async def test_artifact_versions_are_append_only_and_approval_is_versioned() -> 
         ).scalar_one()
         assert stored.content_json == {"version": 1, "body": "draft 1"}
         assert approval.artifact_id == first.id
-        assert approval.artifact_version == 1
+        assert approval.step_key == "draft"
+        assert approval.decision == "approved"
         assert second.id != first.id
         assert (
             await session.execute(select(Approval).where(Approval.artifact_id == second.id))
@@ -256,11 +305,15 @@ async def test_model_tool_and_quality_ledgers_reference_the_run_context_and_arti
             task_key="draft",
             provider="test-provider",
             model="test-model",
+            purpose="draft generation",
             prompt_version="prompt:1",
+            status="completed",
             input_tokens=10,
             output_tokens=20,
+            cost=Decimal("0.012300"),
             latency_ms=30,
             finish_reason="stop",
+            error_class=None,
             result_artifact_id=artifact.id,
         )
         tool_call = ToolCall(
@@ -270,22 +323,45 @@ async def test_model_tool_and_quality_ledgers_reference_the_run_context_and_arti
             request_fingerprint="request:1",
             result_ref="result:1",
             latency_ms=12,
+            status="failed",
             retry_count=1,
-            error="temporary failure recovered",
+            error_class="timeout",
         )
         evaluation = QualityEvaluation(
             run_id=run.id,
             artifact_id=artifact.id,
             evaluator_key="assertion-audit",
+            evaluator_version="1",
             evaluator_type="deterministic",
             result="pass",
+            score=1.0,
             severity="none",
-            details_json={"checked": 3},
+            findings_json={"checked": 3},
         )
         session.add_all([model_call, tool_call, evaluation])
         await session.flush()
         assert model_call.context_manifest_id == manifest.id
         assert model_call.result_artifact_id == artifact.id
+        assert model_call.status == "completed"
+        assert model_call.cost == Decimal("0.012300")
+        assert model_call.error_class is None
         assert tool_call.result_ref == "result:1"
-        assert tool_call.error is not None
+        assert tool_call.status == "failed"
+        assert tool_call.error_class == "timeout"
         assert evaluation.artifact_id == artifact.id
+        assert evaluation.findings_json == {"checked": 3}
+
+        with pytest.raises(IntegrityError):
+            async with session.begin_nested():
+                session.add(
+                    QualityEvaluation(
+                        run_id=run.id,
+                        artifact_id=artifact.id,
+                        evaluator_key="assertion-audit",
+                        evaluator_version="1",
+                        evaluator_type="deterministic",
+                        result="unknown",
+                        findings_json={},
+                    )
+                )
+                await session.flush()

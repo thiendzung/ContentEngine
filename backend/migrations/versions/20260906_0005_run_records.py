@@ -50,7 +50,7 @@ def upgrade() -> None:
         sa.Column("output_artifact_refs_json", sa.JSON(), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True)),
         sa.Column("completed_at", sa.DateTime(timezone=True)),
-        sa.Column("error", sa.Text()),
+        sa.Column("error_json", sa.JSON()),
         *_timestamps(),
         sa.CheckConstraint("attempt > 0", name="ck_step_run_attempt_positive"),
         sa.CheckConstraint("status in ('pending','running','completed','failed','skipped')", name="ck_step_run_status"),
@@ -77,13 +77,12 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column("run_id", sa.Uuid(), sa.ForeignKey("content_runs.id"), nullable=False),
         sa.Column("artifact_id", sa.Uuid(), sa.ForeignKey("artifacts.id"), nullable=False),
-        sa.Column("artifact_version", sa.Integer(), nullable=False),
-        sa.Column("action", sa.String(32), nullable=False),
-        sa.Column("actor", sa.String(200), nullable=False),
+        sa.Column("step_key", sa.String(64), nullable=False),
+        sa.Column("decision", sa.String(32), nullable=False),
+        sa.Column("actor_id", sa.String(200), nullable=False),
         sa.Column("comment", sa.Text()),
         *_timestamps(),
-        sa.CheckConstraint("artifact_version > 0", name="ck_approval_artifact_version_positive"),
-        sa.CheckConstraint("action in ('approve','reject','request_changes')", name="ck_approval_action"),
+        sa.CheckConstraint("decision in ('approved','rejected','changes_requested')", name="ck_approval_decision"),
     )
     op.create_table(
         "context_manifests",
@@ -105,20 +104,24 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column("run_id", sa.Uuid(), sa.ForeignKey("content_runs.id"), nullable=False),
         sa.Column("step_run_id", sa.Uuid(), sa.ForeignKey("step_runs.id")),
-        sa.Column("context_manifest_id", sa.Uuid(), sa.ForeignKey("context_manifests.id"), nullable=False),
+        sa.Column("context_manifest_id", sa.Uuid(), sa.ForeignKey("context_manifests.id")),
         sa.Column("task_key", sa.String(100), nullable=False),
         sa.Column("provider", sa.String(100), nullable=False),
         sa.Column("model", sa.String(100), nullable=False),
+        sa.Column("purpose", sa.String(100), nullable=False),
         sa.Column("prompt_version", sa.String(100), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True)),
         sa.Column("completed_at", sa.DateTime(timezone=True)),
         sa.Column("input_tokens", sa.Integer()),
         sa.Column("output_tokens", sa.Integer()),
+        sa.Column("cost", sa.Numeric(12, 6)),
         sa.Column("latency_ms", sa.Integer()),
         sa.Column("finish_reason", sa.String(64)),
-        sa.Column("error_classification", sa.String(64)),
+        sa.Column("status", sa.String(32), nullable=False),
+        sa.Column("error_class", sa.String(64)),
         sa.Column("result_artifact_id", sa.Uuid(), sa.ForeignKey("artifacts.id")),
         *_timestamps(),
+        sa.CheckConstraint("status in ('pending','running','completed','failed')", name="ck_model_call_status"),
     )
     op.create_table(
         "tool_calls",
@@ -131,9 +134,11 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True)),
         sa.Column("result_ref", sa.Text()),
         sa.Column("latency_ms", sa.Integer()),
+        sa.Column("status", sa.String(32), nullable=False),
         sa.Column("retry_count", sa.Integer(), nullable=False),
-        sa.Column("error", sa.Text()),
+        sa.Column("error_class", sa.String(64)),
         *_timestamps(),
+        sa.CheckConstraint("status in ('pending','running','completed','failed')", name="ck_tool_call_status"),
     )
     op.create_table(
         "quality_evaluations",
@@ -141,19 +146,27 @@ def upgrade() -> None:
         sa.Column("run_id", sa.Uuid(), sa.ForeignKey("content_runs.id"), nullable=False),
         sa.Column("artifact_id", sa.Uuid(), sa.ForeignKey("artifacts.id"), nullable=False),
         sa.Column("evaluator_key", sa.String(100), nullable=False),
+        sa.Column("evaluator_version", sa.String(100), nullable=False),
         sa.Column("evaluator_type", sa.String(64), nullable=False),
         sa.Column("result", sa.String(64), nullable=False),
+        sa.Column("score", sa.Float()),
         sa.Column("severity", sa.String(32)),
-        sa.Column("details_json", sa.JSON(), nullable=False),
+        sa.Column("findings_json", sa.JSON(), nullable=False),
         *_timestamps(),
+        sa.CheckConstraint("result in ('pass','fail','warn')", name="ck_quality_evaluation_result"),
+        sa.CheckConstraint("evaluator_type in ('deterministic','model','human')", name="ck_quality_evaluation_type"),
     )
     op.execute(sa.text("CREATE FUNCTION prevent_context_manifest_mutation() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'context_manifest_is_immutable'; END; $$ LANGUAGE plpgsql"))
     op.execute(sa.text("CREATE TRIGGER context_manifests_immutable BEFORE UPDATE OR DELETE ON context_manifests FOR EACH ROW EXECUTE FUNCTION prevent_context_manifest_mutation()"))
+    op.execute(sa.text("CREATE FUNCTION prevent_artifact_mutation() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'artifact_is_immutable'; END; $$ LANGUAGE plpgsql"))
+    op.execute(sa.text("CREATE TRIGGER artifacts_immutable BEFORE UPDATE OR DELETE ON artifacts FOR EACH ROW EXECUTE FUNCTION prevent_artifact_mutation()"))
 
 
 def downgrade() -> None:
     op.execute("DROP TRIGGER IF EXISTS context_manifests_immutable ON context_manifests")
     op.execute("DROP FUNCTION IF EXISTS prevent_context_manifest_mutation")
+    op.execute("DROP TRIGGER IF EXISTS artifacts_immutable ON artifacts")
+    op.execute("DROP FUNCTION IF EXISTS prevent_artifact_mutation")
     op.drop_table("quality_evaluations")
     op.drop_table("tool_calls")
     op.drop_table("model_calls")
