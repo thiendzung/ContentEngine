@@ -600,9 +600,12 @@ Applied principles:
 
 Reference guidance reviewed for this outline revision:
 
-- Google Search Central — Optimizing your website for generative AI features on Google Search, reviewed 2026-09-06;
-- Google Search Central — AI features and your website;
-- Bing Webmaster Guidelines / AI Performance guidance, reviewed 2026-09-06.
+- Google Search Central — Optimizing your website for generative AI features on Google Search: `https://developers.google.com/search/docs/fundamentals/ai-optimization-guide`;
+- Google Search Central — AI features and your website: `https://developers.google.com/search/docs/appearance/ai-features`;
+- Bing Webmaster Guidelines: `https://www.bing.com/webmasters/help/webmaster-guidelines-30fba23a`;
+- Bing AI Performance guidance: `https://www.bing.com/webmasters/help/ai-performance-9f8e7d6c`.
+
+Reviewed on `2026-09-06`.
 
 ---
 
