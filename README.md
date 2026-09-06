@@ -204,12 +204,13 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE00 — Foundation Contracts`: CLOSED.
 - `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: CLOSED / PASS.
 - `CE02 — Core Data + Settings`: CLOSED / PASS.
-- `CE03 — Durable Harness`: ACTIVE.
+- `CE03 — Durable Harness`: CLOSED / PASS.
 - `CE03 PR-A — Durable Queue + Lease Core`: CLOSED / MERGED / PASS.
 - `CE03 PR-B — Checkpoint + Approval + Retry + Budget`: CLOSED / MERGED / PASS.
 - `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`: CLOSED / MERGED / PASS.
 - `CE03 PR-D — Outbox + Reconciliation + Restart/Resume`: CLOSED / MERGED / PASS.
-- `CE03 PR-E — Replay/Eval + CE03 Closeout`: ACTIVE.
+- `CE03 PR-E — Replay/Eval + CE03 Closeout`: PASS / READY FOR REVIEW.
 - Current PR: `CE03 PR-E — Replay/Eval + CE03 Closeout`.
+- `CE04 — Knowledge + Production Research`: NOT STARTED.
 
-CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E sở hữu Replay/Eval và CE03 closeout.
+CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE04 chưa bắt đầu.
