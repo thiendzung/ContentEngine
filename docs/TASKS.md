@@ -154,9 +154,9 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 - [x] T02.10 Implement Entity/Claim/Evidence/EvidenceSet.
 - [x] T02.11 Implement OriginalityPack.
 - [ ] T02.12 Implement MediaAsset/MediaObservation.
-- [ ] T02.13 Implement ContentRun/StepRun/Artifact/Approval.
-- [ ] T02.14 Implement ContextManifest.
-- [ ] T02.15 Implement ModelCall/ToolCall/QualityEvaluation.
+- [x] T02.13 Implement ContentRun/StepRun/Artifact/Approval.
+- [x] T02.14 Implement ContextManifest.
+- [x] T02.15 Implement ModelCall/ToolCall/QualityEvaluation.
 - [x] T02.16 Seed project `motgu`.
 - [x] T02.17 Seed `vi-VN` and `en` locale settings.
 - [x] T02.18 Add settings snapshot reproducibility tests.
