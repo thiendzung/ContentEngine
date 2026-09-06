@@ -15,7 +15,15 @@ from app.modules.content_engine.models import (
     Project,
     SettingsSnapshot,
 )
-from app.modules.harness.models import Approval, Artifact, ContentRun, Job, ModelCall, StepRun, ToolCall
+from app.modules.harness.models import (
+    Approval,
+    Artifact,
+    ContentRun,
+    Job,
+    ModelCall,
+    StepRun,
+    ToolCall,
+)
 from app.modules.harness.persistence import (
     LeaseOwnershipError,
     StaleApprovalArtifactError,
@@ -245,7 +253,9 @@ async def test_approval_pauses_resumes_and_new_artifact_invalidates_old_approval
             approvals = list(
                 (
                     await session.scalars(
-                        select(Approval).where(Approval.run_id == run.id).order_by(Approval.created_at)
+                        select(Approval)
+                        .where(Approval.run_id == run.id)
+                        .order_by(Approval.created_at)
                     )
                 ).all()
             )
