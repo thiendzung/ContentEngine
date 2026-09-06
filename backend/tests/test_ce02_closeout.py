@@ -21,6 +21,7 @@ from app.modules.content_engine.models import (
     SettingsSnapshot,
     Signal,
 )
+from app.modules.content_engine.persistence import create_next_content_version
 from app.modules.harness.models import Approval, Artifact, ContentRun, ContextManifest, StepRun
 from app.modules.knowledge.models import (
     Claim,
@@ -259,6 +260,43 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
         session.add(observation)
         await session.flush()
         assert observation.status == "candidate"
+        with pytest.raises(
+            DBAPIError, match="unapproved_media_observation_cannot_be_factual_evidence"
+        ):
+            async with session.begin_nested():
+                session.add(
+                    Evidence(
+                        claim_id=claim.id,
+                        media_observation_id=observation.id,
+                        locator="media:1",
+                        excerpt=observation.observation_text,
+                        relation="supports",
+                        quality_metadata_json={},
+                        provenance_json={"media_observation_id": str(observation.id)},
+                    )
+                )
+                await session.flush()
+        approved_observation = MediaObservation(
+            media_asset_id=media.id,
+            observation_text="An approved visual observation.",
+            method="model",
+            confidence="reviewed",
+            status="approved",
+            approved_by="founder",
+        )
+        session.add(approved_observation)
+        await session.flush()
+        approved_media_evidence = Evidence(
+            claim_id=claim.id,
+            media_observation_id=approved_observation.id,
+            locator="media:2",
+            excerpt=approved_observation.observation_text,
+            relation="supports",
+            quality_metadata_json={},
+            provenance_json={"media_observation_id": str(approved_observation.id)},
+        )
+        session.add(approved_media_evidence)
+        await session.flush()
         manifest = ContextManifest(
             run_id=run.id,
             step_run_id=step.id,
@@ -335,29 +373,33 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
             decision="approved",
             actor_id="founder",
         )
-        version_one = ContentVersion(
+        version_one = await create_next_content_version(
+            session,
             content_item_id=item.id,
-            version_no=1,
-            final_artifact_id=final.id,
             change_reason="initial approved content",
             content_json={"title": "A traceable draft"},
+            status="approved",
             created_by_run_id=run.id,
-        )
-        version_two = ContentVersion(
-            content_item_id=item.id,
-            version_no=2,
             final_artifact_id=final.id,
+        )
+        version_two = await create_next_content_version(
+            session,
+            content_item_id=item.id,
             change_reason="reviewed update",
             content_json={"title": "A traceable draft v2"},
+            status="approved",
             created_by_run_id=run.id,
+            final_artifact_id=final.id,
         )
-        session.add_all([approval, version_one, version_two])
+        session.add(approval)
         await session.flush()
         assert hypothesis.status == "PROPOSED"
         assert experiment.result == "PENDING"
         assert version_one.content_item_id == version_two.content_item_id == item.id
         assert version_one.final_artifact_id == final.id
         assert version_one.created_by_run_id == run.id
+        assert version_one.status == "approved"
+        assert version_two.version_no == 2
         assert research.content_hash != research_two.content_hash
         assert opportunity_map.content_hash != opportunity_map_two.content_hash
         with pytest.raises(DBAPIError, match="content_version_is_immutable"):
@@ -367,3 +409,7 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
                     .where(ContentVersion.id == version_one.id)
                     .values(change_reason="overwrite")
                 )
+        with pytest.raises(DBAPIError, match="content_version_is_immutable"):
+            async with session.begin_nested():
+                await session.delete(version_one)
+                await session.flush()

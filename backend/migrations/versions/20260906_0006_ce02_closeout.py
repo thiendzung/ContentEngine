@@ -51,6 +51,8 @@ def upgrade() -> None:
     op.create_foreign_key("fk_evidence_media_observation", "evidence", "media_observations", ["media_observation_id"], ["id"])
     op.drop_constraint("ck_evidence_source_ref", "evidence", type_="check")
     op.create_check_constraint("ck_evidence_source_ref", "evidence", "source_document_id is not null or chunk_id is not null or media_observation_id is not null")
+    op.execute(sa.text("CREATE FUNCTION validate_evidence_media_observation() RETURNS trigger AS $$ BEGIN IF NEW.media_observation_id IS NOT NULL AND NEW.relation <> 'context_only' AND NOT EXISTS (SELECT 1 FROM media_observations WHERE id = NEW.media_observation_id AND status = 'approved' AND approved_by IS NOT NULL) THEN RAISE EXCEPTION 'unapproved_media_observation_cannot_be_factual_evidence'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql"))
+    op.execute(sa.text("CREATE TRIGGER evidence_media_observation_guard BEFORE INSERT OR UPDATE ON evidence FOR EACH ROW EXECUTE FUNCTION validate_evidence_media_observation()"))
     op.add_column("content_versions", sa.Column("created_by_run_id", sa.Uuid()))
     op.create_foreign_key("fk_content_version_created_by_run", "content_versions", "content_runs", ["created_by_run_id"], ["id"])
     op.add_column("content_versions", sa.Column("final_artifact_id", sa.Uuid()))
@@ -60,6 +62,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DROP TRIGGER IF EXISTS evidence_media_observation_guard ON evidence")
+    op.execute("DROP FUNCTION IF EXISTS validate_evidence_media_observation")
     op.execute("DROP TRIGGER IF EXISTS content_versions_immutable ON content_versions")
     op.execute("DROP FUNCTION IF EXISTS prevent_content_version_mutation")
     op.drop_constraint("fk_content_version_final_artifact", "content_versions", type_="foreignkey")
