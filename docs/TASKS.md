@@ -170,11 +170,12 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 
 ## CE03 — Durable Harness
 
-Status: **ACTIVE — PR-C ModelRouter + ToolAdapter + ContextManifest + Telemetry**.
+Status: **ACTIVE — PR-D Outbox + Reconciliation + Restart/Resume**.
 
 - PR-A = CLOSED / MERGED / PASS.
 - PR-B = CLOSED / MERGED / PASS.
-- PR-C = ACTIVE.
+- PR-C = CLOSED / MERGED / PASS.
+- PR-D = ACTIVE.
 
 - [x] T03.1 Implement Run state machine.
 - [x] T03.2 Implement StepRun attempt lifecycle.
@@ -187,14 +188,14 @@ Status: **ACTIVE — PR-C ModelRouter + ToolAdapter + ContextManifest + Telemetr
 - [x] T03.9 Implement artifact version invalidation of approval.
 - [x] T03.10 Implement error classification + bounded retry.
 - [x] T03.11 Implement per-run/per-step budget.
-- [ ] T03.12 Implement ModelRouter interface.
-- [ ] T03.13 Implement ToolAdapter interface.
-- [ ] T03.14 Implement ContextManifest creation/use.
-- [ ] T03.15 Implement ModelCall/ToolCall telemetry.
-- [ ] T03.16 Implement durable outbox for side effects.
-- [ ] T03.17 Implement reconciliation contract.
-- [ ] T03.18 Implement restart/resume integration test.
-- [ ] T03.19 Implement duplicate side-effect prevention test.
+- [x] T03.12 Implement ModelRouter interface.
+- [x] T03.13 Implement ToolAdapter interface.
+- [x] T03.14 Implement ContextManifest creation/use.
+- [x] T03.15 Implement ModelCall/ToolCall telemetry.
+- [x] T03.16 Implement durable outbox for side effects.
+- [x] T03.17 Implement reconciliation contract.
+- [x] T03.18 Implement restart/resume integration test.
+- [x] T03.19 Implement duplicate side-effect prevention test.
 - [ ] T03.20 Implement replay/eval run mode.
 
 ---
