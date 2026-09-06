@@ -26,7 +26,9 @@ def signal_has_traceable_locator(signal: Signal) -> bool:
     )
 
 
-def opportunity_has_required_existing_target(opportunity: ContentOpportunity) -> bool:
+def opportunity_has_required_existing_target(
+    opportunity: ContentOpportunity,
+) -> bool:
     decisions_requiring_target = {"UPDATE", "REFRESH", "MERGE", "LINK_ONLY"}
     return (
         opportunity.decision not in decisions_requiring_target
@@ -82,12 +84,13 @@ async def get_content_item_by_canonical_key(
     project_id: UUID,
     canonical_key: str,
 ) -> ContentItem | None:
-    return await session.scalar(
+    result = await session.execute(
         select(ContentItem).where(
             ContentItem.project_id == project_id,
             ContentItem.canonical_key == canonical_key,
         )
     )
+    return result.scalars().one_or_none()
 
 
 async def get_need_hypothesis(
