@@ -37,7 +37,7 @@ Merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`
 
 - [x] T01.1 Create branch `ce01-walking-skeleton` from clean main.
 - [x] T01.2 Create backend FastAPI package.
-- [x] T01.3 Create frontend Next.js shell tối thiểu.
+- [x] T01.3 Create Next.js frontend shell tối thiểu.
 - [x] T01.4 Add root developer scripts.
 - [x] T01.5 Add `.env.example`, never secrets.
 - [x] T01.6 Add PostgreSQL connection + migration framework.
@@ -66,7 +66,11 @@ Status: **CLOSED / PASS**.
 
 ### PR-C — Opportunity Map Mini
 
-Status: **PASS / READY FOR REVIEW**. Keyword Plan remains a supporting tool in Research.
+Status: **CLOSED / MERGED**. Keyword Plan remains a supporting tool in Research.
+
+PR: `#6 — CE01 PR-C — opportunity map mini`
+
+Merge commit: `cda4f738aff08abf827e2ce49418ea29f5af351f`
 
 - [x] Normalize MARKET/SEARCH/MOTGU Signal with scope, observation, provenance and dedupe.
 - [x] Create NeedHypothesis with support/contradiction/alternatives/missing evidence.
@@ -85,17 +89,21 @@ Status: **PASS / READY FOR REVIEW**. Keyword Plan remains a supporting tool in R
 - [x] T01.29 Produce priority: NOW/NEXT/LATER/NO with short reasons; no fake 0–100 precision.
 - [x] T01.30 Human review one Opportunity Map and select one opportunity for the Golden Journal.
 
-PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z.json` produced 34 signals. Final cleaned map produced 9 questions, 4 clusters and 4 opportunities with the unsupported broad Pillar removed. Founder selected `price` (`opp_ea484183ba36c6b2`). Selected artifact `ce01-opportunity-map-20260906T020602Z.json` records HumanSelection and ContentExperiment draft `exp_cdc69b59a413393c`; NeedHypothesis remains `PROPOSED`. No MOTGU-owned material has been attached yet, so Right-to-Win remains an open content-input gate rather than assumed evidence.
+PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z.json` produced 34 signals. Final cleaned map produced 9 questions, 4 clusters and 4 opportunities with the unsupported broad Pillar removed. Founder selected `price` (`opp_ea484183ba36c6b2`). Selected artifact `ce01-opportunity-map-20260906T020602Z.json` records HumanSelection and ContentExperiment draft `exp_cdc69b59a413393c`; NeedHypothesis remains `PROPOSED`. At PR-C closeout no MOTGU-owned material had yet been attached; PR-D supplies that bounded content input.
 
-### Editorial calibration
+### PR-D — Content Input
 
-- [ ] T01.31 Collect 3–5 approved positive MOTGU excerpts for first locale.
-- [ ] T01.32 Collect 3–5 approved negative examples for first locale.
-- [ ] T01.33 Define short human editorial review form.
-- [ ] T01.34 Define one MOTGU ContentCase from selected ContentOpportunity.
-- [ ] T01.35 Define one real LocaleVariant.
-- [ ] T01.36 Build selected/manual EvidenceSet from higher-quality sources, not default Google top 1–5.
-- [ ] T01.37 Build Manual OriginalityPack.
+Status: **PASS / READY FOR REVIEW**.
+
+- [x] T01.31 Collect 3–5 approved positive MOTGU excerpts for first locale.
+- [x] T01.32 Collect 3–5 approved negative examples for first locale.
+- [x] T01.33 Define short human editorial review form.
+- [x] T01.34 Define one MOTGU ContentCase from selected ContentOpportunity.
+- [x] T01.35 Define one real LocaleVariant.
+- [x] T01.36 Build selected/manual EvidenceSet from higher-quality sources, not default Google top 1–5.
+- [x] T01.37 Build Manual OriginalityPack.
+
+PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved positive English examples, 4 founder-approved negative examples, the human editorial review form, ContentCase `cc_ce01_price_001`, English LocaleVariant `lv_ce01_price_en_001`, locked EvidenceSet `es_ce01_price_v1`, and approved OriginalityPack `opack_ce01_price_v1`. Founder decision on `2026-09-06`: `APPROVE CALIBRATION + CONTENT DIRECTION`. The approved scope is limited to helping a first-time buyer understand/evaluate a displayed artwork price; it does not claim an exact MOTGU/artist pricing formula. NeedHypothesis remains `PROPOSED`.
 
 ### Walking Skeleton
 
@@ -111,8 +119,8 @@ PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z
 
 - [x] Repo build/test clean.
 - [x] One founder-proposed NeedHypothesis + real signals produces a readable Opportunity Map.
-- [ ] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
-- [ ] Selected research sources are demonstrably better than blindly taking Google top results.
+- [x] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
+- [x] Selected research/evidence sources are demonstrably better than blindly taking Google top results.
 - [ ] One real Journal reaches human review.
 - [ ] Zero critical unsupported assertion in the reviewed candidate.
 
@@ -129,7 +137,7 @@ PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z
 - [ ] T02.5 Implement SettingsVersion/SettingsSnapshot.
 - [ ] T02.6 Implement Prompt/Recipe Registry.
 - [ ] T02.7 Implement Brand DNA/Language DNA validation.
-- [ ] T02.8 Implement Calibration Example storage.
+- [ ] T02.8 Add Calibration Example storage.
 - [ ] T02.9 Implement Source/SourceDocument/KnowledgeChunk.
 - [ ] T02.10 Implement Entity/Claim/Evidence/EvidenceSet.
 - [ ] T02.11 Implement OriginalityPack.
@@ -244,7 +252,7 @@ PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z
 - [ ] T06.9 Source-copy/phrase-overlap evaluator.
 - [ ] T06.10 Human review form/UI.
 - [ ] T06.11 Golden Set storage/versioning.
-- [ ] T06.12 Weak/Failure Set storage.
+- [ ] T06.12 Weak/Failure Set storage/versioning.
 - [ ] T06.13 Pairwise regression runner.
 - [ ] T06.14 Candidate vs baseline report.
 - [ ] T06.15 Regression promotion gate.
