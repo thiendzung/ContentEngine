@@ -99,12 +99,10 @@ class OpportunityMapService:
             for cluster in clusters
         ]
 
-        pillar_clusters = [
-            cluster
-            for cluster in clusters
-            if cluster.topic_key in _RELEVANT_SUPPORT_TOPICS
-            and cluster.topic_key not in _OFF_SCOPE_TOPICS
-        ]
+        pillar_clusters = self._pillar_clusters(
+            clusters,
+            request.pillar_question,
+        )
         if request.pillar_question and len(pillar_clusters) >= 2:
             pillar = self._build_pillar_opportunity(
                 hypothesis,
@@ -247,6 +245,31 @@ class OpportunityMapService:
                 )
             )
         return sorted(clusters, key=lambda item: (item.topic_key, item.intent.value))
+
+    def _pillar_clusters(
+        self,
+        clusters: list[QuestionCluster],
+        pillar_question: str | None,
+    ) -> list[QuestionCluster]:
+        if not pillar_question:
+            return []
+
+        pillar_topic = classify_question(pillar_question).topic_key
+        if pillar_topic not in _RELEVANT_SUPPORT_TOPICS:
+            return []
+
+        buyer_clusters = [
+            cluster
+            for cluster in clusters
+            if cluster.topic_key in _RELEVANT_SUPPORT_TOPICS
+            and cluster.topic_key not in _OFF_SCOPE_TOPICS
+        ]
+        has_direct_core_support = any(
+            cluster.topic_key == pillar_topic for cluster in buyer_clusters
+        )
+        if not has_direct_core_support:
+            return []
+        return buyer_clusters
 
     def _representative_stage(self, questions: list[QuestionRecord]) -> AudienceStage:
         priority = (
