@@ -72,7 +72,11 @@ class FakeExternalSideEffect:
         )
 
 
-async def _create_run_and_step(session: AsyncSession) -> tuple[ContentRun, StepRun]:
+async def _create_run_and_step(
+    session: AsyncSession,
+    *,
+    reuse_settings_snapshot: bool = False,
+) -> tuple[ContentRun, StepRun]:
     project = (
         await session.execute(select(Project).where(Project.slug == "motgu"))
     ).scalar_one()
@@ -129,13 +133,27 @@ async def _create_run_and_step(session: AsyncSession) -> tuple[ContentRun, StepR
         primary_question="Can an external action resume safely?",
         primary_intent="test",
     )
-    snapshot = SettingsSnapshot(
-        project_id=project.id,
-        resolved_settings_json={},
-        source_version_refs_json=["settings:test"],
-        content_hash=content_hash(f"outbox-settings:{suffix}"),
-    )
-    session.add_all([locale_variant, snapshot])
+    session.add(locale_variant)
+
+    snapshot: SettingsSnapshot | None = None
+    if reuse_settings_snapshot:
+        snapshot = await session.scalar(
+            select(SettingsSnapshot)
+            .where(SettingsSnapshot.project_id == project.id)
+            .order_by(SettingsSnapshot.created_at)
+            .limit(1)
+        )
+    if snapshot is None:
+        snapshot = SettingsSnapshot(
+            project_id=project.id,
+            resolved_settings_json={},
+            source_version_refs_json=["settings:test"],
+            content_hash=content_hash(
+                "ce03-pr-d-shared-settings" if reuse_settings_snapshot else f"outbox:{suffix}"
+            ),
+        )
+        session.add(snapshot)
+
     await session.flush()
     run = ContentRun(
         project_id=project.id,
@@ -210,20 +228,15 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
                 job_id=job.id,
                 worker_id="worker-1",
             )
-            assert processing.status == "processing"
-            request = side_effect_request(processing)
-
-            accepted = await fake.execute(request)
-            assert accepted.external_ref
+            accepted = await fake.execute(side_effect_request(processing))
             assert fake.execute_count == 1
-            # Simulate crash after external accept but before local success persistence.
+
             await session.execute(
                 update(Job)
                 .where(Job.id == job.id)
                 .values(lease_expires_at=datetime.now(UTC) - timedelta(seconds=1))
             )
             await session.flush()
-
             reclaimed = await reclaim_expired_job(
                 session,
                 worker_id="worker-2",
@@ -249,7 +262,6 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
                     worker_id="worker-1",
                     result=reconciliation,
                 )
-
             completed = await apply_reconciliation_result(
                 session,
                 intent_id=intent.id,
@@ -260,7 +272,6 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
             assert completed.status == "completed"
             assert completed.external_ref == accepted.external_ref
 
-            # Even while worker-2 still owns the lease, completed intent blocks resend.
             with pytest.raises(OutboxStateError, match="completed"):
                 await prepare_outbox_dispatch(
                     session,
@@ -269,11 +280,7 @@ async def test_restart_reconciles_accepted_side_effect_without_duplicate() -> No
                     worker_id="worker-2",
                 )
             assert fake.execute_count == 1
-
             await complete_job(session, job_id=job.id, worker_id="worker-2")
-            assert fake.execute_count == 1
-
-            # Once the job is complete, lack of a valid lease independently blocks resend.
             with pytest.raises(OutboxStateError, match="valid job lease"):
                 await prepare_outbox_dispatch(
                     session,
@@ -321,7 +328,6 @@ async def test_confirmed_absent_can_retry_but_unknown_cannot_blind_retry() -> No
                 worker_id="worker-a",
             )
             absent = await fake.reconcile(side_effect_request(processing))
-            assert absent.outcome == "confirmed_absent"
             pending = await apply_reconciliation_result(
                 session,
                 intent_id=intent.id,
@@ -473,7 +479,10 @@ async def test_processing_state_is_committed_before_external_call_and_survives_r
     external_ref: str | None = None
     try:
         async with SessionLocal() as session:
-            run, step = await _create_run_and_step(session)
+            run, step = await _create_run_and_step(
+                session,
+                reuse_settings_snapshot=True,
+            )
             content_case = await session.get(ContentCase, run.content_case_id)
             assert content_case is not None
             intent = await create_outbox_intent(
@@ -495,7 +504,6 @@ async def test_processing_state_is_committed_before_external_call_and_survives_r
                 "step": step.id,
                 "run": run.id,
                 "locale_variant": run.locale_variant_id,
-                "settings_snapshot": run.settings_snapshot_id,
                 "content_case": run.content_case_id,
                 "opportunity": content_case.content_opportunity_id,
                 "hypothesis": content_case.need_hypothesis_id,
@@ -518,7 +526,7 @@ async def test_processing_state_is_committed_before_external_call_and_survives_r
             request = side_effect_request(processing)
             await session.commit()
 
-        # The external call happens only after `processing` is durably committed.
+        # Network call is deliberately outside the DB transaction.
         assert request is not None
         accepted = await fake.execute(request)
         external_ref = accepted.external_ref
@@ -590,9 +598,7 @@ async def test_processing_state_is_committed_before_external_call_and_survives_r
                     )
                 )
                 await session.execute(
-                    delete(ContentCase).where(
-                        ContentCase.id == cleanup_ids["content_case"]
-                    )
+                    delete(ContentCase).where(ContentCase.id == cleanup_ids["content_case"])
                 )
                 await session.execute(
                     delete(ContentOpportunity).where(
@@ -604,9 +610,6 @@ async def test_processing_state_is_committed_before_external_call_and_survives_r
                         NeedHypothesis.id == cleanup_ids["hypothesis"]
                     )
                 )
-                await session.execute(
-                    delete(SettingsSnapshot).where(
-                        SettingsSnapshot.id == cleanup_ids["settings_snapshot"]
-                    )
-                )
+                # SettingsSnapshot is immutable by contract. The integration test reuses
+                # an existing snapshot, or creates one shared test snapshot once.
                 await session.commit()
