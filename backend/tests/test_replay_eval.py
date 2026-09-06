@@ -44,6 +44,8 @@ from app.modules.knowledge.persistence import content_hash
 
 async def _create_baseline(
     session: AsyncSession,
+    *,
+    complete_baseline: bool = True,
 ) -> tuple[
     ContentRun,
     StepRun,
@@ -236,10 +238,11 @@ async def _create_baseline(
             findings_json={},
         )
     )
-    baseline_step.status = "completed"
-    baseline_step.completed_at = datetime.now(UTC)
-    baseline.status = "completed"
-    baseline.completed_at = datetime.now(UTC)
+    if complete_baseline:
+        baseline_step.status = "completed"
+        baseline_step.completed_at = datetime.now(UTC)
+        baseline.status = "completed"
+        baseline.completed_at = datetime.now(UTC)
     await session.flush()
 
     return (
@@ -422,10 +425,8 @@ async def test_replay_eval_rejects_unfinished_baseline() -> None:
                 baseline_manifest,
                 _,
                 candidate_snapshot,
-            ) = await _create_baseline(session)
-            baseline.status = "running"
-            baseline.completed_at = None
-            await session.flush()
+            ) = await _create_baseline(session, complete_baseline=False)
+            assert baseline.status == "running"
             with pytest.raises(ReplayEvalError, match="must be completed"):
                 await create_eval_run(
                     session,
