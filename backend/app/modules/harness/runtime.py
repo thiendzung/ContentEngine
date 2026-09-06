@@ -239,6 +239,8 @@ async def start_model_call(
         raise RuntimeStateError("ContextManifest does not belong to ContentRun")
     if manifest.step_run_id != step_run_id:
         raise RuntimeStateError("ContextManifest does not belong to StepRun")
+    if manifest.prompt_version != prompt_version:
+        raise RuntimeStateError("ModelCall prompt version does not match ContextManifest")
 
     call = ModelCall(
         run_id=run_id,
@@ -269,6 +271,8 @@ async def complete_model_call(
         artifact = await session.get(Artifact, result_artifact_id)
         if artifact is None or artifact.run_id != call.run_id:
             raise RuntimeStateError("result Artifact does not belong to ModelCall run")
+        if artifact.step_run_id != call.step_run_id:
+            raise RuntimeStateError("result Artifact does not belong to ModelCall step")
     call.input_tokens = response.input_tokens
     call.output_tokens = response.output_tokens
     call.cost = response.cost
@@ -310,7 +314,7 @@ async def start_tool_call(
         run_id=run_id,
         step_run_id=step_run_id,
         tool_key=request.tool_key,
-        request_fingerprint=_stable_hash(request.payload),
+        request_fingerprint=_tool_request_hash(request),
         started_at=utc_now(),
         status="running",
         retry_count=retry_count,
@@ -352,9 +356,9 @@ async def fail_tool_call(
 
 
 def request_fingerprint(request: ToolRequest) -> str:
-    """Public deterministic fingerprint helper for dedupe/replay diagnostics."""
+    """Return a stable fingerprint for the tool identity and request payload."""
 
-    return _stable_hash(request.payload)
+    return _tool_request_hash(request)
 
 
 async def _validate_step(
@@ -423,6 +427,10 @@ def _as_dict(value: object, label: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise RuntimeConfigurationError(f"{label} must be an object")
     return {str(key): item for key, item in value.items()}
+
+
+def _tool_request_hash(request: ToolRequest) -> str:
+    return _stable_hash({"tool_key": request.tool_key, "payload": request.payload})
 
 
 def _stable_hash(value: object) -> str:
