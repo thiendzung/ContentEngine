@@ -226,6 +226,49 @@ async def test_locked_evidence_set_is_immutable_and_new_research_uses_new_versio
 
 
 @pytest.mark.asyncio
+async def test_evidence_set_can_lock_once_and_rejects_invalid_or_locked_mutation() -> None:
+    async with isolated_session() as session:
+        project = await motgu_project(session)
+        evidence_set = EvidenceSet(
+            project_id=project.id,
+            version=3,
+            evidence_ids_json=["evidence:1"],
+            content_hash=content_hash("evidence:1"),
+            status="draft",
+        )
+        session.add(evidence_set)
+        await session.flush()
+        await session.execute(
+            EvidenceSet.__table__.update()
+            .where(EvidenceSet.id == evidence_set.id)
+            .values(status="locked", locked_at=datetime.now(UTC), locked_by="reviewer")
+        )
+        with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
+            async with session.begin_nested():
+                await session.execute(
+                    EvidenceSet.__table__.update()
+                    .where(EvidenceSet.id == evidence_set.id)
+                    .values(locked_by="another-reviewer")
+                )
+        with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
+            async with session.begin_nested():
+                await session.delete(evidence_set)
+                await session.flush()
+
+        invalid = EvidenceSet(
+            project_id=project.id,
+            version=4,
+            evidence_ids_json=[],
+            content_hash=content_hash("invalid"),
+            status="locked",
+        )
+        with pytest.raises(IntegrityError):
+            async with session.begin_nested():
+                session.add(invalid)
+                await session.flush()
+
+
+@pytest.mark.asyncio
 async def test_originality_pack_can_reference_real_evidence_and_knowledge_chunk() -> None:
     async with isolated_session() as session:
         project = await motgu_project(session)

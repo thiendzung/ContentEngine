@@ -140,19 +140,19 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 
 ## CE02 — Core Data + Settings
 
-- [ ] T02.1 Implement Project.
-- [ ] Implement Signal, NeedHypothesis, ContentOpportunity and ContentExperiment contracts;
+- [x] T02.1 Implement Project.
+- [x] Implement Signal, NeedHypothesis, ContentOpportunity and ContentExperiment contracts;
       do not create legacy ProblemDesire/AudienceSignal models. Update ContentCase refs.
-- [ ] T02.2 Implement ContentCase.
-- [ ] T02.3 Implement LocaleVariant.
-- [ ] T02.4 Implement ContentItem/ContentVersion.
+- [x] T02.2 Implement ContentCase.
+- [x] T02.3 Implement LocaleVariant.
+- [x] T02.4 Implement ContentItem/ContentVersion.
 - [x] T02.5 Implement SettingsVersion/SettingsSnapshot.
 - [x] T02.6 Implement Prompt/Recipe Registry.
 - [x] T02.7 Implement Brand DNA/Language DNA validation.
 - [x] T02.8 Implement Calibration Example storage.
-- [ ] T02.9 Implement Source/SourceDocument/KnowledgeChunk.
-- [ ] T02.10 Implement Entity/Claim/Evidence/EvidenceSet.
-- [ ] T02.11 Implement OriginalityPack.
+- [x] T02.9 Implement Source/SourceDocument/KnowledgeChunk.
+- [x] T02.10 Implement Entity/Claim/Evidence/EvidenceSet.
+- [x] T02.11 Implement OriginalityPack.
 - [ ] T02.12 Implement MediaAsset/MediaObservation.
 - [ ] T02.13 Implement ContentRun/StepRun/Artifact/Approval.
 - [ ] T02.14 Implement ContextManifest.
@@ -164,7 +164,7 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 - [ ] T02.20 Add ContentItem version lineage test.
 - [ ] T02.21 Add versioned Research artifact/source-ref contract.
 - [ ] T02.22 Add Opportunity Map artifact/version contract with locale + signal/source refs.
-- [ ] T02.23 Add Knowledge Candidate status/provenance contract for later Obsidian mirror.
+- [x] T02.23 Add Knowledge Candidate status/provenance contract for later Obsidian mirror.
 
 ---
 

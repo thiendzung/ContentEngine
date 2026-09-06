@@ -183,6 +183,10 @@ class EvidenceSet(TimestampMixin, Base):
             "project_id", "content_case_id", "version", name="uq_evidence_set_version"
         ),
         CheckConstraint("status in ('draft','locked')", name="ck_evidence_set_status"),
+        CheckConstraint(
+            "status <> 'locked' or locked_at is not null",
+            name="ck_evidence_set_locked_at",
+        ),
         CheckConstraint("version > 0", name="ck_evidence_set_version_positive"),
     )
 
