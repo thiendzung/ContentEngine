@@ -1,6 +1,6 @@
 # CE01 — CONTENT INPUT — PRICE
 
-Status: **PROPOSED FOR FOUNDER REVIEW**
+Status: **APPROVED / GATE D PASS**
 
 Phase: `CE01 / PR-D — Content Input`
 
@@ -16,7 +16,7 @@ This document is the manual CE01 input pack allowed by `docs/08-JOURNAL-SPEC.md`
 It does not create CE02 persistence/database models.
 
 The selected opportunity is worth developing, but it is not proven customer truth.
-The content must not proceed to drafting until the founder approves the calibration/content direction and the OriginalityPack is considered sufficient.
+Founder approved the calibration and content direction on `2026-09-06`. The current narrow EvidenceSet and OriginalityPack are locked for CE01 Phase E input. Proceed to Angle; do not skip Angle/Outline approval or expand into unsupported pricing claims.
 
 ---
 
@@ -41,11 +41,11 @@ Working reader promise:
 
 # D1 — EDITORIAL CALIBRATION
 
-## 2. Positive calibration candidates
+## 2. Positive calibration examples — APPROVED
 
-These are new calibration candidates built from the approved MOTGU direction: warm, curious, personal, quiet, thoughtful, unhurried; low-pressure CTA; no luxury/scarcity language.
+These examples are built from the approved MOTGU direction: warm, curious, personal, quiet, thoughtful, unhurried; low-pressure CTA; no luxury/scarcity language.
 
-They are **not marked APPROVED until founder review**.
+Founder approved them for the CE01 English calibration pack on `2026-09-06`.
 
 ### POS-01 — opening
 
@@ -53,7 +53,7 @@ They are **not marked APPROVED until founder review**.
 
 **Type:** opening
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED`
 
 > An art price can feel like a number with no map. It does not have to. Start with the work in front of you: what it is, who made it, its size, material and history. Then ask the simpler question: do you want to keep looking at it?
 
@@ -71,7 +71,7 @@ Why this fits:
 
 **Type:** direct_answer
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED`
 
 > There is no single formula that makes a painting “worth it” for you. Market value can depend on several concrete factors; your decision also has a personal part. We can explain the facts around a work. You decide whether the work matters enough to bring home.
 
@@ -88,7 +88,7 @@ Why this fits:
 
 **Type:** CTA
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED`
 
 > If one painting keeps pulling you back, ask about it. Nothing formal. We can show you the work’s current price, size, material, availability and what bringing it home would involve.
 
@@ -105,7 +105,7 @@ Why this fits:
 
 **Type:** editorial_voice
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED`
 
 > Take your time. A good first purchase does not need to prove that you understand art. It needs to be a work you understand well enough to choose without being pushed.
 
@@ -116,14 +116,14 @@ Why this fits:
 - consistent with MOTGU’s unhurried artist-house position;
 - useful emotional direction without hype.
 
-## 3. Negative calibration candidates
+## 3. Negative calibration examples — APPROVED
 
 These are explicit examples of language the engine must reject.
-They are **not marked APPROVED until founder review**.
+Founder approved them as negative calibration examples on `2026-09-06`.
 
 ### NEG-01 — investment promise / scarcity
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED_NEGATIVE`
 
 > Invest in this timeless masterpiece now before prices rise and the opportunity disappears.
 
@@ -136,7 +136,7 @@ Reject because:
 
 ### NEG-02 — luxury hype
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED_NEGATIVE`
 
 > This exclusive luxury artwork is a must-have statement piece for discerning collectors.
 
@@ -149,7 +149,7 @@ Reject because:
 
 ### NEG-03 — invented artist intent
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED_NEGATIVE`
 
 > The artist painted this work to express the loneliness of modern Hanoi life.
 
@@ -157,7 +157,7 @@ Reject unless an approved artist source supports that exact intent.
 
 ### NEG-04 — fake pricing formula
 
-**Status:** `FOUNDER_REVIEW_REQUIRED`
+**Status:** `FOUNDER_APPROVED_NEGATIVE`
 
 > Art pricing is simple: size × hours worked × artist reputation = the correct price.
 
@@ -167,7 +167,7 @@ Reject because:
 - hides uncertainty and market context;
 - cannot be supported by the current EvidenceSet.
 
-## 4. Short human editorial review form — T01.33 candidate
+## 4. Short human editorial review form — APPROVED FOR CE01
 
 Use this form for the CE01 Golden Journal:
 
@@ -210,7 +210,7 @@ CE01 does not persist the full CE02 audience model. This manual reference exists
 - NeedHypothesis ID: `need_fc6259977d637e6f`
 - ContentOpportunity ID: `opp_ea484183ba36c6b2`
 - ContentExperiment ID: `exp_cdc69b59a413393c`
-- status: `DRAFT_FOR_FOUNDER_REVIEW`
+- status: `APPROVED_FOR_CE01`
 
 ### Audience
 
@@ -286,7 +286,7 @@ Do not claim:
 - ID: `lv_ce01_price_en_001`
 - ContentCase ID: `cc_ce01_price_001`
 - locale: `en`
-- status: `DRAFT_FOR_FOUNDER_REVIEW`
+- status: `APPROVED_FOR_CE01`
 - content role: `cluster`
 - primary intent: `evaluate`
 - secondary intent: `trust`
@@ -363,16 +363,18 @@ Do not force exact-match repetition.
 
 # D3 — MANUAL EVIDENCE SET
 
-## 8. EvidenceSet candidate
+## 8. EvidenceSet — LOCKED FOR CE01
 
 - ID: `es_ce01_price_v1`
 - ContentCase ID: `cc_ce01_price_001`
 - version: `1`
-- status: `LOCK_CANDIDATE`
-- locked: `NO — founder/content review still required`
-- reviewed at: `2026-09-06`
+- status: `LOCKED_FOR_CE01`
+- locked: `YES`
+- locked by: `founder`
+- locked at: `2026-09-06`
+- source review: `REVERIFIED_BEFORE_LOCK`
 
-The set is intentionally small. Discovery sources from PR-B are not automatically promoted into factual evidence.
+The set is intentionally small. Discovery sources from PR-B are not automatically promoted into factual evidence. If evidence or claim scope changes after this lock, create a new CE01 EvidenceSet version rather than silently changing v1.
 
 ## 9. Sources
 
@@ -556,11 +558,13 @@ If the Angle needs one of these, route back to Evidence Research or founder/arti
 
 # D4 — MANUAL ORIGINALITY PACK
 
-## 12. OriginalityPack candidate
+## 12. OriginalityPack — APPROVED FOR CE01
 
 - ID: `opack_ce01_price_v1`
 - ContentCase ID: `cc_ce01_price_001`
-- status: `FOUNDER_REVIEW_REQUIRED`
+- status: `APPROVED_FOR_CE01`
+- approved by: `founder`
+- approved at: `2026-09-06`
 
 ### ORIG-01 — live physical-work facts
 
@@ -606,7 +610,7 @@ Writer use:
 
 ### ORIG-04 — artist-house buying posture
 
-Source: founder-approved MOTGU project direction; full wording below still requires founder approval as a calibration example.
+Source: founder-approved MOTGU project direction + founder approval of this CE01 calibration pack on `2026-09-06`.
 
 MOTGU-specific material:
 
@@ -620,47 +624,43 @@ Writer use:
 
 ## 13. Originality gap still open
 
-The pack does **not** yet contain an approved founder/artist explanation of how MOTGU sets the base price of a particular work.
+The pack does **not** contain an approved founder/artist explanation of how MOTGU sets the base price of a particular work.
 
-This is not required if the final Angle stays with:
+This is not required while the approved direction stays with:
 
 > how a first-time buyer can understand and evaluate a displayed price.
 
-It **is required** if the Angle changes to:
+It **is required** if a later Angle changes to:
 
 > how MOTGU prices its art / why this specific MOTGU work costs X.
 
-Do not silently cross that boundary.
+Do not silently cross that boundary. A changed scope requires new evidence and human review.
 
 ---
 
-# 14. GATE D READINESS
+# 14. GATE D — PASS
 
-Current state before founder review:
+Founder decision on `2026-09-06`:
 
-- ContentCase clear: `YES — draft`;
-- LocaleVariant clear: `YES — draft`;
-- EvidenceSet sufficient for current narrow claim scope: `YES — lock candidate`;
-- OriginalityPack contains real MOTGU material: `YES — candidate`;
-- 3–5 positive examples approved: `NO — founder review required`;
-- 3–5 negative examples approved: `NO — founder review required`.
+`APPROVE CALIBRATION + CONTENT DIRECTION`
+
+Locked state:
+
+- ContentCase clear: `YES — APPROVED_FOR_CE01`;
+- LocaleVariant clear: `YES — APPROVED_FOR_CE01`;
+- EvidenceSet sufficient for current narrow claim scope: `YES — es_ce01_price_v1 LOCKED`;
+- OriginalityPack contains real MOTGU material: `YES — opack_ce01_price_v1 APPROVED`;
+- positive calibration examples approved: `YES — 4`;
+- negative calibration examples approved: `YES — 4`;
+- human editorial review form defined: `YES`;
+- NeedHypothesis promoted: `NO — remains PROPOSED`.
 
 Therefore:
 
-`PR-D CONTENT PACKAGE = READY FOR FOUNDER CALIBRATION REVIEW`
+`GATE D PASS / READY FOR PHASE E ANGLE`
 
-Not yet:
+## Next boundary
 
-`GATE D PASS`
+Proceed to T01.38 Angle using only the approved ContentCase, LocaleVariant, locked EvidenceSet, approved OriginalityPack and calibration examples.
 
-## Founder review required
-
-Founder should return one of:
-
-1. `APPROVE CALIBRATION + CONTENT DIRECTION`
-2. `APPROVE WITH CHANGES: ...`
-3. `REJECT / REWORK`
-
-If approved, PR-D may lock EvidenceSet/OriginalityPack for CE01, tick T01.31–T01.37 and proceed to Phase E Angle.
-
-No Draft should be written before that gate.
+Do not draft yet. Human must approve the Angle or approved Outline checkpoint before Draft, and any new factual claim outside EvidenceSet v1 must route back to evidence review.
