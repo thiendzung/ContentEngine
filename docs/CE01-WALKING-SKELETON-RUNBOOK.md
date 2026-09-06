@@ -23,11 +23,11 @@ Không coi “backend chạy được” hay “API gọi được” là hoàn 
 
 ```text
 PHASE A — FOUNDATION       CLOSED
-PHASE B — RESEARCH SPIKE  CLOSED / PASS
-PHASE C — OPPORTUNITY MAP  PENDING
-PHASE D — CONTENT INPUT   PENDING
-PHASE E — GOLDEN JOURNAL  PENDING
-PHASE F — CE01 REVIEW     PENDING
+PHASE B — RESEARCH SPIKE   CLOSED / PASS
+PHASE C — OPPORTUNITY MAP  PASS / READY FOR REVIEW
+PHASE D — CONTENT INPUT    NEXT
+PHASE E — GOLDEN JOURNAL   PENDING
+PHASE F — CE01 REVIEW      PENDING
 ```
 
 PR-A đã merge:
@@ -36,7 +36,7 @@ PR-A đã merge:
 - merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`;
 - toàn bộ baseline checks PASS trước merge.
 
-Bước kế tiếp sau khi trạng thái tài liệu này được merge về `main`: tạo branch mới `ce01-research-spike` từ `main` sạch.
+PR-B đã merge và Gate B PASS. PR-C hiện ở PR #6, đã hoàn thành Gate C và chờ review/merge trước khi mở PR-D.
 
 ## 3. Kết quả cuối CE01
 
@@ -133,7 +133,7 @@ Evidence chính: PR #3 merge thành công sau khi backend install/lint/typecheck
 
 ---
 
-# PHASE B — RESEARCH SPIKE — NEXT
+# PHASE B — RESEARCH SPIKE — CLOSED / PASS
 
 ## B1. Provider seam
 
@@ -159,12 +159,12 @@ MOTGU knowledge trước
 
 ### Checklist B1
 
-- [ ] không gọi mọi provider cho mọi query;
-- [ ] mỗi call giữ provider/query/result refs;
-- [ ] timeout/error không làm mất run;
-- [ ] search position không dùng làm authority score;
-- [ ] raw SERP không ghi vào Obsidian;
-- [ ] có giới hạn số query/pages/calls.
+- [x] không gọi mọi provider cho mọi query;
+- [x] mỗi call giữ provider/query/result refs;
+- [x] timeout/error không làm mất run;
+- [x] search position không dùng làm authority score;
+- [x] raw SERP không ghi vào Obsidian;
+- [x] có giới hạn số query/pages/calls.
 
 ## B2. One founder-proposed hypothesis + real signals
 
@@ -237,9 +237,18 @@ Evidence run: 6 provider calls, 27 signals, 17 source candidates, 3 documents,
 8 second-hop candidates; CI `33999734730` PASS. Artsy chưa được dùng như factual
 authority; authority verification thuộc Evidence Research sau PR-B.
 
+Fresh canonical run sau khi Founder cấu hình API keys:
+
+- Research artifact: `ce01-research-spike-20260906T013152Z.json`;
+- SHA-256: `7d8b1b59f735a69b7b4f84b08ad5d2af33246a9545f20e8fad15df61c09b682a`;
+- Serper, Tavily, Exa, Jina chạy qua live HTTP path;
+- Brave không được gọi vì fallback không cần;
+- 34 signals;
+- NeedHypothesis vẫn `PROPOSED`.
+
 ---
 
-# PHASE C — OPPORTUNITY MAP MINI
+# PHASE C — OPPORTUNITY MAP MINI — PASS / READY FOR REVIEW
 
 Task:
 
@@ -282,24 +291,61 @@ Mỗi opportunity phải có:
 - NOW / NEXT / LATER / NO;
 - source/signal refs.
 
-## HUMAN GATE 1 — T01.30
+### Gate C evidence
 
-Người duyệt chọn **một** opportunity.
+Canonical cleaned Opportunity Map:
+
+`artifacts/research/ce01-opportunity-map-20260906T014147Z.json`
+
+Kết quả:
+
+- 34 Signals;
+- 9 Questions;
+- 4 Clusters;
+- 4 Opportunities;
+- broad Pillar không được tạo vì không có core `choosing` cluster;
+- `artist_process` → `DO_NOT_WRITE / NO`;
+- `painting_technique` → `DO_NOT_WRITE / NO`;
+- `negotiation` → `CREATE / LATER`;
+- `price` → `CREATE / LATER`.
+
+Không có NicheCandidate ở real-seed vì chưa có MOTGU Right-to-Win material. Đây là kết quả đúng: hệ thống không được tự bịa lợi thế MOTGU để tạo niche candidate.
+
+## HUMAN GATE 1 — T01.30 — PASS
+
+Founder chọn **một** opportunity:
+
+- topic: `price`;
+- opportunity ID: `opp_ea484183ba36c6b2`;
+- selected by: `founder`;
+- selected at: `2026-09-06T02:06:02.678002+00:00`.
+
+Selection reason:
+
+> Price is the strongest buyer-relevant cluster in the verified real-seed run, with repeated search signals and clear purchase-evaluation intent. It is selected for the first Golden Journal experiment, subject to MOTGU-owned material, stronger evidence and editorial review before drafting.
+
+Selected artifact:
+
+`artifacts/research/ce01-opportunity-map-20260906T020602Z.json`
+
+SHA-256:
+
+`55c5657ce6a2fb54f2b8328405bddea727dd634a23fdf33b1ba841845a5c4a2e`
+
+ContentExperiment draft:
+
+- ID: `exp_cdc69b59a413393c`;
+- status: `PLANNED`;
+- result: `PENDING`;
+- NeedHypothesis remains `PROPOSED`.
 
 Selection cho phép thử content; không tự đổi NeedHypothesis sang SUPPORTED.
 
-Không được tự động chọn Golden Journal trong CE01.
-
-Người duyệt chỉ cần trả lời:
-
-1. tín hiệu hiện tại có đủ để đáng thử hypothesis này không?;
-2. MOTGU có điều gì thật sự riêng để nói?;
-3. bài này có đáng chăm chút không?;
-4. chọn: GO / RESEARCH MORE / NO.
+Gate C PASS không có nghĩa `price` đã được chứng minh là nhu cầu thật, cũng không có nghĩa MOTGU đã có lợi thế riêng. Hai việc đó phải được kiểm tra ở Phase D bằng EvidenceSet + OriginalityPack.
 
 ---
 
-# PHASE D — CONTENT INPUT
+# PHASE D — CONTENT INPUT — NEXT
 
 ## D1. Editorial calibration
 
@@ -470,8 +516,8 @@ Không tự sửa global settings từ một bài thử.
 Chỉ đóng CE01 khi tất cả điều sau đúng:
 
 - [x] repo build/test sạch;
-- [ ] một founder-proposed NeedHypothesis + signals tạo Opportunity Map dễ hiểu;
-- [ ] human chọn được một opportunity có lý do rõ;
+- [x] một founder-proposed NeedHypothesis + signals tạo Opportunity Map dễ hiểu;
+- [x] human chọn được một opportunity có lý do rõ;
 - [ ] selected research sources tốt hơn việc lấy top Google mặc định;
 - [ ] có ContentCase + LocaleVariant thật;
 - [ ] có EvidenceSet + OriginalityPack;
@@ -501,10 +547,10 @@ Không làm trong phase này:
 Không gom CE01 thành một PR khổng lồ.
 
 1. PR-A — repository skeleton — **MERGED / CLOSED**;
-2. PR-B — research spike — **NEXT**;
-3. PR-C — Opportunity Map Mini (gồm Keyword/Question Map);
-4. PR-D — editorial/content inputs;
-5. PR-E — walking skeleton + CE01 review.
+2. PR-B — research spike — **MERGED / CLOSED / PASS**;
+3. PR-C — Opportunity Map Mini — **PASS / READY FOR REVIEW**;
+4. PR-D — editorial/content inputs — **NEXT**;
+5. PR-E — walking skeleton + CE01 review — **PENDING**.
 
 Mỗi PR phải có:
 
