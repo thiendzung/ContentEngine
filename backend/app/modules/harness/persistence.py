@@ -546,7 +546,9 @@ async def fail_job_and_maybe_retry(
             retry_job_id=retry_job.id,
         )
 
-    run = await session.scalar(select(ContentRun).where(ContentRun.id == step.run_id).with_for_update())
+    run = await session.scalar(
+        select(ContentRun).where(ContentRun.id == step.run_id).with_for_update()
+    )
     if run is None:
         raise ValueError("ContentRun not found")
     if run.status == "running":
@@ -591,9 +593,13 @@ async def load_budget_usage(
 
     started_at: datetime | None
     if step_run_id is None:
-        started_at = await session.scalar(select(ContentRun.started_at).where(ContentRun.id == run_id))
+        started_at = await session.scalar(
+            select(ContentRun.started_at).where(ContentRun.id == run_id)
+        )
     else:
-        started_at = await session.scalar(select(StepRun.started_at).where(StepRun.id == step_run_id))
+        started_at = await session.scalar(
+            select(StepRun.started_at).where(StepRun.id == step_run_id)
+        )
     wall_clock_seconds = 0.0
     if started_at is not None:
         wall_clock_seconds = max(0.0, (utc_now() - started_at).total_seconds())
