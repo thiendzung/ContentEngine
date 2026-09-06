@@ -200,9 +200,23 @@ topic: buying_original_art
 entities:
   - artwork
 signal_count: 2
+query_quality: usable
 ```
 
 Không cần mọi field có ngay từ provider. AI/rules có thể phân loại sau và giữ confidence.
+
+`query_quality` gồm:
+
+- `usable`: có ý nghĩa độc lập và đủ điều kiện lập Question/Cluster;
+- `truncated`: query bị cắt hoặc kết thúc giữa ý;
+- `malformed`: query hỏng, không có ý nghĩa tìm kiếm độc lập;
+- `off_scope`: query hợp lệ nhưng thuộc art-making/artist-process, không thuộc buyer journey.
+
+Signal gốc và provenance vẫn được giữ khi query là `truncated`, `malformed` hoặc
+`off_scope`. Hai loại đầu không được tạo Question/Cluster/Opportunity. `off_scope`
+có thể được giữ trong Question Map để truy nguyên nhưng không được làm support cho
+NeedHypothesis buyer; nếu tạo opportunity theo dõi thì phải là `DO_NOT_WRITE` với
+priority `NO`.
 
 ## 7. Taxonomy tối thiểu
 
@@ -291,6 +305,11 @@ Pillar candidate phù hợp khi:
 - MOTGU có đủ knowledge/originality;
 - có giá trị cập nhật lâu dài;
 - có đường liên kết tự nhiên sang nhiều content/entity.
+
+Khi dựng pillar, chỉ dùng các cluster buyer-relevant, cùng NeedHypothesis và có
+`query_quality=usable`. Không cộng signal từ query truncated, malformed, off-scope,
+artist-process hoặc cluster `DO_NOT_WRITE`. Nếu sau bộ lọc không còn đủ cluster thì
+không ép tạo pillar.
 
 Cluster candidate phù hợp khi:
 

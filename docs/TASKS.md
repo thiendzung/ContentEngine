@@ -66,24 +66,26 @@ Status: **CLOSED / PASS**.
 
 ### PR-C — Opportunity Map Mini
 
-Status: **PENDING**. Keyword Plan remains a supporting tool in Research.
+Status: **PASS / READY FOR REVIEW**. Keyword Plan remains a supporting tool in Research.
 
-- [ ] Normalize MARKET/SEARCH/MOTGU Signal with scope, observation, provenance and dedupe.
-- [ ] Create NeedHypothesis with support/contradiction/alternatives/missing evidence.
-- [ ] Keep founder-proposed seeds PROPOSED until reviewed evidence supports a change.
-- [ ] Build ContentOpportunity editorial contract + existing-content decision.
-- [ ] Suggest Journal pillar/cluster or Artwork without creating new Artist/Visit engines.
-- [ ] Preserve human selection record and draft ContentExperiment measurement plan.
+- [x] Normalize MARKET/SEARCH/MOTGU Signal with scope, observation, provenance and dedupe.
+- [x] Create NeedHypothesis with support/contradiction/alternatives/missing evidence.
+- [x] Keep founder-proposed seeds PROPOSED until reviewed evidence supports a change.
+- [x] Build ContentOpportunity editorial contract + existing-content decision.
+- [x] Suggest Journal pillar/cluster or Artwork without creating new Artist/Visit engines.
+- [x] Preserve human selection record and draft ContentExperiment measurement plan.
 
-- [ ] T01.22 Collect MARKET/SEARCH signals for one founder-proposed NeedHypothesis.
-- [ ] T01.23 Normalize + dedupe query/question signals.
-- [ ] T01.24 Classify question type, intent, audience stage and problem/desire with confidence.
-- [ ] T01.25 Build simple clusters by problem + intent + answer overlap, not string similarity only.
-- [ ] T01.26 Produce pillar/cluster candidates.
-- [ ] T01.27 Produce Niche Candidates with MOTGU Right-to-Win reason.
-- [ ] T01.28 Produce content decision: CREATE/UPDATE/REFRESH/MERGE/LINK_ONLY/DO_NOT_WRITE.
-- [ ] T01.29 Produce priority: NOW/NEXT/LATER/NO with short reasons; no fake 0–100 precision.
-- [ ] T01.30 Human review one Opportunity Map and select one opportunity for the Golden Journal.
+- [x] T01.22 Collect MARKET/SEARCH signals for one founder-proposed NeedHypothesis.
+- [x] T01.23 Normalize + dedupe query/question signals.
+- [x] T01.24 Classify question type, intent, audience stage and problem/desire with confidence.
+- [x] T01.25 Build simple clusters by problem + intent + answer overlap, not string similarity only.
+- [x] T01.26 Produce pillar/cluster candidates.
+- [x] T01.27 Produce Niche Candidates with MOTGU Right-to-Win reason.
+- [x] T01.28 Produce content decision: CREATE/UPDATE/REFRESH/MERGE/LINK_ONLY/DO_NOT_WRITE.
+- [x] T01.29 Produce priority: NOW/NEXT/LATER/NO with short reasons; no fake 0–100 precision.
+- [x] T01.30 Human review one Opportunity Map and select one opportunity for the Golden Journal.
+
+PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z.json` produced 34 signals. Final cleaned map produced 9 questions, 4 clusters and 4 opportunities with the unsupported broad Pillar removed. Founder selected `price` (`opp_ea484183ba36c6b2`). Selected artifact `ce01-opportunity-map-20260906T020602Z.json` records HumanSelection and ContentExperiment draft `exp_cdc69b59a413393c`; NeedHypothesis remains `PROPOSED`. No MOTGU-owned material has been attached yet, so Right-to-Win remains an open content-input gate rather than assumed evidence.
 
 ### Editorial calibration
 
@@ -108,7 +110,7 @@ Status: **PENDING**. Keyword Plan remains a supporting tool in Research.
 ### CE01 exit gate
 
 - [x] Repo build/test clean.
-- [ ] One founder-proposed NeedHypothesis + real signals produces a readable Opportunity Map.
+- [x] One founder-proposed NeedHypothesis + real signals produces a readable Opportunity Map.
 - [ ] Human selects at least one opportunity with clear audience/problem/MOTGU advantage.
 - [ ] Selected research sources are demonstrably better than blindly taking Google top results.
 - [ ] One real Journal reaches human review.
