@@ -36,7 +36,7 @@ PR-A đã merge:
 - merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`;
 - toàn bộ baseline checks PASS trước merge.
 
-PR-B đã merge và Gate B PASS. PR-C đã merge qua PR #6 với merge commit `cda4f738aff08abf827e2ce49418ea29f5af351f`. PR-D đã merge qua PR #7 với merge commit `fd86b67d587fdab663915fac106f751f34551c59`. PR-E ở PR #8 đã hoàn tất Walking Skeleton, Founder approved Journal V2, Assertion Audit V2 PASS và CE01 decision là `GO TO CE02`; PR #8 chờ final CI/review/merge.
+PR-B đã merge và Gate B PASS. PR-C đã merge qua PR #6 với merge commit `cda4f738aff08abf827e2ce49418ea29f5af351f`. PR-D đã merge qua PR #7 với merge commit `fd86b67d587fdab663915fac106f751f34551c59`. PR-E đã merge qua PR #8 với merge commit `b9b9d94c6052750215194db66f25003280489cbc`; Walking Skeleton PASS, Founder approved Journal V2, Assertion Audit V2 PASS và CE01 decision là `GO TO CE02`.
 
 ## 3. Kết quả cuối CE01
 
@@ -677,7 +677,7 @@ Không gom CE01 thành một PR khổng lồ.
 2. PR-B — research spike — **MERGED / CLOSED / PASS**;
 3. PR-C — Opportunity Map Mini — **MERGED / CLOSED / PASS**;
 4. PR-D — editorial/content inputs — **MERGED / CLOSED / PASS**;
-5. PR-E — walking skeleton + CE01 review — **PASS / READY FOR REVIEW**.
+5. PR-E — walking skeleton + CE01 review — **MERGED / CLOSED / PASS**.
 
 Mỗi PR phải có:
 
@@ -690,4 +690,4 @@ STATUS
 NEXT
 ```
 
-Không merge nếu task chưa có bằng chứng rõ. PR-E chỉ merge sau final CI xanh và Founder/reviewer review PR #8.
+Không merge nếu task chưa có bằng chứng rõ. PR-E merged after final CI PASS and Founder/reviewer approval through PR #8 at `b9b9d94c6052750215194db66f25003280489cbc`.
