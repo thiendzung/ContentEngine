@@ -176,7 +176,7 @@ Status: **CLOSED / PASS**.
 - PR-B = CLOSED / MERGED / PASS.
 - PR-C = CLOSED / MERGED / PASS.
 - PR-D = CLOSED / MERGED / PASS.
-- PR-E = PASS / READY FOR REVIEW.
+- PR-E = CLOSED / MERGED / PASS.
 
 - [x] T03.1 Implement Run state machine.
 - [x] T03.2 Implement StepRun attempt lifecycle.
@@ -202,6 +202,10 @@ Status: **CLOSED / PASS**.
 ---
 
 ## CE04 — Knowledge + Production Research
+
+- Status: **ACTIVE — PR-A Source Ingest + Dedupe + Chunking**.
+
+- PR-A = ACTIVE.
 
 - [ ] T04.1 Source registry.
 - [ ] T04.2 Canonicalize source into normalized text/Markdown.

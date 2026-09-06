@@ -398,10 +398,10 @@ Never claim completion without evidence.
 
 Current priority:
 
-`CE03 — Durable Harness — CLOSED / PASS`
+`CE04 — Knowledge + Production Research`
 
 Current implementation slice:
 
-`None — CE04 is not started`
+`CE04 PR-A — Source Ingest + Dedupe + Chunking`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = PASS / READY FOR REVIEW. CE04 is not started.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = ACTIVE. CE04 owns source ingest, dedupe and bounded chunking foundation; do not expand into later CE04 tasks or CE05.
