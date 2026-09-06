@@ -1,9 +1,10 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
@@ -110,6 +111,34 @@ async def test_source_registry_is_idempotent() -> None:
             select(func.count(Source.id)).where(Source.fingerprint == first.source.fingerprint)
         )
         assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_concurrent_source_registration_converges_to_one_row() -> None:
+    source_ref = f"concurrent:{uuid4()}"
+
+    async def register_once() -> tuple[object, bool]:
+        async with AsyncSession(engine, expire_on_commit=False) as session:
+            project = await motgu_project(session)
+            result = await register_source(
+                session,
+                project_id=project.id,
+                source_type="manual_document",
+                locator=source_ref,
+                provenance_json={"source_ref": source_ref, "method": "concurrency-test"},
+                captured_at=datetime.now(UTC),
+            )
+            source_id = result.source.id
+            await session.commit()
+            return source_id, result.created
+
+    first, second = await asyncio.gather(register_once(), register_once())
+    assert first[0] == second[0]
+    assert sorted((first[1], second[1])) == [False, True]
+
+    async with AsyncSession(engine) as cleanup:
+        await cleanup.execute(delete(Source).where(Source.id == first[0]))
+        await cleanup.commit()
 
 
 @pytest.mark.asyncio
