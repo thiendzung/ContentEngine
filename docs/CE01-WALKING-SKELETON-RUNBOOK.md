@@ -24,9 +24,9 @@ Không coi “backend chạy được” hay “API gọi được” là hoàn 
 ```text
 PHASE A — FOUNDATION       CLOSED
 PHASE B — RESEARCH SPIKE   CLOSED / PASS
-PHASE C — OPPORTUNITY MAP  PASS / READY FOR REVIEW
-PHASE D — CONTENT INPUT    NEXT
-PHASE E — GOLDEN JOURNAL   PENDING
+PHASE C — OPPORTUNITY MAP  CLOSED / PASS
+PHASE D — CONTENT INPUT    PASS / READY FOR REVIEW
+PHASE E — GOLDEN JOURNAL   NEXT AFTER PR-D MERGE
 PHASE F — CE01 REVIEW      PENDING
 ```
 
@@ -36,7 +36,7 @@ PR-A đã merge:
 - merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`;
 - toàn bộ baseline checks PASS trước merge.
 
-PR-B đã merge và Gate B PASS. PR-C hiện ở PR #6, đã hoàn thành Gate C và chờ review/merge trước khi mở PR-D.
+PR-B đã merge và Gate B PASS. PR-C đã merge qua PR #6 với merge commit `cda4f738aff08abf827e2ce49418ea29f5af351f`. PR-D hiện ở PR #7; Founder đã approve calibration + content direction và Gate D PASS, chờ review/merge trước khi mở Phase E.
 
 ## 3. Kết quả cuối CE01
 
@@ -248,7 +248,7 @@ Fresh canonical run sau khi Founder cấu hình API keys:
 
 ---
 
-# PHASE C — OPPORTUNITY MAP MINI — PASS / READY FOR REVIEW
+# PHASE C — OPPORTUNITY MAP MINI — CLOSED / PASS
 
 Task:
 
@@ -343,9 +343,11 @@ Selection cho phép thử content; không tự đổi NeedHypothesis sang SUPPOR
 
 Gate C PASS không có nghĩa `price` đã được chứng minh là nhu cầu thật, cũng không có nghĩa MOTGU đã có lợi thế riêng. Hai việc đó phải được kiểm tra ở Phase D bằng EvidenceSet + OriginalityPack.
 
+PR-C merged through PR #6 at `cda4f738aff08abf827e2ce49418ea29f5af351f`.
+
 ---
 
-# PHASE D — CONTENT INPUT — NEXT
+# PHASE D — CONTENT INPUT — PASS / READY FOR REVIEW
 
 ## D1. Editorial calibration
 
@@ -356,6 +358,13 @@ Task:
 - T01.33 short human review form.
 
 Không cần bài mẫu hoàn chỉnh. Đoạn ngắn đúng/sai giọng MOTGU là đủ.
+
+CE01 approved pack:
+
+- 4 positive English examples;
+- 4 negative English examples;
+- short human editorial review form;
+- Founder approval: `APPROVE CALIBRATION + CONTENT DIRECTION` on `2026-09-06`.
 
 ## D2. ContentCase
 
@@ -381,6 +390,19 @@ LocaleVariant tối thiểu:
 - title direction;
 - language/voice notes.
 
+Approved CE01 records:
+
+- ContentCase: `cc_ce01_price_001`;
+- LocaleVariant: `lv_ce01_price_en_001`;
+- locale: `en`;
+- content role: `cluster`;
+- primary intent: `evaluate`;
+- secondary intent: `trust`.
+
+Primary question:
+
+> What actually affects the price of an original painting, and what should a first-time buyer compare before deciding?
+
 ## D3. EvidenceSet
 
 Task T01.36.
@@ -396,6 +418,17 @@ claim
 → source
 → locator
 ```
+
+Locked CE01 EvidenceSet:
+
+- ID: `es_ce01_price_v1`;
+- status: `LOCKED_FOR_CE01`;
+- locked by: `founder`;
+- scope: narrow first-time-buyer price evaluation;
+- sources: Smithsonian American Art Museum, Sotheby’s specialist estimate guidance, Getty provenance guidance, and canonical MOTGU Product & Data Contract;
+- discovery sources from PR-B are not silently promoted into factual evidence.
+
+Critical guard: this EvidenceSet does not support an exact MOTGU/artist base-pricing formula, investment claims, universal fair-price claims, or current product price/stock from memory.
 
 ## D4. OriginalityPack
 
@@ -413,13 +446,33 @@ Phải có ít nhất một nguyên liệu MOTGU riêng:
 
 Nếu OriginalityPack rỗng, không viết chỉ để hoàn thành task.
 
-### Gate D
+Approved CE01 OriginalityPack:
 
-- [ ] ContentCase rõ;
-- [ ] locale rõ;
-- [ ] EvidenceSet đủ cho critical facts;
-- [ ] OriginalityPack có ít nhất một giá trị riêng;
-- [ ] positive/negative voice examples đã có.
+- ID: `opack_ce01_price_v1`;
+- status: `APPROVED_FOR_CE01`;
+- live physical-work facts come from canonical MOTGU product data;
+- current price/availability must not come from memory;
+- artwork price can be separated from practical packaging/shipping/insurance costs;
+- sale status and location are separate facts;
+- editorial posture is calm, personal and low pressure.
+
+Originality gap intentionally remains: there is no founder/artist explanation of the exact base-pricing method for a specific work. This is acceptable only while the content direction stays with understanding/evaluating a displayed price. Crossing into “how MOTGU prices its art” requires new evidence and human review.
+
+### Gate D — PASS
+
+- [x] ContentCase rõ;
+- [x] locale rõ;
+- [x] EvidenceSet đủ cho critical facts trong phạm vi đã khóa;
+- [x] OriginalityPack có giá trị riêng MOTGU;
+- [x] positive/negative voice examples đã được Founder approve.
+
+Canonical content-input pack:
+
+`docs/13-CE01-CONTENT-INPUT-PRICE.md`
+
+Gate result:
+
+`GATE D PASS / READY FOR PHASE E ANGLE AFTER PR-D MERGE`
 
 ---
 
@@ -518,9 +571,9 @@ Chỉ đóng CE01 khi tất cả điều sau đúng:
 - [x] repo build/test sạch;
 - [x] một founder-proposed NeedHypothesis + signals tạo Opportunity Map dễ hiểu;
 - [x] human chọn được một opportunity có lý do rõ;
-- [ ] selected research sources tốt hơn việc lấy top Google mặc định;
-- [ ] có ContentCase + LocaleVariant thật;
-- [ ] có EvidenceSet + OriginalityPack;
+- [x] selected research/evidence sources tốt hơn việc lấy top Google mặc định;
+- [x] có ContentCase + LocaleVariant thật;
+- [x] có EvidenceSet + OriginalityPack;
 - [ ] một Journal thật tới human review;
 - [ ] zero critical unsupported assertion trong candidate được review;
 - [ ] failure notes rõ;
@@ -548,9 +601,9 @@ Không gom CE01 thành một PR khổng lồ.
 
 1. PR-A — repository skeleton — **MERGED / CLOSED**;
 2. PR-B — research spike — **MERGED / CLOSED / PASS**;
-3. PR-C — Opportunity Map Mini — **PASS / READY FOR REVIEW**;
-4. PR-D — editorial/content inputs — **NEXT**;
-5. PR-E — walking skeleton + CE01 review — **PENDING**.
+3. PR-C — Opportunity Map Mini — **MERGED / CLOSED / PASS**;
+4. PR-D — editorial/content inputs — **PASS / READY FOR REVIEW**;
+5. PR-E — walking skeleton + CE01 review — **NEXT AFTER PR-D MERGE**.
 
 Mỗi PR phải có:
 
