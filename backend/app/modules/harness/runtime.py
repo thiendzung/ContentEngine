@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
@@ -436,8 +436,6 @@ def _json_safe(value: object) -> object:
         return str(value)
     if isinstance(value, UUID):
         return str(value)
-    if hasattr(value, "__dataclass_fields__"):
-        return _json_safe(asdict(value))
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
