@@ -170,12 +170,14 @@ PR-E evidence: Founder selected Angle A, approved Outline V2, and approved Journ
 
 ## CE03 — Durable Harness
 
-- [ ] T03.1 Implement Run state machine.
-- [ ] T03.2 Implement StepRun attempt lifecycle.
-- [ ] T03.3 Implement durable job queue.
-- [ ] T03.4 Implement atomic worker claim.
-- [ ] T03.5 Implement worker lease/heartbeat.
-- [ ] T03.6 Implement expired lease reclaim.
+Status: **ACTIVE — PR-A Durable Queue + Lease Core**.
+
+- [x] T03.1 Implement Run state machine.
+- [x] T03.2 Implement StepRun attempt lifecycle.
+- [x] T03.3 Implement durable job queue.
+- [x] T03.4 Implement atomic worker claim.
+- [x] T03.5 Implement worker lease/heartbeat.
+- [x] T03.6 Implement expired lease reclaim.
 - [ ] T03.7 Implement checkpoints.
 - [ ] T03.8 Implement approval pause/resume.
 - [ ] T03.9 Implement artifact version invalidation of approval.

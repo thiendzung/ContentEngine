@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`CE02 Final PR — Contract Integration`
+`CE03 PR-A — Durable Queue + Lease Core`
 
-CE01 is CLOSED / PASS. CE02 is READY FOR REVIEW with structured, versioned persistence from planning signals through run records and final content lineage. CE03 owns durable runtime orchestration only: queue, worker, lease, retry, resume, outbox and reconciliation.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS with structured, versioned persistence from planning signals through run records and final content lineage. CE03 owns durable runtime orchestration only: queue, worker, lease, retry, resume, outbox and reconciliation.

@@ -1,4 +1,4 @@
-"""CE02 run history records; orchestration belongs to the CE03 harness."""
+"""Persisted CE02 run records and the CE03 durable queue core."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ class ContentRun(TimestampMixin, Base):
             name="ck_content_run_mode",
         ),
         CheckConstraint(
-            "status in ('pending','running','paused','completed','failed','cancelled')",
+            "status in ('pending','running','waiting_approval','completed','failed','cancelled')",
             name="ck_content_run_status",
         ),
     )
@@ -94,6 +94,29 @@ class StepRun(TimestampMixin, Base):
             name="ck_step_run_status",
         ),
         UniqueConstraint("run_id", "step_key", "attempt", name="uq_step_run_attempt"),
+    )
+
+
+class Job(TimestampMixin, Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("content_runs.id"), nullable=False)
+    step_run_id: Mapped[UUID] = mapped_column(ForeignKey("step_runs.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    lease_owner: Mapped[str | None] = mapped_column(String(200))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dedupe_key: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("attempt > 0", name="ck_job_attempt_positive"),
+        CheckConstraint(
+            "status in ('queued','leased','completed','failed','cancelled')",
+            name="ck_job_status",
+        ),
+        UniqueConstraint("dedupe_key", name="uq_job_dedupe_key"),
     )
 
 
