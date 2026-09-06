@@ -376,9 +376,11 @@ class ContentVersion(TimestampMixin, Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
     content_item_id: Mapped[UUID] = mapped_column(ForeignKey("content_items.id"), nullable=False)
     version_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    final_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
     change_reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
     content_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    created_by_run_id: Mapped[UUID | None] = mapped_column(ForeignKey("content_runs.id"))
 
     __table_args__ = (
         UniqueConstraint("content_item_id", "version_no", name="uq_content_version_number"),

@@ -30,9 +30,8 @@ def opportunity_has_required_existing_target(
     opportunity: ContentOpportunity,
 ) -> bool:
     decisions_requiring_target = {"UPDATE", "REFRESH", "MERGE", "LINK_ONLY"}
-    return (
-        opportunity.decision not in decisions_requiring_target
-        or bool(opportunity.existing_content_refs_json)
+    return opportunity.decision not in decisions_requiring_target or bool(
+        opportunity.existing_content_refs_json
     )
 
 
@@ -60,6 +59,8 @@ async def create_next_content_version(
     change_reason: str,
     content_json: dict[str, object],
     status: str = "draft",
+    created_by_run_id: UUID | None = None,
+    final_artifact_id: UUID | None = None,
 ) -> ContentVersion:
     current_max = await session.scalar(
         select(func.max(ContentVersion.version_no)).where(
@@ -72,6 +73,8 @@ async def create_next_content_version(
         change_reason=change_reason,
         status=status,
         content_json=content_json,
+        created_by_run_id=created_by_run_id,
+        final_artifact_id=final_artifact_id,
     )
     session.add(version)
     await session.flush()
