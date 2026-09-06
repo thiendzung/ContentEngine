@@ -49,3 +49,6 @@ def downgrade() -> None:
     op.drop_table("prompt_definitions")
     op.drop_table("settings_snapshots")
     op.drop_table("settings_versions")
+    op.execute(
+        sa.text("DELETE FROM projects WHERE id = '00000000-0000-0000-0000-000000000001'")
+    )
