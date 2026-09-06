@@ -52,7 +52,9 @@ def opportunity_map_markdown(result: OpportunityMapResult) -> str:
     lines.extend(["", "### Missing evidence", ""])
     lines.extend(f"- {item}" for item in hypothesis.missing_evidence)
     lines.extend(["", "## Opportunities", ""])
+
     for index, opportunity in enumerate(result.opportunities, start=1):
+        role = opportunity.suggested_role.value if opportunity.suggested_role else "-"
         lines.extend(
             [
                 f"### {index}. {opportunity.question}",
@@ -61,7 +63,7 @@ def opportunity_map_markdown(result: OpportunityMapResult) -> str:
                 f"- Topic: {opportunity.topic_key}",
                 f"- Intent: {opportunity.intent.value}",
                 f"- Type: {opportunity.suggested_content_type.value}",
-                f"- Role: {opportunity.suggested_role.value if opportunity.suggested_role else '-'}",
+                f"- Role: {role}",
                 f"- Decision: {opportunity.decision.value}",
                 f"- Priority: {opportunity.priority.value}",
                 f"- Search/signal refs: {len(opportunity.signal_refs)}",
@@ -77,8 +79,10 @@ def opportunity_map_markdown(result: OpportunityMapResult) -> str:
             lines.append("- Material gaps:")
             lines.extend(f"  - {gap}" for gap in opportunity.material_gaps)
         lines.append("")
+
     lines.extend(["## Research gaps", ""])
     lines.extend(f"- {gap}" for gap in result.research_gaps)
+
     if result.niche_candidates:
         lines.extend(["", "## Niche candidate", ""])
         for niche in result.niche_candidates:
@@ -93,6 +97,7 @@ def opportunity_map_markdown(result: OpportunityMapResult) -> str:
                 ]
             )
             lines.extend(f"  - {item}" for item in niche.motgu_right_to_win)
+
     if result.human_selection:
         lines.extend(
             [
@@ -104,6 +109,7 @@ def opportunity_map_markdown(result: OpportunityMapResult) -> str:
                 f"- Reason: {result.human_selection.reason}",
             ]
         )
+
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -125,11 +131,13 @@ def load_research_spike_for_opportunity_map(path: Path) -> ResearchSpikeResult:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("research_artifact_object_required")
+
     seed = _required_string(payload, "seed")
     created_at = str(payload.get("created_at") or "")
     raw_signals = payload.get("signals")
     if not isinstance(raw_signals, list):
         raise ValueError("research_artifact_signals_required")
+
     signals: list[SearchSignal] = []
     for raw in raw_signals:
         if not isinstance(raw, dict):
@@ -157,8 +165,10 @@ def load_research_spike_for_opportunity_map(path: Path) -> ResearchSpikeResult:
                 position=position,
             )
         )
+
     if not signals:
         raise ValueError("research_artifact_has_no_usable_signals")
+
     return ResearchSpikeResult(
         seed=seed,
         seed_origin=str(payload.get("seed_origin") or "founder_proposed"),
