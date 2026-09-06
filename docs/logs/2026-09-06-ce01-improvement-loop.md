@@ -178,21 +178,21 @@ Status: `OPEN`.
 
 ---
 
-## LOOP-07 — OriginalityPack is valid but still too operational without a specific Artwork
+## LOOP-07 — OriginalityPack needs a specific first-party anchor
 
 Observed:
 
-The current pack contains real MOTGU product/commerce rules and brand posture, but no specific verified Artwork has yet been selected for the Golden Journal.
+The first OriginalityPack was valid but still operational until a specific real Artwork was selected.
 
 Impact:
 
-Drafting now could still produce a polished but generic art-price article.
+Drafting without a concrete first-party anchor could still produce a polished but generic art-price article.
 
 Decision now:
 
-Add hard blocker before T01.40:
+Added hard blocker before Draft and resolved it with runtime-verified Artwork:
 
-`ARTWORK_ANCHOR_REQUIRED_BEFORE_DRAFT`
+`Tranh đường tàu phố cổ Hà Nội — Hoa Lê`
 
 Candidate upgrade:
 
@@ -202,7 +202,7 @@ Likely phase:
 
 CE04 / CE05.
 
-Status: `RESOLVED IN CE01 BY RUNTIME-VERIFIED ARTWORK ANCHOR`.
+Status: `RESOLVED IN CE01 / KEEP AS DESIGN RULE`.
 
 ---
 
@@ -218,7 +218,7 @@ Embedding remembered commerce facts risks stale or false statements.
 
 Decision now:
 
-Use a runtime/product component for dynamic facts and keep durable Journal prose evergreen. Draft V1 isolates the runtime snapshot as an internal editorial block rather than durable public prose.
+Use a runtime/product component for dynamic facts and keep durable Journal prose evergreen. Draft V2 contains no stale price/stock/status/location snapshot in visible copy.
 
 Candidate upgrade:
 
@@ -288,15 +288,15 @@ Status: `KEEP AS DESIGN PRINCIPLE`.
 
 Observed:
 
-Current Google guidance for generative AI search says core SEO remains the foundation. Google explicitly prioritizes useful non-commodity content, clear organization and real first-hand value, while saying there is no special AI schema, no requirement to split content into tiny chunks, and no need to rewrite pages for AI systems. Bing likewise ties AI grounding/citations to crawlability, clarity, structure, usefulness, evidence and freshness.
+Current Google guidance for generative AI search says core SEO remains the foundation. Google prioritizes useful non-commodity content, clear organization and real first-hand value. Bing likewise ties AI grounding/citations to crawlability, clarity, structure, usefulness, evidence and freshness.
 
 Impact:
 
-Treating SEO, AEO, AIO and GEO as separate copywriting formulas would likely create keyword repetition, thin fan-out pages, artificial FAQ sections and generic machine-oriented prose — the opposite of MOTGU's brand and the opposite of current official guidance.
+Treating SEO, AEO, AIO and GEO as separate copywriting formulas would likely create keyword repetition, thin fan-out pages, artificial FAQ sections and generic machine-oriented prose — the opposite of MOTGU's brand.
 
 Decision now:
 
-Revise Golden Journal Outline V2 around one shared rule:
+Use one shared rule:
 
 `human-first usefulness + first-party value + evidence clarity + machine-legible structure`
 
@@ -305,7 +305,7 @@ Applied now:
 - direct answer near the top;
 - compact “price can / cannot tell you” map;
 - natural question-led headings;
-- one real MOTGU Artwork moved to the centre;
+- one real MOTGU Artwork at the centre;
 - practical Hanoi/take-home context emphasized over generic valuation theory;
 - real Artwork image requirement added;
 - adjacent fan-out questions covered inside one coherent page;
@@ -332,33 +332,27 @@ Likely phase:
 
 CE05 / CE06 / CE08.
 
-References reviewed 2026-09-06:
-
-- Google Search Central: Optimizing your website for generative AI features on Google Search;
-- Google Search Central: AI features and your website;
-- Bing Webmaster Guidelines / AI Performance guidance.
-
 Status: `APPLIED TO OUTLINE V2 / CANDIDATE FOR SYSTEM CONTRACT`.
 
 ---
 
-## LOOP-12 — FAQ/search-feature tactics can age faster than reader value
+## LOOP-12 — Search-feature tactics can age faster than reader value
 
 Observed:
 
-Google deprecated the FAQ rich result in May 2026. At the same time, clear question-and-answer structure is still useful to readers and Bing explicitly recommends clear sections and FAQ-style content where appropriate for AI citation clarity.
+Search presentation features change over time, while clear question-and-answer structure remains useful when it matches real reader jobs.
 
 Impact:
 
-Building a content architecture around a specific rich-result feature is brittle. Removing useful question structure just because a search feature changed would also be wrong.
+Building content architecture around one rich-result/search feature is brittle.
 
 Decision now:
 
-Use question headings only when they match real reader jobs. Do not add an FAQ section or FAQ structured data solely to chase search appearance.
+Use question headings only when they match real reader jobs. Do not add sections or markup solely to chase a search appearance.
 
 Candidate upgrade:
 
-Separate `reader structure` from `search presentation feature` in the publishing contract. Search features can change without forcing editorial rewrites.
+Separate `reader structure` from `search presentation feature` in the publishing contract.
 
 Likely phase:
 
@@ -413,124 +407,133 @@ Status: `OPEN / IMPORTANT DATA-BOUNDARY RULE`.
 
 ---
 
-## LOOP-15 — Implementation language can leak into reader-visible copy
+## LOOP-15 — Internal implementation language can leak into visible copy
 
 Observed:
 
-Founder review of Draft EN V1 found technically correct phrases such as `source of truth`, `canonical WordPress/WooCommerce data`, `runtime snapshot`, `hard-code`, `durable published prose` and `product rules` inside or too close to visible reader copy.
+Draft V1 passed factual audit but still contained reader-visible phrases such as runtime snapshot, source of truth, hard-code, canonical platform/data and product rules.
 
 Impact:
 
-A factually correct Draft can still feel like system documentation instead of a human Journal. This reduced publish readiness even though the assertion audit had already passed.
+A factually safe draft can still feel machine-written or like internal documentation rather than a Journal for a visitor.
 
 Decision now:
 
-Draft EN V2 moves implementation language into a separate internal publishing-notes section and leaves only reader-relevant wording in the visible article.
+Draft V2 removes implementation language from visible copy and moves it to internal publishing notes.
 
 Candidate upgrade:
 
-Add a `reader_language_vs_system_language` quality check. Visible copy and implementation notes should be separate artifact fields, not one mixed body.
-
-Likely phase:
-
-CE05 / CE06 / CE08.
-
-Status: `FIXED IN V2 / CANDIDATE SYSTEM RULE`.
-
----
-
-## LOOP-16 — Locale-facing image text must be independent from canonical media identity
-
-Observed:
-
-The canonical Artwork media had Vietnamese alt text, while the first Journal LocaleVariant is English. Draft V1 reused the canonical Vietnamese alt text in the English article plan.
-
-Impact:
-
-Shared media identity does not mean all reader-facing media text should be identical across locales. Reusing canonical alt text can create mixed-language output.
-
-Decision now:
-
-Draft EN V2 keeps the official Vietnamese Artwork title unchanged but provides English descriptive alt suggestions.
-
-Candidate upgrade:
-
-MediaAsset identity should be shared, while alt/caption suggestions are locale-facing fields. Do not translate official Artwork titles unless an approved localized title exists.
-
-Likely phase:
-
-CE05 / CE07 / CE08.
-
-Status: `FIXED IN V2 / CANDIDATE DATA CONTRACT`.
-
----
-
-## LOOP-17 — Repetition and contract phrasing can reveal machine/process residue
-
-Observed:
-
-Founder review found excessive repetition of the abstract noun `facts` and system-like labels such as `Stable facts` / `Live facts` and product-contract phrasing around shipping.
-
-Impact:
-
-The article was correct but less natural. Repetition made the writing feel more generated/editorial-process-driven than reader-driven.
-
-Decision now:
-
-Draft EN V2 keeps `facts` where precision matters but uses natural alternatives such as details, documented information, what is known, and current information. Public labels become `What stays with the work` and `What you should check today`. Shipping language is rewritten around the visitor’s real task.
-
-Candidate upgrade:
-
-Language-naturalness evaluation should detect local repetition and contract/system phrasing without forcing synonym replacement where precision matters.
-
-Likely phase:
-
-CE06.
-
-Status: `FIXED IN V2 / CANDIDATE EVALUATOR`.
-
----
-
-## LOOP-18 — Human review catches quality failures that assertion audit cannot
-
-Observed:
-
-Assertion Audit V1 correctly returned zero critical unsupported claims, but Founder still rated natural English lower and publish readiness at 7/10 because of reader-language issues.
-
-Impact:
-
-Factual correctness is necessary but not sufficient. An automated evidence audit cannot certify naturalness, brand feel or publish readiness.
-
-Decision now:
-
-Keep Assertion Audit and Human Editorial Review as distinct gates.
-
-Candidate upgrade:
-
-Never let an evidence/claim evaluator self-certify final editorial quality. Production quality must preserve separate deterministic/evidence checks, AI-assisted quality checks and human approval.
+Add a visible-copy boundary check that flags internal implementation vocabulary and requires human-readable wording.
 
 Likely phase:
 
 CE05 / CE06.
 
-Status: `KEEP AS DESIGN PRINCIPLE`.
+Status: `FIXED IN V2 / KEEP AS QUALITY RULE`.
 
 ---
 
-## Current PR-E checkpoint
+## LOOP-16 — Locale-facing media text is not the same as canonical media identity
 
-- Angle A selected;
-- Outline V2 Founder approved;
-- runtime Artwork fact lock PASS;
-- Draft EN V1 created and reviewed by Founder;
-- Founder V1 review: `CONCEPT APPROVED / EDITORIAL REVISION REQUIRED`;
-- Draft EN V2 created with required editorial fixes;
-- Assertion Audit V2: `PASS / ZERO CRITICAL UNSUPPORTED ASSERTIONS`;
-- final Founder confirmation on V2: `NEXT`;
-- NeedHypothesis remains `PROPOSED`.
+Observed:
 
-Founder review evidence:
+The English Journal V1 inherited Vietnamese alt text from canonical runtime media.
 
-`docs/logs/2026-09-06-ce01-founder-editorial-review-v1.md`
+Impact:
 
-This log is living evidence for T01.43. Do not mark CE01 Gate T01.44 complete until Founder confirms the revised Journal and the final GO/FIX/STOP decision is recorded.
+The media identity can be correct while the reader-facing accessibility text is wrong for the locale.
+
+Decision now:
+
+Keep the official Vietnamese Artwork title, but produce English alt suggestions for the English Journal.
+
+Candidate upgrade:
+
+Model canonical MediaAsset separately from locale-specific alt/caption/editorial usage.
+
+Likely phase:
+
+CE02 / CE07 / CE08.
+
+Status: `FIXED IN V2 / OPEN FOR DATA MODEL`.
+
+---
+
+## LOOP-17 — Repetition and contract phrasing reveal machine/process residue
+
+Observed:
+
+Draft V1 repeated `facts` heavily and used labels such as Stable/Live facts that were logical for data architecture but less natural for readers.
+
+Impact:
+
+Even when sentences are grammatically correct, repeated system vocabulary can make prose feel generated or over-engineered.
+
+Decision now:
+
+Draft V2 reduces repetition and uses reader-facing labels such as “What stays with the work” and “What you should check today”.
+
+Candidate upgrade:
+
+Language-naturalness evaluation should detect repeated abstract nouns and contract-style labels, not only grammar/readability scores.
+
+Likely phase:
+
+CE06.
+
+Status: `FIXED IN V2 / CANDIDATE EVAL`.
+
+---
+
+## LOOP-18 — Assertion Audit cannot replace human editorial review
+
+Observed:
+
+Draft V1 had zero critical unsupported assertions but Founder still rated natural English 7.5/10 and publish readiness 7/10 because of system-language leakage, repetition and reader-facing phrasing.
+
+Impact:
+
+Factual correctness is necessary but not sufficient for publishability.
+
+Decision now:
+
+Keep factual assertion audit and human editorial review as separate gates.
+
+Candidate upgrade:
+
+Production quality stack should preserve distinct checks for:
+
+- factual support;
+- natural language;
+- brand voice;
+- reader usefulness;
+- originality;
+- visible/internal boundary.
+
+Likely phase:
+
+CE05 / CE06.
+
+Status: `KEEP AS CORE DESIGN PRINCIPLE`.
+
+---
+
+## T01.43 — Closeout
+
+Founder approved Journal V2 on `2026-09-06`.
+
+This improvement loop is now sufficient evidence for T01.43. No item above automatically changes the global contract; each open item is carried forward as an evidence-backed candidate for the named later phase.
+
+Final closeout summary:
+
+`docs/logs/2026-09-06-ce01-closeout.md`
+
+## T01.44
+
+Decision:
+
+`GO TO CE02`
+
+NeedHypothesis remains `PROPOSED`.
+
+Status: `CE01 IMPROVEMENT LOOP CLOSED FOR PHASE / OPEN ITEMS CARRIED FORWARD`.
