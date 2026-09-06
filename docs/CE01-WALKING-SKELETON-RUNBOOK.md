@@ -25,9 +25,9 @@ Không coi “backend chạy được” hay “API gọi được” là hoàn 
 PHASE A — FOUNDATION       CLOSED
 PHASE B — RESEARCH SPIKE   CLOSED / PASS
 PHASE C — OPPORTUNITY MAP  CLOSED / PASS
-PHASE D — CLOSED / PASS
-PHASE E — ACTIVE
-PHASE F — CE01 REVIEW      PENDING
+PHASE D — CONTENT INPUT    CLOSED / PASS
+PHASE E — WALKING SKELETON CLOSED / PASS
+PHASE F — CE01 REVIEW      CLOSED / GO TO CE02
 ```
 
 PR-A đã merge:
@@ -36,7 +36,7 @@ PR-A đã merge:
 - merge commit: `8e16c2817359191d0c4cd2e45a28f7eba8fa1a19`;
 - toàn bộ baseline checks PASS trước merge.
 
-PR-B đã merge và Gate B PASS. PR-C đã merge qua PR #6 với merge commit `cda4f738aff08abf827e2ce49418ea29f5af351f`. PR-D hiện ở PR #7; Founder đã approve calibration + content direction và Gate D PASS, chờ review/merge trước khi mở Phase E.
+PR-B đã merge và Gate B PASS. PR-C đã merge qua PR #6 với merge commit `cda4f738aff08abf827e2ce49418ea29f5af351f`. PR-D đã merge qua PR #7 với merge commit `fd86b67d587fdab663915fac106f751f34551c59`. PR-E ở PR #8 đã hoàn tất Walking Skeleton, Founder approved Journal V2, Assertion Audit V2 PASS và CE01 decision là `GO TO CE02`; PR #8 chờ final CI/review/merge.
 
 ## 3. Kết quả cuối CE01
 
@@ -55,6 +55,8 @@ Phải có đủ:
 11. basic assertion audit;
 12. human review;
 13. danh sách lỗi/học được để quyết định CE02.
+
+Kết quả: **đủ 13/13**.
 
 ## 4. Luồng thực thi
 
@@ -78,10 +80,10 @@ PHASE E — WALKING SKELETON
 Angle → Outline → Draft → Assertion Audit
         ↓
 HUMAN GATE 2
-đánh giá bài
+đánh giá bài → revision → Founder approval
         ↓
 PHASE F — CE01 REVIEW
-GO / FIX / STOP
+GO TO CE02
 ```
 
 ---
@@ -347,7 +349,7 @@ PR-C merged through PR #6 at `cda4f738aff08abf827e2ce49418ea29f5af351f`.
 
 ---
 
-# PHASE D — CONTENT INPUT — PASS / READY FOR REVIEW
+# PHASE D — CONTENT INPUT — CLOSED / PASS
 
 ## D1. Editorial calibration
 
@@ -474,16 +476,20 @@ Gate result:
 
 `GATE D CLOSED / PASS`
 
+PR-D merged through PR #7 at `fd86b67d587fdab663915fac106f751f34551c59`.
+
 ---
 
-# PHASE E — WALKING SKELETON
+# PHASE E — WALKING SKELETON — CLOSED / PASS
 
-Current checkpoint:
+Final checkpoint:
 
-- Angle: `PASS`;
+- Angle A: `PASS`;
 - Outline V2: Founder approved — `APPROVE OUTLINE V2`;
 - Artwork runtime fact lock: `PASS`;
-- Draft: `NEXT`.
+- Draft EN V2: Founder approved — `APPROVE JOURNAL V2`;
+- Assertion Audit V2: `PASS / ZERO CRITICAL UNSUPPORTED ASSERTIONS`;
+- Human Gate 2: `PASS`.
 
 ## E1. Angle — T01.38
 
@@ -495,7 +501,9 @@ Sinh ít angle, mỗi angle phải trả lời:
 - MOTGU có quyền nói gì;
 - risk nào còn thiếu.
 
-Human chọn một angle.
+Selected:
+
+`ANGLE A — Read the price without treating it as a score`
 
 ## E2. Outline — T01.39
 
@@ -503,7 +511,13 @@ Mỗi section phải có purpose rõ.
 
 Critical section map được tới evidence hoặc OriginalityPack.
 
-Human duyệt outline trước Draft.
+Founder decision:
+
+`APPROVE OUTLINE V2`
+
+Canonical outline:
+
+`docs/15-CE01-GOLDEN-JOURNAL-OUTLINE.md`
 
 ## E3. Draft — T01.40
 
@@ -521,6 +535,18 @@ Writer chỉ nhận:
 - OriginalityPack;
 - editorial calibration excerpts.
 
+Draft V1 reached Founder review. Founder kept the concept/outline but required editorial revision because internal system language leaked into visible copy and English needed human polish.
+
+Draft V2 applied the requested fixes and preserved the same factual scope.
+
+Canonical candidate:
+
+`docs/17-CE01-GOLDEN-JOURNAL-DRAFT-EN.md`
+
+Founder decision:
+
+`APPROVE JOURNAL V2`
+
 ## E4. Assertion Audit — T01.41
 
 Sau Draft:
@@ -530,7 +556,15 @@ Sau Draft:
 - unsupported critical assertion → BLOCK/REVIEW;
 - interpretation phải được viết như interpretation.
 
-## HUMAN GATE 2 — T01.42
+Canonical audit:
+
+`docs/18-CE01-GOLDEN-JOURNAL-ASSERTION-AUDIT.md`
+
+Final result:
+
+`PASS / ZERO CRITICAL UNSUPPORTED ASSERTIONS`
+
+## HUMAN GATE 2 — T01.42 — PASS
 
 Người duyệt trả lời:
 
@@ -541,39 +575,68 @@ Người duyệt trả lời:
 5. có cảm xúc nhưng vẫn tự nhiên không?;
 6. nếu là website thật, có muốn đăng không?
 
-Kết quả:
+V1 review result:
 
-- `PUBLISHABLE_DIRECTION`;
-- `NEEDS_CHANGES`;
-- `REJECT_DIRECTION`.
+`CONCEPT APPROVED / EDITORIAL REVISION REQUIRED`
+
+Founder review identified editorial/process leakage rather than strategy failure. V2 removed that leakage, humanized English, reduced repetition, localized alt suggestions and improved reader-facing shipping/questions/CTA language.
+
+Final Founder decision:
+
+`APPROVE JOURNAL V2`
 
 Không publish WordPress trong CE01.
 
 ---
 
-# PHASE F — REVIEW & CLOSE
+# PHASE F — REVIEW & CLOSE — CLOSED / GO TO CE02
 
 Task:
 
 - T01.43 record failure notes;
 - T01.44 CE01 gate decision.
 
-Phải ghi riêng:
+Failure/improvement evidence:
 
-- research failure;
-- keyword-plan failure;
-- source-quality failure;
-- evidence gap;
-- voice failure;
-- originality failure;
-- content workflow failure;
-- technical failure.
+- living loop: `docs/logs/2026-09-06-ce01-improvement-loop.md`;
+- final closeout: `docs/logs/2026-09-06-ce01-closeout.md`.
 
-Không tự sửa global settings từ một bài thử.
+T01.43 records research, opportunity-map, source/evidence, originality, voice/editorial, content-memory, dynamic-data and workflow failures/limitations without auto-changing global contracts.
+
+Important retained lessons include:
+
+- search signal != customer truth;
+- provider count != research quality;
+- IDs come from canonical artifacts;
+- specific first-party Artwork anchors reduce generic content;
+- runtime commerce facts stay dynamic;
+- demo/seed content != production Content Memory;
+- internal implementation language must never leak into visible copy;
+- locale-facing alt/copy is separate from canonical media identity;
+- Assertion Audit cannot replace human editorial review;
+- SEO/AEO/AIO/GEO should share one human-first content system rather than four copy formulas.
+
+## T01.44 — CE01 decision
+
+Decision:
+
+`GO TO CE02`
+
+Reason:
+
+- real signals and Opportunity Map are traceable;
+- human selection works;
+- Discovery and Evidence are separated;
+- EvidenceSet and OriginalityPack support a bounded real case;
+- a runtime-verified Artwork prevents generic synthesis;
+- Angle/Outline/Human Review gates caught real problems before approval;
+- one real Journal candidate reached human review and revision;
+- final Assertion Audit has zero critical unsupported assertions;
+- failure notes are preserved for later implementation.
+
+GO does not mean production-ready. NeedHypothesis remains `PROPOSED`; CE02+ still need persistent models, approval state, durable execution, production research, Content Memory, publishing, measurement and learning.
 
 ## CE01 EXIT GATE
-
-Chỉ đóng CE01 khi tất cả điều sau đúng:
 
 - [x] repo build/test sạch;
 - [x] một founder-proposed NeedHypothesis + signals tạo Opportunity Map dễ hiểu;
@@ -581,10 +644,14 @@ Chỉ đóng CE01 khi tất cả điều sau đúng:
 - [x] selected research/evidence sources tốt hơn việc lấy top Google mặc định;
 - [x] có ContentCase + LocaleVariant thật;
 - [x] có EvidenceSet + OriginalityPack;
-- [ ] một Journal thật tới human review;
-- [ ] zero critical unsupported assertion trong candidate được review;
-- [ ] failure notes rõ;
-- [ ] có quyết định GO / FIX BEFORE CE02 / STOP.
+- [x] một Journal thật tới human review;
+- [x] zero critical unsupported assertion trong candidate được review;
+- [x] failure notes rõ;
+- [x] có quyết định GO / FIX BEFORE CE02 / STOP.
+
+Final CE01 decision:
+
+`PASS / GO TO CE02`
 
 ## CE01 NON-GOALS
 
@@ -609,8 +676,8 @@ Không gom CE01 thành một PR khổng lồ.
 1. PR-A — repository skeleton — **MERGED / CLOSED**;
 2. PR-B — research spike — **MERGED / CLOSED / PASS**;
 3. PR-C — Opportunity Map Mini — **MERGED / CLOSED / PASS**;
-4. PR-D — editorial/content inputs — **PASS / READY FOR REVIEW**;
-5. PR-E — walking skeleton + CE01 review — **NEXT AFTER PR-D MERGE**.
+4. PR-D — editorial/content inputs — **MERGED / CLOSED / PASS**;
+5. PR-E — walking skeleton + CE01 review — **PASS / READY FOR REVIEW**.
 
 Mỗi PR phải có:
 
@@ -623,4 +690,4 @@ STATUS
 NEXT
 ```
 
-Không merge nếu task chưa có bằng chứng rõ.
+Không merge nếu task chưa có bằng chứng rõ. PR-E chỉ merge sau final CI xanh và Founder/reviewer review PR #8.
