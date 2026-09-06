@@ -59,27 +59,64 @@ Not added:
 
 ## PR
 
-Draft PR opened:
+Draft PR:
 
 `#6 — CE01 PR-C — opportunity map mini`
 
-CI run:
+Code gate CI:
 
-`34000596318`
+`34000730552 — PASS`
+
+Evidence:
+
+- backend lint: PASS;
+- backend strict typecheck: PASS — 39 source files;
+- database migration: PASS;
+- backend tests: PASS — 35 tests;
+- OpenAPI export: PASS;
+- frontend install/type generation/lint/typecheck/build: PASS.
 
 Status at this checkpoint:
 
-`IN PROGRESS`
+`CODE GATE PASS / REAL-SEED GATE PENDING`
 
 ## Remaining gate work
 
-1. CI must pass.
-2. Run a real PR-B research artifact through the new Opportunity Map runner.
-3. Add reviewed MARKET observation(s) when available; search results alone must not become customer truth.
-4. Attach only project-known/approved MOTGU material; do not invent Right-to-Win proof.
-5. Produce a readable Markdown Opportunity Map.
-6. Human selects one opportunity for T01.30.
-7. Selection must create a ContentExperiment draft but must not promote the NeedHypothesis.
+1. Run the real PR-B research artifact through the Opportunity Map runner.
+2. Add reviewed MARKET observation(s) only when literal source support exists; search results alone must not become customer truth.
+3. Attach only project-known/approved MOTGU material; do not invent Right-to-Win proof.
+4. Produce and inspect the readable Markdown Opportunity Map.
+5. Human selects one opportunity for T01.30.
+6. Re-run with that selection so a ContentExperiment draft is recorded.
+7. Confirm selection does not promote the NeedHypothesis.
+8. Only then mark T01.22–T01.30 complete and make PR #6 ready for review.
+
+## Local Agent task
+
+Use the existing local artifact from PR-B:
+
+`artifacts/research/ce01-research-spike-20260905T235245Z.json`
+
+After syncing `ce01-opportunity-map`, run the standard local checks, then from `backend/` run:
+
+```bash
+python -m scripts.run_opportunity_map \
+  ../artifacts/research/ce01-research-spike-20260905T235245Z.json
+```
+
+This first run intentionally uses no invented MOTGU material.
+
+Return:
+
+- local lint/type/test result;
+- generated JSON path;
+- generated Markdown path;
+- full sanitized Markdown Opportunity Map or its opportunity sections;
+- counts: signals/questions/clusters/opportunities;
+- hypothesis status;
+- any classification that looks obviously wrong.
+
+Do not select an opportunity yet. Human selection comes after review of this first real map.
 
 ## Locked founder-proposed hypothesis
 
