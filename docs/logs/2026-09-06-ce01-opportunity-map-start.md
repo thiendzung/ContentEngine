@@ -165,9 +165,9 @@ Result:
 
 Founder selected the `price` opportunity for the first Golden Journal experiment.
 
-Stable opportunity ID:
+Canonical Opportunity ID from the cleaned artifact on the current PR-C code path:
 
-`opp_c120c916c93b5e08`
+`opp_ea484183ba36c6b2`
 
 Selection reason:
 
@@ -175,4 +175,10 @@ Selection reason:
 
 Selection does **not** mean the underlying NeedHypothesis is proven. Status must remain `PROPOSED` until reviewed evidence supports a later change.
 
-Before T01.30 is marked complete, rerun the canonical artifact with this selection so the local Opportunity Map records HumanSelection and creates the ContentExperiment draft. Do not add MOTGU-owned material yet and do not call Research APIs again.
+### ID correction
+
+A previous log/PR update incorrectly recorded `opp_c120c916c93b5e08`, derived manually instead of reading the generated artifact. The selected rerun correctly failed with `opportunity_not_found`, preventing a false selection. Diagnostic rerun on the canonical Research artifact confirmed that the actual `price` Opportunity ID is `opp_ea484183ba36c6b2`.
+
+Rule going forward: selection IDs must be copied from the generated Opportunity Map artifact for the exact code/input combination; do not derive them manually.
+
+Before T01.30 is marked complete, rerun the canonical artifact with `opp_ea484183ba36c6b2` so the local Opportunity Map records HumanSelection and creates the ContentExperiment draft. Do not add MOTGU-owned material yet and do not call Research APIs again.
