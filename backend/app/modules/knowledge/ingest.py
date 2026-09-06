@@ -9,6 +9,7 @@ from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.knowledge.models import KnowledgeChunk, Source, SourceDocument
@@ -176,14 +177,11 @@ async def register_source(
         locator=normalized_locator,
         provenance_json=provenance_json,
     )
-    existing = (
-        await session.execute(
-            select(Source).where(
-                Source.project_id == project_id,
-                Source.fingerprint == fingerprint,
-            )
-        )
-    ).scalar_one_or_none()
+    existing = await _get_source_by_fingerprint(
+        session,
+        project_id=project_id,
+        fingerprint=fingerprint,
+    )
     if existing is not None:
         return SourceRegistration(source=existing, created=False)
 
@@ -202,8 +200,20 @@ async def register_source(
         captured_at=captured_at,
         fingerprint=fingerprint,
     )
-    session.add(source)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(source)
+            await session.flush()
+    except IntegrityError:
+        existing = await _get_source_by_fingerprint(
+            session,
+            project_id=project_id,
+            fingerprint=fingerprint,
+        )
+        if existing is None:
+            raise
+        return SourceRegistration(source=existing, created=False)
+
     return SourceRegistration(source=source, created=True)
 
 
@@ -289,6 +299,22 @@ async def ingest_source_document(
         chunks=chunks,
         document_created=True,
     )
+
+
+async def _get_source_by_fingerprint(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    fingerprint: str,
+) -> Source | None:
+    return (
+        await session.execute(
+            select(Source).where(
+                Source.project_id == project_id,
+                Source.fingerprint == fingerprint,
+            )
+        )
+    ).scalar_one_or_none()
 
 
 async def _ensure_chunks(
