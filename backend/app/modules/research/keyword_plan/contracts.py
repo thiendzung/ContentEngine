@@ -75,6 +75,13 @@ class Confidence(StrEnum):
     HIGH = "high"
 
 
+class QueryQuality(StrEnum):
+    USABLE = "usable"
+    TRUNCATED = "truncated"
+    MALFORMED = "malformed"
+    OFF_SCOPE = "off_scope"
+
+
 class ContentDecision(StrEnum):
     CREATE = "CREATE"
     UPDATE = "UPDATE"
@@ -155,6 +162,7 @@ class QuestionRecord:
     need_type: NeedType
     topic_key: str
     confidence: Confidence
+    query_quality: QueryQuality = QueryQuality.USABLE
 
 
 @dataclass(slots=True, frozen=True)

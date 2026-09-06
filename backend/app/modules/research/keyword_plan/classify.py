@@ -5,6 +5,7 @@ from app.modules.research.keyword_plan.contracts import (
     Confidence,
     Intent,
     NeedType,
+    QueryQuality,
     QuestionType,
 )
 from app.modules.research.keyword_plan.normalize import normalize_text
@@ -18,6 +19,47 @@ class QuestionClassification:
     need_type: NeedType
     topic_key: str
     confidence: Confidence
+    query_quality: QueryQuality
+
+
+_INCOMPLETE_ENDINGS = {
+    "q",
+    "qu",
+    "qui",
+    "choo",
+    "gall",
+    "painti",
+}
+_VALID_SHORT_ENDINGS = {
+    "a",
+    "an",
+    "and",
+    "art",
+    "buy",
+    "can",
+    "for",
+    "how",
+    "in",
+    "is",
+    "it",
+    "my",
+    "new",
+    "of",
+    "on",
+    "one",
+    "or",
+    "the",
+    "to",
+    "vs",
+    "why",
+}
+_INCOMPLETE_END_PHRASES = (
+    "how to choose a painting that",
+    "what should i know before buying",
+    "before buying",
+    "first time buyer worries about",
+    "can i take a painting",
+)
 
 
 _TOPIC_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -38,6 +80,24 @@ _TOPIC_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
         ("vietnamese art", "vietnam art", "culture", "history", "traditional"),
     ),
     (
+        "negotiation",
+        ("negotiate", "negotiation", "haggling", "discount"),
+    ),
+    (
+        "painting_technique",
+        (
+            "rule in painting",
+            "composition",
+            "perspective",
+            "brushwork",
+            "color mixing",
+        ),
+    ),
+    (
+        "artist_process",
+        ("painters do when they make a mistake", "artist process"),
+    ),
+    (
         "choosing",
         (
             "choose",
@@ -54,6 +114,26 @@ _TOPIC_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
     return any(term in text for term in terms)
+
+
+def query_quality(value: str, *, seed_query: str | None = None) -> QueryQuality:
+    raw = value.strip().casefold()
+    text = normalize_text(value)
+    if not text:
+        return QueryQuality.MALFORMED
+    if raw.endswith(("...", "-", "/", "|")):
+        return QueryQuality.TRUNCATED
+    if text.split()[-1] in _INCOMPLETE_ENDINGS:
+        return QueryQuality.TRUNCATED
+    if any(text.endswith(phrase) for phrase in _INCOMPLETE_END_PHRASES):
+        return QueryQuality.TRUNCATED
+    if seed_query:
+        seed = normalize_text(seed_query)
+        if text.startswith(f"{seed} "):
+            return QueryQuality.TRUNCATED
+    if len(text.split()[-1]) <= 2 and text.split()[-1] not in _VALID_SHORT_ENDINGS:
+        return QueryQuality.MALFORMED
+    return QueryQuality.USABLE
 
 
 def _topic(text: str) -> tuple[str, Confidence]:
@@ -96,7 +176,7 @@ def _intent(question_type: QuestionType, topic_key: str, text: str) -> Intent:
         return Intent.TRUST
     if question_type is QuestionType.COMPARE:
         return Intent.COMPARE
-    if topic_key in {"price", "fit", "choosing"}:
+    if topic_key in {"price", "fit", "choosing", "negotiation"}:
         return Intent.EVALUATE
     if topic_key == "logistics":
         if _contains_any(text, ("after buying", "after purchase", "already bought")):
@@ -116,7 +196,14 @@ def _audience_stage(topic_key: str, text: str) -> AudienceStage:
         return AudienceStage.READY_TO_VISIT
     if topic_key == "care":
         return AudienceStage.OWNER
-    if topic_key in {"authenticity", "price", "fit", "logistics", "choosing"}:
+    if topic_key in {
+        "authenticity",
+        "price",
+        "fit",
+        "logistics",
+        "choosing",
+        "negotiation",
+    }:
         return AudienceStage.EVALUATING
     if _contains_any(text, ("buy", "purchase", "inquire", "available")):
         return AudienceStage.READY_TO_INQUIRE
@@ -126,7 +213,13 @@ def _audience_stage(topic_key: str, text: str) -> AudienceStage:
 def _need_type(topic_key: str, text: str) -> NeedType:
     if _contains_any(text, ("worry", "afraid", "fear", "wrong", "regret", "mistake")):
         return NeedType.PAIN
-    if topic_key in {"authenticity", "price", "logistics", "fit"}:
+    if topic_key in {
+        "authenticity",
+        "price",
+        "logistics",
+        "fit",
+        "negotiation",
+    }:
         return NeedType.OBJECTION
     if _contains_any(text, ("want", "love", "looking for", "wish")):
         return NeedType.DESIRE
@@ -143,11 +236,17 @@ def classify_question(value: str) -> QuestionClassification:
     intent = _intent(question_type, topic_key, text)
     audience_stage = _audience_stage(topic_key, text)
     need_type = _need_type(topic_key, text)
+    quality = query_quality(value)
+    if topic_key in {"painting_technique", "artist_process"}:
+        quality = QueryQuality.OFF_SCOPE
+
     confidence = topic_confidence
     if question_type is QuestionType.OTHER and topic_key == "general_art_buying":
         confidence = Confidence.LOW
     elif confidence is Confidence.LOW:
         confidence = Confidence.MEDIUM
+    if topic_key in {"painting_technique", "artist_process"}:
+        confidence = Confidence.HIGH
     return QuestionClassification(
         question_type=question_type,
         intent=intent,
@@ -155,4 +254,5 @@ def classify_question(value: str) -> QuestionClassification:
         need_type=need_type,
         topic_key=topic_key,
         confidence=confidence,
+        query_quality=quality,
     )

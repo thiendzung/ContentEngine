@@ -10,7 +10,9 @@ from app.modules.research.keyword_plan.artifact import (
     load_research_spike_for_opportunity_map,
     opportunity_map_markdown,
 )
+from app.modules.research.keyword_plan.classify import classify_question
 from app.modules.research.keyword_plan.contracts import (
+    Confidence,
     ContentDecision,
     ExistingContentRef,
     HypothesisStatus,
@@ -19,6 +21,7 @@ from app.modules.research.keyword_plan.contracts import (
     MotguMaterial,
     NeedType,
     OpportunityPriority,
+    QueryQuality,
 )
 from app.modules.research.keyword_plan.normalize import normalize_text
 from app.modules.research.keyword_plan.service import (
@@ -202,3 +205,90 @@ def test_research_artifact_loader_reuses_pr_b_signals(tmp_path: Path) -> None:
 
 def test_normalize_text_preserves_vietnamese_letters() -> None:
     assert normalize_text("Tranh Việt — Hà Nội") == "tranh việt hà nội"
+
+
+def test_truncated_query_is_kept_as_signal_but_excluded_from_questions_and_pillar() -> None:
+    truncated = "First time art buyer worries about choosing the wrong painting qui"
+    research = _research(
+        _signal(truncated),
+        _signal("How do I know what art I like?"),
+        _signal("How much should I spend on my first painting?"),
+    )
+
+    result = OpportunityMapService().build(
+        research,
+        _request(
+            pillar_question=(
+                "How can a first-time buyer choose an original painting with confidence?"
+            )
+        ),
+    )
+
+    assert len(result.signals) == 3
+    assert truncated not in {item.query for item in result.questions}
+    assert result.opportunities[0].suggested_role is JournalRole.PILLAR
+    assert truncated not in result.opportunities[0].question
+    assert all(truncated not in item.question for item in result.opportunities)
+
+
+def test_painting_technique_is_off_scope_and_do_not_write() -> None:
+    classification = classify_question("What is the 1/3 rule in painting?")
+    assert classification.topic_key == "painting_technique"
+    assert classification.query_quality is QueryQuality.OFF_SCOPE
+
+    result = OpportunityMapService().build(
+        _research(_signal("What is the 1/3 rule in painting?")),
+        _request(),
+    )
+    opportunity = result.opportunities[0]
+    assert opportunity.decision is ContentDecision.DO_NOT_WRITE
+    assert opportunity.priority is OpportunityPriority.NO
+    assert opportunity.suggested_role is None
+
+
+def test_artist_process_is_off_scope_and_do_not_write() -> None:
+    result = OpportunityMapService().build(
+        _research(_signal("What do painters do when they make a mistake?")),
+        _request(),
+    )
+
+    question = result.questions[0]
+    assert question.topic_key == "artist_process"
+    assert question.query_quality is QueryQuality.OFF_SCOPE
+    assert result.opportunities[0].decision is ContentDecision.DO_NOT_WRITE
+    assert result.opportunities[0].priority is OpportunityPriority.NO
+
+
+def test_negotiation_is_a_purchase_objection() -> None:
+    classification = classify_question("Can you negotiate with art galleries")
+
+    assert classification.topic_key == "negotiation"
+    assert classification.need_type is NeedType.OBJECTION
+    assert classification.intent is Intent.EVALUATE
+    assert classification.confidence is not Confidence.LOW
+
+
+def test_pillar_only_counts_buyer_relevant_clusters() -> None:
+    research = _research(
+        _signal("How do I know what art I like?"),
+        _signal("How much should I spend on my first painting?"),
+        _signal("What is the 1/3 rule in painting?"),
+        _signal("What do painters do when they make a mistake?"),
+    )
+
+    result = OpportunityMapService().build(
+        research,
+        _request(
+            pillar_question=(
+                "How can a first-time buyer choose an original painting with confidence?"
+            )
+        ),
+    )
+
+    pillar = result.opportunities[0]
+    assert pillar.suggested_role is JournalRole.PILLAR
+    assert len(pillar.signal_refs) == 2
+    assert all(
+        item.topic_key not in {"painting_technique", "artist_process"}
+        for item in result.opportunities[:1]
+    )

@@ -2,7 +2,10 @@ from dataclasses import dataclass, replace
 from itertools import chain
 
 from app.modules.research.contracts import ResearchSignalKind, ResearchSpikeResult
-from app.modules.research.keyword_plan.classify import classify_question
+from app.modules.research.keyword_plan.classify import (
+    classify_question,
+    query_quality,
+)
 from app.modules.research.keyword_plan.contracts import (
     AudienceStage,
     ContentDecision,
@@ -19,6 +22,7 @@ from app.modules.research.keyword_plan.contracts import (
     NicheCandidate,
     OpportunityMapResult,
     OpportunityPriority,
+    QueryQuality,
     QuestionCluster,
     QuestionRecord,
     Signal,
@@ -38,7 +42,15 @@ _QUESTION_METHODS = {
     ResearchSignalKind.RELATED_SEARCH.value,
     ResearchSignalKind.AUTOCOMPLETE.value,
 }
-_RELEVANT_SUPPORT_TOPICS = {"choosing", "authenticity", "fit", "price"}
+_RELEVANT_SUPPORT_TOPICS = {
+    "choosing",
+    "authenticity",
+    "fit",
+    "price",
+    "logistics",
+    "negotiation",
+}
+_OFF_SCOPE_TOPICS = {"painting_technique", "artist_process"}
 
 
 @dataclass(slots=True, frozen=True)
@@ -87,8 +99,18 @@ class OpportunityMapService:
             for cluster in clusters
         ]
 
-        if request.pillar_question and len(clusters) >= 2:
-            pillar = self._build_pillar_opportunity(hypothesis, clusters, request)
+        pillar_clusters = [
+            cluster
+            for cluster in clusters
+            if cluster.topic_key in _RELEVANT_SUPPORT_TOPICS
+            and cluster.topic_key not in _OFF_SCOPE_TOPICS
+        ]
+        if request.pillar_question and len(pillar_clusters) >= 2:
+            pillar = self._build_pillar_opportunity(
+                hypothesis,
+                pillar_clusters,
+                request,
+            )
             opportunities.insert(0, pillar)
 
         niche_candidates = self._build_niche_candidates(
@@ -167,6 +189,11 @@ class OpportunityMapService:
                 continue
             if signal.provenance.method not in _QUESTION_METHODS:
                 continue
+            if query_quality(signal.observed_text, seed_query=seed_query) in {
+                QueryQuality.TRUNCATED,
+                QueryQuality.MALFORMED,
+            }:
+                continue
             key = normalize_text(signal.observed_text)
             if key:
                 grouped.setdefault(key, []).append(signal)
@@ -188,6 +215,7 @@ class OpportunityMapService:
                     need_type=classification.need_type,
                     topic_key=classification.topic_key,
                     confidence=classification.confidence,
+                    query_quality=classification.query_quality,
                 )
             )
         return sorted(records, key=lambda item: (item.topic_key, item.query.casefold()))
@@ -316,9 +344,18 @@ class OpportunityMapService:
     ) -> ContentOpportunity:
         matches = self._existing_matches(cluster, request.existing_content)
         has_material = bool(request.motgu_materials)
-        decision = self._decision(matches, has_material)
-        material_refs = tuple(item.ref for item in request.motgu_materials)
-        material_gaps = self._material_gaps(has_material)
+        off_scope = cluster.topic_key in _OFF_SCOPE_TOPICS
+        decision = (
+            ContentDecision.DO_NOT_WRITE
+            if off_scope
+            else self._decision(matches, has_material)
+        )
+        material_refs = (
+            ()
+            if off_scope
+            else tuple(item.ref for item in request.motgu_materials)
+        )
+        material_gaps = () if off_scope else self._material_gaps(has_material)
         priority, reasons = self._priority(
             decision=decision,
             signal_count=len(cluster.signal_refs),
@@ -329,7 +366,7 @@ class OpportunityMapService:
             cluster,
             request.motgu_materials,
         )
-        role = JournalRole.PILLAR if len(cluster.question_ids) >= 3 else JournalRole.CLUSTER
+        role = JournalRole.CLUSTER
         return ContentOpportunity(
             id=stable_id("opp", hypothesis.id, cluster.id, decision.value),
             need_hypothesis_id=hypothesis.id,
@@ -345,14 +382,21 @@ class OpportunityMapService:
             motgu_material_refs=material_refs,
             material_gaps=material_gaps,
             existing_content_refs=tuple(item.id for item in matches),
-            what_is_actually_new=self._new_value(has_material),
+            what_is_actually_new=(
+                "Off-scope art-making signal; retain for traceability but do not "
+                "create buyer content."
+                if off_scope
+                else self._new_value(has_material)
+            ),
             next_discovery_step=self._next_discovery_step(cluster.topic_key),
             decision=decision,
             priority=priority,
             reasons=reasons,
             suggested_content_type=suggested_type,
             suggested_role=(
-                role if suggested_type is SuggestedContentType.JOURNAL else None
+                None
+                if off_scope
+                else role if suggested_type is SuggestedContentType.JOURNAL else None
             ),
         )
 
