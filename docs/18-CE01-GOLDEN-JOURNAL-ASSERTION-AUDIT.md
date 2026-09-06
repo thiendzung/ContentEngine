@@ -1,6 +1,6 @@
 # CE01 — GOLDEN JOURNAL — ASSERTION AUDIT V2
 
-Status: **PASS AFTER FOUNDER-REQUESTED EDITORIAL REVISION**
+Status: **PASS / FOUNDER-APPROVED JOURNAL V2 / ZERO CRITICAL UNSUPPORTED ASSERTIONS**
 
 Phase: `CE01 / PR-E — Walking Skeleton`
 
@@ -9,6 +9,10 @@ Task: `T01.41 — Basic assertion audit`
 Draft audited:
 
 `docs/17-CE01-GOLDEN-JOURNAL-DRAFT-EN.md` — Draft EN V2
+
+Founder final decision:
+
+`APPROVE JOURNAL V2`
 
 V1 review input:
 
@@ -224,69 +228,62 @@ V2 questions:
 
 Type: `EDITORIAL_GUIDANCE / SYNTHESIS`
 
-Support/context:
-
-- ContentCase;
-- EvidenceSet claim scope;
-- OriginalityPack;
-- Founder V1 editorial review.
-
-No question introduces a new unsupported factual claim.
+The questions are bounded to the approved ContentCase, EvidenceSet and OriginalityPack. They do not introduce a new unsupported pricing claim.
 
 Result: `PASS`.
 
 ---
 
-## A10 — Documentation wording does not invent provenance/certificate/condition
+## A10 — First-time buyer / low-pressure guidance
 
-V2 says to ask whether provenance, condition information, a certificate or other documented history exists.
+V2 statements include:
+
+> Your first purchase does not need to prove that you understand art.
+
+and the final low-pressure MOTGU next step.
 
 Type: `EDITORIAL_GUIDANCE`
 
-Guard:
+Support/context:
 
-This does not state that every work has those records. The selected Artwork’s provenance field remains empty; that absence is not replaced with a story.
+- approved positive calibration examples;
+- selected Angle;
+- ContentCase reader transformation;
+- MOTGU brand direction.
 
-Result: `PASS`.
-
----
-
-## A11 — Locale-aware image text
-
-V2 internal publishing notes use English alt suggestions while preserving the official Vietnamese Artwork title:
-
-- `Oil-on-canvas painting Tranh đường tàu phố cổ Hà Nội by Hoa Lê`;
-- `Detail of the paint surface of Tranh đường tàu phố cổ Hà Nội`.
-
-Type: `MEDIA EDITORIAL / LOCALE CHECK`
-
-No official English Artwork title is invented.
+No factual authority is falsely implied.
 
 Result: `PASS`.
 
 ---
 
-## A12 — Real website Content Memory state
+## A11 — Real website has no published Journal Content Memory yet
 
-Internal metadata states:
+Draft metadata states that the real MOTGU website currently has no real published Journal posts.
 
-> The real MOTGU website is still being built and currently has no real published Journal posts.
-
-Type: `FIRST-PARTY PROJECT STATE / INTERNAL SYSTEM RULE`
+Type: `INTERNAL_SYSTEM_RULE / FIRST-PARTY PROJECT STATE`
 
 Source:
 
-Founder clarification.
+Founder clarification in CE01.
 
 Visibility:
 
-Not public article copy.
+Internal metadata only; not public Journal copy.
 
-Consequence:
+Golden/demo WordPress content remains `TEST_ONLY` and is not treated as production Content Memory.
 
-- Golden/demo content remains `TEST_ONLY`;
-- this candidate is treated as the first real Journal;
-- no fake Journal-to-Journal links are added.
+Result: `PASS`.
+
+---
+
+## A12 — Locale-facing alt suggestions
+
+V2 English alt suggestions preserve the official Vietnamese Artwork title while making the surrounding description English.
+
+Type: `EDITORIAL / ACCESSIBILITY OUTPUT`
+
+The alt suggestions describe approved runtime media without inventing artist intent.
 
 Result: `PASS`.
 
@@ -306,9 +303,9 @@ Universal fair-price claims: `0`.
 
 Fake scarcity/urgency: `0`.
 
-Dynamic commerce snapshot in durable visible prose: `0`.
+Current dynamic commerce facts presented as durable visible copy: `0`.
 
-Internal implementation language in visible article: `0`.
+Implementation/system language in visible article: `0`.
 
 Fake existing Journal links: `0`.
 
@@ -318,16 +315,16 @@ NeedHypothesis silently promoted from `PROPOSED`: `NO`.
 
 No long source quotation is used.
 
-The Draft expresses the locked claim map in MOTGU’s own wording and keeps the public source note lightweight.
+The Draft expresses the locked claim map in MOTGU’s own simple wording and keeps external-source names in a lightweight trust note.
 
-Production-grade phrase-overlap/source-copy evaluation remains CE05/CE06 work.
+Production-grade phrase-overlap/source-copy evaluation remains CE05/CE06 work; this CE01 audit does not claim to replace it.
 
-## Assertion Audit V2 verdict
+## Final audit verdict
 
 `PASS / ZERO CRITICAL UNSUPPORTED ASSERTIONS`
 
-Founder V1 review resulted in editorial changes, not factual-scope expansion. V2 remains inside the same locked EvidenceSet and approved OriginalityPack.
+Founder decision after V2 revision:
 
-Next:
+`APPROVE JOURNAL V2`
 
-`FOUNDER FINAL CONFIRMATION OF JOURNAL V2` before T01.44 CE01 GO/FIX/STOP decision.
+The approved V2 is the CE01 Golden Journal candidate. This approval does not publish the article to WordPress.
