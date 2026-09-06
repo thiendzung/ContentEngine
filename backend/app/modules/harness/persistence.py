@@ -452,6 +452,15 @@ async def resolve_approval(
 
     artifact = await _require_run_artifact(session, run_id=run_id, artifact_id=artifact_id)
     await _require_artifact_matches_step(session, artifact=artifact, step_key=step_key)
+    latest_checkpoint = await get_latest_checkpoint(session, run_id=run_id)
+    pending_approval = (
+        latest_checkpoint.content_json.get("pending_approval")
+        if latest_checkpoint is not None and latest_checkpoint.content_json is not None
+        else None
+    )
+    if pending_approval != {"step_key": step_key, "artifact_id": str(artifact_id)}:
+        raise StaleApprovalArtifactError("artifact version is no longer current")
+
     latest_artifact = await session.scalar(
         select(Artifact)
         .where(

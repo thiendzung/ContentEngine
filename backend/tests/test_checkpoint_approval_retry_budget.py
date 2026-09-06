@@ -266,6 +266,57 @@ async def test_approval_pauses_resumes_and_new_artifact_invalidates_old_approval
 
 
 @pytest.mark.asyncio
+async def test_approval_rejects_new_artifact_without_new_pending_checkpoint() -> None:
+    async with engine.connect() as connection:
+        transaction = await connection.begin()
+        session = AsyncSession(bind=connection, expire_on_commit=False)
+        try:
+            run = await create_run(session)
+            step = await create_step(session, run)
+            await transition_run(session, run_id=run.id, status="running")
+            artifact_v1 = await create_artifact(session, run, step, version=1)
+            checkpoint_v1 = await pause_for_approval(
+                session,
+                run_id=run.id,
+                step_key="outline",
+                artifact_id=artifact_v1.id,
+            )
+            assert checkpoint_v1.content_json is not None
+            assert checkpoint_v1.content_json["pending_approval"] == {
+                "step_key": "outline",
+                "artifact_id": str(artifact_v1.id),
+            }
+
+            artifact_v2 = await create_artifact(session, run, step, version=2)
+            with pytest.raises(
+                StaleApprovalArtifactError,
+                match="no longer current",
+            ):
+                await resolve_approval(
+                    session,
+                    run_id=run.id,
+                    step_key="outline",
+                    artifact_id=artifact_v2.id,
+                    decision="approved",
+                    actor_id="founder",
+                )
+
+            await session.refresh(run)
+            assert run.status == "waiting_approval"
+            approvals = list(
+                (
+                    await session.scalars(
+                        select(Approval).where(Approval.run_id == run.id)
+                    )
+                ).all()
+            )
+            assert approvals == []
+        finally:
+            await session.close()
+            await transaction.rollback()
+
+
+@pytest.mark.asyncio
 async def test_reject_cancels_run_without_retry() -> None:
     async with engine.connect() as connection:
         transaction = await connection.begin()
