@@ -177,6 +177,8 @@ async def create_eval_report(
     baseline_tool = await _tool_summary(session, run_id=baseline_run.id)
     candidate_tool = await _tool_summary(session, run_id=eval_run.id)
 
+    baseline_cost = _decimal_field(baseline_model, "cost")
+    candidate_cost = _decimal_field(candidate_model, "cost")
     report_payload: dict[str, object] = {
         "replay_fixture_id": str(fixture.id),
         "frozen_context_manifest_id": _str_field(
@@ -207,12 +209,9 @@ async def create_eval_report(
                 baseline_quality.get("average_score"),
                 candidate_quality.get("average_score"),
             ),
-            "output_tokens_delta": int(candidate_model["output_tokens"])
-            - int(baseline_model["output_tokens"]),
-            "cost_delta": str(
-                Decimal(str(candidate_model["cost"]))
-                - Decimal(str(baseline_model["cost"]))
-            ),
+            "output_tokens_delta": _int_field(candidate_model, "output_tokens")
+            - _int_field(baseline_model, "output_tokens"),
+            "cost_delta": _decimal_text(candidate_cost - baseline_cost),
         },
         "promotion": {
             "mode": "manual_only",
@@ -301,13 +300,14 @@ async def _quality_summary(
 
 async def _model_summary(session: AsyncSession, *, run_id: UUID) -> dict[str, object]:
     rows = list((await session.scalars(select(ModelCall).where(ModelCall.run_id == run_id))).all())
+    cost = sum((row.cost or Decimal("0") for row in rows), Decimal("0"))
     return {
         "calls": len(rows),
         "completed_calls": sum(row.status == "completed" for row in rows),
         "failed_calls": sum(row.status == "failed" for row in rows),
         "input_tokens": sum(row.input_tokens or 0 for row in rows),
         "output_tokens": sum(row.output_tokens or 0 for row in rows),
-        "cost": str(sum((row.cost or Decimal("0") for row in rows), Decimal("0"))),
+        "cost": _decimal_text(cost),
         "models": sorted({f"{row.provider}:{row.model}" for row in rows}),
     }
 
@@ -346,3 +346,24 @@ def _uuid_field(payload: dict[str, object], key: str) -> UUID:
         return UUID(_str_field(payload, key))
     except ValueError as exc:
         raise ReplayEvalError(f"replay fixture has invalid {key}") from exc
+
+
+def _int_field(payload: dict[str, object], key: str) -> int:
+    value = payload.get(key)
+    if not isinstance(value, int):
+        raise ReplayEvalError(f"eval report summary missing integer {key}")
+    return value
+
+
+def _decimal_field(payload: dict[str, object], key: str) -> Decimal:
+    value = payload.get(key)
+    if not isinstance(value, str):
+        raise ReplayEvalError(f"eval report summary missing decimal {key}")
+    try:
+        return Decimal(value)
+    except Exception as exc:
+        raise ReplayEvalError(f"eval report summary has invalid decimal {key}") from exc
+
+
+def _decimal_text(value: Decimal) -> str:
+    return format(value, ".6f")
