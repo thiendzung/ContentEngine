@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`CE03 PR-D — Outbox + Reconciliation + Restart/Resume`
+`CE03 PR-E — Replay/Eval + CE03 Closeout`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = ACTIVE. PR-D owns durable outbox, reconciliation, restart/resume integration and duplicate side-effect prevention; replay/eval remains PR-E.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = ACTIVE. PR-E owns only T03.20 Replay/Eval and CE03 closeout; CE04 is not started.
