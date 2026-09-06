@@ -306,7 +306,7 @@ No infinite loops or hidden retries.
 
 ## 18. Walking Skeleton rule
 
-CE01 must prove a real content path before large automation work:
+CE01 proved a real content path before large automation work:
 
 ```text
 Founder-proposed need hypothesis + traceable MARKET/SEARCH/MOTGU signals
@@ -323,7 +323,7 @@ Founder-proposed need hypothesis + traceable MARKET/SEARCH/MOTGU signals
 → Human Review
 ```
 
-If this cannot create content worth continuing, improve research/content/settings/quality contract before building more infrastructure.
+CE02 must preserve that proven contract while moving the data from docs/manual artifacts into structured, versioned persistence.
 
 ## 19. Testing minimum
 
@@ -398,6 +398,10 @@ Never claim completion without evidence.
 
 Current priority:
 
-`CE01 — Repository Skeleton + Research Spike + Walking Skeleton`
+`CE02 — Core Data + Settings`
 
-Research/Search and Opportunity Map Mini serve the first Golden Journal; they are not separate expansion projects.
+Current implementation slice:
+
+`CE02 PR-A — Core Content Data`
+
+CE01 is CLOSED / PASS. CE02 is converting the proven CE01 content-planning contracts into structured, versioned persistence. Do not scope-creep PR-A into Settings, Evidence/Knowledge, Run records, WordPress or large UI.
