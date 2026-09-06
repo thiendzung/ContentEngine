@@ -1,14 +1,18 @@
-# CE01 — GOLDEN JOURNAL — ASSERTION AUDIT V1
+# CE01 — GOLDEN JOURNAL — ASSERTION AUDIT V2
 
-Status: **PASS FOR HUMAN EDITORIAL REVIEW**
+Status: **PASS AFTER FOUNDER-REQUESTED EDITORIAL REVISION**
 
 Phase: `CE01 / PR-E — Walking Skeleton`
 
-Task: `T01.41 — Add basic assertion audit`
+Task: `T01.41 — Basic assertion audit`
 
 Draft audited:
 
-`docs/17-CE01-GOLDEN-JOURNAL-DRAFT-EN.md`
+`docs/17-CE01-GOLDEN-JOURNAL-DRAFT-EN.md` — Draft EN V2
+
+V1 review input:
+
+`docs/logs/2026-09-06-ce01-founder-editorial-review-v1.md`
 
 Inputs:
 
@@ -16,7 +20,7 @@ Inputs:
 - OriginalityPack: `opack_ce01_price_v1` — approved;
 - Artwork fact lock: `docs/16-CE01-ARTWORK-ANCHOR.md`;
 - runtime artifact: `artifacts/runtime/ce01-artwork-anchor-20260906T025834Z.json`;
-- Founder project clarification: the real MOTGU website currently has no real published Journal posts.
+- Founder clarification: the real MOTGU website currently has no real published Journal posts.
 
 ## Audit rule
 
@@ -24,16 +28,17 @@ Each important statement is classified as one of:
 
 - `SUPPORTED_FACT` — mapped to locked evidence or runtime fact lock;
 - `EDITORIAL_GUIDANCE` — MOTGU interpretation/position, not presented as external fact;
-- `INTERNAL_SYSTEM_RULE` — implementation/editorial rule, not visible factual copy;
-- `UNSUPPORTED` — must be removed, narrowed or researched before human approval.
+- `EDITORIAL_SYNTHESIS` — bounded synthesis from approved inputs;
+- `INTERNAL_SYSTEM_RULE` — implementation/editorial rule outside visible article copy;
+- `UNSUPPORTED` — must be removed, narrowed or researched before approval.
 
-Critical unsupported assertions must equal zero before T01.42.
+Critical unsupported assertions must equal zero.
 
 ---
 
 ## A01 — No single fixed formula for every artwork
 
-Draft statement:
+V2 statement:
 
 > There is no single fixed formula that explains every original painting.
 
@@ -45,17 +50,13 @@ Support:
 - `SRC-01` Smithsonian American Art Museum;
 - `SRC-02` Sotheby’s specialist estimate guidance as corroboration.
 
-Guard respected:
-
-The Draft does not say art has no market value or that price is arbitrary.
-
 Result: `PASS`.
 
 ---
 
 ## A02 — Factors specialists may consider
 
-Draft statement scope:
+V2 scope:
 
 - artist/maker;
 - origin/documented history;
@@ -73,9 +74,9 @@ Support:
 
 - `CLAIM-02` → `SRC-02`.
 
-Bias note:
+Guard respected:
 
-Sotheby’s is a commercial auction house. The Draft correctly frames these as examples used in professional assessment, not a universal formula.
+V2 says these are factors that may be considered in professional assessment and explicitly says the list is not a calculator.
 
 Result: `PASS`.
 
@@ -83,7 +84,7 @@ Result: `PASS`.
 
 ## A03 — Provenance meaning
 
-Draft statement:
+V2 statement:
 
 > Provenance ... means the documented ownership or collecting history of a work.
 
@@ -95,15 +96,15 @@ Support:
 
 Guard respected:
 
-The Draft does not claim every MOTGU work has provenance and does not invent provenance for the selected Artwork.
+V2 does not claim every MOTGU work has provenance and does not invent provenance for the selected Artwork.
 
 Result: `PASS`.
 
 ---
 
-## A04 — Price is not a score for personal taste
+## A04 — Price is information, not a score for taste
 
-Draft statements include:
+V2 statements include:
 
 > An artwork price is information, not a score.
 
@@ -116,21 +117,19 @@ Type: `EDITORIAL_GUIDANCE`
 Support/context:
 
 - approved Angle A;
-- approved calibration examples POS-01, POS-02, POS-04;
+- approved calibration examples;
 - ContentCase reader transformation;
 - MOTGU brand position.
 
-Audit note:
-
-These are not presented as scientific or universal art-market facts. They are MOTGU’s reader guidance.
+These are clearly reader guidance, not scientific or universal market claims.
 
 Result: `PASS`.
 
 ---
 
-## A05 — Selected Artwork identity and stable facts
+## A05 — Selected Artwork identity and stable details
 
-Draft statement scope:
+V2 scope:
 
 - `Tranh đường tàu phố cổ Hà Nội`;
 - Hoa Lê;
@@ -150,44 +149,44 @@ Result: `PASS`.
 
 ---
 
-## A06 — Dynamic Artwork price/status snapshot
+## A06 — Dynamic Artwork state is not durable visible prose
 
-Draft contains an **internal editorial snapshot**, not durable visible prose:
+V2 visible statement:
 
-- price: `2,500,000 VND`;
-- sale status: `available`;
-- stock: `1`;
-- location: `on-view`;
-- read at `2026-09-06T02:58:34Z`.
+> Prices and availability can change, so check the Artwork page for the most current details.
 
-Type: `SUPPORTED_FACT + INTERNAL_SYSTEM_RULE`
-
-Support:
-
-- runtime artifact `ce01-artwork-anchor-20260906T025834Z.json`;
-- SHA-256 `1f7eda404a8c2c1d7367ccad23afea25c8553308c195b7c881341c6dbb2f771c`.
-
-Guard:
-
-The Draft explicitly says not to hard-code these values into durable prose and requires live render/re-read at publish time.
-
-Result: `PASS`.
-
----
-
-## A07 — WooCommerce/current Artwork page remains source for live commerce facts
-
-Draft statement:
-
-> For that second group, the current Artwork page should remain the source of truth. An old Journal paragraph should not become a second price list.
-
-Type: `INTERNAL_SYSTEM_RULE / EDITORIAL_GUIDANCE`
+Type: `SUPPORTED_FACT + EDITORIAL_GUIDANCE`
 
 Support:
 
 - `CLAIM-04`;
 - `SRC-04` MOTGU Product & Data Contract;
-- WooCommerce owns price/stock/commerce state.
+- runtime fact lock demonstrates price/status/location are operational state.
+
+The actual runtime snapshot remains only under `INTERNAL PUBLISHING NOTES — NOT VISIBLE ARTICLE COPY`.
+
+No price, stock quantity, sale status or location snapshot appears as durable public prose.
+
+Result: `PASS`.
+
+---
+
+## A07 — Internal implementation language removed from visible article
+
+Founder V1 review flagged phrases such as:
+
+- source of truth;
+- canonical WordPress/WooCommerce data;
+- runtime snapshot;
+- hard-code;
+- durable published prose;
+- product rules.
+
+V2 check:
+
+These phrases are absent from the visible article body. Implementation details are isolated in internal publishing notes.
+
+Type: `EDITORIAL QUALITY / BOUNDARY CHECK`
 
 Result: `PASS`.
 
@@ -195,11 +194,9 @@ Result: `PASS`.
 
 ## A08 — Practical take-home costs may be separate
 
-Draft statement scope:
+V2 statement scope:
 
-- artwork price may not be the whole practical take-home cost;
-- MOTGU shipping rules may include packaging, shipping and insurance;
-- oversize works may require a quote.
+> Depending on the work and destination, bringing a painting home may also involve packaging, shipping and insurance. Oversize works may require a separate quote.
 
 Type: `SUPPORTED_FACT`
 
@@ -209,76 +206,89 @@ Support:
 
 Guard respected:
 
-The Draft gives no fixed shipping amount, delivery time, customs/export promise or universal process.
+V2 gives no fixed shipping amount, delivery time, customs/export promise or universal process.
 
 Result: `PASS`.
 
 ---
 
-## A09 — First-time buyer questions and decision guidance
+## A09 — Five buyer questions have distinct jobs
 
-Draft sections:
+V2 questions:
 
-- five questions before deciding;
-- “take your time” guidance;
-- ask about a work without sales pressure.
+1. What exactly is this work?
+2. What helps explain its context?
+3. What documentation comes with it?
+4. What will bringing it home involve?
+5. Do I actually want to live with it?
 
-Type: `EDITORIAL_GUIDANCE`
+Type: `EDITORIAL_GUIDANCE / SYNTHESIS`
 
 Support/context:
 
-- approved calibration;
 - ContentCase;
+- EvidenceSet claim scope;
 - OriginalityPack;
-- selected Angle.
+- Founder V1 editorial review.
 
-No external factual authority is implied.
+No question introduces a new unsupported factual claim.
 
 Result: `PASS`.
 
 ---
 
-## A10 — Real website has no published Journal Content Memory yet
+## A10 — Documentation wording does not invent provenance/certificate/condition
 
-Draft metadata states:
+V2 says to ask whether provenance, condition information, a certificate or other documented history exists.
+
+Type: `EDITORIAL_GUIDANCE`
+
+Guard:
+
+This does not state that every work has those records. The selected Artwork’s provenance field remains empty; that absence is not replaced with a story.
+
+Result: `PASS`.
+
+---
+
+## A11 — Locale-aware image text
+
+V2 internal publishing notes use English alt suggestions while preserving the official Vietnamese Artwork title:
+
+- `Oil-on-canvas painting Tranh đường tàu phố cổ Hà Nội by Hoa Lê`;
+- `Detail of the paint surface of Tranh đường tàu phố cổ Hà Nội`.
+
+Type: `MEDIA EDITORIAL / LOCALE CHECK`
+
+No official English Artwork title is invented.
+
+Result: `PASS`.
+
+---
+
+## A12 — Real website Content Memory state
+
+Internal metadata states:
 
 > The real MOTGU website is still being built and currently has no real published Journal posts.
 
-Type: `INTERNAL_SYSTEM_RULE / FIRST-PARTY PROJECT STATE`
+Type: `FIRST-PARTY PROJECT STATE / INTERNAL SYSTEM RULE`
 
 Source:
 
-Founder clarification in the active CE01 review.
+Founder clarification.
 
 Visibility:
 
-This is internal Draft metadata, not public article copy.
+Not public article copy.
 
-Important distinction:
+Consequence:
 
-Golden/demo WordPress content is test content and must not be treated as production Content Memory for CREATE/UPDATE/REFRESH or real internal-link decisions.
+- Golden/demo content remains `TEST_ONLY`;
+- this candidate is treated as the first real Journal;
+- no fake Journal-to-Journal links are added.
 
 Result: `PASS`.
-
----
-
-## A11 — “Different works can give different weight to those factors”
-
-Draft wording:
-
-> Different works can give different weight to those factors, so a list like this is context, not a calculator.
-
-Type: `EDITORIAL_SYNTHESIS`
-
-Audit:
-
-The key factual basis is that specialist assessment is multi-factor and no universal formula is claimed. The sentence is used to prevent mechanical interpretation, not to introduce a new valuation formula.
-
-Risk: `LOW`.
-
-Required action: `NONE FOR CE01`; if future production requires sentence-level evidence strictness, rewrite more conservatively or map to a stronger source.
-
-Result: `PASS / LOW-RISK SYNTHESIS`.
 
 ---
 
@@ -296,7 +306,9 @@ Universal fair-price claims: `0`.
 
 Fake scarcity/urgency: `0`.
 
-Current dynamic commerce facts presented as durable copy: `0`.
+Dynamic commerce snapshot in durable visible prose: `0`.
+
+Internal implementation language in visible article: `0`.
 
 Fake existing Journal links: `0`.
 
@@ -306,14 +318,16 @@ NeedHypothesis silently promoted from `PROPOSED`: `NO`.
 
 No long source quotation is used.
 
-The Draft expresses the locked claim map in MOTGU’s own simple wording and keeps external-source names in a lightweight trust note.
+The Draft expresses the locked claim map in MOTGU’s own wording and keeps the public source note lightweight.
 
-Production-grade phrase-overlap/source-copy evaluation remains CE05/CE06 work; this CE01 audit does not claim to replace it.
+Production-grade phrase-overlap/source-copy evaluation remains CE05/CE06 work.
 
-## Assertion Audit verdict
+## Assertion Audit V2 verdict
 
-`PASS FOR T01.42 HUMAN EDITORIAL REVIEW`
+`PASS / ZERO CRITICAL UNSUPPORTED ASSERTIONS`
 
-The Draft has zero critical unsupported assertions under the current locked EvidenceSet and runtime Artwork fact lock.
+Founder V1 review resulted in editorial changes, not factual-scope expansion. V2 remains inside the same locked EvidenceSet and approved OriginalityPack.
 
-This does **not** mean the article is publishable yet. Founder human editorial review is still required for usefulness, MOTGU voice, generic/AI-like feel and overall direction.
+Next:
+
+`FOUNDER FINAL CONFIRMATION OF JOURNAL V2` before T01.44 CE01 GO/FIX/STOP decision.
