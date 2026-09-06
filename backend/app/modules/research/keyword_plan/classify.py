@@ -21,14 +21,34 @@ class QuestionClassification:
 
 
 _TOPIC_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("authenticity", ("authentic", "original", "real art", "fake", "verify", "genuine")),
+    (
+        "authenticity",
+        ("authentic", "original", "real art", "fake", "verify", "genuine"),
+    ),
     ("price", ("price", "cost", "spend", "expensive", "value", "budget")),
-    ("logistics", ("ship", "shipping", "carry", "transport", "bring home", "luggage", "customs")),
+    (
+        "logistics",
+        ("ship", "shipping", "carry", "transport", "bring home", "luggage", "customs"),
+    ),
     ("fit", ("match", "interior", "decor", "room", "wall", "size")),
     ("visit", ("where", "gallery", "visit", "hanoi", "studio", "artist house")),
     ("care", ("care", "clean", "protect", "frame", "hang", "humidity")),
-    ("culture", ("vietnamese art", "vietnam art", "culture", "history", "traditional")),
-    ("choosing", ("choose", "choosing", "pick", "like", "taste", "right painting", "first painting")),
+    (
+        "culture",
+        ("vietnamese art", "vietnam art", "culture", "history", "traditional"),
+    ),
+    (
+        "choosing",
+        (
+            "choose",
+            "choosing",
+            "pick",
+            "like",
+            "taste",
+            "right painting",
+            "first painting",
+        ),
+    ),
 )
 
 
@@ -110,7 +130,8 @@ def _need_type(topic_key: str, text: str) -> NeedType:
         return NeedType.OBJECTION
     if _contains_any(text, ("want", "love", "looking for", "wish")):
         return NeedType.DESIRE
-    if text.endswith("?") or text.startswith(("how ", "what ", "why ", "where ", "can ", "should ")):
+    question_prefixes = ("how ", "what ", "why ", "where ", "can ", "should ")
+    if text.endswith("?") or text.startswith(question_prefixes):
         return NeedType.QUESTION
     return NeedType.CURIOSITY
 
