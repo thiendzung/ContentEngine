@@ -39,7 +39,9 @@ STEP_TRANSITIONS: dict[str, set[str]] = {
 
 
 async def transition_run(session: AsyncSession, *, run_id: UUID, status: str) -> ContentRun:
-    run = await _locked_row(session, ContentRun, run_id)
+    run = await session.scalar(select(ContentRun).where(ContentRun.id == run_id).with_for_update())
+    if run is None:
+        raise ValueError("ContentRun not found")
     if status not in RUN_TRANSITIONS[run.status]:
         raise InvalidStateTransitionError(
             f"invalid content run transition: {run.status} -> {status}"
@@ -52,7 +54,11 @@ async def transition_run(session: AsyncSession, *, run_id: UUID, status: str) ->
 
 
 async def transition_step_run(session: AsyncSession, *, step_run_id: UUID, status: str) -> StepRun:
-    step_run = await _locked_row(session, StepRun, step_run_id)
+    step_run = await session.scalar(
+        select(StepRun).where(StepRun.id == step_run_id).with_for_update()
+    )
+    if step_run is None:
+        raise ValueError("StepRun not found")
     if status not in STEP_TRANSITIONS[step_run.status]:
         raise InvalidStateTransitionError(
             f"invalid step run transition: {step_run.status} -> {status}"
@@ -68,7 +74,11 @@ async def transition_step_run(session: AsyncSession, *, step_run_id: UUID, statu
 
 
 async def create_step_retry(session: AsyncSession, *, failed_step_run_id: UUID) -> StepRun:
-    failed_step_run = await _locked_row(session, StepRun, failed_step_run_id)
+    failed_step_run = await session.scalar(
+        select(StepRun).where(StepRun.id == failed_step_run_id).with_for_update()
+    )
+    if failed_step_run is None:
+        raise ValueError("StepRun not found")
     if failed_step_run.status != "failed":
         raise InvalidStateTransitionError("only a failed step run can create a retry attempt")
     retry = StepRun(
@@ -226,10 +236,3 @@ def _next_job_query(now: datetime) -> Select[tuple[UUID]]:
         .limit(1)
         .with_for_update(skip_locked=True)
     )
-
-
-async def _locked_row(session: AsyncSession, model: type[ContentRun] | type[StepRun], row_id: UUID):
-    row = await session.scalar(select(model).where(model.id == row_id).with_for_update())
-    if row is None:
-        raise ValueError(f"{model.__name__} not found")
-    return row
