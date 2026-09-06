@@ -375,14 +375,13 @@ async def create_checkpoint(
         "budget_limits": _json_safe(asdict(budget_limits)) if budget_limits is not None else None,
         "budget_usage": _json_safe(asdict(budget_usage)) if budget_usage is not None else None,
     }
-    next_version = (
-        await session.scalar(
-            select(func.coalesce(func.max(Artifact.version), 0)).where(
-                Artifact.run_id == run_id,
-                Artifact.artifact_type == "checkpoint",
-            )
+    current_version = await session.scalar(
+        select(func.coalesce(func.max(Artifact.version), 0)).where(
+            Artifact.run_id == run_id,
+            Artifact.artifact_type == "checkpoint",
         )
-    ) + 1
+    )
+    next_version = int(current_version or 0) + 1
     checkpoint = Artifact(
         run_id=run_id,
         artifact_type="checkpoint",
@@ -398,12 +397,13 @@ async def create_checkpoint(
 async def get_latest_checkpoint(session: AsyncSession, *, run_id: UUID) -> Artifact | None:
     """Load the newest checkpoint without mutating durable state."""
 
-    return await session.scalar(
+    checkpoint: Artifact | None = await session.scalar(
         select(Artifact)
         .where(Artifact.run_id == run_id, Artifact.artifact_type == "checkpoint")
         .order_by(Artifact.version.desc())
         .limit(1)
     )
+    return checkpoint
 
 
 async def pause_for_approval(
