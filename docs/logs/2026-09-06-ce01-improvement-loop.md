@@ -413,15 +413,124 @@ Status: `OPEN / IMPORTANT DATA-BOUNDARY RULE`.
 
 ---
 
+## LOOP-15 — Implementation language can leak into reader-visible copy
+
+Observed:
+
+Founder review of Draft EN V1 found technically correct phrases such as `source of truth`, `canonical WordPress/WooCommerce data`, `runtime snapshot`, `hard-code`, `durable published prose` and `product rules` inside or too close to visible reader copy.
+
+Impact:
+
+A factually correct Draft can still feel like system documentation instead of a human Journal. This reduced publish readiness even though the assertion audit had already passed.
+
+Decision now:
+
+Draft EN V2 moves implementation language into a separate internal publishing-notes section and leaves only reader-relevant wording in the visible article.
+
+Candidate upgrade:
+
+Add a `reader_language_vs_system_language` quality check. Visible copy and implementation notes should be separate artifact fields, not one mixed body.
+
+Likely phase:
+
+CE05 / CE06 / CE08.
+
+Status: `FIXED IN V2 / CANDIDATE SYSTEM RULE`.
+
+---
+
+## LOOP-16 — Locale-facing image text must be independent from canonical media identity
+
+Observed:
+
+The canonical Artwork media had Vietnamese alt text, while the first Journal LocaleVariant is English. Draft V1 reused the canonical Vietnamese alt text in the English article plan.
+
+Impact:
+
+Shared media identity does not mean all reader-facing media text should be identical across locales. Reusing canonical alt text can create mixed-language output.
+
+Decision now:
+
+Draft EN V2 keeps the official Vietnamese Artwork title unchanged but provides English descriptive alt suggestions.
+
+Candidate upgrade:
+
+MediaAsset identity should be shared, while alt/caption suggestions are locale-facing fields. Do not translate official Artwork titles unless an approved localized title exists.
+
+Likely phase:
+
+CE05 / CE07 / CE08.
+
+Status: `FIXED IN V2 / CANDIDATE DATA CONTRACT`.
+
+---
+
+## LOOP-17 — Repetition and contract phrasing can reveal machine/process residue
+
+Observed:
+
+Founder review found excessive repetition of the abstract noun `facts` and system-like labels such as `Stable facts` / `Live facts` and product-contract phrasing around shipping.
+
+Impact:
+
+The article was correct but less natural. Repetition made the writing feel more generated/editorial-process-driven than reader-driven.
+
+Decision now:
+
+Draft EN V2 keeps `facts` where precision matters but uses natural alternatives such as details, documented information, what is known, and current information. Public labels become `What stays with the work` and `What you should check today`. Shipping language is rewritten around the visitor’s real task.
+
+Candidate upgrade:
+
+Language-naturalness evaluation should detect local repetition and contract/system phrasing without forcing synonym replacement where precision matters.
+
+Likely phase:
+
+CE06.
+
+Status: `FIXED IN V2 / CANDIDATE EVALUATOR`.
+
+---
+
+## LOOP-18 — Human review catches quality failures that assertion audit cannot
+
+Observed:
+
+Assertion Audit V1 correctly returned zero critical unsupported claims, but Founder still rated natural English lower and publish readiness at 7/10 because of reader-language issues.
+
+Impact:
+
+Factual correctness is necessary but not sufficient. An automated evidence audit cannot certify naturalness, brand feel or publish readiness.
+
+Decision now:
+
+Keep Assertion Audit and Human Editorial Review as distinct gates.
+
+Candidate upgrade:
+
+Never let an evidence/claim evaluator self-certify final editorial quality. Production quality must preserve separate deterministic/evidence checks, AI-assisted quality checks and human approval.
+
+Likely phase:
+
+CE05 / CE06.
+
+Status: `KEEP AS DESIGN PRINCIPLE`.
+
+---
+
 ## Current PR-E checkpoint
 
 - Angle A selected;
 - Outline V2 Founder approved;
 - runtime Artwork fact lock PASS;
-- Draft EN V1 created;
-- basic Assertion Audit PASS;
-- critical unsupported assertions: `0`;
-- Human Editorial Review T01.42: `NEXT`;
+- Draft EN V1 created and reviewed by Founder;
+- Founder V1 review: `CONCEPT APPROVED / EDITORIAL REVISION REQUIRED`;
+- Draft EN V2 created with required editorial fixes;
+- Assertion Audit V2: `PASS / ZERO CRITICAL UNSUPPORTED ASSERTIONS`;
+- final Founder confirmation on V2: `NEXT`;
 - NeedHypothesis remains `PROPOSED`.
 
-This log is living evidence for T01.43. Do not mark T01.43 complete until the Founder editorial review is finished and final CE01 failures/lessons are added.
+Founder review evidence:
+
+`docs/logs/2026-09-06-ce01-founder-editorial-review-v1.md`
+
+This log is living evidence for T01.43. Do not mark CE01 Gate T01.44 complete until Founder confirms the revised Journal and the final GO/FIX/STOP decision is recorded.
