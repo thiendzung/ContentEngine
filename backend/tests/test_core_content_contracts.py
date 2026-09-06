@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.modules.content_engine.models import ContentOpportunity, Signal
@@ -16,7 +16,7 @@ def test_signal_requires_traceable_locator_by_service_contract() -> None:
         observed_text="Question",
         locale="en",
         context="test",
-        captured_at=datetime.now(timezone.utc),
+        captured_at=datetime.now(UTC),
         fingerprint=uuid4().hex,
         provenance_json={"provider": "fixture", "method": "test"},
     )

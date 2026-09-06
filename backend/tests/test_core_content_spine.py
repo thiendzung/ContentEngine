@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -58,7 +58,7 @@ async def test_core_spine_keeps_hypothesis_and_content_identity() -> None:
             source_url="https://example.com/question",
             locale="en",
             context="CE01 regression fixture",
-            captured_at=datetime.now(timezone.utc),
+            captured_at=datetime.now(UTC),
             fingerprint=uuid4().hex,
             provenance_json={"provider": "fixture", "method": "test"},
         )
