@@ -93,7 +93,11 @@ PR-C evidence: canonical Research artifact `ce01-research-spike-20260906T013152Z
 
 ### PR-D — Content Input
 
-Status: **PASS / READY FOR REVIEW**.
+Status: **CLOSED / MERGED**.
+
+PR: `#7`
+
+Merge commit: `fd86b67d587fdab663915fac106f751f34551c59`
 
 - [x] T01.31 Collect 3–5 approved positive MOTGU excerpts for first locale.
 - [x] T01.32 Collect 3–5 approved negative examples for first locale.
@@ -107,8 +111,8 @@ PR-D evidence: `docs/13-CE01-CONTENT-INPUT-PRICE.md` records 4 founder-approved 
 
 ### Walking Skeleton
 
-- [ ] T01.38 Implement/manual-drive Angle step.
-- [ ] T01.39 Implement/manual-drive Outline step.
+- [x] T01.38 Implement/manual-drive Angle step.
+- [x] T01.39 Implement/manual-drive Outline step.
 - [ ] T01.40 Implement Draft step through ModelRouter seam or temporary single adapter.
 - [ ] T01.41 Add basic assertion audit.
 - [ ] T01.42 Run human editorial review.

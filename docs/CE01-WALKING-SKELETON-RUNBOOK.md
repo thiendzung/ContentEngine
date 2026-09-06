@@ -25,8 +25,8 @@ Không coi “backend chạy được” hay “API gọi được” là hoàn 
 PHASE A — FOUNDATION       CLOSED
 PHASE B — RESEARCH SPIKE   CLOSED / PASS
 PHASE C — OPPORTUNITY MAP  CLOSED / PASS
-PHASE D — CONTENT INPUT    PASS / READY FOR REVIEW
-PHASE E — GOLDEN JOURNAL   NEXT AFTER PR-D MERGE
+PHASE D — CLOSED / PASS
+PHASE E — ACTIVE
 PHASE F — CE01 REVIEW      PENDING
 ```
 
@@ -472,11 +472,18 @@ Canonical content-input pack:
 
 Gate result:
 
-`GATE D PASS / READY FOR PHASE E ANGLE AFTER PR-D MERGE`
+`GATE D CLOSED / PASS`
 
 ---
 
 # PHASE E — WALKING SKELETON
+
+Current checkpoint:
+
+- Angle: `PASS`;
+- Outline V2: Founder approved — `APPROVE OUTLINE V2`;
+- Artwork runtime fact lock: `PASS`;
+- Draft: `NEXT`.
 
 ## E1. Angle — T01.38
 

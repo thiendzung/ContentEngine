@@ -1,6 +1,6 @@
 # CE01 — GOLDEN JOURNAL — ARTWORK ANCHOR
 
-Status: **CANDIDATE SELECTED / RUNTIME VERIFICATION REQUIRED**
+Status: **RUNTIME VERIFIED / FACT LOCKED FOR T01.40**
 
 Phase: `CE01 / PR-E — Walking Skeleton`
 
@@ -14,8 +14,8 @@ Use one real MOTGU Artwork as the first-party anchor for the Golden Journal befo
 - slug: `tranh-duong-tau-pho-co-ha-noi`
 - artist: `Hoa Lê`
 - artist slug: `hoa-le`
-- year in Golden Content importer: `2025`
-- material in Golden Content importer: `Sơn dầu trên toan`
+- year: `2025`
+- material: `Sơn dầu trên toan`
 - canonical public route pattern: `/artwork/{product-slug}/`
 
 ## Why this Artwork
@@ -53,6 +53,41 @@ The importer also contains seed commerce state:
 
 **These commerce values are historical seed/runtime setup facts only. They are NOT approved for the Draft until re-read from the current canonical WooCommerce runtime.**
 
+## Runtime fact lock
+
+Read at: `2026-09-06T02:58:34Z` from the local WordPress/WooCommerce runtime.
+
+Artifact: `artifacts/runtime/ce01-artwork-anchor-20260906T025834Z.json`
+
+Runtime identity and static facts:
+
+- WordPress Product ID: `416`;
+- MOTGU Artwork ID: `motgu_artwork_000105`;
+- MOTGU Physical Work ID: `motgu_work_000144`;
+- product type/status: `simple` / `publish`;
+- title/slug: `Tranh đường tàu phố cổ Hà Nội` / `tranh-duong-tau-pho-co-ha-noi`;
+- Artist: WordPress ID `414`, `Hoa Lê`, slug `hoa-le`;
+- material taxonomy: `Sơn dầu trên toan` (`mg_material`);
+- year: `2025`;
+- dimensions: `60 × 80 cm`;
+- featured image: attachment `417` plus its runtime URL and alt;
+- gallery: attachments `418`, `419`, `420`, `421` plus runtime URLs and alts;
+- provenance field: empty at runtime;
+- certificate note: present at runtime;
+- canonical permalink: `https://motgu.test/artwork/tranh-duong-tau-pho-co-ha-noi/`.
+
+Runtime dynamic facts:
+
+- regular price: `2,500,000 VND`;
+- effective price: `2,500,000 VND`;
+- manage stock: `true`;
+- stock quantity: `1`;
+- stock status: `instock`;
+- MOTGU sale status: `available`;
+- physical location: `on-view`.
+
+The four dynamic commerce/location fields were compared with the historical importer seed and are all `UNCHANGED`. Price, stock, availability and physical location remain dynamic and must be re-read at Draft/publish time; they must not become durable editorial claims.
+
 ## Canonical ownership rule
 
 Source: `thiendzung/MotguOS/docs/01-product-data-contract.md`.
@@ -63,7 +98,7 @@ Source: `thiendzung/MotguOS/docs/01-product-data-contract.md`.
 - Product title/slug/content/media and public Artwork facts remain in WordPress/WooCommerce/ACF according to the approved ownership table.
 - Public Artwork URL should use `/artwork/{slug}/`.
 
-## Required runtime verification before T01.40 Draft
+## Runtime verification evidence
 
 Read the current product by exact slug:
 
@@ -138,6 +173,6 @@ It is NOT evidence for:
 
 Current:
 
-`ARTWORK_ANCHOR_SELECTED / RUNTIME FACT LOCK PENDING`
+`RUNTIME VERIFIED / FACT LOCKED FOR T01.40`
 
-T01.40 Draft remains blocked until the runtime verification above is complete.
+The verified static facts and approved images may be used in the Draft. Empty provenance must remain empty unless a later approved source supplies it. Price, stock, availability and physical location are live commerce/operational facts and require a fresh runtime read at Draft/publish time.

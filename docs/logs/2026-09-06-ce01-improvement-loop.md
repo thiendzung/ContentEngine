@@ -377,3 +377,11 @@ Status: `OPEN / DESIGN PRINCIPLE`.
 - NeedHypothesis remains `PROPOSED`.
 
 This log is living evidence for T01.43. Do not mark T01.43 complete until the Golden Journal has reached human editorial review and final CE01 failures/lessons are added.
+
+## LOOP-13 — Runtime verification closes the seed/data boundary
+
+Lesson:
+
+`Static seed data identifies the entity, but dynamic commerce facts require runtime verification.`
+
+Applied to CE01: the Golden importer seed identified the Artwork, while the current WordPress/WooCommerce runtime locked the facts used for T01.40. Price, stock, sale status and physical location remain dynamic. T01.43 remains open.

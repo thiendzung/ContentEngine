@@ -1,6 +1,10 @@
 # CE01 — GOLDEN JOURNAL — OUTLINE V2
 
-Status: **FOUNDER REVIEW REQUIRED — REVISED FOR SEO / ANSWER / AI DISCOVERY**
+Status: **FOUNDER APPROVED / T01.39 PASS**
+
+Founder decision: `APPROVE OUTLINE V2`
+
+Artwork anchor: runtime verified and fact locked for T01.40 in `docs/16-CE01-ARTWORK-ANCHOR.md`.
 
 Phase: `CE01 / PR-E — Walking Skeleton`
 
