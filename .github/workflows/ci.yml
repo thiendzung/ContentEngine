@@ -25,7 +25,7 @@ jobs:
 
     env:
       APP_ENV: test
-      APP_VERSION: 0.1.0-ce01
+      APP_VERSION: 0.1.0-ce02
       DATABASE_URL: postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
 
@@ -51,9 +51,12 @@ jobs:
         working-directory: backend
         run: mypy app
 
-      - name: Run migrations
+      - name: Run migration round-trip
         working-directory: backend
-        run: alembic upgrade head
+        run: |
+          alembic upgrade head
+          alembic downgrade 20260902_0001
+          alembic upgrade head
 
       - name: Backend tests
         working-directory: backend

@@ -23,9 +23,7 @@ Mini. Seed ban đầu là founder-proposed need hypothesis, chưa phải custome
 
 > Mỗi nội dung phải giải quyết một nhu cầu hoặc câu hỏi cụ thể của một nhóm người cụ thể, dựa trên bằng chứng, có giá trị riêng của MOTGU, có thể đo kết quả và tạo thêm hiểu biết về khách hàng.
 
-## CE01 local quickstart
-
-PR-A chỉ dựng nền chạy được; chưa có logic Research.
+## Local quickstart
 
 ```bash
 cp .env.example .env
@@ -204,6 +202,8 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 ## Trạng thái
 
 - `CE00 — Foundation Contracts`: CLOSED.
-- `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: ACTIVE.
+- `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: CLOSED / PASS.
+- `CE02 — Core Data + Settings`: ACTIVE.
+- Current PR: `CE02 PR-A — Core Content Data`.
 
-Research/Search và Opportunity Map Mini được đưa vào CE01 để phục vụ trực tiếp Golden Journal đầu tiên, không mở thành dự án riêng.
+CE02 đang chuyển các dữ liệu/contract đã được CE01 chứng minh thành dữ liệu PostgreSQL có cấu trúc và có version. CE02 không nhằm tăng số lượng bài viết.
