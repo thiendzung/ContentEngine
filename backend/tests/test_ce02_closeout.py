@@ -224,6 +224,9 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
             quality_metadata_json={},
             provenance_json={"source_document_id": str(document.id)},
         )
+        session.add(evidence)
+        await session.flush()
+        assert evidence.id is not None
         evidence_set = EvidenceSet(
             project_id=project.id,
             content_case_id=content_case.id,
@@ -248,8 +251,10 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
             rights_status="approved",
             metadata_json={"kind": "image"},
         )
-        session.add_all([evidence, evidence_set, originality, media])
+        session.add_all([evidence_set, originality, media])
         await session.flush()
+        assert evidence_set.evidence_ids_json == [str(evidence.id)]
+        assert originality.item_refs_json == [{"kind": "evidence", "id": str(evidence.id)}]
         observation = MediaObservation(
             media_asset_id=media.id,
             observation_text="A candidate visual observation.",
