@@ -327,7 +327,17 @@ async def test_concurrent_claim_uses_two_connections_and_skips_locked_job() -> N
             delete(NeedHypothesis).where(NeedHypothesis.id == hypothesis_id)
         )
         await cleanup_connection.execute(
+            text("DROP TRIGGER settings_snapshots_immutable ON settings_snapshots")
+        )
+        await cleanup_connection.execute(
             delete(SettingsSnapshot).where(SettingsSnapshot.id == run.settings_snapshot_id)
+        )
+        await cleanup_connection.execute(
+            text(
+                "CREATE TRIGGER settings_snapshots_immutable "
+                "BEFORE UPDATE OR DELETE ON settings_snapshots FOR EACH ROW "
+                "EXECUTE FUNCTION prevent_settings_snapshot_mutation()"
+            )
         )
 
 
