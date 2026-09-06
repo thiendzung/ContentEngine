@@ -38,19 +38,7 @@ _QUESTION_METHODS = {
     ResearchSignalKind.RELATED_SEARCH.value,
     ResearchSignalKind.AUTOCOMPLETE.value,
 }
-_STOPWORDS = {
-    "a",
-    "about",
-    "and",
-    "art",
-    "buyer",
-    "first",
-    "of",
-    "painting",
-    "the",
-    "time",
-    "to",
-}
+_RELEVANT_SUPPORT_TOPICS = {"choosing", "authenticity", "fit", "price"}
 
 
 @dataclass(slots=True, frozen=True)
@@ -94,16 +82,15 @@ class OpportunityMapService:
         questions = self._build_questions(signals, research.seed, request.locale)
         clusters = self._build_clusters(questions)
         hypothesis = self._build_hypothesis(signals, questions, request)
-        opportunities = self._build_opportunities(hypothesis, clusters, request)
+        opportunities = [
+            self._opportunity_for_cluster(hypothesis, cluster, request)
+            for cluster in clusters
+        ]
+
         if request.pillar_question and len(clusters) >= 2:
-            opportunities.insert(
-                0,
-                self._build_pillar_opportunity(
-                    hypothesis,
-                    clusters,
-                    request,
-                ),
-            )
+            pillar = self._build_pillar_opportunity(hypothesis, clusters, request)
+            opportunities.insert(0, pillar)
+
         niche_candidates = self._build_niche_candidates(
             hypothesis,
             opportunities,
@@ -144,8 +131,8 @@ class OpportunityMapService:
             selected_by=actor,
             reason=selection_reason,
         )
-        updated: list[ContentOpportunity] = []
         selected: ContentOpportunity | None = None
+        updated: list[ContentOpportunity] = []
         for opportunity in result.opportunities:
             if opportunity.id != opportunity_id:
                 updated.append(opportunity)
@@ -157,6 +144,7 @@ class OpportunityMapService:
                 selection_reason=selection_reason,
             )
             updated.append(selected)
+
         if selected is None:
             raise ValueError("opportunity_not_found")
         if selected.decision is ContentDecision.DO_NOT_WRITE:
@@ -180,20 +168,20 @@ class OpportunityMapService:
             if signal.provenance.method not in _QUESTION_METHODS:
                 continue
             key = normalize_text(signal.observed_text)
-            if not key:
-                continue
-            grouped.setdefault(key, []).append(signal)
+            if key:
+                grouped.setdefault(key, []).append(signal)
 
         records: list[QuestionRecord] = []
-        for normalized_query, grouped_signals in grouped.items():
-            classification = classify_question(grouped_signals[0].observed_text)
+        for normalized_query, group in grouped.items():
+            first = group[0]
+            classification = classify_question(first.observed_text)
             records.append(
                 QuestionRecord(
                     id=stable_id("q", locale, normalized_query),
-                    query=grouped_signals[0].observed_text,
+                    query=first.observed_text,
                     locale=locale,
                     seed_query=seed_query,
-                    signal_refs=tuple(signal.id for signal in grouped_signals),
+                    signal_refs=tuple(item.id for item in group),
                     question_type=classification.question_type,
                     intent=classification.intent,
                     audience_stage=classification.audience_stage,
@@ -210,22 +198,23 @@ class OpportunityMapService:
             grouped.setdefault((question.topic_key, question.intent), []).append(question)
 
         clusters: list[QuestionCluster] = []
-        for (topic_key, intent), grouped_questions in grouped.items():
-            stage = self._representative_stage(grouped_questions)
-            need_type = self._representative_need_type(grouped_questions)
-            primary = min(grouped_questions, key=lambda item: (len(item.query), item.query.casefold()))
+        for (topic_key, intent), group in grouped.items():
+            primary = min(
+                group,
+                key=lambda item: (len(item.query), item.query.casefold()),
+            )
             signal_refs = tuple(
-                dict.fromkeys(chain.from_iterable(q.signal_refs for q in grouped_questions))
+                dict.fromkeys(chain.from_iterable(item.signal_refs for item in group))
             )
             clusters.append(
                 QuestionCluster(
                     id=stable_id("cluster", topic_key, intent.value),
                     topic_key=topic_key,
                     intent=intent,
-                    audience_stage=stage,
-                    need_type=need_type,
+                    audience_stage=self._representative_stage(group),
+                    need_type=self._representative_need_type(group),
                     primary_question=primary.query,
-                    question_ids=tuple(q.id for q in grouped_questions),
+                    question_ids=tuple(item.id for item in group),
                     signal_refs=signal_refs,
                 )
             )
@@ -241,7 +230,7 @@ class OpportunityMapService:
             AudienceStage.EXPLORING,
             AudienceStage.CURIOUS,
         )
-        present = {question.audience_stage for question in questions}
+        present = {item.audience_stage for item in questions}
         return next(stage for stage in priority if stage in present)
 
     def _representative_need_type(self, questions: list[QuestionRecord]) -> NeedType:
@@ -252,7 +241,7 @@ class OpportunityMapService:
             NeedType.DESIRE,
             NeedType.CURIOSITY,
         )
-        present = {question.need_type for question in questions}
+        present = {item.need_type for item in questions}
         return next(need_type for need_type in priority if need_type in present)
 
     def _build_hypothesis(
@@ -261,36 +250,52 @@ class OpportunityMapService:
         questions: list[QuestionRecord],
         request: OpportunityMapRequest,
     ) -> NeedHypothesis:
-        related_question_ids = {
+        related_refs = {
             signal_ref
             for question in questions
-            if question.topic_key in {"choosing", "authenticity", "fit", "price"}
+            if question.topic_key in _RELEVANT_SUPPORT_TOPICS
             for signal_ref in question.signal_refs
         }
+        independent = unique_signals(signals)
         support_refs = tuple(
-            signal.id
-            for signal in unique_signals(signals)
-            if signal.id in related_question_ids
+            signal.id for signal in independent if signal.id in related_refs
         )
+        known_ids = {signal.id for signal in signals}
         contradiction_refs = tuple(
-            signal_ref
-            for signal_ref in request.contradiction_signal_refs
-            if any(signal.id == signal_ref for signal in signals)
+            ref for ref in request.contradiction_signal_refs if ref in known_ids
         )
+
         alternatives = request.alternative_explanations or (
-            "Search behaviour may reflect general curiosity or comparison rather than purchase anxiety.",
-            "A question about price, authenticity or shipping may be practical planning rather than fear of choosing wrong.",
+            (
+                "Search behaviour may reflect general curiosity or comparison "
+                "rather than purchase anxiety."
+            ),
+            (
+                "Price, authenticity or shipping questions may be practical planning "
+                "rather than fear of choosing wrong."
+            ),
         )
         missing = list(request.missing_evidence)
-        if not any(signal.source_kind is SignalSourceKind.MOTGU for signal in unique_signals(signals)):
+        if not any(item.source_kind is SignalSourceKind.MOTGU for item in independent):
             missing.append("No reviewed MOTGU-direct signal yet for this need hypothesis.")
         if not contradiction_refs:
-            missing.append("No bounded contradiction signal has been reviewed yet; absence is not disproof.")
-        if not any(signal.source_kind is SignalSourceKind.MARKET for signal in unique_signals(signals)):
-            missing.append("No direct MARKET observation outside search-result signals has been reviewed yet.")
+            missing.append(
+                "No bounded contradiction signal has been reviewed yet; "
+                "absence is not disproof."
+            )
+        if not any(item.source_kind is SignalSourceKind.MARKET for item in independent):
+            missing.append(
+                "No direct MARKET observation outside search-result signals "
+                "has been reviewed yet."
+            )
 
         return NeedHypothesis(
-            id=stable_id("need", request.project_id, request.locale, request.need_statement),
+            id=stable_id(
+                "need",
+                request.project_id,
+                request.locale,
+                request.need_statement,
+            ),
             statement=request.need_statement.strip(),
             audience_scope=request.audience_scope.strip(),
             situation=request.situation.strip(),
@@ -303,17 +308,6 @@ class OpportunityMapService:
             missing_evidence=tuple(dict.fromkeys(missing)),
         )
 
-    def _build_opportunities(
-        self,
-        hypothesis: NeedHypothesis,
-        clusters: list[QuestionCluster],
-        request: OpportunityMapRequest,
-    ) -> list[ContentOpportunity]:
-        return [
-            self._opportunity_for_cluster(hypothesis, cluster, request)
-            for cluster in clusters
-        ]
-
     def _opportunity_for_cluster(
         self,
         hypothesis: NeedHypothesis,
@@ -321,32 +315,23 @@ class OpportunityMapService:
         request: OpportunityMapRequest,
     ) -> ContentOpportunity:
         matches = self._existing_matches(cluster, request.existing_content)
-        decision = self._decision(matches, bool(request.motgu_materials))
-        role = JournalRole.PILLAR if len(cluster.question_ids) >= 3 else JournalRole.CLUSTER
-        material_refs = tuple(material.ref for material in request.motgu_materials)
-        material_gaps = () if material_refs else (
-            "Add at least one approved MOTGU-owned fact, observation, artwork or practical experience before drafting.",
-        )
+        has_material = bool(request.motgu_materials)
+        decision = self._decision(matches, has_material)
+        material_refs = tuple(item.ref for item in request.motgu_materials)
+        material_gaps = self._material_gaps(has_material)
         priority, reasons = self._priority(
             decision=decision,
             signal_count=len(cluster.signal_refs),
-            has_material=bool(material_refs),
+            has_material=has_material,
             question_count=len(cluster.question_ids),
         )
-        existing_refs = tuple(content.id for content in matches)
-        new_value = (
-            "Use approved MOTGU-owned material to answer this question from a specific local point of view."
-            if material_refs
-            else "Not established yet; the opportunity remains a research candidate until MOTGU-owned material is attached."
+        suggested_type = self._suggested_content_type(
+            cluster,
+            request.motgu_materials,
         )
-        suggested_type = self._suggested_content_type(cluster, request.motgu_materials)
+        role = JournalRole.PILLAR if len(cluster.question_ids) >= 3 else JournalRole.CLUSTER
         return ContentOpportunity(
-            id=stable_id(
-                "opp",
-                hypothesis.id,
-                cluster.id,
-                decision.value,
-            ),
+            id=stable_id("opp", hypothesis.id, cluster.id, decision.value),
             need_hypothesis_id=hypothesis.id,
             locale=request.locale,
             reader=request.reader.strip(),
@@ -359,14 +344,16 @@ class OpportunityMapService:
             signal_refs=cluster.signal_refs,
             motgu_material_refs=material_refs,
             material_gaps=material_gaps,
-            existing_content_refs=existing_refs,
-            what_is_actually_new=new_value,
+            existing_content_refs=tuple(item.id for item in matches),
+            what_is_actually_new=self._new_value(has_material),
             next_discovery_step=self._next_discovery_step(cluster.topic_key),
             decision=decision,
             priority=priority,
             reasons=reasons,
             suggested_content_type=suggested_type,
-            suggested_role=role if suggested_type is SuggestedContentType.JOURNAL else None,
+            suggested_role=(
+                role if suggested_type is SuggestedContentType.JOURNAL else None
+            ),
         )
 
     def _build_pillar_opportunity(
@@ -375,16 +362,28 @@ class OpportunityMapService:
         clusters: list[QuestionCluster],
         request: OpportunityMapRequest,
     ) -> ContentOpportunity:
-        signal_refs = tuple(dict.fromkeys(chain.from_iterable(c.signal_refs for c in clusters)))
-        material_refs = tuple(material.ref for material in request.motgu_materials)
+        signal_refs = tuple(
+            dict.fromkeys(chain.from_iterable(item.signal_refs for item in clusters))
+        )
+        material_refs = tuple(item.ref for item in request.motgu_materials)
+        has_material = bool(material_refs)
         priority, reasons = self._priority(
             decision=ContentDecision.CREATE,
             signal_count=len(signal_refs),
-            has_material=bool(material_refs),
-            question_count=sum(len(cluster.question_ids) for cluster in clusters),
+            has_material=has_material,
+            question_count=sum(len(item.question_ids) for item in clusters),
+        )
+        promise = (
+            "Give the reader one useful path through the main questions around: "
+            f"{hypothesis.statement}"
         )
         return ContentOpportunity(
-            id=stable_id("opp", hypothesis.id, "pillar", request.pillar_question or ""),
+            id=stable_id(
+                "opp",
+                hypothesis.id,
+                "pillar",
+                request.pillar_question or "",
+            ),
             need_hypothesis_id=hypothesis.id,
             locale=request.locale,
             reader=request.reader.strip(),
@@ -392,19 +391,13 @@ class OpportunityMapService:
             need=hypothesis.statement,
             question=request.pillar_question or hypothesis.statement,
             intent=Intent.EVALUATE,
-            promise=f"Give the reader one useful path through the main questions around: {hypothesis.statement}",
+            promise=promise,
             topic_key="first_art_purchase",
             signal_refs=signal_refs,
             motgu_material_refs=material_refs,
-            material_gaps=() if material_refs else (
-                "Add MOTGU-owned material before choosing this broad pillar direction.",
-            ),
+            material_gaps=self._material_gaps(has_material),
             existing_content_refs=(),
-            what_is_actually_new=(
-                "Connect several real questions through MOTGU-owned art-viewing and buying experience."
-                if material_refs
-                else "Broad synthesis is not yet differentiated without MOTGU-owned material."
-            ),
+            what_is_actually_new=self._pillar_new_value(has_material),
             next_discovery_step=request.business_path,
             decision=ContentDecision.CREATE,
             priority=priority,
@@ -413,15 +406,42 @@ class OpportunityMapService:
             suggested_role=JournalRole.PILLAR,
         )
 
+    def _material_gaps(self, has_material: bool) -> tuple[str, ...]:
+        if has_material:
+            return ()
+        return (
+            "Add approved MOTGU-owned fact, observation, artwork or practical "
+            "experience before drafting.",
+        )
+
+    def _new_value(self, has_material: bool) -> str:
+        if has_material:
+            return (
+                "Use approved MOTGU-owned material to answer this question "
+                "from a specific local point of view."
+            )
+        return (
+            "Not established yet; keep this as a research candidate until "
+            "MOTGU-owned material is attached."
+        )
+
+    def _pillar_new_value(self, has_material: bool) -> str:
+        if has_material:
+            return (
+                "Connect several real questions through MOTGU-owned art-viewing "
+                "and buying experience."
+            )
+        return "Broad synthesis is not differentiated without MOTGU-owned material."
+
     def _existing_matches(
         self,
         cluster: QuestionCluster,
         existing: tuple[ExistingContentRef, ...],
     ) -> list[ExistingContentRef]:
         return [
-            content
-            for content in existing
-            if content.topic_key == cluster.topic_key and content.intent is cluster.intent
+            item
+            for item in existing
+            if item.topic_key == cluster.topic_key and item.intent is cluster.intent
         ]
 
     def _decision(
@@ -450,6 +470,7 @@ class OpportunityMapService:
     ) -> tuple[OpportunityPriority, tuple[str, ...]]:
         if decision is ContentDecision.DO_NOT_WRITE:
             return OpportunityPriority.NO, ("decision_is_do_not_write",)
+
         reasons: list[str] = []
         if signal_count >= 2:
             reasons.append("repeated_search_question_signal")
@@ -459,17 +480,19 @@ class OpportunityMapService:
             reasons.append("no_search_signal_yet")
         if question_count >= 3:
             reasons.append("multiple_questions_share_one_answer_area")
-        if has_material:
-            reasons.append("motgu_owned_material_available")
-        else:
-            reasons.append("motgu_owned_material_gap")
+        reasons.append(
+            "motgu_owned_material_available"
+            if has_material
+            else "motgu_owned_material_gap"
+        )
+
         if decision is not ContentDecision.CREATE:
             reasons.append(f"existing_content_action:{decision.value}")
             return OpportunityPriority.NEXT, tuple(reasons)
         if signal_count >= 2 and has_material:
             return OpportunityPriority.NOW, tuple(reasons)
-        if signal_count >= 1:
-            return OpportunityPriority.NEXT if has_material else OpportunityPriority.LATER, tuple(reasons)
+        if signal_count >= 1 and has_material:
+            return OpportunityPriority.NEXT, tuple(reasons)
         return OpportunityPriority.LATER, tuple(reasons)
 
     def _suggested_content_type(
@@ -477,8 +500,10 @@ class OpportunityMapService:
         cluster: QuestionCluster,
         materials: tuple[MotguMaterial, ...],
     ) -> SuggestedContentType:
-        has_artwork = any(material.kind == "artwork" for material in materials)
-        asks_specific_artwork = "this painting" in normalize_text(cluster.primary_question)
+        has_artwork = any(item.kind == "artwork" for item in materials)
+        asks_specific_artwork = "this painting" in normalize_text(
+            cluster.primary_question
+        )
         if has_artwork and asks_specific_artwork:
             return SuggestedContentType.ARTWORK
         return SuggestedContentType.JOURNAL
@@ -499,27 +524,35 @@ class OpportunityMapService:
         request: OpportunityMapRequest,
     ) -> list[NicheCandidate]:
         usable = [
-            opportunity
-            for opportunity in opportunities
-            if opportunity.priority in {OpportunityPriority.NOW, OpportunityPriority.NEXT}
-            and opportunity.decision is not ContentDecision.DO_NOT_WRITE
+            item
+            for item in opportunities
+            if item.priority in {OpportunityPriority.NOW, OpportunityPriority.NEXT}
+            and item.decision is not ContentDecision.DO_NOT_WRITE
         ]
-        if not usable:
-            return []
         right_to_win = tuple(
-            material.description for material in request.motgu_materials if material.description.strip()
+            item.description
+            for item in request.motgu_materials
+            if item.description.strip()
         )
-        if not right_to_win:
+        if not usable or not right_to_win:
             return []
-        signal_refs = tuple(dict.fromkeys(chain.from_iterable(item.signal_refs for item in usable)))
+
+        signal_refs = tuple(
+            dict.fromkeys(chain.from_iterable(item.signal_refs for item in usable))
+        )
+        question_pattern = " / ".join(item.question for item in usable[:3])
+        content_gap = (
+            "Search questions are fragmented; answer them with approved "
+            "MOTGU-owned material instead of generic sales advice."
+        )
         return [
             NicheCandidate(
                 id=stable_id("niche", hypothesis.id, request.locale),
                 audience=request.reader.strip(),
                 need=hypothesis.statement,
                 topic_key="first_art_purchase",
-                question_pattern=" / ".join(item.question for item in usable[:3]),
-                content_gap="Web/search questions are fragmented; the opportunity is to answer them with approved MOTGU-owned material instead of generic sales advice.",
+                question_pattern=question_pattern,
+                content_gap=content_gap,
                 motgu_right_to_win=right_to_win,
                 suggested_content_refs=tuple(item.id for item in usable[:5]),
                 business_path=request.business_path,
@@ -536,8 +569,7 @@ class OpportunityMapService:
         gaps = list(hypothesis.missing_evidence)
         if not request.motgu_materials:
             gaps.append("MOTGU Right-to-Win material has not been attached yet.")
-        unique = unique_signals(signals)
-        if not any(signal.scope.value == "motgu_site" for signal in unique):
+        if not any(item.scope.value == "motgu_site" for item in unique_signals(signals)):
             gaps.append("No MOTGU-site search/behaviour signal is included yet.")
         return list(dict.fromkeys(gaps))
 
@@ -546,27 +578,41 @@ class OpportunityMapService:
         result: OpportunityMapResult,
         opportunity: ContentOpportunity,
     ) -> ContentExperimentDraft:
+        expected = (
+            "The intended reader gets a clearer answer to the selected question "
+            "and a natural next step to relevant MOTGU content or experience."
+        )
+        measurement_plan = (
+            (
+                "Review Search Console queries, impressions and clicks when "
+                "enough exposure exists."
+            ),
+            (
+                "Review useful transitions to related Artwork, Artist, Visit "
+                "or Inquiry destinations."
+            ),
+            (
+                "Record reviewed MOTGU-direct questions or inquiries that support "
+                "or contradict the need hypothesis."
+            ),
+        )
+        metric_definitions = (
+            "search_visibility: query-family impressions and clicks",
+            "useful_transition: qualified transition to a relevant next destination",
+            "motgu_direct_signal: reviewed visitor or inquiry observation",
+        )
+        minimum_evidence = (
+            "Do not conclude from one inquiry, one click or dwell time alone.",
+            "Keep support and contradiction signals separate and traceable.",
+            "If exposure is too small, result must remain INCONCLUSIVE.",
+        )
         return ContentExperimentDraft(
             id=stable_id("exp", opportunity.id, str(result.need_hypothesis.version)),
             content_opportunity_id=opportunity.id,
             need_hypothesis_id=result.need_hypothesis.id,
             hypothesis_version=result.need_hypothesis.version,
-            expected_behaviour=(
-                "The intended reader gets a clearer answer to the selected question and has a natural next step to relevant MOTGU content or experience."
-            ),
-            measurement_plan=(
-                "Review Search Console queries/impressions/clicks for the published content when enough exposure exists.",
-                "Review useful transitions to related Artwork, Artist, Visit or Inquiry destinations.",
-                "Record reviewed MOTGU-direct questions/inquiries that support or contradict the need hypothesis.",
-            ),
-            metric_definitions=(
-                "search_visibility: impressions/clicks for query families mapped to this opportunity",
-                "useful_transition: qualified transition to a relevant next destination",
-                "motgu_direct_signal: reviewed visitor/inquiry observation linked to this hypothesis",
-            ),
-            minimum_evidence=(
-                "Do not conclude from one inquiry, one click or dwell time alone.",
-                "Keep support and contradiction signals separate and traceable.",
-                "If exposure is too small, result must remain INCONCLUSIVE.",
-            ),
+            expected_behaviour=expected,
+            measurement_plan=measurement_plan,
+            metric_definitions=metric_definitions,
+            minimum_evidence=minimum_evidence,
         )
