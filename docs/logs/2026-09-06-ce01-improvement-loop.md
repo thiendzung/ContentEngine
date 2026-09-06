@@ -284,10 +284,94 @@ Status: `KEEP AS DESIGN PRINCIPLE`.
 
 ---
 
+## LOOP-11 — SEO / AEO / AIO / GEO should not become four separate writing systems
+
+Observed:
+
+Current Google guidance for generative AI search says core SEO remains the foundation. Google explicitly prioritizes useful non-commodity content, clear organization and real first-hand value, while saying there is no special AI schema, no requirement to split content into tiny chunks, and no need to rewrite pages for AI systems. Bing likewise ties AI grounding/citations to crawlability, clarity, structure, usefulness, evidence and freshness.
+
+Impact:
+
+Treating SEO, AEO, AIO and GEO as separate copywriting formulas would likely create keyword repetition, thin fan-out pages, artificial FAQ sections and generic machine-oriented prose — the opposite of MOTGU's brand and the opposite of current official guidance.
+
+Decision now:
+
+Revise Golden Journal Outline V2 around one shared rule:
+
+`human-first usefulness + first-party value + evidence clarity + machine-legible structure`
+
+Applied now:
+
+- direct answer near the top;
+- compact “price can / cannot tell you” map;
+- natural question-led headings;
+- one real MOTGU Artwork moved to the centre;
+- practical Hanoi/take-home context emphasized over generic valuation theory;
+- real Artwork image requirement added;
+- adjacent fan-out questions covered inside one coherent page;
+- no forced FAQ schema or keyword variants;
+- no AI-only markup or artificial chunking;
+- trust/source layer and entity clarity added.
+
+Candidate upgrade:
+
+Turn these principles into a reusable Journal outline/eval contract:
+
+1. `primary_answer_present`;
+2. `first_party_anchor_present`;
+3. `non_commodity_value_present`;
+4. `adjacent_intents_covered_without_thin_pages`;
+5. `critical_claims_traceable`;
+6. `entity_identity_clear`;
+7. `multimodal_support_relevant`;
+8. `dynamic_facts_verified`;
+9. `no_search_only_section`;
+10. `natural_next_action_present`.
+
+Likely phase:
+
+CE05 / CE06 / CE08.
+
+References reviewed 2026-09-06:
+
+- Google Search Central: Optimizing your website for generative AI features on Google Search;
+- Google Search Central: AI features and your website;
+- Bing Webmaster Guidelines / AI Performance guidance.
+
+Status: `APPLIED TO OUTLINE V2 / CANDIDATE FOR SYSTEM CONTRACT`.
+
+---
+
+## LOOP-12 — FAQ/search-feature tactics can age faster than reader value
+
+Observed:
+
+Google deprecated the FAQ rich result in May 2026. At the same time, clear question-and-answer structure is still useful to readers and Bing explicitly recommends clear sections and FAQ-style content where appropriate for AI citation clarity.
+
+Impact:
+
+Building a content architecture around a specific rich-result feature is brittle. Removing useful question structure just because a search feature changed would also be wrong.
+
+Decision now:
+
+Use question headings only when they match real reader jobs. Do not add an FAQ section or FAQ structured data solely to chase search appearance.
+
+Candidate upgrade:
+
+Separate `reader structure` from `search presentation feature` in the publishing contract. Search features can change without forcing editorial rewrites.
+
+Likely phase:
+
+CE05 / CE08.
+
+Status: `OPEN / DESIGN PRINCIPLE`.
+
+---
+
 ## Current PR-E checkpoint
 
 - Angle A selected;
-- Outline created for human review;
+- Outline V2 revised for human behaviour + search/AI retrieval and awaits founder review;
 - Draft not started;
 - real Artwork anchor not yet resolved;
 - NeedHypothesis remains `PROPOSED`.
