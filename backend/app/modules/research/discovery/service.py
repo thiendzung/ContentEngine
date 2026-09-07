@@ -18,6 +18,10 @@ from app.modules.research.contracts import (
     utc_now_iso,
 )
 from app.modules.research.discovery.artifact import persist_discovery_artifact
+from app.modules.research.discovery.persistence import (
+    PersistedDiscoveryPlan,
+    persist_discovery_plan,
+)
 from app.modules.research.keyword_plan.contracts import (
     ContentOpportunity,
     OpportunityMapResult,
@@ -92,6 +96,7 @@ class DiscoveryWorkflowResult:
     artifact_type: str = "discovery_research_report"
     evidence_eligible: bool = False
     artifact_ref: str | None = None
+    planning_refs: PersistedDiscoveryPlan | None = None
 
 
 class DiscoveryResearchWorkflow:
@@ -113,6 +118,7 @@ class DiscoveryResearchWorkflow:
         request: DiscoveryWorkflowRequest,
         run_id: UUID | None = None,
         step_run_id: UUID | None = None,
+        persist_plan: bool = False,
     ) -> DiscoveryWorkflowResult:
         self._validate_request(request, run_id=run_id, step_run_id=step_run_id)
 
@@ -158,6 +164,12 @@ class DiscoveryResearchWorkflow:
             opportunity_map=opportunity_map,
             research_gaps=combined_gaps,
         )
+        if persist_plan:
+            result.planning_refs = await persist_discovery_plan(
+                session,
+                project_id=production.request.project_id,
+                result=opportunity_map,
+            )
         if run_id is not None and step_run_id is not None:
             artifact = await persist_discovery_artifact(
                 session,
