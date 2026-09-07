@@ -32,6 +32,7 @@ from app.modules.research.contracts import (
     ResearchDepth,
     ResearchSignalKind,
     SearchRequest,
+    SourceRelation,
 )
 from app.modules.research.providers.base import PageReader, ResearchProviderError, SearchProvider
 from app.modules.research.utils import choose_sources, dedupe_sources
@@ -69,6 +70,20 @@ class ProductionSufficiencyPolicy:
             question_count >= self.min_question_signals
             and len(unique_sources) >= self.min_source_candidates
             and better_sources >= self.min_better_sources
+        )
+
+    def request_is_sufficient(self, result: ProductionResearchResult) -> bool:
+        """Apply purpose-specific sufficiency on top of generic source coverage."""
+
+        if not self.external_is_sufficient(result):
+            return False
+        parent_url = result.request.parent_url
+        if parent_url is None:
+            return True
+        return any(
+            source.relation is SourceRelation.SECOND_HOP
+            and source.parent_url == parent_url
+            for source in dedupe_sources(result.source_candidates)
         )
 
 
@@ -172,7 +187,7 @@ class ResearchRouter:
             return result
 
         result.source_candidates = dedupe_sources(result.source_candidates)
-        if self._sufficiency.external_is_sufficient(result):
+        if self._sufficiency.request_is_sufficient(result):
             search_stop_reason = "serper_sufficient"
             self._mark_search_fallbacks_skipped(result, search_stop_reason)
         else:
@@ -217,12 +232,14 @@ class ResearchRouter:
                 )
             )
 
-        result.sufficient = self._sufficiency.external_is_sufficient(result)
+        result.sufficient = self._sufficiency.request_is_sufficient(result)
         if read_stop_reason is not None:
             result.stop_reason = read_stop_reason
         elif result.sufficient:
             result.stop_reason = search_stop_reason
         elif search_stop_reason.startswith("budget_exceeded"):
+            result.stop_reason = search_stop_reason
+        elif search_stop_reason == "exa_required_for_second_hop":
             result.stop_reason = search_stop_reason
         else:
             result.stop_reason = "bounded_search_exhausted"
@@ -269,10 +286,10 @@ class ResearchRouter:
         step_run_id: UUID | None,
         transient_usage: _TransientUsage,
     ) -> str:
-        provider, reason = self._fallback_for(result.request.depth)
+        provider, reason = self._fallback_for(result.request)
         if provider is None:
-            self._mark_search_fallbacks_skipped(result, "no_fallback_configured")
-            return "no_fallback_configured"
+            self._mark_search_fallbacks_skipped(result, reason)
+            return reason
 
         other = self._exa if provider is self._tavily else self._tavily
         if other is not None:
@@ -307,12 +324,19 @@ class ResearchRouter:
             return f"budget_exceeded_before_{provider.name}"
 
         result.source_candidates = dedupe_sources(result.source_candidates)
-        if self._sufficiency.external_is_sufficient(result):
+        if self._sufficiency.request_is_sufficient(result):
             return f"{provider.name}_sufficient"
         return f"{provider.name}_insufficient_bounded_stop"
 
-    def _fallback_for(self, depth: ResearchDepth) -> tuple[SearchProvider | None, str]:
-        if depth is ResearchDepth.DEEP:
+    def _fallback_for(
+        self,
+        request: ProductionResearchRequest,
+    ) -> tuple[SearchProvider | None, str]:
+        if request.parent_url is not None:
+            if self._exa is not None:
+                return self._exa, "second_hop_parent_requires_exa"
+            return None, "exa_required_for_second_hop"
+        if request.depth is ResearchDepth.DEEP:
             if self._exa is not None:
                 return self._exa, "deep_or_second_hop_sources_required"
             if self._tavily is not None:
