@@ -144,6 +144,7 @@ class ResearchRouter:
             locale=normalized_request.locale,
             country=normalized_request.country,
             limit=normalized_request.limit,
+            parent_url=normalized_request.parent_url,
         )
 
         try:
@@ -349,6 +350,7 @@ class ResearchRouter:
                 "locale": request.locale,
                 "country": request.country,
                 "limit": request.limit,
+                "parent_url": request.parent_url,
                 "reason": reason,
             },
         )
