@@ -4,7 +4,33 @@ Updated: 2026-09-07
 
 ## Purpose
 
-One shared checkpoint for MG CONTENT ENGINE, Agent Local, and the founder. Read this before starting or resuming work. GitHub remains canonical; this file summarizes current state and operating rules, not a replacement for `docs/` specs.
+Shared operational checkpoint for MG CONTENT ENGINE, Agent Local, and founder.
+
+GitHub remains canonical. `AI_context.MD` summarizes the current state and working rules; approved files under `docs/` remain the architecture/product source of truth.
+
+## Sync rule
+
+At the start of every Agent Local task:
+
+```text
+git fetch origin --prune
+→ checkout the task branch
+→ git pull --ff-only
+→ read AI_context.MD
+→ read the exact task log under docs/logs/
+→ confirm clean working tree
+→ execute only the assigned scope
+```
+
+At the end:
+
+```text
+commit/push only when the task explicitly requires edits
+→ confirm working tree clean
+→ report START HEAD / END HEAD / evidence / blocker
+```
+
+The local copy of `AI_context.MD` must come from the current GitHub task branch. Do not maintain a separate local version.
 
 ## Roles
 
@@ -18,20 +44,18 @@ Owns:
 - review and Gate decisions;
 - task definitions for Agent Local.
 
-Do not hand core architecture decisions to Agent Local unless explicitly scoped.
-
 ### Agent Local
 
-Owns support work only unless a task explicitly says otherwise:
-- sync/prune/check branch state;
-- Python 3.12 local environment;
+Owns support work unless a task explicitly says otherwise:
+- repository sync/cleanup;
+- Python 3.12 environment;
 - PostgreSQL + migrations;
 - local tests;
 - real provider/API runs;
 - artifact hashes and safe evidence;
-- small bounded edits described in a canonical task file.
+- small bounded edits defined by a task log.
 
-Agent Local must not broaden scope, merge PRs, lower gates, or change architecture on its own.
+Agent Local must not broaden scope, merge PRs, weaken gates, or change architecture independently.
 
 ### Founder
 
@@ -40,16 +64,16 @@ Owns:
 - human selection/approval gates;
 - merge decisions.
 
-## Workflow
+## Standard workflow
 
 ```text
-GitHub canonical docs/specs
+GitHub canonical specs
 → scoped branch
 → MG CONTENT ENGINE implementation
 → CI
-→ Agent Local real/local verification when needed
+→ Agent Local local/real verification when needed
 → MG CONTENT ENGINE review
-→ Founder approval/selection when required
+→ Founder selection/approval when required
 → final-head CI
 → Ready for Review
 → Founder merge
@@ -59,7 +83,7 @@ GitHub canonical docs/specs
 
 Never merge automatically.
 
-## Current phase
+# Current phase
 
 ```text
 Project: ContentEngine
@@ -70,9 +94,9 @@ Status: ACTIVE
 Completed:
 
 ```text
-CE04 PR-A — Source Ingest + Dedupe + Chunking = CLOSED / MERGED / PASS
-CE04 PR-B — Entity Linking + Retrieval + Authority Ranking = CLOSED / MERGED / PASS
-CE04 PR-C — Production ResearchRouter + Provider Adapters = CLOSED / MERGED / PASS
+CE04 PR-A = CLOSED / MERGED / PASS
+CE04 PR-B = CLOSED / MERGED / PASS
+CE04 PR-C = CLOSED / MERGED / PASS
 T04.1–T04.14 = DONE
 ```
 
@@ -87,18 +111,26 @@ Scope: T04.15–T04.17
 State: ACTIVE / DRAFT
 ```
 
-Latest code-side checkpoint before this context commit:
+Last verified code-side checkpoint:
 
 ```text
 HEAD: f767daaf5ac330f569516a886809590f4d261ea5
 CI #297: PASS
 ```
 
-T04.15–T04.17 remain NOT DONE until real provider Gate, founder selection, persisted handoff, and final-head CI all pass.
+Last verified shared-context checkpoint:
 
-## PR-D locked contract
+```text
+HEAD: b3c3a744d581a26cc26480715785df071e85a386
+CI #298: PASS
+Run ID: 34117190176
+```
 
-### T04.15 — Discovery Research
+T04.15–T04.17 remain NOT DONE until the real provider Gate, founder selection, persisted selection verification, and final-head CI all pass.
+
+# PR-D locked contract
+
+## T04.15 — Discovery Research
 
 - internal MOTGU knowledge first;
 - production ResearchRouter only;
@@ -107,9 +139,9 @@ T04.15–T04.17 remain NOT DONE until real provider Gate, founder selection, per
 - Tavily or Exa only by router policy;
 - Jina reads selected pages;
 - explicit stop reasons and research gaps;
-- Discovery output is NOT factual evidence.
+- Discovery output is not factual Evidence.
 
-### T04.16 — Opportunity Map handoff
+## T04.16 — Opportunity Map handoff
 
 ```text
 Discovery signals
@@ -128,9 +160,9 @@ Rules:
 - one persisted plan can have only one human selection;
 - rerunning the same selection is idempotent;
 - conflicting replacement is rejected;
-- selection CLI must not call research providers again.
+- selection must not call research providers again.
 
-### T04.17 — Source metadata
+## T04.17 — Source metadata
 
 Keep separate:
 - `source_type`;
@@ -141,7 +173,7 @@ Keep separate:
 
 Search rank/provider relevance is not authority.
 
-## Important PR-D artifacts/tools
+# Important PR-D files
 
 Real Discovery runner:
 
@@ -151,49 +183,66 @@ Human selection runner:
 
 `backend/scripts/select_discovery_opportunity.py`
 
+Activation/local-sync task:
+
+`docs/logs/2026-09-07-ce04-pr-d-activation-sync-task.md`
+
 Real Gate task:
 
 `docs/logs/2026-09-07-ce04-pr-d-real-gate-task.md`
-
-Activation sync task:
-
-`docs/logs/2026-09-07-ce04-pr-d-activation-sync-task.md`
 
 Architecture decision:
 
 `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`
 
-## Immediate next sequence
+# Immediate execution sequence
 
 ```text
-1. Sync canonical PR-D ACTIVE state in README / AGENTS / TASKS / CE04 phase plan.
-2. Confirm final code-side CI remains green.
-3. Agent Local runs real Discovery Gate on Python 3.12.
-4. MG CONTENT ENGINE reviews real JSON + Markdown shortlist, source metadata, research gaps, DB persistence.
-5. Founder selects one opportunity.
-6. Agent Local runs selection CLI using the exact artifact/opportunity selected by founder.
-7. MG CONTENT ENGINE verifies HumanSelection + ContentExperiment persisted; NeedHypothesis still PROPOSED; no new ContentCase/ContentRun; zero provider calls during selection.
-8. Tick T04.15–T04.17 only after all gates pass.
-9. Final-head CI PASS.
-10. PR #26 → Ready for Review.
-11. Founder merges.
-12. Post-merge closeout → neutral checkpoint.
-13. Only then start PR-E T04.18–T04.23.
+1. Agent Local syncs local branch and AI_context.MD from origin.
+2. Agent Local executes activation-sync task: README / AGENTS / TASKS / CE04 phase plan → PR-D ACTIVE.
+3. MG CONTENT ENGINE reviews that docs-only commit + CI.
+4. Agent Local executes the fixed real Discovery Gate on Python 3.12.
+5. MG CONTENT ENGINE reviews JSON + Markdown shortlist, source metadata, research gaps and DB persistence.
+6. Founder selects exactly one opportunity.
+7. Agent Local runs selection CLI on that exact saved artifact/opportunity; providers_called must be 0.
+8. MG CONTENT ENGINE verifies HumanSelection + ContentExperiment persisted; NeedHypothesis stays PROPOSED; ContentCase/ContentRun counts do not increase.
+9. Tick T04.15–T04.17 only after all gates pass.
+10. Final-head CI PASS.
+11. PR #26 → Ready for Review.
+12. Founder merges.
+13. Post-merge closeout → neutral checkpoint.
+14. Only then start PR-E.
 ```
 
-## Remaining CE04 after PR-D
+# Remaining CE04
 
-### PR-E — T04.18–T04.23
+## PR-E — T04.18–T04.23
 
-Evidence Research → Claim extraction → Evidence linking → contradiction → EvidenceSet lock/version → OriginalityPack.
+```text
+Evidence Research
+→ Claim extraction
+→ Evidence linking
+→ contradiction
+→ EvidenceSet lock/version
+→ OriginalityPack
+```
 
-### PR-F — T04.24–T04.31
+## PR-F — T04.24–T04.31
 
-Knowledge Candidate → human admission → approved knowledge → Obsidian mirror → memory gap recommendation → provenance/end-to-end gates → Discovery/Evidence separation → second-hop final gate.
+```text
+Knowledge Candidate
+→ human admission
+→ Approved Knowledge
+→ Obsidian mirror when useful
+→ memory-gap recommendation
+→ provenance end-to-end gates
+→ Discovery/Evidence separation gate
+→ second-hop final gate
+```
 
-CE04 is complete only when T04.1–T04.31 are DONE, PR-D/E/F are merged, final regression/real gates pass, canonical docs are synchronized, and CE04 is marked CLOSED / PASS.
+CE04 is complete only when T04.1–T04.31 are DONE, PR-D/PR-E/PR-F are merged, final regression + real gates pass, canonical docs are synchronized, and CE04 is marked CLOSED / PASS.
 
-## Global rules
+# Global rules
 
 - GitHub is the canonical brain.
 - Search is source discovery, not factual proof.
@@ -204,10 +253,10 @@ CE04 is complete only when T04.1–T04.31 are DONE, PR-D/E/F are merged, final r
 - Secrets stay local/env only; never commit or print them.
 - No hidden retries or infinite fallback loops.
 - Do not weaken thresholds just to make a Gate green.
-- Do not start the next PR slice before the current slice is merged and post-merge checkpoint is clean.
-- Record meaningful failures, architectural decisions, and lessons under `docs/logs/`.
+- Do not start the next PR slice before the current slice is merged and its post-merge checkpoint is clean.
+- Record meaningful failures, architecture decisions, and lessons under `docs/logs/`.
 
-## Standard task report
+# Standard Agent Local report
 
 ```text
 GOAL
