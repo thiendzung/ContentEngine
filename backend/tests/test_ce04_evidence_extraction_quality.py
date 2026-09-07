@@ -106,6 +106,10 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
     workflow = EvidenceResearchWorkflow(router=_UnusedRouter())
     candidates = workflow._extract_claim_candidates(
         result,
+        subject_text=(
+            "A first-time art buyer wants to understand whether an original artwork price "
+            "makes sense before deciding to buy."
+        ),
         topic_texts=(
             "How do I know if an original artwork is fairly priced?",
             "evaluate the price of an artwork",
@@ -122,3 +126,71 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
     assert any("provenance" in candidate.statement.casefold() for candidate in candidates)
     assert any("Comparable sales" in candidate.statement for candidate in candidates)
     assert any("market history" in candidate.statement for candidate in candidates)
+
+
+def test_claim_extraction_uses_need_statement_not_planning_label() -> None:
+    artwork_url = "https://museumexchange.com/art-appraisals"
+    price_only_url = "https://example.com/auction-price"
+    sources = [
+        SourceCandidate(
+            provider="serper",
+            query="art appraisal",
+            url=artwork_url,
+            title="Art appraisal guide",
+            source_type="institutional",
+            commercial_bias=CommercialBias.LOW,
+            intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+        ),
+        SourceCandidate(
+            provider="serper",
+            query="art appraisal",
+            url=price_only_url,
+            title="Auction result",
+            source_type="institutional",
+            commercial_bias=CommercialBias.LOW,
+            intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+        ),
+    ]
+    production = ProductionResearchResult(
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="art appraisal valuation factors comparable sales price",
+            max_pages_to_read=2,
+        ),
+        source_candidates=sources,
+        selected_sources=sources,
+        documents=[
+            PageDocument(
+                provider="jina",
+                url=artwork_url,
+                final_url=artwork_url,
+                content=(
+                    "In preparing an appraisal, the appraiser will assess a number of factors "
+                    "pertaining to the artwork and use these to contextualize it with comparable "
+                    "artworks that have transacted on the open market."
+                ),
+            ),
+            PageDocument(
+                provider="jina",
+                url=price_only_url,
+                final_url=price_only_url,
+                content="The price was $9,500 and the lot closed after a short auction.",
+            ),
+        ],
+        sufficient=True,
+    )
+
+    workflow = EvidenceResearchWorkflow(router=_UnusedRouter())
+    candidates = workflow._extract_claim_candidates(
+        production,
+        subject_text=(
+            "A first-time art buyer wants to understand whether an original artwork price "
+            "makes sense before deciding to buy."
+        ),
+        topic_texts=("Artsy prices",),
+        limit=2,
+    )
+
+    assert [candidate.source_url for candidate in candidates] == [artwork_url]
+    assert "comparable artworks" in candidates[0].statement
+    assert "9,500" not in candidates[0].statement

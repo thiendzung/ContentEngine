@@ -231,13 +231,29 @@ produced no Round 4 Evidence. Therefore the human Gate count is `1 useful suppor
 suitable support domain`, below the required `2 / 2`. No universal pricing formula or
 investment/appreciation promise was accepted.
 
+# Round 4 repair
+
+```text
+Repair base HEAD: 3a204cd331c7c01221b279a22fc91300f988ee76
+Subject anchor: NeedHypothesis.statement; planning question is not the Evidence subject
+Source classification: brand .com domains are not institutional from hostname words alone
+Curation: backend/scripts/curate_evidence_set.py / provider calls=0 / draft only / no Evidence or relation mutation / no lock
+Regression scope: subject extraction, source classification, and zero-provider EvidenceSet curation
+Targeted checks: ruff PASS / mypy PASS / 29 pytest PASS
+Full pytest: 35 failed, 136 passed — asyncpg event-loop isolation failures plus one unrelated telemetry assertion
+Provider calls in repair: 0
+Evidence quality state: FAIL / BLOCKED / v4 draft / unlocked
+```
+
 # Current next action
 
 Current result:
 
 `BLOCKED — ROUND 4 EVIDENCE QUALITY INSUFFICIENT`
 
-MG CONTENT ENGINE must review the six Round 4 Evidence rows and define the next repair.
+MG CONTENT ENGINE must review the repair boundary and the six Round 4 Evidence rows before
+any human curation. The curation helper accepts only already-reviewed Evidence IDs and
+creates a draft EvidenceSet for separate review and lock.
 Do not rerun Round 4, lock v1/v2/v3/v4, change relations, tick T04.18–T04.23, or start
 T04.24+.
 
@@ -260,6 +276,9 @@ no investment/appreciation promise
 Do not lock v1/v2/v3 or any Round 4 EvidenceSet before MG CONTENT ENGINE review.
 
 Do not tick T04.18–T04.23 and do not start T04.24+.
+
+Any task that changes an important repository or workflow state must update this file in
+the same task.
 
 # Global rules
 

@@ -126,6 +126,7 @@ class EvidenceResearchWorkflow:
         explicit = list(request.explicit_candidates)
         automatic = self._extract_claim_candidates(
             production,
+            subject_text=hypothesis.statement,
             topic_texts=(
                 opportunity.question,
                 opportunity.need,
@@ -236,11 +237,12 @@ class EvidenceResearchWorkflow:
         self,
         production: ProductionResearchResult,
         *,
+        subject_text: str,
         topic_texts: tuple[str, ...],
         limit: int,
     ) -> list[ClaimCandidate]:
         terms = self._topic_terms((*topic_texts, production.request.query))
-        subject_terms = self._subject_terms(topic_texts[:1])
+        subject_terms = self._subject_terms(subject_text)
         sources = self._source_candidates_by_url(production)
         buckets: list[list[ClaimCandidate]] = []
 
@@ -378,8 +380,8 @@ class EvidenceResearchWorkflow:
                     terms.add(token)
         return terms
 
-    def _subject_terms(self, values: tuple[str, ...]) -> set[str]:
-        base = self._topic_terms(values) - _SUBJECT_GENERIC_TERMS
+    def _subject_terms(self, value: str) -> set[str]:
+        base = self._topic_terms((value,)) - _SUBJECT_GENERIC_TERMS
         expanded = set(base)
         for term in base:
             expanded.update(_SUBJECT_SYNONYMS.get(term, set()))

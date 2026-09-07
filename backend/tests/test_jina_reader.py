@@ -254,15 +254,41 @@ def test_article_topic_words_do_not_create_institutional_authority() -> None:
     assert source.commercial_bias is CommercialBias.UNKNOWN
 
 
-def test_institutional_looking_host_is_candidate_but_bias_stays_unknown() -> None:
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://museumexchange.com/art-appraisals",
+        "https://artworkarchive.com/blog/appraisal",
+        "https://artassociation.com/artwork-appraisal",
+        "https://institute.com/artwork-appraisal",
+    ],
+)
+def test_brand_com_institutional_words_do_not_create_authority(url: str) -> None:
     source = annotate_source(
         provider="serper",
         query="art appraisal",
-        url="https://appraisersassociation.example/artwork-appraisal",
+        url=url,
+        title="Artwork appraisal guide",
+        snippet="Professional appraisal guidance.",
+        found_via="google_organic",
+    )
+
+    assert source.source_type == "editorial_or_unknown"
+    assert source.commercial_bias is CommercialBias.UNKNOWN
+    assert source.intended_use.value == "discovery"
+
+
+@pytest.mark.parametrize("url", ["https://museum.example.edu/art-appraisal", "https://arts.gov/guide"])
+def test_edu_and_gov_hosts_remain_strong_institutional_candidates(url: str) -> None:
+    source = annotate_source(
+        provider="serper",
+        query="art appraisal",
+        url=url,
         title="Artwork appraisal guide",
         snippet="Professional appraisal guidance.",
         found_via="google_organic",
     )
 
     assert source.source_type == "institutional"
-    assert source.commercial_bias is CommercialBias.UNKNOWN
+    assert source.commercial_bias is CommercialBias.LOW
+    assert source.intended_use.value == "evidence_candidate"
