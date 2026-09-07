@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Protocol
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,8 +34,8 @@ class DirectSourceResearchRunner:
         session: AsyncSession,
         *,
         request: ProductionResearchRequest,
-        run_id: object | None = None,
-        step_run_id: object | None = None,
+        run_id: UUID | None = None,
+        step_run_id: UUID | None = None,
     ) -> ProductionResearchResult:
         del session, run_id, step_run_id
         if request.max_pages_to_read < 1:
