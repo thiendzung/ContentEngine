@@ -369,6 +369,30 @@ async def persist_discovery_selection(
     opportunity_id = planning_refs.opportunity_ids.get(selection.opportunity_id)
     if opportunity_id is None:
         raise ValueError("selected_opportunity_missing_from_persisted_plan")
+
+    existing_selected = tuple(
+        (
+            await session.execute(
+                select(DBContentOpportunity).where(
+                    DBContentOpportunity.id.in_(planning_refs.opportunity_ids.values()),
+                    DBContentOpportunity.selected_by.is_not(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if len(existing_selected) > 1:
+        raise ValueError("discovery_plan_has_multiple_persisted_selections")
+    if existing_selected:
+        existing = existing_selected[0]
+        if (
+            existing.id != opportunity_id
+            or existing.selected_by != selection.selected_by
+            or existing.selection_reason != selection.reason
+        ):
+            raise ValueError("discovery_plan_already_has_different_selection")
+
     opportunity = await session.get(DBContentOpportunity, opportunity_id)
     if opportunity is None:
         raise ValueError("persisted_selected_opportunity_not_found")
