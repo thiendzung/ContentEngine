@@ -16,6 +16,7 @@ from app.modules.research.contracts import (
     SourceCandidate,
     utc_now_iso,
 )
+from app.modules.research.discovery.artifact import persist_discovery_artifact
 from app.modules.research.keyword_plan.contracts import (
     ContentOpportunity,
     OpportunityMapResult,
@@ -89,6 +90,7 @@ class DiscoveryWorkflowResult:
     research_gaps: list[str] = field(default_factory=list)
     artifact_type: str = "discovery_research_report"
     evidence_eligible: bool = False
+    artifact_ref: str | None = None
 
 
 class DiscoveryResearchWorkflow:
@@ -149,12 +151,21 @@ class DiscoveryResearchWorkflow:
         combined_gaps = list(dict.fromkeys((*gaps, *opportunity_map.research_gaps)))
         opportunity_map.research_gaps = combined_gaps
 
-        return DiscoveryWorkflowResult(
+        result = DiscoveryWorkflowResult(
             research=production,
             source_metadata=source_metadata,
             opportunity_map=opportunity_map,
             research_gaps=combined_gaps,
         )
+        if run_id is not None and step_run_id is not None:
+            artifact = await persist_discovery_artifact(
+                session,
+                run_id=run_id,
+                step_run_id=step_run_id,
+                result=result,
+            )
+            result.artifact_ref = str(artifact.id)
+        return result
 
     def select(
         self,
