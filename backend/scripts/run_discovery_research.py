@@ -23,6 +23,7 @@ from app.modules.harness.policy import BudgetLimits
 from app.modules.research.contracts import ProductionResearchRequest, ResearchDepth
 from app.modules.research.discovery import DiscoveryResearchWorkflow, DiscoveryWorkflowRequest
 from app.modules.research.discovery.artifact import write_discovery_workflow_artifact
+from app.modules.research.keyword_plan.artifact import opportunity_map_markdown
 from app.modules.research.keyword_plan.contracts import NeedType
 from app.modules.research.keyword_plan.service import OpportunityMapRequest
 from app.modules.research.production import ResearchRouter
@@ -172,13 +173,20 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
             )
 
     write_discovery_workflow_artifact(result, output)
+    review_output = output.with_suffix(".md")
+    review_output.write_text(
+        opportunity_map_markdown(result.opportunity_map),
+        encoding="utf-8",
+    )
     summary = {
         "artifact": str(output),
+        "review_markdown": str(review_output),
         "artifact_type": result.artifact_type,
         "schema_version": 1,
         "evidence_eligible": result.evidence_eligible,
         "research_stop_reason": result.research.stop_reason,
         "research_sufficient": result.research.sufficient,
+        "hypothesis_status": result.opportunity_map.need_hypothesis.status.value,
         "search_signals": sum(
             1
             for signal in result.opportunity_map.signals
