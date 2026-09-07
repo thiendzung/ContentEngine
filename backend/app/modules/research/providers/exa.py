@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import httpx
 
 from app.modules.research.contracts import (
@@ -80,18 +82,9 @@ class ExaProvider:
                 ),
             )
             if second_hop:
-                source = SourceCandidate(
-                    provider=source.provider,
-                    query=source.query,
-                    url=source.url,
-                    title=source.title,
-                    snippet=source.snippet,
-                    source_type=source.source_type,
-                    commercial_bias=source.commercial_bias,
-                    found_via=source.found_via,
+                source = replace(
+                    source,
                     relation=SourceRelation.SECOND_HOP,
-                    intended_use=source.intended_use,
-                    why_selected=source.why_selected,
                     parent_url=request.parent_url,
                 )
             sources.append(source)
