@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
-from app.modules.content_engine.models import ContentCase, Project
+from app.modules.content_engine.models import ContentCase, NeedHypothesis, Project
 from app.modules.knowledge.models import Claim, Evidence, KnowledgeChunk, Source, SourceDocument
 from app.modules.knowledge.persistence import content_hash
 from app.modules.research.evidence.contracts import EvidenceRelation
@@ -39,9 +39,23 @@ async def test_reviewed_existing_source_evidence_is_exact_and_idempotent() -> No
         project = (
             await session.execute(select(Project).where(Project.slug == "motgu"))
         ).scalar_one()
+        need = NeedHypothesis(
+            project_id=project.id,
+            type="question",
+            statement="A buyer wants to evaluate an original artwork price.",
+            audience_scope="first-time buyer",
+            situation="considering a purchase",
+            origin="founder_proposed",
+            status="PROPOSED",
+            alternative_explanations_json=[],
+            missing_evidence_json=[],
+        )
+        session.add(need)
+        await session.flush()
         content_case = ContentCase(
             project_id=project.id,
             content_type="journal",
+            need_hypothesis_id=need.id,
             desired_action="evaluate an artwork price",
             content_hypothesis="use reviewed evidence",
             originality_statement="external evidence stays separate",
