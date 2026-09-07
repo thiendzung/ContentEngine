@@ -64,6 +64,10 @@ Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mir
 
 ## Current
 
-`PR-A = ACTIVE`
+`PR-A = CLOSED / MERGED / PASS`
+
+`PR-B = PLANNED / NOT STARTED`
+
+No implementation slice is ACTIVE.
 
 All later CE04 slices remain planned, not started.

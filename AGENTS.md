@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`CE04 PR-A — Source Ingest + Dedupe + Chunking`
+`None — post-merge neutral checkpoint.`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = ACTIVE. CE04 owns source ingest, dedupe and bounded chunking foundation; do not expand into later CE04 tasks or CE05.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = PLANNED / NOT STARTED. Do not begin T04.6 implementation or expand into later CE04 tasks or CE05.

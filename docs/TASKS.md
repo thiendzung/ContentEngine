@@ -203,9 +203,10 @@ Status: **CLOSED / PASS**.
 
 ## CE04 — Knowledge + Production Research
 
-- Status: **ACTIVE — PR-A Source Ingest + Dedupe + Chunking**.
+- Status: **ACTIVE**.
 
-- PR-A = PASS / FINAL REVIEW PENDING.
+- PR-A = CLOSED / MERGED / PASS.
+- PR-B = PLANNED / NOT STARTED.
 
 - [x] T04.1 Source registry.
 - [x] T04.2 Canonicalize source into normalized text/Markdown.
