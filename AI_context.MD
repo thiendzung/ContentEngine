@@ -154,6 +154,30 @@ Result: BLOCKED — SMITHSONIAN SUPPLEMENT INSUFFICIENT
 
 Human review found all 8 v6 rows were navigation/page-chrome despite exact excerpt matches.
 
+# Smithsonian page-chrome rerun
+
+```text
+Run HEAD: 6eaa398e3c2deee07c6d4489150c7420c63c4897
+Latest branch CI: run 34143040018 / PASS
+Command count: 1
+Source: https://americanart.si.edu/research/my-art/object-worth
+Artifact: artifacts/research/ce04-evidence-source-supplement-v1-20260907T162753Z.json
+Artifact SHA-256: e1e16b62ff39404aa55d4b98b1fc37470cf17e6455fabf659f350de76634ac52
+Artifact size: 1281 bytes
+Provider calls: Serper=0 / Tavily=0 / Exa=0 / Jina=1
+SourceDocument: 84c34963-a7c4-5f4d-9c0f-3632ff8cab41 / americanart.si.edu
+Claims: 0 / Evidence: 0 / EvidenceSet: none
+Human review: DIRECT_O4_SUPPORT=0 / useful supports=0 / suitable domains=0
+Combined Gate with IRS: useful supports=3 / suitable independent domains=1
+Result: BLOCKED — SMITHSONIAN RERUN INSUFFICIENT
+```
+
+The page-chrome regression test passed (`1 passed`): the extractor rejects `Collection
+Highlights`, `Search Artworks`/`Search Artists`, Markdown image fragments, and the
+`Latinx Art`/`20th Century`/`Asian American Art` navigation-image patterns. The rerun
+produced no new Claim/Evidence row, so no direct O4 support survived for review. Existing
+v1–v6 EvidenceSets remain unchanged and draft/unlocked; no relation was manually changed.
+
 # Page-chrome fix
 
 Root cause: multi-link navigation and embedded Markdown images contained many `artwork/artist` terms and could outrank real body prose.
@@ -183,11 +207,8 @@ CI #380: backend lint/types/migration/tests PASS; final workflow completion must
 
 # Current next action
 
-Only after final-head CI is PASS, run exactly once:
-
-`docs/logs/2026-09-07-ce04-pr-e-smithsonian-supplement-rerun-task.md`
-
-This reruns the same locked Smithsonian URL after the deterministic extractor fix. It is not a new search round.
+Do not rerun the Smithsonian supplement again and do not read another URL. MG CONTENT
+ENGINE must review the failed rerun and decide the next approved action.
 
 Required boundary:
 
@@ -201,9 +222,11 @@ Required boundary:
 - T04.18–T04.23 remain NOT DONE;
 - T04.24+ remain NOT STARTED.
 
-If at least one human-reviewed Smithsonian direct support survives and combined IRS + Smithsonian reaches `>=2 useful supports / >=2 suitable independent domains`, next step is zero-provider curation from exact reviewed Evidence IDs.
+The combined human Gate remains below `2 useful supports / 2 suitable independent domains`:
+IRS contributes `3 / 1`, and this rerun contributes `0 / 0`. Do not curate or lock an
+EvidenceSet.
 
-If the rerun still fails, stop; do not broaden research automatically.
+Current result: `BLOCKED — SMITHSONIAN RERUN INSUFFICIENT`.
 
 # Global rules
 
