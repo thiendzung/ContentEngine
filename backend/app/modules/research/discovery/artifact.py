@@ -88,6 +88,22 @@ def _required_str(parent: dict[str, object], key: str) -> str:
     return value
 
 
+def _optional_str(parent: dict[str, object], key: str) -> str | None:
+    value = parent.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"discovery_artifact_{key}_invalid")
+    return value
+
+
+def _int_value(parent: dict[str, object], key: str, default: int = 1) -> int:
+    value = parent.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"discovery_artifact_{key}_invalid")
+    return value
+
+
 def _string_tuple(value: object) -> tuple[str, ...]:
     if value is None:
         return ()
@@ -109,24 +125,15 @@ def _load_need_hypothesis(payload: dict[str, object]) -> NeedHypothesis:
         contradict_signal_refs=_string_tuple(payload.get("contradict_signal_refs")),
         alternative_explanations=_string_tuple(payload.get("alternative_explanations")),
         missing_evidence=_string_tuple(payload.get("missing_evidence")),
-        version=int(payload.get("version", 1)),
+        version=_int_value(payload, "version"),
     )
 
 
 def _load_content_opportunity(payload: dict[str, object]) -> ContentOpportunity:
-    role_value = payload.get("suggested_role")
-    if role_value is not None and not isinstance(role_value, str):
-        raise ValueError("discovery_artifact_suggested_role_invalid")
-    selected_by = payload.get("selected_by")
-    selected_at = payload.get("selected_at")
-    selection_reason = payload.get("selection_reason")
-    for key, value in (
-        ("selected_by", selected_by),
-        ("selected_at", selected_at),
-        ("selection_reason", selection_reason),
-    ):
-        if value is not None and not isinstance(value, str):
-            raise ValueError(f"discovery_artifact_{key}_invalid")
+    role_value = _optional_str(payload, "suggested_role")
+    selected_by = _optional_str(payload, "selected_by")
+    selected_at = _optional_str(payload, "selected_at")
+    selection_reason = _optional_str(payload, "selection_reason")
 
     return ContentOpportunity(
         id=_required_str(payload, "id"),
@@ -152,7 +159,7 @@ def _load_content_opportunity(payload: dict[str, object]) -> ContentOpportunity:
             _required_str(payload, "suggested_content_type")
         ),
         suggested_role=JournalRole(role_value) if role_value is not None else None,
-        version=int(payload.get("version", 1)),
+        version=_int_value(payload, "version"),
         selected_by=selected_by,
         selected_at=selected_at,
         selection_reason=selection_reason,
@@ -219,7 +226,7 @@ def load_discovery_selection_snapshot(
         project_id=_required_str(map_payload, "project_id"),
         locale=_required_str(map_payload, "locale"),
         seed=_required_str(map_payload, "seed"),
-        version=int(map_payload.get("version", 1)),
+        version=_int_value(map_payload, "version"),
         need_hypothesis=hypothesis,
         opportunities=[selected],
     )
