@@ -54,14 +54,28 @@ class FakeProvider:
 class FakeReader:
     name = "jina"
 
-    def __init__(self, error: ResearchProviderError | None = None) -> None:
+    def __init__(
+        self,
+        error: ResearchProviderError | None = None,
+        *,
+        failures_before_success: int = 0,
+    ) -> None:
         self.error = error
+        self.failures_before_success = failures_before_success
         self.urls: list[str] = []
 
     async def read(self, url: str, *, query: str) -> PageReadResponse:
         self.urls.append(url)
         if self.error is not None:
             raise self.error
+        if self.failures_before_success > 0:
+            self.failures_before_success -= 1
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                "upstream_http_403",
+                failure_class="tool_invalid_response",
+            )
         return PageReadResponse(
             document=PageDocument(
                 provider=self.name,
@@ -310,14 +324,18 @@ async def test_budget_blocks_fallback_without_loop(
 
 
 @pytest.mark.asyncio
-async def test_jina_reads_only_selected_url(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_jina_reads_only_until_page_success_target(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
     serper = FakeProvider(
         "serper",
         _response("serper", question_count=3, source_count=3, low_bias_count=1),
     )
     reader = FakeReader()
-    router = ResearchRouter(serper=serper, reader=reader)
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=4, max_research_sources=3),
+    )
 
     result = await router.run(
         _session(),
@@ -328,8 +346,146 @@ async def test_jina_reads_only_selected_url(monkeypatch: pytest.MonkeyPatch) -> 
         ),
     )
 
-    assert len(result.selected_sources) == 1
+    assert len(result.selected_sources) == 3
     assert reader.urls == [result.selected_sources[0].url]
+    assert len(result.documents) == 1
+
+
+@pytest.mark.asyncio
+async def test_reader_failover_tries_next_selected_source_after_page_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    reader = FakeReader(failures_before_success=1)
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=4, max_research_sources=3),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="art price",
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert len(result.selected_sources) == 3
+    assert reader.urls == [
+        result.selected_sources[0].url,
+        result.selected_sources[1].url,
+    ]
+    assert len(result.documents) == 1
+    failed = [
+        decision
+        for decision in result.decisions
+        if decision.provider == "jina" and decision.status is ProviderDecisionStatus.FAILED
+    ]
+    assert len(failed) == 1
+    assert failed[0].reason == "selected_url_read:upstream_http_403"
+
+
+@pytest.mark.asyncio
+async def test_reader_failover_is_bounded_when_all_selected_sources_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    reader = FakeReader(
+        error=ResearchProviderError(
+            "jina",
+            "read",
+            "upstream_http_403",
+            failure_class="tool_invalid_response",
+        )
+    )
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=4, max_research_sources=3),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="art price",
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert len(result.selected_sources) == 3
+    assert reader.urls == [source.url for source in result.selected_sources]
+    assert result.documents == []
+    assert result.stop_reason == "jina_candidates_exhausted"
+
+
+@pytest.mark.asyncio
+async def test_reader_failover_stops_when_ce03_budget_is_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    reader = FakeReader(failures_before_success=1)
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=2, max_research_sources=3),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="art price",
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert reader.urls == [result.selected_sources[0].url]
+    assert result.documents == []
+    assert result.stop_reason == "budget_exceeded_before_jina"
+
+
+@pytest.mark.asyncio
+async def test_selected_shortlist_is_bounded_independently_from_page_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=5, low_bias_count=1),
+    )
+    reader = FakeReader()
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=4, max_research_sources=2),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="art price",
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert len(result.selected_sources) == 2
+    assert len(reader.urls) == 1
     assert len(result.documents) == 1
 
 
