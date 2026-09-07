@@ -41,6 +41,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--project", default="motgu")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--pages", type=int)
+    parser.add_argument("--parent-url")
     parser.add_argument(
         "--depth",
         choices=[ResearchDepth.STANDARD.value, ResearchDepth.DEEP.value],
@@ -108,6 +109,7 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                 ),
             )
             pages = cast(int | None, args.pages)
+            parent_url = cast(str | None, args.parent_url)
             result = await router.run(
                 session,
                 request=ProductionResearchRequest(
@@ -120,6 +122,7 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                     max_pages_to_read=(
                         settings.research_max_pages_read if pages is None else pages
                     ),
+                    parent_url=parent_url.strip() if parent_url else None,
                 ),
             )
 
