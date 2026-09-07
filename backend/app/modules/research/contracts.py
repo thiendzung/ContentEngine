@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
+from uuid import UUID
 
 
 def utc_now_iso() -> str:
@@ -32,6 +33,18 @@ class IntendedUse(StrEnum):
     DISCOVERY = "discovery"
     EVIDENCE_CANDIDATE = "evidence_candidate"
     CONTEXT_ONLY = "context_only"
+
+
+class ResearchDepth(StrEnum):
+    STANDARD = "standard"
+    DEEP = "deep"
+
+
+class ProviderDecisionStatus(StrEnum):
+    CALLED = "called"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+    STOPPED = "stopped"
 
 
 @dataclass(slots=True, frozen=True)
@@ -146,3 +159,59 @@ class ResearchSpikeResult:
     second_hop_candidates: list[SourceCandidate] = field(default_factory=list)
     manual_deep_research: ManualDeepResearchImport | None = None
     budget_usage: ResearchBudgetUsage | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class ProductionResearchRequest:
+    project_id: UUID
+    query: str
+    locale: str = "en"
+    country: str = "us"
+    limit: int = 10
+    depth: ResearchDepth = ResearchDepth.STANDARD
+    max_pages_to_read: int = 1
+    preferred_source_types: tuple[str, ...] = ()
+
+
+@dataclass(slots=True, frozen=True)
+class InternalKnowledgeHit:
+    chunk_ref: str
+    source_ref: str
+    text: str
+    source_type: str
+    authority_hint: str | None
+    commercial_bias: str | None
+    exact_phrase: bool
+    matched_terms: tuple[str, ...]
+    ranking_reasons: tuple[str, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class ProviderDecision:
+    provider: str
+    status: ProviderDecisionStatus
+    reason: str
+    failure_class: str | None = None
+
+
+@dataclass(slots=True)
+class ProductionResearchResult:
+    request: ProductionResearchRequest
+    internal_hits: list[InternalKnowledgeHit] = field(default_factory=list)
+    decisions: list[ProviderDecision] = field(default_factory=list)
+    calls: list[ProviderCallArtifact] = field(default_factory=list)
+    signals: list[SearchSignal] = field(default_factory=list)
+    source_candidates: list[SourceCandidate] = field(default_factory=list)
+    selected_sources: list[SourceCandidate] = field(default_factory=list)
+    documents: list[PageDocument] = field(default_factory=list)
+    stop_reason: str = "not_started"
+    sufficient: bool = False
+
+    @property
+    def external_provider_calls(self) -> int:
+        return sum(
+            1
+            for decision in self.decisions
+            if decision.status in {ProviderDecisionStatus.CALLED, ProviderDecisionStatus.FAILED}
+            and decision.provider != "internal_knowledge"
+        )
