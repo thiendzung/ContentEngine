@@ -170,14 +170,18 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                     ),
                     artifact_ref=artifact_ref,
                 ),
+                persist_plan=True,
             )
 
-    write_discovery_workflow_artifact(result, output)
-    review_output = output.with_suffix(".md")
-    review_output.write_text(
-        opportunity_map_markdown(result.opportunity_map),
-        encoding="utf-8",
-    )
+        write_discovery_workflow_artifact(result, output)
+        review_output = output.with_suffix(".md")
+        review_output.write_text(
+            opportunity_map_markdown(result.opportunity_map),
+            encoding="utf-8",
+        )
+        await session.commit()
+
+    planning_refs = result.planning_refs
     summary = {
         "artifact": str(output),
         "review_markdown": str(review_output),
@@ -202,6 +206,13 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
         "source_metadata": len(result.source_metadata),
         "research_gaps": len(result.research_gaps),
         "human_selection": result.opportunity_map.human_selection is not None,
+        "persisted_need_hypothesis_id": (
+            str(planning_refs.need_hypothesis_id) if planning_refs is not None else None
+        ),
+        "persisted_signals": len(planning_refs.signal_ids) if planning_refs else 0,
+        "persisted_opportunities": (
+            len(planning_refs.opportunity_ids) if planning_refs else 0
+        ),
     }
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
     return output
