@@ -57,7 +57,7 @@ Base main: a52052adde3cf19889098013fd5065f86cab62fb
 Status: OPEN / DRAFT
 ```
 
-## Locked O4
+# Locked O4
 
 ```text
 Founder framing: How do I know if an original artwork is fairly priced?
@@ -80,8 +80,6 @@ selected opportunity
 → Evidence Research
 → Claim extraction
 → Evidence linking
-→ supports / contradicts / qualifies / context_only
-→ EvidenceSet draft
 → human review
 → curated EvidenceSet from exact reviewed Evidence IDs, provider_calls=0
 → final review
@@ -94,26 +92,17 @@ Locked rules:
 - Discovery/Search snippets are not factual Evidence.
 - External Evidence requires readable source content + exact locator/excerpt.
 - Search/provider rank is not authority.
-- Only `.gov` / `.edu` auto-become strong institutional evidence candidates.
-- Other unverified domains remain discovery/context until reviewed.
+- `.gov` / `.edu` only create institutional candidates; claim-level human review is still required.
 - Evidence subject is anchored to `NeedHypothesis.statement`, not `Artsy prices`.
 - Community/review/high-commercial/unknown-unverified sources do not auto-promote to supports.
 - Do not weaken thresholds to make a Gate pass.
 - Locked EvidenceSet is immutable.
-- OriginalityPack contains MOTGU-owned material only; web Evidence is excluded.
+- OriginalityPack contains MOTGU-owned material only.
 - No fake ContentRun, KnowledgeCandidate, Approved Knowledge, Obsidian, CE05, or T04.24+ work in PR-E.
 
-# Evidence Gate history
+# Retained human Gate state
 
-```text
-Round 1: FAIL — v1 draft; one Facebook thread supplied supports.
-Round 2: FAIL — v2 draft; source selection + claim extraction failed.
-Round 3: FAIL — v3 draft; museum-business subject drift created false-looking supports.
-Round 4: FAIL — v4 draft; only one suitable support domain.
-Round 5: FAIL — v5 draft; 3 useful IRS supports but only one suitable independent domain.
-```
-
-Round 5 retained human-reviewed IRS support:
+Round 5 IRS Evidence remains the only useful retained support set:
 
 ```text
 EvidenceSet v5: 32199d87-5114-4ac6-9bd5-6f4151bd0c7c / draft / unlocked
@@ -121,112 +110,92 @@ Useful supports: 3
 Suitable independent domains: 1 — www.irs.gov
 ```
 
-Do not lock or treat v1–v6 as the final curated EvidenceSet.
-
-# Smithsonian direct-source supplement
-
-Broad search is stopped. Direct-source path reads one human-reviewed URL using Jina only:
+Required Gate:
 
 ```text
-backend/app/modules/research/evidence/direct_source.py
-backend/scripts/run_evidence_source_supplement.py
-backend/tests/test_ce04_direct_source_evidence.py
+useful supports >= 2
+suitable independent domains >= 2
 ```
 
-Locked source:
+Do not curate or lock v1–v6. They are historical draft outputs.
+
+# Smithsonian American Art result
+
+Locked URL:
 
 `https://americanart.si.edu/research/my-art/object-worth`
 
-First supplement run:
+First direct-source run:
 
-```text
-Run HEAD: 805e66b39b4f21279372b4d93744385df3b4301c
-Artifact: artifacts/research/ce04-evidence-source-supplement-v1-20260907T161142Z.json
-SHA-256: 158493ac24a7a5d3b49dc547febac088daf0de569ef55854ca02761ae51c2965
-Provider calls: Serper=0 / Tavily=0 / Exa=0 / Jina=1
-SourceDocument: 5224a365-cfc1-5ed0-9354-8ed9e1626ee2
-EvidenceSet: 295d57f1-678e-4f33-912f-3e993fe59dfe / v6 / draft / unlocked
-Persisted Evidence: 8 / supports=8
-Human review: 0 useful supports
-Combined Gate with IRS: 3 useful supports / 1 suitable independent domain
-Result: BLOCKED — SMITHSONIAN SUPPLEMENT INSUFFICIENT
-```
+- Jina read succeeded;
+- 8 Evidence were navigation/page-chrome;
+- human useful support = 0;
+- v6 remained draft/unlocked.
 
-Human review found all 8 v6 rows were navigation/page-chrome despite exact excerpt matches.
+Page-chrome repair:
 
-# Smithsonian page-chrome rerun
+- reject Markdown-image fragments;
+- reject segments with 2+ Markdown links;
+- regression test: `backend/tests/test_ce04_smithsonian_page_chrome.py`;
+- final-head CI #383 / run `34143040018` = PASS.
+
+Same-source rerun:
 
 ```text
 Run HEAD: 6eaa398e3c2deee07c6d4489150c7420c63c4897
-Latest branch CI: run 34143040018 / PASS
-Command count: 1
-Source: https://americanart.si.edu/research/my-art/object-worth
 Artifact: artifacts/research/ce04-evidence-source-supplement-v1-20260907T162753Z.json
-Artifact SHA-256: e1e16b62ff39404aa55d4b98b1fc37470cf17e6455fabf659f350de76634ac52
-Artifact size: 1281 bytes
-Provider calls: Serper=0 / Tavily=0 / Exa=0 / Jina=1
-SourceDocument: 84c34963-a7c4-5f4d-9c0f-3632ff8cab41 / americanart.si.edu
-Claims: 0 / Evidence: 0 / EvidenceSet: none
-Human review: DIRECT_O4_SUPPORT=0 / useful supports=0 / suitable domains=0
-Combined Gate with IRS: useful supports=3 / suitable independent domains=1
+SHA-256: e1e16b62ff39404aa55d4b98b1fc37470cf17e6455fabf659f350de76634ac52
+SourceDocument: 84c34963-a7c4-5f4d-9c0f-3632ff8cab41
+Claims: 0
+Evidence: 0
+DIRECT_O4_SUPPORT: 0
+Combined Gate: 3 useful supports / 1 suitable independent domain
 Result: BLOCKED — SMITHSONIAN RERUN INSUFFICIENT
 ```
 
-The page-chrome regression test passed (`1 passed`): the extractor rejects `Collection
-Highlights`, `Search Artworks`/`Search Artists`, Markdown image fragments, and the
-`Latinx Art`/`20th Century`/`Asian American Art` navigation-image patterns. The rerun
-produced no new Claim/Evidence row, so no direct O4 support survived for review. Existing
-v1–v6 EvidenceSets remain unchanged and draft/unlocked; no relation was manually changed.
+Do not run this URL again.
 
-# Page-chrome fix
+# Current approved next action — MCI direct-source Gate
 
-Root cause: multi-link navigation and embedded Markdown images contained many `artwork/artist` terms and could outrank real body prose.
+MG CONTENT ENGINE pre-reviewed and locked one replacement source:
 
-Implemented:
+`https://mci.si.edu/artifact-appraisals`
 
-- reject any claim candidate containing Markdown image syntax `![`;
-- reject any claim candidate containing two or more Markdown links;
-- preserve prose with at most one inline link;
-- keep authority, subject anchor and quality threshold unchanged.
+Reason:
 
-Regression test:
+- Museum Conservation Institute / Smithsonian;
+- page directly discusses monetary value of artworks;
+- states fixed values are difficult to establish;
+- states prices asked/offered depend on seller/purchaser interests and market trends;
+- advises checking current sales and auction price ranges;
+- independent from `irs.gov`;
+- source selection is not Evidence approval.
 
-`backend/tests/test_ce04_smithsonian_page_chrome.py`
+Exact task:
 
-Canonical log:
+`docs/logs/2026-09-07-ce04-pr-e-mci-direct-source-task.md`
 
-`docs/logs/2026-09-07-ce04-pr-e-smithsonian-page-chrome-fix.md`
-
-Code/test checkpoint:
+Boundary:
 
 ```text
-service fix commit: b8ef2143b4adb111285cea0a2678b189c2164300
-regression test commit: d1d5da6b985a3405ff853939ead5f68d23182b9a
-CI #380: backend lint/types/migration/tests PASS; final workflow completion must be verified before rerun.
+run exactly once
+Serper=0
+Tavily=0
+Exa=0
+Jina=1
+Search/Discovery=0
+no code edit during Gate
+no relation mutation
+no curation/lock
+no ContentRun/KnowledgeCandidate
+T04.18–T04.23 remain NOT DONE
+T04.24+ remain NOT STARTED
+PR #28 remains DRAFT
 ```
 
-# Current next action
+If at least one exact readable MCI excerpt survives human review as `DIRECT_O4_SUPPORT`, combine it with reviewed IRS Evidence and evaluate the `>=2 supports / >=2 domains` Gate.
 
-Do not rerun the Smithsonian supplement again and do not read another URL. MG CONTENT
-ENGINE must review the failed rerun and decide the next approved action.
-
-Required boundary:
-
-- Serper=0 / Tavily=0 / Exa=0;
-- Jina=1;
-- no Search/Discovery;
-- no code edit during Gate;
-- no relation mutation;
-- no curation or lock;
-- no ContentRun/KnowledgeCandidate;
-- T04.18–T04.23 remain NOT DONE;
-- T04.24+ remain NOT STARTED.
-
-The combined human Gate remains below `2 useful supports / 2 suitable independent domains`:
-IRS contributes `3 / 1`, and this rerun contributes `0 / 0`. Do not curate or lock an
-EvidenceSet.
-
-Current result: `BLOCKED — SMITHSONIAN RERUN INSUFFICIENT`.
+If combined Gate passes, next step is zero-provider curation only; do not research further.
 
 # Global rules
 
