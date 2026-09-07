@@ -208,9 +208,19 @@ Status: **CLOSED / PASS**.
 - PR-A = CLOSED / MERGED / PASS.
 - PR-B = CLOSED / MERGED / PASS.
 - PR-C = CLOSED / MERGED / PASS.
-- Current PR = none.
-- Current implementation slice = none.
-- PR-D = PLANNED / NOT STARTED.
+- PR-D = ACTIVE.
+- Current PR = `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff` (DRAFT).
+- Current implementation slice = `T04.15–T04.17`.
+
+PR-D activation record:
+
+- Branch: `ce04-discovery-opportunity-handoff`.
+- Base: `cff0926280d053bbb41d87be9b50db69eef2384d`.
+- Start log: `docs/logs/2026-09-07-ce04-pr-d-start.md`.
+- Architecture decision: `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`.
+- T04.1–T04.14 = DONE.
+- T04.15–T04.17 = ACTIVE / NOT DONE; do not tick before the real provider Gate, founder selection, persisted selection verification and final-head CI pass.
+- T04.18–T04.31 = NOT STARTED.
 
 - [x] T04.1 Source registry.
 - [x] T04.2 Canonicalize source into normalized text/Markdown.
@@ -227,9 +237,9 @@ Status: **CLOSED / PASS**.
 - [x] T04.13 Production Jina selected-page reader.
 - [x] T04.14 Keep Brave optional; implement only if coverage/outage evidence justifies it.
 - T04.14 PASS decision: **DO NOT IMPLEMENT BRAVE IN PR-C**; real runs did not prove a concrete coverage/outage need.
-- [ ] T04.15 Discovery Research workflow.
-- [ ] T04.16 Opportunity Map workflow with Keyword/Question Map tool.
-- [ ] T04.17 Source commercial-bias/type/authority metadata.
+- [ ] T04.15 Discovery Research workflow. **ACTIVE / NOT DONE**
+- [ ] T04.16 Opportunity Map workflow with Keyword/Question Map tool. **ACTIVE / NOT DONE**
+- [ ] T04.17 Source commercial-bias/type/authority metadata. **ACTIVE / NOT DONE**
 - [ ] T04.18 Evidence Research workflow.
 - [ ] T04.19 Claim extraction workflow.
 - [ ] T04.20 Evidence linking workflow.

@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`none — neutral checkpoint after CE04 PR-C`
+`T04.15–T04.17`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = CLOSED / MERGED / PASS. PR #24 merge commit = 39731375a5a90f3a6e590ed3c856d973d5feb1b9. Current PR = none. CE04 PR-D = PLANNED / NOT STARTED. Do not start PR-D before a new implementation slice is explicitly activated after the PR-C post-merge checkpoint.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = CLOSED / MERGED / PASS. CE04 PR-D = ACTIVE. T04.1–T04.14 = DONE. T04.15–T04.17 = ACTIVE / NOT DONE. T04.18–T04.31 = NOT STARTED. Current PR = `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff` (DRAFT). Branch = `ce04-discovery-opportunity-handoff`. Base = `cff0926280d053bbb41d87be9b50db69eef2384d`. Start log = `docs/logs/2026-09-07-ce04-pr-d-start.md`. Architecture decision = `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`. Do not start T04.18+ or run the real provider Gate before the docs-only activation state is reviewed.

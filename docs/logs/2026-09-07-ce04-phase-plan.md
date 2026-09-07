@@ -1,7 +1,7 @@
 # CE04 — Knowledge + Production Research — Phase Plan
 
 Date: 2026-09-07
-Base after CE03 closeout: `ffa981ccc01e52c118a999b405c6d61a30d6ff03`
+Base after PR #25 merge: `cff0926280d053bbb41d87be9b50db69eef2384d`
 
 ## Goal
 
@@ -48,6 +48,20 @@ Merge commit: `39731375a5a90f3a6e590ed3c856d973d5feb1b9`
 Tasks: T04.15–T04.17.
 
 Builds bounded Discovery Research and Opportunity Map workflow using normalized provider output plus source type/commercial-bias/authority metadata. Discovery output remains signal/hypothesis input, not factual truth.
+
+Status: **ACTIVE**.
+
+Branch: `ce04-discovery-opportunity-handoff`
+
+Base: `cff0926280d053bbb41d87be9b50db69eef2384d`
+
+PR: `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff`
+
+PR state: **DRAFT**.
+
+Start log: `docs/logs/2026-09-07-ce04-pr-d-start.md`
+
+Architecture decision: `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`
 
 ### PR-E — Evidence Research + Evidence Set
 
@@ -112,18 +126,20 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 ## Current
 
+`CE04 = ACTIVE`
+
 `PR-A = CLOSED / MERGED / PASS`
 
 `PR-B = CLOSED / MERGED / PASS`
 
-`Current PR = none`
-
-`Current implementation slice = none — neutral checkpoint after PR-C`
-
 `PR-C = CLOSED / MERGED / PASS`
 
-`PR-D = PLANNED / NOT STARTED`
+`PR-D = ACTIVE`
 
-T04.1–T04.14 are DONE. T04.15–T04.31 remain NOT STARTED.
+`Current PR = #26 — CE04 PR-D — Discovery Research + Opportunity Handoff (DRAFT)`
+
+`Current implementation slice = T04.15–T04.17`
+
+T04.1–T04.14 are DONE. T04.15–T04.17 are ACTIVE / NOT DONE. T04.18–T04.31 are NOT STARTED.
 
 Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
