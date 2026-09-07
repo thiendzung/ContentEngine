@@ -82,7 +82,7 @@ async def test_jina_rate_limit_uses_canonical_failure_class() -> None:
 
 
 @pytest.mark.asyncio
-async def test_jina_invalid_envelope_is_tool_invalid_response() -> None:
+async def test_jina_invalid_envelope_exposes_safe_parse_reason() -> None:
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
             200,
@@ -95,4 +95,52 @@ async def test_jina_invalid_envelope_is_tool_invalid_response() -> None:
             await JinaReader(client).read("https://example.org/page", query="test")
 
     assert exc_info.value.failure_class == "tool_invalid_response"
-    assert str(exc_info.value) == "invalid_reader_response"
+    assert str(exc_info.value) == "invalid_reader_response:missing_content"
+
+
+@pytest.mark.asyncio
+async def test_jina_structured_503_envelope_is_provider_transient() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            request=request,
+            json={
+                "code": 503,
+                "status": 50002,
+                "data": None,
+                "message": "provider detail must not be copied",
+            },
+        )
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ResearchProviderError) as exc_info:
+            await JinaReader(client).read("https://example.org/page", query="test")
+
+    error = exc_info.value
+    assert error.failure_class == "provider_transient"
+    assert str(error) == "reader_code_503"
+    assert "provider detail must not be copied" not in str(error)
+
+
+@pytest.mark.asyncio
+async def test_jina_upstream_403_is_page_specific_not_provider_auth() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            request=request,
+            json={
+                "code": 200,
+                "data": {
+                    "httpStatus": 403,
+                    "content": "",
+                },
+            },
+        )
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ResearchProviderError) as exc_info:
+            await JinaReader(client).read("https://example.org/page", query="test")
+
+    error = exc_info.value
+    assert error.failure_class == "tool_invalid_response"
+    assert str(error) == "upstream_http_403"
