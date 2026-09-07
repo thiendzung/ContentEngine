@@ -97,10 +97,14 @@ Completed:
 CE04 PR-A = CLOSED / MERGED / PASS
 CE04 PR-B = CLOSED / MERGED / PASS
 CE04 PR-C = CLOSED / MERGED / PASS
-T04.1–T04.14 = DONE
+CE04 PR-D = CLOSED / MERGED / PASS
+PR #26 merge commit = 46af24d6c17df483fdc32721f14bc2f9156d0d76
+T04.1–T04.17 = DONE
+T04.18–T04.31 = NOT STARTED
+PR-E = PLANNED / NOT STARTED
 ```
 
-Current:
+Last completed slice:
 
 ```text
 CE04 PR-D — Discovery Research + Opportunity Handoff
@@ -108,7 +112,8 @@ PR: #26
 Branch: ce04-discovery-opportunity-handoff
 Base main: cff0926280d053bbb41d87be9b50db69eef2384d
 Scope: T04.15–T04.17
-State: READY FOR REVIEW / PASS (PR #26 remains DRAFT)
+State: CLOSED / MERGED / PASS
+Merge commit: 46af24d6c17df483fdc32721f14bc2f9156d0d76
 ```
 
 Current checkpoint:
@@ -123,6 +128,7 @@ MARKET signals: 0
 Founder selection: O4 — Artsy prices
 Planning opportunity ID: opp_4c397247e40db8ae
 Persisted ContentOpportunity ID: 068991ab-de34-4787-9c38-8935c3f0e2da
+Persisted NeedHypothesis ID: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
 Founder selection log: docs/logs/2026-09-07-ce04-pr-d-founder-selection.md
 Founder selection Gate: PASS
 HumanSelection persistence: PASS
@@ -132,9 +138,13 @@ NeedHypothesis: PROPOSED
 ContentCase / ContentRun counts: unchanged
 PR-D gates = PASS
 T04.15–T04.17 = DONE
-PR #26 = waiting for final-head CI / MG CONTENT ENGINE Ready-for-Review transition
+PR #26 = CLOSED / MERGED / PASS
+Current PR: none
+Current implementation slice: none — neutral checkpoint after PR-D
 T04.18–T04.31: NOT STARTED
-Do not begin PR-E before PR-D merge + post-merge neutral checkpoint
+PR-E: PLANNED / NOT STARTED
+Next planned scope: PR-E / T04.18–T04.23
+Do not begin PR-E until this closeout is merged and main is verified clean
 ```
 
 # PR-D locked contract
@@ -216,14 +226,13 @@ Architecture decision:
 3. DONE — real Discovery Gate.
 4. DONE — MG CONTENT ENGINE reviewed shortlist/gaps.
 5. DONE — founder selected O4.
-6. NEXT — Agent Local runs selection CLI on exact saved artifact/O4; providers_called must be 0.
-7. MG CONTENT ENGINE verifies HumanSelection + ContentExperiment persisted; NeedHypothesis stays PROPOSED; ContentCase/ContentRun counts do not increase.
-8. Tick T04.15–T04.17 only after all gates pass.
-9. Final-head CI PASS.
-10. PR #26 → Ready for Review.
-11. Founder merges.
-12. Post-merge closeout → neutral checkpoint.
-13. Only then start PR-E.
+6. DONE — selection CLI persisted exact O4; providers_called = 0.
+7. DONE — HumanSelection + ContentExperiment persistence and idempotency verified.
+8. DONE — T04.15–T04.17 ticked.
+9. DONE — final-head CI #311 PASS.
+10. DONE — PR #26 merged into main at `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
+11. DONE — post-merge closeout returns CE04 to a neutral checkpoint.
+12. NEXT — MG CONTENT ENGINE reviews this closeout; do not start PR-E yet.
 ```
 
 # Remaining CE04

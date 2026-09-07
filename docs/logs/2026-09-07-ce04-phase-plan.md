@@ -1,7 +1,7 @@
 # CE04 — Knowledge + Production Research — Phase Plan
 
 Date: 2026-09-07
-Base after PR #25 merge: `cff0926280d053bbb41d87be9b50db69eef2384d`
+Base after PR #26 merge: `46af24d6c17df483fdc32721f14bc2f9156d0d76`
 
 ## Goal
 
@@ -49,7 +49,7 @@ Tasks: T04.15–T04.17.
 
 Builds bounded Discovery Research and Opportunity Map workflow using normalized provider output plus source type/commercial-bias/authority metadata. Discovery output remains signal/hypothesis input, not factual truth.
 
-Status: **READY FOR REVIEW / PASS**.
+Status: **CLOSED / MERGED / PASS**.
 
 Branch: `ce04-discovery-opportunity-handoff`
 
@@ -57,7 +57,9 @@ Base: `cff0926280d053bbb41d87be9b50db69eef2384d`
 
 PR: `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff`
 
-PR state: **DRAFT — waiting for final-head CI / MG CONTENT ENGINE Ready-for-Review transition**.
+PR state: **CLOSED / MERGED / PASS**.
+
+Merge commit: `46af24d6c17df483fdc32721f14bc2f9156d0d76`
 
 Start log: `docs/logs/2026-09-07-ce04-pr-d-start.md`
 
@@ -138,12 +140,16 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 `PR-C = CLOSED / MERGED / PASS`
 
-`PR-D = READY FOR REVIEW / PASS`
+`PR-D = CLOSED / MERGED / PASS`
 
-`Current PR = #26 — CE04 PR-D — Discovery Research + Opportunity Handoff`
+`Current PR = none`
 
-`Current implementation slice = T04.15–T04.17 COMPLETE`
+`Current implementation slice = none — neutral checkpoint after PR-D`
 
 T04.1–T04.17 are DONE. T04.18–T04.31 are NOT STARTED.
 
-PR-D evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`.
+`PR-E = PLANNED / NOT STARTED`
+
+PR-D evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`, and `docs/logs/2026-09-07-ce04-pr-d-post-merge-closeout-task.md`.
+
+Do not begin PR-E before this closeout is merged and main is verified clean.
