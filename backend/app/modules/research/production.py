@@ -543,7 +543,7 @@ class ResearchRouter:
         await complete_tool_call(
             session,
             call_id=call_id,
-            response=ToolResponse(result_ref=f"tool_call:{call_id}"),
+            response=ToolResponse(result_ref=None),
         )
 
     async def _fail_telemetry(
