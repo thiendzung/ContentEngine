@@ -191,8 +191,9 @@ class ResearchRouter:
             self._selected_source_limit(normalized_request),
         )
 
+        read_stop_reason: str | None = None
         if self._reader is not None and normalized_request.max_pages_to_read > 0:
-            await self._read_selected_pages(
+            read_stop_reason = await self._read_selected_pages(
                 session,
                 result=result,
                 run_id=run_id,
@@ -217,7 +218,9 @@ class ResearchRouter:
             )
 
         result.sufficient = self._sufficiency.external_is_sufficient(result)
-        if result.sufficient:
+        if read_stop_reason is not None:
+            result.stop_reason = read_stop_reason
+        elif result.sufficient:
             result.stop_reason = search_stop_reason
         elif search_stop_reason.startswith("budget_exceeded"):
             result.stop_reason = search_stop_reason
@@ -391,7 +394,7 @@ class ResearchRouter:
         run_id: UUID | None,
         step_run_id: UUID | None,
         transient_usage: _TransientUsage,
-    ) -> None:
+    ) -> str | None:
         assert self._reader is not None
         limit = min(result.request.max_pages_to_read, len(result.selected_sources))
         for source in result.selected_sources[:limit]:
@@ -411,7 +414,7 @@ class ResearchRouter:
                         failure_class="budget_exceeded",
                     )
                 )
-                return
+                return f"budget_exceeded_before_{self._reader.name}"
 
             tool_call_id = await self._start_telemetry(
                 session,
@@ -459,6 +462,7 @@ class ResearchRouter:
                     reason=f"selected_url:{source.url}",
                 )
             )
+        return None
 
     async def _enforce_next_tool_budget(
         self,
