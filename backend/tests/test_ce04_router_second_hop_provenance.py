@@ -163,7 +163,9 @@ async def test_second_hop_forces_exa_even_when_serper_is_generically_sufficient(
     assert result.stop_reason == "exa_sufficient"
     assert result.sufficient is True
     second_hop = next(
-        source for source in result.source_candidates if source.relation is SourceRelation.SECOND_HOP
+        source
+        for source in result.source_candidates
+        if source.relation is SourceRelation.SECOND_HOP
     )
     assert second_hop.parent_url == parent_url
 
