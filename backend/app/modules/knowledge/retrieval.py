@@ -292,6 +292,9 @@ async def link_document_entities(
 
 
 def _stored_entity_ids(metadata: dict[str, object]) -> tuple[UUID, ...]:
+    if metadata.get("entity_linker_version") != ENTITY_LINKER_VERSION:
+        return ()
+
     raw_links = metadata.get("entity_links")
     if not isinstance(raw_links, list):
         return ()
