@@ -66,10 +66,14 @@ Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mir
 
 `PR-A = CLOSED / MERGED / PASS`
 
-`PR-B = PASS / FINAL REVIEW PENDING`
+`PR-B = CLOSED / MERGED / PASS`
+
+`Current PR = none`
+
+`Current implementation slice = none`
 
 `PR-C = PLANNED / NOT STARTED`
 
-Only PR-B is the current implementation slice.
+T04.1–T04.8 are DONE. T04.9–T04.31 remain NOT STARTED.
 
-All later CE04 slices remain planned, not started.
+Repository is at a neutral post-merge checkpoint. Do not start PR-C until this closeout lands on `main` and post-merge verification confirms a clean baseline.
