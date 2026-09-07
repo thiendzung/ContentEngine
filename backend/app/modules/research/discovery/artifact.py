@@ -12,6 +12,19 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.harness.models import Artifact, StepRun
+from app.modules.research.discovery.persistence import PersistedDiscoveryPlan
+from app.modules.research.keyword_plan.contracts import (
+    ContentDecision,
+    ContentOpportunity,
+    HypothesisStatus,
+    Intent,
+    JournalRole,
+    NeedHypothesis,
+    NeedType,
+    OpportunityMapResult,
+    OpportunityPriority,
+    SuggestedContentType,
+)
 
 if TYPE_CHECKING:
     from app.modules.research.discovery.service import DiscoveryWorkflowResult
@@ -59,6 +72,163 @@ def write_discovery_workflow_artifact(
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(discovery_workflow_json(result), encoding="utf-8")
     return path
+
+
+def _required_dict(parent: dict[str, object], key: str) -> dict[str, object]:
+    value = parent.get(key)
+    if not isinstance(value, dict):
+        raise ValueError(f"discovery_artifact_{key}_required")
+    return value
+
+
+def _required_str(parent: dict[str, object], key: str) -> str:
+    value = parent.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"discovery_artifact_{key}_required")
+    return value
+
+
+def _string_tuple(value: object) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError("discovery_artifact_string_list_required")
+    return tuple(value)
+
+
+def _load_need_hypothesis(payload: dict[str, object]) -> NeedHypothesis:
+    return NeedHypothesis(
+        id=_required_str(payload, "id"),
+        statement=_required_str(payload, "statement"),
+        audience_scope=_required_str(payload, "audience_scope"),
+        situation=_required_str(payload, "situation"),
+        need_type=NeedType(_required_str(payload, "need_type")),
+        origin=_required_str(payload, "origin"),
+        status=HypothesisStatus(_required_str(payload, "status")),
+        support_signal_refs=_string_tuple(payload.get("support_signal_refs")),
+        contradict_signal_refs=_string_tuple(payload.get("contradict_signal_refs")),
+        alternative_explanations=_string_tuple(payload.get("alternative_explanations")),
+        missing_evidence=_string_tuple(payload.get("missing_evidence")),
+        version=int(payload.get("version", 1)),
+    )
+
+
+def _load_content_opportunity(payload: dict[str, object]) -> ContentOpportunity:
+    role_value = payload.get("suggested_role")
+    if role_value is not None and not isinstance(role_value, str):
+        raise ValueError("discovery_artifact_suggested_role_invalid")
+    selected_by = payload.get("selected_by")
+    selected_at = payload.get("selected_at")
+    selection_reason = payload.get("selection_reason")
+    for key, value in (
+        ("selected_by", selected_by),
+        ("selected_at", selected_at),
+        ("selection_reason", selection_reason),
+    ):
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"discovery_artifact_{key}_invalid")
+
+    return ContentOpportunity(
+        id=_required_str(payload, "id"),
+        need_hypothesis_id=_required_str(payload, "need_hypothesis_id"),
+        locale=_required_str(payload, "locale"),
+        reader=_required_str(payload, "reader"),
+        situation=_required_str(payload, "situation"),
+        need=_required_str(payload, "need"),
+        question=_required_str(payload, "question"),
+        intent=Intent(_required_str(payload, "intent")),
+        promise=_required_str(payload, "promise"),
+        topic_key=_required_str(payload, "topic_key"),
+        signal_refs=_string_tuple(payload.get("signal_refs")),
+        motgu_material_refs=_string_tuple(payload.get("motgu_material_refs")),
+        material_gaps=_string_tuple(payload.get("material_gaps")),
+        existing_content_refs=_string_tuple(payload.get("existing_content_refs")),
+        what_is_actually_new=_required_str(payload, "what_is_actually_new"),
+        next_discovery_step=_required_str(payload, "next_discovery_step"),
+        decision=ContentDecision(_required_str(payload, "decision")),
+        priority=OpportunityPriority(_required_str(payload, "priority")),
+        reasons=_string_tuple(payload.get("reasons")),
+        suggested_content_type=SuggestedContentType(
+            _required_str(payload, "suggested_content_type")
+        ),
+        suggested_role=JournalRole(role_value) if role_value is not None else None,
+        version=int(payload.get("version", 1)),
+        selected_by=selected_by,
+        selected_at=selected_at,
+        selection_reason=selection_reason,
+    )
+
+
+def load_discovery_selection_snapshot(
+    path: Path,
+    *,
+    opportunity_id: str,
+) -> tuple[OpportunityMapResult, PersistedDiscoveryPlan]:
+    """Load only the durable planning context needed for a later human selection."""
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("discovery_artifact_must_be_object")
+    if raw.get("schema_version") != DISCOVERY_ARTIFACT_SCHEMA_VERSION:
+        raise ValueError("unsupported_discovery_artifact_schema_version")
+    if raw.get("artifact_type") != "discovery_research_report":
+        raise ValueError("invalid_discovery_artifact_type")
+    if raw.get("evidence_eligible") is not False:
+        raise ValueError("discovery_artifact_must_not_be_evidence_eligible")
+
+    planning_payload = _required_dict(raw, "planning_refs")
+    opportunity_ids_raw = _required_dict(planning_payload, "opportunity_ids")
+    signal_ids_raw = _required_dict(planning_payload, "signal_ids")
+    try:
+        need_hypothesis_id = UUID(_required_str(planning_payload, "need_hypothesis_id"))
+        signal_ids = {
+            str(key): UUID(str(value)) for key, value in signal_ids_raw.items()
+        }
+        opportunity_ids = {
+            str(key): UUID(str(value)) for key, value in opportunity_ids_raw.items()
+        }
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid_discovery_planning_refs") from exc
+
+    if opportunity_id not in opportunity_ids:
+        raise ValueError("selected_opportunity_missing_from_persisted_plan")
+
+    map_payload = _required_dict(raw, "opportunity_map")
+    hypothesis = _load_need_hypothesis(_required_dict(map_payload, "need_hypothesis"))
+    if hypothesis.status is not HypothesisStatus.PROPOSED:
+        raise ValueError("discovery_hypothesis_must_remain_proposed_before_selection")
+
+    opportunities_raw = map_payload.get("opportunities")
+    if not isinstance(opportunities_raw, list):
+        raise ValueError("discovery_artifact_opportunities_required")
+    selected_payload = next(
+        (
+            item
+            for item in opportunities_raw
+            if isinstance(item, dict) and item.get("id") == opportunity_id
+        ),
+        None,
+    )
+    if selected_payload is None:
+        raise ValueError("selected_opportunity_missing_from_artifact")
+    selected = _load_content_opportunity(selected_payload)
+    if selected.need_hypothesis_id != hypothesis.id:
+        raise ValueError("selected_opportunity_hypothesis_mismatch")
+
+    result = OpportunityMapResult(
+        project_id=_required_str(map_payload, "project_id"),
+        locale=_required_str(map_payload, "locale"),
+        seed=_required_str(map_payload, "seed"),
+        version=int(map_payload.get("version", 1)),
+        need_hypothesis=hypothesis,
+        opportunities=[selected],
+    )
+    refs = PersistedDiscoveryPlan(
+        need_hypothesis_id=need_hypothesis_id,
+        signal_ids=signal_ids,
+        opportunity_ids=opportunity_ids,
+    )
+    return result, refs
 
 
 def _payload_hash(payload: dict[str, object]) -> str:
