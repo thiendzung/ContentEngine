@@ -11,7 +11,7 @@ from app.modules.research.contracts import (
 from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.spike import ResearchSpikeService
-from app.modules.research.utils import choose_sources, extract_second_hop_candidates
+from app.modules.research.utils import annotate_source, choose_sources, extract_second_hop_candidates
 
 
 @pytest.mark.asyncio
@@ -234,3 +234,31 @@ def test_source_selection_prefers_editorial_over_community_market_pages() -> Non
         ),
     ]
     assert choose_sources(sources, 1)[0].source_type == "editorial"
+
+
+def test_article_topic_words_do_not_create_institutional_authority() -> None:
+    source = annotate_source(
+        provider="serper",
+        query="art appraisal",
+        url="https://dealstream.com/industry-guides/museums/rules-of-thumb",
+        title="Museum Valuation Rules of Thumb",
+        snippet="A guide to valuing museums and cultural institutions.",
+        found_via="google_organic",
+    )
+
+    assert source.source_type == "editorial_or_unknown"
+    assert source.commercial_bias is CommercialBias.UNKNOWN
+
+
+def test_institutional_looking_host_is_candidate_but_bias_stays_unknown() -> None:
+    source = annotate_source(
+        provider="serper",
+        query="art appraisal",
+        url="https://appraisersassociation.example/artwork-appraisal",
+        title="Artwork appraisal guide",
+        snippet="Professional appraisal guidance.",
+        found_via="google_organic",
+    )
+
+    assert source.source_type == "institutional"
+    assert source.commercial_bias is CommercialBias.UNKNOWN
