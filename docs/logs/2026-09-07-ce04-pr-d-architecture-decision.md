@@ -34,18 +34,38 @@ Run the production `ResearchRouter` without run/step IDs.
 
 This still uses the router's bounded transient provider budget and canonical stop rules.
 
-Write one bounded, versioned JSON Discovery artifact containing:
+Persist the actual planning spine directly in the CE02 tables that already exist before ContentCase:
+
+```text
+Signal
+→ NeedHypothesis
+→ ContentOpportunity
+```
+
+Rules for this persistence:
+
+- rerunning the same normalized planning result must reuse existing planning rows where their identity matches;
+- duplicate Signal provenance is preserved;
+- support/contradiction and opportunity/signal links are persisted;
+- NeedHypothesis is not auto-promoted by Discovery;
+- selected opportunities are not silently rewritten by later discovery reruns;
+- no ContentRun is created by this pre-ContentCase persistence.
+
+Also write one bounded, versioned JSON Discovery artifact containing:
 
 - research request and stop reason;
 - provider decisions and provenance;
 - normalized SEARCH/MARKET/MOTGU planning signals;
+- persisted planning object refs;
 - source metadata (`source_type`, `commercial_bias`, contextual `authority_hint`);
 - Question/Opportunity Map;
 - research gaps;
 - `artifact_type = discovery_research_report`;
 - `evidence_eligible = false`.
 
-This gate artifact is a planning/research artifact, not factual Evidence.
+A Markdown companion may be written only as a human-readable review view. JSON remains the gate artifact.
+
+This gate artifact and the planning rows are research/planning state, not factual Evidence.
 
 ### B. Durable ContentRun binding when a legitimate run exists
 
@@ -59,10 +79,12 @@ Database-backed integration tests may create synthetic fixture records to prove 
 
 ## Why
 
-This preserves both canonical truths:
+This preserves all canonical truths:
 
 1. Discovery and Opportunity planning happen before human-selected ContentCase creation.
-2. CE03 remains the durable harness when a valid ContentRun exists.
+2. Signal / NeedHypothesis / ContentOpportunity already have durable pre-ContentCase ownership in CE02.
+3. CE03 remains the durable ContentRun harness when a valid ContentRun exists.
+4. Discovery artifact provenance can be handed downstream without inventing a run identity.
 
 It also preserves the PR-C architecture review rule:
 
@@ -82,6 +104,19 @@ Any future need for a durable pre-ContentCase run identity requires an explicit 
 
 ## Gate consequence
 
-The PR-D real gate must prove the standalone pre-ContentCase path.
+The PR-D real gate must prove the standalone pre-ContentCase path:
+
+```text
+real seed
+→ internal recall
+→ production provider routing
+→ normalized planning signals
+→ Signal / NeedHypothesis / ContentOpportunity persistence
+→ source metadata
+→ JSON + Markdown Opportunity review artifacts
+→ human-selection-ready state
+```
+
+The gate must also verify that no ContentRun was fabricated.
 
 Separately, integration tests must prove the optional legitimate ContentRun binding path.
