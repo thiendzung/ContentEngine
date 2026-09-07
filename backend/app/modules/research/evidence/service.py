@@ -89,6 +89,7 @@ _SUBJECT_SYNONYMS = {
     "artworks": {"artwork", "artworks", "artist", "artists", "painting", "paintings"},
 }
 _MARKDOWN_LINK_ONLY_RE = re.compile(r"^\[[^\]]+\]\(https?://[^)]+\)$")
+_MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(https?://[^)]+\)")
 
 
 class EvidenceResearchWorkflow:
@@ -405,9 +406,11 @@ class EvidenceResearchWorkflow:
         normalized = self._normalize(statement)
         if normalized.startswith(("http://", "https://", "skip to ")):
             return False
-        if statement.startswith("![") or statement.startswith("[!["):
+        if "![" in statement:
             return False
         if _MARKDOWN_LINK_ONLY_RE.fullmatch(statement):
+            return False
+        if len(_MARKDOWN_LINK_RE.findall(statement)) >= 2:
             return False
         words = re.findall(r"[a-z0-9]+", normalized)
         if len(words) < 8:
