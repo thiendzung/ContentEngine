@@ -178,6 +178,56 @@ async def test_entity_linking_is_project_scoped_idempotent_and_skips_ambiguous_a
 
 
 @pytest.mark.asyncio
+async def test_retrieval_ignores_stale_entity_linker_metadata() -> None:
+    async with isolated_session() as session:
+        project = await motgu_project(session)
+        hoa = Entity(
+            project_id=project.id,
+            entity_type="artist",
+            canonical_key=f"stale-hoa-{uuid4().hex}",
+            canonical_name="Hoa Lê",
+            aliases_json=["Hoa Le"],
+            external_refs_json=[],
+        )
+        session.add(hoa)
+        await session.flush()
+
+        _, ingested = await add_source_document(
+            session,
+            project_id=project.id,
+            content="Unrelated biography without the requested name.",
+        )
+        chunk = ingested.chunks[0]
+        metadata = dict(chunk.metadata_json)
+        metadata.update(
+            {
+                "entity_linker_version": "legacy-v0",
+                "entity_links": [
+                    {
+                        "entity_id": str(hoa.id),
+                        "canonical_key": hoa.canonical_key,
+                        "matched_aliases": ["hoa le"],
+                        "method": "exact_alias",
+                    }
+                ],
+            }
+        )
+        chunk.metadata_json = metadata
+        session.add(chunk)
+        await session.flush()
+
+        hits = await retrieve_chunks(
+            session,
+            request=RetrievalRequest(
+                project_id=project.id,
+                query="Hoa Le",
+                locale="en",
+            ),
+        )
+        assert hits == ()
+
+
+@pytest.mark.asyncio
 async def test_retrieval_uses_latest_document_and_ignores_search_rank_for_authority() -> None:
     async with isolated_session() as session:
         project = await motgu_project(session)
