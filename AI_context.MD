@@ -54,7 +54,7 @@ PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
-PR-E: ACTIVE / DRAFT / EVIDENCE QUALITY GATE ACTIVE
+PR-E: ACTIVE / DRAFT / BLOCKED ON EVIDENCE QUALITY
 PR-F: NOT STARTED
 
 T04.1–T04.17: DONE
@@ -199,15 +199,50 @@ Repair log:
 
 `docs/logs/2026-09-07-ce04-pr-e-round3-diagnosis-fix.md`
 
+# Round 4
+
+```text
+Run HEAD: fffedad27cddfee2e93489f7838204adb2f8692d
+Latest branch CI: run 34137280517 / PASS
+Command count: 1
+Provider calls: 4
+Artifact: artifacts/research/ce04-evidence-research-v1-20260907T151810Z.json
+Artifact SHA-256: aaba83a7119ebb656c545186b146df5146082c143b9c847ae1c1523c01047949
+Artifact size: 3055 bytes
+Pipeline: PASS
+Evidence quality: FAIL / BLOCKED
+EvidenceSet: 430966fb-b143-4179-a017-7875e54a4914 / v4 / draft / unlocked
+Readable SourceDocuments: 3
+Evidence: 6
+Relations: context_only=5 / supports=1 / contradicts=0 / qualifies=0
+research_sufficient: true
+stop_reason: serper_sufficient
+Unique readable domains: 3
+Useful O4 support domains after human review: 1
+Quality failure: only one useful support was found; the other five rows remain context_only
+OriginalityPack: 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
+```
+
+Round 4 source review found two topic-relevant domains (`www.artworkarchive.com`
+and `appraisily.com`) plus `www.museumexchange.com`; only the Artwork Archive FMV
+definition is a direct O4 support. Appraisily rows are relevant context but remain
+`context_only` because source authority/bias is unknown; Museum Exchange was read but
+produced no Round 4 Evidence. Therefore the human Gate count is `1 useful support / 1
+suitable support domain`, below the required `2 / 2`. No universal pricing formula or
+investment/appreciation promise was accepted.
+
 # Current next action
 
-Run exactly one Round 4 only after the latest branch CI is PASS.
+Current result:
 
-Task:
+`BLOCKED — ROUND 4 EVIDENCE QUALITY INSUFFICIENT`
 
-`docs/logs/2026-09-07-ce04-pr-e-real-gate-round4-task.md`
+MG CONTENT ENGINE must review the six Round 4 Evidence rows and define the next repair.
+Do not rerun Round 4, lock v1/v2/v3/v4, change relations, tick T04.18–T04.23, or start
+T04.24+.
 
-Round 4 uses a cleaner query with no `museum` term and keeps the same quality threshold.
+NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; PR #28
+remains `OPEN / DRAFT`.
 
 Minimum human-review Gate:
 
