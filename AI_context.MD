@@ -89,12 +89,11 @@ selected opportunity
 → OriginalityPack
 ```
 
-Rules:
+Locked rules:
 
 - Discovery/Search snippets are not factual Evidence.
 - External Evidence requires readable source content + exact locator/excerpt.
 - Search/provider rank is not authority.
-- Authority is not inferred from title/path or brand words in hostnames.
 - Only `.gov` / `.edu` auto-become strong institutional evidence candidates.
 - Other unverified domains remain discovery/context until reviewed.
 - Evidence subject is anchored to `NeedHypothesis.statement`, not `Artsy prices`.
@@ -104,35 +103,29 @@ Rules:
 - OriginalityPack contains MOTGU-owned material only; web Evidence is excluded.
 - No fake ContentRun, KnowledgeCandidate, Approved Knowledge, Obsidian, CE05, or T04.24+ work in PR-E.
 
-# Gate history
+# Evidence Gate history
 
 ```text
 Round 1: FAIL — v1 draft; one Facebook thread supplied supports.
-Round 2: FAIL — v2 draft; supports=0; source selection + claim extraction failed.
-Round 3: FAIL — v3 draft; museum-business subject drift produced false-looking supports.
-Round 4: FAIL — v4 draft; only 1 suitable support domain.
-Round 5: FAIL — v5 32199d87-5114-4ac6-9bd5-6f4151bd0c7c draft/unlocked.
+Round 2: FAIL — v2 draft; source selection + claim extraction failed.
+Round 3: FAIL — v3 draft; museum-business subject drift created false-looking supports.
+Round 4: FAIL — v4 draft; only one suitable support domain.
+Round 5: FAIL — v5 draft; 3 useful IRS supports but only one suitable independent domain.
 ```
 
-Round 5 details:
+Round 5 retained human-reviewed IRS support:
 
 ```text
-Artifact: artifacts/research/ce04-evidence-research-v1-20260907T155341Z.json
-SHA-256: 61eef344d5997b1b85be036016c5a91b2823fa34df608ca38a47498ed7f971f2
-Evidence: 8
-Relations: supports=3 / context_only=5
+EvidenceSet v5: 32199d87-5114-4ac6-9bd5-6f4151bd0c7c / draft / unlocked
 Useful supports: 3
 Suitable independent domains: 1 — www.irs.gov
-Result: BLOCKED — ROUND 5 EVIDENCE QUALITY INSUFFICIENT
 ```
 
-Do not curate or lock v1–v6. Their EvidenceSets are historical research outputs, not the final reviewed set.
+Do not lock or treat v1–v6 as the final curated EvidenceSet.
 
-# Current repair / supplement
+# Smithsonian direct-source supplement
 
-Broad search is stopped. The missing item is one second strong independent support domain.
-
-MG CONTENT ENGINE added a narrow direct-source path:
+Broad search is stopped. Direct-source path reads one human-reviewed URL using Jina only:
 
 ```text
 backend/app/modules/research/evidence/direct_source.py
@@ -140,82 +133,81 @@ backend/scripts/run_evidence_source_supplement.py
 backend/tests/test_ce04_direct_source_evidence.py
 ```
 
-Boundary:
-
-- exactly one human-reviewed URL;
-- Serper/Tavily/Exa = 0 calls;
-- Jina = 1 read;
-- result reuses canonical ProductionResearchResult + EvidenceResearchWorkflow;
-- no relation mutation;
-- no lock;
-- no fake ContentRun.
-
-Locked Smithsonian source:
+Locked source:
 
 `https://americanart.si.edu/research/my-art/object-worth`
 
-Canonical review:
-
-`docs/logs/2026-09-07-ce04-pr-e-round5-review.md`
-
-Assigned task:
-
-`docs/logs/2026-09-07-ce04-pr-e-smithsonian-supplement-task.md`
-
-# Smithsonian supplement
+First supplement run:
 
 ```text
 Run HEAD: 805e66b39b4f21279372b4d93744385df3b4301c
-Command count: 1
-Source: https://americanart.si.edu/research/my-art/object-worth
 Artifact: artifacts/research/ce04-evidence-source-supplement-v1-20260907T161142Z.json
-Artifact SHA-256: 158493ac24a7a5d3b49dc547febac088daf0de569ef55854ca02761ae51c2965
-Artifact size: 1965 bytes
+SHA-256: 158493ac24a7a5d3b49dc547febac088daf0de569ef55854ca02761ae51c2965
 Provider calls: Serper=0 / Tavily=0 / Exa=0 / Jina=1
-SourceDocument: 5224a365-cfc1-5ed0-9354-8ed9e1626ee2 / americanart.si.edu
+SourceDocument: 5224a365-cfc1-5ed0-9354-8ed9e1626ee2
 EvidenceSet: 295d57f1-678e-4f33-912f-3e993fe59dfe / v6 / draft / unlocked
-Evidence: 8 / Claims: 8 / relations: supports=8 / context_only=0 / contradicts=0 / qualifies=0
-Excerpt match: 8/8 exact in the readable SourceDocument
-Human review: DIRECT_O4_SUPPORT=0 / useful supports=0 / suitable domains=0
-Combined with reviewed IRS Evidence: useful supports=3 / suitable independent domains=1
+Persisted Evidence: 8 / supports=8
+Human review: 0 useful supports
+Combined Gate with IRS: 3 useful supports / 1 suitable independent domain
 Result: BLOCKED — SMITHSONIAN SUPPLEMENT INSUFFICIENT
 ```
 
-All eight generated claims are navigation/page-chrome links rather than valuation claims;
-they are marked `WEAK/OFF_SCOPE` despite exact excerpt matches:
+Human review found all 8 v6 rows were navigation/page-chrome despite exact excerpt matches.
+
+# Page-chrome fix
+
+Root cause: multi-link navigation and embedded Markdown images contained many `artwork/artist` terms and could outrank real body prose.
+
+Implemented:
+
+- reject any claim candidate containing Markdown image syntax `![`;
+- reject any claim candidate containing two or more Markdown links;
+- preserve prose with at most one inline link;
+- keep authority, subject anchor and quality threshold unchanged.
+
+Regression test:
+
+`backend/tests/test_ce04_smithsonian_page_chrome.py`
+
+Canonical log:
+
+`docs/logs/2026-09-07-ce04-pr-e-smithsonian-page-chrome-fix.md`
+
+Code/test checkpoint:
 
 ```text
-44101787-7281-486e-9f83-89f5a5bbe24a / 5e8e7c2e-083c-4527-be29-d7f8df39f835 / supports / document_sentence:24 / WEAK/OFF_SCOPE
-610f0b5e-ce56-4dfd-90f0-c76ae5800836 / dcb03371-99d0-4646-8813-b7f6de15198d / supports / document_sentence:33 / WEAK/OFF_SCOPE
-75154a5f-a643-469d-8810-ea8ea7d52872 / 478a0651-6d0c-4317-a1d4-2503f510ea73 / supports / document_sentence:30 / WEAK/OFF_SCOPE
-81ed1f8b-815c-4a73-9fca-085b09ac1bd4 / 771deb9c-eafa-432e-823b-335dd224abd6 / supports / document_sentence:202 / WEAK/OFF_SCOPE
-a1af30ba-9276-4f50-93ab-51aeccad6433 / 56fa5e7c-9489-4b3d-817d-5b23093bcc88 / supports / document_sentence:22 / WEAK/OFF_SCOPE
-bedeeb7c-5116-49d9-b9dc-38f8b127b780 / 43e3491d-1cc2-4b08-828e-76b2e4313eb4 / supports / document_sentence:204 / WEAK/OFF_SCOPE
-ec64704d-d26a-41ae-be90-f3da9a514791 / 8f9faf8b-d6ec-4e5d-bd39-837a4c3197d4 / supports / document_sentence:201 / WEAK/OFF_SCOPE
-f397d86d-3a64-4c77-bd05-4965e3345188 / 47e0cc08-dc98-49b1-8eb4-d330d0cccc3a / supports / document_sentence:31 / WEAK/OFF_SCOPE
+service fix commit: b8ef2143b4adb111285cea0a2678b189c2164300
+regression test commit: d1d5da6b985a3405ff853939ead5f68d23182b9a
+CI #380: backend lint/types/migration/tests PASS; final workflow completion must be verified before rerun.
 ```
 
-## Next action
+# Current next action
 
-Do not rerun the supplement and do not read another URL. The Smithsonian supplement failed
-to add a direct O4 support. MG CONTENT ENGINE must review the eight rows before any
-curation decision.
+Only after final-head CI is PASS, run exactly once:
 
-The combined human Gate remains below `2 useful supports / 2 suitable independent domains`:
-the three IRS supports provide one suitable domain, while Smithsonian provides zero useful
-supports. Do not curate or lock v6 yet.
+`docs/logs/2026-09-07-ce04-pr-e-smithsonian-supplement-rerun-task.md`
 
-Until then:
+This reruns the same locked Smithsonian URL after the deterministic extractor fix. It is not a new search round.
 
+Required boundary:
+
+- Serper=0 / Tavily=0 / Exa=0;
+- Jina=1;
+- no Search/Discovery;
+- no code edit during Gate;
+- no relation mutation;
+- no curation or lock;
+- no ContentRun/KnowledgeCandidate;
 - T04.18–T04.23 remain NOT DONE;
-- T04.24+ remain NOT STARTED;
-- no EvidenceSet is locked;
-- PR #28 remains DRAFT.
+- T04.24+ remain NOT STARTED.
+
+If at least one human-reviewed Smithsonian direct support survives and combined IRS + Smithsonian reaches `>=2 useful supports / >=2 suitable independent domains`, next step is zero-provider curation from exact reviewed Evidence IDs.
+
+If the rerun still fails, stop; do not broaden research automatically.
 
 # Global rules
 
 - Search is a locator, not factual proof.
-- Internal MOTGU knowledge is checked before broad external research.
 - Raw provider output is not Approved Knowledge.
 - Live artwork price/availability stays canonical in WordPress/WooCommerce.
 - Secrets stay env/local only.
