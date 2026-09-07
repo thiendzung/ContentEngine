@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`none — CE04 PR-C implementation complete; awaiting review/merge`
+`none — neutral checkpoint after CE04 PR-C`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = READY FOR REVIEW / GATE PASS. Current PR = CE04 PR-C — Production ResearchRouter + Provider Adapters. CE04 PR-D = PLANNED / NOT STARTED. Do not start PR-D before PR-C is merged and post-merge state is verified.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = CLOSED / MERGED / PASS. PR #24 merge commit = 39731375a5a90f3a6e590ed3c856d973d5feb1b9. Current PR = none. CE04 PR-D = PLANNED / NOT STARTED. Do not start PR-D before a new implementation slice is explicitly activated after the PR-C post-merge checkpoint.
