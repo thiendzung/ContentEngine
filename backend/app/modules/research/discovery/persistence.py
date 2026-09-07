@@ -7,13 +7,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import ContentExperiment as DBContentExperiment
 from app.modules.content_engine.models import (
+    ContentExperiment as DBContentExperiment,
     ContentOpportunity as DBContentOpportunity,
-)
-from app.modules.content_engine.models import HumanSelection as DBHumanSelection
-from app.modules.content_engine.models import (
     ContentOpportunitySignal,
+    HumanSelection as DBHumanSelection,
     NeedHypothesis as DBNeedHypothesis,
     NeedHypothesisSignal,
     Signal as DBSignal,
