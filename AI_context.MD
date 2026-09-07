@@ -126,7 +126,7 @@ Suitable independent domains: 1 — www.irs.gov
 Result: BLOCKED — ROUND 5 EVIDENCE QUALITY INSUFFICIENT
 ```
 
-Do not curate or lock v1–v5. Their EvidenceSets are historical research outputs, not the final reviewed set.
+Do not curate or lock v1–v6. Their EvidenceSets are historical research outputs, not the final reviewed set.
 
 # Current repair / supplement
 
@@ -162,21 +162,48 @@ Assigned task:
 
 `docs/logs/2026-09-07-ce04-pr-e-smithsonian-supplement-task.md`
 
-## Next action
-
-Agent Local may run the Smithsonian supplement only after the latest CI for the exact branch head is PASS.
-
-Supplement PASS requires at least one human-reviewed direct O4 support from the locked Smithsonian source with an exact excerpt.
-
-If supplement PASS:
+# Smithsonian supplement
 
 ```text
-MG reviews exact Smithsonian Evidence IDs
-→ combine exact reviewed IRS + Smithsonian Evidence IDs
-→ create curated draft EvidenceSet with provider_calls=0
-→ final human review
-→ lock exact approved set with provider_calls=0
+Run HEAD: 805e66b39b4f21279372b4d93744385df3b4301c
+Command count: 1
+Source: https://americanart.si.edu/research/my-art/object-worth
+Artifact: artifacts/research/ce04-evidence-source-supplement-v1-20260907T161142Z.json
+Artifact SHA-256: 158493ac24a7a5d3b49dc547febac088daf0de569ef55854ca02761ae51c2965
+Artifact size: 1965 bytes
+Provider calls: Serper=0 / Tavily=0 / Exa=0 / Jina=1
+SourceDocument: 5224a365-cfc1-5ed0-9354-8ed9e1626ee2 / americanart.si.edu
+EvidenceSet: 295d57f1-678e-4f33-912f-3e993fe59dfe / v6 / draft / unlocked
+Evidence: 8 / Claims: 8 / relations: supports=8 / context_only=0 / contradicts=0 / qualifies=0
+Excerpt match: 8/8 exact in the readable SourceDocument
+Human review: DIRECT_O4_SUPPORT=0 / useful supports=0 / suitable domains=0
+Combined with reviewed IRS Evidence: useful supports=3 / suitable independent domains=1
+Result: BLOCKED — SMITHSONIAN SUPPLEMENT INSUFFICIENT
 ```
+
+All eight generated claims are navigation/page-chrome links rather than valuation claims;
+they are marked `WEAK/OFF_SCOPE` despite exact excerpt matches:
+
+```text
+44101787-7281-486e-9f83-89f5a5bbe24a / 5e8e7c2e-083c-4527-be29-d7f8df39f835 / supports / document_sentence:24 / WEAK/OFF_SCOPE
+610f0b5e-ce56-4dfd-90f0-c76ae5800836 / dcb03371-99d0-4646-8813-b7f6de15198d / supports / document_sentence:33 / WEAK/OFF_SCOPE
+75154a5f-a643-469d-8810-ea8ea7d52872 / 478a0651-6d0c-4317-a1d4-2503f510ea73 / supports / document_sentence:30 / WEAK/OFF_SCOPE
+81ed1f8b-815c-4a73-9fca-085b09ac1bd4 / 771deb9c-eafa-432e-823b-335dd224abd6 / supports / document_sentence:202 / WEAK/OFF_SCOPE
+a1af30ba-9276-4f50-93ab-51aeccad6433 / 56fa5e7c-9489-4b3d-817d-5b23093bcc88 / supports / document_sentence:22 / WEAK/OFF_SCOPE
+bedeeb7c-5116-49d9-b9dc-38f8b127b780 / 43e3491d-1cc2-4b08-828e-76b2e4313eb4 / supports / document_sentence:204 / WEAK/OFF_SCOPE
+ec64704d-d26a-41ae-be90-f3da9a514791 / 8f9faf8b-d6ec-4e5d-bd39-837a4c3197d4 / supports / document_sentence:201 / WEAK/OFF_SCOPE
+f397d86d-3a64-4c77-bd05-4965e3345188 / 47e0cc08-dc98-49b1-8eb4-d330d0cccc3a / supports / document_sentence:31 / WEAK/OFF_SCOPE
+```
+
+## Next action
+
+Do not rerun the supplement and do not read another URL. The Smithsonian supplement failed
+to add a direct O4 support. MG CONTENT ENGINE must review the eight rows before any
+curation decision.
+
+The combined human Gate remains below `2 useful supports / 2 suitable independent domains`:
+the three IRS supports provide one suitable domain, while Smithsonian provides zero useful
+supports. Do not curate or lock v6 yet.
 
 Until then:
 
