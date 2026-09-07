@@ -8,9 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
 from app.modules.content_engine.models import Project
-from app.modules.research.contracts import PageDocument, ProductionResearchRequest, ProductionResearchResult
+from app.modules.research.contracts import (
+    PageDocument,
+    ProductionResearchRequest,
+    ProductionResearchResult,
+)
 from app.modules.research.evidence.contracts import ClaimCandidate, EvidenceRelation
-from app.modules.research.evidence.persistence import persist_claim_evidence, persist_read_documents
+from app.modules.research.evidence.persistence import (
+    persist_claim_evidence,
+    persist_read_documents,
+)
 
 
 @asynccontextmanager
