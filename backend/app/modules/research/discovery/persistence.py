@@ -7,9 +7,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.models import ContentExperiment as DBContentExperiment
 from app.modules.content_engine.models import (
     ContentOpportunity as DBContentOpportunity,
 )
+from app.modules.content_engine.models import HumanSelection as DBHumanSelection
 from app.modules.content_engine.models import (
     ContentOpportunitySignal,
     NeedHypothesis as DBNeedHypothesis,
@@ -24,6 +26,13 @@ class PersistedDiscoveryPlan:
     need_hypothesis_id: UUID
     signal_ids: dict[str, UUID]
     opportunity_ids: dict[str, UUID]
+
+
+@dataclass(slots=True, frozen=True)
+class PersistedDiscoverySelection:
+    human_selection_id: UUID
+    content_opportunity_id: UUID
+    content_experiment_id: UUID
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -343,4 +352,98 @@ async def persist_discovery_plan(
         need_hypothesis_id=hypothesis.id,
         signal_ids=signal_ids,
         opportunity_ids=opportunity_ids,
+    )
+
+
+async def persist_discovery_selection(
+    session: AsyncSession,
+    *,
+    result: OpportunityMapResult,
+    planning_refs: PersistedDiscoveryPlan,
+) -> PersistedDiscoverySelection:
+    """Persist the explicit human selection and its experiment draft, not a ContentCase."""
+
+    selection = result.human_selection
+    experiment = result.experiment_draft
+    if selection is None or experiment is None:
+        raise ValueError("human_selection_required_before_persisting_handoff")
+
+    opportunity_id = planning_refs.opportunity_ids.get(selection.opportunity_id)
+    if opportunity_id is None:
+        raise ValueError("selected_opportunity_missing_from_persisted_plan")
+    opportunity = await session.get(DBContentOpportunity, opportunity_id)
+    if opportunity is None:
+        raise ValueError("persisted_selected_opportunity_not_found")
+
+    if opportunity.selected_by is not None and (
+        opportunity.selected_by != selection.selected_by
+        or opportunity.selection_reason != selection.reason
+    ):
+        raise ValueError("opportunity_already_selected_with_different_decision")
+
+    selected_at = _parse_datetime(selection.selected_at)
+    opportunity.selected_by = selection.selected_by
+    opportunity.selected_at = selected_at
+    opportunity.selection_reason = selection.reason
+
+    human_selection = (
+        await session.execute(
+            select(DBHumanSelection)
+            .where(
+                DBHumanSelection.content_opportunity_id == opportunity.id,
+                DBHumanSelection.selected_by == selection.selected_by,
+                DBHumanSelection.reason == selection.reason,
+            )
+            .order_by(DBHumanSelection.created_at.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if human_selection is None:
+        human_selection = DBHumanSelection(
+            content_opportunity_id=opportunity.id,
+            selected_by=selection.selected_by,
+            reason=selection.reason,
+            selected_at=selected_at,
+        )
+        session.add(human_selection)
+        await session.flush()
+
+    content_experiment = (
+        await session.execute(
+            select(DBContentExperiment)
+            .where(
+                DBContentExperiment.content_opportunity_id == opportunity.id,
+                DBContentExperiment.need_hypothesis_id
+                == planning_refs.need_hypothesis_id,
+                DBContentExperiment.hypothesis_version == experiment.hypothesis_version,
+                DBContentExperiment.expected_behaviour == experiment.expected_behaviour,
+            )
+            .order_by(DBContentExperiment.created_at.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if content_experiment is None:
+        content_experiment = DBContentExperiment(
+            project_id=opportunity.project_id,
+            content_opportunity_id=opportunity.id,
+            need_hypothesis_id=planning_refs.need_hypothesis_id,
+            hypothesis_version=experiment.hypothesis_version,
+            expected_behaviour=experiment.expected_behaviour,
+            measurement_plan_json=list(experiment.measurement_plan),
+            metric_definitions_json=list(experiment.metric_definitions),
+            minimum_evidence_json=list(experiment.minimum_evidence),
+            status=experiment.status.value,
+            result=experiment.result.value,
+            observation_refs_json=[],
+            alternative_explanations_json=list(
+                result.need_hypothesis.alternative_explanations
+            ),
+        )
+        session.add(content_experiment)
+        await session.flush()
+
+    return PersistedDiscoverySelection(
+        human_selection_id=human_selection.id,
+        content_opportunity_id=opportunity.id,
+        content_experiment_id=content_experiment.id,
     )
