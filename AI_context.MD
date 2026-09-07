@@ -207,8 +207,8 @@ Gate is `4 useful supports / 2 suitable independent domains`.
 
 # Current next action
 
-MG CONTENT ENGINE reviews the persisted Claim/Evidence link, then may curate the exact
-approved IRS + MCI Evidence IDs with the zero-provider curation CLI.
+MG CONTENT ENGINE reviews curated EvidenceSet v8, then may lock this exact EvidenceSet
+only after final approval.
 
 Boundary:
 
@@ -220,7 +220,7 @@ Jina=0
 Search/Discovery=0
 no URL open
 no relation mutation
-no EvidenceSet creation/lock
+no EvidenceSet lock until exact v8 review
 no ContentRun/KnowledgeCandidate
 T04.18–T04.23 remain NOT DONE
 T04.24+ remain NOT STARTED
@@ -228,7 +228,25 @@ PR #28 remains DRAFT
 ```
 
 The reviewed MCI Evidence verifies correctly; combined IRS + MCI human Gate reaches the
-required second independent domain. Do not curate or lock an EvidenceSet in this task.
+required second independent domain. EvidenceSet v8 is the exact draft awaiting lock review.
+
+# Curated EvidenceSet v8 checkpoint
+
+```text
+EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / version=8 / status=draft / locked=false
+Evidence IDs:
+- ae930468-0760-4e6c-b0d6-8346f5119912
+- e4c31ee7-0627-4dcc-8e2a-db2ab8269b45
+- fe1e11c2-1250-4c4a-ba50-0174b7b514bd
+- 5e97ed0d-8989-47d3-af4e-b2f29a5110cd
+Relation counts: supports=4
+SourceDocument count: 2
+Provider calls: 0
+MG CURATION REVIEW: PASS
+```
+
+The exact four reviewed Evidence IDs are now in one new curated draft. No Evidence,
+relation, or historical EvidenceSet was changed, and the draft was not locked.
 
 # Global rules
 
