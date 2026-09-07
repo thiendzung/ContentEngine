@@ -4,21 +4,20 @@ Updated: 2026-09-07
 
 ## Purpose
 
-Shared current-state checkpoint for MG CONTENT ENGINE, Agent Local, and founder.
+Short current-state checkpoint for MG CONTENT ENGINE, Agent Local, and founder.
+GitHub is canonical. Detailed history stays under `docs/logs/`.
 
-GitHub is canonical. Detailed history lives in `docs/logs/`; keep this file short and current.
-
-## Agent Local sync rule
+## Agent Local rule
 
 Start every task:
 
 ```text
 git fetch origin --prune
-→ checkout task branch
+→ checkout assigned branch
 → git pull --ff-only
 → read AI_context.MD
-→ read exact task file under docs/logs/
-→ confirm clean working tree
+→ read exact assigned task in docs/logs/
+→ confirm clean tree
 → execute only assigned scope
 ```
 
@@ -27,21 +26,11 @@ End every task:
 ```text
 if meaningful canonical state changed → update AI_context.MD
 if task requires edits → commit + push
-confirm clean working tree
+confirm clean tree
 report START HEAD / END HEAD / evidence / blocker / status
 ```
 
-Do not keep a separate local AI context.
-
-## Roles
-
-MG CONTENT ENGINE owns architecture, core code, important tests, GitHub logs, Gate decisions and Agent Local tasks.
-
-Agent Local owns local sync, Python 3.12, PostgreSQL/migrations, local tests, real provider runs, artifact hashes and bounded edits explicitly assigned by a task.
-
-Founder owns business/product selections and merge decisions.
-
-Never merge automatically.
+Do not keep a separate local AI context. Never merge automatically.
 
 # Current project state
 
@@ -54,7 +43,7 @@ PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
-PR-E: ACTIVE / DRAFT / BLOCKED ON EVIDENCE QUALITY
+PR-E: ACTIVE / DRAFT
 PR-F: NOT STARTED
 
 T04.1–T04.17: DONE
@@ -68,28 +57,29 @@ Current PR:
 PR #28 — CE04 PR-E — Evidence Research + Evidence Set
 Branch: ce04-evidence-research-evidence-set
 Base main: a52052adde3cf19889098013fd5065f86cab62fb
-Status: DRAFT
+Status: OPEN / DRAFT
 ```
 
 ## Locked O4 input
 
 ```text
-Founder selection: O4
-Question: How do I know if an original artwork is fairly priced?
+Founder framing: How do I know if an original artwork is fairly priced?
+Planning label/question: Artsy prices
 Planning opportunity: opp_4c397247e40db8ae
 ContentOpportunity: 068991ab-de34-4787-9c38-8935c3f0e2da
 NeedHypothesis: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
+Need statement: A first-time art buyer wants to understand whether an original artwork price makes sense before deciding to buy.
 ContentExperiment: 0551da17-046a-4104-a506-9772680a6133 = PLANNED / PENDING
 ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5 = exactly one
 ContentRun count: 2
 ```
 
-NeedHypothesis must remain `PROPOSED` in PR-E.
+NeedHypothesis must stay `PROPOSED` in PR-E.
 
 # PR-E contract
 
 ```text
-Selected ContentOpportunity
+selected opportunity
 → one legitimate ContentCase
 → Evidence Research
 → Claim extraction
@@ -97,7 +87,9 @@ Selected ContentOpportunity
 → supports / contradicts / qualifies / context_only
 → EvidenceSet draft
 → human review
-→ lock exact approved EvidenceSet with provider_calls=0
+→ curated EvidenceSet from exact reviewed Evidence IDs, provider_calls=0
+→ final human review
+→ lock exact approved EvidenceSet, provider_calls=0
 → OriginalityPack
 ```
 
@@ -106,161 +98,67 @@ Rules:
 - Discovery is not Evidence.
 - Search snippets are not factual Evidence.
 - External Evidence requires readable source content + exact locator/excerpt.
-- Provider/search rank is not authority.
-- Authority must not be inferred from article topic words.
-- Community/review, high-commercial-bias and unknown/unverified sources default to `context_only`.
-- Automatic claims must be relevant to the selected opportunity subject, not merely share generic research terms.
-- Do not weaken relation rules or quality thresholds to obtain `supports`.
-- Locked EvidenceSet is immutable; changed research creates a new version.
-- OriginalityPack contains MOTGU-owned material only; external web Evidence is excluded.
+- Search/provider rank is not authority.
+- Authority is not inferred from title/path or brand words in a hostname.
+- Only strong automatic public/academic domain signals (`.gov`, `.edu`) auto-become institutional evidence candidates.
+- Other unverified domains remain discovery/context candidates until reviewed.
+- Evidence subject is anchored to `NeedHypothesis.statement`, not the Discovery label `Artsy prices`.
+- Community/review, high-commercial-bias, and unknown/unverified sources do not auto-promote to factual support.
+- Do not weaken thresholds to obtain `supports`.
+- Locked EvidenceSet is immutable; changed Evidence creates a new version.
+- OriginalityPack contains MOTGU-owned material only; web Evidence is excluded.
 - No fake ContentRun for standalone Gates.
 - No KnowledgeCandidate / Approved Knowledge / Obsidian / CE05 work in PR-E.
 
-# Real Evidence Gate history
-
-## Round 1
+# Evidence Gate history
 
 ```text
-Pipeline: PASS
-Quality: FAIL
-EvidenceSet: 2e423158-42af-4188-9954-90784b8cf37a / v1 / draft / DO NOT LOCK
-Reason: factual supports came from one Facebook community thread
+Round 1: FAIL — v1 draft; supports came from one Facebook thread.
+Round 2: FAIL — v2 draft; context_only=8, supports=0; source selection + claim extraction were primary blockers.
+Round 3: FAIL — v3 draft; persisted supports included museum-business subject drift.
+Round 4: FAIL — v4 430966fb-b143-4179-a017-7875e54a4914 draft; supports=1, context_only=5; only one useful support domain.
 ```
 
-## Round 2
+Do not lock or curate v1–v4 as production EvidenceSets. Their stored source metadata/relation may predate the final conservative authority contract.
 
-```text
-Pipeline: PASS
-Quality: FAIL
-Artifact SHA-256: 8c6325822a22c01c76d5f07268b0722540f949e077dbff582b3eddf66ce13a81
-EvidenceSet: e9c7f1b9-c812-4ca5-ba36-fdd8af99b8ec / v2 / draft / DO NOT LOCK
-Readable SourceDocuments: 3
-Evidence: 8
-Relations: context_only=8 / supports=0 / contradicts=0 / qualifies=0
-research_sufficient: false
-stop_reason: bounded_search_exhausted
-Diagnosis: SOURCE_SELECTION + CLAIM_EXTRACTION primary; SOURCE_CLASSIFICATION + QUERY/ROUTING contributors
-```
+## Round 4 repair
 
-## Round 3
+Agent Local repair:
 
-```text
-Run HEAD: d6e491eadf3aa69920f2b54bc46e3e169c36eca4
-CI checked: 34135314608 / PASS
-Command count: 1
-Provider calls: 4
-Artifact SHA-256: f990d972460594dccc8a407e983629774ae2d88d7e659c0b8a5a27aa9e8b1ee4
-EvidenceSet: c6d83e7e-663b-4c5a-af13-9b68eb41276c / v3 / draft / DO NOT LOCK
-Readable SourceDocuments: 2
-Persisted relations: supports=8 / context_only=0 / contradicts=0 / qualifies=0
-research_sufficient: true
-stop_reason: jina_candidates_exhausted
-Persisted support domains: 2
-Suitable O4 support domains after human review: 1
-Quality: FAIL / BLOCKED
-```
+`6a968b2e0e5dd7631f46439b6065ec1c1e0d0a5a`
 
-Round 3 human review found:
+Accepted:
 
-- `museumexchange.com`: one directly useful artwork-appraisal support plus weaker context;
-- `dealstream.com`: museum-business valuation, off-scope for original artwork pricing;
-- persisted `supports=8` therefore did NOT satisfy the human quality Gate.
+- subject anchor uses `NeedHypothesis.statement`;
+- `backend/scripts/curate_evidence_set.py` is zero-provider, draft-only, idempotent for same Evidence IDs, and versions changed IDs;
+- no Evidence/relation mutation and no lock in curation;
+- CI #363 PASS on the Agent Local repair head.
 
-# Round 3 diagnosis repair
+MG follow-up tightened authority further:
 
-Root causes:
+- non-`.gov/.edu` domains do not auto-become institutional merely because the hostname contains `museum`, `archive`, `association`, `institute`, etc.;
+- regression coverage added for `.org`, `.net`, `.io`, `.edu`, `.gov`;
+- CI #365 exposed one legacy test expecting `examplemuseum.org = institutional`; classifier was kept strict and the old assertion was updated to the new contract.
 
-1. authority false positive — `museum` in an article title/path could make an unrelated domain look institutional;
-2. subject drift — generic `valuation/comparable sales/market` overlap could create O4 claims even when the subject was a museum business;
-3. Round 3 query included `museum`, encouraging search drift.
+Repair review log:
 
-Implemented repair:
-
-- authority classification now uses domain identity, not title/path topic words;
-- `.edu/.gov` may be strong institutional/low-bias candidates;
-- institutional-looking domain names remain candidates but commercial bias stays `unknown` until verified;
-- `dealstream.com/.../museums/...` no longer becomes institutional from topic words;
-- claim extraction requires both research relevance and selected-question subject relevance;
-- for O4, artwork subject matching conservatively covers artwork/artworks/artist/artists/painting/paintings;
-- museum-business valuation text is rejected even when it shares valuation keywords;
-- source diversity, page-noise filtering and balanced multi-document extraction from Round 2 remain active.
-
-Tests added for the exact Round 3 failure modes.
-
-CI history:
-
-```text
-CI #355: FAIL — test import formatting only
-CI #356: PASS — full backend/frontend gate
-Code checkpoint: 6829d6af7e4ecefd12031dfbc6742962c19cba63
-```
-
-Repair log:
-
-`docs/logs/2026-09-07-ce04-pr-e-round3-diagnosis-fix.md`
-
-# Round 4
-
-```text
-Run HEAD: fffedad27cddfee2e93489f7838204adb2f8692d
-Latest branch CI: run 34137280517 / PASS
-Command count: 1
-Provider calls: 4
-Artifact: artifacts/research/ce04-evidence-research-v1-20260907T151810Z.json
-Artifact SHA-256: aaba83a7119ebb656c545186b146df5146082c143b9c847ae1c1523c01047949
-Artifact size: 3055 bytes
-Pipeline: PASS
-Evidence quality: FAIL / BLOCKED
-EvidenceSet: 430966fb-b143-4179-a017-7875e54a4914 / v4 / draft / unlocked
-Readable SourceDocuments: 3
-Evidence: 6
-Relations: context_only=5 / supports=1 / contradicts=0 / qualifies=0
-research_sufficient: true
-stop_reason: serper_sufficient
-Unique readable domains: 3
-Useful O4 support domains after human review: 1
-Quality failure: only one useful support was found; the other five rows remain context_only
-OriginalityPack: 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
-```
-
-Round 4 source review found two topic-relevant domains (`www.artworkarchive.com`
-and `appraisily.com`) plus `www.museumexchange.com`; only the Artwork Archive FMV
-definition is a direct O4 support. Appraisily rows are relevant context but remain
-`context_only` because source authority/bias is unknown; Museum Exchange was read but
-produced no Round 4 Evidence. Therefore the human Gate count is `1 useful support / 1
-suitable support domain`, below the required `2 / 2`. No universal pricing formula or
-investment/appreciation promise was accepted.
-
-# Round 4 repair
-
-```text
-Repair base HEAD: 3a204cd331c7c01221b279a22fc91300f988ee76
-Subject anchor: NeedHypothesis.statement; planning question is not the Evidence subject
-Source classification: brand .com domains are not institutional from hostname words alone
-Curation: backend/scripts/curate_evidence_set.py / provider calls=0 / draft only / no Evidence or relation mutation / no lock
-Regression scope: subject extraction, source classification, and zero-provider EvidenceSet curation
-Targeted checks: ruff PASS / mypy PASS / 29 pytest PASS
-Full pytest: 35 failed, 136 passed — asyncpg event-loop isolation failures plus one unrelated telemetry assertion
-Provider calls in repair: 0
-Evidence quality state: FAIL / BLOCKED / v4 draft / unlocked
-```
+`docs/logs/2026-09-07-ce04-pr-e-round4-repair-review.md`
 
 # Current next action
 
-Current result:
+Do not curate old Evidence yet and do not rerun Round 4.
 
-`BLOCKED — ROUND 4 EVIDENCE QUALITY INSUFFICIENT`
+Run exactly one authority-targeted Round 5 only after the latest branch CI is PASS:
 
-MG CONTENT ENGINE must review the repair boundary and the six Round 4 Evidence rows before
-any human curation. The curation helper accepts only already-reviewed Evidence IDs and
-creates a draft EvidenceSet for separate review and lock.
-Do not rerun Round 4, lock v1/v2/v3/v4, change relations, tick T04.18–T04.23, or start
-T04.24+.
+`docs/logs/2026-09-07-ce04-pr-e-real-gate-round5-task.md`
 
-NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; PR #28
-remains `OPEN / DRAFT`.
+Round 5 query is locked to strong source families:
 
-Minimum human-review Gate:
+```text
+artwork appraisal fair market value condition provenance comparable sales (site:irs.gov OR site:si.edu)
+```
+
+Minimum human Gate:
 
 ```text
 useful supports >= 2
@@ -268,17 +166,26 @@ suitable independent support domains >= 2
 exact readable excerpts
 claims directly useful to O4
 no subject drift
-no authority inferred from topic words
+no authority inferred from naming words
 no universal pricing formula
 no investment/appreciation promise
 ```
 
-Do not lock v1/v2/v3 or any Round 4 EvidenceSet before MG CONTENT ENGINE review.
+If Round 5 passes:
 
-Do not tick T04.18–T04.23 and do not start T04.24+.
+```text
+human review exact Evidence IDs
+→ curate draft EvidenceSet with provider_calls=0
+→ review curated draft
+→ lock exact approved set with provider_calls=0
+```
 
-Any task that changes an important repository or workflow state must update this file in
-the same task.
+Until then:
+
+- T04.18–T04.23 remain NOT DONE;
+- T04.24+ remain NOT STARTED;
+- v1–v4 remain draft/unlocked;
+- PR #28 remains DRAFT.
 
 # Global rules
 
@@ -291,4 +198,4 @@ the same task.
 - No hidden retry or infinite provider fallback.
 - Do not weaken a Gate to make it green.
 - Do not begin the next PR slice before current PR merge + post-merge clean checkpoint.
-- Record meaningful failures, decisions and lessons under `docs/logs/`.
+- Record meaningful failures, decisions, and lessons under `docs/logs/`.
