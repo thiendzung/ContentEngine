@@ -48,8 +48,7 @@ Kiểm tra:
 
 - frontend: `http://localhost:3000`
 - backend health: `http://localhost:8000/health`
-- backend database health: `http://localhost:8000/health/db`
-- backend version: `http://localhost:8000/version`
+- backend database health: `http://localhost:8000/version`
 
 Chạy bộ kiểm tra:
 
