@@ -15,7 +15,7 @@ def _json_default(value: object) -> str:
     raise TypeError(f"unsupported_json_value:{type(value).__name__}")
 
 
-def _result_json(result: object) -> str:
+def _result_json(result: ResearchSpikeResult | ProductionResearchResult) -> str:
     return json.dumps(
         asdict(result),
         ensure_ascii=False,
