@@ -207,9 +207,10 @@ Status: **CLOSED / PASS**.
 
 - PR-A = CLOSED / MERGED / PASS.
 - PR-B = CLOSED / MERGED / PASS.
-- Current PR = none.
+- PR-C = READY FOR REVIEW / GATE PASS.
+- Current PR = CE04 PR-C — Production ResearchRouter + Provider Adapters.
 - Current implementation slice = none.
-- PR-C = PLANNED / NOT STARTED.
+- PR-D = PLANNED / NOT STARTED.
 
 - [x] T04.1 Source registry.
 - [x] T04.2 Canonicalize source into normalized text/Markdown.
@@ -219,12 +220,13 @@ Status: **CLOSED / PASS**.
 - [x] T04.6 Entity linking baseline.
 - [x] T04.7 Retrieval interface.
 - [x] T04.8 Authority-aware ranking.
-- [ ] T04.9 Production ResearchRouter with provider budget/fallback rules.
-- [ ] T04.10 Production Serper discovery adapter.
-- [ ] T04.11 Production Tavily source discovery adapter.
-- [ ] T04.12 Production Exa semantic/second-hop adapter.
-- [ ] T04.13 Production Jina selected-page reader.
-- [ ] T04.14 Keep Brave optional; implement only if coverage/outage evidence justifies it.
+- [x] T04.9 Production ResearchRouter with provider budget/fallback rules.
+- [x] T04.10 Production Serper discovery adapter.
+- [x] T04.11 Production Tavily source discovery adapter.
+- [x] T04.12 Production Exa semantic/second-hop adapter.
+- [x] T04.13 Production Jina selected-page reader.
+- [x] T04.14 Keep Brave optional; implement only if coverage/outage evidence justifies it.
+- T04.14 PASS decision: **DO NOT IMPLEMENT BRAVE IN PR-C**; real runs did not prove a concrete coverage/outage need.
 - [ ] T04.15 Discovery Research workflow.
 - [ ] T04.16 Opportunity Map workflow with Keyword/Question Map tool.
 - [ ] T04.17 Source commercial-bias/type/authority metadata.
@@ -242,6 +244,8 @@ Status: **CLOSED / PASS**.
 - [ ] T04.29 Provenance end-to-end test.
 - [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
+
+PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
 ---
 

@@ -402,6 +402,6 @@ Current priority:
 
 Current implementation slice:
 
-`none — neutral checkpoint after CE04 PR-B`
+`none — CE04 PR-C implementation complete; awaiting review/merge`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = PLANNED / NOT STARTED. Current PR = none. Do not open T04.9+ until this neutral post-merge closeout is merged and main is re-verified.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = READY FOR REVIEW / GATE PASS. Current PR = CE04 PR-C — Production ResearchRouter + Provider Adapters. CE04 PR-D = PLANNED / NOT STARTED. Do not start PR-D before PR-C is merged and post-merge state is verified.
