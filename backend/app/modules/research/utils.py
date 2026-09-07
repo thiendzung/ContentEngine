@@ -225,7 +225,13 @@ def dedupe_sources(sources: Iterable[SourceCandidate]) -> list[SourceCandidate]:
     return result
 
 
+def _source_host_key(source: SourceCandidate) -> str:
+    return (urlparse(source.url).hostname or source.url).lower().removeprefix("www.")
+
+
 def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[SourceCandidate]:
+    if limit <= 0:
+        return []
     unique = dedupe_sources(sources)
     bias_order = {
         CommercialBias.LOW: 0,
@@ -242,14 +248,34 @@ def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[Sourc
         "commercial": 5,
         "unknown": 6,
     }
-    # Python's sort is stable: preserve provider relevance/order within each bias bucket.
+    # Python's sort is stable: preserve provider relevance/order within each quality bucket.
     unique.sort(
         key=lambda source: (
             source_type_order.get(source.source_type, 6),
             bias_order[source.commercial_bias],
         )
     )
-    return unique[:limit]
+
+    # First pass favors independent domains. A second pass fills any remaining capacity
+    # without hiding useful same-domain candidates when the result set is small.
+    selected: list[SourceCandidate] = []
+    deferred: list[SourceCandidate] = []
+    selected_hosts: set[str] = set()
+    for source in unique:
+        host = _source_host_key(source)
+        if host in selected_hosts:
+            deferred.append(source)
+            continue
+        selected.append(source)
+        selected_hosts.add(host)
+        if len(selected) >= limit:
+            return selected
+
+    for source in deferred:
+        selected.append(source)
+        if len(selected) >= limit:
+            break
+    return selected
 
 
 def extract_second_hop_candidates(
