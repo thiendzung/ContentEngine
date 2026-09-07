@@ -117,7 +117,7 @@ useful supports >= 2
 suitable independent domains >= 2
 ```
 
-Do not curate or lock v1–v6. They are historical draft outputs.
+Do not curate or lock v1–v7. They are historical draft outputs.
 
 # Smithsonian American Art result
 
@@ -155,7 +155,7 @@ Result: BLOCKED — SMITHSONIAN RERUN INSUFFICIENT
 
 Do not run this URL again.
 
-# Current approved next action — MCI direct-source Gate
+# MCI direct-source Gate
 
 MG CONTENT ENGINE pre-reviewed and locked one replacement source:
 
@@ -193,9 +193,39 @@ T04.24+ remain NOT STARTED
 PR #28 remains DRAFT
 ```
 
-If at least one exact readable MCI excerpt survives human review as `DIRECT_O4_SUPPORT`, combine it with reviewed IRS Evidence and evaluate the `>=2 supports / >=2 domains` Gate.
+MCI run:
 
-If combined Gate passes, next step is zero-provider curation only; do not research further.
+```text
+Run HEAD: 9f1a80950408cc878ebf32d4b3eb104cce479df3
+Latest branch CI: run 34143838987 / PASS
+Command count: 1
+Artifact: artifacts/research/ce04-evidence-source-supplement-v1-20260907T163734Z.json
+SHA-256: 029ec3b1b278b8326bd0398afca9d420659db041f007d4d496324ddc99261b8a
+Artifact size: 1437 bytes
+Provider calls: Serper=0 / Tavily=0 / Exa=0 / Jina=1
+SourceDocument: f77b9e62-42c5-5a06-aa8b-6505ef3b6b3a / mci.si.edu
+EvidenceSet: 4e29998b-2c61-4a49-83c7-765813d0a0c1 / v7 / draft / unlocked
+Evidence: 2 / Claims: 2 / relations: supports=2 / context_only=0 / contradicts=0 / qualifies=0
+Human review: DIRECT_O4_SUPPORT=0 / useful supports=0 / suitable domains=0
+Combined Gate with IRS: useful supports=3 / suitable independent domains=1
+Result: BLOCKED — MCI DIRECT-SOURCE INSUFFICIENT
+```
+
+Human review of both exact readable excerpts:
+
+```text
+0b78a9da-00a9-49c7-90cf-dc06f3345876 / f7e3bc71-2740-43c4-8613-4c19660c8818 / supports / document_sentence:93 / excerpt match=true / WEAK/OFF_SCOPE — describes appraisals for accepted donations, not how a buyer evaluates price
+27088478-755a-498f-a89d-de4bdc178023 / f4c3032c-c44a-410d-89d0-33f68167771c / supports / document_sentence:105 / excerpt match=true / WEAK/OFF_SCOPE — bibliography entry, not O4 valuation guidance
+```
+
+The MCI source produced no direct O4 support. The existing v1–v7 EvidenceSets remain
+draft/unlocked; no relation was manually changed, and no curation or lock occurred.
+
+# Current next action
+
+Do not rerun MCI, read another URL, curate, or lock an EvidenceSet. MG CONTENT ENGINE
+must review the failed direct-source result. The combined Gate remains below `2 useful
+supports / 2 suitable independent domains`.
 
 # Global rules
 
