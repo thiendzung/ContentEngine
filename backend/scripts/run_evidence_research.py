@@ -58,7 +58,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--pages", type=int)
     parser.add_argument("--max-claims", type=int, default=8)
-    parser.add_argument("--lock-by")
     parser.add_argument("--output", type=Path)
     return parser
 
@@ -127,12 +126,11 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                     max_tool_calls=settings.research_max_provider_calls,
                     max_research_sources=settings.research_max_selected_urls,
                 ),
-                # Evidence Research still checks internal knowledge first, but cannot stop
-                # there because external claims require successfully read source content.
+                # PR-E needs at least one successfully read external source before it can
+                # create web Evidence, so internal knowledge may guide but cannot end the run.
                 sufficiency=ProductionSufficiencyPolicy(min_internal_hits=1_000_000),
             )
             pages = cast(int | None, args.pages)
-            lock_by = cast(str | None, args.lock_by)
             workflow = EvidenceResearchWorkflow(router=router)
             result = await workflow.run(
                 session,
@@ -151,8 +149,6 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                     content_opportunity_id=opportunity_id,
                     need_hypothesis_id=need_id,
                     max_claims=cast(int, args.max_claims),
-                    lock_evidence_set=lock_by is not None,
-                    locked_by=lock_by,
                 ),
             )
 
