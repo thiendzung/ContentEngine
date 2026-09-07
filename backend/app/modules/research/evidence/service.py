@@ -67,6 +67,27 @@ _STOPWORDS = {
     "would",
     "your",
 }
+_SUBJECT_GENERIC_TERMS = {
+    "appraisal",
+    "appraise",
+    "appraised",
+    "evaluate",
+    "evaluation",
+    "fair",
+    "fairly",
+    "help",
+    "know",
+    "price",
+    "priced",
+    "pricing",
+    "understand",
+    "valuation",
+    "value",
+}
+_SUBJECT_SYNONYMS = {
+    "artwork": {"artwork", "artworks", "artist", "artists", "painting", "paintings"},
+    "artworks": {"artwork", "artworks", "artist", "artists", "painting", "paintings"},
+}
 _MARKDOWN_LINK_ONLY_RE = re.compile(r"^\[[^\]]+\]\(https?://[^)]+\)$")
 
 
@@ -219,6 +240,7 @@ class EvidenceResearchWorkflow:
         limit: int,
     ) -> list[ClaimCandidate]:
         terms = self._topic_terms((*topic_texts, production.request.query))
+        subject_terms = self._subject_terms(topic_texts[:1])
         sources = self._source_candidates_by_url(production)
         buckets: list[list[ClaimCandidate]] = []
 
@@ -232,6 +254,7 @@ class EvidenceResearchWorkflow:
                 source_url=source_url,
                 relation=relation,
                 terms=terms,
+                subject_terms=subject_terms,
             )
             if bucket:
                 buckets.append(bucket)
@@ -268,6 +291,7 @@ class EvidenceResearchWorkflow:
         source_url: str,
         relation: EvidenceRelation,
         terms: set[str],
+        subject_terms: set[str],
     ) -> list[ClaimCandidate]:
         canonical = canonicalize_markdown(content)
         segments = re.split(r"(?<=[.!;])(?:\s+|\n+)|\n{2,}", canonical)
@@ -278,11 +302,11 @@ class EvidenceResearchWorkflow:
                 "",
                 raw_segment.strip(),
             ).strip()
-            if not self._usable_statement(excerpt, terms):
+            if not self._usable_statement(excerpt, terms, subject_terms):
                 continue
             ranked.append(
                 (
-                    self._statement_score(excerpt, terms),
+                    self._statement_score(excerpt, terms, subject_terms),
                     index,
                     ClaimCandidate(
                         statement=excerpt,
@@ -354,7 +378,24 @@ class EvidenceResearchWorkflow:
                     terms.add(token)
         return terms
 
-    def _usable_statement(self, statement: str, terms: set[str]) -> bool:
+    def _subject_terms(self, values: tuple[str, ...]) -> set[str]:
+        base = self._topic_terms(values) - _SUBJECT_GENERIC_TERMS
+        expanded = set(base)
+        for term in base:
+            expanded.update(_SUBJECT_SYNONYMS.get(term, set()))
+            if len(term) >= 5:
+                if term.endswith("s"):
+                    expanded.add(term[:-1])
+                else:
+                    expanded.add(f"{term}s")
+        return expanded
+
+    def _usable_statement(
+        self,
+        statement: str,
+        terms: set[str],
+        subject_terms: set[str],
+    ) -> bool:
         if len(statement) < 40 or len(statement) > 600:
             return False
         if statement.endswith("?"):
@@ -371,15 +412,25 @@ class EvidenceResearchWorkflow:
             return False
         if len(words) <= 16 and not re.search(r"[.!;:]$", statement):
             return False
+        statement_terms = set(words)
+        if subject_terms and not statement_terms.intersection(subject_terms):
+            return False
         if not terms:
             return True
-        return bool(set(words).intersection(terms))
+        return bool(statement_terms.intersection(terms))
 
-    def _statement_score(self, statement: str, terms: set[str]) -> int:
+    def _statement_score(
+        self,
+        statement: str,
+        terms: set[str],
+        subject_terms: set[str],
+    ) -> int:
         words = re.findall(r"[a-z0-9]+", self._normalize(statement))
-        overlap = len(set(words).intersection(terms))
+        word_set = set(words)
+        subject_overlap = len(word_set.intersection(subject_terms))
+        overlap = len(word_set.intersection(terms))
         sentence_bonus = 3 if re.search(r"[.!;:]$", statement) else 0
-        return overlap * 10 + sentence_bonus + min(len(words), 40)
+        return subject_overlap * 50 + overlap * 10 + sentence_bonus + min(len(words), 40)
 
     def _normalize(self, value: str) -> str:
         return re.sub(r"\s+", " ", value).strip().casefold()
