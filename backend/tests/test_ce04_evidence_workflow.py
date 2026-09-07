@@ -47,8 +47,18 @@ async def isolated_session():
 
 
 class FakeEvidenceRouter:
-    def __init__(self, *, with_documents: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        with_documents: bool = True,
+        source_type: str = "editorial",
+        commercial_bias: CommercialBias = CommercialBias.LOW,
+        intended_use: IntendedUse = IntendedUse.EVIDENCE_CANDIDATE,
+    ) -> None:
         self.with_documents = with_documents
+        self.source_type = source_type
+        self.commercial_bias = commercial_bias
+        self.intended_use = intended_use
         self.call_count = 0
 
     async def run(
@@ -67,9 +77,9 @@ class FakeEvidenceRouter:
             query=request.query,
             url=source_url,
             title="Art pricing guide",
-            source_type="editorial",
-            commercial_bias=CommercialBias.LOW,
-            intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            source_type=self.source_type,
+            commercial_bias=self.commercial_bias,
+            intended_use=self.intended_use,
         )
         result = ProductionResearchResult(
             request=request,
@@ -264,6 +274,31 @@ async def test_search_only_result_cannot_create_factual_evidence() -> None:
         assert any("SEARCH snippets remain ineligible" in gap for gap in result.research_gaps)
         evidence_count = await session.scalar(select(func.count()).select_from(Evidence))
         assert evidence_count == 0
+
+
+@pytest.mark.asyncio
+async def test_community_source_defaults_to_context_only() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_o4_like_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=FakeEvidenceRouter(
+                source_type="community_or_review",
+                commercial_bias=CommercialBias.UNKNOWN,
+                intended_use=IntendedUse.DISCOVERY,
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["context_only"] > 0
 
 
 @pytest.mark.asyncio
