@@ -20,7 +20,9 @@ from app.modules.research.contracts import (
 from app.modules.research.discovery.artifact import persist_discovery_artifact
 from app.modules.research.discovery.persistence import (
     PersistedDiscoveryPlan,
+    PersistedDiscoverySelection,
     persist_discovery_plan,
+    persist_discovery_selection,
 )
 from app.modules.research.keyword_plan.contracts import (
     ContentOpportunity,
@@ -85,6 +87,9 @@ class OpportunityHandoff:
     locale: str
     signal_refs: tuple[str, ...]
     experiment_draft_id: str
+    persisted_content_opportunity_id: str | None = None
+    persisted_need_hypothesis_id: str | None = None
+    persisted_content_experiment_id: str | None = None
 
 
 @dataclass(slots=True)
@@ -97,6 +102,7 @@ class DiscoveryWorkflowResult:
     evidence_eligible: bool = False
     artifact_ref: str | None = None
     planning_refs: PersistedDiscoveryPlan | None = None
+    selection_refs: PersistedDiscoverySelection | None = None
 
 
 class DiscoveryResearchWorkflow:
@@ -196,11 +202,37 @@ class DiscoveryResearchWorkflow:
         )
         return result
 
+    async def select_and_persist(
+        self,
+        session: AsyncSession,
+        result: DiscoveryWorkflowResult,
+        *,
+        opportunity_id: str,
+        selected_by: str,
+        reason: str,
+    ) -> DiscoveryWorkflowResult:
+        if result.planning_refs is None:
+            raise ValueError("persisted_plan_required_before_persisted_selection")
+        self.select(
+            result,
+            opportunity_id=opportunity_id,
+            selected_by=selected_by,
+            reason=reason,
+        )
+        result.selection_refs = await persist_discovery_selection(
+            session,
+            result=result.opportunity_map,
+            planning_refs=result.planning_refs,
+        )
+        return result
+
     def handoff(self, result: DiscoveryWorkflowResult) -> OpportunityHandoff:
         selection = result.opportunity_map.human_selection
         experiment = result.opportunity_map.experiment_draft
         if selection is None or experiment is None:
             raise ValueError("human_selection_required_before_opportunity_handoff")
+        if result.planning_refs is not None and result.selection_refs is None:
+            raise ValueError("persisted_human_selection_required_before_opportunity_handoff")
 
         selected = self._selected_opportunity(result.opportunity_map, selection.opportunity_id)
         return OpportunityHandoff(
@@ -209,6 +241,21 @@ class DiscoveryResearchWorkflow:
             locale=selected.locale,
             signal_refs=selected.signal_refs,
             experiment_draft_id=experiment.id,
+            persisted_content_opportunity_id=(
+                str(result.selection_refs.content_opportunity_id)
+                if result.selection_refs is not None
+                else None
+            ),
+            persisted_need_hypothesis_id=(
+                str(result.planning_refs.need_hypothesis_id)
+                if result.planning_refs is not None
+                else None
+            ),
+            persisted_content_experiment_id=(
+                str(result.selection_refs.content_experiment_id)
+                if result.selection_refs is not None
+                else None
+            ),
         )
 
     def _validate_request(
