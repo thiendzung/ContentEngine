@@ -16,6 +16,7 @@ from app.modules.knowledge.ingest import (
 from app.modules.knowledge.models import Entity, Source
 from app.modules.knowledge.retrieval import (
     ENTITY_LINKER_VERSION,
+    RetrievalRankingPolicy,
     RetrievalRequest,
     link_document_entities,
     retrieve_chunks,
@@ -230,9 +231,30 @@ async def test_retrieval_uses_latest_document_and_ignores_search_rank_for_author
         assert stale_v1.document.id != stale_v2.document.id
         assert hits[0].source_document_id == primary.document.id
         assert hits[1].source_document_id == low.document.id
+        assert "ranking_policy:ce04-v1" in hits[0].ranking_reasons
         assert "authority_hint:primary" in hits[0].ranking_reasons
         assert "authority_hint:low" in hits[1].ranking_reasons
         assert all("rank_position" not in reason for hit in hits for reason in hit.ranking_reasons)
+
+        reversed_policy = RetrievalRankingPolicy(
+            version="test-reversed-authority",
+            authority_tiers=(("primary",), ("low",)),
+            authority_unknown_rank=1,
+            commercial_bias_tiers=(("high", "medium", "none", "low"),),
+            commercial_bias_unknown_rank=1,
+        )
+        reversed_hits = await retrieve_chunks(
+            session,
+            request=RetrievalRequest(
+                project_id=project.id,
+                query="original art hanoi",
+                locale="en",
+                limit=10,
+                ranking_policy=reversed_policy,
+            ),
+        )
+        assert [hit.source_id for hit in reversed_hits[:2]] == [low_source.id, primary_source.id]
+        assert "ranking_policy:test-reversed-authority" in reversed_hits[0].ranking_reasons
 
 
 @pytest.mark.asyncio
@@ -326,7 +348,7 @@ async def test_preferred_source_type_is_an_explicit_tie_break_not_global_authori
             request=RetrievalRequest(
                 project_id=project.id,
                 query="studio visit practical guide",
-                preferred_source_types=("manual_document",),
+                preferred_source_types=("MANUAL_DOCUMENT",),
             ),
         )
 
