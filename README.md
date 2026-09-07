@@ -214,11 +214,10 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE04 PR-A — Source Ingest + Dedupe + Chunking`: CLOSED / MERGED / PASS.
 - `CE04 PR-B — Entity Linking + Retrieval + Authority Ranking`: CLOSED / MERGED / PASS.
 - `CE04 PR-C — Production ResearchRouter + Provider Adapters`: CLOSED / MERGED / PASS.
-- `CE04 PR-D — Discovery Research + Opportunity Handoff`: ACTIVE.
+- `CE04 PR-D — Discovery Research + Opportunity Handoff`: READY FOR REVIEW / PASS.
 - Current PR: `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff` (DRAFT).
-- Current implementation slice: `T04.15–T04.17`.
-- `T04.1–T04.14`: DONE.
-- `T04.15–T04.17`: ACTIVE / NOT DONE.
+- Current implementation slice: `T04.15–T04.17 COMPLETE`.
+- `T04.1–T04.17`: DONE.
 - `T04.18–T04.31`: NOT STARTED.
 
-CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS. CE04 PR-A và PR-B đã CLOSED / MERGED / PASS. CE04 PR-C đã CLOSED / MERGED / PASS trong PR #24 với merge commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`; T04.9–T04.14 đã hoàn tất implementation + real-run Gate C. PR-D hiện ACTIVE trên branch `ce04-discovery-opportunity-handoff`, base `cff0926280d053bbb41d87be9b50db69eef2384d`, Draft PR #26. Tham chiếu: `docs/logs/2026-09-07-ce04-pr-d-start.md` và `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`. T04.15–T04.17 vẫn NOT DONE cho đến khi real provider Gate, founder selection, persisted selection verification và final-head CI hoàn tất.
+CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS. CE04 PR-A và PR-B đã CLOSED / MERGED / PASS. CE04 PR-C đã CLOSED / MERGED / PASS trong PR #24 với merge commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`; T04.9–T04.14 đã hoàn tất implementation + real-run Gate C. PR-D đã đạt implementation, real Discovery, founder selection, persistence và idempotency gates: READY FOR REVIEW / PASS trên branch `ce04-discovery-opportunity-handoff`, base `cff0926280d053bbb41d87be9b50db69eef2384d`, Draft PR #26. Tham chiếu: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md` và `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`. T04.18–T04.31 vẫn NOT STARTED; chưa bắt đầu PR-E.

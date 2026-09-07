@@ -108,7 +108,7 @@ PR: #26
 Branch: ce04-discovery-opportunity-handoff
 Base main: cff0926280d053bbb41d87be9b50db69eef2384d
 Scope: T04.15–T04.17
-State: ACTIVE / DRAFT
+State: READY FOR REVIEW / PASS (PR #26 remains DRAFT)
 ```
 
 Current checkpoint:
@@ -124,9 +124,17 @@ Founder selection: O4 — Artsy prices
 Planning opportunity ID: opp_4c397247e40db8ae
 Persisted ContentOpportunity ID: 068991ab-de34-4787-9c38-8935c3f0e2da
 Founder selection log: docs/logs/2026-09-07-ce04-pr-d-founder-selection.md
-Current next action: Agent Local persists the exact O4 selection from the saved artifact; zero provider calls
-T04.15–T04.17: ACTIVE / NOT DONE
+Founder selection Gate: PASS
+HumanSelection persistence: PASS
+ContentExperiment draft persistence: PASS
+Idempotency: PASS
+NeedHypothesis: PROPOSED
+ContentCase / ContentRun counts: unchanged
+PR-D gates = PASS
+T04.15–T04.17 = DONE
+PR #26 = waiting for final-head CI / MG CONTENT ENGINE Ready-for-Review transition
 T04.18–T04.31: NOT STARTED
+Do not begin PR-E before PR-D merge + post-merge neutral checkpoint
 ```
 
 # PR-D locked contract

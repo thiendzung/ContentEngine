@@ -49,7 +49,7 @@ Tasks: T04.15–T04.17.
 
 Builds bounded Discovery Research and Opportunity Map workflow using normalized provider output plus source type/commercial-bias/authority metadata. Discovery output remains signal/hypothesis input, not factual truth.
 
-Status: **ACTIVE**.
+Status: **READY FOR REVIEW / PASS**.
 
 Branch: `ce04-discovery-opportunity-handoff`
 
@@ -57,11 +57,15 @@ Base: `cff0926280d053bbb41d87be9b50db69eef2384d`
 
 PR: `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff`
 
-PR state: **DRAFT**.
+PR state: **DRAFT — waiting for final-head CI / MG CONTENT ENGINE Ready-for-Review transition**.
 
 Start log: `docs/logs/2026-09-07-ce04-pr-d-start.md`
 
 Architecture decision: `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`
+
+Evidence: `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`.
+
+Gate result: Real Discovery = PASS; founder O4 selection/persistence/idempotency = PASS; NeedHypothesis remains `PROPOSED`; ContentCase and ContentRun counts unchanged.
 
 ### PR-E — Evidence Research + Evidence Set
 
@@ -134,12 +138,12 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 `PR-C = CLOSED / MERGED / PASS`
 
-`PR-D = ACTIVE`
+`PR-D = READY FOR REVIEW / PASS`
 
-`Current PR = #26 — CE04 PR-D — Discovery Research + Opportunity Handoff (DRAFT)`
+`Current PR = #26 — CE04 PR-D — Discovery Research + Opportunity Handoff`
 
-`Current implementation slice = T04.15–T04.17`
+`Current implementation slice = T04.15–T04.17 COMPLETE`
 
-T04.1–T04.14 are DONE. T04.15–T04.17 are ACTIVE / NOT DONE. T04.18–T04.31 are NOT STARTED.
+T04.1–T04.17 are DONE. T04.18–T04.31 are NOT STARTED.
 
-Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
+PR-D evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`.
