@@ -109,7 +109,6 @@ A selected page may also be unreadable. This is not automatically a router failu
 failure is bounded
 + failure_class is canonical
 + reason is specific and safe
-+ no secret/provider body leaks
 + Jina has at least one separate successful real read in Gate C
 ```
 
@@ -280,6 +279,91 @@ Brave decision = evidence-backed
 ```
 
 If a provider key is not configured, report `NOT EXERCISED` or `NOT CONFIGURED` instead of inventing PASS.
+
+## Real-run evidence — 2026-09-07
+
+### Standard probe @ `cb12fa6742a5a4600eb1b441661ec5f284108d68`
+
+```text
+artifact = artifacts/research/ce04-production-research-20260907T091814Z.json
+sha256 = 24933a661724e5e8e4b6be9c4be10ccada6d9af32a24d7b87358ee7ffbee78cf
+route = internal_knowledge -> Serper -> Tavily -> Jina
+Exa = skipped
+stop_reason = bounded_search_exhausted
+sufficient = false
+Jina = failed
+failure_class = tool_invalid_response
+failure_reason = selected_url_read:upstream_http_403
+secret_scan = PASS
+working_tree = clean
+```
+
+Decision:
+
+```text
+STANDARD GATE = NOT PASS YET
+```
+
+Reason is not the 403 itself. The production gap is that `max_pages_to_read=1` currently also limits source selection/read attempts to the first source. One blocked URL therefore prevents the router from trying another already-ranked candidate.
+
+### Previously proven real paths
+
+```text
+Tavily fallback = PASS / tavily_sufficient
+Exa second-hop = PASS / exa_sufficient
+Jina second-hop selected-page read = PASS
+second-hop parent provenance = PASS
+```
+
+These probes do not need to be repeated unless the failover patch changes their code path.
+
+## Reader failover fix locked before closeout
+
+Required behavior:
+
+```text
+max_pages_to_read
+= maximum successful documents requested
+
+selected source shortlist
+= bounded independently by max_research_sources
+
+reader attempts
+= walk the bounded selected shortlist until:
+  successful_documents == max_pages_to_read
+  OR selected shortlist exhausted
+  OR CE03 tool budget stops the run
+```
+
+Example for `--pages 1`:
+
+```text
+selected source A -> Jina upstream 403
+record failed decision + telemetry
+↓
+selected source B -> Jina success
+record document
+↓
+STOP reading because 1 successful document was obtained
+```
+
+Invariants:
+
+- no retry of the same URL;
+- no unbounded reader loop;
+- every read attempt consumes CE03 tool budget;
+- failed read keeps canonical `failure_class` and safe reason;
+- source order remains deterministic;
+- `sufficient=false` remains allowed when search thresholds are genuinely unmet;
+- do not add Brave to solve a page-specific 403.
+
+Tests required before rerunning Standard Gate:
+
+1. first selected URL fails, second succeeds, `max_pages_to_read=1` -> exactly one document;
+2. reader stops immediately after first successful document;
+3. all selected URLs fail -> bounded exhaustion, no loop;
+4. budget stops before next reader attempt -> explicit `budget_exceeded_before_jina`;
+5. selected shortlist remains bounded by `max_research_sources`, not by page-success target.
 
 ## Agent Local report format
 
