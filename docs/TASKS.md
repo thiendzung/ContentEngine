@@ -207,8 +207,8 @@ Status: **CLOSED / PASS**.
 
 - PR-A = CLOSED / MERGED / PASS.
 - PR-B = CLOSED / MERGED / PASS.
-- PR-C = READY FOR REVIEW / GATE PASS.
-- Current PR = CE04 PR-C — Production ResearchRouter + Provider Adapters.
+- PR-C = CLOSED / MERGED / PASS.
+- Current PR = none.
 - Current implementation slice = none.
 - PR-D = PLANNED / NOT STARTED.
 
@@ -245,7 +245,7 @@ Status: **CLOSED / PASS**.
 - [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
 
-PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
+PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
 ---
 

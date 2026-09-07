@@ -33,11 +33,15 @@ Tasks: T04.9–T04.14.
 
 Turns CE01 provider spikes into production seams for Serper, Tavily, Exa and Jina. Brave stays optional and is implemented only if evidence justifies it.
 
-Status: **READY FOR REVIEW / GATE PASS**.
+Status: **CLOSED / MERGED / PASS**.
 
 Branch: `ce04-production-research-router`
 
 Base: `b4a290cd81afad43e9cf0012f9f98301597a2c1a`
+
+PR: `#24 — CE04 PR-C — Production ResearchRouter + Provider Adapters`
+
+Merge commit: `39731375a5a90f3a6e590ed3c856d973d5feb1b9`
 
 ### PR-D — Discovery Research + Opportunity Handoff
 
@@ -112,11 +116,11 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 `PR-B = CLOSED / MERGED / PASS`
 
-`Current PR = CE04 PR-C — Production ResearchRouter + Provider Adapters`
+`Current PR = none`
 
-`Current implementation slice = none — implementation complete, awaiting review/merge`
+`Current implementation slice = none — neutral checkpoint after PR-C`
 
-`PR-C = READY FOR REVIEW / GATE PASS`
+`PR-C = CLOSED / MERGED / PASS`
 
 `PR-D = PLANNED / NOT STARTED`
 
