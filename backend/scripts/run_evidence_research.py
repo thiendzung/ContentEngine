@@ -127,7 +127,8 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                     max_research_sources=settings.research_max_selected_urls,
                 ),
                 # PR-E needs at least one successfully read external source before it can
-                # create web Evidence, so internal knowledge may guide but cannot end the run.
+                # create web Evidence. Reuse the router with a stricter purpose-specific
+                # sufficiency policy; default PR-C/PR-D routing remains unchanged.
                 sufficiency=ProductionSufficiencyPolicy(min_internal_hits=1_000_000),
             )
             pages = cast(int | None, args.pages)
