@@ -93,6 +93,42 @@ Gate checks:
 10. no API key/secret appears in artifact;
 11. no raw result is written to Obsidian.
 
+## 3B. Tavily fallback probe
+
+If `TAVILY_API_KEY` is configured but the standard request stops at `serper_sufficient`, Tavily has not yet been exercised by the real-run gate.
+
+Run one narrow/noisy probe designed to make Google discovery less complete:
+
+```bash
+.venv/bin/python scripts/run_production_research.py \
+  --query "first original painting Hanoi traveller price confidence source" \
+  --locale en \
+  --country us \
+  --pages 0
+```
+
+This is a routing probe, not customer-truth evidence.
+
+Expected when Serper is insufficient:
+
+```text
+Serper called
+→ Tavily called once
+→ Exa not called in the same standard request
+→ explicit Tavily reason/status
+→ bounded stop after that fallback
+```
+
+If Serper is still sufficient and Tavily is skipped, report:
+
+```text
+TAVILY REAL-RUN = NOT EXERCISED
+```
+
+Do not weaken production sufficiency rules or edit code just to force a provider call. Existing adapter/integration tests remain the fallback proof when the real query naturally stops earlier.
+
+If `TAVILY_API_KEY` is absent, report `NOT CONFIGURED`.
+
 ## 4. Second-hop real request
 
 Use one real summary/editorial URL discovered in the standard artifact that plausibly points toward a stronger/original source.
@@ -204,13 +240,14 @@ standard real request = PASS
 provider routing = bounded + explainable
 budget/stop = PASS
 selected-page read = PASS when reader is configured
+Tavily = PASS if naturally exercised, otherwise NOT EXERCISED/NOT CONFIGURED with tests still green
 second-hop provenance = PASS when Exa is configured
 no secret leak = PASS
 no Obsidian raw dump = PASS
 Brave decision = evidence-backed
 ```
 
-If a provider key is not configured, report `NOT EXERCISED` for that provider instead of inventing PASS.
+If a provider key is not configured, report `NOT EXERCISED` or `NOT CONFIGURED` instead of inventing PASS.
 
 ## Agent Local report format
 
@@ -228,6 +265,8 @@ STANDARD SHA-256
 STANDARD ROUTE
 
 STANDARD STOP REASON
+
+TAVILY FALLBACK PROBE
 
 SECOND-HOP ARTIFACT
 
