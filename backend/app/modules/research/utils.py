@@ -11,17 +11,6 @@ from app.modules.research.contracts import (
     SourceRelation,
 )
 
-_INSTITUTIONAL_HOST_HINTS = (
-    "museum",
-    "university",
-    "institute",
-    "institution",
-    "foundation",
-    "archive",
-    "association",
-    "society",
-)
-
 _COMMERCIAL_HINTS = (
     "/shop",
     "/store",
@@ -143,23 +132,12 @@ def annotate_source(
     commercial_haystack = f"{hostname} {parsed.path} {title}".lower()
 
     strong_institutional = hostname.endswith(".edu") or hostname.endswith(".gov")
-    named_institutional = not hostname.endswith(".com") and any(
-        hint in hostname for hint in _INSTITUTIONAL_HOST_HINTS
-    )
 
     if strong_institutional:
         source_type = "institutional"
         bias = CommercialBias.LOW
         intended_use = IntendedUse.EVIDENCE_CANDIDATE
         why = "Public/academic institutional domain candidate; verify claim-level authority."
-    elif named_institutional:
-        source_type = "institutional"
-        bias = CommercialBias.UNKNOWN
-        intended_use = IntendedUse.EVIDENCE_CANDIDATE
-        why = (
-            "Institutional-looking non-commercial domain candidate; domain name alone does not "
-            "prove authority or low commercial bias."
-        )
     elif hostname in {"reddit.com", "facebook.com", "tripadvisor.com"} or hostname.endswith(
         ".reddit.com"
     ):
