@@ -213,8 +213,8 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE04 — Knowledge + Production Research`: ACTIVE.
 - `CE04 PR-A — Source Ingest + Dedupe + Chunking`: CLOSED / MERGED / PASS.
 - `CE04 PR-B — Entity Linking + Retrieval + Authority Ranking`: CLOSED / MERGED / PASS.
-- Current PR: `none`.
-- Current implementation slice: `none`.
-- Next planned slice: `CE04 PR-C — Production ResearchRouter + Provider Adapters` — PLANNED / NOT STARTED.
+- Current PR: `CE04 PR-C — Production ResearchRouter + Provider Adapters` — ACTIVE.
+- Current implementation slice: `T04.9–T04.14`.
+- Next planned slice: `CE04 PR-D — Discovery Research + Opportunity Handoff` — PLANNED / NOT STARTED.
 
-CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS. CE04 PR-A và PR-B đã CLOSED / MERGED / PASS; repo đang ở neutral checkpoint trước PR-C.
+CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS. CE04 PR-A và PR-B đã CLOSED / MERGED / PASS. CE04 PR-C đang ACTIVE để productionize ResearchRouter và provider adapters mà không kéo Discovery/Evidence workflow của PR-D/PR-E vào sớm.
