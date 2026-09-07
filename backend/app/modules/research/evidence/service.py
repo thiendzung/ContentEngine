@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.knowledge.ingest import canonicalize_markdown
 from app.modules.research.contracts import ProductionResearchRequest, ProductionResearchResult
+from app.modules.research.evidence.artifact import persist_evidence_artifact
 from app.modules.research.evidence.contracts import (
     ClaimCandidate,
     EvidenceRelation,
@@ -175,6 +176,14 @@ class EvidenceResearchWorkflow:
             research_gaps=gaps,
             evidence_eligible=bool(evidence_ids),
         )
+        if run_id is not None and step_run_id is not None:
+            artifact = await persist_evidence_artifact(
+                session,
+                run_id=run_id,
+                step_run_id=step_run_id,
+                result=result,
+            )
+            result.artifact_ref = str(artifact.id)
         return result
 
     def _validate_request(
