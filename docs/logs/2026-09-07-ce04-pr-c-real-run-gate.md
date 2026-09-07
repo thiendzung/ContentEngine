@@ -77,6 +77,8 @@ From `backend/`:
   --pages 1
 ```
 
+The runner must work directly. `PYTHONPATH=.` is not required.
+
 The script prints the JSON artifact path.
 
 Gate checks:
@@ -92,6 +94,34 @@ Gate checks:
 9. raw provider excerpt is bounded;
 10. no API key/secret appears in artifact;
 11. no raw result is written to Obsidian.
+
+A real web request is allowed to end with:
+
+```text
+sufficient = false
+```
+
+when the bounded providers genuinely do not return enough material. Gate C validates routing, stop behavior and provenance; it must not weaken the sufficiency threshold just to force a green result.
+
+A selected page may also be unreadable. This is not automatically a router failure when:
+
+```text
+failure is bounded
++ failure_class is canonical
++ reason is specific and safe
++ no secret/provider body leaks
++ Jina has at least one separate successful real read in Gate C
+```
+
+Examples of safe Jina reasons include:
+
+```text
+reader_code_503
+upstream_http_403
+invalid_reader_response:missing_content
+```
+
+Generic `invalid_reader_response` without the safe parse/upstream reason is not enough for final closeout.
 
 ## 3B. Tavily fallback probe
 
@@ -204,10 +234,11 @@ selected-page read failure
 Expected canonical classes:
 
 ```text
-401/403 -> provider_auth
-429     -> provider_rate_limit
+401/403 provider response -> provider_auth
+429 provider response -> provider_rate_limit
 5xx/network/timeout -> provider_transient
-invalid response -> tool_invalid_response
+malformed/unsupported response -> tool_invalid_response
+upstream selected-page 4xx -> tool_invalid_response with explicit upstream_http_<status>
 budget stop -> budget_exceeded
 ```
 
@@ -236,10 +267,11 @@ A preference for “more providers” is not evidence.
 Gate C passes only when:
 
 ```text
-standard real request = PASS
-provider routing = bounded + explainable
+standard real request = process completes + bounded/explainable route
+standard sufficient=false = allowed when stop reason is explicit and thresholds are not weakened
 budget/stop = PASS
-selected-page read = PASS when reader is configured
+selected-page read = at least one real Jina success when configured
+selected-page failure = acceptable only with canonical class + safe specific reason
 Tavily = PASS if naturally exercised, otherwise NOT EXERCISED/NOT CONFIGURED with tests still green
 second-hop provenance = PASS when Exa is configured
 no secret leak = PASS
@@ -265,6 +297,8 @@ STANDARD SHA-256
 STANDARD ROUTE
 
 STANDARD STOP REASON
+
+STANDARD JINA FAILURE REASON (if any)
 
 TAVILY FALLBACK PROBE
 
