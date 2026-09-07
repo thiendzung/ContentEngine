@@ -54,7 +54,7 @@ PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
-PR-E: ACTIVE / DRAFT
+PR-E: ACTIVE / DRAFT / BLOCKED ON EVIDENCE QUALITY
 PR-F: NOT STARTED
 
 T04.1–T04.17: DONE
@@ -156,6 +156,35 @@ Inspection log:
 
 `docs/logs/2026-09-07-ce04-pr-e-round2-evidence-inspection.md`
 
+## Round 3
+
+```text
+Run HEAD: d6e491eadf3aa69920f2b54bc46e3e169c36eca4
+Latest branch CI: run 34135314608 / PASS
+Command count: 1
+Provider calls: 4
+Artifact: artifacts/research/ce04-evidence-research-v1-20260907T145734Z.json
+Artifact SHA-256: f990d972460594dccc8a407e983629774ae2d88d7e659c0b8a5a27aa9e8b1ee4
+Artifact size: 3109 bytes
+Pipeline: PASS
+Evidence quality: FAIL / BLOCKED
+EvidenceSet: c6d83e7e-663b-4c5a-af13-9b68eb41276c / v3 / draft / unlocked
+Readable SourceDocuments: 2
+Evidence: 8
+Relations: context_only=0 / supports=8 / contradicts=0 / qualifies=0
+research_sufficient: true
+stop_reason: jina_candidates_exhausted
+Persisted support-source domains: 2
+Suitable O4 support-source domains: 1
+Quality failure: only one source has a claim directly useful for O4; DealStream rows concern museum valuation, not original artwork pricing
+OriginalityPack: 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
+```
+
+Round 3 quality review must not promote the persisted relation count by itself. The
+EvidenceSet has two independent persisted domains, but the minimum of two independent
+suitable O4 support sources is not met. No universal pricing formula or appreciation
+promise was accepted. NeedHypothesis remains `PROPOSED`; v1 and v2 remain draft/unlocked.
+
 # Diagnosis repair
 
 Implemented after Round 2:
@@ -179,13 +208,14 @@ Repair log:
 
 # Current next action
 
-Do not run old Round 1/2 tasks again.
+Do not run old Round 1/2 tasks again or rerun Round 3 to force a pass.
 
-Next task:
+Current result:
 
-`docs/logs/2026-09-07-ce04-pr-e-real-gate-round3-task.md`
+`BLOCKED — ROUND 3 EVIDENCE QUALITY INSUFFICIENT`
 
-Round 3 must wait until the latest branch CI is PASS, then Agent Local runs the exact command once.
+Next action: MG CONTENT ENGINE reviews the Round 3 quality failure and defines a repair
+for source relevance/claim extraction before any EvidenceSet lock or T04.18–T04.23 tick.
 
 Minimum quality target before MG review:
 
@@ -198,7 +228,7 @@ no universal pricing formula
 no investment/appreciation promise
 ```
 
-Do not lock v1/v2, do not lock Round 3 before MG review, do not tick T04.18–T04.23, and do not start T04.24+.
+Do not lock v1/v2/Round 3, do not change Evidence relations, do not tick T04.18–T04.23, and do not start T04.24+.
 
 # Global rules
 
