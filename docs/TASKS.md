@@ -206,7 +206,9 @@ Status: **CLOSED / PASS**.
 - Status: **ACTIVE**.
 
 - PR-A = CLOSED / MERGED / PASS.
-- PR-B = PASS / FINAL REVIEW PENDING.
+- PR-B = CLOSED / MERGED / PASS.
+- Current PR = none.
+- Current implementation slice = none.
 - PR-C = PLANNED / NOT STARTED.
 
 - [x] T04.1 Source registry.
