@@ -188,11 +188,27 @@ Reviewed path final code/test HEAD: 4fb4ae1d2c8de81a809580a045a99bbcfb3f7510
 CI #396 / run 34145294793: PASS full backend + frontend gate
 ```
 
+# Reviewed MCI Evidence
+
+```text
+Claim: 70f7c72b-f23a-4528-8c03-79583e45e59a / status=unverified
+Evidence: 5e97ed0d-8989-47d3-af4e-b2f29a5110cd / relation=supports
+SourceDocument: f77b9e62-42c5-5a06-aa8b-6505ef3b6b3a
+Excerpt: Prices asked and amounts offered are determined by personal interests of both the seller and the purchaser and by the trends in the market.
+Excerpt match: true
+Human review: true / reviewer=MG CONTENT ENGINE
+Provenance: method=human_review_existing_source
+Provider calls: 0
+```
+
+The reviewed-existing-source link does not mutate the three previous MCI Evidence rows,
+create an EvidenceSet, or lock one. Combined with the retained IRS supports, the human
+Gate is `4 useful supports / 2 suitable independent domains`.
+
 # Current next action
 
-Agent Local executes exactly once:
-
-`docs/logs/2026-09-07-ce04-pr-e-reviewed-mci-evidence-persistence-task.md`
+MG CONTENT ENGINE reviews the persisted Claim/Evidence link, then may curate the exact
+approved IRS + MCI Evidence IDs with the zero-provider curation CLI.
 
 Boundary:
 
@@ -211,7 +227,8 @@ T04.24+ remain NOT STARTED
 PR #28 remains DRAFT
 ```
 
-If the reviewed MCI Evidence persists and verifies correctly, combined IRS + MCI human Gate reaches the required second independent domain. Then stop research and move to exact zero-provider curation review.
+The reviewed MCI Evidence verifies correctly; combined IRS + MCI human Gate reaches the
+required second independent domain. Do not curate or lock an EvidenceSet in this task.
 
 # Global rules
 
