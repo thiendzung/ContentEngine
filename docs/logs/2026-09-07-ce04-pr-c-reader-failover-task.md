@@ -199,3 +199,40 @@ STATUS
 ```
 
 Do not rerun real API Gate until GitHub CI on the runtime-fix head is green.
+
+## Completion checkpoint
+
+Agent Local implementation:
+
+```text
+START HEAD = d1e77843428ed4df43176def8d189c5af98e0138
+END HEAD   = e79e712009a305f12094f7bfb9bafd6dcbe19862
+files      = backend/app/modules/research/production.py only
+ruff       = PASS
+mypy       = PASS
+local targeted tests = 12 PASS
+```
+
+Local full suite on Python 3.14 reported asyncpg `Future attached to a different loop` failures. This is classified as an environment mismatch, not a PR-C code failure, because the canonical repo targets Python 3.12 and GitHub CI runs Python 3.12.
+
+Canonical GitHub evidence on `e79e712009a305f12094f7bfb9bafd6dcbe19862`:
+
+```text
+CI #248 = PASS
+Backend lint = PASS
+Backend types = PASS
+Migration round-trip = PASS
+Backend tests = PASS
+OpenAPI = PASS
+Frontend lint/typecheck/build = PASS
+```
+
+Decision:
+
+```text
+reader failover code gate = PASS
+Python 3.14 local full-suite failure = CLOSED AS ENVIRONMENT MISMATCH
+next = rerun Standard real Gate on repo-supported Python 3.12
+```
+
+Do not rerun Tavily fallback or Exa second-hop probes unless the Standard rerun reveals a new routing regression. Their prior real-run evidence remains valid.
