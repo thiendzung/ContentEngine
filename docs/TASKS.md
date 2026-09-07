@@ -176,7 +176,7 @@ Status: **CLOSED / PASS**.
 - PR-B = CLOSED / MERGED / PASS.
 - PR-C = CLOSED / MERGED / PASS.
 - PR-D = CLOSED / MERGED / PASS.
-- PR-E = PASS / READY FOR REVIEW.
+- PR-E = CLOSED / MERGED / PASS.
 
 - [x] T03.1 Implement Run state machine.
 - [x] T03.2 Implement StepRun attempt lifecycle.
@@ -203,11 +203,15 @@ Status: **CLOSED / PASS**.
 
 ## CE04 — Knowledge + Production Research
 
-- [ ] T04.1 Source registry.
-- [ ] T04.2 Canonicalize source into normalized text/Markdown.
-- [ ] T04.3 Content fingerprint and deterministic chunk IDs.
-- [ ] T04.4 Dedupe test.
-- [ ] T04.5 Chunking with bounded size.
+- Status: **ACTIVE — PR-A Source Ingest + Dedupe + Chunking**.
+
+- PR-A = PASS / FINAL REVIEW PENDING.
+
+- [x] T04.1 Source registry.
+- [x] T04.2 Canonicalize source into normalized text/Markdown.
+- [x] T04.3 Content fingerprint and deterministic chunk IDs.
+- [x] T04.4 Dedupe test.
+- [x] T04.5 Chunking with bounded size.
 - [ ] T04.6 Entity linking baseline.
 - [ ] T04.7 Retrieval interface.
 - [ ] T04.8 Authority-aware ranking.

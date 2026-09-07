@@ -1,1 +1,1 @@
-"""Knowledge module boundary. Implementation begins in later phases."""
+"""Knowledge storage, ingest, provenance, and retrieval boundary."""
