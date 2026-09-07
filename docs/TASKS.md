@@ -206,16 +206,17 @@ Status: **CLOSED / PASS**.
 - Status: **ACTIVE**.
 
 - PR-A = CLOSED / MERGED / PASS.
-- PR-B = PLANNED / NOT STARTED.
+- PR-B = PASS / FINAL REVIEW PENDING.
+- PR-C = PLANNED / NOT STARTED.
 
 - [x] T04.1 Source registry.
 - [x] T04.2 Canonicalize source into normalized text/Markdown.
 - [x] T04.3 Content fingerprint and deterministic chunk IDs.
 - [x] T04.4 Dedupe test.
 - [x] T04.5 Chunking with bounded size.
-- [ ] T04.6 Entity linking baseline.
-- [ ] T04.7 Retrieval interface.
-- [ ] T04.8 Authority-aware ranking.
+- [x] T04.6 Entity linking baseline.
+- [x] T04.7 Retrieval interface.
+- [x] T04.8 Authority-aware ranking.
 - [ ] T04.9 Production ResearchRouter with provider budget/fallback rules.
 - [ ] T04.10 Production Serper discovery adapter.
 - [ ] T04.11 Production Tavily source discovery adapter.
