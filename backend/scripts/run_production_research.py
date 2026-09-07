@@ -1,8 +1,13 @@
 import argparse
 import asyncio
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(_BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_ROOT))
 
 import httpx
 from pydantic import SecretStr
