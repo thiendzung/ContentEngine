@@ -55,7 +55,9 @@ async def test_serper_normalizes_google_discovery_signals() -> None:
     assert ResearchSignalKind.RELATED_SEARCH in kinds
     assert ResearchSignalKind.AUTOCOMPLETE in kinds
     assert ResearchSignalKind.ORGANIC in kinds
-    assert response.sources[0].source_type == "institutional"
+    assert response.sources[0].source_type == "editorial_or_unknown"
+    assert response.sources[0].commercial_bias is CommercialBias.UNKNOWN
+    assert response.sources[0].intended_use is IntendedUse.DISCOVERY
     assert len(response.calls) == 2
 
 
