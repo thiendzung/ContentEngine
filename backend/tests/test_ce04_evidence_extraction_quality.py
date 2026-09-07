@@ -75,7 +75,8 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
                 final_url=urls[1],
                 content=(
                     "Comparable sales for genuinely similar works can provide useful market "
-                    "context when judging an asking price, but they do not create a universal formula."
+                    "context when judging an asking price, but they do not create a "
+                    "universal formula."
                 ),
             ),
             PageDocument(
