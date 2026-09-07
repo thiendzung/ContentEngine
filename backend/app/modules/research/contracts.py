@@ -53,6 +53,7 @@ class SearchRequest:
     locale: str = "en"
     country: str = "us"
     limit: int = 10
+    parent_url: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -82,6 +83,7 @@ class SourceCandidate:
     relation: SourceRelation = SourceRelation.DIRECT
     intended_use: IntendedUse = IntendedUse.DISCOVERY
     why_selected: str = ""
+    parent_url: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -171,6 +173,7 @@ class ProductionResearchRequest:
     depth: ResearchDepth = ResearchDepth.STANDARD
     max_pages_to_read: int = 1
     preferred_source_types: tuple[str, ...] = ()
+    parent_url: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
