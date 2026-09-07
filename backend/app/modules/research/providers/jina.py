@@ -12,6 +12,22 @@ from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.utils import as_dict, bounded_json_excerpt, validate_public_http_url
 
 
+def _read_failure_class(status_code: int) -> str:
+    if status_code in {401, 403}:
+        return "provider_auth"
+    if status_code == 429:
+        return "provider_rate_limit"
+    if status_code >= 500:
+        return "provider_transient"
+    return "tool_invalid_response"
+
+
+def _upstream_failure_class(status_code: int) -> str:
+    if status_code >= 500:
+        return "provider_transient"
+    return "tool_invalid_response"
+
+
 class JinaReader:
     name = "jina"
     _reader_base_url = "https://r.jina.ai/"
@@ -52,20 +68,68 @@ class JinaReader:
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            # No response body, credentials or automatic higher-budget retry in errors.
-            reason = f"http_{exc.response.status_code}"
-            raise ResearchProviderError(self.name, "read", reason) from exc
+            status_code = exc.response.status_code
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                f"http_{status_code}",
+                failure_class=_read_failure_class(status_code),
+            ) from exc
+        except (httpx.TimeoutException, httpx.NetworkError) as exc:
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                type(exc).__name__,
+                failure_class="provider_transient",
+            ) from exc
         except httpx.HTTPError as exc:
-            raise ResearchProviderError(self.name, "read", type(exc).__name__) from exc
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                type(exc).__name__,
+                failure_class="provider_transient",
+            ) from exc
 
         try:
-            payload = as_dict(response.json())
-            data = as_dict(payload.get("data")) if payload else None
-            if data is None or payload is None or payload.get("code", 200) != 200:
-                raise ValueError("invalid_json_envelope")
-            full_content = data.get("content")
-            if not isinstance(full_content, str) or not full_content.strip():
-                raise ValueError("missing_content")
+            decoded = response.json()
+        except ValueError as exc:
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                "invalid_reader_response:invalid_json",
+                failure_class="tool_invalid_response",
+            ) from exc
+
+        payload = as_dict(decoded)
+        if payload is None:
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                "invalid_reader_response:invalid_envelope",
+                failure_class="tool_invalid_response",
+            )
+
+        code = payload.get("code", 200)
+        if isinstance(code, bool) or not isinstance(code, int):
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                "invalid_reader_response:invalid_code",
+                failure_class="tool_invalid_response",
+            )
+        if code != 200:
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                f"reader_code_{code}",
+                failure_class=_read_failure_class(code),
+            )
+
+        try:
+            data = as_dict(payload.get("data"))
+            if data is None:
+                raise ValueError("missing_data")
+
             http_status = data.get("httpStatus")
             if (
                 http_status is not None
@@ -73,12 +137,26 @@ class JinaReader:
             ):
                 raise ValueError("invalid_http_status")
             if isinstance(http_status, int) and http_status >= 400:
-                raise ValueError("upstream_page_error")
+                raise ResearchProviderError(
+                    self.name,
+                    "read",
+                    f"upstream_http_{http_status}",
+                    failure_class=_upstream_failure_class(http_status),
+                )
+
+            full_content = data.get("content")
+            if not isinstance(full_content, str) or not full_content.strip():
+                raise ValueError("missing_content")
+
             returned_url = data.get("url")
             if returned_url is not None and not isinstance(returned_url, str):
                 raise ValueError("invalid_final_url")
-            final_url = validate_public_http_url(returned_url) if returned_url else None
+            try:
+                final_url = validate_public_http_url(returned_url) if returned_url else None
+            except ValueError as exc:
+                raise ValueError("invalid_final_url") from exc
             effective_url = final_url or validated_url
+
             title = data.get("title")
             if title is not None and not isinstance(title, str):
                 raise ValueError("invalid_title")
@@ -86,8 +164,15 @@ class JinaReader:
             if isinstance(timestamp, bool) or not isinstance(timestamp, (str, int, float)):
                 timestamp = None
             links, links_truncated = self._links(data.get("links"), effective_url)
+        except ResearchProviderError:
+            raise
         except ValueError as exc:
-            raise ResearchProviderError(self.name, "read", "invalid_reader_response") from exc
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                f"invalid_reader_response:{exc}",
+                failure_class="tool_invalid_response",
+            ) from exc
 
         content = full_content[: self._max_content_chars]
         document = PageDocument(

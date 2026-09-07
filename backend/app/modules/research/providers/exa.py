@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import httpx
 
 from app.modules.research.contracts import (
@@ -7,6 +9,7 @@ from app.modules.research.contracts import (
     SearchRequest,
     SearchSignal,
     SourceCandidate,
+    SourceRelation,
 )
 from app.modules.research.providers.http import post_json
 from app.modules.research.utils import (
@@ -50,6 +53,7 @@ class ExaProvider:
         items = dict_items(body.get("results"))
         signals: list[SearchSignal] = []
         sources: list[SourceCandidate] = []
+        second_hop = request.parent_url is not None
         for item in items:
             title = string_value(item.get("title"))
             url = string_value(item.get("url"))
@@ -67,21 +71,32 @@ class ExaProvider:
                     snippet=snippet or None,
                 )
             )
-            sources.append(
-                annotate_source(
-                    provider=self.name,
-                    query=request.query,
-                    url=url,
-                    title=title,
-                    snippet=snippet,
-                    found_via="exa_semantic_discovery",
-                )
+            source = annotate_source(
+                provider=self.name,
+                query=request.query,
+                url=url,
+                title=title,
+                snippet=snippet,
+                found_via=(
+                    "exa_second_hop" if second_hop else "exa_semantic_discovery"
+                ),
             )
+            if second_hop:
+                source = replace(
+                    source,
+                    relation=SourceRelation.SECOND_HOP,
+                    parent_url=request.parent_url,
+                )
+            sources.append(source)
         call = ProviderCallArtifact(
             provider=self.name,
             operation="search",
             query=request.query,
-            purpose="semantic_or_second_hop_discovery",
+            purpose=(
+                "second_hop_source_discovery"
+                if second_hop
+                else "semantic_or_second_hop_discovery"
+            ),
             status="ok",
             result_count=len(items),
             raw_excerpt=bounded_json_excerpt(body, self._raw_excerpt_chars),

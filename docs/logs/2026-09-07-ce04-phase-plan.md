@@ -33,6 +33,12 @@ Tasks: T04.9–T04.14.
 
 Turns CE01 provider spikes into production seams for Serper, Tavily, Exa and Jina. Brave stays optional and is implemented only if evidence justifies it.
 
+Status: **READY FOR REVIEW / GATE PASS**.
+
+Branch: `ce04-production-research-router`
+
+Base: `b4a290cd81afad43e9cf0012f9f98301597a2c1a`
+
 ### PR-D — Discovery Research + Opportunity Handoff
 
 Tasks: T04.15–T04.17.
@@ -61,6 +67,44 @@ Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mir
 6. Do not mirror raw SERP/API payload to Obsidian.
 7. Do not auto-promote Knowledge Candidate to truth.
 8. Do not begin CE05 until CE04 exit gates are closed.
+9. PR-C must reuse CE03 ToolAdapter/budget/telemetry instead of creating a parallel harness.
+10. PR-C must check internal MOTGU knowledge before broad external provider calls.
+11. PR-C must record why a provider was called and stop when results are sufficient.
+12. Discovery provider output is not Evidence.
+
+## PR-C gate
+
+PR-C must prove:
+
+```text
+ResearchRequest
+→ internal knowledge check
+→ ResearchRouter
+→ provider budget
+→ Serper
+→ sufficiency decision
+→ Tavily OR Exa only when needed
+→ selected URL
+→ Jina
+→ normalized result
+→ provenance
+→ telemetry
+→ stop when sufficient
+```
+
+Required failure coverage:
+
+- timeout;
+- rate limit;
+- auth error;
+- invalid provider payload;
+- budget exceeded;
+- duplicate result;
+- noisy result set;
+- selected URL read failure;
+- fallback loop prevention.
+
+Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 ## Current
 
@@ -68,12 +112,14 @@ Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mir
 
 `PR-B = CLOSED / MERGED / PASS`
 
-`Current PR = none`
+`Current PR = CE04 PR-C — Production ResearchRouter + Provider Adapters`
 
-`Current implementation slice = none`
+`Current implementation slice = none — implementation complete, awaiting review/merge`
 
-`PR-C = PLANNED / NOT STARTED`
+`PR-C = READY FOR REVIEW / GATE PASS`
 
-T04.1–T04.8 are DONE. T04.9–T04.31 remain NOT STARTED.
+`PR-D = PLANNED / NOT STARTED`
 
-Repository is at a neutral post-merge checkpoint. Do not start PR-C until this closeout lands on `main` and post-merge verification confirms a clean baseline.
+T04.1–T04.14 are DONE. T04.15–T04.31 remain NOT STARTED.
+
+Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
