@@ -144,47 +144,54 @@ Repair review log:
 
 `docs/logs/2026-09-07-ce04-pr-e-round4-repair-review.md`
 
+# Round 5
+
+```text
+Run HEAD: d7b08108704fd5292f43b09cadb4c63f3d1b1c46
+Latest branch CI: run 34140102370 / PASS
+Command count: 1
+Query: artwork appraisal fair market value condition provenance comparable sales (site:irs.gov OR site:si.edu)
+Artifact: artifacts/research/ce04-evidence-research-v1-20260907T155341Z.json
+Artifact SHA-256: 61eef344d5997b1b85be036016c5a91b2823fa34df608ca38a47498ed7f971f2
+Artifact size: 3420 bytes
+Provider calls: internal_knowledge + serper + tavily + 3 jina reads; exa skipped
+EvidenceSet: 32199d87-5114-4ac6-9bd5-6f4151bd0c7c / v5 / draft / unlocked
+Evidence: 8 / Claims: 8 / Relations: supports=3 / context_only=5 / contradicts=0 / qualifies=0
+Readable domains: www.irs.gov, maddoxgallery.com, www.myartbroker.com
+Human review: useful supports=3 / suitable independent support domains=1 (www.irs.gov)
+research_sufficient: false / stop_reason: bounded_search_exhausted
+OriginalityPack: 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
+Result: FAIL / BLOCKED — ROUND 5 EVIDENCE QUALITY INSUFFICIENT
+```
+
+The three `supports` rows are useful but all come from the single suitable `irs.gov`
+domain. The five rows from Maddox Gallery and MyArtBroker remain `context_only` because
+they are unverified commercial/editorial sources; their exact excerpts are readable but
+do not satisfy the independent strong-domain gate. No `si.edu` source was returned.
+
+Required invariants held: O4 ContentCase `1` unchanged, total ContentCase `3` unchanged,
+ContentRun `2` unchanged, NeedHypothesis remains `PROPOSED`, ContentExperiment remains
+`PLANNED / PENDING`, KnowledgeCandidate count remains `0`, and v1–v5 are draft/unlocked.
+No Evidence relation was manually changed, no EvidenceSet was curated or locked, and no
+new ContentCase or ContentRun was created.
+
 # Current next action
 
-Do not curate old Evidence yet and do not rerun Round 4.
+Do not rerun Round 5 and do not curate or lock v5 yet.
 
-Run exactly one authority-targeted Round 5 only after the latest branch CI is PASS:
+Current result:
 
-`docs/logs/2026-09-07-ce04-pr-e-real-gate-round5-task.md`
+`BLOCKED — ROUND 5 EVIDENCE QUALITY INSUFFICIENT`
 
-Round 5 query is locked to strong source families:
-
-```text
-artwork appraisal fair market value condition provenance comparable sales (site:irs.gov OR site:si.edu)
-```
-
-Minimum human Gate:
-
-```text
-useful supports >= 2
-suitable independent support domains >= 2
-exact readable excerpts
-claims directly useful to O4
-no subject drift
-no authority inferred from naming words
-no universal pricing formula
-no investment/appreciation promise
-```
-
-If Round 5 passes:
-
-```text
-human review exact Evidence IDs
-→ curate draft EvidenceSet with provider_calls=0
-→ review curated draft
-→ lock exact approved set with provider_calls=0
-```
+MG CONTENT ENGINE must review all eight Round 5 Evidence rows and decide whether the
+single suitable domain is sufficient for the next action. If approved, human review must
+select exact Evidence IDs before zero-provider curation and a separate lock review.
 
 Until then:
 
 - T04.18–T04.23 remain NOT DONE;
 - T04.24+ remain NOT STARTED;
-- v1–v4 remain draft/unlocked;
+- v1–v5 remain draft/unlocked;
 - PR #28 remains DRAFT.
 
 # Global rules
