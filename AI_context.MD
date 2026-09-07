@@ -120,7 +120,11 @@ Real Discovery Gate: PASS
 Artifact SHA-256: 489d4c3b91c06d84345c7b66729d69a9a91b45a419f889853d628b14b09927f7
 research_sufficient: false
 MARKET signals: 0
-Current next action: founder reviews 5 opportunities and selects exactly one
+Founder selection: O4 — Artsy prices
+Planning opportunity ID: opp_4c397247e40db8ae
+Persisted ContentOpportunity ID: 068991ab-de34-4787-9c38-8935c3f0e2da
+Founder selection log: docs/logs/2026-09-07-ce04-pr-d-founder-selection.md
+Current next action: Agent Local persists the exact O4 selection from the saved artifact; zero provider calls
 T04.15–T04.17: ACTIVE / NOT DONE
 T04.18–T04.31: NOT STARTED
 ```
@@ -180,6 +184,10 @@ Human selection runner:
 
 `backend/scripts/select_discovery_opportunity.py`
 
+Founder selection record:
+
+`docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`
+
 Activation/local-sync task:
 
 `docs/logs/2026-09-07-ce04-pr-d-activation-sync-task.md`
@@ -195,20 +203,19 @@ Architecture decision:
 # Immediate execution sequence
 
 ```text
-1. Agent Local syncs local branch and AI_context.MD from origin.
-2. Agent Local executes activation-sync task: README / AGENTS / TASKS / CE04 phase plan → PR-D ACTIVE.
-3. MG CONTENT ENGINE reviews that docs-only commit + CI.
-4. Agent Local executes the fixed real Discovery Gate on Python 3.12.
-5. MG CONTENT ENGINE reviews JSON + Markdown shortlist, source metadata, research gaps and DB persistence.
-6. Founder selects exactly one opportunity.
-7. Agent Local runs selection CLI on that exact saved artifact/opportunity; providers_called must be 0.
-8. MG CONTENT ENGINE verifies HumanSelection + ContentExperiment persisted; NeedHypothesis stays PROPOSED; ContentCase/ContentRun counts do not increase.
-9. Tick T04.15–T04.17 only after all gates pass.
-10. Final-head CI PASS.
-11. PR #26 → Ready for Review.
-12. Founder merges.
-13. Post-merge closeout → neutral checkpoint.
-14. Only then start PR-E.
+1. DONE — activation sync.
+2. DONE — activation review + CI #301 PASS.
+3. DONE — real Discovery Gate.
+4. DONE — MG CONTENT ENGINE reviewed shortlist/gaps.
+5. DONE — founder selected O4.
+6. NEXT — Agent Local runs selection CLI on exact saved artifact/O4; providers_called must be 0.
+7. MG CONTENT ENGINE verifies HumanSelection + ContentExperiment persisted; NeedHypothesis stays PROPOSED; ContentCase/ContentRun counts do not increase.
+8. Tick T04.15–T04.17 only after all gates pass.
+9. Final-head CI PASS.
+10. PR #26 → Ready for Review.
+11. Founder merges.
+12. Post-merge closeout → neutral checkpoint.
+13. Only then start PR-E.
 ```
 
 # Remaining CE04
