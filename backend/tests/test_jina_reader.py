@@ -11,7 +11,11 @@ from app.modules.research.contracts import (
 from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.spike import ResearchSpikeService
-from app.modules.research.utils import annotate_source, choose_sources, extract_second_hop_candidates
+from app.modules.research.utils import (
+    annotate_source,
+    choose_sources,
+    extract_second_hop_candidates,
+)
 
 
 @pytest.mark.asyncio
