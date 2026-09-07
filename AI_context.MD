@@ -111,22 +111,19 @@ Scope: T04.15–T04.17
 State: ACTIVE / DRAFT
 ```
 
-Last verified code-side checkpoint:
+Current checkpoint:
 
 ```text
-HEAD: f767daaf5ac330f569516a886809590f4d261ea5
-CI #297: PASS
+Activation HEAD: 3cfce42c69a9437819fc02cf4dc0f616e1451654
+Activation CI #301: PASS
+Real Discovery Gate: PASS
+Artifact SHA-256: 489d4c3b91c06d84345c7b66729d69a9a91b45a419f889853d628b14b09927f7
+research_sufficient: false
+MARKET signals: 0
+Current next action: founder reviews 5 opportunities and selects exactly one
+T04.15–T04.17: ACTIVE / NOT DONE
+T04.18–T04.31: NOT STARTED
 ```
-
-Last verified shared-context checkpoint:
-
-```text
-HEAD: b3c3a744d581a26cc26480715785df071e85a386
-CI #298: PASS
-Run ID: 34117190176
-```
-
-T04.15–T04.17 remain NOT DONE until the real provider Gate, founder selection, persisted selection verification, and final-head CI all pass.
 
 # PR-D locked contract
 
