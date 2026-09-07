@@ -201,7 +201,7 @@ async def test_research_router_records_ce03_toolcall_and_budget_usage() -> None:
             assert len(tool_calls) == 1
             assert tool_calls[0].tool_key == "research.serper.search"
             assert tool_calls[0].status == "completed"
-            assert tool_calls[0].result_ref == f"tool_call:{tool_calls[0].id}"
+            assert tool_calls[0].result_ref is None
             assert usage.tool_calls == 1
         finally:
             await session.close()
