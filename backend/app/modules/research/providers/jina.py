@@ -12,6 +12,16 @@ from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.utils import as_dict, bounded_json_excerpt, validate_public_http_url
 
 
+def _read_failure_class(status_code: int) -> str:
+    if status_code in {401, 403}:
+        return "provider_auth"
+    if status_code == 429:
+        return "provider_rate_limit"
+    if status_code >= 500:
+        return "provider_transient"
+    return "tool_invalid_response"
+
+
 class JinaReader:
     name = "jina"
     _reader_base_url = "https://r.jina.ai/"
@@ -52,11 +62,27 @@ class JinaReader:
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            # No response body, credentials or automatic higher-budget retry in errors.
-            reason = f"http_{exc.response.status_code}"
-            raise ResearchProviderError(self.name, "read", reason) from exc
+            status_code = exc.response.status_code
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                f"http_{status_code}",
+                failure_class=_read_failure_class(status_code),
+            ) from exc
+        except (httpx.TimeoutException, httpx.NetworkError) as exc:
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                type(exc).__name__,
+                failure_class="provider_transient",
+            ) from exc
         except httpx.HTTPError as exc:
-            raise ResearchProviderError(self.name, "read", type(exc).__name__) from exc
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                type(exc).__name__,
+                failure_class="provider_transient",
+            ) from exc
 
         try:
             payload = as_dict(response.json())
@@ -87,7 +113,12 @@ class JinaReader:
                 timestamp = None
             links, links_truncated = self._links(data.get("links"), effective_url)
         except ValueError as exc:
-            raise ResearchProviderError(self.name, "read", "invalid_reader_response") from exc
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                "invalid_reader_response",
+                failure_class="tool_invalid_response",
+            ) from exc
 
         content = full_content[: self._max_content_chars]
         document = PageDocument(
