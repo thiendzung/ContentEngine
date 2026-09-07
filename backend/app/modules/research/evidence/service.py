@@ -20,6 +20,7 @@ from app.modules.research.evidence.contracts import (
     EvidenceRelation,
     EvidenceResearchRequest,
     EvidenceResearchResult,
+    count_usable_originality_items,
 )
 from app.modules.research.evidence.persistence import (
     build_originality_pack,
@@ -179,11 +180,14 @@ class EvidenceResearchWorkflow:
             content_case_id=content_case.id,
             motgu_material_refs=list(opportunity.motgu_material_refs_json),
         )
+        usable_originality_item_count = count_usable_originality_items(
+            originality.item_refs_json
+        )
         gaps = self._research_gaps(
             production=production,
             evidence_count=len(evidence_ids),
             relation_counts=relation_counts,
-            originality_item_count=len(originality.item_refs_json),
+            originality_item_count=usable_originality_item_count,
         )
         result = EvidenceResearchResult(
             research=production,
@@ -202,7 +206,7 @@ class EvidenceResearchWorkflow:
                 evidence_set.status if evidence_set is not None else None
             ),
             originality_pack_id=originality.id,
-            originality_item_count=len(originality.item_refs_json),
+            originality_item_count=usable_originality_item_count,
             research_gaps=gaps,
             evidence_eligible=bool(evidence_ids),
         )
@@ -471,8 +475,8 @@ class EvidenceResearchWorkflow:
             )
         if originality_item_count == 0:
             gaps.append(
-                "Originality gap remains: no approved MOTGU-owned material reference is "
-                "attached to this opportunity."
+                "Originality gap remains: no usable approved MOTGU-owned material is "
+                "attached to this opportunity. Reference-only items do not close this gap."
             )
         if any(document.content_truncated for document in production.documents):
             gaps.append("At least one evidence source was truncated during page reading.")

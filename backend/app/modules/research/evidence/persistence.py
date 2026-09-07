@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
@@ -23,10 +24,14 @@ from app.modules.knowledge.models import (
 from app.modules.knowledge.persistence import content_hash
 from app.modules.research.contracts import PageDocument, ProductionResearchResult, SourceCandidate
 from app.modules.research.evidence.contracts import (
+    ORIGINALITY_MATERIAL_TYPE,
+    ORIGINALITY_REFERENCE_ONLY_TYPE,
     ClaimCandidate,
     EvidenceRelation,
+    OriginalityMaterialInput,
     PersistedEvidenceLink,
     PersistedPageRef,
+    count_usable_originality_items,
 )
 
 
@@ -476,30 +481,187 @@ async def lock_evidence_set(
     return evidence_set
 
 
+_EXTERNAL_EVIDENCE_TYPES = {
+    "claim",
+    "evidence",
+    "external_evidence",
+    "irs_evidence",
+    "mci_evidence",
+    "web_evidence",
+}
+_REFERENCE_ONLY_TYPES = {
+    ORIGINALITY_REFERENCE_ONLY_TYPE,
+    "motgu_material_ref",
+}
+_REFERENCE_ONLY_KINDS = {"motgu_fact", "motgu_material_ref"}
+_EXTERNAL_REFERENCE_PREFIXES = (
+    "claim:",
+    "evidence:",
+    "external:",
+    "external_evidence:",
+    "irs:",
+    "mci:",
+    "source_document:",
+)
+
+
+def _is_external_evidence_reference(value: str) -> bool:
+    candidate = value.strip().casefold()
+    if not candidate:
+        return False
+    if candidate.startswith(_EXTERNAL_REFERENCE_PREFIXES):
+        return True
+
+    host = urlsplit(candidate).hostname
+    if host is None:
+        return "irs.gov" in candidate or "si.edu" in candidate
+    return (
+        host == "irs.gov"
+        or host.endswith(".irs.gov")
+        or host == "si.edu"
+        or host.endswith(".si.edu")
+    )
+
+
+def _reference_only_item(value: object) -> dict[str, object] | None:
+    if isinstance(value, str):
+        source_ref = value.strip()
+    elif isinstance(value, Mapping):
+        raw_ref = value.get("source_ref", value.get("ref"))
+        source_ref = raw_ref.strip() if isinstance(raw_ref, str) else ""
+    else:
+        return None
+
+    if not source_ref or _is_external_evidence_reference(source_ref):
+        return None
+    return {"type": ORIGINALITY_REFERENCE_ONLY_TYPE, "source_ref": source_ref}
+
+
+def normalize_originality_items(
+    items: Sequence[OriginalityMaterialInput],
+    *,
+    excluded_evidence_refs: set[str] | frozenset[str] = frozenset(),
+) -> list[object]:
+    """Normalize legacy refs while preserving approved structured items verbatim."""
+
+    normalized: list[object] = []
+    seen: set[str] = set()
+    for raw_item in items:
+        item: dict[str, object] | None = None
+        if isinstance(raw_item, str):
+            item = _reference_only_item(raw_item)
+        elif isinstance(raw_item, Mapping):
+            raw_type = raw_item.get("type")
+            raw_kind = raw_item.get("kind")
+            item_type = raw_type.casefold() if isinstance(raw_type, str) else ""
+            item_kind = raw_kind.casefold() if isinstance(raw_kind, str) else ""
+
+            if raw_type == ORIGINALITY_MATERIAL_TYPE:
+                source_ref = raw_item.get("source_ref")
+                if (
+                    isinstance(source_ref, str)
+                    and (
+                        _is_external_evidence_reference(source_ref)
+                        or source_ref.casefold() in excluded_evidence_refs
+                    )
+                ):
+                    continue
+                item = dict(raw_item)
+            elif item_type in _EXTERNAL_EVIDENCE_TYPES or item_kind in {
+                *_EXTERNAL_EVIDENCE_TYPES,
+                "external_evidence",
+            }:
+                continue
+            elif item_type in _REFERENCE_ONLY_TYPES or item_kind in _REFERENCE_ONLY_KINDS:
+                raw_ref = raw_item.get("source_ref", raw_item.get("ref"))
+                if (
+                    isinstance(raw_ref, str)
+                    and raw_ref.casefold() in excluded_evidence_refs
+                ):
+                    continue
+                item = _reference_only_item(raw_item)
+
+        if item is None:
+            continue
+        source_ref = item.get("source_ref") if isinstance(item, dict) else None
+        if isinstance(source_ref, str) and source_ref.casefold() in excluded_evidence_refs:
+            continue
+        fingerprint = json.dumps(
+            item,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        if fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        normalized.append(item)
+    return normalized
+
+
+async def _evidence_reference_ids(
+    session: AsyncSession,
+    items: Sequence[OriginalityMaterialInput],
+) -> set[str]:
+    possible_ids: set[UUID] = set()
+    for raw_item in items:
+        values: tuple[object, ...]
+        if isinstance(raw_item, str):
+            values = (raw_item,)
+        elif isinstance(raw_item, Mapping):
+            values = tuple(
+                raw_item.get(field_name)
+                for field_name in ("id", "evidence_id", "source_ref", "ref")
+            )
+        else:
+            values = ()
+        for value in values:
+            if not isinstance(value, str):
+                continue
+            try:
+                possible_ids.add(UUID(value.strip()))
+            except ValueError:
+                continue
+
+    if not possible_ids:
+        return set()
+    evidence_ids = await session.scalars(
+        select(Evidence.id).where(Evidence.id.in_(possible_ids))
+    )
+    return {str(evidence_id).casefold() for evidence_id in evidence_ids}
+
+
 async def build_originality_pack(
     session: AsyncSession,
     *,
     content_case_id: UUID,
-    motgu_material_refs: list[str],
+    motgu_material_refs: Sequence[OriginalityMaterialInput],
 ) -> OriginalityPack:
     content_case = await session.get(ContentCase, content_case_id)
     if content_case is None:
         raise ValueError("originality_pack_content_case_not_found")
 
-    refs = tuple(dict.fromkeys(ref.strip() for ref in motgu_material_refs if ref.strip()))
-    items: list[object] = [
-        {"type": "motgu_material_ref", "ref": ref}
-        for ref in refs
-    ]
-    if items:
+    excluded_evidence_refs = await _evidence_reference_ids(session, motgu_material_refs)
+    items = normalize_originality_items(
+        motgu_material_refs,
+        excluded_evidence_refs=excluded_evidence_refs,
+    )
+    usable_item_count = count_usable_originality_items(items)
+    if usable_item_count:
         summary = (
-            "MOTGU-owned material references are available for editorial use. "
+            "MOTGU-owned material is available for editorial use. "
+            "External web evidence is intentionally excluded from this pack."
+        )
+    elif items:
+        summary = (
+            "Originality gap: only reference-only or incomplete MOTGU material is attached; "
+            "do not treat it as usable originality material or invent first-party detail. "
             "External web evidence is intentionally excluded from this pack."
         )
     else:
         summary = (
-            "Originality gap: no approved MOTGU-owned material reference is attached to "
-            "the selected opportunity yet. Do not invent first-party detail."
+            "Originality gap: no approved MOTGU-owned material is attached to the selected "
+            "opportunity yet. Do not invent first-party detail."
         )
 
     existing = tuple(

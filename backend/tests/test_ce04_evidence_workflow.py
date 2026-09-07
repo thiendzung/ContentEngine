@@ -257,6 +257,7 @@ async def test_search_only_result_cannot_create_factual_evidence() -> None:
     async with isolated_session() as session:
         project, need, opportunity = await selected_o4_like_plan(session)
         workflow = EvidenceResearchWorkflow(router=FakeEvidenceRouter(with_documents=False))
+        evidence_count_before = await session.scalar(select(func.count()).select_from(Evidence))
 
         result = await workflow.run(
             session,
@@ -273,7 +274,7 @@ async def test_search_only_result_cannot_create_factual_evidence() -> None:
         assert result.evidence_eligible is False
         assert any("SEARCH snippets remain ineligible" in gap for gap in result.research_gaps)
         evidence_count = await session.scalar(select(func.count()).select_from(Evidence))
-        assert evidence_count == 0
+        assert evidence_count == evidence_count_before
 
 
 @pytest.mark.asyncio
@@ -346,10 +347,14 @@ async def test_originality_pack_keeps_motgu_refs_separate_from_web_evidence() ->
             ),
         )
 
-        assert result.originality_item_count == 1
+        assert result.originality_item_count == 0
+        assert any(
+            "Reference-only items do not close this gap" in gap
+            for gap in result.research_gaps
+        )
         pack = await session.get(OriginalityPack, result.originality_pack_id)
         assert pack is not None
         assert pack.item_refs_json == [
-            {"type": "motgu_material_ref", "ref": "motgu:studio-pricing-note"}
+            {"type": "reference_only", "source_ref": "motgu:studio-pricing-note"}
         ]
         assert "External web evidence is intentionally excluded" in pack.summary

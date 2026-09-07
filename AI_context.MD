@@ -250,6 +250,43 @@ The exact four reviewed Evidence IDs are now in one new curated draft. No Eviden
 relation, or historical EvidenceSet was changed. The exact curated draft is now locked
 and must not be mutated.
 
+# Production OriginalityPack builder code checkpoint
+
+The Production OriginalityPack builder now supports structured MOTGU-owned material in the
+existing `item_refs_json` column without a migration. A usable item must retain the exact
+structured object with:
+
+```text
+type=motgu_owned_material
+source_ref
+material
+writer_use
+guardrails
+approval_ref
+```
+
+Legacy ref-only inputs are normalized to `type=reference_only` and do not count as usable
+originality material. Empty material text, incomplete items and Evidence references do not
+close the originality gap. External IRS/MCI Evidence is excluded, duplicate items are
+deduped deterministically, and the same normalized input reuses the existing non-retired
+pack. `originality_item_count` reports usable items only.
+
+Code/test checkpoint:
+
+```text
+backend/scripts/curate_originality_pack.py
+backend/tests/test_originality_pack_builder.py
+provider calls: 0
+real DB mutation: 0
+EvidenceSet v8: unchanged
+T04.18–T04.23: ACTIVE / NOT DONE
+T04.24+: NOT STARTED
+```
+
+The builder CLI was added for a later explicitly scoped curation action and was not run in
+this code/test task. Any task that changes a meaningful canonical state must update
+`AI_context.MD` with the observed result and preserved boundaries.
+
 # Global rules
 
 - Search is a locator, not factual proof.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from uuid import UUID
@@ -12,6 +13,35 @@ class EvidenceRelation(StrEnum):
     CONTRADICTS = "contradicts"
     QUALIFIES = "qualifies"
     CONTEXT_ONLY = "context_only"
+
+
+type OriginalityMaterialInput = str | dict[str, object]
+
+ORIGINALITY_MATERIAL_TYPE = "motgu_owned_material"
+ORIGINALITY_REFERENCE_ONLY_TYPE = "reference_only"
+ORIGINALITY_REQUIRED_FIELDS = (
+    "source_ref",
+    "material",
+    "writer_use",
+    "guardrails",
+    "approval_ref",
+)
+
+
+def is_usable_originality_item(item: object) -> bool:
+    """Return whether an item contains enough approved MOTGU material to use."""
+
+    if not isinstance(item, dict) or item.get("type") != ORIGINALITY_MATERIAL_TYPE:
+        return False
+    for field_name in ORIGINALITY_REQUIRED_FIELDS:
+        value = item.get(field_name)
+        if not isinstance(value, str) or not value.strip():
+            return False
+    return True
+
+
+def count_usable_originality_items(items: Sequence[object]) -> int:
+    return sum(is_usable_originality_item(item) for item in items)
 
 
 @dataclass(slots=True, frozen=True)
