@@ -135,7 +135,9 @@ def _result(
     )
 
 
-def _workflow(result: ProductionResearchResult) -> tuple[DiscoveryResearchWorkflow, FakeRouter]:
+def _workflow(
+    result: ProductionResearchResult,
+) -> tuple[DiscoveryResearchWorkflow, FakeRouter]:
     router = FakeRouter(result)
     return DiscoveryResearchWorkflow(router=router), router
 
@@ -158,7 +160,13 @@ async def test_discovery_uses_router_once_and_keeps_search_signal_as_search() ->
     result = _result(
         request,
         signals=signals,
-        sources=[_source(REDDIT, source_type="community_or_review", bias=CommercialBias.UNKNOWN)],
+        sources=[
+            _source(
+                REDDIT,
+                source_type="community_or_review",
+                bias=CommercialBias.UNKNOWN,
+            )
+        ],
     )
     workflow, router = _workflow(result)
 
@@ -171,9 +179,16 @@ async def test_discovery_uses_router_once_and_keeps_search_signal_as_search() ->
     )
 
     assert len(router.calls) == 1
-    reddit_signal = next(item for item in discovery.opportunity_map.signals if item.source_url == REDDIT)
+    reddit_signal = next(
+        item
+        for item in discovery.opportunity_map.signals
+        if item.source_url == REDDIT
+    )
     assert reddit_signal.source_kind is SignalSourceKind.SEARCH
-    assert not any(item.source_kind is SignalSourceKind.MARKET for item in discovery.opportunity_map.signals)
+    assert not any(
+        item.source_kind is SignalSourceKind.MARKET
+        for item in discovery.opportunity_map.signals
+    )
     assert discovery.evidence_eligible is False
     assert discovery.artifact_type == "discovery_research_report"
 
@@ -184,7 +199,13 @@ async def test_unreadable_market_observation_becomes_gap_not_market_signal() -> 
     result = _result(
         request,
         signals=[_question_signal("How much should I spend on my first painting?")],
-        sources=[_source(REDDIT, source_type="community_or_review", bias=CommercialBias.UNKNOWN)],
+        sources=[
+            _source(
+                REDDIT,
+                source_type="community_or_review",
+                bias=CommercialBias.UNKNOWN,
+            )
+        ],
         documents=[],
         sufficient=False,
         stop_reason="bounded_search_exhausted",
@@ -206,7 +227,10 @@ async def test_unreadable_market_observation_becomes_gap_not_market_signal() -> 
         ),
     )
 
-    assert not any(item.source_kind is SignalSourceKind.MARKET for item in discovery.opportunity_map.signals)
+    assert not any(
+        item.source_kind is SignalSourceKind.MARKET
+        for item in discovery.opportunity_map.signals
+    )
     assert any("not read successfully" in gap for gap in discovery.research_gaps)
     assert any("bounded_search_exhausted" in gap for gap in discovery.research_gaps)
 
@@ -228,7 +252,13 @@ async def test_readable_market_observation_requires_locator_and_preserves_proven
             _question_signal("How do I know what art I like?"),
             _question_signal("How much should I spend on my first painting?"),
         ],
-        sources=[_source(REDDIT, source_type="community_or_review", bias=CommercialBias.UNKNOWN)],
+        sources=[
+            _source(
+                REDDIT,
+                source_type="community_or_review",
+                bias=CommercialBias.UNKNOWN,
+            )
+        ],
         documents=[document],
     )
     workflow, _ = _workflow(result)
@@ -251,7 +281,9 @@ async def test_readable_market_observation_requires_locator_and_preserves_proven
     )
 
     market = next(
-        item for item in discovery.opportunity_map.signals if item.source_kind is SignalSourceKind.MARKET
+        item
+        for item in discovery.opportunity_map.signals
+        if item.source_kind is SignalSourceKind.MARKET
     )
     assert market.provenance.provider == "jina"
     assert market.provenance.method == "read_observation"
@@ -285,8 +317,16 @@ async def test_duplicate_market_observations_do_not_count_as_independent_support
         PageDocument(provider="jina", url=second_url, content="B"),
     ]
     sources = [
-        _source(REDDIT, source_type="community_or_review", bias=CommercialBias.UNKNOWN),
-        _source(second_url, source_type="community_or_review", bias=CommercialBias.UNKNOWN),
+        _source(
+            REDDIT,
+            source_type="community_or_review",
+            bias=CommercialBias.UNKNOWN,
+        ),
+        _source(
+            second_url,
+            source_type="community_or_review",
+            bias=CommercialBias.UNKNOWN,
+        ),
     ]
     result = _result(
         request,
@@ -303,14 +343,24 @@ async def test_duplicate_market_observations_do_not_count_as_independent_support
             research=request,
             opportunity=_opportunity_request(),
             market_observations=(
-                MarketObservation(source_url=REDDIT, observed_text=repeated, locator="comment:a"),
-                MarketObservation(source_url=second_url, observed_text=repeated, locator="comment:b"),
+                MarketObservation(
+                    source_url=REDDIT,
+                    observed_text=repeated,
+                    locator="comment:a",
+                ),
+                MarketObservation(
+                    source_url=second_url,
+                    observed_text=repeated,
+                    locator="comment:b",
+                ),
             ),
         ),
     )
 
     market = [
-        item for item in discovery.opportunity_map.signals if item.source_kind is SignalSourceKind.MARKET
+        item
+        for item in discovery.opportunity_map.signals
+        if item.source_kind is SignalSourceKind.MARKET
     ]
     assert len(market) == 2
     assert sum(item.duplicate_of is not None for item in market) == 1
@@ -351,8 +401,12 @@ async def test_rank_one_commercial_source_does_not_receive_high_authority() -> N
         ),
     )
 
-    commercial = next(item for item in discovery.source_metadata if item.url == COMMERCIAL)
-    institutional = next(item for item in discovery.source_metadata if item.url == INSTITUTIONAL)
+    commercial = next(
+        item for item in discovery.source_metadata if item.url == COMMERCIAL
+    )
+    institutional = next(
+        item for item in discovery.source_metadata if item.url == INSTITUTIONAL
+    )
     assert commercial.rank_position == 1
     assert commercial.commercial_bias is CommercialBias.HIGH
     assert commercial.authority_hint == "commercial_context_only"
@@ -380,7 +434,10 @@ async def test_handoff_requires_human_selection_and_does_not_promote_hypothesis(
         ),
     )
 
-    with pytest.raises(ValueError, match="human_selection_required_before_opportunity_handoff"):
+    with pytest.raises(
+        ValueError,
+        match="human_selection_required_before_opportunity_handoff",
+    ):
         workflow.handoff(discovery)
 
     selected_id = discovery.opportunity_map.opportunities[0].id
