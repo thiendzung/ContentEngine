@@ -6,7 +6,7 @@ Updated: 2026-09-07
 
 Shared current-state checkpoint for MG CONTENT ENGINE, Agent Local, and founder.
 
-GitHub is canonical. Detailed history lives in `docs/logs/`; this file should stay short and current.
+GitHub is canonical. Detailed history lives in `docs/logs/`; keep this file short and current.
 
 ## Agent Local sync rule
 
@@ -54,7 +54,7 @@ PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
-PR-E: ACTIVE / DRAFT / BLOCKED ON EVIDENCE QUALITY
+PR-E: ACTIVE / DRAFT / EVIDENCE QUALITY GATE ACTIVE
 PR-F: NOT STARTED
 
 T04.1–T04.17: DONE
@@ -106,136 +106,131 @@ Rules:
 - Discovery is not Evidence.
 - Search snippets are not factual Evidence.
 - External Evidence requires readable source content + exact locator/excerpt.
+- Provider/search rank is not authority.
+- Authority must not be inferred from article topic words.
 - Community/review, high-commercial-bias and unknown/unverified sources default to `context_only`.
-- Do not weaken relation rules just to obtain `supports`.
+- Automatic claims must be relevant to the selected opportunity subject, not merely share generic research terms.
+- Do not weaken relation rules or quality thresholds to obtain `supports`.
 - Locked EvidenceSet is immutable; changed research creates a new version.
-- OriginalityPack contains MOTGU-owned material only; web evidence is excluded.
+- OriginalityPack contains MOTGU-owned material only; external web Evidence is excluded.
 - No fake ContentRun for standalone Gates.
 - No KnowledgeCandidate / Approved Knowledge / Obsidian / CE05 work in PR-E.
 
-# Real Gate history
+# Real Evidence Gate history
 
 ## Round 1
 
 ```text
 Pipeline: PASS
-Evidence quality: FAIL
-EvidenceSet: 2e423158-42af-4188-9954-90784b8cf37a / v1 / draft / unlocked
-Problem: all factual supports came from one Facebook community thread
-Action: DO NOT LOCK v1
+Quality: FAIL
+EvidenceSet: 2e423158-42af-4188-9954-90784b8cf37a / v1 / draft / DO NOT LOCK
+Reason: factual supports came from one Facebook community thread
 ```
-
-Loop improvement: community/review and weak sources no longer auto-promote to factual support.
 
 ## Round 2
 
 ```text
 Pipeline: PASS
-Evidence quality: FAIL / BLOCKED
+Quality: FAIL
 Artifact SHA-256: 8c6325822a22c01c76d5f07268b0722540f949e077dbff582b3eddf66ce13a81
-EvidenceSet: e9c7f1b9-c812-4ca5-ba36-fdd8af99b8ec / v2 / draft / unlocked
+EvidenceSet: e9c7f1b9-c812-4ca5-ba36-fdd8af99b8ec / v2 / draft / DO NOT LOCK
 Readable SourceDocuments: 3
 Evidence: 8
 Relations: context_only=8 / supports=0 / contradicts=0 / qualifies=0
 research_sufficient: false
 stop_reason: bounded_search_exhausted
-OriginalityPack: 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
+Diagnosis: SOURCE_SELECTION + CLAIM_EXTRACTION primary; SOURCE_CLASSIFICATION + QUERY/ROUTING contributors
 ```
-
-Round 2 inspection result:
-
-```text
-Primary cause 1: SOURCE_SELECTION
-Primary cause 2: CLAIM_EXTRACTION
-Contributor: SOURCE_CLASSIFICATION
-Contributor: QUERY/ROUTING
-Potential supports in persisted Round 2 rows: 0
-```
-
-Inspection log:
-
-`docs/logs/2026-09-07-ce04-pr-e-round2-evidence-inspection.md`
 
 ## Round 3
 
 ```text
 Run HEAD: d6e491eadf3aa69920f2b54bc46e3e169c36eca4
-Latest branch CI: run 34135314608 / PASS
+CI checked: 34135314608 / PASS
 Command count: 1
 Provider calls: 4
-Artifact: artifacts/research/ce04-evidence-research-v1-20260907T145734Z.json
 Artifact SHA-256: f990d972460594dccc8a407e983629774ae2d88d7e659c0b8a5a27aa9e8b1ee4
-Artifact size: 3109 bytes
-Pipeline: PASS
-Evidence quality: FAIL / BLOCKED
-EvidenceSet: c6d83e7e-663b-4c5a-af13-9b68eb41276c / v3 / draft / unlocked
+EvidenceSet: c6d83e7e-663b-4c5a-af13-9b68eb41276c / v3 / draft / DO NOT LOCK
 Readable SourceDocuments: 2
-Evidence: 8
-Relations: context_only=0 / supports=8 / contradicts=0 / qualifies=0
+Persisted relations: supports=8 / context_only=0 / contradicts=0 / qualifies=0
 research_sufficient: true
 stop_reason: jina_candidates_exhausted
-Persisted support-source domains: 2
-Suitable O4 support-source domains: 1
-Quality failure: only one source has a claim directly useful for O4; DealStream rows concern museum valuation, not original artwork pricing
-OriginalityPack: 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
+Persisted support domains: 2
+Suitable O4 support domains after human review: 1
+Quality: FAIL / BLOCKED
 ```
 
-Round 3 quality review must not promote the persisted relation count by itself. The
-EvidenceSet has two independent persisted domains, but the minimum of two independent
-suitable O4 support sources is not met. No universal pricing formula or appreciation
-promise was accepted. NeedHypothesis remains `PROPOSED`; v1 and v2 remain draft/unlocked.
+Round 3 human review found:
 
-# Diagnosis repair
+- `museumexchange.com`: one directly useful artwork-appraisal support plus weaker context;
+- `dealstream.com`: museum-business valuation, off-scope for original artwork pricing;
+- persisted `supports=8` therefore did NOT satisfy the human quality Gate.
 
-Implemented after Round 2:
+# Round 3 diagnosis repair
 
-- source selection now prefers independent domains before same-domain fill;
-- claim extraction rejects page chrome, markdown image/link and short heading-like text;
-- query terms participate in claim relevance scoring;
-- substantive sentences rank before generic introduction;
-- claim extraction balances across readable SourceDocuments instead of letting document 1 consume all quota;
-- conservative relation policy remains unchanged.
+Root causes:
 
-Regression tests added for source-domain diversity and balanced extraction.
+1. authority false positive — `museum` in an article title/path could make an unrelated domain look institutional;
+2. subject drift — generic `valuation/comparable sales/market` overlap could create O4 claims even when the subject was a museum business;
+3. Round 3 query included `museum`, encouraging search drift.
 
-CI #346 failed only on one test line-length lint issue.
+Implemented repair:
 
-CI #347 on head `9a225e30613620d6a650020e26a5e3038f78c3fd`: `PASS` full backend/frontend quality gate.
+- authority classification now uses domain identity, not title/path topic words;
+- `.edu/.gov` may be strong institutional/low-bias candidates;
+- institutional-looking domain names remain candidates but commercial bias stays `unknown` until verified;
+- `dealstream.com/.../museums/...` no longer becomes institutional from topic words;
+- claim extraction requires both research relevance and selected-question subject relevance;
+- for O4, artwork subject matching conservatively covers artwork/artworks/artist/artists/painting/paintings;
+- museum-business valuation text is rejected even when it shares valuation keywords;
+- source diversity, page-noise filtering and balanced multi-document extraction from Round 2 remain active.
+
+Tests added for the exact Round 3 failure modes.
+
+CI history:
+
+```text
+CI #355: FAIL — test import formatting only
+CI #356: PASS — full backend/frontend gate
+Code checkpoint: 6829d6af7e4ecefd12031dfbc6742962c19cba63
+```
 
 Repair log:
 
-`docs/logs/2026-09-07-ce04-pr-e-round2-diagnosis-fix.md`
+`docs/logs/2026-09-07-ce04-pr-e-round3-diagnosis-fix.md`
 
 # Current next action
 
-Do not run old Round 1/2 tasks again or rerun Round 3 to force a pass.
+Run exactly one Round 4 only after the latest branch CI is PASS.
 
-Current result:
+Task:
 
-`BLOCKED — ROUND 3 EVIDENCE QUALITY INSUFFICIENT`
+`docs/logs/2026-09-07-ce04-pr-e-real-gate-round4-task.md`
 
-Next action: MG CONTENT ENGINE reviews the Round 3 quality failure and defines a repair
-for source relevance/claim extraction before any EvidenceSet lock or T04.18–T04.23 tick.
+Round 4 uses a cleaner query with no `museum` term and keeps the same quality threshold.
 
-Minimum quality target before MG review:
+Minimum human-review Gate:
 
 ```text
-supports >= 2
-support sources >= 2 independent suitable SourceDocuments/domains
+useful supports >= 2
+suitable independent support domains >= 2
 exact readable excerpts
 claims directly useful to O4
+no subject drift
+no authority inferred from topic words
 no universal pricing formula
 no investment/appreciation promise
 ```
 
-Do not lock v1/v2/Round 3, do not change Evidence relations, do not tick T04.18–T04.23, and do not start T04.24+.
+Do not lock v1/v2/v3 or any Round 4 EvidenceSet before MG CONTENT ENGINE review.
+
+Do not tick T04.18–T04.23 and do not start T04.24+.
 
 # Global rules
 
 - Search is a locator, not factual proof.
 - Discovery never silently becomes Evidence.
 - Internal MOTGU knowledge is checked before broad external research.
-- Provider rank/relevance is not authority.
 - Raw provider output is not Approved Knowledge.
 - Live artwork price/availability stays canonical in WordPress/WooCommerce.
 - Secrets stay env/local only.
