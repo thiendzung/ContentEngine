@@ -101,7 +101,6 @@ CE04 PR-D = CLOSED / MERGED / PASS
 PR #26 merge commit = 46af24d6c17df483fdc32721f14bc2f9156d0d76
 T04.1–T04.17 = DONE
 T04.18–T04.31 = NOT STARTED
-PR-E = PLANNED / NOT STARTED
 ```
 
 Last completed slice:
@@ -139,12 +138,20 @@ ContentCase / ContentRun counts: unchanged
 PR-D gates = PASS
 T04.15–T04.17 = DONE
 PR #26 = CLOSED / MERGED / PASS
-Current PR: none
-Current implementation slice: none — neutral checkpoint after PR-D
-T04.18–T04.31: NOT STARTED
-PR-E: PLANNED / NOT STARTED
-Next planned scope: PR-E / T04.18–T04.23
-Do not begin PR-E until this closeout is merged and main is verified clean
+PR-E = ACTIVE / DRAFT
+Current PR = CE04 PR-E — Evidence Research + Evidence Set
+Current implementation slice = T04.18–T04.23
+T04.18–T04.23 = ACTIVE / NOT DONE
+T04.24–T04.31 = NOT STARTED
+ContentExperiment: PLANNED
+ContentCase: not created in activation task
+PR-E branch: ce04-evidence-research-evidence-set
+PR-E base main: a52052adde3cf19889098013fd5065f86cab62fb
+PR-E start log: docs/logs/2026-09-07-ce04-pr-e-start.md
+PR-E architecture decision: docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md
+PR-E contract: Selected ContentOpportunity → create/reuse one legitimate ContentCase → Evidence Research → Claim → Evidence → contradiction/qualification → EvidenceSet lock/version → OriginalityPack
+No provider run in activation task
+Do not tick T04.18–T04.23 or begin T04.24+ before their respective gates pass
 ```
 
 # PR-D locked contract
@@ -231,13 +238,16 @@ Architecture decision:
 8. DONE — T04.15–T04.17 ticked.
 9. DONE — final-head CI #311 PASS.
 10. DONE — PR #26 merged into main at `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
-11. DONE — post-merge closeout returns CE04 to a neutral checkpoint.
-12. NEXT — MG CONTENT ENGINE reviews this closeout; do not start PR-E yet.
+11. DONE — post-merge closeout returned CE04 to a neutral checkpoint.
+12. DONE — PR-E activation sync updated canonical docs only.
+13. NEXT — MG CONTENT ENGINE reviews PR-E activation; do not run research/provider or create ContentCase in this activation task.
 ```
 
 # Remaining CE04
 
 ## PR-E — T04.18–T04.23
+
+Status: ACTIVE / DRAFT.
 
 ```text
 Evidence Research

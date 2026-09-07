@@ -1,7 +1,7 @@
 # CE04 — Knowledge + Production Research — Phase Plan
 
 Date: 2026-09-07
-Base after PR #26 merge: `46af24d6c17df483fdc32721f14bc2f9156d0d76`
+Base after PR #27 merge: `a52052adde3cf19889098013fd5065f86cab62fb`
 
 ## Goal
 
@@ -75,6 +75,18 @@ Tasks: T04.18–T04.23.
 
 Builds Evidence Research, claim extraction, evidence links, contradictions, EvidenceSet lock/version and OriginalityPack builder. Primary/stronger second-hop sources are preferred over summary/SEO pages.
 
+Status: **ACTIVE / DRAFT**.
+
+Branch: `ce04-evidence-research-evidence-set`
+
+Base main: `a52052adde3cf19889098013fd5065f86cab62fb`
+
+Start log: `docs/logs/2026-09-07-ce04-pr-e-start.md`
+
+Architecture decision: `docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md`
+
+Activation is docs-only; no research/provider run and no ContentCase creation occurs in this task. NeedHypothesis remains `PROPOSED` and ContentExperiment remains `PLANNED`.
+
 ### PR-F — Knowledge Admission + Mirror + End-to-End Gates
 
 Tasks: T04.24–T04.31.
@@ -142,14 +154,14 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 `PR-D = CLOSED / MERGED / PASS`
 
-`Current PR = none`
+`PR-E = ACTIVE / DRAFT`
 
-`Current implementation slice = none — neutral checkpoint after PR-D`
+`Current PR = CE04 PR-E — Evidence Research + Evidence Set`
 
-T04.1–T04.17 are DONE. T04.18–T04.31 are NOT STARTED.
+`Current implementation slice = T04.18–T04.23`
 
-`PR-E = PLANNED / NOT STARTED`
+T04.1–T04.17 are DONE. T04.18–T04.23 are ACTIVE / NOT DONE. T04.24–T04.31 are NOT STARTED.
 
 PR-D evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`, and `docs/logs/2026-09-07-ce04-pr-d-post-merge-closeout-task.md`.
 
-Do not begin PR-E before this closeout is merged and main is verified clean.
+Do not tick T04.18–T04.23 or begin T04.24+ before their respective gates pass. Do not run research/provider or create ContentCase in the activation task.
