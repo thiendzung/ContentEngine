@@ -43,14 +43,15 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
         "https://institute.example/appraisal",
         "https://archive.example/market",
     ]
-    sources = [_source(url) for url in urls]
+    off_scope_url = "https://dealstream.example/museums/rules-of-thumb"
+    sources = [_source(url) for url in (*urls, off_scope_url)]
     request = ProductionResearchRequest(
         project_id=uuid4(),
         query=(
             "artwork valuation factors provenance condition size medium "
             "comparable sales artist market history"
         ),
-        max_pages_to_read=3,
+        max_pages_to_read=4,
     )
     result = ProductionResearchResult(
         request=request,
@@ -74,7 +75,7 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
                 url=urls[1],
                 final_url=urls[1],
                 content=(
-                    "Comparable sales for genuinely similar works can provide useful market "
+                    "Comparable sales for genuinely similar artworks can provide useful market "
                     "context when judging an asking price, but they do not create a "
                     "universal formula."
                 ),
@@ -86,6 +87,16 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
                 content=(
                     "An artist's market history, the medium, and the size of a work are commonly "
                     "considered alongside provenance and condition during valuation."
+                ),
+            ),
+            PageDocument(
+                provider="jina",
+                url=off_scope_url,
+                final_url=off_scope_url,
+                content=(
+                    "While no single metric can fully capture a museum's multifaceted value, "
+                    "comparable sales, revenue multiples, and real estate benchmarks can provide "
+                    "a structured framework for preliminary museum valuation."
                 ),
             ),
         ],
@@ -107,6 +118,7 @@ def test_claim_extraction_skips_page_chrome_and_balances_documents() -> None:
     assert not any("Skip to content" in candidate.statement for candidate in candidates)
     assert not any(candidate.statement.startswith("![") for candidate in candidates)
     assert not any(candidate.statement == "Artwork Valuation Factors" for candidate in candidates)
+    assert not any(candidate.source_url == off_scope_url for candidate in candidates)
     assert any("provenance" in candidate.statement.casefold() for candidate in candidates)
     assert any("Comparable sales" in candidate.statement for candidate in candidates)
     assert any("market history" in candidate.statement for candidate in candidates)
