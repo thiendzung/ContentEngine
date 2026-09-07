@@ -26,14 +26,12 @@ from app.modules.research.contracts import (
     InternalKnowledgeHit,
     ProductionResearchRequest,
     ProductionResearchResult,
-    ProviderCallArtifact,
     ProviderDecision,
     ProviderDecisionStatus,
     ProviderResponse,
     ResearchDepth,
     ResearchSignalKind,
     SearchRequest,
-    SourceCandidate,
 )
 from app.modules.research.providers.base import PageReader, ResearchProviderError, SearchProvider
 from app.modules.research.utils import choose_sources, dedupe_sources
