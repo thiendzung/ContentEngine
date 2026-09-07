@@ -7,7 +7,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.knowledge.ingest import canonicalize_markdown
-from app.modules.research.contracts import ProductionResearchRequest, ProductionResearchResult
+from app.modules.research.contracts import (
+    CommercialBias,
+    IntendedUse,
+    ProductionResearchRequest,
+    ProductionResearchResult,
+    SourceCandidate,
+)
 from app.modules.research.evidence.artifact import persist_evidence_artifact
 from app.modules.research.evidence.contracts import (
     ClaimCandidate,
@@ -214,11 +220,13 @@ class EvidenceResearchWorkflow:
         terms = self._topic_terms(topic_texts)
         output: list[ClaimCandidate] = []
         seen: set[str] = set()
+        sources = self._source_candidates_by_url(production)
 
         for document in production.documents:
             source_url = document.final_url or document.url or document.requested_url
             if not source_url:
                 continue
+            relation = self._automatic_relation(sources.get(self._url_key(source_url)))
             canonical = canonicalize_markdown(document.content)
             segments = re.split(r"(?<=[.!;])(?:\s+|\n+)|\n{2,}", canonical)
             for index, raw_segment in enumerate(segments, start=1):
@@ -239,12 +247,37 @@ class EvidenceResearchWorkflow:
                         source_url=source_url,
                         locator=f"document_sentence:{index}",
                         excerpt=excerpt,
-                        relation=EvidenceRelation.SUPPORTS,
+                        relation=relation,
                     )
                 )
                 if len(output) >= limit:
                     return output
         return output
+
+    def _source_candidates_by_url(
+        self,
+        production: ProductionResearchResult,
+    ) -> dict[str, SourceCandidate]:
+        sources: dict[str, SourceCandidate] = {}
+        for source in (*production.selected_sources, *production.source_candidates):
+            sources.setdefault(self._url_key(source.url), source)
+        return sources
+
+    def _automatic_relation(self, source: SourceCandidate | None) -> EvidenceRelation:
+        if source is None:
+            return EvidenceRelation.CONTEXT_ONLY
+        if source.source_type == "community_or_review":
+            return EvidenceRelation.CONTEXT_ONLY
+        if source.commercial_bias is CommercialBias.HIGH:
+            return EvidenceRelation.CONTEXT_ONLY
+        if source.intended_use is IntendedUse.CONTEXT_ONLY:
+            return EvidenceRelation.CONTEXT_ONLY
+        if (
+            source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+            or source.source_type in {"institutional", "editorial"}
+        ):
+            return EvidenceRelation.SUPPORTS
+        return EvidenceRelation.CONTEXT_ONLY
 
     def _merge_candidates(
         self,
@@ -294,6 +327,9 @@ class EvidenceResearchWorkflow:
 
     def _normalize(self, value: str) -> str:
         return re.sub(r"\s+", " ", value).strip().casefold()
+
+    def _url_key(self, value: str) -> str:
+        return value.strip().rstrip("/").casefold()
 
     def _research_gaps(
         self,
