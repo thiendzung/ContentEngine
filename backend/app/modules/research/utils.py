@@ -135,6 +135,7 @@ def annotate_source(
     snippet: str,
     found_via: str,
     relation: SourceRelation = SourceRelation.DIRECT,
+    parent_url: str | None = None,
 ) -> SourceCandidate:
     parsed = urlparse(url)
     haystack = f"{parsed.hostname or ''} {parsed.path} {title}".lower()
@@ -186,18 +187,41 @@ def annotate_source(
         relation=relation,
         intended_use=intended_use,
         why_selected=why,
+        parent_url=parent_url,
     )
 
 
+def _prefer_duplicate_candidate(
+    existing: SourceCandidate,
+    candidate: SourceCandidate,
+) -> SourceCandidate:
+    """Keep the duplicate carrying stronger provenance; otherwise preserve first-seen order."""
+
+    if (
+        candidate.relation is SourceRelation.SECOND_HOP
+        and existing.relation is not SourceRelation.SECOND_HOP
+    ):
+        return candidate
+    if (
+        candidate.parent_url is not None
+        and existing.parent_url is None
+        and candidate.relation is existing.relation
+    ):
+        return candidate
+    return existing
+
+
 def dedupe_sources(sources: Iterable[SourceCandidate]) -> list[SourceCandidate]:
-    seen: set[str] = set()
+    positions: dict[str, int] = {}
     result: list[SourceCandidate] = []
     for source in sources:
         key = source.url.rstrip("/").lower()
-        if key in seen:
+        position = positions.get(key)
+        if position is None:
+            positions[key] = len(result)
+            result.append(source)
             continue
-        seen.add(key)
-        result.append(source)
+        result[position] = _prefer_duplicate_candidate(result[position], source)
     return result
 
 
@@ -277,6 +301,7 @@ def extract_second_hop_candidates(
             snippet="Linked from selected source",
             found_via=f"linked_from:{parent_url}",
             relation=SourceRelation.SECOND_HOP,
+            parent_url=parent_url,
         )
         candidates.append(candidate)
         if len(candidates) >= limit:
