@@ -12,7 +12,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
-from app.modules.content_engine.models import ContentCase, NeedHypothesis, Project
+from app.modules.content_engine.models import (
+    ContentCase,
+    ContentOpportunity,
+    NeedHypothesis,
+    Project,
+)
 from app.modules.knowledge.models import Claim, Evidence, KnowledgeChunk, Source, SourceDocument
 from app.modules.knowledge.persistence import content_hash
 from app.modules.research.evidence.contracts import EvidenceRelation
@@ -52,10 +57,36 @@ async def test_reviewed_existing_source_evidence_is_exact_and_idempotent() -> No
         )
         session.add(need)
         await session.flush()
+        opportunity = ContentOpportunity(
+            project_id=project.id,
+            need_hypothesis_id=need.id,
+            locale="en",
+            reader="first-time buyer",
+            situation="considering a purchase",
+            need="evaluate artwork price",
+            question="How can a buyer evaluate an artwork price?",
+            intent="learn",
+            promise="provide grounded context",
+            motgu_material_refs_json=[],
+            material_gaps_json=[],
+            existing_content_refs_json=[],
+            what_is_actually_new="buyer price evaluation",
+            next_discovery_step="evidence review",
+            decision="CREATE",
+            priority="NOW",
+            reasons_json=[],
+            suggested_content_type="journal",
+            selected_by="founder",
+            selected_at=datetime.now(UTC),
+            selection_reason="selected",
+        )
+        session.add(opportunity)
+        await session.flush()
         content_case = ContentCase(
             project_id=project.id,
             content_type="journal",
             need_hypothesis_id=need.id,
+            content_opportunity_id=opportunity.id,
             desired_action="evaluate an artwork price",
             content_hypothesis="use reviewed evidence",
             originality_statement="external evidence stays separate",
