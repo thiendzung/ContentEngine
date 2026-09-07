@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 from uuid import UUID
@@ -240,6 +241,12 @@ class DiscoveryResearchWorkflow:
                     f"{source_url}"
                 )
                 continue
+            if not self._observation_is_present(observed_text, document.content):
+                gaps.append(
+                    "MARKET observation skipped because its text was not found in the "
+                    f"read source: {source_url}"
+                )
+                continue
 
             signals.append(
                 make_observed_signal(
@@ -354,6 +361,11 @@ class DiscoveryResearchWorkflow:
             if opportunity.id == opportunity_id:
                 return opportunity
         raise ValueError("selected_opportunity_missing")
+
+    def _observation_is_present(self, observed_text: str, document_content: str) -> bool:
+        observed = re.sub(r"\s+", " ", observed_text).strip().casefold()
+        document = re.sub(r"\s+", " ", document_content).strip().casefold()
+        return bool(observed) and observed in document
 
     def _url_key(self, url: str) -> str:
         return url.strip().rstrip("/").casefold()
