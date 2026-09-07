@@ -13,23 +13,17 @@ from app.modules.knowledge.models import Entity, KnowledgeChunk, Source, SourceD
 
 ENTITY_LINKER_VERSION = "ce04-v1"
 
-_STRONG_AUTHORITY = {
-    "canonical",
-    "primary",
-    "official",
-    "artist_approved",
-}
-_HIGH_AUTHORITY = {
-    "institution",
-    "institutional",
-    "academic",
-    "high",
-}
-_NEUTRAL_AUTHORITY = {"secondary", "medium"}
-_LOW_AUTHORITY = {"low"}
-_LOW_BIAS = {"none", "low"}
-_MEDIUM_BIAS = {"medium"}
-_HIGH_BIAS = {"high"}
+_DEFAULT_AUTHORITY_TIERS = (
+    ("low",),
+    ("secondary", "medium"),
+    ("institution", "institutional", "academic", "high"),
+    ("canonical", "primary", "official", "artist_approved"),
+)
+_DEFAULT_COMMERCIAL_BIAS_TIERS = (
+    ("high",),
+    ("medium",),
+    ("none", "low"),
+)
 
 
 @dataclass(frozen=True)
@@ -49,12 +43,25 @@ class ChunkEntityLinkResult:
 
 
 @dataclass(frozen=True)
+class RetrievalRankingPolicy:
+    version: str = "ce04-v1"
+    authority_tiers: tuple[tuple[str, ...], ...] = _DEFAULT_AUTHORITY_TIERS
+    authority_unknown_rank: int = 2
+    commercial_bias_tiers: tuple[tuple[str, ...], ...] = _DEFAULT_COMMERCIAL_BIAS_TIERS
+    commercial_bias_unknown_rank: int = 2
+
+
+DEFAULT_RETRIEVAL_RANKING_POLICY = RetrievalRankingPolicy()
+
+
+@dataclass(frozen=True)
 class RetrievalRequest:
     project_id: UUID
     query: str
     locale: str | None = None
     limit: int = 10
     preferred_source_types: tuple[str, ...] = ()
+    ranking_policy: RetrievalRankingPolicy = DEFAULT_RETRIEVAL_RANKING_POLICY
 
 
 @dataclass(frozen=True)
@@ -305,28 +312,36 @@ def _stored_entity_ids(metadata: dict[str, object]) -> tuple[UUID, ...]:
     return tuple(output)
 
 
-def _authority_rank(value: str | None) -> int:
+def _tier_rank(
+    value: str | None,
+    *,
+    tiers: tuple[tuple[str, ...], ...],
+    unknown_rank: int,
+) -> int:
     normalized = normalize_retrieval_text(value or "")
-    if normalized in _STRONG_AUTHORITY:
-        return 4
-    if normalized in _HIGH_AUTHORITY:
-        return 3
-    if normalized in _LOW_AUTHORITY:
-        return 1
-    if normalized in _NEUTRAL_AUTHORITY or not normalized:
-        return 2
-    return 2
+    if not normalized:
+        return unknown_rank
+    for rank, tier in enumerate(tiers, start=1):
+        normalized_tier = {normalize_retrieval_text(item) for item in tier}
+        if normalized in normalized_tier:
+            return rank
+    return unknown_rank
 
 
-def _commercial_bias_rank(value: str | None) -> int:
-    normalized = normalize_retrieval_text(value or "")
-    if normalized in _LOW_BIAS:
-        return 3
-    if normalized in _HIGH_BIAS:
-        return 1
-    if normalized in _MEDIUM_BIAS or not normalized:
-        return 2
-    return 2
+def _authority_rank(value: str | None, *, policy: RetrievalRankingPolicy) -> int:
+    return _tier_rank(
+        value,
+        tiers=policy.authority_tiers,
+        unknown_rank=policy.authority_unknown_rank,
+    )
+
+
+def _commercial_bias_rank(value: str | None, *, policy: RetrievalRankingPolicy) -> int:
+    return _tier_rank(
+        value,
+        tiers=policy.commercial_bias_tiers,
+        unknown_rank=policy.commercial_bias_unknown_rank,
+    )
 
 
 def _ranking_reasons(
@@ -337,15 +352,17 @@ def _ranking_reasons(
     matched_entity_ids: tuple[UUID, ...],
     source: Source,
     preferred_source_types: set[str],
+    policy: RetrievalRankingPolicy,
 ) -> tuple[str, ...]:
-    reasons: list[str] = []
+    reasons: list[str] = [f"ranking_policy:{policy.version}"]
     if exact_phrase:
         reasons.append("exact_phrase")
     reasons.append(f"terms:{len(matched_terms)}/{query_term_count}")
     if matched_entity_ids:
         reasons.append(f"entities:{len(matched_entity_ids)}")
-    if source.source_type in preferred_source_types:
-        reasons.append(f"preferred_source_type:{source.source_type}")
+    normalized_source_type = normalize_retrieval_text(source.source_type)
+    if normalized_source_type in preferred_source_types:
+        reasons.append(f"preferred_source_type:{normalized_source_type}")
     if source.authority_hint:
         reasons.append(f"authority_hint:{source.authority_hint}")
     if source.commercial_bias:
@@ -408,9 +425,7 @@ async def retrieve_chunks(
         )
     )
     if request.locale is not None:
-        statement = statement.where(
-            or_(Source.locale == request.locale, Source.locale.is_(None))
-        )
+        statement = statement.where(or_(Source.locale == request.locale, Source.locale.is_(None)))
 
     rows = (await session.execute(statement)).all()
     preferred_source_types = {
@@ -459,6 +474,7 @@ async def retrieve_chunks(
                 matched_entity_ids=matched_entity_ids,
                 source=source,
                 preferred_source_types=preferred_source_types,
+                policy=request.ranking_policy,
             ),
         )
         ranked.append(
@@ -470,8 +486,14 @@ async def retrieve_chunks(
                 preferred_source_type_rank=(
                     1 if normalized_source_type in preferred_source_types else 0
                 ),
-                authority_rank=_authority_rank(source.authority_hint),
-                commercial_bias_rank=_commercial_bias_rank(source.commercial_bias),
+                authority_rank=_authority_rank(
+                    source.authority_hint,
+                    policy=request.ranking_policy,
+                ),
+                commercial_bias_rank=_commercial_bias_rank(
+                    source.commercial_bias,
+                    policy=request.ranking_policy,
+                ),
             )
         )
 
