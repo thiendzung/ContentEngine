@@ -26,6 +26,8 @@ At the end:
 
 ```text
 commit/push only when the task explicitly requires edits
+→ if a meaningful canonical state changes, update AI_context.MD in the same task
+→ temporary checks with no state change do not require an AI_context.MD update
 → confirm working tree clean
 → report START HEAD / END HEAD / evidence / blocker
 ```
@@ -138,20 +140,36 @@ ContentCase / ContentRun counts: unchanged
 PR-D gates = PASS
 T04.15–T04.17 = DONE
 PR #26 = CLOSED / MERGED / PASS
-PR-E = ACTIVE / DRAFT
+PR-E = ACTIVE / DRAFT / BLOCKED ON EVIDENCE QUALITY
+PR #28 = OPEN / DRAFT
+Current branch = ce04-evidence-research-evidence-set
 Current PR = CE04 PR-E — Evidence Research + Evidence Set
 Current implementation slice = T04.18–T04.23
 T04.18–T04.23 = ACTIVE / NOT DONE
 T04.24–T04.31 = NOT STARTED
-ContentExperiment: PLANNED
-ContentCase: not created in activation task
+Core Gate = PASS
+CI #340 = PASS
+Real Evidence Round 1 = PIPELINE PASS / EVIDENCE QUALITY FAIL / v1 draft rejected and unlocked
+Round 1 EvidenceSet = 2e423158-42af-4188-9954-90784b8cf37a / v1 / draft / DO NOT LOCK
+Real Evidence Round 2 = PIPELINE PASS / EVIDENCE QUALITY FAIL / BLOCKED
+Round 2 artifact SHA-256 = 8c6325822a22c01c76d5f07268b0722540f949e077dbff582b3eddf66ce13a81
+Round 2 EvidenceSet = e9c7f1b9-c812-4ca5-ba36-fdd8af99b8ec / v2 / draft / unlocked
+Round 2 relation counts = context_only 8 / supports 0 / contradicts 0 / qualifies 0
+Round 2 research_sufficient = false
+Round 2 stop reason = bounded_search_exhausted
+ContentExperiment = 0551da17-046a-4104-a506-9772680a6133 / PLANNED / PENDING
+ContentCase = 9ec6133b-5f14-46d0-9866-e3b049e537b5 / exactly one
+NeedHypothesis = 530bdd27-f008-4910-9b3b-df83e007cfa2 / PROPOSED
+ContentRun count = 2 / unchanged
+OriginalityPack = 8bc23d49-edd4-45c6-99eb-1673d61b4998 / 0 items
+Round 2 inspection log = docs/logs/2026-09-07-ce04-pr-e-round2-evidence-inspection.md
 PR-E branch: ce04-evidence-research-evidence-set
 PR-E base main: a52052adde3cf19889098013fd5065f86cab62fb
 PR-E start log: docs/logs/2026-09-07-ce04-pr-e-start.md
 PR-E architecture decision: docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md
 PR-E contract: Selected ContentOpportunity → create/reuse one legitimate ContentCase → Evidence Research → Claim → Evidence → contradiction/qualification → EvidenceSet lock/version → OriginalityPack
-No provider run in activation task
-Do not tick T04.18–T04.23 or begin T04.24+ before their respective gates pass
+Current next action = inspect Round 2 Evidence and diagnose source-selection vs classifier before any Round 3
+Do not call providers, run Round 3, lock v1/v2, change relations, tick T04.18–T04.23, or start T04.24+
 ```
 
 # PR-D locked contract
@@ -240,14 +258,17 @@ Architecture decision:
 10. DONE — PR #26 merged into main at `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
 11. DONE — post-merge closeout returned CE04 to a neutral checkpoint.
 12. DONE — PR-E activation sync updated canonical docs only.
-13. NEXT — MG CONTENT ENGINE reviews PR-E activation; do not run research/provider or create ContentCase in this activation task.
+13. DONE — PR-E real Evidence Round 1 produced v1 draft but evidence quality failed.
+14. DONE — PR-E real Evidence Round 2 produced v2 draft but evidence quality failed; no supports.
+15. DONE — Round 2 evidence inspection diagnosed source selection/classification/claim extraction/routing.
+16. NEXT — MG CONTENT ENGINE reviews Round 2 diagnosis; do not run Round 3 yet.
 ```
 
 # Remaining CE04
 
 ## PR-E — T04.18–T04.23
 
-Status: ACTIVE / DRAFT.
+Status: ACTIVE / DRAFT / BLOCKED ON EVIDENCE QUALITY.
 
 ```text
 Evidence Research
