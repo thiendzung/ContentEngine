@@ -259,13 +259,26 @@ chunker version và giới hạn được lưu trong metadata.
 Không âm thầm chia lại cùng SourceDocument bằng luật chunk khác.
 Muốn thay đổi luật phải có quá trình version/rebuild rõ ràng sau này.
 
+`metadata_json` có thể chứa derived entity-link metadata:
+
+- `entity_linker_version`
+- `entity_links`
+- `entity_link_conflicts`
+
+Entity-link metadata phải có version.
+
+Retrieval không được tin `entity_links` từ linker version không tương thích.
+
+Derived metadata không làm thay đổi SourceDocument truth/provenance.
+
 ### Entity
 
 - `id`
 - `project_id`
 - `entity_type`
 - `canonical_key`
-- `display_name`
+- `canonical_name`
+- `aliases_json`
 - `external_refs_json`
 - timestamps
 
@@ -278,6 +291,40 @@ Muốn thay đổi luật phải có quá trình version/rebuild rõ ràng sau n
 - `place`
 - `material`
 - `concept`
+
+Entity thuộc một project.
+
+Baseline entity linking dùng `canonical_name` + `aliases_json` đã normalize.
+
+Alias chỉ map đến đúng một Entity trong project mới được tự link.
+
+Alias mơ hồ:
+không tự chọn;
+ghi conflict;
+chờ bước xử lý rõ ràng hơn sau này.
+
+Entity link chỉ là metadata hỗ trợ retrieval.
+Nó không tự trở thành Claim, Evidence hay factual truth.
+
+### Knowledge Retrieval
+
+Retrieval V1:
+
+- luôn scope theo project;
+- có thể scope theo locale;
+- chỉ trả active KnowledgeChunk;
+- chỉ lấy SourceDocument version mới nhất của mỗi Source;
+- relevance được xét trước authority/bias;
+- exact phrase, matched terms và entity overlap là relevance signals;
+- source_type preference chỉ dùng khi caller yêu cầu rõ;
+- authority_hint là một dimension riêng;
+- commercial_bias là một dimension riêng;
+- search rank/position không phải authority;
+- không gộp mọi dimension thành một “authority score” tuyệt đối;
+- ranking policy phải explicit/versioned;
+- cùng input + cùng persisted state + cùng policy phải cho thứ tự ổn định.
+
+PR-B không thêm vector infrastructure.
 
 ### Claim
 
