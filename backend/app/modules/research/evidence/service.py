@@ -67,6 +67,7 @@ _STOPWORDS = {
     "would",
     "your",
 }
+_MARKDOWN_LINK_ONLY_RE = re.compile(r"^\[[^\]]+\]\(https?://[^)]+\)$")
 
 
 class EvidenceResearchWorkflow:
@@ -217,42 +218,83 @@ class EvidenceResearchWorkflow:
         topic_texts: tuple[str, ...],
         limit: int,
     ) -> list[ClaimCandidate]:
-        terms = self._topic_terms(topic_texts)
-        output: list[ClaimCandidate] = []
-        seen: set[str] = set()
+        terms = self._topic_terms((*topic_texts, production.request.query))
         sources = self._source_candidates_by_url(production)
+        buckets: list[list[ClaimCandidate]] = []
 
         for document in production.documents:
             source_url = document.final_url or document.url or document.requested_url
             if not source_url:
                 continue
             relation = self._automatic_relation(sources.get(self._url_key(source_url)))
-            canonical = canonicalize_markdown(document.content)
-            segments = re.split(r"(?<=[.!;])(?:\s+|\n+)|\n{2,}", canonical)
-            for index, raw_segment in enumerate(segments, start=1):
-                excerpt = re.sub(
-                    r"^(?:#{1,6}\s+|[-*+]\s+|>\s+)",
-                    "",
-                    raw_segment.strip(),
-                ).strip()
-                if not self._usable_statement(excerpt, terms):
-                    continue
-                fingerprint = self._normalize(excerpt)
-                if fingerprint in seen:
-                    continue
-                seen.add(fingerprint)
-                output.append(
+            bucket = self._document_claim_candidates(
+                content=document.content,
+                source_url=source_url,
+                relation=relation,
+                terms=terms,
+            )
+            if bucket:
+                buckets.append(bucket)
+
+        output: list[ClaimCandidate] = []
+        seen: set[tuple[str, str]] = set()
+        position = 0
+        while len(output) < limit and buckets:
+            next_buckets: list[list[ClaimCandidate]] = []
+            for bucket in buckets:
+                if position < len(bucket):
+                    candidate = bucket[position]
+                    key = (
+                        self._normalize(candidate.statement),
+                        self._url_key(candidate.source_url),
+                    )
+                    if key not in seen:
+                        seen.add(key)
+                        output.append(candidate)
+                        if len(output) >= limit:
+                            break
+                if position + 1 < len(bucket):
+                    next_buckets.append(bucket)
+            if len(output) >= limit:
+                break
+            position += 1
+            buckets = next_buckets
+        return output
+
+    def _document_claim_candidates(
+        self,
+        *,
+        content: str,
+        source_url: str,
+        relation: EvidenceRelation,
+        terms: set[str],
+    ) -> list[ClaimCandidate]:
+        canonical = canonicalize_markdown(content)
+        segments = re.split(r"(?<=[.!;])(?:\s+|\n+)|\n{2,}", canonical)
+        ranked: list[tuple[int, int, ClaimCandidate]] = []
+        for index, raw_segment in enumerate(segments, start=1):
+            excerpt = re.sub(
+                r"^(?:#{1,6}\s+|[-*+]\s+|>\s+)",
+                "",
+                raw_segment.strip(),
+            ).strip()
+            if not self._usable_statement(excerpt, terms):
+                continue
+            ranked.append(
+                (
+                    self._statement_score(excerpt, terms),
+                    index,
                     ClaimCandidate(
                         statement=excerpt,
                         source_url=source_url,
                         locator=f"document_sentence:{index}",
                         excerpt=excerpt,
                         relation=relation,
-                    )
+                    ),
                 )
-                if len(output) >= limit:
-                    return output
-        return output
+            )
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        return [candidate for _, _, candidate in ranked]
 
     def _source_candidates_by_url(
         self,
@@ -318,12 +360,26 @@ class EvidenceResearchWorkflow:
         if statement.endswith("?"):
             return False
         normalized = self._normalize(statement)
-        if normalized.startswith(("http://", "https://")):
+        if normalized.startswith(("http://", "https://", "skip to ")):
+            return False
+        if statement.startswith("![") or statement.startswith("[!["):
+            return False
+        if _MARKDOWN_LINK_ONLY_RE.fullmatch(statement):
+            return False
+        words = re.findall(r"[a-z0-9]+", normalized)
+        if len(words) < 8:
+            return False
+        if len(words) <= 16 and not re.search(r"[.!;:]$", statement):
             return False
         if not terms:
             return True
-        statement_terms = set(re.findall(r"[a-z0-9]+", normalized))
-        return bool(statement_terms.intersection(terms))
+        return bool(set(words).intersection(terms))
+
+    def _statement_score(self, statement: str, terms: set[str]) -> int:
+        words = re.findall(r"[a-z0-9]+", self._normalize(statement))
+        overlap = len(set(words).intersection(terms))
+        sentence_bonus = 3 if re.search(r"[.!;:]$", statement) else 0
+        return overlap * 10 + sentence_bonus + min(len(words), 40)
 
     def _normalize(self, value: str) -> str:
         return re.sub(r"\s+", " ", value).strip().casefold()
