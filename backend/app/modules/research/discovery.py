@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.research.contracts import (
     CommercialBias,
+    PageDocument,
     ProductionResearchRequest,
     ProductionResearchResult,
     ProviderDecisionStatus,
@@ -329,8 +330,8 @@ class DiscoveryResearchWorkflow:
     def _readable_document_urls(
         self,
         production: ProductionResearchResult,
-    ) -> dict[str, object]:
-        readable: dict[str, object] = {}
+    ) -> dict[str, PageDocument]:
+        readable: dict[str, PageDocument] = {}
         for document in production.documents:
             for url in (document.url, document.requested_url, document.final_url):
                 if url:
