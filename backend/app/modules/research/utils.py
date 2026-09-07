@@ -11,15 +11,15 @@ from app.modules.research.contracts import (
     SourceRelation,
 )
 
-_INSTITUTIONAL_HINTS = (
-    ".edu",
-    ".gov",
+_INSTITUTIONAL_HOST_HINTS = (
     "museum",
     "university",
     "institute",
     "institution",
     "foundation",
     "archive",
+    "association",
+    "society",
 )
 _COMMERCIAL_HINTS = (
     "/shop",
@@ -138,16 +138,24 @@ def annotate_source(
     parent_url: str | None = None,
 ) -> SourceCandidate:
     parsed = urlparse(url)
-    haystack = f"{parsed.hostname or ''} {parsed.path} {title}".lower()
-
     hostname = (parsed.hostname or "").lower().removeprefix("www.")
-    if any(hint in haystack for hint in _INSTITUTIONAL_HINTS):
+    commercial_haystack = f"{hostname} {parsed.path} {title}".lower()
+
+    strong_institutional = hostname.endswith(".edu") or hostname.endswith(".gov")
+    named_institutional = any(hint in hostname for hint in _INSTITUTIONAL_HOST_HINTS)
+
+    if strong_institutional:
         source_type = "institutional"
         bias = CommercialBias.LOW
         intended_use = IntendedUse.EVIDENCE_CANDIDATE
+        why = "Public/academic institutional domain candidate; verify claim-level authority."
+    elif named_institutional:
+        source_type = "institutional"
+        bias = CommercialBias.UNKNOWN
+        intended_use = IntendedUse.EVIDENCE_CANDIDATE
         why = (
-            "Institutional/primary-looking source candidate; "
-            "verify claim-level authority before use."
+            "Institutional-looking domain candidate; domain name alone does not prove authority "
+            "or low commercial bias."
         )
     elif hostname in {"reddit.com", "facebook.com", "tripadvisor.com"} or hostname.endswith(
         ".reddit.com"
@@ -161,7 +169,7 @@ def annotate_source(
         bias = CommercialBias.MEDIUM
         intended_use = IntendedUse.DISCOVERY
         why = "Editorial art source; useful for discovery/context, verify claim-level authority."
-    elif any(hint in haystack for hint in _COMMERCIAL_HINTS):
+    elif any(hint in commercial_haystack for hint in _COMMERCIAL_HINTS):
         source_type = "commercial"
         bias = CommercialBias.HIGH
         intended_use = IntendedUse.CONTEXT_ONLY
