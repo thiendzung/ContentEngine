@@ -422,8 +422,14 @@ class ResearchRouter:
         transient_usage: _TransientUsage,
     ) -> str | None:
         assert self._reader is not None
-        limit = min(result.request.max_pages_to_read, len(result.selected_sources))
-        for source in result.selected_sources[:limit]:
+        target_successes = min(
+            result.request.max_pages_to_read,
+            len(result.selected_sources),
+        )
+        successful_reads = 0
+        for source in result.selected_sources:
+            if successful_reads >= target_successes:
+                break
             try:
                 await self._enforce_next_tool_budget(
                     session,
@@ -488,6 +494,10 @@ class ResearchRouter:
                     reason=f"selected_url:{source.url}",
                 )
             )
+            successful_reads += 1
+
+        if target_successes > 0 and successful_reads < target_successes:
+            return "jina_candidates_exhausted"
         return None
 
     async def _enforce_next_tool_budget(
@@ -575,8 +585,8 @@ class ResearchRouter:
     def _selected_source_limit(self, request: ProductionResearchRequest) -> int:
         max_sources = self._budget_limits.max_research_sources
         if max_sources is None:
-            return max(request.max_pages_to_read, 1)
-        return max(1, min(max_sources, max(request.max_pages_to_read, 1)))
+            return request.limit
+        return max(1, min(max_sources, request.limit))
 
     def _select_sources(self, result: ProductionResearchResult) -> list[SourceCandidate]:
         limit = self._selected_source_limit(result.request)
