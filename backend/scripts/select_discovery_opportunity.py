@@ -11,6 +11,7 @@ if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import SessionLocal
 from app.modules.content_engine.models import ContentCase, NeedHypothesis
@@ -34,8 +35,13 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-async def _count_rows(session: object, model: type[object]) -> int:
-    scalar = await session.scalar(select(func.count()).select_from(model))  # type: ignore[attr-defined]
+async def _count_content_cases(session: AsyncSession) -> int:
+    scalar = await session.scalar(select(func.count(ContentCase.id)))
+    return int(scalar or 0)
+
+
+async def _count_content_runs(session: AsyncSession) -> int:
+    scalar = await session.scalar(select(func.count(ContentRun.id)))
     return int(scalar or 0)
 
 
@@ -58,8 +64,8 @@ async def _run(args: argparse.Namespace) -> None:
     )
 
     async with SessionLocal() as session:
-        content_cases_before = await _count_rows(session, ContentCase)
-        content_runs_before = await _count_rows(session, ContentRun)
+        content_cases_before = await _count_content_cases(session)
+        content_runs_before = await _count_content_runs(session)
 
         selection_refs = await persist_discovery_selection(
             session,
@@ -75,8 +81,8 @@ async def _run(args: argparse.Namespace) -> None:
         if hypothesis.status != "PROPOSED":
             raise RuntimeError("human_selection_must_not_promote_need_hypothesis")
 
-        content_cases_after = await _count_rows(session, ContentCase)
-        content_runs_after = await _count_rows(session, ContentRun)
+        content_cases_after = await _count_content_cases(session)
+        content_runs_after = await _count_content_runs(session)
         if content_cases_after != content_cases_before:
             raise RuntimeError("human_selection_must_not_create_content_case")
         if content_runs_after != content_runs_before:
