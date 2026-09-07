@@ -4,6 +4,7 @@ import hashlib
 import json
 from dataclasses import asdict
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -14,6 +15,8 @@ from app.modules.harness.models import Artifact, StepRun
 
 if TYPE_CHECKING:
     from app.modules.research.discovery.service import DiscoveryWorkflowResult
+
+DISCOVERY_ARTIFACT_SCHEMA_VERSION = 1
 
 
 def _json_default(value: object) -> str:
@@ -28,13 +31,34 @@ def discovery_workflow_payload(result: DiscoveryWorkflowResult) -> dict[str, obj
     """Return a bounded JSON-safe Discovery artifact payload."""
 
     raw = asdict(result)
-    # Round-trip through JSON so nested Enum/UUID values are normalized before DB write.
+    raw["schema_version"] = DISCOVERY_ARTIFACT_SCHEMA_VERSION
+    # Round-trip through JSON so nested Enum/UUID values are normalized before storage.
     payload = json.loads(
         json.dumps(raw, ensure_ascii=False, sort_keys=True, default=_json_default)
     )
     if not isinstance(payload, dict):
         raise TypeError("discovery_artifact_payload_must_be_object")
     return payload
+
+
+def discovery_workflow_json(result: DiscoveryWorkflowResult) -> str:
+    return json.dumps(
+        discovery_workflow_payload(result),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+
+
+def write_discovery_workflow_artifact(
+    result: DiscoveryWorkflowResult,
+    path: Path,
+) -> Path:
+    """Write the pre-ContentCase real-gate artifact without inventing a ContentRun."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(discovery_workflow_json(result), encoding="utf-8")
+    return path
 
 
 def _payload_hash(payload: dict[str, object]) -> str:
