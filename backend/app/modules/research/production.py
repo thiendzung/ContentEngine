@@ -32,6 +32,7 @@ from app.modules.research.contracts import (
     ResearchDepth,
     ResearchSignalKind,
     SearchRequest,
+    SourceCandidate,
     SourceRelation,
 )
 from app.modules.research.providers.base import PageReader, ResearchProviderError, SearchProvider
@@ -73,18 +74,16 @@ class ProductionSufficiencyPolicy:
         )
 
     def request_is_sufficient(self, result: ProductionResearchResult) -> bool:
-        """Apply purpose-specific sufficiency on top of generic source coverage."""
+        """Apply purpose-specific sufficiency instead of one generic search threshold."""
 
-        if not self.external_is_sufficient(result):
-            return False
         parent_url = result.request.parent_url
-        if parent_url is None:
-            return True
-        return any(
-            source.relation is SourceRelation.SECOND_HOP
-            and source.parent_url == parent_url
-            for source in dedupe_sources(result.source_candidates)
-        )
+        if parent_url is not None:
+            return any(
+                source.relation is SourceRelation.SECOND_HOP
+                and source.parent_url == parent_url
+                for source in dedupe_sources(result.source_candidates)
+            )
+        return self.external_is_sufficient(result)
 
 
 @dataclass(slots=True)
@@ -133,7 +132,8 @@ class ResearchRouter:
         transient_usage = _TransientUsage()
 
         await self._load_internal_knowledge(session, result)
-        if self._sufficiency.internal_is_sufficient(result.internal_hits):
+        internal_sufficient = self._sufficiency.internal_is_sufficient(result.internal_hits)
+        if internal_sufficient and normalized_request.parent_url is None:
             result.sufficient = True
             result.stop_reason = "internal_knowledge_sufficient"
             result.decisions.append(
@@ -146,11 +146,16 @@ class ResearchRouter:
             self._mark_external_skipped(result, "internal_knowledge_sufficient")
             return result
 
+        internal_reason = (
+            "internal_context_available_but_second_hop_requires_external"
+            if internal_sufficient and normalized_request.parent_url is not None
+            else "insufficient_for_request_external_search_required"
+        )
         result.decisions.append(
             ProviderDecision(
                 provider="internal_knowledge",
                 status=ProviderDecisionStatus.CALLED,
-                reason="insufficient_for_request_external_search_required",
+                reason=internal_reason,
             )
         )
 
@@ -201,10 +206,7 @@ class ResearchRouter:
             )
 
         result.source_candidates = dedupe_sources(result.source_candidates)
-        result.selected_sources = choose_sources(
-            result.source_candidates,
-            self._selected_source_limit(normalized_request),
-        )
+        result.selected_sources = self._select_sources(result)
 
         read_stop_reason: str | None = None
         if self._reader is not None and normalized_request.max_pages_to_read > 0:
@@ -575,6 +577,31 @@ class ResearchRouter:
         if max_sources is None:
             return max(request.max_pages_to_read, 1)
         return max(1, min(max_sources, max(request.max_pages_to_read, 1)))
+
+    def _select_sources(self, result: ProductionResearchResult) -> list[SourceCandidate]:
+        limit = self._selected_source_limit(result.request)
+        parent_url = result.request.parent_url
+        if parent_url is None:
+            return choose_sources(result.source_candidates, limit)
+
+        second_hop = [
+            source
+            for source in result.source_candidates
+            if source.relation is SourceRelation.SECOND_HOP
+            and source.parent_url == parent_url
+        ]
+        selected = choose_sources(second_hop, limit)
+        if len(selected) >= limit:
+            return selected
+
+        selected_urls = {source.url.rstrip("/").lower() for source in selected}
+        remaining = [
+            source
+            for source in result.source_candidates
+            if source.url.rstrip("/").lower() not in selected_urls
+        ]
+        selected.extend(choose_sources(remaining, limit - len(selected)))
+        return selected
 
     def _mark_search_fallbacks_skipped(
         self,
