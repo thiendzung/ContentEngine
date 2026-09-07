@@ -221,11 +221,36 @@ Human review of both exact readable excerpts:
 The MCI source produced no direct O4 support. The existing v1–v7 EvidenceSets remain
 draft/unlocked; no relation was manually changed, and no curation or lock occurred.
 
+# MCI SourceDocument inspection
+
+```text
+Inspection HEAD: 6cd23ed3d942de39fa24579d90edeb2e4d6da818
+Provider calls: 0
+SourceDocument: f77b9e62-42c5-5a06-aa8b-6505ef3b6b3a / https://mci.si.edu/artifact-appraisals
+content_chars: 8497 / segments: 1 / keyword_hits: 1
+Diagnosis: EXTRACTOR_MISS
+Direct O4 support passages found in stored content: 1
+Claim/Evidence/EvidenceSet created: 0
+Database mutation: 0
+```
+
+The oversized `SEGMENT 1` contains direct O4 body prose: artwork values are not fixed,
+asking/offered prices depend on seller and purchaser interests and market trends, and
+current ranges can be checked against sales and auctions. Exact reviewed excerpt:
+
+> Prices asked and amounts offered are determined by personal interests of both the seller and the purchaser and by the trends in the market.
+
+This is `DIRECT_O4_SUPPORT` at SourceDocument inspection level. Directory, contact,
+service-description, disclaimer, and bibliography material in the same segment remains
+`WEAK/OFF_SCOPE`. The reader stored the relevant prose; automatic extraction missed it.
+
 # Current next action
 
-Do not rerun MCI, read another URL, curate, or lock an EvidenceSet. MG CONTENT ENGINE
-must review the failed direct-source result. The combined Gate remains below `2 useful
-supports / 2 suitable independent domains`.
+Do not rerun MCI or read another URL. MG CONTENT ENGINE may review the exact direct prose
+and decide whether to persist it as reviewed Evidence. Do not curate or lock an EvidenceSet
+in this inspection task; v1–v7 remain draft/unlocked.
+
+Current inspection result: `EXTRACTOR_MISS`.
 
 # Global rules
 
