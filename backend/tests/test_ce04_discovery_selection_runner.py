@@ -63,7 +63,9 @@ def _artifact_payload() -> tuple[dict[str, object], str]:
                     "motgu_material_refs": [],
                     "material_gaps": ["Approved MOTGU material is still required."],
                     "existing_content_refs": [],
-                    "what_is_actually_new": "Keep as a research candidate until MOTGU material is attached.",
+                    "what_is_actually_new": (
+                        "Keep as a research candidate until MOTGU material is attached."
+                    ),
                     "next_discovery_step": "Relevant Artwork / Artist",
                     "decision": "CREATE",
                     "priority": "LATER",
