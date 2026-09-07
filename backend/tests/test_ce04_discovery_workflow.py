@@ -35,6 +35,7 @@ SEED = "First-time art buyer worries about choosing the wrong painting."
 REDDIT = "https://www.reddit.com/r/artcollecting/comments/example"
 COMMERCIAL = "https://gallery.example/shop/first-painting"
 INSTITUTIONAL = "https://museum.example/collecting-guide"
+MARKET_TEXT = "I was nervous about overspending on my first painting."
 
 
 class FakeRouter:
@@ -220,7 +221,7 @@ async def test_unreadable_market_observation_becomes_gap_not_market_signal() -> 
             market_observations=(
                 MarketObservation(
                     source_url=REDDIT,
-                    observed_text="I was nervous about overspending on my first painting.",
+                    observed_text=MARKET_TEXT,
                     locator="comment:abc",
                 ),
             ),
@@ -244,7 +245,7 @@ async def test_readable_market_observation_requires_locator_and_preserves_proven
         requested_url=REDDIT,
         final_url=REDDIT,
         title="Community thread",
-        content="Readable community content.",
+        content=f"Readable community content. {MARKET_TEXT}",
     )
     result = _result(
         request,
@@ -272,7 +273,7 @@ async def test_readable_market_observation_requires_locator_and_preserves_proven
             market_observations=(
                 MarketObservation(
                     source_url=REDDIT,
-                    observed_text="I was nervous about overspending on my first painting.",
+                    observed_text=MARKET_TEXT,
                     locator="comment:abc",
                     external_id="reddit:abc",
                 ),
@@ -300,7 +301,7 @@ async def test_readable_market_observation_requires_locator_and_preserves_proven
                 market_observations=(
                     MarketObservation(
                         source_url=REDDIT,
-                        observed_text="Observation",
+                        observed_text=MARKET_TEXT,
                         locator="",
                     ),
                 ),
@@ -309,12 +310,50 @@ async def test_readable_market_observation_requires_locator_and_preserves_proven
 
 
 @pytest.mark.asyncio
+async def test_market_observation_text_must_exist_in_read_document() -> None:
+    request = _research_request()
+    result = _result(
+        request,
+        signals=[_question_signal("How much should I spend on my first painting?")],
+        documents=[
+            PageDocument(
+                provider="jina",
+                url=REDDIT,
+                content="A readable thread that does not contain the proposed observation.",
+            )
+        ],
+    )
+    workflow, _ = _workflow(result)
+
+    discovery = await workflow.run(
+        cast(AsyncSession, object()),
+        request=DiscoveryWorkflowRequest(
+            research=request,
+            opportunity=_opportunity_request(),
+            market_observations=(
+                MarketObservation(
+                    source_url=REDDIT,
+                    observed_text=MARKET_TEXT,
+                    locator="comment:abc",
+                ),
+            ),
+        ),
+    )
+
+    assert not any(
+        item.source_kind is SignalSourceKind.MARKET
+        for item in discovery.opportunity_map.signals
+    )
+    assert any("text was not found" in gap for gap in discovery.research_gaps)
+
+
+@pytest.mark.asyncio
 async def test_duplicate_market_observations_do_not_count_as_independent_support() -> None:
     request = _research_request()
     second_url = f"{REDDIT}/duplicate"
     documents = [
-        PageDocument(provider="jina", url=REDDIT, content="A"),
-        PageDocument(provider="jina", url=second_url, content="B"),
+        PageDocument(provider="jina", url=REDDIT, content=MARKET_TEXT),
+        PageDocument(provider="jina", url=second_url, content=MARKET_TEXT),
     ]
     sources = [
         _source(
@@ -335,7 +374,6 @@ async def test_duplicate_market_observations_do_not_count_as_independent_support
         documents=documents,
     )
     workflow, _ = _workflow(result)
-    repeated = "I was nervous about overspending on my first painting."
 
     discovery = await workflow.run(
         cast(AsyncSession, object()),
@@ -345,12 +383,12 @@ async def test_duplicate_market_observations_do_not_count_as_independent_support
             market_observations=(
                 MarketObservation(
                     source_url=REDDIT,
-                    observed_text=repeated,
+                    observed_text=MARKET_TEXT,
                     locator="comment:a",
                 ),
                 MarketObservation(
                     source_url=second_url,
-                    observed_text=repeated,
+                    observed_text=MARKET_TEXT,
                     locator="comment:b",
                 ),
             ),
