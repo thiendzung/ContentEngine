@@ -208,15 +208,19 @@ Status: **CLOSED / PASS**.
 - PR-A = CLOSED / MERGED / PASS.
 - PR-B = CLOSED / MERGED / PASS.
 - PR-C = CLOSED / MERGED / PASS.
-- PR-D = READY FOR REVIEW / PASS.
-- Current PR = `#26 — CE04 PR-D — Discovery Research + Opportunity Handoff` (DRAFT; waiting for final-head CI / MG CONTENT ENGINE Ready-for-Review transition).
-- Current implementation slice = `T04.15–T04.17 COMPLETE`.
+- PR-D = CLOSED / MERGED / PASS.
+- PR #26 merge commit = `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
+- Current PR = none.
+- Current implementation slice = `none — neutral checkpoint after PR-D`.
+- PR-E = PLANNED / NOT STARTED.
 
-PR-D finalization record:
+PR-D post-merge closeout record:
 
-- Branch: `ce04-discovery-opportunity-handoff`.
-- Base: `cff0926280d053bbb41d87be9b50db69eef2384d`.
-- PR: `#26` remains DRAFT.
+- Merged branch: `ce04-discovery-opportunity-handoff`.
+- Closeout branch: `ops-ce04-pr-d-closeout`.
+- Base main: `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
+- PR #26: CLOSED / MERGED / PASS.
+- Merge commit: `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
 - Evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`.
 - Real Discovery Gate = PASS; founder selection = O4 / `opp_4c397247e40db8ae`; HumanSelection persistence = PASS; ContentExperiment draft persistence = PASS; idempotency = PASS; providers called during selection = 0; NeedHypothesis = `PROPOSED`; ContentCase and ContentRun counts unchanged.
 - T04.1–T04.17 = DONE.
@@ -257,7 +261,7 @@ PR-D finalization record:
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
-PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. See the five PR-D evidence logs listed in the finalization record above.
+PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. PR #26 merged with commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. Current PR is none; PR-E is PLANNED / NOT STARTED. See the five PR-D evidence logs listed in the post-merge closeout record above.
 
 ---
 
