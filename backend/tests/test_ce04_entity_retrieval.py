@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
 from app.modules.content_engine.models import Project
-from app.modules.knowledge.ingest import ingest_source_document, register_source
+from app.modules.knowledge.ingest import (
+    DocumentIngestResult,
+    ingest_source_document,
+    register_source,
+)
 from app.modules.knowledge.models import Entity, Source
 from app.modules.knowledge.retrieval import (
     ENTITY_LINKER_VERSION,
@@ -44,7 +48,7 @@ async def add_source_document(
     authority_hint: str | None = None,
     commercial_bias: str | None = None,
     metadata_json: dict[str, object] | None = None,
-) -> tuple[Source, object]:
+) -> tuple[Source, DocumentIngestResult]:
     source_ref = f"ce04-pr-b:{uuid4()}"
     source = (
         await register_source(
@@ -211,16 +215,16 @@ async def test_retrieval_uses_latest_document_and_ignores_search_rank_for_author
         )
         assert stale_v2.document.document_version == 2
 
-        hits = await retrieve_chunks(
-            session,
-            request=RetrievalRequest(
-                project_id=project.id,
-                query="original art hanoi",
-                locale="en",
-                limit=10,
-            ),
+        request = RetrievalRequest(
+            project_id=project.id,
+            query="original art hanoi",
+            locale="en",
+            limit=10,
         )
+        hits = await retrieve_chunks(session, request=request)
+        repeated_hits = await retrieve_chunks(session, request=request)
 
+        assert [hit.chunk_id for hit in repeated_hits] == [hit.chunk_id for hit in hits]
         assert [hit.source_id for hit in hits[:2]] == [primary_source.id, low_source.id]
         assert stale_source.id not in {hit.source_id for hit in hits}
         assert stale_v1.document.id != stale_v2.document.id
