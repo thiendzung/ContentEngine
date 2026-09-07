@@ -168,18 +168,22 @@ Unique recommendation: `(content_item_id, version_no)`.
 
 ### Source
 
-Đại diện nguồn dữ liệu gốc.
+Đại diện danh tính ổn định của nguồn dữ liệu gốc.
 
 - `id`
 - `project_id`
 - `source_type`
-- `authority_level`
-- `title`
-- `external_id` nullable
+- `title` nullable
+- `publisher` nullable
+- `author` nullable
 - `canonical_url` nullable
+- `locator` nullable
 - `locale` nullable
-- `content_hash`
-- `fetched_at` nullable
+- `commercial_bias` nullable
+- `authority_hint` nullable
+- `provenance_json`
+- `captured_at`
+- `fingerprint`
 - timestamps
 
 `source_type` ví dụ:
@@ -192,6 +196,21 @@ Unique recommendation: `(content_item_id, version_no)`.
 - `research_api`
 - `media`
 
+Source là danh tính ổn định của nguồn, không phải snapshot nội dung.
+
+Trong một project:
+`(project_id, fingerprint)` phải duy nhất.
+
+Fingerprint được tạo từ locator ổn định:
+`canonical_url`
+hoặc `locator`
+hoặc provenance `source_ref`.
+
+Search rank không phải authority.
+`authority_hint` chỉ là metadata hỗ trợ đánh giá.
+
+Hash nội dung và thời điểm đọc thuộc `SourceDocument`, không thuộc `Source`.
+
 ### SourceDocument
 
 Canonical representation sau ingest.
@@ -199,13 +218,25 @@ Canonical representation sau ingest.
 - `id`
 - `source_id`
 - `document_version`
+- `canonical_url` nullable
+- `fetched_at`
+- `content_hash`
 - `content_markdown`
 - `metadata_json`
-- `content_hash`
+- `reader` nullable
+- `provider` nullable
 - `supersedes_id` nullable
 - timestamps
 
-Không overwrite lịch sử version quan trọng nếu source thay đổi.
+Nội dung được canonicalize trước khi hash.
+
+Cùng Source + cùng `content_hash`:
+không tạo `SourceDocument` mới.
+
+Nội dung thay đổi:
+tạo `document_version` mới;
+giữ version cũ;
+`supersedes_id` trỏ về version trước khi có.
 
 ### KnowledgeChunk
 
@@ -217,6 +248,16 @@ Không overwrite lịch sử version quan trọng nếu source thay đổi.
 - `fingerprint`
 - `status`
 - `metadata_json`
+
+ID deterministic từ:
+`source_document_id + ordinal + text`.
+
+Chunk phải có giới hạn rõ.
+
+chunker version và giới hạn được lưu trong metadata.
+
+Không âm thầm chia lại cùng SourceDocument bằng luật chunk khác.
+Muốn thay đổi luật phải có quá trình version/rebuild rõ ràng sau này.
 
 ### Entity
 
