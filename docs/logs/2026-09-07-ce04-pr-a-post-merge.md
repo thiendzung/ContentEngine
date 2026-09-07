@@ -95,3 +95,8 @@ NEXT = CE04 PR-B planning only; not started
 ## Scope of closeout
 
 Docs/status only. No runtime, migration, test, provider or CE04 PR-B implementation belongs in this closeout.
+
+## Branch cleanup
+
+PR-A local branch = absent
+PR-A remote branch = absent

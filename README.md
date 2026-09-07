@@ -211,7 +211,8 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE03 PR-D — Outbox + Reconciliation + Restart/Resume`: CLOSED / MERGED / PASS.
 - `CE03 PR-E — Replay/Eval + CE03 Closeout`: CLOSED / MERGED / PASS.
 - `CE04 — Knowledge + Production Research`: ACTIVE.
-- `CE04 PR-A — Source Ingest + Dedupe + Chunking`: ACTIVE.
-- Current PR: `CE04 PR-A — Source Ingest + Dedupe + Chunking`.
+- `CE04 PR-A — Source Ingest + Dedupe + Chunking`: CLOSED / MERGED / PASS.
+- Current PR: none.
+- Next planned slice: `CE04 PR-B — Entity Linking + Retrieval + Authority Ranking` — NOT STARTED.
 
 CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS; CE04 bắt đầu với Source Ingest, Dedupe và Chunking.
