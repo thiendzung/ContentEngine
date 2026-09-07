@@ -7,15 +7,19 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.models import ContentExperiment as DBContentExperiment
 from app.modules.content_engine.models import (
-    ContentExperiment as DBContentExperiment,
     ContentOpportunity as DBContentOpportunity,
-    ContentOpportunitySignal,
-    HumanSelection as DBHumanSelection,
-    NeedHypothesis as DBNeedHypothesis,
-    NeedHypothesisSignal,
-    Signal as DBSignal,
 )
+from app.modules.content_engine.models import (
+    ContentOpportunitySignal,
+    NeedHypothesisSignal,
+)
+from app.modules.content_engine.models import HumanSelection as DBHumanSelection
+from app.modules.content_engine.models import (
+    NeedHypothesis as DBNeedHypothesis,
+)
+from app.modules.content_engine.models import Signal as DBSignal
 from app.modules.research.keyword_plan.contracts import OpportunityMapResult, Signal
 
 
