@@ -40,17 +40,14 @@ def _signal_provenance(signal: Signal) -> dict[str, object]:
     return provenance
 
 
-async def _persist_signals(
+async def _find_existing_signal(
     session: AsyncSession,
     *,
     project_id: UUID,
-    result: OpportunityMapResult,
-) -> dict[str, UUID]:
-    signal_ids: dict[str, UUID] = {}
-    rows_by_planning_id: dict[str, DBSignal] = {}
-
-    for signal in result.signals:
-        existing = (
+    signal: Signal,
+) -> DBSignal | None:
+    candidates = tuple(
+        (
             await session.execute(
                 select(DBSignal)
                 .where(
@@ -62,9 +59,49 @@ async def _persist_signals(
                     DBSignal.observed_text == signal.observed_text,
                 )
                 .order_by(DBSignal.created_at.asc(), DBSignal.id.asc())
-                .limit(1)
             )
-        ).scalar_one_or_none()
+        )
+        .scalars()
+        .all()
+    )
+    desired = _signal_provenance(signal)
+    for row in candidates:
+        provenance = row.provenance_json or {}
+        if provenance.get("planning_signal_id") == signal.id:
+            return row
+
+    # Backward-compatible fallback for an older row created before planning_signal_id
+    # existed. Exact source + provider/method/locator identity is required so reposts
+    # with the same text remain separate observations.
+    for row in candidates:
+        provenance = row.provenance_json or {}
+        if (
+            row.source_url == signal.source_url
+            and row.external_id == signal.external_id
+            and provenance.get("provider") == desired.get("provider")
+            and provenance.get("method") == desired.get("method")
+            and provenance.get("source_ref") == desired.get("source_ref")
+            and provenance.get("locator") == desired.get("locator")
+        ):
+            return row
+    return None
+
+
+async def _persist_signals(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    result: OpportunityMapResult,
+) -> dict[str, UUID]:
+    signal_ids: dict[str, UUID] = {}
+    rows_by_planning_id: dict[str, DBSignal] = {}
+
+    for signal in result.signals:
+        existing = await _find_existing_signal(
+            session,
+            project_id=project_id,
+            signal=signal,
+        )
         if existing is None:
             existing = DBSignal(
                 project_id=project_id,
@@ -87,6 +124,11 @@ async def _persist_signals(
             )
             session.add(existing)
             await session.flush()
+        elif existing.provenance_json.get("planning_signal_id") is None:
+            provenance = dict(existing.provenance_json)
+            provenance["planning_signal_id"] = signal.id
+            existing.provenance_json = provenance
+
         signal_ids[signal.id] = existing.id
         rows_by_planning_id[signal.id] = existing
 
