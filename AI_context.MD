@@ -49,7 +49,8 @@ T04.24: DONE
 T04.25: DONE
 T04.26: DONE
 T04.27: DONE
-T04.28–T04.35: NOT STARTED
+T04.28: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.29–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -463,6 +464,27 @@ T04.26: DONE
 T04.27: DONE
 T04.28–T04.35: NOT STARTED
 Next action: T04.28 memory gap/create-update-refresh recommendation
+```
+
+# PR-F T04.28 memory gap implementation checkpoint
+
+T04.28 has an implementation checkpoint but remains NOT DONE; the real O4 memory-gap
+gate has not been run.
+
+```text
+Implementation: backend/app/modules/content_engine/memory_gap.py
+CLI: backend/scripts/check_memory_gap.py
+Tests: backend/tests/test_memory_gap_recommendation.py
+Contract: read-only report; no DB model or migration; provider/model/vector calls=0
+Matching: explicit ContentItem UUID refs plus exact project/NeedHypothesis/locale/primary-intent joins
+Recommendations: CREATE, UPDATE or explicit-refresh-before REFRESH; multiple targets require human review
+Invalid explicit refs: unresolved refs remain visible; project/locale mismatches are rejected
+Planning decision: ContentOpportunity.decision is never mutated; mismatches are reported
+Focused tests: 22 passed
+T04.24–T04.27: DONE
+T04.28: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.29–T04.35: NOT STARTED
+Next action: run the separate real O4 memory-gap gate after review
 ```
 
 # Curated EvidenceSet v8 checkpoint
