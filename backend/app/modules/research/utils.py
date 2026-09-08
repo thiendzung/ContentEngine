@@ -11,16 +11,6 @@ from app.modules.research.contracts import (
     SourceRelation,
 )
 
-_INSTITUTIONAL_HINTS = (
-    ".edu",
-    ".gov",
-    "museum",
-    "university",
-    "institute",
-    "institution",
-    "foundation",
-    "archive",
-)
 _COMMERCIAL_HINTS = (
     "/shop",
     "/store",
@@ -138,17 +128,16 @@ def annotate_source(
     parent_url: str | None = None,
 ) -> SourceCandidate:
     parsed = urlparse(url)
-    haystack = f"{parsed.hostname or ''} {parsed.path} {title}".lower()
-
     hostname = (parsed.hostname or "").lower().removeprefix("www.")
-    if any(hint in haystack for hint in _INSTITUTIONAL_HINTS):
+    commercial_haystack = f"{hostname} {parsed.path} {title}".lower()
+
+    strong_institutional = hostname.endswith(".edu") or hostname.endswith(".gov")
+
+    if strong_institutional:
         source_type = "institutional"
         bias = CommercialBias.LOW
         intended_use = IntendedUse.EVIDENCE_CANDIDATE
-        why = (
-            "Institutional/primary-looking source candidate; "
-            "verify claim-level authority before use."
-        )
+        why = "Public/academic institutional domain candidate; verify claim-level authority."
     elif hostname in {"reddit.com", "facebook.com", "tripadvisor.com"} or hostname.endswith(
         ".reddit.com"
     ):
@@ -161,7 +150,7 @@ def annotate_source(
         bias = CommercialBias.MEDIUM
         intended_use = IntendedUse.DISCOVERY
         why = "Editorial art source; useful for discovery/context, verify claim-level authority."
-    elif any(hint in haystack for hint in _COMMERCIAL_HINTS):
+    elif any(hint in commercial_haystack for hint in _COMMERCIAL_HINTS):
         source_type = "commercial"
         bias = CommercialBias.HIGH
         intended_use = IntendedUse.CONTEXT_ONLY
@@ -225,7 +214,13 @@ def dedupe_sources(sources: Iterable[SourceCandidate]) -> list[SourceCandidate]:
     return result
 
 
+def _source_host_key(source: SourceCandidate) -> str:
+    return (urlparse(source.url).hostname or source.url).lower().removeprefix("www.")
+
+
 def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[SourceCandidate]:
+    if limit <= 0:
+        return []
     unique = dedupe_sources(sources)
     bias_order = {
         CommercialBias.LOW: 0,
@@ -242,14 +237,34 @@ def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[Sourc
         "commercial": 5,
         "unknown": 6,
     }
-    # Python's sort is stable: preserve provider relevance/order within each bias bucket.
+    # Python's sort is stable: preserve provider relevance/order within each quality bucket.
     unique.sort(
         key=lambda source: (
             source_type_order.get(source.source_type, 6),
             bias_order[source.commercial_bias],
         )
     )
-    return unique[:limit]
+
+    # First pass favors independent domains. A second pass fills any remaining capacity
+    # without hiding useful same-domain candidates when the result set is small.
+    selected: list[SourceCandidate] = []
+    deferred: list[SourceCandidate] = []
+    selected_hosts: set[str] = set()
+    for source in unique:
+        host = _source_host_key(source)
+        if host in selected_hosts:
+            deferred.append(source)
+            continue
+        selected.append(source)
+        selected_hosts.add(host)
+        if len(selected) >= limit:
+            return selected
+
+    for source in deferred:
+        selected.append(source)
+        if len(selected) >= limit:
+            break
+    return selected
 
 
 def extract_second_hop_candidates(

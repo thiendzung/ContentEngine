@@ -215,11 +215,12 @@ Tham khảo: <https://github.com/tinyhumansai/openhuman>
 - `CE04 PR-B — Entity Linking + Retrieval + Authority Ranking`: CLOSED / MERGED / PASS.
 - `CE04 PR-C — Production ResearchRouter + Provider Adapters`: CLOSED / MERGED / PASS.
 - `CE04 PR-D — Discovery Research + Opportunity Handoff`: CLOSED / MERGED / PASS.
-- `CE04 PR-E — Evidence Research + Evidence Set`: PLANNED / NOT STARTED.
+- `CE04 PR-E — Evidence Research + Evidence Set`: ACTIVE / DRAFT.
 - PR #26 merge commit: `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
-- Current PR: none.
-- Current implementation slice: none — neutral checkpoint after PR-D.
+- Current PR: `CE04 PR-E — Evidence Research + Evidence Set` (DRAFT).
+- Current implementation slice: `T04.18–T04.23`.
 - `T04.1–T04.17`: DONE.
-- `T04.18–T04.31`: NOT STARTED.
+- `T04.18–T04.23`: ACTIVE / NOT DONE.
+- `T04.24–T04.31`: NOT STARTED.
 
-CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS. CE04 PR-A và PR-B đã CLOSED / MERGED / PASS. CE04 PR-C đã CLOSED / MERGED / PASS trong PR #24 với merge commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`; T04.9–T04.14 đã hoàn tất implementation + real-run Gate C. CE04 PR-D đã CLOSED / MERGED / PASS trong PR #26 với merge commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`; T04.1–T04.17 đã DONE. Current PR là none; T04.18–T04.31 và PR-E vẫn PLANNED / NOT STARTED. Không bắt đầu PR-E trước khi post-merge closeout được review và main được xác minh sạch.
+CE03 PR-A đã khóa queue/lease core. PR-B bổ sung checkpoint versioned, approval pause/resume theo exact artifact, bounded retry và budget theo run/step mà không tạo nguồn trạng thái thứ hai. PR-C đã hoàn tất ModelRouter, ToolAdapter, ContextManifest và telemetry. PR-D đã hoàn tất outbox, reconciliation và restart/resume. PR-E đã hoàn tất Replay/Eval và CE03 closeout. CE03 đã CLOSED / PASS. CE04 PR-A và PR-B đã CLOSED / MERGED / PASS. CE04 PR-C đã CLOSED / MERGED / PASS trong PR #24 với merge commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`; T04.9–T04.14 đã hoàn tất implementation + real-run Gate C. CE04 PR-D đã CLOSED / MERGED / PASS trong PR #26 với merge commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`; T04.1–T04.17 đã DONE. PR-E đang ACTIVE / DRAFT trên branch `ce04-evidence-research-evidence-set`, base `a52052adde3cf19889098013fd5065f86cab62fb`, với scope T04.18–T04.23. Không chạy research/provider, không tạo ContentCase trong activation task, không tick T04.18–T04.23, không bắt đầu T04.24–T04.31 và không merge.

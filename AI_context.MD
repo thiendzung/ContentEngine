@@ -1,293 +1,347 @@
 # AI_context.MD — ContentEngine shared working context
 
-Updated: 2026-09-07
+Updated: 2026-09-08
 
-## Purpose
+GitHub is canonical. Detailed history lives in `docs/logs/`; keep this file short and current.
 
-Shared operational checkpoint for MG CONTENT ENGINE, Agent Local, and founder.
+## Agent Local rule
 
-GitHub remains canonical. `AI_context.MD` summarizes the current state and working rules; approved files under `docs/` remain the architecture/product source of truth.
-
-## Sync rule
-
-At the start of every Agent Local task:
+Start every task:
 
 ```text
 git fetch origin --prune
-→ checkout the task branch
+→ checkout assigned branch
 → git pull --ff-only
 → read AI_context.MD
-→ read the exact task log under docs/logs/
-→ confirm clean working tree
-→ execute only the assigned scope
+→ read exact assigned task in docs/logs/
+→ confirm clean tree
+→ execute only assigned scope
 ```
 
-At the end:
+End every task:
 
 ```text
-commit/push only when the task explicitly requires edits
-→ confirm working tree clean
-→ report START HEAD / END HEAD / evidence / blocker
-```
-
-The local copy of `AI_context.MD` must come from the current GitHub task branch. Do not maintain a separate local version.
-
-## Roles
-
-### MG CONTENT ENGINE
-
-Owns:
-- architecture and scope;
-- core implementation;
-- important tests;
-- GitHub logs and canonical state;
-- review and Gate decisions;
-- task definitions for Agent Local.
-
-### Agent Local
-
-Owns support work unless a task explicitly says otherwise:
-- repository sync/cleanup;
-- Python 3.12 environment;
-- PostgreSQL + migrations;
-- local tests;
-- real provider/API runs;
-- artifact hashes and safe evidence;
-- small bounded edits defined by a task log.
-
-Agent Local must not broaden scope, merge PRs, weaken gates, or change architecture independently.
-
-### Founder
-
-Owns:
-- product/business decisions;
-- human selection/approval gates;
-- merge decisions.
-
-## Standard workflow
-
-```text
-GitHub canonical specs
-→ scoped branch
-→ MG CONTENT ENGINE implementation
-→ CI
-→ Agent Local local/real verification when needed
-→ MG CONTENT ENGINE review
-→ Founder selection/approval when required
-→ final-head CI
-→ Ready for Review
-→ Founder merge
-→ post-merge verification
-→ neutral checkpoint
+if meaningful canonical state changed → update AI_context.MD
+if task requires edits → commit + push
+confirm clean tree
+report START HEAD / END HEAD / evidence / blocker / status
 ```
 
 Never merge automatically.
 
-# Current phase
+# Current state
 
 ```text
 Project: ContentEngine
 Phase: CE04 — Knowledge + Production Research
-Status: ACTIVE
+CE04: ACTIVE
+
+PR-A: CLOSED / MERGED / PASS
+PR-B: CLOSED / MERGED / PASS
+PR-C: CLOSED / MERGED / PASS
+PR-D: CLOSED / MERGED / PASS
+PR-E: ACTIVE / DRAFT / IMPLEMENTATION COMPLETE / FINAL REVIEW PENDING
+PR-F: NOT STARTED
+
+T04.1–T04.17: DONE
+T04.18–T04.23: DONE / FINAL REVIEW PENDING
+T04.24–T04.31: NOT STARTED
 ```
 
-Completed:
+Current PR:
 
 ```text
-CE04 PR-A = CLOSED / MERGED / PASS
-CE04 PR-B = CLOSED / MERGED / PASS
-CE04 PR-C = CLOSED / MERGED / PASS
-CE04 PR-D = CLOSED / MERGED / PASS
-PR #26 merge commit = 46af24d6c17df483fdc32721f14bc2f9156d0d76
-T04.1–T04.17 = DONE
-T04.18–T04.31 = NOT STARTED
-PR-E = PLANNED / NOT STARTED
+PR #28 — CE04 PR-E — Evidence Research + Evidence Set
+Branch: ce04-evidence-research-evidence-set
+Base main: a52052adde3cf19889098013fd5065f86cab62fb
+Status: OPEN / DRAFT
 ```
 
-Last completed slice:
+# Locked O4
 
 ```text
-CE04 PR-D — Discovery Research + Opportunity Handoff
-PR: #26
-Branch: ce04-discovery-opportunity-handoff
-Base main: cff0926280d053bbb41d87be9b50db69eef2384d
-Scope: T04.15–T04.17
-State: CLOSED / MERGED / PASS
-Merge commit: 46af24d6c17df483fdc32721f14bc2f9156d0d76
+Founder framing: How do I know if an original artwork is fairly priced?
+Planning label: Artsy prices
+ContentOpportunity: 068991ab-de34-4787-9c38-8935c3f0e2da
+NeedHypothesis: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
+Need statement: A first-time art buyer wants to understand whether an original artwork price makes sense before deciding to buy.
+ContentExperiment: 0551da17-046a-4104-a506-9772680a6133 = PLANNED / PENDING
+ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5 = exactly one
+ContentRun count: 2
 ```
 
-Current checkpoint:
+NeedHypothesis must remain `PROPOSED` in PR-E.
+
+# PR-E contract
 
 ```text
-Activation HEAD: 3cfce42c69a9437819fc02cf4dc0f616e1451654
-Activation CI #301: PASS
-Real Discovery Gate: PASS
-Artifact SHA-256: 489d4c3b91c06d84345c7b66729d69a9a91b45a419f889853d628b14b09927f7
-research_sufficient: false
-MARKET signals: 0
-Founder selection: O4 — Artsy prices
-Planning opportunity ID: opp_4c397247e40db8ae
-Persisted ContentOpportunity ID: 068991ab-de34-4787-9c38-8935c3f0e2da
-Persisted NeedHypothesis ID: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
-Founder selection log: docs/logs/2026-09-07-ce04-pr-d-founder-selection.md
-Founder selection Gate: PASS
-HumanSelection persistence: PASS
-ContentExperiment draft persistence: PASS
-Idempotency: PASS
-NeedHypothesis: PROPOSED
-ContentCase / ContentRun counts: unchanged
-PR-D gates = PASS
-T04.15–T04.17 = DONE
-PR #26 = CLOSED / MERGED / PASS
-Current PR: none
-Current implementation slice: none — neutral checkpoint after PR-D
-T04.18–T04.31: NOT STARTED
-PR-E: PLANNED / NOT STARTED
-Next planned scope: PR-E / T04.18–T04.23
-Do not begin PR-E until this closeout is merged and main is verified clean
-```
-
-# PR-D locked contract
-
-## T04.15 — Discovery Research
-
-- internal MOTGU knowledge first;
-- production ResearchRouter only;
-- bounded provider calls;
-- Serper first externally;
-- Tavily or Exa only by router policy;
-- Jina reads selected pages;
-- explicit stop reasons and research gaps;
-- Discovery output is not factual Evidence.
-
-## T04.16 — Opportunity Map handoff
-
-```text
-Discovery signals
-→ NeedHypothesis
-→ questions/clusters
-→ ContentOpportunity shortlist
-→ human selection
-→ HumanSelection + ContentExperiment draft
-```
-
-Rules:
-- Keyword/Question Map is a supporting tool, not a separate SEO engine;
-- planning objects persist in CE02 tables before ContentCase;
-- pre-selection Discovery must not fabricate ContentCase or ContentRun;
-- NeedHypothesis remains PROPOSED after human selection;
-- one persisted plan can have only one human selection;
-- rerunning the same selection is idempotent;
-- conflicting replacement is rejected;
-- selection must not call research providers again.
-
-## T04.17 — Source metadata
-
-Keep separate:
-- `source_type`;
-- `commercial_bias`;
-- `authority_hint`;
-- search/provider rank;
-- derivation reason.
-
-Search rank/provider relevance is not authority.
-
-# Important PR-D files
-
-Real Discovery runner:
-
-`backend/scripts/run_discovery_research.py`
-
-Human selection runner:
-
-`backend/scripts/select_discovery_opportunity.py`
-
-Founder selection record:
-
-`docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`
-
-Activation/local-sync task:
-
-`docs/logs/2026-09-07-ce04-pr-d-activation-sync-task.md`
-
-Real Gate task:
-
-`docs/logs/2026-09-07-ce04-pr-d-real-gate-task.md`
-
-Architecture decision:
-
-`docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`
-
-# Immediate execution sequence
-
-```text
-1. DONE — activation sync.
-2. DONE — activation review + CI #301 PASS.
-3. DONE — real Discovery Gate.
-4. DONE — MG CONTENT ENGINE reviewed shortlist/gaps.
-5. DONE — founder selected O4.
-6. DONE — selection CLI persisted exact O4; providers_called = 0.
-7. DONE — HumanSelection + ContentExperiment persistence and idempotency verified.
-8. DONE — T04.15–T04.17 ticked.
-9. DONE — final-head CI #311 PASS.
-10. DONE — PR #26 merged into main at `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
-11. DONE — post-merge closeout returns CE04 to a neutral checkpoint.
-12. NEXT — MG CONTENT ENGINE reviews this closeout; do not start PR-E yet.
-```
-
-# Remaining CE04
-
-## PR-E — T04.18–T04.23
-
-```text
-Evidence Research
-→ Claim extraction
-→ Evidence linking
-→ contradiction
-→ EvidenceSet lock/version
+selected opportunity
+→ legitimate ContentCase
+→ Evidence Research
+→ Claim/Evidence links
+→ human review
+→ reviewed-existing-source correction when extractor misses stored prose
+→ curated EvidenceSet from exact reviewed Evidence IDs, provider_calls=0
+→ final review
+→ lock exact approved EvidenceSet, provider_calls=0
 → OriginalityPack
 ```
 
-## PR-F — T04.24–T04.31
+Locked rules:
+
+- Discovery/Search snippets are not factual Evidence.
+- External Evidence requires readable source content + exact locator/excerpt.
+- Search/provider rank is not authority.
+- `.gov/.edu` create institutional candidates only; claim-level human review is still required.
+- Evidence subject is anchored to `NeedHypothesis.statement`, not `Artsy prices`.
+- Community/review/high-commercial/unknown-unverified sources do not auto-promote to supports.
+- Do not weaken thresholds to make a Gate pass.
+- Locked EvidenceSet is immutable.
+- OriginalityPack contains MOTGU-owned material only.
+- No fake ContentRun, KnowledgeCandidate, Approved Knowledge, Obsidian, CE05, or T04.24+ work in PR-E.
+
+# Retained reviewed Evidence
+
+Round 5 IRS retained:
 
 ```text
-Knowledge Candidate
-→ human admission
-→ Approved Knowledge
-→ Obsidian mirror when useful
-→ memory-gap recommendation
-→ provenance end-to-end gates
-→ Discovery/Evidence separation gate
-→ second-hop final gate
+EvidenceSet v5: 32199d87-5114-4ac6-9bd5-6f4151bd0c7c / draft / unlocked
+Useful supports: 3
+Suitable independent domains: 1 — www.irs.gov
+Evidence IDs:
+- ae930468-0760-4e6c-b0d6-8346f5119912
+- e4c31ee7-0627-4dcc-8e2a-db2ab8269b45
+- fe1e11c2-1250-4c4a-ba50-0174b7b514bd
 ```
 
-CE04 is complete only when T04.1–T04.31 are DONE, PR-D/PR-E/PR-F are merged, final regression + real gates pass, canonical docs are synchronized, and CE04 is marked CLOSED / PASS.
+Required human Gate:
+
+```text
+useful supports >= 2
+suitable independent domains >= 2
+```
+
+Do not lock v1–v7. They are historical draft research outputs.
+
+# MCI diagnosis
+
+MCI source:
+
+`https://mci.si.edu/artifact-appraisals`
+
+Stored SourceDocument:
+
+`f77b9e62-42c5-5a06-aa8b-6505ef3b6b3a`
+
+Direct-source automatic extraction produced two off-scope Evidence rows, but zero-provider SourceDocument inspection proved the reader stored direct O4 prose.
+
+Diagnosis:
+
+`EXTRACTOR_MISS`
+
+Exact human-reviewed sentence:
+
+> Prices asked and amounts offered are determined by personal interests of both the seller and the purchaser and by the trends in the market.
+
+Verdict:
+
+`DIRECT_O4_SUPPORT`
+
+Do not reread MCI or call another provider.
+
+# Reviewed-existing-source path
+
+Implemented:
+
+```text
+backend/app/modules/research/evidence/reviewed_source.py
+backend/scripts/persist_reviewed_existing_evidence.py
+backend/tests/test_ce04_reviewed_existing_source.py
+```
+
+Contract:
+
+- existing persisted SourceDocument only;
+- human reviewer required;
+- exact excerpt must exist in stored SourceDocument;
+- ContentCase/source project must match;
+- Claim remains `unverified`;
+- create/reuse new Evidence; never mutate old automatic Evidence;
+- provenance method = `human_review_existing_source`;
+- `human_reviewed=true` + reviewer stored in metadata;
+- same input is idempotent;
+- provider calls = 0;
+- no EvidenceSet creation or lock.
+
+Canonical decision:
+
+`docs/logs/2026-09-07-ce04-pr-e-reviewed-existing-source-decision.md`
+
+Real persistence task:
+
+`docs/logs/2026-09-07-ce04-pr-e-reviewed-mci-evidence-persistence-task.md`
+
+Code/test checkpoint:
+
+```text
+Reviewed path final code/test HEAD: 4fb4ae1d2c8de81a809580a045a99bbcfb3f7510
+CI #396 / run 34145294793: PASS full backend + frontend gate
+```
+
+# Reviewed MCI Evidence
+
+```text
+Claim: 70f7c72b-f23a-4528-8c03-79583e45e59a / status=unverified
+Evidence: 5e97ed0d-8989-47d3-af4e-b2f29a5110cd / relation=supports
+SourceDocument: f77b9e62-42c5-5a06-aa8b-6505ef3b6b3a
+Excerpt: Prices asked and amounts offered are determined by personal interests of both the seller and the purchaser and by the trends in the market.
+Excerpt match: true
+Human review: true / reviewer=MG CONTENT ENGINE
+Provenance: method=human_review_existing_source
+Provider calls: 0
+```
+
+The reviewed-existing-source link does not mutate the three previous MCI Evidence rows,
+create an EvidenceSet, or lock one. Combined with the retained IRS supports, the human
+Gate is `4 useful supports / 2 suitable independent domains`.
+
+# Current next action
+
+PR-E implementation and its Evidence/OriginalityPack gates are complete. The next action
+is MG CONTENT ENGINE PR-E final review; PR #28 remains Draft until that review.
+
+Boundary:
+
+```text
+Serper=0
+Tavily=0
+Exa=0
+Jina=0
+Search/Discovery=0
+no URL open
+no relation mutation
+EvidenceSet v8 locked; do not mutate it
+no ContentRun/KnowledgeCandidate
+T04.18–T04.23 are DONE; PR-E final review remains pending.
+T04.24+ remain NOT STARTED
+PR #28 remains DRAFT
+```
+
+The reviewed MCI Evidence verifies correctly; combined IRS + MCI human Gate reaches the
+required second independent domain. EvidenceSet v8 is immutable after this lock.
+
+# Curated EvidenceSet v8 checkpoint
+
+```text
+EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / version=8 / status=locked / locked=true
+Locked by: MG CONTENT ENGINE
+Evidence IDs:
+- ae930468-0760-4e6c-b0d6-8346f5119912
+- e4c31ee7-0627-4dcc-8e2a-db2ab8269b45
+- fe1e11c2-1250-4c4a-ba50-0174b7b514bd
+- 5e97ed0d-8989-47d3-af4e-b2f29a5110cd
+Relation counts: supports=4
+SourceDocument count: 2
+Provider calls: 0
+MG CURATION REVIEW: PASS
+```
+
+The exact four reviewed Evidence IDs are now in one new curated draft. No Evidence,
+relation, or historical EvidenceSet was changed. The exact curated draft is now locked
+and must not be mutated.
+
+# Production OriginalityPack builder code checkpoint
+
+The Production OriginalityPack builder now supports structured MOTGU-owned material in the
+existing `item_refs_json` column without a migration. A usable item must retain the exact
+structured object with:
+
+```text
+type=motgu_owned_material
+source_ref
+material
+writer_use
+guardrails
+approval_ref
+```
+
+Legacy ref-only inputs are normalized to `type=reference_only` and do not count as usable
+originality material. Empty material text, incomplete items and Evidence references do not
+close the originality gap. External IRS/MCI Evidence is excluded, duplicate items are
+deduped deterministically, and the same normalized input reuses the existing non-retired
+pack. `originality_item_count` reports usable items only.
+
+Code/test checkpoint:
+
+```text
+backend/scripts/curate_originality_pack.py
+backend/tests/test_originality_pack_builder.py
+provider calls: 0
+real DB mutation: 0
+EvidenceSet v8: unchanged
+T04.18–T04.23: DONE / FINAL REVIEW PENDING
+T04.24+: NOT STARTED
+```
+
+The builder CLI was subsequently run once with the exact four founder-approved D4 inputs
+for ContentCase `9ec6133b-5f14-46d0-9866-e3b049e537b5` and once again with the same input to
+verify idempotent reuse. The persisted production pack is:
+
+```text
+OriginalityPack ID: 6bd287ec-43f9-4d69-957c-2223f258f909
+status: draft
+item_count: 4
+usable_item_count: 4
+source_refs:
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-01
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-02
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-03
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-04
+provider_calls: 0
+```
+
+The earlier empty draft `8bc23d49-edd4-45c6-99eb-1673d61b4998` remains unchanged. No
+OriginalityPack was approved or deleted.
+
+# PR-E closeout checkpoint
+
+The following gates are complete based on the recorded real Evidence review, locked
+EvidenceSet v8, persisted OriginalityPack and focused regression tests:
+
+```text
+T04.18 Evidence Research workflow: DONE
+T04.19 Claim extraction workflow: DONE
+T04.20 Evidence linking workflow: DONE
+T04.21 Contradiction representation: DONE
+T04.22 EvidenceSet lock/version: DONE
+T04.23 OriginalityPack builder: DONE
+```
+
+Closeout invariants:
+
+```text
+EvidenceSet v8: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / locked / exact 4 Evidence IDs
+OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / draft / 4 items / 4 usable
+NeedHypothesis 530bdd27-f008-4910-9b3b-df83e007cfa2: PROPOSED
+ContentExperiment 0551da17-046a-4104-a506-9772680a6133: PLANNED / PENDING
+ContentRun: 2
+KnowledgeCandidate: 0
+provider calls in closeout: 0
+T04.24–T04.31: NOT STARTED
+PR #28: OPEN / DRAFT
+```
+
+PR-E now records `T04.18–T04.23 COMPLETE / FINAL REVIEW PENDING`. No Ready-for-review
+transition or merge was performed. Closeout CI `34177468106` passed on commit
+`0b10b54283c19faf8a0314efa11db816d53ee4a3`. Next action = `MG CONTENT ENGINE PR-E FINAL
+REVIEW`.
 
 # Global rules
 
-- GitHub is the canonical brain.
-- Search is source discovery, not factual proof.
-- Discovery never silently becomes Evidence.
-- Raw provider payload is not Approved Knowledge and is not mirrored to Obsidian by default.
-- Internal MOTGU knowledge is checked before broad external research.
-- Live artwork price/availability remains canonical in WordPress/WooCommerce.
-- Secrets stay local/env only; never commit or print them.
-- No hidden retries or infinite fallback loops.
-- Do not weaken thresholds just to make a Gate green.
-- Do not start the next PR slice before the current slice is merged and its post-merge checkpoint is clean.
-- Record meaningful failures, architecture decisions, and lessons under `docs/logs/`.
-
-# Standard Agent Local report
-
-```text
-GOAL
-START HEAD
-END HEAD
-FILES CHANGED
-EVIDENCE
-WORKING TREE
-BLOCKER
-STATUS
-```
-
-For real provider gates also include artifact path, SHA-256, route/provider decisions, stop reason, safe failure reasons, persistence IDs/counts, and secret scan.
+- Search is a locator, not factual proof.
+- Raw provider output is not Approved Knowledge.
+- Live artwork price/availability stays canonical in WordPress/WooCommerce.
+- Secrets stay env/local only.
+- No hidden retry or infinite provider fallback.
+- Record meaningful decisions/failures under `docs/logs/`.
+- Do not begin the next PR slice before PR-E final review, merge and post-merge clean checkpoint.
