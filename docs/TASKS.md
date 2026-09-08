@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.29–T04.35; NOT STARTED`.
+- Current implementation slice = `T04.31–T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -269,7 +269,7 @@ PR-E post-merge closeout record:
 - [x] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
 - [x] T04.28 Memory gap/create-update-refresh recommendation.
 - [x] T04.29 Provenance end-to-end test.
-- [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
+- [x] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
 - [ ] T04.32 EvidenceSet approval binds exact ID + version + hash.
 - [ ] T04.33 Lock rejects missing/stale/wrong approval.
@@ -365,6 +365,27 @@ PR-F T04.28 memory gap closeout record:
   end-to-end test.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-28-memory-gap.md`.
+
+PR-F T04.30 Discovery/evidence boundary closeout:
+
+- T04.30 = DONE after a test-only boundary gate; no production code changed.
+- Discovery persistence may create Signal, NeedHypothesisSignal and ContentOpportunitySignal
+  planning rows, but Claim/Evidence/SourceDocument deltas remain `0`. A
+  NeedHypothesisSignal `supports` relation is not factual Evidence.
+- A Signal URL alone is rejected with `evidence_source_must_be_successfully_read`.
+  Evidence Research with no successfully read document creates no Claim, Evidence or
+  EvidenceSet and records that SEARCH snippets are ineligible for factual Evidence.
+- The positive control persisted Source + SourceDocument and accepted only an exact
+  excerpt present in the read document. Evidence resolved through SourceDocument to Source;
+  Signal IDs were not factual lineage and `search_rank_used_as_authority=false`.
+- Real O4 read-only audit found 6 Discovery signals linked to the opportunity and no direct
+  Signal ID → Evidence relationship. Provider calls and real O4 DB mutation were `0`.
+- Isolated backend gate: `275 passed, 1 skipped`; the skip is explicit because the isolated
+  database has no real O4 fixture. Frontend and migration gates passed.
+- T04.1–T04.30 = DONE. T04.31–T04.35 = NOT STARTED. Next action: T04.31 second-hop
+  original-source trace.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-30-discovery-evidence-boundary.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

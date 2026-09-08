@@ -51,7 +51,8 @@ T04.26: DONE
 T04.27: DONE
 T04.28: DONE
 T04.29: DONE
-T04.30–T04.35: NOT STARTED
+T04.30: DONE
+T04.31–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -236,7 +237,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24–T04.29 complete; T04.30–T04.35 not started
+Implementation checkpoint: T04.24–T04.30 complete; T04.31–T04.35 not started
 ```
 
 PR-F order:
@@ -538,6 +539,34 @@ Provider calls: 0; DB mutation: 0
 T04.24–T04.29: DONE
 T04.30–T04.35: NOT STARTED
 Next action: T04.30 Discovery signal cannot silently become factual Evidence
+```
+
+# PR-F T04.30 Discovery/evidence boundary closeout
+
+T04.30 is DONE after a test-only boundary gate. Discovery signals remain planning leads;
+factual Evidence requires a successfully read page persisted through Source and
+SourceDocument, followed by excerpt verification. No production code changed.
+
+```text
+Test: backend/tests/test_discovery_signal_evidence_boundary.py
+Focused result: 7 passed
+Isolated backend result: 275 passed, 1 skipped because the isolated DB has no real O4 fixture
+Discovery persistence: Signal/NeedHypothesisSignal/ContentOpportunitySignal planning rows only; Claim/Evidence/SourceDocument delta=0
+Signal URL alone: evidence_source_must_be_successfully_read; Claim/Evidence delta=0
+No-document Evidence Research: no Claim/Evidence/EvidenceSet; research gap says no successful page read and SEARCH snippets are ineligible
+Positive read control: Source + SourceDocument persisted, exact excerpt verified, Evidence resolved to SourceDocument → Source
+Excerpt guard: evidence_excerpt_not_found_in_source_document; no Evidence created
+Signal lineage: no Signal FK/direct Signal provenance in Evidence; factual provenance uses source_id/source_document_id/source_document_hash
+Search rank: search_rank_used_as_authority=false
+Real O4 audit: 6 Discovery signals linked to the selected opportunity; no direct Signal ID → Evidence lineage
+O4 signal IDs: 357dfe03-5541-43c2-ad1f-eb5cb79b964f, 909205a4-afda-4242-975d-af5eaf3dfd96,
+  dc711746-6f2b-4911-a697-e35c4f662c88, e767434f-1e2f-4203-bc37-7d4159d6c37e,
+  f8449be1-2153-4585-92fd-9edc18a07ae3, fe828211-f9c2-408a-8ed7-35a82b00009c
+Provider calls: 0
+Real O4 DB mutation: 0; O4 ContentRun 0→0; KnowledgeCandidate 4 unchanged; EvidenceSet v8 and OriginalityPack unchanged
+T04.1–T04.30: DONE
+T04.31–T04.35: NOT STARTED
+Next action: T04.31 second-hop original-source trace
 ```
 
 # Curated EvidenceSet v8 checkpoint
