@@ -210,9 +210,11 @@ Status: **CLOSED / PASS**.
 - PR-C = CLOSED / MERGED / PASS.
 - PR-D = CLOSED / MERGED / PASS.
 - PR #26 merge commit = `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
-- PR-E = ACTIVE / DRAFT / IMPLEMENTATION COMPLETE / FINAL REVIEW PENDING.
-- Current PR = `CE04 PR-E — Evidence Research + Evidence Set` (DRAFT).
-- Current implementation slice = `none — PR-E implementation complete; final review pending`.
+- PR-E = CLOSED / MERGED / PASS.
+- PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+- PR-F = ACTIVE / DRAFT.
+- Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
+- Current implementation slice = `T04.24–T04.35 activation; implementation NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -224,19 +226,18 @@ PR-D post-merge closeout record:
 - Evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`.
 - Real Discovery Gate = PASS; founder selection = O4 / `opp_4c397247e40db8ae`; HumanSelection persistence = PASS; ContentExperiment draft persistence = PASS; idempotency = PASS; providers called during selection = 0; NeedHypothesis = `PROPOSED`; ContentCase and ContentRun counts unchanged.
 - T04.1–T04.17 = DONE.
-- T04.18–T04.23 = DONE / FINAL REVIEW PENDING.
-- T04.24–T04.31 = NOT STARTED.
+- T04.18–T04.23 = DONE.
+- T04.24–T04.35 = NOT STARTED.
 
-PR-E activation record:
+PR-E post-merge closeout record:
 
 - Branch: `ce04-evidence-research-evidence-set`.
-- Base main: `a52052adde3cf19889098013fd5065f86cab62fb`.
-- Start log: `docs/logs/2026-09-07-ce04-pr-e-start.md`.
-- Architecture decision: `docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md`.
-- Contract: Selected ContentOpportunity → create/reuse one legitimate ContentCase → Evidence Research → Claim → Evidence → contradiction/qualification → EvidenceSet lock/version → OriginalityPack.
-- O4 / `opp_4c397247e40db8ae`; ContentOpportunity `068991ab-de34-4787-9c38-8935c3f0e2da`; NeedHypothesis `530bdd27-f008-4910-9b3b-df83e007cfa2` remains `PROPOSED`.
-- Discovery artifact SHA-256: `489d4c3b91c06d84345c7b66729d69a9a91b45a419f889853d628b14b09927f7`.
-- Activation is docs-only: no provider run and no ContentCase created; ContentExperiment remains `PLANNED`.
+- PR #28: CLOSED / MERGED / PASS.
+- Merge commit: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+- Closeout log: `docs/logs/2026-09-08-ce04-pr-e-closeout.md`.
+- T04.18–T04.23 = DONE; final review, CI and post-merge verification passed.
+- EvidenceSet v8 remains locked and OriginalityPack remains unchanged.
+- NeedHypothesis `530bdd27-f008-4910-9b3b-df83e007cfa2` remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`.
 
 - [x] T04.1 Source registry.
 - [x] T04.2 Canonicalize source into normalized text/Markdown.
@@ -256,12 +257,12 @@ PR-E activation record:
 - [x] T04.15 Discovery Research workflow.
 - [x] T04.16 Opportunity Map workflow with Keyword/Question Map tool.
 - [x] T04.17 Source commercial-bias/type/authority metadata.
-- [x] T04.18 Evidence Research workflow. **DONE / FINAL REVIEW PENDING**
-- [x] T04.19 Claim extraction workflow. **DONE / FINAL REVIEW PENDING**
-- [x] T04.20 Evidence linking workflow. **DONE / FINAL REVIEW PENDING**
-- [x] T04.21 Contradiction representation. **DONE / FINAL REVIEW PENDING**
-- [x] T04.22 EvidenceSet lock/version. **DONE / FINAL REVIEW PENDING**
-- [x] T04.23 OriginalityPack builder. **DONE / FINAL REVIEW PENDING**
+- [x] T04.18 Evidence Research workflow.
+- [x] T04.19 Claim extraction workflow.
+- [x] T04.20 Evidence linking workflow.
+- [x] T04.21 Contradiction representation.
+- [x] T04.22 EvidenceSet lock/version.
+- [x] T04.23 OriginalityPack builder.
 - [ ] T04.24 Knowledge Candidate extraction.
 - [ ] T04.25 Candidate → approved admission flow.
 - [ ] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
@@ -270,17 +271,34 @@ PR-E activation record:
 - [ ] T04.29 Provenance end-to-end test.
 - [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
+- [ ] T04.32 EvidenceSet approval binds exact ID + version + hash.
+- [ ] T04.33 Lock rejects missing/stale/wrong approval.
+- [ ] T04.34 Isolated test database.
+- [ ] T04.35 CE04 final regression + closeout.
+
+PR-F activation record:
+
+- Branch: `ce04-knowledge-admission-provenance`.
+- Base main: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+- Start log: `docs/logs/2026-09-08-ce04-pr-f-start.md`.
+- Scope: T04.24–T04.35; activation is docs-only and implementation is not started.
+- F1: T04.24–T04.25 — Knowledge Candidate + human approval.
+- F2: T04.26–T04.28 — Obsidian + raw-data guard + memory gap.
+- F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop.
+- F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate.
+- Invariants: EvidenceSet v8 and OriginalityPack unchanged; NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; ContentRun = `2`; KnowledgeCandidate = `0`; provider calls = `0`.
+- Do not implement T04.24, mutate DB, call providers, tick T04.24+, or merge in activation.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
-PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. PR #26 merged with commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. Current PR is now `CE04 PR-E — Evidence Research + Evidence Set` (DRAFT); PR-E implementation is complete and final review is pending. See the five PR-D evidence logs listed in the post-merge closeout record above.
+PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. PR #26 merged with commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. See the five PR-D evidence logs listed in the post-merge closeout record above.
 
 PR-E closeout evidence: `docs/logs/2026-09-08-ce04-pr-e-closeout.md` records the final
 human-reviewed Evidence Gate, locked EvidenceSet v8, persisted Founder-approved
 OriginalityPack, focused CE04 tests and the final isolated CI gate. T04.18–T04.23 are
-marked DONE / FINAL REVIEW PENDING. NeedHypothesis remains `PROPOSED`, ContentExperiment
-remains `PLANNED / PENDING`, ContentRun remains `2`, KnowledgeCandidate remains `0`, and
-T04.24–T04.31 remain NOT STARTED.
+DONE. NeedHypothesis remains `PROPOSED`, ContentExperiment remains `PLANNED / PENDING`,
+ContentRun remains `2`, KnowledgeCandidate remains `0`, and T04.24–T04.35 remain NOT
+STARTED. PR #28 is CLOSED / MERGED / PASS; current active slice is PR-F.
 
 ---
 

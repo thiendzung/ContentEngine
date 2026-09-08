@@ -40,20 +40,20 @@ PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
-PR-E: ACTIVE / DRAFT / IMPLEMENTATION COMPLETE / FINAL REVIEW PENDING
-PR-F: NOT STARTED
+PR-E: CLOSED / MERGED / PASS
+PR-F: ACTIVE / DRAFT
 
 T04.1–T04.17: DONE
-T04.18–T04.23: DONE / FINAL REVIEW PENDING
-T04.24–T04.31: NOT STARTED
+T04.18–T04.23: DONE
+T04.24–T04.35: NOT STARTED
 ```
 
 Current PR:
 
 ```text
-PR #28 — CE04 PR-E — Evidence Research + Evidence Set
-Branch: ce04-evidence-research-evidence-set
-Base main: a52052adde3cf19889098013fd5065f86cab62fb
+CE04 PR-F — Knowledge Admission + Provenance Gates
+Branch: ce04-knowledge-admission-provenance
+Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Status: OPEN / DRAFT
 ```
 
@@ -70,7 +70,7 @@ ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5 = exactly one
 ContentRun count: 2
 ```
 
-NeedHypothesis must remain `PROPOSED` in PR-E.
+NeedHypothesis must remain `PROPOSED` through PR-F.
 
 # PR-E contract
 
@@ -205,30 +205,63 @@ The reviewed-existing-source link does not mutate the three previous MCI Evidenc
 create an EvidenceSet, or lock one. Combined with the retained IRS supports, the human
 Gate is `4 useful supports / 2 suitable independent domains`.
 
-# Current next action
+# PR-E post-merge checkpoint
 
-PR-E implementation and its Evidence/OriginalityPack gates are complete. The next action
-is MG CONTENT ENGINE PR-E final review; PR #28 remains Draft until that review.
-
-Boundary:
-
-```text
-Serper=0
-Tavily=0
-Exa=0
-Jina=0
-Search/Discovery=0
-no URL open
-no relation mutation
-EvidenceSet v8 locked; do not mutate it
-no ContentRun/KnowledgeCandidate
-T04.18–T04.23 are DONE; PR-E final review remains pending.
-T04.24+ remain NOT STARTED
-PR #28 remains DRAFT
-```
-
+PR #28 — `CE04 PR-E — Evidence Research + Evidence Set` is `CLOSED / MERGED / PASS`.
+The verified main merge commit is `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 The reviewed MCI Evidence verifies correctly; combined IRS + MCI human Gate reaches the
 required second independent domain. EvidenceSet v8 is immutable after this lock.
+
+```text
+T04.18 Evidence Research workflow: DONE
+T04.19 Claim extraction workflow: DONE
+T04.20 Evidence linking workflow: DONE
+T04.21 Contradiction representation: DONE
+T04.22 EvidenceSet lock/version: DONE
+T04.23 OriginalityPack builder: DONE
+PR #28: CLOSED / MERGED / PASS
+```
+
+# PR-F activation checkpoint
+
+```text
+PR-F: ACTIVE / DRAFT
+Branch: ce04-knowledge-admission-provenance
+Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
+Scope: T04.24–T04.35
+Implementation: NOT STARTED
+```
+
+PR-F order:
+
+```text
+F1: T04.24–T04.25 — Knowledge Candidate + human approval
+F2: T04.26–T04.28 — Obsidian + raw-data guard + memory gap
+F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop
+F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate
+```
+
+PR-F activation is docs-only. It does not implement T04.24, mutate the database, call a
+provider, create a KnowledgeCandidate, mirror to Obsidian, or start T04.25+ implementation.
+
+Invariants:
+
+```text
+EvidenceSet v8: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / version=8 / locked / unchanged
+OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / draft / 4 items / 4 usable / unchanged
+NeedHypothesis 530bdd27-f008-4910-9b3b-df83e007cfa2: PROPOSED
+ContentExperiment 0551da17-046a-4104-a506-9772680a6133: PLANNED / PENDING
+ContentRun: 2
+KnowledgeCandidate: 0
+Provider calls: 0
+T04.1–T04.23: DONE
+T04.24–T04.35: NOT STARTED
+```
+
+PR-F gates must preserve exact provenance and human approval boundaries. EvidenceSet
+approval binds the exact EvidenceSet ID, version and content hash; lock must reject missing,
+stale or wrong approval. Raw SERP/API payload remains outside Obsidian by default, and
+Discovery signals never silently become factual Evidence.
 
 # Curated EvidenceSet v8 checkpoint
 
@@ -303,7 +336,7 @@ provider_calls: 0
 The earlier empty draft `8bc23d49-edd4-45c6-99eb-1673d61b4998` remains unchanged. No
 OriginalityPack was approved or deleted.
 
-# PR-E closeout checkpoint
+# PR-E closeout evidence
 
 The following gates are complete based on the recorded real Evidence review, locked
 EvidenceSet v8, persisted OriginalityPack and focused regression tests:
@@ -327,14 +360,14 @@ ContentExperiment 0551da17-046a-4104-a506-9772680a6133: PLANNED / PENDING
 ContentRun: 2
 KnowledgeCandidate: 0
 provider calls in closeout: 0
-T04.24–T04.31: NOT STARTED
-PR #28: OPEN / DRAFT
+T04.24–T04.35: NOT STARTED
+PR #28: CLOSED / MERGED / PASS
 ```
 
-PR-E now records `T04.18–T04.23 COMPLETE / FINAL REVIEW PENDING`. No Ready-for-review
-transition or merge was performed. Closeout CI `34177468106` passed on commit
-`0b10b54283c19faf8a0314efa11db816d53ee4a3`. Next action = `MG CONTENT ENGINE PR-E FINAL
-REVIEW`.
+PR-E recorded `T04.18–T04.23 COMPLETE`; final review and merge are complete. The
+post-merge main verification reached commit `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+The next active slice is PR-F, beginning with docs-only activation; no PR-F implementation
+task has started.
 
 # Global rules
 
@@ -344,4 +377,6 @@ REVIEW`.
 - Secrets stay env/local only.
 - No hidden retry or infinite provider fallback.
 - Record meaningful decisions/failures under `docs/logs/`.
-- Do not begin the next PR slice before PR-E final review, merge and post-merge clean checkpoint.
+- Any task that changes important canonical state must update `AI_context.MD` in the same task.
+- Do not tick a PR-F task before its implementation and final-head CI gate pass.
+- Do not begin CE05 or another CE04 slice before PR-F closeout and clean checkpoint.
