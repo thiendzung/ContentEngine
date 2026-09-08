@@ -46,7 +46,8 @@ PR-F: ACTIVE / DRAFT
 T04.1–T04.17: DONE
 T04.18–T04.23: DONE
 T04.24: DONE
-T04.25–T04.35: NOT STARTED
+T04.25: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.26–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -230,7 +231,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24 extraction and MG review record complete; T04.25 admission not started
+Implementation checkpoint: T04.24 closed; T04.25 admission code/tests checkpoint exists; real admission not run
 ```
 
 PR-F order:
@@ -242,10 +243,10 @@ F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop
 F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate
 ```
 
-The PR-F activation commit was docs-only. The T04.24 implementation and real extraction
-did not call a provider, modify EvidenceSet v8 or the OriginalityPack, mirror to Obsidian,
-or start T04.25+ implementation. MG CONTENT ENGINE reviewed the four resulting candidates.
-This closeout records the review decision only; it does not mutate candidate rows.
+The PR-F activation commit was docs-only. T04.24 extraction and review closeout did not
+call a provider, modify EvidenceSet v8 or the OriginalityPack, mirror to Obsidian, or
+apply an admission decision. The T04.25 implementation checkpoint adds the admission
+boundary and tests only; real O4 admission has not run.
 
 Invariants:
 
@@ -259,7 +260,8 @@ KnowledgeCandidate: 4 / all CANDIDATE / reviewer=null / review_reason=null
 Provider calls: 0
 T04.1–T04.23: DONE
 T04.24: DONE
-T04.25–T04.35: NOT STARTED
+T04.25: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.26–T04.35: NOT STARTED
 ```
 
 PR-F gates must preserve exact provenance and human approval boundaries. EvidenceSet
@@ -296,7 +298,8 @@ Candidate IDs:
 All rows: status=CANDIDATE, reviewer=null, review_reason=null
 Human approval: not implemented in T04.24; belongs to T04.25
 T04.24: DONE
-T04.25–T04.35: NOT STARTED
+T04.25: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.26–T04.35: NOT STARTED
 ```
 
 Real T04.24 extraction result:
@@ -313,8 +316,8 @@ KnowledgeCandidate total after run: 4; unrelated candidates: 0; total delta: +4
 All candidates have >=1 supports; no APPROVED candidate; no raw payload markers
 EvidenceSet v8: unchanged
 OriginalityPack 6bd287ec-43f9-4d69-957c-2223f258f909: unchanged
-Next action: T04.25 admission implementation using the recorded MG decision; no candidate
-status mutation was made in this closeout
+Next action: run the separate T04.25 real admission task using the recorded MG decision;
+no real O4 candidate was mutated by the implementation checkpoint
 ```
 
 ## T04.24 MG candidate review record
@@ -332,8 +335,41 @@ Candidate DB statuses: all remain CANDIDATE; reviewer=null; review_reason=null
 Provider calls: 0
 DB mutation in closeout: 0
 T04.24: DONE
-T04.25: NOT STARTED
-Next action: implement T04.25 admission from this recorded decision.
+T04.25: IMPLEMENTATION CHECKPOINT / NOT DONE
+Next action: implement and run T04.25 admission from this recorded decision.
+```
+
+# PR-F T04.25 implementation checkpoint
+
+The human admission boundary is implemented and tested, but T04.25 is not done. The
+separate real admission task must explicitly apply a reviewed decision to a candidate.
+
+```text
+Implementation:
+- backend/app/modules/knowledge/admission.py
+- backend/app/modules/knowledge/candidates.py (snapshot rebuild helper)
+- backend/app/modules/knowledge/__init__.py
+- backend/scripts/review_knowledge_candidate.py
+- backend/tests/test_knowledge_candidate_admission.py
+- backend/tests/test_knowledge_candidate_extraction.py (environment-safe baseline counts)
+
+Contract:
+KnowledgeCandidate CANDIDATE → human approve/reject → APPROVED/REJECTED
+Admission requires candidate_id, decision, reviewer, review_reason and expected hash.
+The current snapshot hash is rebuilt from candidate fields and provenance, then checked
+against the expected and stored hashes and the locked EvidenceSet lineage.
+Terminal states cannot silently transition; exact repeated decisions are idempotent.
+
+Provider calls: 0
+Real O4 admission CLI: not run
+Candidate DB rows changed by this checkpoint: 0
+EvidenceSet v8: unchanged
+OriginalityPack: unchanged
+ContentRun/Artifact/generic Approval rows: unchanged
+T04.24: DONE
+T04.25: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.26–T04.35: NOT STARTED
+Next action: run the explicitly authorized T04.25 real admission task.
 ```
 
 The deterministic candidate identity includes the exact EvidenceSet ID/version/hash and

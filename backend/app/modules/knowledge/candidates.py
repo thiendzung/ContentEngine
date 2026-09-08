@@ -306,6 +306,29 @@ def _candidate_snapshot(
     return snapshot, _sha256(snapshot)
 
 
+def rebuild_candidate_snapshot(
+    candidate: KnowledgeCandidate,
+) -> tuple[dict[str, Any], str]:
+    """Rebuild the extraction snapshot from the persisted candidate row."""
+
+    provenance = candidate.provenance_json
+    snapshot: dict[str, Any] = {
+        "evidence_set": provenance.get("evidence_set"),
+        "claim_id": provenance.get("claim_id"),
+        "statement": candidate.statement,
+        "summary": candidate.summary,
+        "locale": candidate.locale,
+        "entity_refs": list(candidate.entity_refs_json),
+        "source_refs": list(candidate.source_refs_json),
+        "evidence_ids": provenance.get("evidence_ids"),
+        "source_document_ids": provenance.get("source_document_ids"),
+        "source_ids": provenance.get("source_ids"),
+        "relation_counts": provenance.get("relation_counts"),
+        "evidence_refs": provenance.get("evidence_refs"),
+    }
+    return snapshot, _sha256(snapshot)
+
+
 def _candidate_matches(
     candidate: KnowledgeCandidate,
     *,

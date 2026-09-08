@@ -312,6 +312,9 @@ async def test_supported_claim_never_auto_approves() -> None:
 @pytest.mark.parametrize("relation", ["contradicts", "qualifies", "context_only"])
 async def test_non_support_only_claim_does_not_create_candidate(relation: str) -> None:
     async with isolated_session() as session:
+        initial_count = await session.scalar(
+            select(func.count()).select_from(KnowledgeCandidate)
+        )
         fixture = await _candidate_fixture(session, relations=(relation,))
 
         candidates = await extract_knowledge_candidates(
@@ -320,7 +323,10 @@ async def test_non_support_only_claim_does_not_create_candidate(relation: str) -
         )
 
         assert candidates == []
-        assert await session.scalar(select(func.count()).select_from(KnowledgeCandidate)) == 0
+        assert (
+            await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
+            == initial_count
+        )
 
 
 @pytest.mark.asyncio
@@ -338,6 +344,9 @@ async def test_draft_evidence_set_is_rejected() -> None:
 @pytest.mark.asyncio
 async def test_same_exact_snapshot_reuses_candidate() -> None:
     async with isolated_session() as session:
+        initial_count = await session.scalar(
+            select(func.count()).select_from(KnowledgeCandidate)
+        )
         fixture = await _candidate_fixture(session)
 
         first = (
@@ -355,12 +364,18 @@ async def test_same_exact_snapshot_reuses_candidate() -> None:
 
         assert second.id == first.id
         assert second.provenance_json == first.provenance_json
-        assert await session.scalar(select(func.count()).select_from(KnowledgeCandidate)) == 1
+        assert (
+            await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
+            == initial_count + 1
+        )
 
 
 @pytest.mark.asyncio
 async def test_changed_claim_snapshot_creates_new_candidate_instead_of_stale_reuse() -> None:
     async with isolated_session() as session:
+        initial_count = await session.scalar(
+            select(func.count()).select_from(KnowledgeCandidate)
+        )
         fixture = await _candidate_fixture(session)
 
         first = (
@@ -379,7 +394,10 @@ async def test_changed_claim_snapshot_creates_new_candidate_instead_of_stale_reu
 
         assert second.id != first.id
         assert first.statement != second.statement
-        assert await session.scalar(select(func.count()).select_from(KnowledgeCandidate)) == 2
+        assert (
+            await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
+            == initial_count + 2
+        )
 
 
 @pytest.mark.asyncio
