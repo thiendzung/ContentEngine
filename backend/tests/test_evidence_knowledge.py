@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -189,17 +190,13 @@ async def test_search_signal_is_not_an_evidence_source_and_candidate_stays_unapp
 async def test_locked_evidence_set_is_immutable_and_new_research_uses_new_version() -> None:
     async with isolated_session() as session:
         project = await motgu_project(session)
-        evidence_set = EvidenceSet(
+        evidence_set = await create_locked_evidence_set(
+            session,
             project_id=project.id,
             version=1,
-            evidence_ids_json=["evidence:1"],
-            content_hash=content_hash("evidence:1"),
-            status="locked",
-            locked_at=datetime.now(UTC),
+            evidence_ids=["evidence:1"],
             locked_by="reviewer",
         )
-        session.add(evidence_set)
-        await session.flush()
         with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
             async with session.begin_nested():
                 await session.execute(
@@ -211,22 +208,18 @@ async def test_locked_evidence_set_is_immutable_and_new_research_uses_new_versio
             async with session.begin_nested():
                 await session.delete(evidence_set)
                 await session.flush()
-        replacement = EvidenceSet(
+        replacement = await create_locked_evidence_set(
+            session,
             project_id=project.id,
             version=2,
-            evidence_ids_json=["evidence:2"],
-            content_hash=content_hash("evidence:2"),
-            status="locked",
-            locked_at=datetime.now(UTC),
+            evidence_ids=["evidence:2"],
             locked_by="reviewer",
         )
-        session.add(replacement)
-        await session.flush()
         assert replacement.version == 2
 
 
 @pytest.mark.asyncio
-async def test_evidence_set_cannot_bypass_lock_approval_and_rejects_legacy_mutation() -> None:
+async def test_evidence_set_cannot_bypass_lock_approval() -> None:
     async with isolated_session() as session:
         project = await motgu_project(session)
         evidence_set = EvidenceSet(
@@ -247,40 +240,6 @@ async def test_evidence_set_cannot_bypass_lock_approval_and_rejects_legacy_mutat
                 )
         assert evidence_set.status == "draft"
 
-        legacy = EvidenceSet(
-            project_id=project.id,
-            version=5,
-            evidence_ids_json=["evidence:legacy"],
-            content_hash=content_hash("evidence:legacy"),
-            status="locked",
-            locked_at=datetime.now(UTC),
-            locked_by="reviewer",
-        )
-        session.add(legacy)
-        await session.flush()
-        with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
-            async with session.begin_nested():
-                await session.execute(
-                    EvidenceSet.__table__.update()
-                    .where(EvidenceSet.id == legacy.id)
-                    .values(locked_by="another-reviewer")
-                )
-        with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
-            async with session.begin_nested():
-                await session.delete(legacy)
-                await session.flush()
-
-        invalid = EvidenceSet(
-            project_id=project.id,
-            version=4,
-            evidence_ids_json=[],
-            content_hash=content_hash("invalid"),
-            status="locked",
-        )
-        with pytest.raises(IntegrityError):
-            async with session.begin_nested():
-                session.add(invalid)
-                await session.flush()
 
 
 @pytest.mark.asyncio

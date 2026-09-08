@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -198,18 +199,27 @@ async def _candidate_fixture(
     session.add_all(evidence)
     await session.flush()
 
-    evidence_set = EvidenceSet(
-        project_id=project.id,
-        content_case_id=content_case.id,
-        version=evidence_set_version,
-        evidence_ids_json=evidence_ids_override or [str(row.id) for row in evidence],
-        content_hash=content_hash(f"fixture-evidence-set-{uuid4()}"),
-        status=evidence_set_status,
-        locked_at=datetime.now(UTC) if evidence_set_status == "locked" else None,
-        locked_by="fixture reviewer" if evidence_set_status == "locked" else None,
-    )
-    session.add(evidence_set)
-    await session.flush()
+    evidence_ids = evidence_ids_override or [str(row.id) for row in evidence]
+    if evidence_set_status == "locked":
+        evidence_set = await create_locked_evidence_set(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            version=evidence_set_version,
+            evidence_ids=evidence_ids,
+            locked_by="fixture reviewer",
+        )
+    else:
+        evidence_set = EvidenceSet(
+            project_id=project.id,
+            content_case_id=content_case.id,
+            version=evidence_set_version,
+            evidence_ids_json=evidence_ids,
+            content_hash=content_hash(f"fixture-evidence-set-{uuid4()}"),
+            status=evidence_set_status,
+        )
+        session.add(evidence_set)
+        await session.flush()
     return CandidateFixture(
         project=project,
         content_case=content_case,

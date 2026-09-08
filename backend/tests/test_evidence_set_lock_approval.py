@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import func, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,30 +73,6 @@ async def _approval(
     )
 
 
-async def _legacy_locked_evidence_set(session: AsyncSession) -> EvidenceSet:
-    project = Project(
-        id=uuid4(),
-        slug=f"legacy-evidence-set-lock-{uuid4()}",
-        name="Legacy EvidenceSet lock test",
-        status="active",
-        default_locale="en",
-    )
-    ids = [str(uuid4())]
-    evidence_set = EvidenceSet(
-        id=uuid4(),
-        project_id=project.id,
-        version=1,
-        evidence_ids_json=ids,
-        content_hash=evidence_set_hash(ids),
-        status="locked",
-        locked_at=datetime.now(UTC),
-        locked_by="legacy-reviewer",
-    )
-    session.add_all([project, evidence_set])
-    await session.flush()
-    return evidence_set
-
-
 async def _count(session: AsyncSession, model: type[object]) -> int:
     return int(await session.scalar(select(func.count()).select_from(model)) or 0)
 
@@ -145,6 +121,50 @@ async def test_draft_without_approval_is_rejected_and_exact_approval_locks() -> 
             "reason": refreshed.approval_reason,
             "approved_at": refreshed.approved_at,
         } == before
+
+
+@pytest.mark.asyncio
+async def test_new_evidence_set_must_start_as_clean_draft() -> None:
+    async with isolated_session() as session:
+        draft = await _draft_evidence_set(session)
+        base_values = {
+            "id": uuid4(),
+            "project_id": draft.project_id,
+            "version": 2,
+            "evidence_ids_json": [str(uuid4())],
+            "content_hash": evidence_set_hash([str(uuid4())]),
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+        raw_variants = (
+            {**base_values, "status": "locked", "locked_at": datetime.now(UTC)},
+            {**base_values, "id": uuid4(), "status": "draft", "locked_at": datetime.now(UTC)},
+            {**base_values, "id": uuid4(), "status": "draft", "locked_by": "reviewer"},
+        )
+        for values in raw_variants:
+            with pytest.raises(DBAPIError, match="evidence_set_must_start_draft"):
+                async with session.begin_nested():
+                    await session.execute(insert(EvidenceSet).values(**values))
+
+        orm_locked = EvidenceSet(
+            id=uuid4(),
+            project_id=draft.project_id,
+            version=3,
+            evidence_ids_json=[str(uuid4())],
+            content_hash=draft.content_hash,
+            status="locked",
+            locked_at=datetime.now(UTC),
+            locked_by="reviewer",
+        )
+        with pytest.raises(DBAPIError, match="evidence_set_must_start_draft"):
+            async with session.begin_nested():
+                session.add(orm_locked)
+                await session.flush()
+
+        normal = await _draft_evidence_set(session)
+        assert normal.status == "draft"
+        assert normal.locked_at is None
+        assert normal.locked_by is None
 
 
 @pytest.mark.asyncio
@@ -296,25 +316,6 @@ async def test_raw_sql_lock_requires_approval_but_exact_approval_succeeds() -> N
                 .values(**lock_values)
             )
         assert evidence_set.status == "locked"
-
-
-@pytest.mark.asyncio
-async def test_already_locked_legacy_row_remains_idempotent_without_new_approval() -> None:
-    async with isolated_session() as session:
-        evidence_set = await _legacy_locked_evidence_set(session)
-        locked = await lock_evidence_set(
-            session,
-            evidence_set_id=evidence_set.id,
-            locked_by="legacy-reviewer",
-        )
-        assert locked.id == evidence_set.id
-        assert await _count(session, EvidenceSetApproval) == 0
-        with pytest.raises(ValueError, match="evidence_set_already_locked_by_different_reviewer"):
-            await lock_evidence_set(
-                session,
-                evidence_set_id=evidence_set.id,
-                locked_by="other-reviewer",
-            )
 
 
 @pytest.mark.asyncio

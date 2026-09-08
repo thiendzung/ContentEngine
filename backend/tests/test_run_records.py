@@ -5,6 +5,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import select, update
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +29,6 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
 )
-from app.modules.knowledge.models import EvidenceSet
 from app.modules.knowledge.persistence import content_hash
 
 
@@ -237,18 +237,14 @@ async def test_artifact_versions_are_append_only_and_approval_targets_artifact()
 async def test_context_manifest_is_immutable_and_keeps_context_refs() -> None:
     async with isolated_session() as session:
         project, run, snapshot = await create_run(session)
-        evidence_set = EvidenceSet(
+        evidence_set = await create_locked_evidence_set(
+            session,
             project_id=project.id,
             content_case_id=run.content_case_id,
             version=1,
-            evidence_ids_json=["evidence:1"],
-            content_hash=content_hash("evidence-set:1"),
-            status="locked",
-            locked_at=datetime.now(UTC),
+            evidence_ids=["evidence:1"],
             locked_by="reviewer",
         )
-        session.add(evidence_set)
-        await session.flush()
         manifest = ContextManifest(
             run_id=run.id,
             settings_snapshot_id=snapshot.id,

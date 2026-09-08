@@ -639,6 +639,15 @@ T04.34–T04.35: NOT STARTED
 Next action: T04.34 isolated dedicated test database
 ```
 
+T04.33 final INSERT-boundary repair is complete. Migration
+`20260908_0013_evidence_set_initial_draft_guard` rejects every future EvidenceSet INSERT
+unless it starts as a clean `draft` with null `locked_at` and `locked_by`. Raw SQL and ORM
+locked inserts, plus draft rows with either lock field populated, are rejected; normal draft
+insert and draft → exact approval → locked still pass. Historical O4 EvidenceSet v8 remains
+locked and unchanged with no retrofit approval or other DB mutation. Full isolated backend:
+`297 passed, 3 skipped`; migration upgrade → downgrade → upgrade, Ruff, mypy, OpenAPI and
+frontend gates pass; provider/model calls = `0`. T04.34–T04.35 remain NOT STARTED.
+
 # Curated EvidenceSet v8 checkpoint
 
 ```text

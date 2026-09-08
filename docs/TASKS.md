@@ -447,6 +447,19 @@ PR-F T04.33 EvidenceSet lock approval closeout:
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-33-lock-approval-gate.md`.
 
+T04.33 direct-lock INSERT repair:
+
+- Migration `20260908_0013_evidence_set_initial_draft_guard` rejects raw SQL and ORM
+  insertion of `status=locked`, or draft rows with non-null `locked_at`/`locked_by`.
+- Normal clean draft insertion and draft → exact approval → locked both pass. The guard
+  applies only to future INSERTs; historical EvidenceSet v8 remains locked and unchanged,
+  with no retrofit approval.
+- Focused lock/approval and dependent workflow tests: `92 passed, 1 skipped`; full isolated
+  backend gate: `297 passed, 3 skipped`. Migration upgrade → downgrade → upgrade, Ruff,
+  mypy, OpenAPI and frontend gates pass; generic Approval, ContentRun and Artifact deltas
+  are `0`; provider/model calls = `0`.
+- T04.33 remains `DONE`; T04.34–T04.35 remain `NOT STARTED`.
+
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
 PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. PR #26 merged with commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. See the five PR-D evidence logs listed in the post-merge closeout record above.

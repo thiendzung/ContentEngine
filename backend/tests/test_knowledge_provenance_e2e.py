@@ -9,6 +9,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -216,18 +217,14 @@ async def _provenance_fixture(
     session.add(evidence)
     await session.flush()
 
-    evidence_set = EvidenceSet(
+    evidence_set = await create_locked_evidence_set(
+        session,
         project_id=project.id,
         content_case_id=content_case.id,
         version=1,
-        evidence_ids_json=[str(evidence.id)],
-        content_hash=content_hash(f"provenance-evidence-set-{uuid4()}"),
-        status="locked",
-        locked_at=datetime.now(UTC),
+        evidence_ids=[str(evidence.id)],
         locked_by="synthetic reviewer",
     )
-    session.add(evidence_set)
-    await session.flush()
     return ProvenanceFixture(
         project=project,
         content_case=content_case,

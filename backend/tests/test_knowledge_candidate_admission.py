@@ -13,6 +13,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -168,14 +169,12 @@ async def _admission_fixture(session: AsyncSession) -> AdmissionFixture:
     )
     session.add(evidence)
     await session.flush()
-    evidence_set = EvidenceSet(
+    evidence_set = await create_locked_evidence_set(
+        session,
         project_id=project.id,
         content_case_id=content_case.id,
         version=8,
-        evidence_ids_json=[str(evidence.id)],
-        content_hash=content_hash("admission-evidence-set"),
-        status="locked",
-        locked_at=datetime.now(UTC),
+        evidence_ids=[str(evidence.id)],
         locked_by="fixture reviewer",
     )
     originality_pack = OriginalityPack(
@@ -184,7 +183,7 @@ async def _admission_fixture(session: AsyncSession) -> AdmissionFixture:
         summary="Fixture originality pack",
         status="draft",
     )
-    session.add_all([evidence_set, originality_pack])
+    session.add(originality_pack)
     await session.flush()
     candidate = (
         await extract_knowledge_candidates(

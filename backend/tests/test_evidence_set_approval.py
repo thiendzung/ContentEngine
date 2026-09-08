@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -19,6 +18,7 @@ from app.modules.knowledge.evidence_set_approval import (
 )
 from app.modules.knowledge.models import EvidenceSet, EvidenceSetApproval
 from app.modules.knowledge.persistence import evidence_set_hash
+from app.modules.research.evidence.persistence import lock_evidence_set
 
 
 @asynccontextmanager
@@ -50,30 +50,6 @@ async def _draft_evidence_set(
         evidence_ids_json=ids,
         content_hash=evidence_set_hash(ids),
         status="draft",
-    )
-    session.add_all([project, evidence_set])
-    await session.flush()
-    return evidence_set
-
-
-async def _legacy_locked_evidence_set(session: AsyncSession) -> EvidenceSet:
-    project = Project(
-        id=uuid4(),
-        slug=f"legacy-evidence-set-{uuid4()}",
-        name="Legacy EvidenceSet test",
-        status="active",
-        default_locale="en",
-    )
-    ids = [str(uuid4())]
-    evidence_set = EvidenceSet(
-        id=uuid4(),
-        project_id=project.id,
-        version=1,
-        evidence_ids_json=ids,
-        content_hash=evidence_set_hash(ids),
-        status="locked",
-        locked_at=datetime.now(UTC),
-        locked_by="legacy-reviewer",
     )
     session.add_all([project, evidence_set])
     await session.flush()
@@ -221,14 +197,21 @@ async def test_actor_and_reason_are_required() -> None:
 @pytest.mark.asyncio
 async def test_locked_evidence_set_cannot_receive_retrofit_approval() -> None:
     async with isolated_session() as session:
-        evidence_set = await _legacy_locked_evidence_set(session)
+        evidence_set = await _draft_evidence_set(session)
+        approval = await _approve(session, evidence_set)
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="MG CONTENT ENGINE",
+            approval_id=approval.id,
+        )
 
         with pytest.raises(
             EvidenceSetApprovalError,
             match="evidence_set_approval_requires_draft_evidence_set",
         ):
             await _approve(session, evidence_set)
-        assert await _count(session, EvidenceSetApproval) == 0
+        assert await _count(session, EvidenceSetApproval) == 1
 
 
 @pytest.mark.asyncio
