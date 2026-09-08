@@ -332,7 +332,9 @@ PR #28: OPEN / DRAFT
 ```
 
 PR-E now records `T04.18–T04.23 COMPLETE / FINAL REVIEW PENDING`. No Ready-for-review
-transition or merge was performed. Next action = `MG CONTENT ENGINE PR-E FINAL REVIEW`.
+transition or merge was performed. Closeout CI `34177468106` passed on commit
+`0b10b54283c19faf8a0314efa11db816d53ee4a3`. Next action = `MG CONTENT ENGINE PR-E FINAL
+REVIEW`.
 
 # Global rules
 

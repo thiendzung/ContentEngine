@@ -45,9 +45,9 @@ not mark the PR Ready and does not merge it.
 ## Validation
 
 - Focused CE04 Evidence/OriginalityPack suite: `23 passed`.
-- Backend full isolated gate: required on the closeout HEAD through GitHub CI, including
-  lint, mypy, migration round-trip and backend tests.
-- Frontend lint, typecheck and build: required on the closeout HEAD through GitHub CI.
+- GitHub CI run `34177468106` on closeout HEAD `0b10b54283c19faf8a0314efa11db816d53ee4a3`:
+  `PASS`, including backend lint, mypy, migration round-trip, backend tests, OpenAPI
+  export and frontend lint/typecheck/build.
 - No separate secret-scan workflow is configured in `.github/workflows/ci.yml`.
 
 ## Tasks marked done
