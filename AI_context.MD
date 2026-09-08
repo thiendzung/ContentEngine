@@ -45,7 +45,8 @@ PR-F: ACTIVE / DRAFT
 
 T04.1–T04.17: DONE
 T04.18–T04.23: DONE
-T04.24–T04.35: NOT STARTED
+T04.24: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.25–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -229,7 +230,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation: NOT STARTED
+Implementation checkpoint: T04.24 extraction code/tests exist; real extraction/review gate pending
 ```
 
 PR-F order:
@@ -241,8 +242,9 @@ F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop
 F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate
 ```
 
-PR-F activation is docs-only. It does not implement T04.24, mutate the database, call a
-provider, create a KnowledgeCandidate, mirror to Obsidian, or start T04.25+ implementation.
+The PR-F activation commit was docs-only. The current T04.24 implementation checkpoint
+does not mutate the database, call a provider, create a KnowledgeCandidate, mirror to
+Obsidian, or start T04.25+ implementation.
 
 Invariants:
 
@@ -255,13 +257,43 @@ ContentRun: 2
 KnowledgeCandidate: 0
 Provider calls: 0
 T04.1–T04.23: DONE
-T04.24–T04.35: NOT STARTED
+T04.24: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.25–T04.35: NOT STARTED
 ```
 
 PR-F gates must preserve exact provenance and human approval boundaries. EvidenceSet
 approval binds the exact EvidenceSet ID, version and content hash; lock must reject missing,
 stale or wrong approval. Raw SERP/API payload remains outside Obsidian by default, and
 Discovery signals never silently become factual Evidence.
+
+# PR-F T04.24 implementation checkpoint
+
+The extraction boundary is implemented and tested, but T04.24 is not done. A real
+EvidenceSet extraction/review gate is still required before the task can be marked DONE.
+
+```text
+Implementation:
+- backend/app/modules/knowledge/candidates.py
+- backend/app/modules/knowledge/__init__.py
+- backend/scripts/extract_knowledge_candidates.py
+- backend/tests/test_knowledge_candidate_extraction.py
+
+Contract:
+locked EvidenceSet → Evidence grouped by Claim → candidate only with >=1 supports
+→ preserve relation/source/provenance snapshot → status=CANDIDATE
+
+Provider calls: 0
+Real O4 CLI extraction: not run
+Real KnowledgeCandidate: not created
+Human approval: not implemented in T04.24; belongs to T04.25
+T04.24: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.25–T04.35: NOT STARTED
+```
+
+The deterministic candidate identity includes the exact EvidenceSet ID/version/hash and
+claim/provenance snapshot. Changed snapshots create a new candidate identity instead of
+silently reusing stale data. Contradicts-only, qualifies-only and context_only-only Claims
+do not create candidates. Raw SearchSignal/provider payload has no candidate input path.
 
 # Curated EvidenceSet v8 checkpoint
 
