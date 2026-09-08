@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.26–T04.35; NOT STARTED`.
+- Current implementation slice = `T04.27–T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -265,7 +265,7 @@ PR-E post-merge closeout record:
 - [x] T04.23 OriginalityPack builder.
 - [x] T04.24 Knowledge Candidate extraction.
 - [x] T04.25 Candidate → approved admission flow.
-- [ ] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
+- [x] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
 - [ ] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
 - [ ] T04.28 Memory gap/create-update-refresh recommendation.
 - [ ] T04.29 Provenance end-to-end test.
@@ -286,7 +286,7 @@ PR-F activation record:
 - F2: T04.26–T04.28 — Obsidian + raw-data guard + memory gap.
 - F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop.
 - F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate.
-- Invariants: EvidenceSet v8 and OriginalityPack unchanged; NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; ContentRun = `2`; KnowledgeCandidate = `0`; provider calls = `0`.
+- Invariants at activation: EvidenceSet v8 and OriginalityPack unchanged; NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; O4 ContentCase ContentRun count = `0`; global ContentRun count is environment-dependent; KnowledgeCandidate = `0`; provider calls = `0`.
 - Do not implement T04.24, mutate DB, call providers, tick T04.24+, or merge in activation.
 
 PR-F T04.24 closeout record:
@@ -313,6 +313,22 @@ PR-F T04.25 admission closeout record:
 - T04.26–T04.35 = NOT STARTED. No Obsidian export was performed.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-25-admission.md`.
+
+PR-F T04.26 Obsidian mirror closeout record:
+
+- T04.26 = DONE after the real mirror gate for the two approved O4 KnowledgeCandidates.
+- Explicit temporary vault: `/tmp/motgu-ce04-obsidian-gate`; exactly two Markdown files were exported.
+- `08693242-d5c5-51b2-bde9-141c2933417d.md` SHA-256 = `d93ee29a88b69be0a526285643b6de423fc1c0fae848cb5e743bb488b9051344`.
+- `1c9d6c34-91fe-5da2-af33-08a4dc39e2e2.md` SHA-256 = `40f14af25b41be3494721457c374a7614c71de36d300539dc037152c5d316471`.
+- The second export was byte-identical with the same paths and hashes.
+- Rejected candidates `212f0c96-cb30-50ea-8759-8912580d0981` and `da9a7cf5-9a74-522c-9ee9-52a1198aa194` were both blocked with `candidate_status_not_exportable`.
+- No rejected candidate ID, raw payload, raw response, HTML or page body appeared in the vault.
+- Database mutation delta = `0`; no ContentRun was deleted or modified; provider calls = `0`.
+- Global ContentRun: `4 → 4` (environment-dependent); O4 ContentCase `9ec6133b-5f14-46d0-9866-e3b049e537b5`: `0 → 0`.
+- The old fixed `ContentRun=2` invariant was stale; scoped verification is now canonical and the drift reinforces T04.34's isolated test database requirement.
+- T04.27–T04.35 = NOT STARTED. Next action: T04.27 raw search/API data mirror regression.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-26-obsidian-mirror.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
