@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.31–T04.35; NOT STARTED`.
+- Current implementation slice = `T04.32–T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -270,7 +270,7 @@ PR-E post-merge closeout record:
 - [x] T04.28 Memory gap/create-update-refresh recommendation.
 - [x] T04.29 Provenance end-to-end test.
 - [x] T04.30 Test Discovery signal cannot silently become factual evidence.
-- [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
+- [x] T04.31 Test second-hop can trace a summary article to an original source candidate.
 - [ ] T04.32 EvidenceSet approval binds exact ID + version + hash.
 - [ ] T04.33 Lock rejects missing/stale/wrong approval.
 - [ ] T04.34 Isolated test database.
@@ -386,6 +386,29 @@ PR-F T04.30 Discovery/evidence boundary closeout:
   original-source trace.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-30-discovery-evidence-boundary.md`.
+
+PR-F T04.31 second-hop provenance closeout:
+
+- T04.31 = DONE after a bounded synthetic end-to-end gate; real providers and real O4
+  records were not touched.
+- Exact `parent_url` was preserved from the `ProductionResearchRequest` to the Exa
+  second-hop candidate. The original candidate retained `relation=second_hop`,
+  `parent_url`, `found_via=exa_second_hop`, `intended_use=evidence_candidate`,
+  `source_type=institutional` and low commercial bias.
+- When summary/direct and original candidates coexisted, the original second-hop URL was
+  selected and read. Persisted Source and SourceDocument used the original URL; Source
+  provenance retained the summary parent. Claim/Evidence accepted only an exact excerpt
+  from the original SourceDocument, never summary text.
+- Duplicate original URLs retained the stronger second-hop provenance. Missing or wrong
+  parent provenance failed explicitly; unavailable Exa returned `exa_required_for_second_hop`
+  without promoting a direct result.
+- Focused result: `8 passed`. Full isolated backend, ruff, mypy and OpenAPI gates passed;
+  migration round-trip and frontend gates passed. Provider calls = `0`; real O4 DB
+  mutation = `0`.
+- T04.1–T04.31 = DONE. T04.32–T04.35 = NOT STARTED. Next action: T04.32 EvidenceSet
+  approval exact ID + version + hash.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-31-second-hop-provenance.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

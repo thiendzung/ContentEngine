@@ -52,7 +52,8 @@ T04.27: DONE
 T04.28: DONE
 T04.29: DONE
 T04.30: DONE
-T04.31–T04.35: NOT STARTED
+T04.31: DONE
+T04.32–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -237,7 +238,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24–T04.30 complete; T04.31–T04.35 not started
+Implementation checkpoint: T04.24–T04.31 complete; T04.32–T04.35 not started
 ```
 
 PR-F order:
@@ -567,6 +568,32 @@ Real O4 DB mutation: 0; O4 ContentRun 0→0; KnowledgeCandidate 4 unchanged; Evi
 T04.1–T04.30: DONE
 T04.31–T04.35: NOT STARTED
 Next action: T04.31 second-hop original-source trace
+```
+
+# PR-F T04.31 second-hop provenance closeout
+
+T04.31 is DONE after a bounded synthetic end-to-end gate. A summary/editorial URL is
+kept as discovery parent context; factual Evidence is persisted only from the selected,
+successfully read original SourceDocument. Production code changed only to reject
+missing or mismatched second-hop parent provenance before persistence.
+
+```text
+Test: backend/tests/test_second_hop_original_source_e2e.py
+Focused result: 8 passed
+Second-hop router: exact parent_url preserved to Exa and candidate relation=second_hop
+Selection: original URL preferred over generic summary URL for reading
+Persistence: Source and SourceDocument canonical_url=ORIGINAL_URL
+Source provenance: relation=second_hop, parent_url=SUMMARY_URL, found_via=exa_second_hop, discovered_by=exa, intended_use=evidence_candidate
+Evidence: exact original-document excerpt only; summary URL is not factual source
+Excerpt guard: summary-only text rejected with evidence_excerpt_not_found_in_source_document
+Dedupe: duplicate original URL retains second-hop relation and parent_url
+Missing/wrong parent: explicit validation failure; no silent full-trace representation
+Exa unavailable: exa_required_for_second_hop; no direct result promoted to second-hop
+Provider calls: 0 real calls; all test providers/readers are stubs
+Real O4 DB mutation: 0; EvidenceSet v8, KnowledgeCandidate, OriginalityPack and O4 ContentRun unchanged
+T04.1–T04.31: DONE
+T04.32–T04.35: NOT STARTED
+Next action: T04.32 EvidenceSet approval exact ID + version + hash
 ```
 
 # Curated EvidenceSet v8 checkpoint

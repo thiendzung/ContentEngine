@@ -22,7 +22,12 @@ from app.modules.knowledge.models import (
     SourceDocument,
 )
 from app.modules.knowledge.persistence import content_hash
-from app.modules.research.contracts import PageDocument, ProductionResearchResult, SourceCandidate
+from app.modules.research.contracts import (
+    PageDocument,
+    ProductionResearchResult,
+    SourceCandidate,
+    SourceRelation,
+)
 from app.modules.research.evidence.contracts import (
     ORIGINALITY_MATERIAL_TYPE,
     ORIGINALITY_REFERENCE_ONLY_TYPE,
@@ -168,6 +173,18 @@ async def persist_read_documents(
     *,
     production: ProductionResearchResult,
 ) -> dict[str, PersistedPageRef]:
+    for source_candidate in production.source_candidates:
+        if source_candidate.relation is not SourceRelation.SECOND_HOP:
+            continue
+        if not source_candidate.parent_url:
+            raise ValueError("second_hop_parent_url_required")
+        requested_parent_url = production.request.parent_url
+        if (
+            requested_parent_url is not None
+            and source_candidate.parent_url != requested_parent_url
+        ):
+            raise ValueError("second_hop_parent_url_mismatch")
+
     refs: dict[str, PersistedPageRef] = {}
     persisted_document_ids: set[UUID] = set()
 
