@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.27–T04.35; NOT STARTED`.
+- Current implementation slice = `T04.28–T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -266,7 +266,7 @@ PR-E post-merge closeout record:
 - [x] T04.24 Knowledge Candidate extraction.
 - [x] T04.25 Candidate → approved admission flow.
 - [x] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
-- [ ] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
+- [x] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
 - [ ] T04.28 Memory gap/create-update-refresh recommendation.
 - [ ] T04.29 Provenance end-to-end test.
 - [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
@@ -329,6 +329,25 @@ PR-F T04.26 Obsidian mirror closeout record:
 - T04.27–T04.35 = NOT STARTED. Next action: T04.27 raw search/API data mirror regression.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-26-obsidian-mirror.md`.
+
+PR-F T04.27 raw mirror guard closeout record:
+
+- T04.27 = DONE after `backend/tests/test_obsidian_raw_payload_guard.py` passed the
+  recursive raw-payload boundary tests.
+- Production code changed = none; the existing extraction/admission/mirror validation
+  was proven by regression tests.
+- All eight forbidden keys were tested recursively: `body`, `html`, `payload`, `raw`,
+  `raw_payload`, `raw_response`, `response`, and `result`.
+- Safe `provider`, `query`, `source_url`, `source_ref`, Evidence and SourceDocument
+  references remained traceable. Raw SourceDocument body remained audit-only.
+- Sanitized approved knowledge mirrored cleanly. A tampered approved candidate was
+  rejected before writing with `candidate_raw_provenance_rejected`.
+- Candidate, EvidenceSet, OriginalityPack, scoped O4 ContentRun, Artifact and Approval
+  deltas = `0`; provider calls = `0`.
+- T04.24–T04.27 = DONE. T04.28–T04.35 = NOT STARTED. Next action: T04.28 memory
+  gap/create-update-refresh recommendation.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-27-raw-mirror-guard.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

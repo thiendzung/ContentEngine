@@ -48,7 +48,8 @@ T04.18–T04.23: DONE
 T04.24: DONE
 T04.25: DONE
 T04.26: DONE
-T04.27–T04.35: NOT STARTED
+T04.27: DONE
+T04.28–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -438,6 +439,30 @@ T04.25: DONE
 T04.26: DONE
 T04.27–T04.35: NOT STARTED
 Next action: T04.27 raw search/API data mirror regression
+```
+
+# PR-F T04.27 raw payload mirror guard
+
+T04.27 is DONE after a test-only regression gate proving that raw SERP/API/page payload
+cannot enter the approved Knowledge Obsidian projection by default.
+
+```text
+Test: backend/tests/test_obsidian_raw_payload_guard.py
+Production code changed: none
+Forbidden keys tested recursively: body, html, payload, raw, raw_payload, raw_response, response, result
+Sentinels tested: RAW_SERP_SENTINEL_01, RAW_HTML_SENTINEL_02, RAW_PAGE_BODY_SENTINEL_03,
+RAW_PAYLOAD_SENTINEL_04, RAW_RESPONSE_SENTINEL_05, RAW_RESULT_SENTINEL_06, RAW_NESTED_SENTINEL_07
+Sanitized candidate: safe provider/query/source_url/source_ref metadata retained; raw keys and sentinels absent
+Approved mirror: exact statement, source/evidence refs, reviewer and reason retained; raw page/provider data absent
+Raw SourceDocument body: retained for audit only and not mirrored
+Tampered approved candidate: blocked before write with candidate_raw_provenance_rejected
+Read-only gate: candidate/evidence/originality/run/artifact/approval state unchanged; provider calls=0
+T04.24: DONE
+T04.25: DONE
+T04.26: DONE
+T04.27: DONE
+T04.28–T04.35: NOT STARTED
+Next action: T04.28 memory gap/create-update-refresh recommendation
 ```
 
 # Curated EvidenceSet v8 checkpoint
