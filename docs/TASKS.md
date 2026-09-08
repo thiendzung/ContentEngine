@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.24–T04.35 activation; implementation NOT STARTED`.
+- Current implementation slice = `T04.25 admission implementation; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -263,7 +263,7 @@ PR-E post-merge closeout record:
 - [x] T04.21 Contradiction representation.
 - [x] T04.22 EvidenceSet lock/version.
 - [x] T04.23 OriginalityPack builder.
-- [ ] T04.24 Knowledge Candidate extraction.
+- [x] T04.24 Knowledge Candidate extraction.
 - [ ] T04.25 Candidate → approved admission flow.
 - [ ] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
 - [ ] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
@@ -288,6 +288,18 @@ PR-F activation record:
 - F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate.
 - Invariants: EvidenceSet v8 and OriginalityPack unchanged; NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; ContentRun = `2`; KnowledgeCandidate = `0`; provider calls = `0`.
 - Do not implement T04.24, mutate DB, call providers, tick T04.24+, or merge in activation.
+
+PR-F T04.24 closeout record:
+
+- Real extraction produced exactly four KnowledgeCandidate rows from locked EvidenceSet v8; the identical command was run a second time and reused the same four IDs.
+- T04.24 = DONE after MG CONTENT ENGINE candidate review record.
+- MG proposed for T04.25 admission: `08693242-d5c5-51b2-bde9-141c2933417d` (direct MCI price-context statement) and `1c9d6c34-91fe-5da2-af33-08a4dc39e2e2` (IRS valuation discussion factors and market context).
+- MG proposed not for T04.25 admission: `212f0c96-cb30-50ea-8759-8912580d0981` (appraiser qualifications are not direct buyer price guidance) and `da9a7cf5-9a74-522c-9ee9-52a1198aa194` (panel FMV review process is not direct buyer price guidance).
+- This closeout records review decisions only. Candidate rows were not mutated; status remains `CANDIDATE`, reviewer and review_reason remain null.
+- Provider calls = `0`; EvidenceSet v8 and OriginalityPack were not changed.
+- T04.25 = NOT STARTED. Next action: implement the admission gate using the recorded MG decision.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-24-candidate-review.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

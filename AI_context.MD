@@ -45,7 +45,7 @@ PR-F: ACTIVE / DRAFT
 
 T04.1–T04.17: DONE
 T04.18–T04.23: DONE
-T04.24: REAL EXTRACTION COMPLETE / NOT DONE
+T04.24: DONE
 T04.25–T04.35: NOT STARTED
 ```
 
@@ -230,7 +230,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24 real extraction completed; MG review gate pending
+Implementation checkpoint: T04.24 extraction and MG review record complete; T04.25 admission not started
 ```
 
 PR-F order:
@@ -244,8 +244,8 @@ F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate
 
 The PR-F activation commit was docs-only. The T04.24 implementation and real extraction
 did not call a provider, modify EvidenceSet v8 or the OriginalityPack, mirror to Obsidian,
-or start T04.25+ implementation. Four unreviewed KnowledgeCandidate rows were created
-only by the explicitly authorized T04.24 real extraction command.
+or start T04.25+ implementation. MG CONTENT ENGINE reviewed the four resulting candidates.
+This closeout records the review decision only; it does not mutate candidate rows.
 
 Invariants:
 
@@ -258,7 +258,7 @@ ContentRun: 2
 KnowledgeCandidate: 4 / all CANDIDATE / reviewer=null / review_reason=null
 Provider calls: 0
 T04.1–T04.23: DONE
-T04.24: REAL EXTRACTION COMPLETE / NOT DONE
+T04.24: DONE
 T04.25–T04.35: NOT STARTED
 ```
 
@@ -269,8 +269,9 @@ Discovery signals never silently become factual Evidence.
 
 # PR-F T04.24 real extraction checkpoint
 
-The extraction boundary is implemented and tested, and the authorized real extraction
-has completed. T04.24 remains NOT DONE until MG CONTENT ENGINE reviews every candidate.
+The extraction boundary is implemented and tested, the authorized real extraction has
+completed, and MG CONTENT ENGINE has recorded a review decision for every candidate.
+T04.24 is DONE. Candidate status/reviewer fields remain unchanged; T04.25 owns admission.
 
 ```text
 Implementation:
@@ -294,7 +295,7 @@ Candidate IDs:
 - 212f0c96-cb30-50ea-8759-8912580d0981
 All rows: status=CANDIDATE, reviewer=null, review_reason=null
 Human approval: not implemented in T04.24; belongs to T04.25
-T04.24: REAL EXTRACTION COMPLETE / NOT DONE
+T04.24: DONE
 T04.25–T04.35: NOT STARTED
 ```
 
@@ -312,7 +313,27 @@ KnowledgeCandidate total after run: 4; unrelated candidates: 0; total delta: +4
 All candidates have >=1 supports; no APPROVED candidate; no raw payload markers
 EvidenceSet v8: unchanged
 OriginalityPack 6bd287ec-43f9-4d69-957c-2223f258f909: unchanged
-Next action: MG CONTENT ENGINE candidate review; do not approve/reject in T04.24
+Next action: T04.25 admission implementation using the recorded MG decision; no candidate
+status mutation was made in this closeout
+```
+
+## T04.24 MG candidate review record
+
+```text
+EvidenceSet v8: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / version=8 / locked / unchanged
+Candidate rows reviewed: 4
+Proposed APPROVE FOR T04.25 ADMISSION:
+- 08693242-d5c5-51b2-bde9-141c2933417d — direct MCI price-context statement helps answer O4.
+- 1c9d6c34-91fe-5da2-af33-08a4dc39e2e2 — IRS valuation discussion factors and market context are relevant to price assessment.
+Proposed REJECT FOR T04.25 ADMISSION:
+- 212f0c96-cb30-50ea-8759-8912580d0981 — appraiser qualifications are not direct buyer price guidance.
+- da9a7cf5-9a74-522c-9ee9-52a1198aa194 — panel FMV review process is not direct buyer price guidance.
+Candidate DB statuses: all remain CANDIDATE; reviewer=null; review_reason=null
+Provider calls: 0
+DB mutation in closeout: 0
+T04.24: DONE
+T04.25: NOT STARTED
+Next action: implement T04.25 admission from this recorded decision.
 ```
 
 The deterministic candidate identity includes the exact EvidenceSet ID/version/hash and
