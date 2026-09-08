@@ -47,7 +47,8 @@ T04.1–T04.17: DONE
 T04.18–T04.23: DONE
 T04.24: DONE
 T04.25: DONE
-T04.26–T04.35: NOT STARTED
+T04.26: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.27–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -231,7 +232,8 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24 and T04.25 complete; T04.26+ not started
+Implementation checkpoint: T04.24 and T04.25 complete; T04.26 exporter checkpoint exists;
+real mirror gate not run; T04.27+ not started
 ```
 
 PR-F order:
@@ -246,7 +248,8 @@ F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate
 The PR-F activation commit was docs-only. T04.24 extraction/review and T04.25 admission
 did not call a provider, modify EvidenceSet v8 or the OriginalityPack, or mirror to
 Obsidian. The exact MG CONTENT ENGINE decisions were applied to the four real O4
-KnowledgeCandidates; T04.26+ remains not started.
+KnowledgeCandidates; T04.26 has an implementation checkpoint, but the real mirror gate
+has not run.
 
 Invariants:
 
@@ -261,7 +264,8 @@ Provider calls: 0
 T04.1–T04.23: DONE
 T04.24: DONE
 T04.25: DONE
-T04.26–T04.35: NOT STARTED
+T04.26: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.27–T04.35: NOT STARTED
 ```
 
 PR-F gates must preserve exact provenance and human approval boundaries. EvidenceSet
@@ -399,6 +403,40 @@ The deterministic candidate identity includes the exact EvidenceSet ID/version/h
 claim/provenance snapshot. Changed snapshots create a new candidate identity instead of
 silently reusing stale data. Contradicts-only, qualifies-only and context_only-only Claims
 do not create candidates. Raw SearchSignal/provider payload has no candidate input path.
+
+# PR-F T04.26 Obsidian mirror implementation checkpoint
+
+The deterministic Obsidian mirror/export is implemented for approved KnowledgeCandidates
+only. The database remains the source of truth; export is one-way and creates exactly
+`10_Knowledge/<candidate-id>.md` under an explicit existing vault path. Markdown is UTF-8,
+deterministic, and written with temp-file plus replace atomicity. Candidate identity is the
+UUID, never the mutable statement/title.
+
+```text
+Implementation:
+- backend/app/modules/knowledge/obsidian.py
+- backend/app/modules/knowledge/admission.py (shared snapshot/lineage verifier)
+- backend/app/modules/knowledge/__init__.py
+- backend/scripts/export_approved_knowledge.py
+- backend/tests/test_obsidian_mirror.py
+
+Export contract: APPROVED only; CANDIDATE/RAW/REJECTED/STALE rejected
+Frontmatter/body: exact statement, summary, reviewer/reason and human-readable
+source/evidence references; raw provider/page payload is not rendered
+Determinism: same approved snapshot produces byte-identical content and the same path
+Hash/linkage: current candidate hash and locked EvidenceSet lineage are verified before export
+Safety: explicit vault path, expected 10_Knowledge directory only, UUID-derived path,
+path traversal checks, UTF-8 atomic write
+Importer/write-back: none
+Provider calls: 0
+Real O4 export: not run
+Database mutation: 0; tests use an isolated transaction and temporary vault
+T04.24: DONE
+T04.25: DONE
+T04.26: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.27–T04.35: NOT STARTED
+Next action: MG CONTENT ENGINE T04.26 mirror review and a separate real mirror gate
+```
 
 # Curated EvidenceSet v8 checkpoint
 

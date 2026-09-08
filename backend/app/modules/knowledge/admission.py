@@ -268,6 +268,26 @@ async def _verify_current_lineage(
         raise KnowledgeCandidateAdmissionError("candidate_snapshot_stale")
 
 
+async def verify_candidate_snapshot_lineage(
+    session: AsyncSession,
+    *,
+    candidate: KnowledgeCandidate,
+) -> tuple[dict[str, Any], str]:
+    """Verify a candidate snapshot before a read-only downstream projection."""
+
+    candidate_snapshot, candidate_content_hash = _validate_snapshot_shape(candidate)
+    try:
+        await _verify_current_lineage(
+            session,
+            candidate=candidate,
+            candidate_snapshot=candidate_snapshot,
+            candidate_content_hash=candidate_content_hash,
+        )
+    except ValueError as exc:
+        raise KnowledgeCandidateAdmissionError(str(exc)) from exc
+    return candidate_snapshot, candidate_content_hash
+
+
 async def admit_knowledge_candidate(
     session: AsyncSession,
     *,
