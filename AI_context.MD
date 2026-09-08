@@ -50,7 +50,7 @@ T04.25: DONE
 T04.26: DONE
 T04.27: DONE
 T04.28: DONE
-T04.29: REGRESSION CHECKPOINT / NOT DONE
+T04.29: DONE
 T04.30–T04.35: NOT STARTED
 ```
 
@@ -236,7 +236,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24–T04.28 complete; T04.29 regression checkpoint / not done
+Implementation checkpoint: T04.24–T04.29 complete; T04.30–T04.35 not started
 ```
 
 PR-F order:
@@ -492,10 +492,11 @@ T04.29–T04.35: NOT STARTED
 Next action: T04.29 provenance end-to-end test
 ```
 
-# PR-F T04.29 knowledge provenance regression checkpoint
+# PR-F T04.29 knowledge provenance implementation checkpoint (before real gate)
 
-T04.29 has a test/docs checkpoint and remains NOT DONE; no real O4 provenance trace was
-run. The regression fixture creates synthetic persisted Source, SourceDocument, Claim,
+At the pre-gate checkpoint, T04.29 was not done and no real O4 provenance trace had been
+run. This retained record covers the synthetic regression fixture, which creates Source,
+SourceDocument, Claim,
 Evidence, locked EvidenceSet, KnowledgeCandidate extraction and human APPROVED admission,
 then resolves the complete lineage back to Source and its canonical URL/locator.
 
@@ -514,6 +515,29 @@ T04.24–T04.28: DONE
 T04.29: REGRESSION CHECKPOINT / NOT DONE
 T04.30–T04.35: NOT STARTED
 Next action: real O4 provenance trace gate
+```
+
+# PR-F T04.29 real knowledge provenance closeout
+
+Both real APPROVED O4 KnowledgeCandidates passed read-only lineage verification twice.
+Each trace resolved the persisted candidate, exact locked EvidenceSet v8, Claim, Evidence,
+SourceDocument and Source row; no URL was reopened and no provider was called.
+
+```text
+EvidenceSet v8: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / version=8 / locked / hash=83d8ff62f639fc51e24072d194cdddfe01db467100f885ca1024e1597e14c71a
+08693242-d5c5-51b2-bde9-141c2933417d: APPROVED / stored hash = recomputed hash = a29e762f3cd256b4147ae284581f91a7f4d0c3b76ea65647a369757afb1772d7
+  Claim 70f7c72b-f23a-4528-8c03-79583e45e59a; Evidence 5e97ed0d-8989-47d3-af4e-b2f29a5110cd; SourceDocument f77b9e62-42c5-5a06-aa8b-6505ef3b6b3a; Source 60b0c698-097b-469b-a4c9-ce52b070eaef
+  Source URL: https://mci.si.edu/artifact-appraisals; SourceDocument URL matches; provider=jina; document_version=1; excerpt match=true
+1c9d6c34-91fe-5da2-af33-08a4dc39e2e2: APPROVED / stored hash = recomputed hash = 752a3a87a702141ada0df5ad64610bc2806de058ae22fba797448a297c52711e
+  Claim 8dc27ff4-8547-49d7-ab69-e245b023e65e; Evidence ae930468-0760-4e6c-b0d6-8346f5119912; SourceDocument a440a019-379a-585f-a0d6-6268c8e9cd3c; Source 664e1e73-62ba-4a68-9b97-dd7a09cabea7
+  Source URL: https://www.irs.gov/appeals/art-appraisal-services; SourceDocument URL matches; provider=jina; document_version=1; excerpt match=true
+Source metadata: MCI title=Artifact Appraisals, publisher=null, locator=null; IRS title=Art appraisal services | Internal Revenue Service, publisher=null, locator=null
+Serialized normalized traces: two runs byte-identical
+Read-only DB deltas: KnowledgeCandidate 4→4 (APPROVED=2, REJECTED=2), EvidenceSet 8→8, Evidence 44→44, Claim 43→43, SourceDocument 15→15, Source 15→15, OriginalityPack 2→2, O4 ContentRun 0→0, Artifact 0→0, Approval 0→0
+Provider calls: 0; DB mutation: 0
+T04.24–T04.29: DONE
+T04.30–T04.35: NOT STARTED
+Next action: T04.30 Discovery signal cannot silently become factual Evidence
 ```
 
 # Curated EvidenceSet v8 checkpoint

@@ -268,7 +268,7 @@ PR-E post-merge closeout record:
 - [x] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
 - [x] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
 - [x] T04.28 Memory gap/create-update-refresh recommendation.
-- [ ] T04.29 Provenance end-to-end test.
+- [x] T04.29 Provenance end-to-end test.
 - [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
 - [ ] T04.32 EvidenceSet approval binds exact ID + version + hash.
