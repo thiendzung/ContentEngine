@@ -49,8 +49,9 @@ T04.24: DONE
 T04.25: DONE
 T04.26: DONE
 T04.27: DONE
-T04.28: IMPLEMENTATION CHECKPOINT / NOT DONE
-T04.29–T04.35: NOT STARTED
+T04.28: DONE
+T04.29: REGRESSION CHECKPOINT / NOT DONE
+T04.30–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -235,7 +236,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24–T04.26 complete; T04.27+ not started
+Implementation checkpoint: T04.24–T04.28 complete; T04.29 regression checkpoint / not done
 ```
 
 PR-F order:
@@ -489,6 +490,30 @@ provider_calls=0; no database mutation
 T04.24–T04.28: DONE
 T04.29–T04.35: NOT STARTED
 Next action: T04.29 provenance end-to-end test
+```
+
+# PR-F T04.29 knowledge provenance regression checkpoint
+
+T04.29 has a test/docs checkpoint and remains NOT DONE; no real O4 provenance trace was
+run. The regression fixture creates synthetic persisted Source, SourceDocument, Claim,
+Evidence, locked EvidenceSet, KnowledgeCandidate extraction and human APPROVED admission,
+then resolves the complete lineage back to Source and its canonical URL/locator.
+
+```text
+Test: backend/tests/test_knowledge_provenance_e2e.py
+Production code changed: none
+Provenance path: approved candidate → candidate_content_hash → locked EvidenceSet ID/version/hash
+→ Claim → Evidence → SourceDocument → Source → canonical URL/locator
+Direct-document Evidence and KnowledgeChunk → SourceDocument → Source: covered
+Tamper cases: EvidenceSet version/hash, evidence ID, source document/source IDs, source refs,
+Claim statement, Evidence locator/provenance and SourceDocument linkage: rejected
+Exact persisted relationships and excerpt-in-SourceDocument: verified
+Read-only verification DB mutation: 0; synthetic fixture rows rolled back
+Provider/model calls: 0
+T04.24–T04.28: DONE
+T04.29: REGRESSION CHECKPOINT / NOT DONE
+T04.30–T04.35: NOT STARTED
+Next action: real O4 provenance trace gate
 ```
 
 # Curated EvidenceSet v8 checkpoint
