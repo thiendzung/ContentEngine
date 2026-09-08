@@ -1,6 +1,6 @@
 # AI_context.MD — ContentEngine shared working context
 
-Updated: 2026-09-07
+Updated: 2026-09-08
 
 GitHub is canonical. Detailed history lives in `docs/logs/`; keep this file short and current.
 
@@ -40,11 +40,11 @@ PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
-PR-E: ACTIVE / DRAFT
+PR-E: ACTIVE / DRAFT / IMPLEMENTATION COMPLETE / FINAL REVIEW PENDING
 PR-F: NOT STARTED
 
 T04.1–T04.17: DONE
-T04.18–T04.23: ACTIVE / NOT DONE
+T04.18–T04.23: DONE / FINAL REVIEW PENDING
 T04.24–T04.31: NOT STARTED
 ```
 
@@ -207,8 +207,8 @@ Gate is `4 useful supports / 2 suitable independent domains`.
 
 # Current next action
 
-EvidenceSet v8 is now locked after MG CONTENT ENGINE approval. Any next work, including
-OriginalityPack, requires a separate explicitly scoped task.
+PR-E implementation and its Evidence/OriginalityPack gates are complete. The next action
+is MG CONTENT ENGINE PR-E final review; PR #28 remains Draft until that review.
 
 Boundary:
 
@@ -222,7 +222,7 @@ no URL open
 no relation mutation
 EvidenceSet v8 locked; do not mutate it
 no ContentRun/KnowledgeCandidate
-T04.18–T04.23 remain NOT DONE
+T04.18–T04.23 are DONE; PR-E final review remains pending.
 T04.24+ remain NOT STARTED
 PR #28 remains DRAFT
 ```
@@ -279,7 +279,7 @@ backend/tests/test_originality_pack_builder.py
 provider calls: 0
 real DB mutation: 0
 EvidenceSet v8: unchanged
-T04.18–T04.23: ACTIVE / NOT DONE
+T04.18–T04.23: DONE / FINAL REVIEW PENDING
 T04.24+: NOT STARTED
 ```
 
@@ -301,9 +301,38 @@ provider_calls: 0
 ```
 
 The earlier empty draft `8bc23d49-edd4-45c6-99eb-1673d61b4998` remains unchanged. No
-OriginalityPack was approved or deleted. Next action = `MG CONTENT ENGINE OriginalityPack
-review`. Any task that changes a meaningful canonical state must update `AI_context.MD`
-with the observed result and preserved boundaries.
+OriginalityPack was approved or deleted.
+
+# PR-E closeout checkpoint
+
+The following gates are complete based on the recorded real Evidence review, locked
+EvidenceSet v8, persisted OriginalityPack and focused regression tests:
+
+```text
+T04.18 Evidence Research workflow: DONE
+T04.19 Claim extraction workflow: DONE
+T04.20 Evidence linking workflow: DONE
+T04.21 Contradiction representation: DONE
+T04.22 EvidenceSet lock/version: DONE
+T04.23 OriginalityPack builder: DONE
+```
+
+Closeout invariants:
+
+```text
+EvidenceSet v8: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / locked / exact 4 Evidence IDs
+OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / draft / 4 items / 4 usable
+NeedHypothesis 530bdd27-f008-4910-9b3b-df83e007cfa2: PROPOSED
+ContentExperiment 0551da17-046a-4104-a506-9772680a6133: PLANNED / PENDING
+ContentRun: 2
+KnowledgeCandidate: 0
+provider calls in closeout: 0
+T04.24–T04.31: NOT STARTED
+PR #28: OPEN / DRAFT
+```
+
+PR-E now records `T04.18–T04.23 COMPLETE / FINAL REVIEW PENDING`. No Ready-for-review
+transition or merge was performed. Next action = `MG CONTENT ENGINE PR-E FINAL REVIEW`.
 
 # Global rules
 
@@ -313,4 +342,4 @@ with the observed result and preserved boundaries.
 - Secrets stay env/local only.
 - No hidden retry or infinite provider fallback.
 - Record meaningful decisions/failures under `docs/logs/`.
-- Do not begin the next PR slice before current PR merge + post-merge clean checkpoint.
+- Do not begin the next PR slice before PR-E final review, merge and post-merge clean checkpoint.
