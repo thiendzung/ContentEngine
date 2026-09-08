@@ -45,7 +45,7 @@ PR-F: ACTIVE / DRAFT
 
 T04.1–T04.17: DONE
 T04.18–T04.23: DONE
-T04.24: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.24: REAL EXTRACTION COMPLETE / NOT DONE
 T04.25–T04.35: NOT STARTED
 ```
 
@@ -230,7 +230,7 @@ PR-F: ACTIVE / DRAFT
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
 Scope: T04.24–T04.35
-Implementation checkpoint: T04.24 extraction code/tests exist; real extraction/review gate pending
+Implementation checkpoint: T04.24 real extraction completed; MG review gate pending
 ```
 
 PR-F order:
@@ -242,9 +242,10 @@ F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop
 F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate
 ```
 
-The PR-F activation commit was docs-only. The current T04.24 implementation checkpoint
-does not mutate the database, call a provider, create a KnowledgeCandidate, mirror to
-Obsidian, or start T04.25+ implementation.
+The PR-F activation commit was docs-only. The T04.24 implementation and real extraction
+did not call a provider, modify EvidenceSet v8 or the OriginalityPack, mirror to Obsidian,
+or start T04.25+ implementation. Four unreviewed KnowledgeCandidate rows were created
+only by the explicitly authorized T04.24 real extraction command.
 
 Invariants:
 
@@ -254,10 +255,10 @@ OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / draft / 4 items / 4 usab
 NeedHypothesis 530bdd27-f008-4910-9b3b-df83e007cfa2: PROPOSED
 ContentExperiment 0551da17-046a-4104-a506-9772680a6133: PLANNED / PENDING
 ContentRun: 2
-KnowledgeCandidate: 0
+KnowledgeCandidate: 4 / all CANDIDATE / reviewer=null / review_reason=null
 Provider calls: 0
 T04.1–T04.23: DONE
-T04.24: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.24: REAL EXTRACTION COMPLETE / NOT DONE
 T04.25–T04.35: NOT STARTED
 ```
 
@@ -266,10 +267,10 @@ approval binds the exact EvidenceSet ID, version and content hash; lock must rej
 stale or wrong approval. Raw SERP/API payload remains outside Obsidian by default, and
 Discovery signals never silently become factual Evidence.
 
-# PR-F T04.24 implementation checkpoint
+# PR-F T04.24 real extraction checkpoint
 
-The extraction boundary is implemented and tested, but T04.24 is not done. A real
-EvidenceSet extraction/review gate is still required before the task can be marked DONE.
+The extraction boundary is implemented and tested, and the authorized real extraction
+has completed. T04.24 remains NOT DONE until MG CONTENT ENGINE reviews every candidate.
 
 ```text
 Implementation:
@@ -283,11 +284,35 @@ locked EvidenceSet → Evidence grouped by Claim → candidate only with >=1 sup
 → preserve relation/source/provenance snapshot → status=CANDIDATE
 
 Provider calls: 0
-Real O4 CLI extraction: not run
-Real KnowledgeCandidate: not created
+Real O4 CLI extraction: completed exactly once; identical command completed a second time
+to verify idempotent reuse
+Real KnowledgeCandidate rows: 4
+Candidate IDs:
+- da9a7cf5-9a74-522c-9ee9-52a1198aa194
+- 08693242-d5c5-51b2-bde9-141c2933417d
+- 1c9d6c34-91fe-5da2-af33-08a4dc39e2e2
+- 212f0c96-cb30-50ea-8759-8912580d0981
+All rows: status=CANDIDATE, reviewer=null, review_reason=null
 Human approval: not implemented in T04.24; belongs to T04.25
-T04.24: IMPLEMENTATION CHECKPOINT / NOT DONE
+T04.24: REAL EXTRACTION COMPLETE / NOT DONE
 T04.25–T04.35: NOT STARTED
+```
+
+Real T04.24 extraction result:
+
+```text
+EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / version=8 / status=locked
+EvidenceSet content_hash: 83d8ff62f639fc51e24072d194cdddfe01db467100f885ca1024e1597e14c71a
+Evidence IDs: 5e97ed0d-8989-47d3-af4e-b2f29a5110cd,
+ae930468-0760-4e6c-b0d6-8346f5119912,
+e4c31ee7-0627-4dcc-8e2a-db2ab8269b45,
+fe1e11c2-1250-4c4a-ba50-0174b7b514bd
+First run: candidate_count=4; second identical run: candidate_count=4; IDs unchanged
+KnowledgeCandidate total after run: 4; unrelated candidates: 0; total delta: +4
+All candidates have >=1 supports; no APPROVED candidate; no raw payload markers
+EvidenceSet v8: unchanged
+OriginalityPack 6bd287ec-43f9-4d69-957c-2223f258f909: unchanged
+Next action: MG CONTENT ENGINE candidate review; do not approve/reject in T04.24
 ```
 
 The deterministic candidate identity includes the exact EvidenceSet ID/version/hash and
