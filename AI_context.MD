@@ -53,7 +53,8 @@ T04.28: DONE
 T04.29: DONE
 T04.30: DONE
 T04.31: DONE
-T04.32–T04.35: NOT STARTED
+T04.32: DONE
+T04.33–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -594,6 +595,28 @@ Real O4 DB mutation: 0; EvidenceSet v8, KnowledgeCandidate, OriginalityPack and 
 T04.1–T04.31: DONE
 T04.32–T04.35: NOT STARTED
 Next action: T04.32 EvidenceSet approval exact ID + version + hash
+```
+
+# PR-F T04.32 EvidenceSet approval closeout
+
+T04.32 is DONE. A dedicated immutable `EvidenceSetApproval` binds one reviewed draft
+snapshot by exact EvidenceSet ID, version and content hash. It is intentionally separate
+from harness `Approval`; it has no ContentRun or Artifact dependency. The service locks the
+draft EvidenceSet row, recomputes its hash from the persisted IDs, rejects stale/corrupt
+snapshots, and reuses only an exact repeat by the same reviewer and reason. PostgreSQL
+rejects raw UPDATE and DELETE attempts with `evidence_set_approval_is_immutable`.
+
+```text
+Migration: 20260908_0011_evidence_set_approval
+Focused tests: 7 passed
+Isolated backend gate: 289 passed, 2 skipped
+Provider/model calls: 0
+Real O4 DB mutation: 0
+EvidenceSet v8: unchanged and locked; no retrofit approval was created
+OriginalityPack: unchanged
+T04.1–T04.32: DONE
+T04.33–T04.35: NOT STARTED
+Next action: T04.33 enforce exact approval during EvidenceSet lock
 ```
 
 # Curated EvidenceSet v8 checkpoint

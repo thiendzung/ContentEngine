@@ -271,7 +271,7 @@ PR-E post-merge closeout record:
 - [x] T04.29 Provenance end-to-end test.
 - [x] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [x] T04.31 Test second-hop can trace a summary article to an original source candidate.
-- [ ] T04.32 EvidenceSet approval binds exact ID + version + hash.
+- [x] T04.32 EvidenceSet approval binds exact ID + version + hash.
 - [ ] T04.33 Lock rejects missing/stale/wrong approval.
 - [ ] T04.34 Isolated test database.
 - [ ] T04.35 CE04 final regression + closeout.
@@ -409,6 +409,22 @@ PR-F T04.31 second-hop provenance closeout:
   approval exact ID + version + hash.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-31-second-hop-provenance.md`.
+
+PR-F T04.32 EvidenceSet approval closeout:
+
+- T04.32 = DONE. Dedicated `EvidenceSetApproval` rows bind exact EvidenceSet ID, version
+  and content hash before lock; harness `Approval` is not used.
+- The service accepts draft non-empty EvidenceSets only, locks the row while validating,
+  recomputes the stored hash from persisted Evidence IDs, and rejects version/hash drift.
+  Exact same reviewer/reason repeats reuse the same immutable row; conflicting repeats fail.
+- PostgreSQL blocks raw UPDATE and DELETE with `evidence_set_approval_is_immutable`.
+- Migration `20260908_0011_evidence_set_approval` round-tripped on an isolated database.
+  Focused tests: `7 passed`; isolated backend gate: `289 passed, 2 skipped`.
+- Provider/model calls = `0`; real O4 DB mutation = `0`; EvidenceSet v8 remains locked and
+  unchanged with no retrofit approval; OriginalityPack is unchanged.
+- T04.1–T04.32 = DONE. T04.33–T04.35 = NOT STARTED. Next action: T04.33 lock enforcement.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-32-evidence-set-approval.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
