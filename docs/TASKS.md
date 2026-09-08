@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.28–T04.35; NOT STARTED`.
+- Current implementation slice = `T04.29–T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -267,7 +267,7 @@ PR-E post-merge closeout record:
 - [x] T04.25 Candidate → approved admission flow.
 - [x] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
 - [x] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
-- [ ] T04.28 Memory gap/create-update-refresh recommendation.
+- [x] T04.28 Memory gap/create-update-refresh recommendation.
 - [ ] T04.29 Provenance end-to-end test.
 - [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
 - [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
@@ -348,6 +348,23 @@ PR-F T04.27 raw mirror guard closeout record:
   gap/create-update-refresh recommendation.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-27-raw-mirror-guard.md`.
+
+PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
+PR-F T04.28 memory gap closeout record:
+
+- T04.28 = DONE after the exact real O4 CLI was run twice without `--refresh-before`.
+- O4 opportunity `068991ab-de34-4787-9c38-8935c3f0e2da`: locale `en`, intent `evaluate`,
+  stored decision `CREATE`, recommendation `CREATE`, `requires_human_review=false`,
+  `planning_decision_mismatch=false`, and `unresolved_refs=[]`.
+- No existing ContentItem target was found; no target was forced or selected. Refresh was
+  not inferred: `refresh_before=null`, freshness basis `content_version_created_at`.
+- Both serialized reports were identical. ContentItem, ContentVersion, ContentCase,
+  scoped O4 ContentRun, Artifact, Approval and KnowledgeCandidate state were unchanged;
+  EvidenceSet v8 and OriginalityPack were unchanged; provider calls = `0`.
+- T04.24–T04.28 = DONE. T04.29–T04.35 = NOT STARTED. Next action: T04.29 provenance
+  end-to-end test.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-28-memory-gap.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

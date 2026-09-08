@@ -466,10 +466,10 @@ T04.28–T04.35: NOT STARTED
 Next action: T04.28 memory gap/create-update-refresh recommendation
 ```
 
-# PR-F T04.28 memory gap implementation checkpoint
+# PR-F T04.28 memory gap gate
 
-T04.28 has an implementation checkpoint but remains NOT DONE; the real O4 memory-gap
-gate has not been run.
+T04.28 is DONE after the real read-only O4 gate. The exact CLI was run twice without
+`--refresh-before`; both serialized reports were identical.
 
 ```text
 Implementation: backend/app/modules/content_engine/memory_gap.py
@@ -481,10 +481,14 @@ Recommendations: CREATE, UPDATE or explicit-refresh-before REFRESH; multiple tar
 Invalid explicit refs: unresolved refs remain visible; project/locale mismatches are rejected
 Planning decision: ContentOpportunity.decision is never mutated; mismatches are reported
 Focused tests: 22 passed
-T04.24–T04.27: DONE
-T04.28: IMPLEMENTATION CHECKPOINT / NOT DONE
+O4 opportunity: 068991ab-de34-4787-9c38-8935c3f0e2da
+O4 result: matched_content_items=[]; recommendation=CREATE; requires_human_review=false
+stored_opportunity_decision=CREATE; planning_decision_mismatch=false
+unresolved_refs=[]; refresh_before=null; freshness_basis=content_version_created_at
+provider_calls=0; no database mutation
+T04.24–T04.28: DONE
 T04.29–T04.35: NOT STARTED
-Next action: run the separate real O4 memory-gap gate after review
+Next action: T04.29 provenance end-to-end test
 ```
 
 # Curated EvidenceSet v8 checkpoint
