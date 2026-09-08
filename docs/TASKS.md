@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.25 admission implementation; NOT STARTED`.
+- Current implementation slice = `T04.26–T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -264,7 +264,7 @@ PR-E post-merge closeout record:
 - [x] T04.22 EvidenceSet lock/version.
 - [x] T04.23 OriginalityPack builder.
 - [x] T04.24 Knowledge Candidate extraction.
-- [ ] T04.25 Candidate → approved admission flow.
+- [x] T04.25 Candidate → approved admission flow.
 - [ ] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
 - [ ] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
 - [ ] T04.28 Memory gap/create-update-refresh recommendation.
@@ -300,6 +300,19 @@ PR-F T04.24 closeout record:
 - T04.25 = NOT STARTED. Next action: implement the admission gate using the recorded MG decision.
 
 Closeout log: `docs/logs/2026-09-08-ce04-t04-24-candidate-review.md`.
+
+PR-F T04.25 admission closeout record:
+
+- T04.25 = DONE after applying the exact MG CONTENT ENGINE decisions to all four real O4 KnowledgeCandidates.
+- Approved: `08693242-d5c5-51b2-bde9-141c2933417d`, `1c9d6c34-91fe-5da2-af33-08a4dc39e2e2`.
+- Rejected: `212f0c96-cb30-50ea-8759-8912580d0981`, `da9a7cf5-9a74-522c-9ee9-52a1198aa194`.
+- Each command was run twice with the exact expected hash, reviewer and reason; the second pass was terminal-idempotent with no duplicate rows.
+- KnowledgeCandidate total = `4`; `APPROVED=2`; `REJECTED=2`; these four are no longer `CANDIDATE`; reviewer = `MG CONTENT ENGINE` and reasons match the exact MG record.
+- Hash and locked EvidenceSet lineage verification passed for all four. EvidenceSet v8 and OriginalityPack were unchanged.
+- ContentRun, Artifact and generic Approval deltas = `0`; provider calls = `0`.
+- T04.26–T04.35 = NOT STARTED. No Obsidian export was performed.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-25-admission.md`.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
