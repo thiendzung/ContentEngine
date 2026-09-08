@@ -283,9 +283,27 @@ T04.18–T04.23: ACTIVE / NOT DONE
 T04.24+: NOT STARTED
 ```
 
-The builder CLI was added for a later explicitly scoped curation action and was not run in
-this code/test task. Any task that changes a meaningful canonical state must update
-`AI_context.MD` with the observed result and preserved boundaries.
+The builder CLI was subsequently run once with the exact four founder-approved D4 inputs
+for ContentCase `9ec6133b-5f14-46d0-9866-e3b049e537b5` and once again with the same input to
+verify idempotent reuse. The persisted production pack is:
+
+```text
+OriginalityPack ID: 6bd287ec-43f9-4d69-957c-2223f258f909
+status: draft
+item_count: 4
+usable_item_count: 4
+source_refs:
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-01
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-02
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-03
+- docs/13-CE01-CONTENT-INPUT-PRICE.md#ORIG-04
+provider_calls: 0
+```
+
+The earlier empty draft `8bc23d49-edd4-45c6-99eb-1673d61b4998` remains unchanged. No
+OriginalityPack was approved or deleted. Next action = `MG CONTENT ENGINE OriginalityPack
+review`. Any task that changes a meaningful canonical state must update `AI_context.MD`
+with the observed result and preserved boundaries.
 
 # Global rules
 
