@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
 from app.modules.content_engine.models import ContentOpportunity, NeedHypothesis, Project
+from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import EvidenceSet
 from app.modules.research.contracts import (
     CommercialBias,
@@ -143,10 +144,19 @@ async def test_locked_evidence_set_versions_forward_when_research_changes() -> N
             content_case_id=content_case.id,
             evidence_ids=[first_link.evidence_id],
         )
+        v1_approval = await approve_evidence_set(
+            session,
+            evidence_set_id=v1.id,
+            expected_version=v1.version,
+            expected_content_hash=v1.content_hash,
+            approved_by="reviewer",
+            approval_reason="reviewed version one",
+        )
         v1 = await lock_evidence_set(
             session,
             evidence_set_id=v1.id,
             locked_by="reviewer",
+            approval_id=v1_approval.id,
         )
 
         same_v1 = await create_or_reuse_evidence_set(
@@ -184,10 +194,19 @@ async def test_locked_evidence_set_versions_forward_when_research_changes() -> N
         assert v2.status == "draft"
         assert v2.content_hash != v1.content_hash
 
+        v2_approval = await approve_evidence_set(
+            session,
+            evidence_set_id=v2.id,
+            expected_version=v2.version,
+            expected_content_hash=v2.content_hash,
+            approved_by="reviewer",
+            approval_reason="reviewed version two",
+        )
         locked_v2 = await lock_evidence_set(
             session,
             evidence_set_id=v2.id,
             locked_by="reviewer",
+            approval_id=v2_approval.id,
         )
         assert locked_v2.status == "locked"
         stored_v1 = await session.get(EvidenceSet, v1.id)

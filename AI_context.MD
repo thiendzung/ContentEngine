@@ -54,7 +54,8 @@ T04.29: DONE
 T04.30: DONE
 T04.31: DONE
 T04.32: DONE
-T04.33–T04.35: NOT STARTED
+T04.33: DONE
+T04.34–T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -617,6 +618,25 @@ OriginalityPack: unchanged
 T04.1–T04.32: DONE
 T04.33–T04.35: NOT STARTED
 Next action: T04.33 enforce exact approval during EvidenceSet lock
+```
+
+# PR-F T04.33 EvidenceSet lock approval closeout
+
+T04.33 is DONE. Every new `draft → locked` EvidenceSet transition now requires a
+dedicated `EvidenceSetApproval` matching the exact set ID, version and content hash.
+The service recomputes the hash from current Evidence IDs and validates the approval
+before changing lock state. A PostgreSQL trigger enforces the same boundary for raw SQL.
+Historical already-locked EvidenceSets remain valid and are not retrofitted.
+
+```text
+Focused lock/approval regression: 21 passed, 1 skipped
+Full isolated backend gate: 297 passed, 3 skipped
+Migration: 20260908_0012_evidence_set_lock_approval / round-trip PASS
+Provider/model calls: 0
+Real O4 DB mutation: 0; EvidenceSet v8 unchanged and has no retrofit approval
+T04.1–T04.33: DONE
+T04.34–T04.35: NOT STARTED
+Next action: T04.34 isolated dedicated test database
 ```
 
 # Curated EvidenceSet v8 checkpoint

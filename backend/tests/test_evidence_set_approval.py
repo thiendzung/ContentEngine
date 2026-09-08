@@ -56,6 +56,30 @@ async def _draft_evidence_set(
     return evidence_set
 
 
+async def _legacy_locked_evidence_set(session: AsyncSession) -> EvidenceSet:
+    project = Project(
+        id=uuid4(),
+        slug=f"legacy-evidence-set-{uuid4()}",
+        name="Legacy EvidenceSet test",
+        status="active",
+        default_locale="en",
+    )
+    ids = [str(uuid4())]
+    evidence_set = EvidenceSet(
+        id=uuid4(),
+        project_id=project.id,
+        version=1,
+        evidence_ids_json=ids,
+        content_hash=evidence_set_hash(ids),
+        status="locked",
+        locked_at=datetime.now(UTC),
+        locked_by="legacy-reviewer",
+    )
+    session.add_all([project, evidence_set])
+    await session.flush()
+    return evidence_set
+
+
 async def _count(session: AsyncSession, model: type[object]) -> int:
     return int(await session.scalar(select(func.count()).select_from(model)) or 0)
 
@@ -197,11 +221,7 @@ async def test_actor_and_reason_are_required() -> None:
 @pytest.mark.asyncio
 async def test_locked_evidence_set_cannot_receive_retrofit_approval() -> None:
     async with isolated_session() as session:
-        evidence_set = await _draft_evidence_set(session)
-        evidence_set.status = "locked"
-        evidence_set.locked_at = datetime.now(UTC)
-        evidence_set.locked_by = "MG CONTENT ENGINE"
-        await session.flush()
+        evidence_set = await _legacy_locked_evidence_set(session)
 
         with pytest.raises(
             EvidenceSetApprovalError,

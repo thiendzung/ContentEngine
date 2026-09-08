@@ -79,6 +79,7 @@ class EvidenceResearchRequest:
     explicit_candidates: tuple[ClaimCandidate, ...] = ()
     lock_evidence_set: bool = False
     locked_by: str | None = None
+    evidence_set_approval_id: UUID | None = None
 
 
 @dataclass(slots=True)

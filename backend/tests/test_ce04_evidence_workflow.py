@@ -15,6 +15,7 @@ from app.modules.content_engine.models import (
     NeedHypothesis,
     Project,
 )
+from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import Evidence, EvidenceSet, OriginalityPack
 from app.modules.research.contracts import (
     CommercialBias,
@@ -32,6 +33,7 @@ from app.modules.research.evidence import (
     EvidenceResearchRequest,
     EvidenceResearchWorkflow,
 )
+from app.modules.research.evidence.persistence import lock_evidence_set
 
 
 @asynccontextmanager
@@ -216,10 +218,25 @@ async def test_evidence_workflow_is_idempotent_and_preserves_contradiction() -> 
             need_id=need.id,
             opportunity_id=opportunity.id,
             explicit_candidates=explicit,
-            lock=True,
         )
 
         first = await workflow.run(session, request=request)
+        draft = await session.get(EvidenceSet, first.evidence_set_id)
+        assert draft is not None
+        approval = await approve_evidence_set(
+            session,
+            evidence_set_id=draft.id,
+            expected_version=draft.version,
+            expected_content_hash=draft.content_hash,
+            approved_by="test-reviewer",
+            approval_reason="test reviewed evidence set",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=draft.id,
+            locked_by="test-reviewer",
+            approval_id=approval.id,
+        )
         second = await workflow.run(session, request=request)
 
         assert first.content_case_id == second.content_case_id
@@ -228,7 +245,7 @@ async def test_evidence_workflow_is_idempotent_and_preserves_contradiction() -> 
         assert first.evidence_ids == second.evidence_ids
         assert first.relation_counts["contradicts"] == 1
         assert first.evidence_eligible is True
-        assert first.evidence_set_status == "locked"
+        assert first.evidence_set_status == "draft"
         assert first.evidence_set_version == 1
         assert first.originality_item_count == 0
         assert any("Originality gap" in gap for gap in first.research_gaps)

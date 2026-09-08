@@ -226,7 +226,7 @@ async def test_locked_evidence_set_is_immutable_and_new_research_uses_new_versio
 
 
 @pytest.mark.asyncio
-async def test_evidence_set_can_lock_once_and_rejects_invalid_or_locked_mutation() -> None:
+async def test_evidence_set_cannot_bypass_lock_approval_and_rejects_legacy_mutation() -> None:
     async with isolated_session() as session:
         project = await motgu_project(session)
         evidence_set = EvidenceSet(
@@ -238,21 +238,36 @@ async def test_evidence_set_can_lock_once_and_rejects_invalid_or_locked_mutation
         )
         session.add(evidence_set)
         await session.flush()
-        await session.execute(
-            EvidenceSet.__table__.update()
-            .where(EvidenceSet.id == evidence_set.id)
-            .values(status="locked", locked_at=datetime.now(UTC), locked_by="reviewer")
-        )
-        with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
+        with pytest.raises(DBAPIError, match="evidence_set_lock_requires_exact_approval"):
             async with session.begin_nested():
                 await session.execute(
                     EvidenceSet.__table__.update()
                     .where(EvidenceSet.id == evidence_set.id)
+                    .values(status="locked", locked_at=datetime.now(UTC), locked_by="reviewer")
+                )
+        assert evidence_set.status == "draft"
+
+        legacy = EvidenceSet(
+            project_id=project.id,
+            version=5,
+            evidence_ids_json=["evidence:legacy"],
+            content_hash=content_hash("evidence:legacy"),
+            status="locked",
+            locked_at=datetime.now(UTC),
+            locked_by="reviewer",
+        )
+        session.add(legacy)
+        await session.flush()
+        with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
+            async with session.begin_nested():
+                await session.execute(
+                    EvidenceSet.__table__.update()
+                    .where(EvidenceSet.id == legacy.id)
                     .values(locked_by="another-reviewer")
                 )
         with pytest.raises(DBAPIError, match="locked_evidence_set_is_immutable"):
             async with session.begin_nested():
-                await session.delete(evidence_set)
+                await session.delete(legacy)
                 await session.flush()
 
         invalid = EvidenceSet(

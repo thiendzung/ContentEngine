@@ -16,12 +16,13 @@ from app.modules.knowledge.models import (
     Claim,
     Evidence,
     EvidenceSet,
+    EvidenceSetApproval,
     KnowledgeChunk,
     OriginalityPack,
     Source,
     SourceDocument,
 )
-from app.modules.knowledge.persistence import content_hash
+from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import (
     PageDocument,
     ProductionResearchResult,
@@ -385,15 +386,6 @@ async def persist_claim_evidence(
     )
 
 
-def _evidence_set_hash(evidence_ids: tuple[UUID, ...]) -> str:
-    payload = json.dumps(
-        [str(evidence_id) for evidence_id in evidence_ids],
-        separators=(",", ":"),
-        sort_keys=True,
-    )
-    return content_hash(payload)
-
-
 async def create_or_reuse_evidence_set(
     session: AsyncSession,
     *,
@@ -431,7 +423,7 @@ async def create_or_reuse_evidence_set(
         if claim is None or claim.project_id != project_id:
             raise ValueError("evidence_set_contains_cross_project_evidence")
 
-    set_hash = _evidence_set_hash(normalized_ids)
+    set_hash = evidence_set_hash([str(evidence_id) for evidence_id in normalized_ids])
     existing = (
         await session.execute(
             select(EvidenceSet)
@@ -471,6 +463,7 @@ async def lock_evidence_set(
     *,
     evidence_set_id: UUID,
     locked_by: str,
+    approval_id: UUID | None = None,
 ) -> EvidenceSet:
     reviewer = locked_by.strip()
     if not reviewer:
@@ -488,8 +481,28 @@ async def lock_evidence_set(
         if evidence_set.locked_by != reviewer:
             raise ValueError("evidence_set_already_locked_by_different_reviewer")
         return evidence_set
+    if approval_id is None:
+        raise ValueError("evidence_set_approval_required")
     if not evidence_set.evidence_ids_json:
         raise ValueError("cannot_lock_empty_evidence_set")
+
+    if not isinstance(evidence_set.evidence_ids_json, list) or not all(
+        isinstance(evidence_id, str) for evidence_id in evidence_set.evidence_ids_json
+    ):
+        raise ValueError("evidence_set_content_hash_invalid")
+    recomputed_hash = evidence_set_hash(evidence_set.evidence_ids_json)
+    if evidence_set.content_hash != recomputed_hash:
+        raise ValueError("evidence_set_content_hash_invalid")
+
+    approval = await session.get(EvidenceSetApproval, approval_id)
+    if approval is None:
+        raise ValueError("evidence_set_approval_not_found")
+    if approval.evidence_set_id != evidence_set.id:
+        raise ValueError("evidence_set_approval_set_mismatch")
+    if approval.evidence_set_version != evidence_set.version:
+        raise ValueError("evidence_set_approval_version_mismatch")
+    if approval.evidence_set_content_hash != evidence_set.content_hash:
+        raise ValueError("evidence_set_approval_hash_mismatch")
 
     evidence_set.status = "locked"
     evidence_set.locked_at = datetime.now(UTC)
