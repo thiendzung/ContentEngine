@@ -236,6 +236,33 @@ class EvidenceSet(TimestampMixin, Base):
     )
 
 
+class EvidenceSetApproval(TimestampMixin, Base):
+    __tablename__ = "evidence_set_approvals"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    evidence_set_id: Mapped[UUID] = mapped_column(
+        ForeignKey("evidence_sets.id"), nullable=False
+    )
+    evidence_set_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence_set_content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    approval_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "evidence_set_id",
+            "evidence_set_version",
+            "evidence_set_content_hash",
+            name="uq_evidence_set_approval_snapshot",
+        ),
+        CheckConstraint(
+            "evidence_set_version > 0", name="ck_evidence_set_approval_version_positive"
+        ),
+        Index("ix_evidence_set_approvals_evidence_set", "evidence_set_id"),
+    )
+
+
 class OriginalityPack(TimestampMixin, Base):
     __tablename__ = "originality_packs"
 

@@ -21,6 +21,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--evidence-set-id", required=True)
     parser.add_argument("--locked-by", required=True)
+    parser.add_argument("--approval-id", type=UUID)
     return parser
 
 
@@ -31,6 +32,7 @@ async def _run(args: argparse.Namespace) -> None:
             session,
             evidence_set_id=evidence_set_id,
             locked_by=str(args.locked_by),
+            approval_id=args.approval_id,
         )
         await session.commit()
 

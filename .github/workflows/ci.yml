@@ -12,13 +12,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: contentengine
+          POSTGRES_DB: contentengine_test
           POSTGRES_USER: contentengine
           POSTGRES_PASSWORD: contentengine
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U contentengine -d contentengine"
+          --health-cmd "pg_isready -U contentengine -d contentengine_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
@@ -27,6 +27,7 @@ jobs:
       APP_ENV: test
       APP_VERSION: 0.1.0-ce04
       DATABASE_URL: postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine
+      TEST_DATABASE_URL: postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_test
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
 
     steps:

@@ -210,9 +210,11 @@ Status: **CLOSED / PASS**.
 - PR-C = CLOSED / MERGED / PASS.
 - PR-D = CLOSED / MERGED / PASS.
 - PR #26 merge commit = `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
-- PR-E = ACTIVE / DRAFT / IMPLEMENTATION COMPLETE / FINAL REVIEW PENDING.
-- Current PR = `CE04 PR-E — Evidence Research + Evidence Set` (DRAFT).
-- Current implementation slice = `none — PR-E implementation complete; final review pending`.
+- PR-E = CLOSED / MERGED / PASS.
+- PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+- PR-F = ACTIVE / READY FOR REVIEW.
+- Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (READY FOR REVIEW).
+- Current implementation slice = `T04.35; final regression complete; merge pending user`.
 
 PR-D post-merge closeout record:
 
@@ -224,19 +226,18 @@ PR-D post-merge closeout record:
 - Evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`.
 - Real Discovery Gate = PASS; founder selection = O4 / `opp_4c397247e40db8ae`; HumanSelection persistence = PASS; ContentExperiment draft persistence = PASS; idempotency = PASS; providers called during selection = 0; NeedHypothesis = `PROPOSED`; ContentCase and ContentRun counts unchanged.
 - T04.1–T04.17 = DONE.
-- T04.18–T04.23 = DONE / FINAL REVIEW PENDING.
-- T04.24–T04.31 = NOT STARTED.
+- T04.18–T04.23 = DONE.
+- T04.24–T04.35 = NOT STARTED.
 
-PR-E activation record:
+PR-E post-merge closeout record:
 
 - Branch: `ce04-evidence-research-evidence-set`.
-- Base main: `a52052adde3cf19889098013fd5065f86cab62fb`.
-- Start log: `docs/logs/2026-09-07-ce04-pr-e-start.md`.
-- Architecture decision: `docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md`.
-- Contract: Selected ContentOpportunity → create/reuse one legitimate ContentCase → Evidence Research → Claim → Evidence → contradiction/qualification → EvidenceSet lock/version → OriginalityPack.
-- O4 / `opp_4c397247e40db8ae`; ContentOpportunity `068991ab-de34-4787-9c38-8935c3f0e2da`; NeedHypothesis `530bdd27-f008-4910-9b3b-df83e007cfa2` remains `PROPOSED`.
-- Discovery artifact SHA-256: `489d4c3b91c06d84345c7b66729d69a9a91b45a419f889853d628b14b09927f7`.
-- Activation is docs-only: no provider run and no ContentCase created; ContentExperiment remains `PLANNED`.
+- PR #28: CLOSED / MERGED / PASS.
+- Merge commit: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+- Closeout log: `docs/logs/2026-09-08-ce04-pr-e-closeout.md`.
+- T04.18–T04.23 = DONE; final review, CI and post-merge verification passed.
+- EvidenceSet v8 remains locked and OriginalityPack remains unchanged.
+- NeedHypothesis `530bdd27-f008-4910-9b3b-df83e007cfa2` remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`.
 
 - [x] T04.1 Source registry.
 - [x] T04.2 Canonicalize source into normalized text/Markdown.
@@ -256,31 +257,268 @@ PR-E activation record:
 - [x] T04.15 Discovery Research workflow.
 - [x] T04.16 Opportunity Map workflow with Keyword/Question Map tool.
 - [x] T04.17 Source commercial-bias/type/authority metadata.
-- [x] T04.18 Evidence Research workflow. **DONE / FINAL REVIEW PENDING**
-- [x] T04.19 Claim extraction workflow. **DONE / FINAL REVIEW PENDING**
-- [x] T04.20 Evidence linking workflow. **DONE / FINAL REVIEW PENDING**
-- [x] T04.21 Contradiction representation. **DONE / FINAL REVIEW PENDING**
-- [x] T04.22 EvidenceSet lock/version. **DONE / FINAL REVIEW PENDING**
-- [x] T04.23 OriginalityPack builder. **DONE / FINAL REVIEW PENDING**
-- [ ] T04.24 Knowledge Candidate extraction.
-- [ ] T04.25 Candidate → approved admission flow.
-- [ ] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
-- [ ] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
-- [ ] T04.28 Memory gap/create-update-refresh recommendation.
-- [ ] T04.29 Provenance end-to-end test.
-- [ ] T04.30 Test Discovery signal cannot silently become factual evidence.
-- [ ] T04.31 Test second-hop can trace a summary article to an original source candidate.
+- [x] T04.18 Evidence Research workflow.
+- [x] T04.19 Claim extraction workflow.
+- [x] T04.20 Evidence linking workflow.
+- [x] T04.21 Contradiction representation.
+- [x] T04.22 EvidenceSet lock/version.
+- [x] T04.23 OriginalityPack builder.
+- [x] T04.24 Knowledge Candidate extraction.
+- [x] T04.25 Candidate → approved admission flow.
+- [x] T04.26 Obsidian mirror/export for approved knowledge/topic/research notes.
+- [x] T04.27 Test raw SERP/API payload is not mirrored to Obsidian by default.
+- [x] T04.28 Memory gap/create-update-refresh recommendation.
+- [x] T04.29 Provenance end-to-end test.
+- [x] T04.30 Test Discovery signal cannot silently become factual evidence.
+- [x] T04.31 Test second-hop can trace a summary article to an original source candidate.
+- [x] T04.32 EvidenceSet approval binds exact ID + version + hash.
+- [x] T04.33 Lock rejects missing/stale/wrong approval.
+- [x] T04.34 Isolated test database.
+- [x] T04.35 CE04 final regression + closeout.
+
+PR-F activation record:
+
+- Branch: `ce04-knowledge-admission-provenance`.
+- Base main: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
+- Start log: `docs/logs/2026-09-08-ce04-pr-f-start.md`.
+- Scope: T04.24–T04.35; activation is docs-only and implementation is not started.
+- F1: T04.24–T04.25 — Knowledge Candidate + human approval.
+- F2: T04.26–T04.28 — Obsidian + raw-data guard + memory gap.
+- F3: T04.29–T04.31 — Provenance + Discovery/Evidence + second-hop.
+- F4: T04.32–T04.35 — Approval enforcement + isolated DB + final gate.
+- Invariants at activation: EvidenceSet v8 and OriginalityPack unchanged; NeedHypothesis remains `PROPOSED`; ContentExperiment remains `PLANNED / PENDING`; O4 ContentCase ContentRun count = `0`; global ContentRun count is environment-dependent; KnowledgeCandidate = `0`; provider calls = `0`.
+- Do not implement T04.24, mutate DB, call providers, tick T04.24+, or merge in activation.
+
+PR-F T04.24 closeout record:
+
+- Real extraction produced exactly four KnowledgeCandidate rows from locked EvidenceSet v8; the identical command was run a second time and reused the same four IDs.
+- T04.24 = DONE after MG CONTENT ENGINE candidate review record.
+- MG proposed for T04.25 admission: `08693242-d5c5-51b2-bde9-141c2933417d` (direct MCI price-context statement) and `1c9d6c34-91fe-5da2-af33-08a4dc39e2e2` (IRS valuation discussion factors and market context).
+- MG proposed not for T04.25 admission: `212f0c96-cb30-50ea-8759-8912580d0981` (appraiser qualifications are not direct buyer price guidance) and `da9a7cf5-9a74-522c-9ee9-52a1198aa194` (panel FMV review process is not direct buyer price guidance).
+- This closeout records review decisions only. Candidate rows were not mutated; status remains `CANDIDATE`, reviewer and review_reason remain null.
+- Provider calls = `0`; EvidenceSet v8 and OriginalityPack were not changed.
+- T04.25 = NOT STARTED. Next action: implement the admission gate using the recorded MG decision.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-24-candidate-review.md`.
+
+PR-F T04.25 admission closeout record:
+
+- T04.25 = DONE after applying the exact MG CONTENT ENGINE decisions to all four real O4 KnowledgeCandidates.
+- Approved: `08693242-d5c5-51b2-bde9-141c2933417d`, `1c9d6c34-91fe-5da2-af33-08a4dc39e2e2`.
+- Rejected: `212f0c96-cb30-50ea-8759-8912580d0981`, `da9a7cf5-9a74-522c-9ee9-52a1198aa194`.
+- Each command was run twice with the exact expected hash, reviewer and reason; the second pass was terminal-idempotent with no duplicate rows.
+- KnowledgeCandidate total = `4`; `APPROVED=2`; `REJECTED=2`; these four are no longer `CANDIDATE`; reviewer = `MG CONTENT ENGINE` and reasons match the exact MG record.
+- Hash and locked EvidenceSet lineage verification passed for all four. EvidenceSet v8 and OriginalityPack were unchanged.
+- ContentRun, Artifact and generic Approval deltas = `0`; provider calls = `0`.
+- T04.26–T04.35 = NOT STARTED. No Obsidian export was performed.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-25-admission.md`.
+
+PR-F T04.26 Obsidian mirror closeout record:
+
+- T04.26 = DONE after the real mirror gate for the two approved O4 KnowledgeCandidates.
+- Explicit temporary vault: `/tmp/motgu-ce04-obsidian-gate`; exactly two Markdown files were exported.
+- `08693242-d5c5-51b2-bde9-141c2933417d.md` SHA-256 = `d93ee29a88b69be0a526285643b6de423fc1c0fae848cb5e743bb488b9051344`.
+- `1c9d6c34-91fe-5da2-af33-08a4dc39e2e2.md` SHA-256 = `40f14af25b41be3494721457c374a7614c71de36d300539dc037152c5d316471`.
+- The second export was byte-identical with the same paths and hashes.
+- Rejected candidates `212f0c96-cb30-50ea-8759-8912580d0981` and `da9a7cf5-9a74-522c-9ee9-52a1198aa194` were both blocked with `candidate_status_not_exportable`.
+- No rejected candidate ID, raw payload, raw response, HTML or page body appeared in the vault.
+- Database mutation delta = `0`; no ContentRun was deleted or modified; provider calls = `0`.
+- Global ContentRun: `4 → 4` (environment-dependent); O4 ContentCase `9ec6133b-5f14-46d0-9866-e3b049e537b5`: `0 → 0`.
+- The old fixed `ContentRun=2` invariant was stale; scoped verification is now canonical and the drift reinforces T04.34's isolated test database requirement.
+- T04.27–T04.35 = NOT STARTED. Next action: T04.27 raw search/API data mirror regression.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-26-obsidian-mirror.md`.
+
+PR-F T04.27 raw mirror guard closeout record:
+
+- T04.27 = DONE after `backend/tests/test_obsidian_raw_payload_guard.py` passed the
+  recursive raw-payload boundary tests.
+- Production code changed = none; the existing extraction/admission/mirror validation
+  was proven by regression tests.
+- All eight forbidden keys were tested recursively: `body`, `html`, `payload`, `raw`,
+  `raw_payload`, `raw_response`, `response`, and `result`.
+- Safe `provider`, `query`, `source_url`, `source_ref`, Evidence and SourceDocument
+  references remained traceable. Raw SourceDocument body remained audit-only.
+- Sanitized approved knowledge mirrored cleanly. A tampered approved candidate was
+  rejected before writing with `candidate_raw_provenance_rejected`.
+- Candidate, EvidenceSet, OriginalityPack, scoped O4 ContentRun, Artifact and Approval
+  deltas = `0`; provider calls = `0`.
+- T04.24–T04.27 = DONE. T04.28–T04.35 = NOT STARTED. Next action: T04.28 memory
+  gap/create-update-refresh recommendation.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-27-raw-mirror-guard.md`.
+
+PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
+PR-F T04.28 memory gap closeout record:
+
+- T04.28 = DONE after the exact real O4 CLI was run twice without `--refresh-before`.
+- O4 opportunity `068991ab-de34-4787-9c38-8935c3f0e2da`: locale `en`, intent `evaluate`,
+  stored decision `CREATE`, recommendation `CREATE`, `requires_human_review=false`,
+  `planning_decision_mismatch=false`, and `unresolved_refs=[]`.
+- No existing ContentItem target was found; no target was forced or selected. Refresh was
+  not inferred: `refresh_before=null`, freshness basis `content_version_created_at`.
+- Both serialized reports were identical. ContentItem, ContentVersion, ContentCase,
+  scoped O4 ContentRun, Artifact, Approval and KnowledgeCandidate state were unchanged;
+  EvidenceSet v8 and OriginalityPack were unchanged; provider calls = `0`.
+- T04.24–T04.28 = DONE. T04.29–T04.35 = NOT STARTED. Next action: T04.29 provenance
+  end-to-end test.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-28-memory-gap.md`.
+
+PR-F T04.30 Discovery/evidence boundary closeout:
+
+- T04.30 = DONE after a test-only boundary gate; no production code changed.
+- Discovery persistence may create Signal, NeedHypothesisSignal and ContentOpportunitySignal
+  planning rows, but Claim/Evidence/SourceDocument deltas remain `0`. A
+  NeedHypothesisSignal `supports` relation is not factual Evidence.
+- A Signal URL alone is rejected with `evidence_source_must_be_successfully_read`.
+  Evidence Research with no successfully read document creates no Claim, Evidence or
+  EvidenceSet and records that SEARCH snippets are ineligible for factual Evidence.
+- The positive control persisted Source + SourceDocument and accepted only an exact
+  excerpt present in the read document. Evidence resolved through SourceDocument to Source;
+  Signal IDs were not factual lineage and `search_rank_used_as_authority=false`.
+- Real O4 read-only audit found 6 Discovery signals linked to the opportunity and no direct
+  Signal ID → Evidence relationship. Provider calls and real O4 DB mutation were `0`.
+- Isolated backend gate: `275 passed, 1 skipped`; the skip is explicit because the isolated
+  database has no real O4 fixture. Frontend and migration gates passed.
+- T04.1–T04.30 = DONE. T04.31–T04.35 = NOT STARTED. Next action: T04.31 second-hop
+  original-source trace.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-30-discovery-evidence-boundary.md`.
+
+PR-F T04.31 second-hop provenance closeout:
+
+- T04.31 = DONE after a bounded synthetic end-to-end gate; real providers and real O4
+  records were not touched.
+- Exact `parent_url` was preserved from the `ProductionResearchRequest` to the Exa
+  second-hop candidate. The original candidate retained `relation=second_hop`,
+  `parent_url`, `found_via=exa_second_hop`, `intended_use=evidence_candidate`,
+  `source_type=institutional` and low commercial bias.
+- When summary/direct and original candidates coexisted, the original second-hop URL was
+  selected and read. Persisted Source and SourceDocument used the original URL; Source
+  provenance retained the summary parent. Claim/Evidence accepted only an exact excerpt
+  from the original SourceDocument, never summary text.
+- Duplicate original URLs retained the stronger second-hop provenance. Missing or wrong
+  parent provenance failed explicitly; unavailable Exa returned `exa_required_for_second_hop`
+  without promoting a direct result.
+- Focused result: `8 passed`. Full isolated backend, ruff, mypy and OpenAPI gates passed;
+  migration round-trip and frontend gates passed. Provider calls = `0`; real O4 DB
+  mutation = `0`.
+- T04.1–T04.31 = DONE. T04.32–T04.35 = NOT STARTED. Next action: T04.32 EvidenceSet
+  approval exact ID + version + hash.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-31-second-hop-provenance.md`.
+
+PR-F T04.32 EvidenceSet approval closeout:
+
+- T04.32 = DONE. Dedicated `EvidenceSetApproval` rows bind exact EvidenceSet ID, version
+  and content hash before lock; harness `Approval` is not used.
+- The service accepts draft non-empty EvidenceSets only, locks the row while validating,
+  recomputes the stored hash from persisted Evidence IDs, and rejects version/hash drift.
+  Exact same reviewer/reason repeats reuse the same immutable row; conflicting repeats fail.
+- PostgreSQL blocks raw UPDATE and DELETE with `evidence_set_approval_is_immutable`.
+- Migration `20260908_0011_evidence_set_approval` round-tripped on an isolated database.
+  Focused tests: `7 passed`; isolated backend gate: `289 passed, 2 skipped`.
+- Provider/model calls = `0`; real O4 DB mutation = `0`; EvidenceSet v8 remains locked and
+  unchanged with no retrofit approval; OriginalityPack is unchanged.
+- T04.1–T04.32 = DONE. T04.33–T04.35 = NOT STARTED. Next action: T04.33 lock enforcement.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-32-evidence-set-approval.md`.
+
+PR-F T04.33 EvidenceSet lock approval closeout:
+
+- T04.33 = DONE. New `draft → locked` transitions require a dedicated exact
+  `EvidenceSetApproval` matching set ID, version and content hash. The service recomputes
+  the hash from current Evidence IDs and does not trust the stored value alone.
+- Missing, wrong-set, wrong-version, wrong-hash, nonexistent and corrupt approvals are
+  rejected. Exact approval locks successfully without mutating the approval row.
+- Database trigger `evidence_set_lock_requires_exact_approval` prevents raw SQL bypass;
+  an approved draft snapshot cannot change its version, IDs, hash, project or content case.
+- Evidence Research requests that ask to lock now require both `locked_by` and
+  `evidence_set_approval_id`; normal research can still produce a draft EvidenceSet.
+- The canonical `app.modules.knowledge.persistence.evidence_set_hash` is now used by
+  EvidenceSet create/reuse and lock verification.
+- Historical locked EvidenceSets remain idempotent without retrofit approval. EvidenceSet
+  v8 and all O4 state remain unchanged; provider/model calls = `0`.
+- Focused result: `21 passed, 1 skipped`; full isolated backend: `297 passed, 3 skipped`;
+  migration upgrade → downgrade → upgrade: PASS. T04.1–T04.33 = DONE.
+- T04.34–T04.35 = NOT STARTED. Next action: T04.34 isolated dedicated test database.
+
+Closeout log: `docs/logs/2026-09-08-ce04-t04-33-lock-approval-gate.md`.
+
+T04.33 direct-lock INSERT repair:
+
+- Migration `20260908_0013_evidence_set_initial_draft_guard` rejects raw SQL and ORM
+  insertion of `status=locked`, or draft rows with non-null `locked_at`/`locked_by`.
+- Normal clean draft insertion and draft → exact approval → locked both pass. The guard
+  applies only to future INSERTs; historical EvidenceSet v8 remains locked and unchanged,
+  with no retrofit approval.
+- Focused lock/approval and dependent workflow tests: `92 passed, 1 skipped`; full isolated
+  backend gate: `297 passed, 3 skipped`. Migration upgrade → downgrade → upgrade, Ruff,
+  mypy, OpenAPI and frontend gates pass; generic Approval, ContentRun and Artifact deltas
+  are `0`; provider/model calls = `0`.
+- T04.33 remains `DONE`; T04.34–T04.35 remain `NOT STARTED`.
+
+PR-F T04.34 isolated test database closeout:
+
+- T04.34 = `DONE`. Automated tests now require `APP_ENV=test` with a dedicated
+  `TEST_DATABASE_URL`; the resolved URL is shared by the application engine, sessions and
+  Alembic. Test engines use `NullPool`, and the test database target must contain `test` and
+  differ from the application target.
+- Dedicated local test database: `contentengine_t0434_test`. Normal application database:
+  `contentengine`. The normal database was read-only before and after the gate with the same
+  observed counts: projects `1`, ContentRun `4`, EvidenceSet `8`, KnowledgeCandidate `4`,
+  Source `15`, SourceDocument `15`; O4 ContentRun remained `0`.
+- Full isolated backend run 1: `304 passed, 0 skipped`. Full isolated backend run 2 after
+  migration round-trip: `304 passed, 0 skipped`. Ruff, mypy, OpenAPI and frontend
+  lint/typecheck/build passed.
+- Migration `upgrade → downgrade 20260902_0001 → upgrade` passed on the dedicated database.
+  The three real-O4 automated skips were removed; those production-fixture audits now live
+  in `backend/scripts/audit_real_o4_readonly.py` and remain explicitly read-only.
+- Provider/model calls = `0`; normal local DB mutation = `0`; O4 EvidenceSet v8,
+  NeedHypothesis, OriginalityPack and scoped ContentRun remained unchanged. T04.35 remains
+  `NOT STARTED`; next action is the CE04 final regression and closeout gate.
+
+PR-F T04.35 final regression pre-merge closeout:
+
+- T04.35 = `DONE` after the final regression on dedicated test database
+  `contentengine_t0434_test`. Full backend after migration round-trip: run 1 `304 passed,
+  0 skipped`; run 2 `304 passed, 0 skipped`. Migration upgrade → downgrade `20260902_0001`
+  → upgrade returned to `20260908_0013 (head)`. Ruff, mypy, OpenAPI and frontend
+  lint/typecheck/build passed.
+- Read-only O4 audit traced both APPROVED candidates through locked EvidenceSet v8, Claim,
+  Evidence, SourceDocument and Source. MCI and IRS canonical URLs matched persisted rows;
+  recomputed hashes and excerpt checks passed. Six Discovery signals remain planning context
+  with no direct Signal → Evidence lineage.
+- EvidenceSet v8 remains locked with `0` historical approval rows (the normal application DB
+  is at `20260906_0010`, before the approval table; no retrofit was performed). OriginalityPack
+  `6bd287ec-43f9-4d69-957c-2223f258f909` remains draft with 4 structured/usable items.
+  KnowledgeCandidate total remains `4` (`APPROVED=2`, `REJECTED=2`, `CANDIDATE=0`).
+- Normal application DB counts and O4 scoped ContentRun remained unchanged; provider,
+  Search and URL calls = `0`. Exit gates A–H and PR-F hardening checks are `PASS`.
+
+Pre-merge handoff:
+
+```text
+CE04 IMPLEMENTATION: COMPLETE
+T04: 1–35 DONE
+PR: #29
+MERGE: PENDING USER
+POST-MERGE VERIFY: PENDING
+CE05: DO NOT START
+```
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 
-PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. PR #26 merged with commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. Current PR is now `CE04 PR-E — Evidence Research + Evidence Set` (DRAFT); PR-E implementation is complete and final review is pending. See the five PR-D evidence logs listed in the post-merge closeout record above.
+PR-D evidence: implementation tests, real Discovery Gate, founder O4 selection, persistence and idempotency verification all passed. PR #26 merged with commit `46af24d6c17df483fdc32721f14bc2f9156d0d76`. NeedHypothesis remains `PROPOSED`; no ContentCase or ContentRun was created. See the five PR-D evidence logs listed in the post-merge closeout record above.
 
 PR-E closeout evidence: `docs/logs/2026-09-08-ce04-pr-e-closeout.md` records the final
 human-reviewed Evidence Gate, locked EvidenceSet v8, persisted Founder-approved
 OriginalityPack, focused CE04 tests and the final isolated CI gate. T04.18–T04.23 are
-marked DONE / FINAL REVIEW PENDING. NeedHypothesis remains `PROPOSED`, ContentExperiment
-remains `PLANNED / PENDING`, ContentRun remains `2`, KnowledgeCandidate remains `0`, and
-T04.24–T04.31 remain NOT STARTED.
+DONE. NeedHypothesis remains `PROPOSED`, ContentExperiment remains `PLANNED / PENDING`,
+ContentRun remains `2`, KnowledgeCandidate remains `0`, and T04.24–T04.35 remain NOT
+STARTED. PR #28 is CLOSED / MERGED / PASS; current active slice is PR-F.
 
 ---
 

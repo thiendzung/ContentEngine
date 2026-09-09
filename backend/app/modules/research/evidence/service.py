@@ -173,6 +173,7 @@ class EvidenceResearchWorkflow:
                     session,
                     evidence_set_id=evidence_set.id,
                     locked_by=request.locked_by,
+                    approval_id=request.evidence_set_approval_id,
                 )
 
         originality = await build_originality_pack(
@@ -235,8 +236,11 @@ class EvidenceResearchWorkflow:
             raise ValueError("evidence_research_requires_at_least_one_page_read")
         if (run_id is None) != (step_run_id is None):
             raise ValueError("run_id_and_step_run_id_must_be_provided_together")
-        if request.lock_evidence_set and not (request.locked_by or "").strip():
-            raise ValueError("locked_by_required_when_locking_evidence_set")
+        if request.lock_evidence_set:
+            if not (request.locked_by or "").strip():
+                raise ValueError("locked_by_required_when_locking_evidence_set")
+            if request.evidence_set_approval_id is None:
+                raise ValueError("evidence_set_approval_required_when_locking_evidence_set")
 
     def _extract_claim_candidates(
         self,

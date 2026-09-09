@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import update
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +27,6 @@ from app.modules.harness.models import Approval, Artifact, ContentRun, ContextMa
 from app.modules.knowledge.models import (
     Claim,
     Evidence,
-    EvidenceSet,
     MediaAsset,
     MediaObservation,
     OriginalityPack,
@@ -227,14 +227,12 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
         session.add(evidence)
         await session.flush()
         assert evidence.id is not None
-        evidence_set = EvidenceSet(
+        evidence_set = await create_locked_evidence_set(
+            session,
             project_id=project.id,
             content_case_id=content_case.id,
             version=1,
-            evidence_ids_json=[str(evidence.id)],
-            content_hash=content_hash("evidence-set"),
-            status="locked",
-            locked_at=datetime.now(UTC),
+            evidence_ids=[str(evidence.id)],
             locked_by="founder",
         )
         originality = OriginalityPack(
@@ -251,7 +249,7 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
             rights_status="approved",
             metadata_json={"kind": "image"},
         )
-        session.add_all([evidence_set, originality, media])
+        session.add_all([originality, media])
         await session.flush()
         assert evidence_set.evidence_ids_json == [str(evidence.id)]
         assert originality.item_refs_json == [{"kind": "evidence", "id": str(evidence.id)}]

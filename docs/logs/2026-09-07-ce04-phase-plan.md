@@ -1,7 +1,7 @@
 # CE04 — Knowledge + Production Research — Phase Plan
 
-Date: 2026-09-07
-Base after PR #27 merge: `a52052adde3cf19889098013fd5065f86cab62fb`
+Date: 2026-09-09
+Base after PR #28 merge: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`
 
 ## Goal
 
@@ -75,9 +75,9 @@ Tasks: T04.18–T04.23.
 
 Builds Evidence Research, claim extraction, evidence links, contradictions, EvidenceSet lock/version and OriginalityPack builder. Primary/stronger second-hop sources are preferred over summary/SEO pages.
 
-Status: **ACTIVE / DRAFT**.
+Status: **CLOSED / MERGED / PASS**.
 
-Branch: `ce04-evidence-research-evidence-set`
+Branch: `ce04-evidence-research-evidence-set` (closed after merge)
 
 Base main: `a52052adde3cf19889098013fd5065f86cab62fb`
 
@@ -85,13 +85,46 @@ Start log: `docs/logs/2026-09-07-ce04-pr-e-start.md`
 
 Architecture decision: `docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md`
 
-Activation is docs-only; no research/provider run and no ContentCase creation occurs in this task. NeedHypothesis remains `PROPOSED` and ContentExperiment remains `PLANNED`.
+PR #28 merge commit: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 
-### PR-F — Knowledge Admission + Mirror + End-to-End Gates
+Closeout evidence: `docs/logs/2026-09-08-ce04-pr-e-closeout.md`.
 
-Tasks: T04.24–T04.31.
+T04.18–T04.23 are DONE. EvidenceSet v8 remains locked and the Founder-approved
+OriginalityPack remains unchanged. NeedHypothesis remains `PROPOSED` and ContentExperiment
+remains `PLANNED / PENDING`.
 
-Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mirror, memory-gap recommendation and the final provenance/discovery-vs-evidence/second-hop regression gates.
+### PR-F — Knowledge Admission + Provenance Gates
+
+Tasks: T04.24–T04.35.
+
+Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mirror,
+memory-gap recommendation, provenance boundaries and the final approval/isolated-database
+regression gates.
+
+Status: **ACTIVE / READY FOR REVIEW**.
+
+Branch: `ce04-knowledge-admission-provenance`
+
+Base main: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`
+
+The activation checkpoint was docs-only. The implementation and final regression are now
+complete on this branch; no merge or CE05 work has started.
+
+PR-F order:
+
+1. **F1 — T04.24–T04.25:** Knowledge Candidate extraction and human approval/admission.
+2. **F2 — T04.26–T04.28:** approved-knowledge Obsidian mirror, raw-data guard and memory-gap recommendation.
+3. **F3 — T04.29–T04.31:** provenance end-to-end, Discovery/Evidence boundary and second-hop provenance.
+4. **F4 — T04.32–T04.35:** exact EvidenceSet approval enforcement, isolated test database, final regression and CE04 closeout.
+
+Approval boundary:
+
+- EvidenceSet approval must bind the exact EvidenceSet ID, version and content hash.
+- Lock must reject missing, stale or wrong approval.
+- Knowledge Candidate is never automatically Approved Knowledge.
+- Obsidian is a human-readable mirror; raw SERP/API payload is not mirrored by default.
+- Discovery signals never silently become factual Evidence.
+- Any task that changes important canonical state must update `AI_context.MD` in the same task.
 
 ## Rules
 
@@ -107,6 +140,9 @@ Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mir
 10. PR-C must check internal MOTGU knowledge before broad external provider calls.
 11. PR-C must record why a provider was called and stop when results are sufficient.
 12. Discovery provider output is not Evidence.
+13. Do not tick a task before its implementation and final-head CI gate pass.
+14. Do not change EvidenceSet v8, OriginalityPack, NeedHypothesis, ContentExperiment,
+    ContentRun or KnowledgeCandidate state during PR-F activation.
 
 ## PR-C gate
 
@@ -154,14 +190,34 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 `PR-D = CLOSED / MERGED / PASS`
 
-`PR-E = ACTIVE / DRAFT`
+`PR-E = CLOSED / MERGED / PASS`
 
-`Current PR = CE04 PR-E — Evidence Research + Evidence Set`
+`PR-F = ACTIVE / DRAFT`
 
-`Current implementation slice = T04.18–T04.23`
+`Current PR = CE04 PR-F — Knowledge Admission + Provenance Gates`
 
-T04.1–T04.17 are DONE. T04.18–T04.23 are ACTIVE / NOT DONE. T04.24–T04.31 are NOT STARTED.
+`Current implementation slice = T04.35 final regression complete; merge pending user`
+
+T04.1–T04.35 are DONE. PR #29 is ready for review; merge remains pending user.
 
 PR-D evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`, and `docs/logs/2026-09-07-ce04-pr-d-post-merge-closeout-task.md`.
 
-Do not tick T04.18–T04.23 or begin T04.24+ before their respective gates pass. Do not run research/provider or create ContentCase in the activation task.
+Do not tick T04.24–T04.35 before their respective implementation and final-head gates pass.
+Do not run research/provider, mutate the database, create a KnowledgeCandidate, mirror to
+Obsidian or create ContentCase in the PR-F activation task.
+
+## PR-F pre-merge handoff
+
+```text
+CE04 IMPLEMENTATION: COMPLETE
+T04: 1–35 DONE
+PR: #29
+MERGE: PENDING USER
+POST-MERGE VERIFY: PENDING
+CE05: DO NOT START
+```
+
+Final regression evidence is recorded in
+`docs/logs/2026-09-09-ce04-final-regression.md`. The dedicated automated test database,
+read-only O4 audit, two full `304 passed, 0 skipped` backend runs, migration round-trip and
+frontend gates all passed. Final-head CI passed and PR #29 is ready for review.
