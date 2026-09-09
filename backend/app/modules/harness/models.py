@@ -207,6 +207,7 @@ class ModelCall(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     error_class: Mapped[str | None] = mapped_column(String(64))
     result_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
+    runtime_metadata_json: Mapped[dict[str, object] | None] = mapped_column(JSON)
 
     __table_args__ = (
         CheckConstraint(

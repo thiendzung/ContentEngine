@@ -97,6 +97,7 @@ async def test_snapshot_is_immutable_and_old_snapshot_survives_new_settings_vers
                 settings_json={"brand": {"voice": "warmer"}},
                 status="active",
                 change_reason="approved update",
+                approved_by="founder",
             )
         )
         await session.flush()

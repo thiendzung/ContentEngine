@@ -70,6 +70,7 @@ T05.4–T05.7: DONE
 O4 OriginalityPack approval gate: READY
 CE05 PR-B.2: READY FOR REVIEW
 T05.8–T05.9: READY FOR REVIEW
+CE05 PR-B.2A: READY FOR FINAL RE-REVIEW / PR #35 OPEN
 T05.10–T05.22: NOT STARTED
 
 PR-B.1 merge: PR #32 / `50083129794e35314cf351acdbcd48d7fe5e4ef9`
@@ -104,6 +105,37 @@ The `angle_candidates` Artifact also stores `model_input.content_hash`, covering
 sanitized payload passed to the model. Approval and handoff rebuild and rehash that payload;
 Evidence, Claim, or SourceDocument snapshot mutation fails closed as
 `angle_model_input_snapshot_stale`.
+
+## CE05 PR-B.2A final no-tool blocker checkpoint
+
+```text
+PR: #35 / CE05 PR-B.2A — Production Model Runtime Activation
+Branch: ce05-model-runtime-activation
+Start HEAD: b8eb1cacd1db699f95c50eaf037c8ba8d145ffa6
+Implementation HEAD: 86b2ceb5f91626c54ba0b2a4853de1fd9495af4e
+Scope: Codex no-tool blocker only
+Migration: 20260909_0017 (head)
+Status: READY FOR FINAL RE-REVIEW; OPEN / not merged
+Focused CE05 runtime tests: 15 passed
+Full backend: 359 passed
+CI: run 34355858130 / PASS
+```
+
+Codex runtime is pinned to the exact installed `codex-cli 0.153.4`; any other version fails
+closed as `agent_runner_version_not_approved`. The audited CLI feature list supports every
+required no-tool disable control, and execution passes explicit disables for shell/unified exec,
+code mode, image/view, snapshots, multi-agent, apps/plugins/MCP apps, browser/computer surfaces,
+remote plugins/sharing, image generation, and skill/MCP discovery. It also keeps
+`web_search="disabled"`, `--ignore-user-config`, `--ephemeral`, isolated temporary cwd, and
+read-only sandbox. Missing capability fails closed as `agent_tool_disable_unsupported`.
+
+No migration was created in this closeout; migration `20260909_0017` was verified by round-trip.
+The earlier settings override, human activation, and exact route provenance blockers remain
+covered. No real O4/model/provider call was performed.
+
+O4 read-only state: application DB `20260909_0016`; ContentRun `0`, journal_input_bundle `0`,
+angle_candidates `0`, AngleApproval `0`, ModelCall `0`, provider/tool calls `0`; NeedHypothesis
+`530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED`.
 
 Last merged PR:
 
