@@ -41,7 +41,7 @@ PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
 PR-E: CLOSED / MERGED / PASS
-PR-F: ACTIVE / DRAFT
+PR-F: ACTIVE / READY FOR REVIEW
 
 T04.1–T04.17: DONE
 T04.18–T04.23: DONE
@@ -56,7 +56,7 @@ T04.31: DONE
 T04.32: DONE
 T04.33: DONE
 T04.34: DONE
-T04.35: NOT STARTED
+T04.35: DONE
 ```
 
 Current PR:
@@ -65,7 +65,7 @@ Current PR:
 CE04 PR-F — Knowledge Admission + Provenance Gates
 Branch: ce04-knowledge-admission-provenance
 Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
-Status: OPEN / DRAFT
+Status: OPEN / READY FOR REVIEW
 ```
 
 # Locked O4
@@ -678,6 +678,35 @@ dependent; CE04 automated tests use scoped counts and before/after deltas.
 T04.1–T04.34: DONE
 T04.35: NOT STARTED
 Next action: T04.35 CE04 final regression and closeout
+```
+
+# PR-F T04.35 final regression pre-merge closeout
+
+The final CE04 regression passed on the dedicated test database and the normal application
+database remained read-only. Full backend runs after the migration round-trip were both
+`304 passed, 0 skipped`; migration upgrade → downgrade `20260902_0001` → upgrade returned
+to `20260908_0013 (head)`. Ruff, mypy, OpenAPI and frontend lint/typecheck/build passed.
+
+The read-only O4 audit traced both APPROVED KnowledgeCandidates through the locked EvidenceSet
+v8, Claim, Evidence, SourceDocument and Source. The MCI URL is
+`https://mci.si.edu/artifact-appraisals`; the IRS URL is
+`https://www.irs.gov/appeals/art-appraisal-services`; both recomputed candidate hashes and
+lineage checks passed, and excerpts matched persisted SourceDocument content. O4 has 6
+Discovery signals with no direct Signal → Evidence lineage. EvidenceSet v8 remains locked
+with approval row count `0` (historical app DB has no approval table); OriginalityPack remains
+the same draft with 4 structured and 4 usable MOTGU-owned items.
+
+```text
+Normal application DB: unchanged; global ContentRun 4 → 4; O4 ContentRun 0 → 0
+KnowledgeCandidate: 4 (APPROVED=2, REJECTED=2, CANDIDATE=0)
+Provider/Search/URL calls: 0
+CE04 exit gates A–H: PASS
+T04.1–T04.35: DONE
+PR #29: READY FOR USER MERGE
+CE04 implementation: COMPLETE
+Merge: PENDING USER
+Post-merge verify: PENDING
+CE05: DO NOT START
 ```
 
 # Curated EvidenceSet v8 checkpoint

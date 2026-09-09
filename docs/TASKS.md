@@ -212,9 +212,9 @@ Status: **CLOSED / PASS**.
 - PR #26 merge commit = `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
 - PR-E = CLOSED / MERGED / PASS.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
-- PR-F = ACTIVE / DRAFT.
-- Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.35; NOT STARTED`.
+- PR-F = ACTIVE / READY FOR REVIEW.
+- Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (READY FOR REVIEW).
+- Current implementation slice = `T04.35; final regression complete; merge pending user`.
 
 PR-D post-merge closeout record:
 
@@ -274,7 +274,7 @@ PR-E post-merge closeout record:
 - [x] T04.32 EvidenceSet approval binds exact ID + version + hash.
 - [x] T04.33 Lock rejects missing/stale/wrong approval.
 - [x] T04.34 Isolated test database.
-- [ ] T04.35 CE04 final regression + closeout.
+- [x] T04.35 CE04 final regression + closeout.
 
 PR-F activation record:
 
@@ -479,6 +479,35 @@ PR-F T04.34 isolated test database closeout:
 - Provider/model calls = `0`; normal local DB mutation = `0`; O4 EvidenceSet v8,
   NeedHypothesis, OriginalityPack and scoped ContentRun remained unchanged. T04.35 remains
   `NOT STARTED`; next action is the CE04 final regression and closeout gate.
+
+PR-F T04.35 final regression pre-merge closeout:
+
+- T04.35 = `DONE` after the final regression on dedicated test database
+  `contentengine_t0434_test`. Full backend after migration round-trip: run 1 `304 passed,
+  0 skipped`; run 2 `304 passed, 0 skipped`. Migration upgrade → downgrade `20260902_0001`
+  → upgrade returned to `20260908_0013 (head)`. Ruff, mypy, OpenAPI and frontend
+  lint/typecheck/build passed.
+- Read-only O4 audit traced both APPROVED candidates through locked EvidenceSet v8, Claim,
+  Evidence, SourceDocument and Source. MCI and IRS canonical URLs matched persisted rows;
+  recomputed hashes and excerpt checks passed. Six Discovery signals remain planning context
+  with no direct Signal → Evidence lineage.
+- EvidenceSet v8 remains locked with `0` historical approval rows (the normal application DB
+  is at `20260906_0010`, before the approval table; no retrofit was performed). OriginalityPack
+  `6bd287ec-43f9-4d69-957c-2223f258f909` remains draft with 4 structured/usable items.
+  KnowledgeCandidate total remains `4` (`APPROVED=2`, `REJECTED=2`, `CANDIDATE=0`).
+- Normal application DB counts and O4 scoped ContentRun remained unchanged; provider,
+  Search and URL calls = `0`. Exit gates A–H and PR-F hardening checks are `PASS`.
+
+Pre-merge handoff:
+
+```text
+CE04 IMPLEMENTATION: COMPLETE
+T04: 1–35 DONE
+PR: #29
+MERGE: PENDING USER
+POST-MERGE VERIFY: PENDING
+CE05: DO NOT START
+```
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

@@ -1,6 +1,6 @@
 # CE04 — Knowledge + Production Research — Phase Plan
 
-Date: 2026-09-08
+Date: 2026-09-09
 Base after PR #28 merge: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`
 
 ## Goal
@@ -101,14 +101,14 @@ Builds Knowledge Candidate extraction/admission, approved-knowledge Obsidian mir
 memory-gap recommendation, provenance boundaries and the final approval/isolated-database
 regression gates.
 
-Status: **ACTIVE / DRAFT**.
+Status: **ACTIVE / READY FOR REVIEW**.
 
 Branch: `ce04-knowledge-admission-provenance`
 
 Base main: `85636cb4c562d4dd1ea37bff507dd75ea89bc201`
 
-Activation is docs-only. T04.24–T04.35 remain NOT STARTED; no backend/frontend
-implementation, database mutation or provider call occurs in activation.
+The activation checkpoint was docs-only. The implementation and final regression are now
+complete on this branch; no merge or CE05 work has started.
 
 PR-F order:
 
@@ -196,12 +196,28 @@ Brave remains unimplemented unless a real run proves a coverage/outage need.
 
 `Current PR = CE04 PR-F — Knowledge Admission + Provenance Gates`
 
-`Current implementation slice = T04.24–T04.35 activation; implementation NOT STARTED`
+`Current implementation slice = T04.35 final regression complete; merge pending user`
 
-T04.1–T04.23 are DONE. T04.24–T04.35 are NOT STARTED.
+T04.1–T04.35 are DONE. PR #29 is ready for review; merge remains pending user.
 
 PR-D evidence: `docs/logs/2026-09-07-ce04-pr-d-start.md`, `docs/logs/2026-09-07-ce04-pr-d-architecture-decision.md`, `docs/logs/2026-09-07-ce04-pr-d-real-gate.md`, `docs/logs/2026-09-07-ce04-pr-d-founder-selection.md`, `docs/logs/2026-09-07-ce04-pr-d-selection-gate.md`, and `docs/logs/2026-09-07-ce04-pr-d-post-merge-closeout-task.md`.
 
 Do not tick T04.24–T04.35 before their respective implementation and final-head gates pass.
 Do not run research/provider, mutate the database, create a KnowledgeCandidate, mirror to
 Obsidian or create ContentCase in the PR-F activation task.
+
+## PR-F pre-merge handoff
+
+```text
+CE04 IMPLEMENTATION: COMPLETE
+T04: 1–35 DONE
+PR: #29
+MERGE: PENDING USER
+POST-MERGE VERIFY: PENDING
+CE05: DO NOT START
+```
+
+Final regression evidence is recorded in
+`docs/logs/2026-09-09-ce04-final-regression.md`. The dedicated automated test database,
+read-only O4 audit, two full `304 passed, 0 skipped` backend runs, migration round-trip and
+frontend gates all passed. Final-head CI passed and PR #29 is ready for review.
