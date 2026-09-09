@@ -65,14 +65,18 @@ Post-merge CI: run 34309064080 / PASS
 Post-merge verify: PASS
 CE05 PR-A: CLOSED / MERGED / PASS
 T05.1–T05.3: DONE
-CE05 PR-B: READY TO START
+CE05 PR-B.1: ACTIVE / READY FOR REVIEW
+T05.4–T05.7: READY FOR REVIEW
+T05.8–T05.22: NOT STARTED
 ```
 
 Current PR:
 
 ```text
-none
-Post-merge neutral checkpoint on main
+CE05 PR-B.1 — Research Handoff + Evidence Gates
+Branch: `ce05-research-angle-outline`
+Base: `be13b8a7bdc939fa27e991a2718e094acc5d949a`
+Scope: `T05.4–T05.7`
 ```
 
 # Locked O4

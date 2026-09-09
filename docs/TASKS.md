@@ -538,22 +538,22 @@ Branch cleanup: `DONE`
 
 Next phase: `CE05 — Journal Engine V1`
 
-CE05: `ACTIVE / PR-A`
+CE05: `ACTIVE / PR-B.1`
 
 ---
 
 ## CE05 — Journal Engine V1
 
-- Current PR: `CE05 PR-A — Journal Context + Memory`.
-- Branch: `ce05-journal-context-memory`.
-- Scope: `T05.1–T05.3`.
+- Current PR: `CE05 PR-B.1 — Research Handoff + Evidence Gates`.
+- Branch: `ce05-research-angle-outline`.
+- Scope: `T05.4–T05.7`.
 - [x] T05.1 ContentCase/LocaleVariant Journal UI.
 - [x] T05.2 Internal knowledge recall.
 - [x] T05.3 Content Memory overlap check stub.
-- [ ] T05.4 Discovery Research step.
-- [ ] T05.5 Opportunity Map selection handoff.
-- [ ] T05.6 Evidence Research + EvidenceSet step.
-- [ ] T05.7 OriginalityPack step.
+- [x] T05.4 Discovery Research step.
+- [x] T05.5 Opportunity Map selection handoff.
+- [x] T05.6 Evidence Research + EvidenceSet step.
+- [x] T05.7 OriginalityPack step.
 - [ ] T05.8 Angle generator structured output.
 - [ ] T05.9 Angle approval UI/state.
 - [ ] T05.10 Outline with evidence mapping.

@@ -203,6 +203,9 @@ class EvidenceResearchWorkflow:
             evidence_set_version=(
                 evidence_set.version if evidence_set is not None else None
             ),
+            evidence_set_content_hash=(
+                evidence_set.content_hash if evidence_set is not None else None
+            ),
             evidence_set_status=(
                 evidence_set.status if evidence_set is not None else None
             ),

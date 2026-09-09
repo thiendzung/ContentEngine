@@ -92,6 +92,7 @@ class EvidenceResearchResult:
     relation_counts: dict[str, int] = field(default_factory=dict)
     evidence_set_id: UUID | None = None
     evidence_set_version: int | None = None
+    evidence_set_content_hash: str | None = None
     evidence_set_status: str | None = None
     originality_pack_id: UUID | None = None
     originality_item_count: int = 0
