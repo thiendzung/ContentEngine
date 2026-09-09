@@ -37,3 +37,4 @@ draft, T05.8+ work, or merge was performed.
 - Migration round-trip: `upgrade → downgrade 20260902_0001 → upgrade`, ending at
   `20260909_0015`.
 - OpenAPI generation and frontend lint/typecheck/build: passed.
+- GitHub Actions CI: run `34327816627` / PASS.

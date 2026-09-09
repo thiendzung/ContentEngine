@@ -68,6 +68,10 @@ T05.1–T05.3: DONE
 CE05 PR-B.1: ACTIVE / READY FOR REVIEW
 T05.4–T05.7: READY FOR REVIEW
 T05.8–T05.22: NOT STARTED
+
+PR-B.1 hardening implementation commit: `ff12e12`
+Hardening log: `docs/logs/2026-09-09-ce05-pr-b1-hardening.md`
+Latest implementation CI: run `34327816627` / PASS
 ```
 
 Current PR:
