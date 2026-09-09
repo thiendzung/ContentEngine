@@ -62,7 +62,7 @@ unchanged. No real O4/model/provider call was performed.
   test DB ended at `20260909_0017 (head)`.
 - OpenAPI export: pass; no API contract change.
 - Frontend lint, typecheck, and build: pass; generated build artifacts were not committed.
-- CI: run `34355533154` / PASS; quality job `102479123153`.
+- CI: run `34355858130` / PASS; quality job `102480226635`.
 
 ## O4 read-only state
 

@@ -118,7 +118,7 @@ Migration: 20260909_0017 (head)
 Status: READY FOR FINAL RE-REVIEW; OPEN / not merged
 Focused CE05 runtime tests: 15 passed
 Full backend: 359 passed
-CI: run 34355533154 / PASS
+CI: run 34355858130 / PASS
 ```
 
 Codex runtime is pinned to the exact installed `codex-cli 0.153.4`; any other version fails
