@@ -24,3 +24,11 @@ relevance filtering, so invalid candidates are never silently skipped.
 - no provider calls are made.
 
 No T05.4+ work, provider call, PR-map change, or merge is included.
+
+## Evidence
+
+- Focused CE05 tests: `9 passed`.
+- Full backend tests: `313 passed`.
+- Ruff and mypy passed.
+- PR #31 CI quality run `34308555547`: passed, including migration round-trip,
+  backend tests, OpenAPI export, frontend lint/typecheck/build.
