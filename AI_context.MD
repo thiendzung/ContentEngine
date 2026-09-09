@@ -59,20 +59,20 @@ T04.34: DONE
 T04.35: DONE
 
 Final merge:
-PR #29
-Merge commit: e6f7ac185094d7898cfb8df3c26b38f8fc4f4718
-Post-merge CI: #430 / run 34305124113 / PASS
+PR #31
+Merge commit: fc3f52497edd3bd0c612697f618907153a6aad61
+Post-merge CI: run 34309064080 / PASS
 Post-merge verify: PASS
-CE05: ACTIVE / PR-A — READY FOR REVIEW
+CE05 PR-A: CLOSED / MERGED / PASS
+T05.1–T05.3: DONE
+CE05 PR-B: READY TO START
 ```
 
 Current PR:
 
 ```text
-CE05 PR-A — Journal Context + Memory
-Branch: ce05-journal-context-memory
-Base main: 2d7a5c37c03d85e941ed3c897670887fe2f98704
-Scope: T05.1–T05.3
+none
+Post-merge neutral checkpoint on main
 ```
 
 # Locked O4
@@ -250,7 +250,7 @@ Branch: none
 Final main: 2d7a5c37c03d85e941ed3c897670887fe2f98704
 Post-merge CI: #430 / run 34305124113 / PASS
 Post-merge verify: PASS
-CE05: ACTIVE / PR-A — READY FOR REVIEW
+CE05: ACTIVE / PR-B READY TO START
 ```
 
 PR-F order:
@@ -834,4 +834,4 @@ task has started.
 - Record meaningful decisions/failures under `docs/logs/`.
 - Any task that changes important canonical state must update `AI_context.MD` in the same task.
 - Do not tick a PR-F task before its implementation and final-head CI gate pass.
-- Do not begin PR-B or T05.4+ before CE05 PR-A review and clean checkpoint.
+- Do not begin CE05 PR-C or T05.11+ before PR-B review and clean checkpoint.
