@@ -23,6 +23,32 @@ class AgentRunnerError(RuntimeError):
         super().__init__(code)
 
 
+CODEX_CLI_APPROVED_VERSION = "codex-cli 0.153.4"
+CODEX_NO_TOOL_FEATURES = (
+    "shell_tool",
+    "unified_exec",
+    "code_mode",
+    "view_image",
+    "shell_snapshot",
+    "multi_agent",
+    "apps",
+    "plugins",
+    "enable_mcp_apps",
+    "tool_suggest",
+    "in_app_browser",
+    "in_app_local_automation",
+    "browser_use",
+    "browser_use_full_cdp_access",
+    "browser_use_external",
+    "computer_use",
+    "remote_plugin",
+    "plugin_sharing",
+    "image_generation",
+    "skill_mcp_dependency_install",
+    "skill_search",
+)
+
+
 @dataclass(frozen=True, slots=True)
 class AgentRunRequest:
     provider: str
@@ -392,14 +418,7 @@ class _CliRunner:
 class CodexCliRunner(_CliRunner):
     """Run Codex using cached ChatGPT login and a read-only isolated process."""
 
-    _NO_TOOL_FEATURES = (
-        "shell_tool",
-        "unified_exec",
-        "code_mode",
-        "apps",
-        "plugins",
-        "enable_mcp_apps",
-    )
+    _NO_TOOL_FEATURES = CODEX_NO_TOOL_FEATURES
 
     def __init__(self, *, executable: str = "codex") -> None:
         super().__init__(
@@ -441,6 +460,8 @@ class CodexCliRunner(_CliRunner):
         version_text = (_decode(version.stdout) or _decode(version.stderr)).strip()
         if not version_text:
             raise AgentRunnerError("agent_version_check_failed")
+        if version_text.splitlines()[0].strip() != CODEX_CLI_APPROVED_VERSION:
+            raise AgentRunnerError("agent_runner_version_not_approved")
         await self._verify_no_tool_support()
         auth = await _run_command([self.executable, *self.auth_args], timeout=10.0)
         auth_mode = self._auth_mode(auth.stdout + b"\n" + auth.stderr)
@@ -470,18 +491,11 @@ class CodexCliRunner(_CliRunner):
                 str(result_path),
                 "--sandbox",
                 "read-only",
-                "--disable",
-                "shell_tool",
-                "--disable",
-                "unified_exec",
-                "--disable",
-                "code_mode",
-                "--disable",
-                "apps",
-                "--disable",
-                "plugins",
-                "--disable",
-                "enable_mcp_apps",
+                *[
+                    part
+                    for feature in self._NO_TOOL_FEATURES
+                    for part in ("--disable", feature)
+                ],
                 "-c",
                 'web_search="disabled"',
                 "--skip-git-repo-check",
@@ -540,6 +554,8 @@ def default_agent_runner_registry() -> AgentRunnerRegistry:
 
 
 __all__ = [
+    "CODEX_CLI_APPROVED_VERSION",
+    "CODEX_NO_TOOL_FEATURES",
     "AgentCapability",
     "AgentRunRequest",
     "AgentRunResult",

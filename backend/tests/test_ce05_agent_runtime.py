@@ -19,6 +19,8 @@ from app.modules.content_engine.journal.agent_bridge import (
 from app.modules.content_engine.journal.angle import AngleGenerationError, AngleGenerator
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
+    CODEX_CLI_APPROVED_VERSION,
+    CODEX_NO_TOOL_FEATURES,
     AgentRunnerError,
     AgentRunnerRegistry,
     AgentRunRequest,
@@ -60,14 +62,7 @@ def _request(provider: str, model: str = "test-model") -> AgentRunRequest:
 
 _CODEX_FEATURES = b"\n".join(
     f"{feature} stable true".encode()
-    for feature in (
-        "shell_tool",
-        "unified_exec",
-        "code_mode",
-        "apps",
-        "plugins",
-        "enable_mcp_apps",
-    )
+    for feature in CODEX_NO_TOOL_FEATURES
 )
 
 
@@ -140,7 +135,7 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
         elif argv[-2:] == ("login", "status"):
             process = FakeProcess(argv, stdout=b"Logged in using ChatGPT")
         elif "--version" in argv:
-            process = FakeProcess(argv, stdout=b"codex 0.1-test")
+            process = FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
         else:
             process = FakeProcess(
                 argv,
@@ -161,15 +156,8 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     assert "--model" in execution.argv
     assert "read-only" in execution.argv
     assert 'web_search="disabled"' in execution.argv
-    assert execution.argv.count("--disable") == 6
-    for feature in (
-        "shell_tool",
-        "unified_exec",
-        "code_mode",
-        "apps",
-        "plugins",
-        "enable_mcp_apps",
-    ):
+    assert execution.argv.count("--disable") == len(CODEX_NO_TOOL_FEATURES)
+    for feature in CODEX_NO_TOOL_FEATURES:
         assert ("--disable", feature) in zip(
             execution.argv,
             execution.argv[1:],
@@ -178,6 +166,51 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     assert "--search" not in execution.argv
     assert "OPENAI_API_KEY" not in execution.env
     assert "must-not-cross-boundary" not in execution.env.values()
+
+
+@pytest.mark.asyncio
+async def test_codex_runner_pins_exact_version_before_any_model_execution(monkeypatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        calls.append(argv)
+        control = _codex_control_process(argv)
+        if control is not None:
+            return control
+        if "--version" in argv:
+            return FakeProcess(argv, stdout=b"codex-cli 0.153.3")
+        return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
+
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/codex")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+
+    with pytest.raises(AgentRunnerError, match="agent_runner_version_not_approved"):
+        await CodexCliRunner().preflight()
+    assert all(argv[1:] != ("features", "list") for argv in calls)
+    assert all(argv[1:] != ("exec", "--help") for argv in calls)
+
+
+@pytest.mark.asyncio
+async def test_codex_runner_requires_every_no_tool_feature_capability(monkeypatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        calls.append(argv)
+        if argv[1:] == ("exec", "--help"):
+            return FakeProcess(argv, stdout=b"--disable <FEATURE>")
+        if argv[1:] == ("features", "list"):
+            return FakeProcess(argv, stdout=b"shell_tool stable true")
+        if "--version" in argv:
+            return FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
+        return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
+
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/codex")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+
+    with pytest.raises(AgentRunnerError, match="agent_tool_disable_unsupported"):
+        await CodexCliRunner().preflight()
+    assert all("--model" not in argv for argv in calls)
+    assert all(argv[1:] != ("login", "status") for argv in calls)
 
 
 @pytest.mark.asyncio
@@ -191,7 +224,7 @@ async def test_cli_runners_fail_closed_for_missing_or_unauthenticated_agent(monk
         if control is not None:
             return control
         if "--version" in argv:
-            return FakeProcess(argv, stdout=b"codex 0.1-test")
+            return FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
         return FakeProcess(argv, stdout=b"Not logged in", exit_code=1)
 
     monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/codex")
@@ -231,7 +264,7 @@ async def test_runner_timeout_is_fail_closed(monkeypatch) -> None:
         if control is not None:
             return control
         if "--version" in argv:
-            return FakeProcess(argv, stdout=b"codex 0.1-test")
+            return FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
         if argv[-2:] == ("login", "status"):
             return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
         return FakeProcess(argv, hang=True)
@@ -261,7 +294,7 @@ async def test_cli_runner_rejects_invalid_or_nonzero_execution(
         if control is not None:
             return control
         if "--version" in argv:
-            return FakeProcess(argv, stdout=b"codex 0.1-test")
+            return FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
         if argv[-2:] == ("login", "status"):
             return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
         return FakeProcess(argv, stdout=stdout, exit_code=exit_code)
