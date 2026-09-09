@@ -170,8 +170,7 @@ async def _create_baseline(
         content_case_id=content_case.id,
         item_refs_json=[{"kind": "motgu_fact", "ref": "replay-synthetic"}],
         summary="Replay synthetic originality",
-        status="approved",
-        approved_at=datetime.now(UTC),
+        status="draft",
     )
     session.add_all([baseline_step, evidence_set, originality_pack])
     await session.flush()

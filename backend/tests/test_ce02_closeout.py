@@ -239,8 +239,7 @@ async def test_ce02_persists_a_traceable_content_record_end_to_end() -> None:
             content_case_id=content_case.id,
             item_refs_json=[{"kind": "evidence", "id": str(evidence.id)}],
             summary="Approved MOTGU material.",
-            status="approved",
-            approved_at=datetime.now(UTC),
+            status="draft",
         )
         media = MediaAsset(
             project_id=project.id,

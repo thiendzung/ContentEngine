@@ -12,6 +12,11 @@ from app.modules.knowledge.candidates import (
     rebuild_candidate_snapshot,
     stable_knowledge_candidate_id,
 )
+from app.modules.knowledge.originality_pack import (
+    OriginalityPackApprovalError,
+    approve_originality_pack,
+    originality_pack_snapshot_hash,
+)
 
 __all__ = [
     "EXTRACTION_METHOD",
@@ -22,4 +27,7 @@ __all__ = [
     "extract_knowledge_candidates",
     "rebuild_candidate_snapshot",
     "stable_knowledge_candidate_id",
+    "OriginalityPackApprovalError",
+    "approve_originality_pack",
+    "originality_pack_snapshot_hash",
 ]

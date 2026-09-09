@@ -44,6 +44,7 @@ def evidence_workflow_payload(result: EvidenceResearchResult) -> dict[str, objec
         "evidence_set": {
             "id": str(result.evidence_set_id) if result.evidence_set_id else None,
             "version": result.evidence_set_version,
+            "content_hash": result.evidence_set_content_hash,
             "status": result.evidence_set_status,
         },
         "originality_pack": {

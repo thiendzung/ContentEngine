@@ -171,8 +171,7 @@ async def create_runtime_run(
         content_case_id=content_case.id,
         item_refs_json=[{"kind": "motgu_fact", "ref": "synthetic"}],
         summary="Synthetic originality",
-        status="approved",
-        approved_at=datetime.now(UTC),
+        status="draft",
     )
     session.add_all([step, evidence_set, originality_pack])
     await session.flush()

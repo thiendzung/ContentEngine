@@ -394,6 +394,13 @@ Nguyên liệu riêng của MOTGU được writer phép dùng.
 - `summary`
 - `status`
 - `approved_at` nullable
+- `approved_by` nullable until approval
+- `approval_reason` nullable until approval
+- `snapshot_hash` nullable until approval; exact hash of the approved pack snapshot
+
+An `approved` OriginalityPack must retain non-empty approval metadata and its exact
+snapshot hash. Approved snapshot content is immutable; a stale or mutated snapshot must
+fail closed. A `draft` or `retired` pack cannot cross a Journal handoff gate.
 
 Item có thể là first-party fact, artist quote, artwork observation, studio/process detail, visitor question hoặc practical MOTGU knowledge.
 
