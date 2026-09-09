@@ -115,6 +115,7 @@ Start HEAD: dd99eb255d290167d1c33af7362df1d4ad92b3b1
 Scope: blocker fixes only
 Migration: 20260909_0017 (head)
 Status: READY FOR RE-REVIEW after local gates; not merged
+CI: run 34344664463 / PASS
 ```
 
 The resolver now fails closed when the same settings path has different values across
