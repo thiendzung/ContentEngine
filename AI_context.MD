@@ -68,7 +68,8 @@ T05.1–T05.3: DONE
 CE05 PR-B.1: CLOSED / MERGED / PASS
 T05.4–T05.7: DONE
 O4 OriginalityPack approval gate: READY
-T05.8–T05.9: NOT STARTED
+CE05 PR-B.2: READY FOR REVIEW
+T05.8–T05.9: READY FOR REVIEW
 T05.10–T05.22: NOT STARTED
 
 PR-B.1 merge: PR #32 / `50083129794e35314cf351acdbcd48d7fe5e4ef9`
@@ -76,6 +77,33 @@ Post-merge CI: run `34329911204` / PASS
 Post-merge verification: PASS
 Branch `ce05-research-angle-outline`: deleted local and remote
 ```
+
+## CE05 PR-B.2 implementation checkpoint
+
+```text
+PR: #34 / CE05 PR-B.2 — Angle Generator + Human Approval
+Branch: ce05-angle-approval
+Start HEAD: 4a1a2caee9e362a33cf9cdd5169f99fc6a25bdc1
+End HEAD: 70ea783
+Status: READY FOR REVIEW
+Scope: T05.8–T05.9
+Migration: 20260909_0016 (head)
+CI: run 34333910077 / PASS
+```
+
+The implementation persists immutable `angle_candidates` Artifacts bound to an exact
+`journal_input_bundle`, validates 3–5 typed candidates and all EvidenceSet/OriginalityPack
+references, and uses bounded model-output retry. The model receives only a revalidated,
+allow-listed `angle_model_input`; `RESEARCH_REQUIRED` and `BLOCKED` fail closed until a
+durable completion proof exists. Human Angle approval is a separate immutable, exact-snapshot
+decision with idempotent retry and conflict/stale fail-closed behavior. No Outline, T05.10+,
+real O4 Angle generation/approval, or external provider/model call was performed; tests used
+only an injected fake model port.
+
+The `angle_candidates` Artifact also stores `model_input.content_hash`, covering the exact
+sanitized payload passed to the model. Approval and handoff rebuild and rehash that payload;
+Evidence, Claim, or SourceDocument snapshot mutation fails closed as
+`angle_model_input_snapshot_stale`.
 
 Last merged PR:
 
