@@ -214,7 +214,7 @@ Status: **CLOSED / PASS**.
 - PR #28 merge commit = `85636cb4c562d4dd1ea37bff507dd75ea89bc201`.
 - PR-F = ACTIVE / DRAFT.
 - Current PR = `CE04 PR-F — Knowledge Admission + Provenance Gates` (DRAFT).
-- Current implementation slice = `T04.32–T04.35; NOT STARTED`.
+- Current implementation slice = `T04.35; NOT STARTED`.
 
 PR-D post-merge closeout record:
 
@@ -273,7 +273,7 @@ PR-E post-merge closeout record:
 - [x] T04.31 Test second-hop can trace a summary article to an original source candidate.
 - [x] T04.32 EvidenceSet approval binds exact ID + version + hash.
 - [x] T04.33 Lock rejects missing/stale/wrong approval.
-- [ ] T04.34 Isolated test database.
+- [x] T04.34 Isolated test database.
 - [ ] T04.35 CE04 final regression + closeout.
 
 PR-F activation record:
@@ -459,6 +459,26 @@ T04.33 direct-lock INSERT repair:
   mypy, OpenAPI and frontend gates pass; generic Approval, ContentRun and Artifact deltas
   are `0`; provider/model calls = `0`.
 - T04.33 remains `DONE`; T04.34–T04.35 remain `NOT STARTED`.
+
+PR-F T04.34 isolated test database closeout:
+
+- T04.34 = `DONE`. Automated tests now require `APP_ENV=test` with a dedicated
+  `TEST_DATABASE_URL`; the resolved URL is shared by the application engine, sessions and
+  Alembic. Test engines use `NullPool`, and the test database target must contain `test` and
+  differ from the application target.
+- Dedicated local test database: `contentengine_t0434_test`. Normal application database:
+  `contentengine`. The normal database was read-only before and after the gate with the same
+  observed counts: projects `1`, ContentRun `4`, EvidenceSet `8`, KnowledgeCandidate `4`,
+  Source `15`, SourceDocument `15`; O4 ContentRun remained `0`.
+- Full isolated backend run 1: `304 passed, 0 skipped`. Full isolated backend run 2 after
+  migration round-trip: `304 passed, 0 skipped`. Ruff, mypy, OpenAPI and frontend
+  lint/typecheck/build passed.
+- Migration `upgrade → downgrade 20260902_0001 → upgrade` passed on the dedicated database.
+  The three real-O4 automated skips were removed; those production-fixture audits now live
+  in `backend/scripts/audit_real_o4_readonly.py` and remain explicitly read-only.
+- Provider/model calls = `0`; normal local DB mutation = `0`; O4 EvidenceSet v8,
+  NeedHypothesis, OriginalityPack and scoped ContentRun remained unchanged. T04.35 remains
+  `NOT STARTED`; next action is the CE04 final regression and closeout gate.
 
 PR-C evidence: ResearchRouter checks internal knowledge first, then uses Serper for production discovery, Tavily as a real conditional fallback, Exa for real second-hop research with parent provenance, and Jina for selected-page reading with bounded reader failover. PR-C reuses CE03 budget and ToolCall telemetry, classifies provider failures safely, and accepted the final Standard Gate result `sufficient=false` with explicit `bounded_search_exhausted` without weakening the sufficiency threshold. Secret scan passed. Brave was not implemented by the evidence-backed decision above. PR #24 merged with commit `39731375a5a90f3a6e590ed3c856d973d5feb1b9`. Final gate evidence: `docs/logs/2026-09-07-ce04-pr-c-final-gate.md`.
 

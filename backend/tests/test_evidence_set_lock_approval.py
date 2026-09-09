@@ -363,18 +363,3 @@ def test_locking_research_request_requires_approval_id() -> None:
         match="evidence_set_approval_required_when_locking_evidence_set",
     ):
         workflow._validate_request(request, run_id=None, step_run_id=None)
-
-
-@pytest.mark.asyncio
-async def test_historical_o4_v8_is_not_retrofit_with_approval() -> None:
-    async with isolated_session() as session:
-        evidence_set = await session.get(EvidenceSet, HISTORICAL_V8_ID)
-        if evidence_set is None:
-            pytest.skip("isolated database has no real O4 EvidenceSet v8")
-        assert evidence_set.status == "locked"
-        approval_count = await session.scalar(
-            select(func.count()).select_from(EvidenceSetApproval).where(
-                EvidenceSetApproval.evidence_set_id == HISTORICAL_V8_ID
-            )
-        )
-        assert approval_count == 0

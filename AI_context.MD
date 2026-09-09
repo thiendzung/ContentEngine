@@ -1,6 +1,6 @@
 # AI_context.MD — ContentEngine shared working context
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 
 GitHub is canonical. Detailed history lives in `docs/logs/`; keep this file short and current.
 
@@ -55,7 +55,8 @@ T04.30: DONE
 T04.31: DONE
 T04.32: DONE
 T04.33: DONE
-T04.34–T04.35: NOT STARTED
+T04.34: DONE
+T04.35: NOT STARTED
 ```
 
 Current PR:
@@ -647,6 +648,37 @@ insert and draft → exact approval → locked still pass. Historical O4 Evidenc
 locked and unchanged with no retrofit approval or other DB mutation. Full isolated backend:
 `297 passed, 3 skipped`; migration upgrade → downgrade → upgrade, Ruff, mypy, OpenAPI and
 frontend gates pass; provider/model calls = `0`. T04.34–T04.35 remain NOT STARTED.
+
+# PR-F T04.34 isolated test database closeout
+
+T04.34 is `DONE`. Automated tests and Alembic now resolve the same dedicated test target
+through `Settings.resolved_database_url`; `APP_ENV=test` requires `TEST_DATABASE_URL`, the
+database name must contain `test`, and the parsed test host/port/database must differ from
+`DATABASE_URL`. Test engine pooling uses `NullPool`.
+
+```text
+Application DB: contentengine
+Dedicated test DB: contentengine_t0434_test
+Full isolated backend run 1: 304 passed, 0 skipped
+Full isolated backend run 2 after migration round-trip: 304 passed, 0 skipped
+Migration upgrade → downgrade 20260902_0001 → upgrade: PASS
+Ruff / mypy / OpenAPI / frontend lint-typecheck-build: PASS
+Provider/model calls: 0
+```
+
+The three real-O4 automated skips were removed. Their production-fixture checks are now in
+the explicit read-only `backend/scripts/audit_real_o4_readonly.py`. Normal application DB
+counts were unchanged: projects 1, ContentRun 4, EvidenceSet 8, KnowledgeCandidate 4,
+Source 15, SourceDocument 15; O4 ContentRun remained 0. The read-only audit confirmed
+EvidenceSet v8 locked/unchanged, NeedHypothesis `PROPOSED`, OriginalityPack unchanged and
+no direct Discovery Signal → Evidence lineage. Global ContentRun totals are environment-
+dependent; CE04 automated tests use scoped counts and before/after deltas.
+
+```text
+T04.1–T04.34: DONE
+T04.35: NOT STARTED
+Next action: T04.35 CE04 final regression and closeout
+```
 
 # Curated EvidenceSet v8 checkpoint
 

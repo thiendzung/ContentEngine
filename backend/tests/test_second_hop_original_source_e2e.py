@@ -11,14 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.research.production as production_module
 from app.core.database import engine
-from app.modules.content_engine.models import ContentOpportunitySignal, Project, Signal
-from app.modules.harness.models import ContentRun
+from app.modules.content_engine.models import Project
 from app.modules.knowledge.models import (
     Claim,
     Evidence,
-    EvidenceSet,
-    KnowledgeCandidate,
-    OriginalityPack,
     Source,
     SourceDocument,
 )
@@ -389,75 +385,6 @@ async def test_unavailable_exa_does_not_promote_direct_result_to_second_hop(
         source.relation is SourceRelation.SECOND_HOP
         for source in result.source_candidates
     )
-
-
-@pytest.mark.asyncio
-async def test_real_o4_signal_links_have_no_direct_evidence_lineage() -> None:
-    async with isolated_session() as session:
-        before = {
-            "evidence_sets": int(
-                await session.scalar(select(func.count()).select_from(EvidenceSet))
-            ),
-            "candidates": int(
-                await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
-            ),
-            "originality_packs": int(
-                await session.scalar(select(func.count()).select_from(OriginalityPack))
-            ),
-            "o4_runs": int(
-                await session.scalar(
-                    select(func.count())
-                    .select_from(ContentRun)
-                    .where(ContentRun.content_case_id == O4_CONTENT_CASE_ID)
-                )
-            ),
-        }
-        signal_rows = (
-            await session.execute(
-                select(Signal)
-                .join(ContentOpportunitySignal, ContentOpportunitySignal.signal_id == Signal.id)
-                .where(ContentOpportunitySignal.content_opportunity_id == O4_OPPORTUNITY_ID)
-                .order_by(Signal.id)
-            )
-        ).scalars().all()
-        if not signal_rows:
-            pytest.skip("real O4 discovery fixture is not present in the isolated database")
-
-        evidence_set = await session.get(EvidenceSet, O4_EVIDENCE_SET_ID)
-        originality = await session.get(OriginalityPack, O4_ORIGINALITY_PACK_ID)
-        assert evidence_set is not None
-        assert evidence_set.status == "locked"
-        assert evidence_set.version == 8
-        assert originality is not None
-        assert Evidence.__table__.columns.get("signal_id") is None
-        assert not any(
-            foreign_key.column.table.name == "signals"
-            for foreign_key in Evidence.__table__.foreign_keys
-        )
-        assert not any(
-            "signal_id" in evidence.provenance_json
-            or "planning_signal_id" in evidence.provenance_json
-            for evidence in (await session.execute(select(Evidence))).scalars().all()
-        )
-        after = {
-            "evidence_sets": int(
-                await session.scalar(select(func.count()).select_from(EvidenceSet))
-            ),
-            "candidates": int(
-                await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
-            ),
-            "originality_packs": int(
-                await session.scalar(select(func.count()).select_from(OriginalityPack))
-            ),
-            "o4_runs": int(
-                await session.scalar(
-                    select(func.count())
-                    .select_from(ContentRun)
-                    .where(ContentRun.content_case_id == O4_CONTENT_CASE_ID)
-                )
-            ),
-        }
-        assert after == before
 
 
 def _production_with_document(

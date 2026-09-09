@@ -21,13 +21,10 @@ from app.modules.content_engine.models import (
     Project,
 )
 from app.modules.content_engine.models import Signal as DBSignal
-from app.modules.harness.models import Approval, Artifact, ContentRun
 from app.modules.knowledge.models import (
     Claim,
     Evidence,
     EvidenceSet,
-    KnowledgeCandidate,
-    OriginalityPack,
     Source,
     SourceDocument,
 )
@@ -574,106 +571,3 @@ async def test_search_rank_is_not_factual_authority() -> None:
         assert evidence is not None
         assert evidence.quality_metadata_json["search_rank_used_as_authority"] is False
         assert evidence.authority_level == "institutional_candidate"
-
-
-@pytest.mark.asyncio
-async def test_real_o4_signal_links_have_no_direct_evidence_lineage() -> None:
-    async with isolated_session() as session:
-        before = {
-            "candidate_total": int(
-                await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
-            ),
-            "evidence_sets": int(
-                await session.scalar(select(func.count()).select_from(EvidenceSet))
-            ),
-            "evidence": int(await session.scalar(select(func.count()).select_from(Evidence))),
-            "claims": int(await session.scalar(select(func.count()).select_from(Claim))),
-            "documents": int(
-                await session.scalar(select(func.count()).select_from(SourceDocument))
-            ),
-            "sources": int(await session.scalar(select(func.count()).select_from(Source))),
-            "originality_packs": int(
-                await session.scalar(select(func.count()).select_from(OriginalityPack))
-            ),
-            "artifacts": int(await session.scalar(select(func.count()).select_from(Artifact))),
-            "approvals": int(await session.scalar(select(func.count()).select_from(Approval))),
-            "o4_runs": int(
-                await session.scalar(
-                    select(func.count())
-                    .select_from(ContentRun)
-                    .where(ContentRun.content_case_id == O4_CONTENT_CASE_ID)
-                )
-            ),
-        }
-        signal_rows = tuple(
-            (
-                await session.execute(
-                    select(DBSignal)
-                    .join(
-                        ContentOpportunitySignal,
-                        ContentOpportunitySignal.signal_id == DBSignal.id,
-                    )
-                    .where(
-                        ContentOpportunitySignal.content_opportunity_id == O4_OPPORTUNITY_ID
-                    )
-                    .order_by(DBSignal.id)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        evidence_set = await session.get(EvidenceSet, O4_EVIDENCE_SET_ID)
-        need = await session.get(NeedHypothesis, O4_NEED_ID)
-        content_case = await session.get(ContentCase, O4_CONTENT_CASE_ID)
-        originality = await session.get(OriginalityPack, O4_ORIGINALITY_PACK_ID)
-        if not signal_rows:
-            pytest.skip("real O4 discovery fixture is not present in the isolated database")
-        assert evidence_set is not None
-        assert evidence_set.status == "locked"
-        assert evidence_set.version == 8
-        assert need is not None
-        assert need.status == "PROPOSED"
-        assert content_case is not None
-        assert content_case.project_id == evidence_set.project_id
-        assert originality is not None
-        assert Evidence.__table__.columns.get("signal_id") is None
-        assert not any(
-            foreign_key.column.table.name == "signals"
-            for foreign_key in Evidence.__table__.foreign_keys
-        )
-        all_evidence = (
-            await session.execute(select(Evidence))
-        ).scalars().all()
-        for evidence in all_evidence:
-            assert "signal_id" not in evidence.provenance_json
-            assert "planning_signal_id" not in evidence.provenance_json
-        signal_ids = {str(signal.id) for signal in signal_rows}
-        assert signal_ids
-        assert evidence_set.content_case_id == content_case.id
-        after = {
-            "candidate_total": int(
-                await session.scalar(select(func.count()).select_from(KnowledgeCandidate))
-            ),
-            "evidence_sets": int(
-                await session.scalar(select(func.count()).select_from(EvidenceSet))
-            ),
-            "evidence": int(await session.scalar(select(func.count()).select_from(Evidence))),
-            "claims": int(await session.scalar(select(func.count()).select_from(Claim))),
-            "documents": int(
-                await session.scalar(select(func.count()).select_from(SourceDocument))
-            ),
-            "sources": int(await session.scalar(select(func.count()).select_from(Source))),
-            "originality_packs": int(
-                await session.scalar(select(func.count()).select_from(OriginalityPack))
-            ),
-            "artifacts": int(await session.scalar(select(func.count()).select_from(Artifact))),
-            "approvals": int(await session.scalar(select(func.count()).select_from(Approval))),
-            "o4_runs": int(
-                await session.scalar(
-                    select(func.count())
-                    .select_from(ContentRun)
-                    .where(ContentRun.content_case_id == O4_CONTENT_CASE_ID)
-                )
-            ),
-        }
-        assert after == before
