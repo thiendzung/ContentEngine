@@ -49,3 +49,23 @@ Date: 2026-09-09
 ## Status
 
 PR #34 is open and ready for review. T05.10+ remains not started. No merge was performed.
+
+## Hardening checkpoint
+
+- Hardening HEAD: `846be76`.
+- The model boundary now receives only a revalidated, allow-listed
+  `angle_model_input`: the exact Opportunity snapshot, exact locked EvidenceSet members,
+  usable material from the approved OriginalityPack, and any exact ContextManifest refs/hash.
+- Raw `journal_input_bundle`, provider payloads, search snippets, and Evidence outside the
+  locked set are not passed to the model. Candidate refs are validated against the exact
+  items present in that model input.
+- `REUSE_EXISTING` is allowed. `RESEARCH_REQUIRED` fails closed with
+  `angle_research_completion_required` because this contract has no durable completion proof;
+  `BLOCKED` fails closed with `angle_research_decision_blocked`.
+- Focused CE05 Angle suite: `11 passed`.
+- Full backend: `341 passed`.
+- Ruff, mypy, OpenAPI export, and frontend lint/typecheck/build: PASS.
+- O4 read-only verification remains PASS: approved OriginalityPack 4/4, exact hash
+  `d2f193a68b8454114f18dff4d65e5c8b26c494636e1200e55a3fb4c6797eb238`, EvidenceSet v8 exact,
+  `REUSE_EXISTING`, zero O4 bundle/Angle artifacts and zero provider/model calls.
+- No real O4 Angle generation or approval, Outline, T05.10+, or merge was performed.
