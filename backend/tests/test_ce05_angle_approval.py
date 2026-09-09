@@ -28,6 +28,7 @@ from app.modules.content_engine.journal.angle import (
     AngleGenerator,
     JournalInputBundle,
     angle_candidate_hash,
+    angle_model_input_hash,
     approve_angle_candidate,
     handoff_approved_angle,
     load_journal_input_bundle,
@@ -38,7 +39,13 @@ from app.modules.content_engine.journal.research_handoff import (
 )
 from app.modules.content_engine.models import ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, ToolCall
-from app.modules.knowledge.models import EvidenceSet, OriginalityPack
+from app.modules.knowledge.models import (
+    Claim,
+    Evidence,
+    EvidenceSet,
+    OriginalityPack,
+    SourceDocument,
+)
 
 
 @asynccontextmanager
@@ -212,6 +219,9 @@ async def test_valid_bundle_generates_typed_candidates_and_reuses_exact_artifact
         assert all(isinstance(candidate, AngleCandidate) for candidate in first.candidates)
         assert first.artifact.id == second.artifact.id
         assert first.artifact.content_hash == second.artifact.content_hash
+        assert first.artifact.content_json["model_input"] == {
+            "content_hash": angle_model_input_hash(bundle.angle_model_input)
+        }
         assert first.artifact.content_json["provider_calls"] == 0
         assert model.calls == 2
         assert (
@@ -611,6 +621,55 @@ async def test_stale_or_conflicting_angle_approval_fails_closed() -> None:
                     selected_angle_id=selected.angle_id,
                     expected_candidate_hash=angle_candidate_hash(selected),
                 )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mutation",
+    ["evidence_excerpt", "claim_statement", "source_document_metadata"],
+)
+async def test_upstream_model_input_mutation_blocks_approval_and_handoff(
+    mutation: str,
+) -> None:
+    async with isolated_session() as session:
+        artifact, bundle, candidates = await _generated_fixture(session)
+        selected = candidates[0]
+        evidence = await session.get(Evidence, bundle.evidence_ids[0])
+        assert evidence is not None
+        if mutation == "evidence_excerpt":
+            evidence.excerpt = "Mutated evidence excerpt after generation."
+        elif mutation == "claim_statement":
+            claim = await session.get(Claim, evidence.claim_id)
+            assert claim is not None
+            claim.statement = "Mutated claim statement after generation."
+        else:
+            assert evidence.source_document_id is not None
+            document = await session.get(SourceDocument, evidence.source_document_id)
+            assert document is not None
+            document.canonical_url = "https://example.test/mutated-document"
+
+        kwargs = {
+            "session": session,
+            "angle_artifact_id": artifact.id,
+            "expected_artifact_version": artifact.version,
+            "expected_artifact_hash": artifact.content_hash,
+            "selected_angle_id": selected.angle_id,
+            "expected_candidate_hash": angle_candidate_hash(selected),
+            "approved_by": "founder",
+            "approval_reason": "Approved exact Angle candidate snapshot.",
+        }
+        with pytest.raises(AngleApprovalError, match="angle_model_input_snapshot_stale"):
+            with session.no_autoflush:
+                await approve_angle_candidate(**kwargs)
+
+        handoff_kwargs = {
+            key: value
+            for key, value in kwargs.items()
+            if key not in {"approved_by", "approval_reason"}
+        }
+        with pytest.raises(AngleApprovalError, match="angle_model_input_snapshot_stale"):
+            with session.no_autoflush:
+                await handoff_approved_angle(**handoff_kwargs)
 
 
 @pytest.mark.asyncio

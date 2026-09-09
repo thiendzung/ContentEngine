@@ -185,6 +185,12 @@ def angle_candidate_hash(candidate: AngleCandidate) -> str:
     return _canonical_hash(candidate.to_dict())
 
 
+def angle_model_input_hash(model_input: dict[str, object]) -> str:
+    """Hash the exact JSON payload passed across the Angle model boundary."""
+
+    return _canonical_hash(_clone_json(model_input))
+
+
 def _normalize_evidence_ref(value: object) -> str:
     ref = _text(value, "angle_evidence_ref_invalid")
     if ref.startswith("evidence:"):
@@ -695,6 +701,7 @@ async def persist_angle_candidates(
     provider: str,
     model: str,
     model_calls: int,
+    model_input_hash: str | None = None,
     provider_calls: int = 0,
     generator_version: str = ANGLE_GENERATOR_VERSION,
     schema_version: int = ANGLE_CANDIDATES_SCHEMA_VERSION,
@@ -709,6 +716,12 @@ async def persist_angle_candidates(
     )
     if refreshed_bundle.artifact.id != bundle.artifact.id:
         raise AngleGenerationError("journal_input_bundle_snapshot_mismatch")
+    refreshed_model_input_hash = angle_model_input_hash(refreshed_bundle.angle_model_input)
+    if model_input_hash is not None and (
+        not _valid_hash(model_input_hash)
+        or model_input_hash != refreshed_model_input_hash
+    ):
+        raise AngleGenerationError("angle_model_input_snapshot_stale")
     if not isinstance(provider, str) or not provider.strip():
         raise AngleGenerationError("angle_provider_metadata_required")
     if not isinstance(model, str) or not model.strip():
@@ -742,6 +755,7 @@ async def persist_angle_candidates(
             "version": refreshed_bundle.artifact.version,
             "content_hash": refreshed_bundle.artifact.content_hash,
         },
+        "model_input": {"content_hash": refreshed_model_input_hash},
         "generator": {
             "version": generator_version,
             "schema_version": schema_version,
@@ -824,10 +838,12 @@ class AngleGenerator:
             expected_content_hash=expected_bundle_hash,
         )
         last_error: AngleGenerationError | None = None
+        model_input = _clone_json(bundle.angle_model_input)
+        model_input_hash = angle_model_input_hash(model_input)
         for attempt in range(1, self.max_attempts + 1):
             try:
                 raw = await model.generate(
-                    input_bundle=_clone_json(bundle.angle_model_input),
+                    input_bundle=model_input,
                     attempt=attempt,
                 )
                 candidates = _validate_candidates(raw, bundle=bundle)
@@ -846,6 +862,7 @@ class AngleGenerator:
                 provider=provider,
                 model=model_name,
                 model_calls=attempt,
+                model_input_hash=model_input_hash,
                 provider_calls=0,
                 generator_version=generator_version,
                 schema_version=schema_version,
@@ -872,6 +889,15 @@ def _artifact_candidates(
     ):
         raise AngleApprovalError("angle_artifact_snapshot_stale")
     payload = _as_dict(artifact.content_json, "angle_artifact_payload_invalid")
+    model_input_payload = payload.get("model_input")
+    if (
+        not isinstance(model_input_payload, dict)
+        or set(model_input_payload) != {"content_hash"}
+        or not _valid_hash(model_input_payload.get("content_hash"))
+        or model_input_payload["content_hash"]
+        != angle_model_input_hash(bundle.angle_model_input)
+    ):
+        raise AngleApprovalError("angle_model_input_snapshot_stale")
     raw_candidates = payload.get("candidates")
     try:
         return _validate_candidates(raw_candidates, bundle=bundle)
@@ -1096,6 +1122,7 @@ __all__ = [
     "ApprovedAngle",
     "JournalInputBundle",
     "angle_candidate_hash",
+    "angle_model_input_hash",
     "approve_angle_candidate",
     "handoff_approved_angle",
     "load_journal_input_bundle",
