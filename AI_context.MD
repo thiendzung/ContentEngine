@@ -84,7 +84,7 @@ Branch `ce05-research-angle-outline`: deleted local and remote
 PR: #34 / CE05 PR-B.2 — Angle Generator + Human Approval
 Branch: ce05-angle-approval
 Start HEAD: 4a1a2caee9e362a33cf9cdd5169f99fc6a25bdc1
-End HEAD: 846be76
+End HEAD: 70ea783
 Status: READY FOR REVIEW
 Scope: T05.8–T05.9
 Migration: 20260909_0016 (head)
@@ -99,6 +99,11 @@ durable completion proof exists. Human Angle approval is a separate immutable, e
 decision with idempotent retry and conflict/stale fail-closed behavior. No Outline, T05.10+,
 real O4 Angle generation/approval, or external provider/model call was performed; tests used
 only an injected fake model port.
+
+The `angle_candidates` Artifact also stores `model_input.content_hash`, covering the exact
+sanitized payload passed to the model. Approval and handoff rebuild and rehash that payload;
+Evidence, Claim, or SourceDocument snapshot mutation fails closed as
+`angle_model_input_snapshot_stale`.
 
 Last merged PR:
 

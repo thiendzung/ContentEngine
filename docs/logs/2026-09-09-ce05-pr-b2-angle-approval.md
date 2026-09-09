@@ -69,3 +69,16 @@ PR #34 is open and ready for review. T05.10+ remains not started. No merge was p
   `d2f193a68b8454114f18dff4d65e5c8b26c494636e1200e55a3fb4c6797eb238`, EvidenceSet v8 exact,
   `REUSE_EXISTING`, zero O4 bundle/Angle artifacts and zero provider/model calls.
 - No real O4 Angle generation or approval, Outline, T05.10+, or merge was performed.
+
+## Model-input snapshot hardening
+
+- Commit: `70ea783`.
+- `angle_model_input_hash` is computed over the exact JSON clone passed to the model and is
+  persisted as `model_input.content_hash` in the immutable `angle_candidates` Artifact. The
+  Artifact content hash covers this binding.
+- Approval and handoff reload the exact Journal input bundle, rebuild the sanitized model input,
+  and fail closed with `angle_model_input_snapshot_stale` if the hash differs.
+- Regression coverage includes unchanged approval/handoff, Evidence excerpt mutation, Claim
+  statement mutation, and SourceDocument reference metadata mutation. Exact retry still reuses
+  the same Artifact.
+- Focused CE05 Angle suite: `14 passed`; full backend: `344 passed`.
