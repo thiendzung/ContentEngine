@@ -1,5 +1,14 @@
 """Journal vertical slice for CE05."""
 
+from app.modules.content_engine.journal.agent_bridge import (
+    ANGLE_PROMPT_KEY,
+    ANGLE_RECIPE_KEY,
+    ANGLE_TASK_KEY,
+    ANGLE_TIMEOUT_SECONDS,
+    CliAngleModelPort,
+    create_cli_angle_model_port,
+    render_angle_prompt,
+)
 from app.modules.content_engine.journal.angle import (
     ANGLE_CANDIDATES_SCHEMA_VERSION,
     ANGLE_GENERATOR_VERSION,
@@ -68,6 +77,13 @@ __all__ = [
     "handoff_approved_angle",
     "load_journal_input_bundle",
     "persist_angle_candidates",
+    "ANGLE_PROMPT_KEY",
+    "ANGLE_RECIPE_KEY",
+    "ANGLE_TASK_KEY",
+    "ANGLE_TIMEOUT_SECONDS",
+    "CliAngleModelPort",
+    "create_cli_angle_model_port",
+    "render_angle_prompt",
     "DiscoveryResearchHandoff",
     "EvidenceResearchHandoff",
     "EvidenceSetHandoff",

@@ -275,6 +275,7 @@ async def complete_model_call(
     call_id: UUID,
     response: ModelResponse,
     result_artifact_id: UUID | None = None,
+    runtime_metadata: dict[str, object] | None = None,
 ) -> ModelCall:
     call = await _running_model_call(session, call_id)
     if result_artifact_id is not None:
@@ -289,6 +290,7 @@ async def complete_model_call(
     call.latency_ms = response.latency_ms
     call.finish_reason = response.finish_reason
     call.result_artifact_id = result_artifact_id
+    call.runtime_metadata_json = runtime_metadata
     call.completed_at = utc_now()
     call.status = "completed"
     await session.flush()
@@ -301,10 +303,12 @@ async def fail_model_call(
     call_id: UUID,
     error_class: str,
     latency_ms: int | None = None,
+    runtime_metadata: dict[str, object] | None = None,
 ) -> ModelCall:
     call = await _running_model_call(session, call_id)
     call.error_class = error_class
     call.latency_ms = latency_ms
+    call.runtime_metadata_json = runtime_metadata
     call.completed_at = utc_now()
     call.status = "failed"
     await session.flush()
