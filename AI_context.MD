@@ -65,23 +65,36 @@ Post-merge CI: run 34309064080 / PASS
 Post-merge verify: PASS
 CE05 PR-A: CLOSED / MERGED / PASS
 T05.1–T05.3: DONE
-CE05 PR-B.1: ACTIVE / READY FOR REVIEW
-T05.4–T05.7: READY FOR REVIEW
-T05.8–T05.22: NOT STARTED
+CE05 PR-B.1: CLOSED / MERGED / PASS
+T05.4–T05.7: DONE
+O4 OriginalityPack approval gate: READY
+T05.8–T05.9: NOT STARTED
+T05.10–T05.22: NOT STARTED
 
-PR-B.1 hardening implementation commit: `ff12e12`
-Hardening log: `docs/logs/2026-09-09-ce05-pr-b1-hardening.md`
-Latest implementation CI: run `34327816627` / PASS
+PR-B.1 merge: PR #32 / `50083129794e35314cf351acdbcd48d7fe5e4ef9`
+Post-merge CI: run `34329911204` / PASS
+Post-merge verification: PASS
+Branch `ce05-research-angle-outline`: deleted local and remote
 ```
 
-Current PR:
+Last merged PR:
 
 ```text
 CE05 PR-B.1 — Research Handoff + Evidence Gates
-Branch: `ce05-research-angle-outline`
+PR: #32
+Merge commit: `50083129794e35314cf351acdbcd48d7fe5e4ef9`
 Base: `be13b8a7bdc939fa27e991a2718e094acc5d949a`
 Scope: `T05.4–T05.7`
+Status: CLOSED / MERGED / PASS
 ```
+
+# CE05 PR-B.1 post-merge closeout
+
+Main is verified at merge commit `50083129794e35314cf351acdbcd48d7fe5e4ef9`, matching
+`origin/main`, with a clean working tree. Alembic is at `20260909_0015 (head)`. Focused
+CE05 handoff tests and the full backend suite pass; Ruff, mypy, OpenAPI export and frontend
+lint/typecheck/build pass. The O4 OriginalityPack remains unapproved; its approval gate is
+READY for the next task. No Angle, provider/model call or T05.8+ work was performed.
 
 # Locked O4
 
