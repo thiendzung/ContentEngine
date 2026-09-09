@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from evidence_set_helpers import create_locked_evidence_set
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +35,16 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
 )
-from app.modules.knowledge.models import KnowledgeCandidate
+from app.modules.knowledge.admission import admit_knowledge_candidate
+from app.modules.knowledge.candidates import extract_knowledge_candidates
+from app.modules.knowledge.models import (
+    Claim,
+    Evidence,
+    EvidenceSet,
+    KnowledgeCandidate,
+    Source,
+    SourceDocument,
+)
 from app.modules.knowledge.persistence import content_hash
 
 
@@ -45,6 +58,108 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
         finally:
             await session.close()
             await transaction.rollback()
+
+
+@dataclass
+class ApprovedCandidateFixture:
+    candidate: KnowledgeCandidate
+    claim: Claim
+    evidence: Evidence
+    evidence_set: EvidenceSet
+
+
+async def make_valid_approved_candidate(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    content_case_id: UUID,
+    statement: str,
+) -> ApprovedCandidateFixture:
+    source = Source(
+        project_id=project_id,
+        source_type="web",
+        title="CE05 approved knowledge source",
+        publisher="Synthetic Authority",
+        canonical_url=f"https://example.test/ce05/{uuid4()}",
+        locator="section:context",
+        locale="en",
+        commercial_bias="low",
+        authority_hint="high",
+        provenance_json={"method": "ce05_test"},
+        captured_at=datetime.now(UTC),
+        fingerprint=str(uuid4()),
+    )
+    session.add(source)
+    await session.flush()
+
+    document_text = f"Reviewed source context.\n\n{statement}\n\nEnd of context."
+    document = SourceDocument(
+        source_id=source.id,
+        document_version=1,
+        canonical_url=source.canonical_url,
+        fetched_at=datetime.now(UTC),
+        content_hash=content_hash(document_text),
+        content_markdown=document_text,
+        metadata_json={"fixture": "ce05_approved_candidate"},
+        reader="fixture",
+        provider="fixture",
+    )
+    claim = Claim(
+        project_id=project_id,
+        statement=statement,
+        claim_type="fact",
+        importance="high",
+        status="unverified",
+        entity_refs_json=["entity:artwork", "entity:buyer"],
+    )
+    session.add_all([document, claim])
+    await session.flush()
+
+    evidence = Evidence(
+        claim_id=claim.id,
+        source_document_id=document.id,
+        locator="section:context",
+        excerpt=statement,
+        relation="supports",
+        authority_level="primary",
+        quality_metadata_json={"fixture": True},
+        provenance_json={
+            "method": "ce05_test",
+            "source_id": str(source.id),
+            "source_document_id": str(document.id),
+            "locator": "section:context",
+        },
+    )
+    session.add(evidence)
+    await session.flush()
+
+    evidence_set = await create_locked_evidence_set(
+        session,
+        project_id=project_id,
+        content_case_id=content_case_id,
+        version=1,
+        evidence_ids=[str(evidence.id)],
+        locked_by="CE05 test reviewer",
+    )
+    candidate = (
+        await extract_knowledge_candidates(session, evidence_set_id=evidence_set.id)
+    )[0]
+    approved = await admit_knowledge_candidate(
+        session,
+        candidate_id=candidate.id,
+        decision="approve",
+        reviewer="CE05 test reviewer",
+        review_reason="Approved after exact EvidenceSet lineage review.",
+        expected_candidate_content_hash=cast(
+            str, candidate.provenance_json["candidate_content_hash"]
+        ),
+    )
+    return ApprovedCandidateFixture(
+        candidate=approved,
+        claim=claim,
+        evidence=evidence,
+        evidence_set=evidence_set,
+    )
 
 
 async def make_fixture(
@@ -145,11 +260,13 @@ def candidate(
 async def test_context_recalls_only_bounded_approved_knowledge_without_provider_calls() -> None:
     async with isolated_session() as session:
         project, content_case, variant, _opportunity = await make_fixture(session)
-        approved = candidate(
+        approved_fixture = await make_valid_approved_candidate(
+            session,
             project_id=project.id,
+            content_case_id=content_case.id,
             statement="Artwork prices are shaped by context and market conditions.",
-            status="APPROVED",
         )
+        approved = approved_fixture.candidate
         candidate_row = candidate(
             project_id=project.id,
             statement="Artwork price candidate should never enter the writer context.",
@@ -177,6 +294,57 @@ async def test_context_recalls_only_bounded_approved_knowledge_without_provider_
         ]
         assert await session.scalar(select(func.count()).select_from(ModelCall)) == 0
         assert await session.scalar(select(func.count()).select_from(ToolCall)) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mutation", ["statement", "provenance", "lineage"])
+async def test_approved_candidate_mutation_fails_closed(mutation: str) -> None:
+    async with isolated_session() as session:
+        project, content_case, variant, _opportunity = await make_fixture(session)
+        approved_fixture = await make_valid_approved_candidate(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            statement="Artwork prices are shaped by context and market conditions.",
+        )
+        if mutation == "statement":
+            approved_fixture.candidate.statement = "Tampered approved statement."
+        elif mutation == "provenance":
+            provenance = copy.deepcopy(approved_fixture.candidate.provenance_json)
+            provenance["method"] = "tampered"
+            approved_fixture.candidate.provenance_json = provenance
+        else:
+            approved_fixture.claim.statement = "The persisted claim lineage was changed."
+        await session.flush()
+
+        with pytest.raises(JournalContextError, match="approved_knowledge_lineage_invalid"):
+            await build_journal_context(
+                session,
+                content_case_id=content_case.id,
+                locale_variant_id=variant.id,
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["reviewer", "review_reason"])
+async def test_approved_candidate_requires_review_metadata(field: str) -> None:
+    async with isolated_session() as session:
+        project, content_case, variant, _opportunity = await make_fixture(session)
+        approved_fixture = await make_valid_approved_candidate(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            statement="Artwork prices are shaped by context and market conditions.",
+        )
+        setattr(approved_fixture.candidate, field, None)
+        await session.flush()
+
+        with pytest.raises(JournalContextError, match=f"approved_knowledge_{field}"):
+            await build_journal_context(
+                session,
+                content_case_id=content_case.id,
+                locale_variant_id=variant.id,
+            )
 
 
 @pytest.mark.asyncio
@@ -213,12 +381,13 @@ async def test_persisted_context_and_memory_artifacts_are_idempotent_and_manifes
 ) -> None:
     async with isolated_session() as session:
         project, content_case, variant, _opportunity = await make_fixture(session)
-        approved = candidate(
+        approved_fixture = await make_valid_approved_candidate(
+            session,
             project_id=project.id,
+            content_case_id=content_case.id,
             statement="Artwork prices are shaped by context and market conditions.",
-            status="APPROVED",
         )
-        session.add(approved)
+        approved = approved_fixture.candidate
         snapshot = SettingsSnapshot(
             project_id=project.id,
             resolved_settings_json={"models": {}, "recipes": {}},

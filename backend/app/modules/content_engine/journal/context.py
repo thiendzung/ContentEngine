@@ -158,11 +158,28 @@ def _contains_raw_key(value: object) -> bool:
     return False
 
 
-def _candidate_knowledge(
+async def _candidate_knowledge(
+    session: AsyncSession,
     candidate: KnowledgeCandidate,
     *,
     query_terms: tuple[str, ...],
 ) -> ApprovedKnowledge | None:
+    # Import lazily because the knowledge admission module resolves ContentEngine models.
+    from app.modules.knowledge.admission import (
+        KnowledgeCandidateAdmissionError,
+        verify_candidate_snapshot_lineage,
+    )
+
+    try:
+        await verify_candidate_snapshot_lineage(session, candidate=candidate)
+    except KnowledgeCandidateAdmissionError as exc:
+        raise JournalContextError("approved_knowledge_lineage_invalid", str(exc)) from exc
+
+    if not isinstance(candidate.reviewer, str) or not candidate.reviewer.strip():
+        raise JournalContextError("approved_knowledge_reviewer_required", str(candidate.id))
+    if not isinstance(candidate.review_reason, str) or not candidate.review_reason.strip():
+        raise JournalContextError("approved_knowledge_review_reason_required", str(candidate.id))
+
     source_refs = candidate.source_refs_json
     provenance = candidate.provenance_json
     if not source_refs or any(not isinstance(ref, str) or not ref.strip() for ref in source_refs):
@@ -205,11 +222,15 @@ async def _recall_approved_knowledge(
         )
     ).all()
 
-    matched = [
-        knowledge
-        for candidate in candidates
-        if (knowledge := _candidate_knowledge(candidate, query_terms=query_terms)) is not None
-    ]
+    matched: list[ApprovedKnowledge] = []
+    for candidate in candidates:
+        knowledge = await _candidate_knowledge(
+            session,
+            candidate,
+            query_terms=query_terms,
+        )
+        if knowledge is not None:
+            matched.append(knowledge)
     matched.sort(key=lambda item: (-item.relevance, str(item.id)))
     return tuple(matched[:limit])
 
