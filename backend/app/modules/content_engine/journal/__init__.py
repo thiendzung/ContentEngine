@@ -1,5 +1,23 @@
 """Journal vertical slice for CE05."""
 
+from app.modules.content_engine.journal.angle import (
+    ANGLE_CANDIDATES_SCHEMA_VERSION,
+    ANGLE_GENERATOR_VERSION,
+    AngleApproval,
+    AngleApprovalError,
+    AngleCandidate,
+    AngleGenerationError,
+    AngleGenerationResult,
+    AngleGenerator,
+    AngleModelPort,
+    ApprovedAngle,
+    JournalInputBundle,
+    angle_candidate_hash,
+    approve_angle_candidate,
+    handoff_approved_angle,
+    load_journal_input_bundle,
+    persist_angle_candidates,
+)
 from app.modules.content_engine.journal.context import (
     MAX_APPROVED_KNOWLEDGE,
     ApprovedKnowledge,
@@ -24,7 +42,17 @@ from app.modules.content_engine.journal.research_handoff import (
 )
 
 __all__ = [
+    "ANGLE_CANDIDATES_SCHEMA_VERSION",
+    "ANGLE_GENERATOR_VERSION",
     "ApprovedKnowledge",
+    "ApprovedAngle",
+    "AngleApproval",
+    "AngleApprovalError",
+    "AngleCandidate",
+    "AngleGenerationError",
+    "AngleGenerationResult",
+    "AngleGenerator",
+    "AngleModelPort",
     "JournalContext",
     "JournalContextError",
     "MAX_APPROVED_KNOWLEDGE",
@@ -32,6 +60,12 @@ __all__ = [
     "PersistedJournalContext",
     "build_journal_context",
     "persist_journal_context",
+    "JournalInputBundle",
+    "angle_candidate_hash",
+    "approve_angle_candidate",
+    "handoff_approved_angle",
+    "load_journal_input_bundle",
+    "persist_angle_candidates",
     "DiscoveryResearchHandoff",
     "EvidenceResearchHandoff",
     "EvidenceSetHandoff",
