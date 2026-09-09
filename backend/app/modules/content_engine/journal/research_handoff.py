@@ -7,13 +7,17 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.models import ContentCase, ContentOpportunity
+from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.knowledge.models import EvidenceSet, EvidenceSetApproval, OriginalityPack
+from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.discovery.service import (
     DiscoveryWorkflowRequest,
@@ -27,6 +31,13 @@ from app.modules.research.evidence.contracts import (
 )
 
 _CONTENT_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_JOURNAL_INPUT_BUNDLE_SCHEMA_VERSION = 1
+
+
+class ResearchDecision(StrEnum):
+    REUSE_EXISTING = "REUSE_EXISTING"
+    RESEARCH_REQUIRED = "RESEARCH_REQUIRED"
+    BLOCKED = "BLOCKED"
 
 
 class JournalResearchHandoffError(ValueError):
@@ -102,7 +113,7 @@ class OpportunitySelectionHandoff:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceSetHandoff:
-    """Exact approved and locked EvidenceSet snapshot allowed into Journal."""
+    """Exact locked EvidenceSet snapshot allowed into Journal."""
 
     evidence_set_id: UUID
     project_id: UUID
@@ -110,8 +121,8 @@ class EvidenceSetHandoff:
     version: int
     content_hash: str
     evidence_ids: tuple[UUID, ...]
-    approval_id: UUID
-    approved_by: str
+    approval_id: UUID | None
+    approved_by: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,22 +159,57 @@ def _canonical_hash(value: object) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def originality_pack_snapshot_hash(pack: OriginalityPack) -> str:
-    """Hash the exact pack identity and fields used by the downstream handoff."""
-
-    return _canonical_hash(
-        {
-            "id": str(pack.id),
-            "content_case_id": str(pack.content_case_id),
-            "item_refs": pack.item_refs_json,
-            "summary": pack.summary,
-            "status": pack.status,
-        }
-    )
-
-
 def _valid_content_hash(value: object) -> bool:
     return isinstance(value, str) and _CONTENT_HASH_PATTERN.fullmatch(value) is not None
+
+
+def select_research_decision(
+    *,
+    research_gap_required: bool,
+    opportunity_selected: bool,
+    evidence_set_ready: bool,
+    originality_pack_ready: bool,
+) -> ResearchDecision:
+    """Resolve the bounded CE05 decision without inferring a new opportunity."""
+
+    if not opportunity_selected or not evidence_set_ready or not originality_pack_ready:
+        return ResearchDecision.BLOCKED
+    if research_gap_required:
+        return ResearchDecision.RESEARCH_REQUIRED
+    return ResearchDecision.REUSE_EXISTING
+
+
+def _opportunity_payload(opportunity: ContentOpportunity) -> dict[str, object]:
+    return {
+        "id": str(opportunity.id),
+        "project_id": str(opportunity.project_id),
+        "need_hypothesis_id": str(opportunity.need_hypothesis_id),
+        "locale": opportunity.locale,
+        "reader": opportunity.reader,
+        "situation": opportunity.situation,
+        "need": opportunity.need,
+        "question": opportunity.question,
+        "intent": opportunity.intent,
+        "promise": opportunity.promise,
+        "motgu_material_refs": opportunity.motgu_material_refs_json,
+        "material_gaps": opportunity.material_gaps_json,
+        "existing_content_refs": opportunity.existing_content_refs_json,
+        "what_is_actually_new": opportunity.what_is_actually_new,
+        "next_discovery_step": opportunity.next_discovery_step,
+        "decision": opportunity.decision,
+        "priority": opportunity.priority,
+        "reasons": opportunity.reasons_json,
+        "suggested_content_type": opportunity.suggested_content_type,
+        "suggested_role": opportunity.suggested_role,
+        "version": opportunity.version,
+        "selected_by": opportunity.selected_by,
+        "selected_at": (
+            opportunity.selected_at.isoformat()
+            if opportunity.selected_at is not None
+            else None
+        ),
+        "selection_reason": opportunity.selection_reason,
+    }
 
 
 class JournalResearchHandoff:
@@ -319,9 +365,13 @@ class JournalResearchHandoff:
         expected_version: int,
         expected_content_hash: str,
     ) -> EvidenceSetHandoff:
-        """Allow only the exact approved and locked EvidenceSet snapshot."""
+        """Allow only the exact locked EvidenceSet snapshot and its optional approval."""
 
-        if isinstance(expected_version, bool) or expected_version <= 0:
+        if (
+            isinstance(expected_version, bool)
+            or not isinstance(expected_version, int)
+            or expected_version <= 0
+        ):
             raise JournalResearchHandoffError("evidence_set_snapshot_version_invalid")
         if not _valid_content_hash(expected_content_hash):
             raise JournalResearchHandoffError("evidence_set_snapshot_hash_invalid")
@@ -339,8 +389,6 @@ class JournalResearchHandoff:
             raise JournalResearchHandoffError("evidence_set_snapshot_hash_mismatch")
         if evidence_set.status != "locked" or evidence_set.locked_at is None:
             raise JournalResearchHandoffError("evidence_set_must_be_locked")
-        if not isinstance(evidence_set.locked_by, str) or not evidence_set.locked_by.strip():
-            raise JournalResearchHandoffError("evidence_set_locker_required")
         if (
             not isinstance(evidence_set.evidence_ids_json, list)
             or not evidence_set.evidence_ids_json
@@ -352,23 +400,37 @@ class JournalResearchHandoff:
             raise JournalResearchHandoffError("evidence_set_snapshot_invalid")
         if evidence_set.content_hash != evidence_set_hash(evidence_set.evidence_ids_json):
             raise JournalResearchHandoffError("evidence_set_snapshot_stale")
-
-        approval = await session.scalar(
-            select(EvidenceSetApproval).where(
-                EvidenceSetApproval.evidence_set_id == evidence_set.id,
-                EvidenceSetApproval.evidence_set_version == evidence_set.version,
-                EvidenceSetApproval.evidence_set_content_hash == evidence_set.content_hash,
-            )
-        )
-        if approval is None:
-            raise JournalResearchHandoffError("evidence_set_approval_required")
-        if not approval.approved_by.strip() or not approval.approval_reason.strip():
-            raise JournalResearchHandoffError("evidence_set_approval_invalid")
-
         try:
             evidence_ids = tuple(UUID(value) for value in evidence_set.evidence_ids_json)
         except ValueError as exc:
             raise JournalResearchHandoffError("evidence_set_snapshot_invalid") from exc
+
+        approvals = list(
+            (
+                await session.scalars(
+                    select(EvidenceSetApproval).where(
+                        EvidenceSetApproval.evidence_set_id == evidence_set.id
+                    )
+                )
+            ).all()
+        )
+        approval = None
+        if approvals:
+            if any(
+                item.evidence_set_version != evidence_set.version
+                or item.evidence_set_content_hash != evidence_set.content_hash
+                for item in approvals
+            ):
+                raise JournalResearchHandoffError("evidence_set_approval_snapshot_mismatch")
+            approval = approvals[0]
+
+        if approval is not None and (
+            not isinstance(approval.approved_by, str)
+            or not approval.approved_by.strip()
+            or not isinstance(approval.approval_reason, str)
+            or not approval.approval_reason.strip()
+        ):
+            raise JournalResearchHandoffError("evidence_set_approval_invalid")
         return EvidenceSetHandoff(
             evidence_set_id=evidence_set.id,
             project_id=evidence_set.project_id,
@@ -376,8 +438,8 @@ class JournalResearchHandoff:
             version=evidence_set.version,
             content_hash=evidence_set.content_hash,
             evidence_ids=evidence_ids,
-            approval_id=approval.id,
-            approved_by=approval.approved_by,
+            approval_id=approval.id if approval is not None else None,
+            approved_by=approval.approved_by if approval is not None else None,
         )
 
     async def handoff_originality_pack(
@@ -396,16 +458,30 @@ class JournalResearchHandoff:
             raise JournalResearchHandoffError("originality_pack_not_found")
         if pack.content_case_id != content_case_id:
             raise JournalResearchHandoffError("originality_pack_content_case_mismatch")
+        if pack.status == "draft":
+            raise JournalResearchHandoffError("originality_pack_approval_required")
         if pack.status == "retired":
             raise JournalResearchHandoffError("originality_pack_retired")
+        if pack.status != "approved":
+            raise JournalResearchHandoffError("originality_pack_approval_required")
         if not isinstance(pack.item_refs_json, list):
             raise JournalResearchHandoffError("originality_pack_refs_invalid")
         if count_usable_originality_items(pack.item_refs_json) == 0:
             raise JournalResearchHandoffError("originality_pack_motgu_material_required")
+        if (
+            not isinstance(pack.approved_by, str)
+            or not pack.approved_by.strip()
+            or not isinstance(pack.approval_reason, str)
+            or not pack.approval_reason.strip()
+            or not _valid_content_hash(pack.snapshot_hash)
+        ):
+            raise JournalResearchHandoffError("originality_pack_approval_metadata_invalid")
+        snapshot_hash = originality_pack_snapshot_hash(pack)
+        if pack.snapshot_hash != snapshot_hash:
+            raise JournalResearchHandoffError("originality_pack_snapshot_stale")
         if expected_item_refs is not None and list(expected_item_refs) != pack.item_refs_json:
             raise JournalResearchHandoffError("originality_pack_refs_mismatch")
 
-        snapshot_hash = originality_pack_snapshot_hash(pack)
         if expected_snapshot_hash is not None:
             if not _valid_content_hash(expected_snapshot_hash):
                 raise JournalResearchHandoffError("originality_pack_snapshot_hash_invalid")
@@ -419,6 +495,135 @@ class JournalResearchHandoff:
             status=pack.status,
         )
 
+    async def persist_journal_input_bundle(
+        self,
+        session: AsyncSession,
+        *,
+        run_id: UUID,
+        step_run_id: UUID,
+        research_decision: ResearchDecision | str,
+        opportunity_id: UUID,
+        evidence_set: EvidenceSetHandoff,
+        originality_pack: OriginalityPackHandoff,
+        provider_calls: int,
+        model_calls: int,
+    ) -> Artifact:
+        """Persist one immutable, exact-input bundle for a Journal step."""
+
+        try:
+            decision = ResearchDecision(research_decision)
+        except ValueError as exc:
+            raise JournalResearchHandoffError("journal_research_decision_invalid") from exc
+        if decision is ResearchDecision.BLOCKED:
+            raise JournalResearchHandoffError("journal_input_bundle_blocked")
+        for value, error in (
+            (provider_calls, "journal_provider_call_count_invalid"),
+            (model_calls, "journal_model_call_count_invalid"),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise JournalResearchHandoffError(error)
+        if decision is ResearchDecision.REUSE_EXISTING and (provider_calls or model_calls):
+            raise JournalResearchHandoffError("reuse_existing_requires_zero_calls")
+
+        run = await session.get(ContentRun, run_id)
+        if run is None:
+            raise JournalResearchHandoffError("journal_input_bundle_run_not_found")
+        step_run = await session.get(StepRun, step_run_id)
+        if step_run is None or step_run.run_id != run.id:
+            raise JournalResearchHandoffError("journal_input_bundle_step_mismatch")
+        opportunity = await session.get(ContentOpportunity, opportunity_id)
+        if opportunity is None:
+            raise JournalResearchHandoffError("journal_input_bundle_opportunity_not_found")
+        if opportunity.project_id != run.project_id:
+            raise JournalResearchHandoffError("journal_input_bundle_project_mismatch")
+        content_case = await session.get(ContentCase, run.content_case_id)
+        if content_case is None:
+            raise JournalResearchHandoffError("journal_input_bundle_content_case_not_found")
+        if (
+            content_case.project_id != run.project_id
+            or content_case.content_opportunity_id != opportunity.id
+        ):
+            raise JournalResearchHandoffError("journal_input_bundle_opportunity_mismatch")
+        if not isinstance(opportunity.selected_by, str) or not opportunity.selected_by.strip():
+            raise JournalResearchHandoffError("journal_input_bundle_selection_required")
+
+        validated_evidence_set = await self.handoff_evidence_set(
+            session,
+            project_id=run.project_id,
+            content_case_id=run.content_case_id,
+            evidence_set_id=evidence_set.evidence_set_id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+        )
+        validated_originality_pack = await self.handoff_originality_pack(
+            session,
+            content_case_id=run.content_case_id,
+            originality_pack_id=originality_pack.originality_pack_id,
+            expected_item_refs=originality_pack.item_refs,
+            expected_snapshot_hash=originality_pack.snapshot_hash,
+        )
+
+        payload: dict[str, object] = {
+            "schema_version": _JOURNAL_INPUT_BUNDLE_SCHEMA_VERSION,
+            "artifact_type": "journal_input_bundle",
+            "research_decision": decision.value,
+            "opportunity": _opportunity_payload(opportunity),
+            "evidence_set": {
+                "id": str(validated_evidence_set.evidence_set_id),
+                "version": validated_evidence_set.version,
+                "content_hash": validated_evidence_set.content_hash,
+            },
+            "originality_pack": {
+                "id": str(validated_originality_pack.originality_pack_id),
+                "snapshot_hash": validated_originality_pack.snapshot_hash,
+            },
+            "provider_calls": provider_calls,
+            "model_calls": model_calls,
+        }
+        bundle_hash = _canonical_hash(payload)
+        existing = await session.scalar(
+            select(Artifact).where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "journal_input_bundle",
+                Artifact.content_hash == bundle_hash,
+            )
+        )
+        if existing is not None:
+            if existing.content_json != payload:
+                raise JournalResearchHandoffError("journal_input_bundle_hash_collision")
+            if str(existing.id) not in step_run.output_artifact_refs_json:
+                step_run.output_artifact_refs_json = [
+                    *step_run.output_artifact_refs_json,
+                    str(existing.id),
+                ]
+                await session.flush()
+            return existing
+
+        latest_version = await session.scalar(
+            select(func.max(Artifact.version)).where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "journal_input_bundle",
+            )
+        )
+        artifact = Artifact(
+            run_id=run.id,
+            step_run_id=step_run.id,
+            artifact_type="journal_input_bundle",
+            locale=opportunity.locale,
+            version=(latest_version or 0) + 1,
+            content_json=payload,
+            content_hash=bundle_hash,
+        )
+        session.add(artifact)
+        await session.flush()
+        if str(artifact.id) not in step_run.output_artifact_refs_json:
+            step_run.output_artifact_refs_json = [
+                *step_run.output_artifact_refs_json,
+                str(artifact.id),
+            ]
+            await session.flush()
+        return artifact
+
 
 __all__ = [
     "DiscoveryResearchHandoff",
@@ -428,5 +633,7 @@ __all__ = [
     "JournalResearchHandoffError",
     "OpportunitySelectionHandoff",
     "OriginalityPackHandoff",
+    "ResearchDecision",
     "originality_pack_snapshot_hash",
+    "select_research_decision",
 ]

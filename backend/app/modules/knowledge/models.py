@@ -272,10 +272,20 @@ class OriginalityPack(TimestampMixin, Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+    approval_reason: Mapped[str | None] = mapped_column(Text)
+    snapshot_hash: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (
         CheckConstraint(
             "status in ('draft','approved','retired')", name="ck_originality_pack_status"
+        ),
+        CheckConstraint(
+            "status <> 'approved' or (approved_at is not null and "
+            "approved_by is not null and btrim(approved_by) <> '' and "
+            "approval_reason is not null and btrim(approval_reason) <> '' and "
+            "snapshot_hash is not null and snapshot_hash ~ '^[0-9a-f]{64}$')",
+            name="ck_originality_pack_approval_metadata",
         ),
     )
 

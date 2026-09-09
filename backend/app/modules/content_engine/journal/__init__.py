@@ -18,7 +18,9 @@ from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoffError,
     OpportunitySelectionHandoff,
     OriginalityPackHandoff,
+    ResearchDecision,
     originality_pack_snapshot_hash,
+    select_research_decision,
 )
 
 __all__ = [
@@ -37,5 +39,7 @@ __all__ = [
     "JournalResearchHandoffError",
     "OpportunitySelectionHandoff",
     "OriginalityPackHandoff",
+    "ResearchDecision",
     "originality_pack_snapshot_hash",
+    "select_research_decision",
 ]
