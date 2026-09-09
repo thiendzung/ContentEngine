@@ -39,7 +39,8 @@ Migration: 20260909_0017
   test DB ended at `20260909_0017 (head)`.
 - OpenAPI export: pass; no API contract change.
 - Frontend lint, typecheck, and build: pass; generated build artifacts were not committed.
-- CI: run `34344664463`, job `quality`, PASS.
+- CI: runs `34344664463` (code commit) and `34344902485` (final docs commit),
+  job `quality`, both PASS.
 
 ## O4 read-only state
 
