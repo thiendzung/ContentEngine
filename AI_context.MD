@@ -33,7 +33,7 @@ Never merge automatically.
 
 ```text
 Project: ContentEngine
-Phase: CE04 — Knowledge + Production Research
+Phase: CE05 — Journal Engine V1
 CE04: CLOSED / PASS
 
 PR-A: CLOSED / MERGED / PASS
@@ -63,14 +63,16 @@ PR #29
 Merge commit: e6f7ac185094d7898cfb8df3c26b38f8fc4f4718
 Post-merge CI: #430 / run 34305124113 / PASS
 Post-merge verify: PASS
-CE05: READY TO PLAN / NOT STARTED
+CE05: ACTIVE / PR-A — READY FOR REVIEW
 ```
 
 Current PR:
 
 ```text
-none
-Post-merge neutral checkpoint on main
+CE05 PR-A — Journal Context + Memory
+Branch: ce05-journal-context-memory
+Base main: 2d7a5c37c03d85e941ed3c897670887fe2f98704
+Scope: T05.1–T05.3
 ```
 
 # Locked O4
@@ -245,10 +247,10 @@ PR #28: CLOSED / MERGED / PASS
 CE04: CLOSED / PASS
 PR-F: CLOSED / MERGED / PASS
 Branch: none
-Final main: e6f7ac185094d7898cfb8df3c26b38f8fc4f4718
+Final main: 2d7a5c37c03d85e941ed3c897670887fe2f98704
 Post-merge CI: #430 / run 34305124113 / PASS
 Post-merge verify: PASS
-CE05: READY TO PLAN / NOT STARTED
+CE05: ACTIVE / PR-A — READY FOR REVIEW
 ```
 
 PR-F order:
@@ -832,4 +834,4 @@ task has started.
 - Record meaningful decisions/failures under `docs/logs/`.
 - Any task that changes important canonical state must update `AI_context.MD` in the same task.
 - Do not tick a PR-F task before its implementation and final-head CI gate pass.
-- Do not begin CE05 or another CE04 slice before PR-F closeout and clean checkpoint.
+- Do not begin PR-B or T05.4+ before CE05 PR-A review and clean checkpoint.

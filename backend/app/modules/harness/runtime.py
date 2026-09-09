@@ -21,7 +21,7 @@ from app.modules.harness.models import (
     ToolCall,
     utc_now,
 )
-from app.modules.knowledge.models import EvidenceSet, OriginalityPack
+from app.modules.knowledge.models import EvidenceSet, KnowledgeCandidate, OriginalityPack
 
 
 class RuntimeConfigurationError(ValueError):
@@ -165,6 +165,8 @@ class ContextInputs:
     recipe_version: str
     evidence_set_id: UUID | None = None
     originality_pack_id: UUID | None = None
+    context_artifact_id: UUID | None = None
+    approved_knowledge_refs: tuple[str, ...] = ()
     knowledge_chunk_refs: tuple[str, ...] = ()
     golden_example_refs: tuple[str, ...] = ()
     tool_result_refs: tuple[str, ...] = ()
@@ -199,6 +201,12 @@ async def build_context_manifest(
             if inputs.originality_pack_id is not None
             else None
         ),
+        "context_artifact_id": (
+            str(inputs.context_artifact_id)
+            if inputs.context_artifact_id is not None
+            else None
+        ),
+        "approved_knowledge_refs": list(inputs.approved_knowledge_refs),
         "knowledge_chunk_refs": list(inputs.knowledge_chunk_refs),
         "golden_example_refs": list(inputs.golden_example_refs),
         "tool_result_refs": list(inputs.tool_result_refs),
@@ -211,6 +219,8 @@ async def build_context_manifest(
         recipe_version=inputs.recipe_version,
         evidence_set_id=inputs.evidence_set_id,
         originality_pack_id=inputs.originality_pack_id,
+        context_artifact_id=inputs.context_artifact_id,
+        approved_knowledge_refs_json=list(inputs.approved_knowledge_refs),
         knowledge_chunk_refs_json=list(inputs.knowledge_chunk_refs),
         golden_example_refs_json=list(inputs.golden_example_refs),
         tool_result_refs_json=list(inputs.tool_result_refs),
@@ -380,6 +390,27 @@ async def _validate_context_sources(
     run: ContentRun,
     inputs: ContextInputs,
 ) -> None:
+    if inputs.context_artifact_id is not None:
+        context_artifact = await session.get(Artifact, inputs.context_artifact_id)
+        if context_artifact is None or context_artifact.run_id != run.id:
+            raise RuntimeStateError("Journal context Artifact does not belong to ContentRun")
+        if context_artifact.artifact_type != "journal_context":
+            raise RuntimeStateError("context_artifact_must_be_journal_context")
+
+    for raw_ref in inputs.approved_knowledge_refs:
+        prefix, _, raw_id = raw_ref.partition(":")
+        if prefix != "knowledge_candidate" or not raw_id:
+            raise RuntimeStateError("invalid_approved_knowledge_ref")
+        try:
+            candidate_id = UUID(raw_id)
+        except ValueError as exc:
+            raise RuntimeStateError("invalid_approved_knowledge_ref") from exc
+        candidate = await session.get(KnowledgeCandidate, candidate_id)
+        if candidate is None or candidate.project_id != run.project_id:
+            raise RuntimeStateError("approved_knowledge_candidate_not_found")
+        if candidate.status != "APPROVED":
+            raise RuntimeStateError("approved_knowledge_candidate_required")
+
     if inputs.evidence_set_id is not None:
         evidence_set = await session.get(EvidenceSet, inputs.evidence_set_id)
         if evidence_set is None:

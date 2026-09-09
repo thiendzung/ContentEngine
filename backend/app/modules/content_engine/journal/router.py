@@ -1,0 +1,107 @@
+from __future__ import annotations
+
+from typing import Any
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.modules.content_engine.journal.context import (
+    JournalContextError,
+    build_journal_context,
+)
+from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
+
+router = APIRouter(prefix="/journal", tags=["journal"])
+
+
+class JournalVariantResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    locale: str
+    content_role: str
+    primary_question: str
+    primary_intent: str
+    status: str
+
+
+class JournalCaseResponse(BaseModel):
+    id: UUID
+    content_type: str
+    status: str
+    content_opportunity_id: UUID
+    opportunity_question: str
+    opportunity_decision: str
+    opportunity_selected_by: str | None
+    variants: list[JournalVariantResponse]
+
+
+@router.get("/content-cases", response_model=list[JournalCaseResponse])
+async def list_journal_cases(
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> list[JournalCaseResponse]:
+    rows = (
+        await session.execute(
+            select(ContentCase, ContentOpportunity, LocaleVariant)
+            .join(
+                ContentOpportunity,
+                ContentOpportunity.id == ContentCase.content_opportunity_id,
+            )
+            .join(LocaleVariant, LocaleVariant.content_case_id == ContentCase.id)
+            .where(ContentCase.content_type == "journal")
+            .order_by(ContentCase.created_at, ContentCase.id, LocaleVariant.locale)
+        )
+    ).all()
+    grouped: dict[UUID, JournalCaseResponse] = {}
+    for content_case, opportunity, variant in rows:
+        response = grouped.get(content_case.id)
+        if response is None:
+            response = JournalCaseResponse(
+                id=content_case.id,
+                content_type=content_case.content_type,
+                status=content_case.status,
+                content_opportunity_id=opportunity.id,
+                opportunity_question=opportunity.question,
+                opportunity_decision=opportunity.decision,
+                opportunity_selected_by=opportunity.selected_by,
+                variants=[],
+            )
+            grouped[content_case.id] = response
+        response.variants.append(
+            JournalVariantResponse(
+                id=variant.id,
+                locale=variant.locale,
+                content_role=variant.content_role,
+                primary_question=variant.primary_question,
+                primary_intent=variant.primary_intent,
+                status=variant.status,
+            )
+        )
+    return list(grouped.values())
+
+
+@router.get(
+    "/content-cases/{content_case_id}/context",
+    response_model=dict[str, Any],
+)
+async def get_journal_context(
+    content_case_id: UUID,
+    locale_variant_id: UUID = Query(...),  # noqa: B008
+    knowledge_limit: int = Query(default=8, ge=1, le=8),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    try:
+        context = await build_journal_context(
+            session,
+            content_case_id=content_case_id,
+            locale_variant_id=locale_variant_id,
+            knowledge_limit=knowledge_limit,
+        )
+    except JournalContextError as exc:
+        status_code = 404 if exc.code.endswith("not_found") else 422
+        raise HTTPException(status_code=status_code, detail=exc.code) from exc
+    return context.to_dict()
