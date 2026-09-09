@@ -128,6 +128,57 @@ class FakeAngleModel:
         return self.outputs[min(self.calls - 1, len(self.outputs) - 1)]
 
 
+class GroundedAngleModel:
+    """Build candidates only from the sanitized input received by the model."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self.received: dict[str, object] | None = None
+
+    async def generate(self, *, input_bundle: dict[str, object], attempt: int) -> object:
+        del attempt
+        self.calls += 1
+        self.received = copy.deepcopy(input_bundle)
+        evidence_set = input_bundle["evidence_set"]
+        assert isinstance(evidence_set, dict)
+        evidence_items = evidence_set["evidence"]
+        assert isinstance(evidence_items, list)
+        evidence_item = evidence_items[0]
+        assert isinstance(evidence_item, dict)
+        originality_pack = input_bundle["originality_pack"]
+        assert isinstance(originality_pack, dict)
+        originality_items = originality_pack["items"]
+        assert isinstance(originality_items, list)
+        originality_item = originality_items[0]
+        assert isinstance(originality_item, dict)
+        evidence_ref = evidence_item["evidence_id"]
+        originality_ref = originality_item["source_ref"]
+        opportunity = input_bundle["opportunity"]
+        assert isinstance(opportunity, dict)
+        locale = opportunity["locale"]
+        assert isinstance(evidence_ref, str)
+        assert isinstance(originality_ref, str)
+        assert isinstance(locale, str)
+        return [
+            {
+                "angle_id": f"grounded-angle-{index}",
+                "working_title": f"Grounded model title {index}",
+                "reader_problem": "The reader needs a source-grounded question.",
+                "central_question": "What does the allowed evidence support?",
+                "core_promise": "Leave with a grounded next question.",
+                "point_of_view": "Use only the approved input snapshots.",
+                "why_now": "The reader is deciding now.",
+                "evidence_refs": [evidence_ref],
+                "originality_refs": [originality_ref],
+                "excluded_claims": ["Do not add unsupported facts."],
+                "risks": ["The reader may overgeneralize the evidence."],
+                "confidence": 0.8,
+                "locale": locale,
+            }
+            for index in range(1, 4)
+        ]
+
+
 def _bundle_hash(payload: dict[str, object]) -> str:
     return hashlib.sha256(
         json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
@@ -166,6 +217,126 @@ async def test_valid_bundle_generates_typed_candidates_and_reuses_exact_artifact
         assert (
             await session.scalar(select(ToolCall).where(ToolCall.run_id == bundle_artifact.run_id))
         ) is None
+
+
+@pytest.mark.asyncio
+async def test_angle_model_receives_only_grounded_allow_list_and_refs_come_from_input() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        run = await session.get(ContentRun, bundle_artifact.run_id)
+        assert run is not None
+        outside_evidence = await _evidence_row(
+            session,
+            project_id=run.project_id,
+            suffix="outside-angle-set",
+        )
+        model = GroundedAngleModel()
+
+        result = await AngleGenerator(max_attempts=1).generate_candidates(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            model=model,
+            provider="fixture-provider",
+            model_name="fixture-model",
+        )
+
+        assert model.calls == 1
+        assert model.received is not None
+        received = model.received
+        assert set(received) == {
+            "input_bundle_ref",
+            "opportunity",
+            "evidence_set",
+            "originality_pack",
+        }
+        assert "payload" not in received
+        serialized = json.dumps(received, ensure_ascii=False, sort_keys=True)
+        assert "raw_provider_payload" not in serialized
+        assert "search_snippets" not in serialized
+        assert "content_markdown" not in serialized
+        assert '"provider"' not in serialized
+
+        opportunity = received["opportunity"]
+        assert isinstance(opportunity, dict)
+        assert opportunity["reader"] == "first-time art buyer"
+        assert opportunity["situation"] == "considering an original artwork"
+        assert opportunity["need"] == "understand artwork price context"
+        assert opportunity["question"] == "How should a buyer evaluate an artwork price?"
+        assert opportunity["promise"] == "Ask grounded questions before deciding."
+        assert opportunity["locale"] == "en"
+        assert isinstance(opportunity["snapshot_hash"], str)
+
+        evidence_set = received["evidence_set"]
+        assert isinstance(evidence_set, dict)
+        evidence_items = evidence_set["evidence"]
+        assert isinstance(evidence_items, list)
+        assert len(evidence_items) == 1
+        evidence_item = evidence_items[0]
+        assert isinstance(evidence_item, dict)
+        assert evidence_item["evidence_id"] != str(outside_evidence.id)
+        assert evidence_item["claim_statement"] == "CE05 synthetic evidence angle"
+        assert evidence_item["relation"] == "supports"
+        assert evidence_item["excerpt"] == "Synthetic evidence angle."
+        assert evidence_item["locator"] == "fixture:1"
+        assert isinstance(evidence_item["source_document"], dict)
+
+        originality_pack = received["originality_pack"]
+        assert isinstance(originality_pack, dict)
+        originality_items = originality_pack["items"]
+        assert isinstance(originality_items, list)
+        assert len(originality_items) == 1
+        originality_item = originality_items[0]
+        assert isinstance(originality_item, dict)
+        assert originality_item["source_ref"] == "motgu:journal:price-context"
+        assert originality_item["material"] == (
+            "MOTGU explains price context through the actual work and the buyer's questions."
+        )
+        assert originality_item["writer_use"] == "Give the reader a practical question to ask."
+        assert originality_item["guardrails"] == "Do not invent scarcity or a pricing formula."
+        assert originality_item["approval_ref"] == "approval:motgu:journal:price-context"
+
+        allowed_evidence = {evidence_item["evidence_id"]}
+        allowed_originality = {originality_item["source_ref"]}
+        assert all(
+            set(candidate.evidence_refs) <= allowed_evidence for candidate in result.candidates
+        )
+        assert all(
+            set(candidate.originality_refs) <= allowed_originality
+            for candidate in result.candidates
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("decision", "error_code"),
+    [
+        (ResearchDecision.RESEARCH_REQUIRED, "angle_research_completion_required"),
+        (ResearchDecision.BLOCKED, "angle_research_decision_blocked"),
+    ],
+)
+async def test_unproven_research_decisions_block_angle_generation(
+    decision: ResearchDecision,
+    error_code: str,
+) -> None:
+    async with isolated_session() as session:
+        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        payload = copy.deepcopy(bundle_artifact.content_json)
+        assert isinstance(payload, dict)
+        payload["research_decision"] = decision.value
+        bundle_artifact.content_json = payload
+        bundle_artifact.content_hash = _bundle_hash(payload)
+        model = FakeAngleModel([[]])
+
+        with pytest.raises(AngleGenerationError, match=error_code):
+            with session.no_autoflush:
+                await AngleGenerator(max_attempts=1).generate_candidates(
+                    session,
+                    journal_input_bundle_id=bundle_artifact.id,
+                    model=model,
+                    provider="fixture-provider",
+                    model_name="fixture-model",
+                )
+        assert model.calls == 0
 
 
 @pytest.mark.asyncio

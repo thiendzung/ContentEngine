@@ -23,6 +23,8 @@ from app.modules.content_engine.journal.research_handoff import (
 )
 from app.modules.content_engine.models import ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
+from app.modules.knowledge.models import Claim, Evidence, Source, SourceDocument
+from app.modules.research.evidence.contracts import is_usable_originality_item
 
 _CONTENT_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _JOURNAL_INPUT_BUNDLE_SCHEMA_VERSION = 1
@@ -106,6 +108,7 @@ class JournalInputBundle:
     originality_pack_hash: str
     originality_refs: tuple[str, ...]
     locale: str
+    angle_model_input: dict[str, object]
     context_manifest: ContextManifest | None = None
 
 
@@ -204,11 +207,187 @@ def _normalize_originality_ref(value: object, allowed: set[str]) -> str:
 def _originality_refs(items: Sequence[object]) -> tuple[str, ...]:
     refs: list[str] = []
     for item in items:
-        if isinstance(item, dict) and isinstance(item.get("source_ref"), str):
+        if is_usable_originality_item(item) and isinstance(item, dict):
             source_ref = item["source_ref"].strip()
             if source_ref:
                 refs.append(source_ref)
     return tuple(refs)
+
+
+def _sanitized_originality_items(items: Sequence[object]) -> list[dict[str, object]]:
+    sanitized: list[dict[str, object]] = []
+    for item in items:
+        if not is_usable_originality_item(item) or not isinstance(item, dict):
+            continue
+        sanitized.append(
+            {
+                "source_ref": item["source_ref"].strip(),
+                "material": item["material"].strip(),
+                "writer_use": item["writer_use"].strip(),
+                "guardrails": item["guardrails"].strip(),
+                "approval_ref": item["approval_ref"].strip(),
+            }
+        )
+    return sanitized
+
+
+def _context_manifest_payload(manifest: ContextManifest, run: ContentRun) -> dict[str, object]:
+    return {
+        "run_id": str(run.id),
+        "step_run_id": str(manifest.step_run_id) if manifest.step_run_id else None,
+        "settings_snapshot_id": str(run.settings_snapshot_id),
+        "prompt_version": manifest.prompt_version,
+        "recipe_version": manifest.recipe_version,
+        "evidence_set_id": str(manifest.evidence_set_id) if manifest.evidence_set_id else None,
+        "originality_pack_id": (
+            str(manifest.originality_pack_id) if manifest.originality_pack_id else None
+        ),
+        "context_artifact_id": (
+            str(manifest.context_artifact_id) if manifest.context_artifact_id else None
+        ),
+        "approved_knowledge_refs": manifest.approved_knowledge_refs_json,
+        "knowledge_chunk_refs": manifest.knowledge_chunk_refs_json,
+        "golden_example_refs": manifest.golden_example_refs_json,
+        "tool_result_refs": manifest.tool_result_refs_json,
+    }
+
+
+def _stable_hash(value: object) -> str:
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+async def _build_angle_model_input(
+    session: AsyncSession,
+    *,
+    run: ContentRun,
+    bundle_artifact: Artifact,
+    opportunity: dict[str, object],
+    evidence_ids: Sequence[UUID],
+    evidence_set_id: UUID,
+    evidence_set_version: int,
+    evidence_set_hash: str,
+    originality_pack_id: UUID,
+    originality_pack_hash: str,
+    originality_items: Sequence[object],
+    context_manifest: ContextManifest | None,
+) -> dict[str, object]:
+    """Build the allow-listed model payload from already validated records."""
+
+    rows = list(
+        (
+            await session.execute(
+                select(Evidence, Claim, SourceDocument, Source)
+                .join(Claim, Claim.id == Evidence.claim_id)
+                .outerjoin(SourceDocument, SourceDocument.id == Evidence.source_document_id)
+                .outerjoin(Source, Source.id == SourceDocument.source_id)
+                .where(Evidence.id.in_(evidence_ids))
+            )
+        ).all()
+    )
+    by_id = {
+        evidence.id: (evidence, claim, document, source)
+        for evidence, claim, document, source in rows
+    }
+    if len(by_id) != len(evidence_ids):
+        raise AngleGenerationError("angle_evidence_model_input_mismatch")
+
+    evidence_items: list[dict[str, object]] = []
+    for evidence_id in evidence_ids:
+        evidence, claim, document, source = by_id[evidence_id]
+        if claim.project_id != run.project_id:
+            raise AngleGenerationError("angle_evidence_project_mismatch")
+        source_document = None
+        if document is not None:
+            if source is None or source.project_id != run.project_id:
+                raise AngleGenerationError("angle_evidence_source_project_mismatch")
+            source_document = {
+                "source_id": str(source.id),
+                "id": str(document.id),
+                "version": document.document_version,
+                "content_hash": document.content_hash,
+                "canonical_url": document.canonical_url,
+            }
+        if (
+            document is None
+            and evidence.chunk_id is None
+            and evidence.media_observation_id is None
+        ):
+            raise AngleGenerationError("angle_evidence_source_ref_missing")
+        evidence_items.append(
+            {
+                "evidence_id": str(evidence.id),
+                "claim_id": str(claim.id),
+                "claim_statement": claim.statement,
+                "relation": evidence.relation,
+                "excerpt": evidence.excerpt,
+                "locator": evidence.locator,
+                "source_document": source_document,
+                "source_ref": {
+                    "chunk_id": str(evidence.chunk_id) if evidence.chunk_id else None,
+                    "media_observation_id": (
+                        str(evidence.media_observation_id)
+                        if evidence.media_observation_id
+                        else None
+                    ),
+                },
+            }
+        )
+
+    opportunity_input = {
+        **opportunity,
+        "snapshot_hash": _canonical_hash(opportunity),
+    }
+    sanitized_originality = _sanitized_originality_items(originality_items)
+    if not sanitized_originality:
+        raise AngleGenerationError("angle_originality_model_input_empty")
+    model_input: dict[str, object] = {
+        "input_bundle_ref": {
+            "id": str(bundle_artifact.id),
+            "version": bundle_artifact.version,
+            "content_hash": bundle_artifact.content_hash,
+        },
+        "opportunity": opportunity_input,
+        "evidence_set": {
+            "id": str(evidence_set_id),
+            "version": evidence_set_version,
+            "content_hash": evidence_set_hash,
+            "evidence": evidence_items,
+        },
+        "originality_pack": {
+            "id": str(originality_pack_id),
+            "snapshot_hash": originality_pack_hash,
+            "items": sanitized_originality,
+        },
+    }
+    if context_manifest is not None:
+        model_input["context"] = {
+            "manifest_id": str(context_manifest.id),
+            "content_hash": context_manifest.content_hash,
+            "settings_snapshot_id": str(context_manifest.settings_snapshot_id),
+            "context_artifact_id": (
+                str(context_manifest.context_artifact_id)
+                if context_manifest.context_artifact_id
+                else None
+            ),
+            "evidence_set_id": (
+                str(context_manifest.evidence_set_id)
+                if context_manifest.evidence_set_id
+                else None
+            ),
+            "originality_pack_id": (
+                str(context_manifest.originality_pack_id)
+                if context_manifest.originality_pack_id
+                else None
+            ),
+            "approved_knowledge_refs": context_manifest.approved_knowledge_refs_json,
+            "knowledge_chunk_refs": context_manifest.knowledge_chunk_refs_json,
+            "golden_example_refs": context_manifest.golden_example_refs_json,
+            "tool_result_refs": context_manifest.tool_result_refs_json,
+            "prompt_version": context_manifest.prompt_version,
+            "recipe_version": context_manifest.recipe_version,
+        }
+    return model_input
 
 
 def _candidate_from_raw(
@@ -300,8 +479,29 @@ def _validate_candidates(
     decoded = _decode_model_output(raw)
     if not isinstance(decoded, list) or not 3 <= len(decoded) <= 5:
         raise AngleGenerationError("angle_candidate_count_invalid")
-    allowed_evidence = {str(item) for item in bundle.evidence_ids}
-    allowed_originality = set(bundle.originality_refs)
+    model_input = bundle.angle_model_input
+    evidence_set_input = _as_dict(
+        model_input.get("evidence_set"), "angle_model_input_evidence_invalid"
+    )
+    evidence_items = evidence_set_input.get("evidence")
+    if not isinstance(evidence_items, list):
+        raise AngleGenerationError("angle_model_input_evidence_invalid")
+    allowed_evidence = {
+        item["evidence_id"]
+        for item in evidence_items
+        if isinstance(item, dict) and isinstance(item.get("evidence_id"), str)
+    }
+    originality_input = _as_dict(
+        model_input.get("originality_pack"), "angle_model_input_originality_invalid"
+    )
+    originality_items = originality_input.get("items")
+    if not isinstance(originality_items, list):
+        raise AngleGenerationError("angle_model_input_originality_invalid")
+    allowed_originality = {
+        item["source_ref"]
+        for item in originality_items
+        if isinstance(item, dict) and isinstance(item.get("source_ref"), str)
+    }
     candidates = tuple(
         _candidate_from_raw(
             item,
@@ -353,6 +553,8 @@ async def load_journal_input_bundle(
         raise AngleGenerationError("angle_research_decision_invalid") from exc
     if decision is ResearchDecision.BLOCKED:
         raise AngleGenerationError("angle_research_decision_blocked")
+    if decision is ResearchDecision.RESEARCH_REQUIRED:
+        raise AngleGenerationError("angle_research_completion_required")
     for key, code in (
         ("provider_calls", "journal_provider_call_count_invalid"),
         ("model_calls", "journal_model_call_count_invalid"),
@@ -439,13 +641,34 @@ async def load_journal_input_bundle(
             raise AngleGenerationError("angle_context_manifest_evidence_mismatch")
         if context_manifest.originality_pack_id != originality_pack_id:
             raise AngleGenerationError("angle_context_manifest_originality_mismatch")
+        if context_manifest.settings_snapshot_id != run.settings_snapshot_id:
+            raise AngleGenerationError("angle_context_manifest_settings_mismatch")
         expected_manifest_hash = manifest_payload.get("content_hash")
         if (
             expected_manifest_hash is not None
             and expected_manifest_hash != context_manifest.content_hash
         ):
             raise AngleGenerationError("angle_context_manifest_snapshot_stale")
+        if (
+            _stable_hash(_context_manifest_payload(context_manifest, run))
+            != context_manifest.content_hash
+        ):
+            raise AngleGenerationError("angle_context_manifest_snapshot_stale")
 
+    angle_model_input = await _build_angle_model_input(
+        session,
+        run=run,
+        bundle_artifact=artifact,
+        opportunity=opportunity,
+        evidence_ids=evidence.evidence_ids,
+        evidence_set_id=evidence.evidence_set_id,
+        evidence_set_version=evidence.version,
+        evidence_set_hash=evidence.content_hash,
+        originality_pack_id=originality.originality_pack_id,
+        originality_pack_hash=originality.snapshot_hash,
+        originality_items=originality.item_refs,
+        context_manifest=context_manifest,
+    )
     return JournalInputBundle(
         artifact=artifact,
         payload=payload,
@@ -459,6 +682,7 @@ async def load_journal_input_bundle(
         originality_pack_hash=originality.snapshot_hash,
         originality_refs=_originality_refs(originality.item_refs),
         locale=locale,
+        angle_model_input=angle_model_input,
         context_manifest=context_manifest,
     )
 
@@ -603,7 +827,7 @@ class AngleGenerator:
         for attempt in range(1, self.max_attempts + 1):
             try:
                 raw = await model.generate(
-                    input_bundle=_clone_json(bundle.payload),
+                    input_bundle=_clone_json(bundle.angle_model_input),
                     attempt=attempt,
                 )
                 candidates = _validate_candidates(raw, bundle=bundle)
