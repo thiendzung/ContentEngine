@@ -179,6 +179,24 @@ def _clone_json(value: dict[str, object]) -> dict[str, object]:
     return cast(dict[str, object], json.loads(json.dumps(value, ensure_ascii=False)))
 
 
+def _routed_model_identity(model: AngleModelPort) -> tuple[str, str] | None:
+    """Read the authoritative route identity exposed by a production model port."""
+
+    resolver = getattr(model, "resolved_model_identity", None)
+    if resolver is None:
+        return None
+    if not callable(resolver):
+        raise AngleGenerationError("angle_model_route_mismatch")
+    identity = resolver()
+    if (
+        not isinstance(identity, tuple)
+        or len(identity) != 2
+        or any(not isinstance(value, str) or not value.strip() for value in identity)
+    ):
+        raise AngleGenerationError("angle_model_route_mismatch")
+    return identity[0].strip(), identity[1].strip()
+
+
 def angle_candidate_hash(candidate: AngleCandidate) -> str:
     """Hash only the normalized candidate snapshot selected by a human."""
 
@@ -837,6 +855,23 @@ class AngleGenerator:
             journal_input_bundle_id=journal_input_bundle_id,
             expected_content_hash=expected_bundle_hash,
         )
+        if not isinstance(provider, str) or not provider.strip():
+            raise AngleGenerationError("angle_provider_metadata_required")
+        if not isinstance(model_name, str) or not model_name.strip():
+            raise AngleGenerationError("angle_model_metadata_required")
+        routed_identity = _routed_model_identity(model)
+        if routed_identity is not None:
+            if (
+                not isinstance(provider, str)
+                or not isinstance(model_name, str)
+                or provider.strip() != routed_identity[0]
+                or model_name.strip() != routed_identity[1]
+            ):
+                raise AngleGenerationError("angle_model_route_mismatch")
+        artifact_provider, artifact_model = routed_identity or (
+            provider.strip(),
+            model_name.strip(),
+        )
         last_error: AngleGenerationError | None = None
         model_input = _clone_json(bundle.angle_model_input)
         model_input_hash = angle_model_input_hash(model_input)
@@ -859,8 +894,8 @@ class AngleGenerator:
                 session,
                 bundle=bundle,
                 candidates=candidates,
-                provider=provider,
-                model=model_name,
+                provider=artifact_provider,
+                model=artifact_model,
                 model_calls=attempt,
                 model_input_hash=model_input_hash,
                 provider_calls=0,

@@ -159,6 +159,18 @@ class CliAngleModelPort(AngleModelPort):
             raise AngleGenerationError("angle_model_input_invalid")
         return cast(dict[str, object], cloned)
 
+    def resolved_model_identity(self) -> tuple[str, str]:
+        """Return the exact provider/model selected by this immutable snapshot."""
+
+        try:
+            route = SettingsModelRouter().resolve(
+                task_key=ANGLE_TASK_KEY,
+                settings_snapshot=self._settings_snapshot,
+            )
+        except RuntimeConfigurationError as exc:
+            raise AngleGenerationError("angle_model_route_missing") from exc
+        return route.primary.provider, route.primary.model
+
     async def generate(self, *, input_bundle: dict[str, object], attempt: int) -> object:
         sanitized_input = self._validate_input(input_bundle)
         run = await self._session.get(ContentRun, self._run_id)

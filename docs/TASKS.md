@@ -544,8 +544,8 @@ CE05: `ACTIVE / PR-B.2`
 
 ## CE05 — Journal Engine V1
 
-- Current PR: `CE05 PR-B.2 — Angle Generator + Human Approval`.
-- Branch: `ce05-angle-approval`.
+- Current PR: `CE05 PR-B.2A — Production Model Runtime Activation` (PR #35).
+- Branch: `ce05-model-runtime-activation`.
 - Scope: `T05.8–T05.9`.
 - [x] T05.1 ContentCase/LocaleVariant Journal UI.
 - [x] T05.2 Internal knowledge recall.

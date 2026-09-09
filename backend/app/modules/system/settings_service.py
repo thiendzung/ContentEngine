@@ -102,7 +102,6 @@ def _merge_settings(
     incoming: dict[str, object],
     *,
     path: str = "",
-    allow_override: bool = False,
 ) -> None:
     for key in sorted(incoming):
         value = incoming[key]
@@ -116,14 +115,10 @@ def _merge_settings(
                 existing,
                 value,
                 path=current_path,
-                allow_override=allow_override,
             )
             continue
         if existing != value:
-            if allow_override:
-                target[key] = copy.deepcopy(value)
-            else:
-                raise SettingsResolutionError("settings_override_policy_missing", current_path)
+            raise SettingsResolutionError("settings_override_policy_missing", current_path)
 
 
 async def resolve_settings_snapshot(
@@ -164,7 +159,9 @@ async def resolve_settings_snapshot(
         for row in layer_rows:
             _merge_settings(layer, row.settings_json)
             source_refs.append(_settings_version_ref(row))
-        _merge_settings(resolved, layer, allow_override=True)
+        # Scope order is deterministic, but it is not an implicit override policy.
+        # A later scope may add a disjoint path or repeat the same value only.
+        _merge_settings(resolved, layer)
     if run_override is not None:
         if not isinstance(run_override, dict):
             raise SettingsResolutionError("settings_run_override_invalid")

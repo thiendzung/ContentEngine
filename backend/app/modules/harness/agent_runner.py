@@ -392,11 +392,66 @@ class _CliRunner:
 class CodexCliRunner(_CliRunner):
     """Run Codex using cached ChatGPT login and a read-only isolated process."""
 
+    _NO_TOOL_FEATURES = (
+        "shell_tool",
+        "unified_exec",
+        "code_mode",
+        "apps",
+        "plugins",
+        "enable_mcp_apps",
+    )
+
     def __init__(self, *, executable: str = "codex") -> None:
         super().__init__(
             executable=executable,
             provider="codex_cli",
             auth_args=("login", "status"),
+        )
+
+    async def _verify_no_tool_support(self) -> None:
+        """Verify this installed CLI can explicitly disable every unsafe surface."""
+
+        help_result = await _run_command(
+            [self.executable, "exec", "--help"],
+            timeout=10.0,
+        )
+        help_text = _decode(help_result.stdout + b"\n" + help_result.stderr)
+        if help_result.exit_code != 0 or "--disable" not in help_text:
+            raise AgentRunnerError("agent_tool_disable_unsupported")
+
+        feature_result = await _run_command(
+            [self.executable, "features", "list"],
+            timeout=10.0,
+        )
+        if feature_result.exit_code != 0:
+            raise AgentRunnerError("agent_tool_disable_unsupported")
+        supported = {
+            line.split()[0]
+            for line in _decode(feature_result.stdout).splitlines()
+            if len(line.split()) >= 3
+        }
+        if not set(self._NO_TOOL_FEATURES).issubset(supported):
+            raise AgentRunnerError("agent_tool_disable_unsupported")
+
+    async def preflight(self) -> AgentCapability:
+        self._ensure_executable()
+        version = await _run_command([self.executable, "--version"], timeout=10.0)
+        if version.exit_code != 0:
+            raise AgentRunnerError("agent_version_check_failed")
+        version_text = (_decode(version.stdout) or _decode(version.stderr)).strip()
+        if not version_text:
+            raise AgentRunnerError("agent_version_check_failed")
+        await self._verify_no_tool_support()
+        auth = await _run_command([self.executable, *self.auth_args], timeout=10.0)
+        auth_mode = self._auth_mode(auth.stdout + b"\n" + auth.stderr)
+        if auth.exit_code != 0 or auth_mode is None:
+            raise AgentRunnerError("agent_auth_required")
+        return AgentCapability(
+            provider=self.provider,
+            executable=self.executable,
+            version=version_text.splitlines()[0][:200],
+            authenticated=True,
+            auth_mode=auth_mode,
         )
 
     async def run(self, request: AgentRunRequest) -> AgentRunResult:
@@ -415,6 +470,18 @@ class CodexCliRunner(_CliRunner):
                 str(result_path),
                 "--sandbox",
                 "read-only",
+                "--disable",
+                "shell_tool",
+                "--disable",
+                "unified_exec",
+                "--disable",
+                "code_mode",
+                "--disable",
+                "apps",
+                "--disable",
+                "plugins",
+                "--disable",
+                "enable_mcp_apps",
                 "-c",
                 'web_search="disabled"',
                 "--skip-git-repo-check",

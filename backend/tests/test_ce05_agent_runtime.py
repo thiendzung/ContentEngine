@@ -16,7 +16,7 @@ from app.core.database import engine
 from app.modules.content_engine.journal.agent_bridge import (
     create_cli_angle_model_port,
 )
-from app.modules.content_engine.journal.angle import AngleGenerator
+from app.modules.content_engine.journal.angle import AngleGenerationError, AngleGenerator
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentRunnerError,
@@ -56,6 +56,27 @@ def _request(provider: str, model: str = "test-model") -> AgentRunRequest:
         working_context={"angle_model_input": {"evidence": [], "originality": []}},
         timeout=1.0,
     )
+
+
+_CODEX_FEATURES = b"\n".join(
+    f"{feature} stable true".encode()
+    for feature in (
+        "shell_tool",
+        "unified_exec",
+        "code_mode",
+        "apps",
+        "plugins",
+        "enable_mcp_apps",
+    )
+)
+
+
+def _codex_control_process(argv: tuple[str, ...]) -> FakeProcess | None:
+    if argv[1:] == ("exec", "--help"):
+        return FakeProcess(argv, stdout=b"--disable <FEATURE>")
+    if argv[1:] == ("features", "list"):
+        return FakeProcess(argv, stdout=_CODEX_FEATURES)
+    return None
 
 
 class FakeStdin:
@@ -113,7 +134,10 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     processes: list[FakeProcess] = []
 
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
-        if argv[-2:] == ("login", "status"):
+        control = _codex_control_process(argv)
+        if control is not None:
+            process = control
+        elif argv[-2:] == ("login", "status"):
             process = FakeProcess(argv, stdout=b"Logged in using ChatGPT")
         elif "--version" in argv:
             process = FakeProcess(argv, stdout=b"codex 0.1-test")
@@ -137,6 +161,20 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     assert "--model" in execution.argv
     assert "read-only" in execution.argv
     assert 'web_search="disabled"' in execution.argv
+    assert execution.argv.count("--disable") == 6
+    for feature in (
+        "shell_tool",
+        "unified_exec",
+        "code_mode",
+        "apps",
+        "plugins",
+        "enable_mcp_apps",
+    ):
+        assert ("--disable", feature) in zip(
+            execution.argv,
+            execution.argv[1:],
+            strict=True,
+        )
     assert "--search" not in execution.argv
     assert "OPENAI_API_KEY" not in execution.env
     assert "must-not-cross-boundary" not in execution.env.values()
@@ -149,6 +187,9 @@ async def test_cli_runners_fail_closed_for_missing_or_unauthenticated_agent(monk
         await CodexCliRunner().preflight()
 
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        control = _codex_control_process(argv)
+        if control is not None:
+            return control
         if "--version" in argv:
             return FakeProcess(argv, stdout=b"codex 0.1-test")
         return FakeProcess(argv, stdout=b"Not logged in", exit_code=1)
@@ -186,6 +227,9 @@ async def test_antigravity_runner_uses_headless_json_schema_and_read_only(monkey
 @pytest.mark.asyncio
 async def test_runner_timeout_is_fail_closed(monkeypatch) -> None:
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        control = _codex_control_process(argv)
+        if control is not None:
+            return control
         if "--version" in argv:
             return FakeProcess(argv, stdout=b"codex 0.1-test")
         if argv[-2:] == ("login", "status"):
@@ -213,6 +257,9 @@ async def test_cli_runner_rejects_invalid_or_nonzero_execution(
     error_code: str,
 ) -> None:
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        control = _codex_control_process(argv)
+        if control is not None:
+            return control
         if "--version" in argv:
             return FakeProcess(argv, stdout=b"codex 0.1-test")
         if argv[-2:] == ("login", "status"):
@@ -243,15 +290,20 @@ async def test_settings_resolver_precedence_and_exact_snapshot_retry() -> None:
                     settings_json={"shared": {"base": True}, "models": {"draft": {"model": "sys"}}},
                     status="active",
                     change_reason="test",
+                    approved_by="founder",
                 ),
                 SettingsVersion(
                     project_id=project.id,
                     scope_type="project",
                     scope_key=project.slug,
                     version=1,
-                    settings_json={"shared": {"project": True}},
+                    settings_json={
+                        "shared": {"project": True},
+                        "models": {"draft": {"model": "sys"}},
+                    },
                     status="active",
                     change_reason="test",
+                    approved_by="founder",
                 ),
                 SettingsVersion(
                     project_id=project.id,
@@ -261,6 +313,7 @@ async def test_settings_resolver_precedence_and_exact_snapshot_retry() -> None:
                     settings_json={"models": {"angle": {"route": "agent_angle"}}},
                     status="active",
                     change_reason="test",
+                    approved_by="founder",
                 ),
                 SettingsVersion(
                     project_id=project.id,
@@ -270,6 +323,7 @@ async def test_settings_resolver_precedence_and_exact_snapshot_retry() -> None:
                     settings_json={"language": {"locale": "en"}},
                     status="active",
                     change_reason="test",
+                    approved_by="founder",
                 ),
             ]
         )
@@ -307,6 +361,51 @@ async def test_settings_resolver_precedence_and_exact_snapshot_retry() -> None:
 
 
 @pytest.mark.asyncio
+async def test_settings_conflicting_scope_values_fail_closed() -> None:
+    async with isolated_session() as session:
+        from app.modules.content_engine.models import Project, SettingsVersion
+
+        project = Project(slug=f"runtime-{uuid4().hex[:8]}", name="Runtime test")
+        session.add(project)
+        await session.flush()
+        session.add_all(
+            [
+                SettingsVersion(
+                    project_id=None,
+                    scope_type="system",
+                    scope_key="default",
+                    version=1,
+                    settings_json={"models": {"angle": {"route": "system-A"}}},
+                    status="active",
+                    change_reason="test",
+                    approved_by="founder",
+                ),
+                SettingsVersion(
+                    project_id=project.id,
+                    scope_type="project",
+                    scope_key=project.slug,
+                    version=1,
+                    settings_json={"models": {"angle": {"route": "project-B"}}},
+                    status="active",
+                    change_reason="test",
+                    approved_by="founder",
+                ),
+            ]
+        )
+        await session.flush()
+        with pytest.raises(
+            SettingsResolutionError,
+            match="settings_override_policy_missing",
+        ):
+            await resolve_settings_snapshot(
+                session,
+                project_id=project.id,
+                content_type="journal",
+                locale="en",
+            )
+
+
+@pytest.mark.asyncio
 async def test_run_override_conflict_and_draft_registry_fail_closed() -> None:
     async with isolated_session() as session:
         from app.modules.content_engine.models import Project, SettingsVersion
@@ -323,6 +422,7 @@ async def test_run_override_conflict_and_draft_registry_fail_closed() -> None:
                 settings_json={"models": {"angle": {"route": "one"}}},
                 status="active",
                 change_reason="test",
+                approved_by="founder",
             )
         )
         await session.flush()
@@ -352,6 +452,7 @@ async def test_active_settings_version_is_unique_and_payload_immutable() -> None
             settings_json={"models": {"angle": {"route": "one"}}},
             status="active",
             change_reason="test",
+            approved_by="founder",
         )
         session.add(settings)
         await session.flush()
@@ -366,6 +467,7 @@ async def test_active_settings_version_is_unique_and_payload_immutable() -> None
                         settings_json={"models": {"angle": {"route": "two"}}},
                         status="active",
                         change_reason="test",
+                        approved_by="founder",
                     )
                 )
                 await session.flush()
@@ -387,6 +489,7 @@ async def test_active_prompt_and_recipe_payloads_are_immutable() -> None:
             output_schema_json={"type": "object"},
             status="active",
             change_reason="test",
+            approved_by="founder",
         )
         recipe = RecipeDefinition(
             recipe_key=f"runtime_recipe_{uuid4().hex[:8]}",
@@ -394,6 +497,7 @@ async def test_active_prompt_and_recipe_payloads_are_immutable() -> None:
             selector_json={"content_type": "journal", "task": "angle"},
             recipe_json={"grounded": True},
             status="active",
+            approved_by="founder",
         )
         session.add_all([prompt, recipe])
         await session.flush()
@@ -405,6 +509,133 @@ async def test_active_prompt_and_recipe_payloads_are_immutable() -> None:
             async with session.begin_nested():
                 recipe.recipe_json = {"grounded": False}
                 await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_activation_requires_non_empty_human_approval_for_all_registries() -> None:
+    async with isolated_session() as session:
+        from app.modules.content_engine.models import Project, SettingsVersion
+
+        project = Project(slug=f"runtime-{uuid4().hex[:8]}", name="Runtime test")
+        session.add(project)
+        await session.flush()
+
+        invalid_rows = [
+            (
+                SettingsVersion(
+                    project_id=project.id,
+                    scope_type="project",
+                    scope_key=project.slug,
+                    version=1,
+                    settings_json={"test": "settings"},
+                    status="active",
+                    change_reason="test",
+                ),
+                "settings_versions_active_requires_approval",
+            ),
+            (
+                SettingsVersion(
+                    project_id=project.id,
+                    scope_type="project",
+                    scope_key=project.slug,
+                    version=1,
+                    settings_json={"test": "settings"},
+                    status="active",
+                    change_reason="test",
+                    approved_by="",
+                ),
+                "settings_versions_active_requires_approval",
+            ),
+            (
+                PromptDefinition(
+                    prompt_key=f"runtime_prompt_{uuid4().hex[:8]}",
+                    version=1,
+                    purpose="test",
+                    body="grounded",
+                    input_contract_json={"required": ["input"]},
+                    output_schema_json={"type": "object"},
+                    status="active",
+                    change_reason="test",
+                ),
+                "prompt_definitions_active_requires_approval",
+            ),
+            (
+                PromptDefinition(
+                    prompt_key=f"runtime_prompt_{uuid4().hex[:8]}",
+                    version=1,
+                    purpose="test",
+                    body="grounded",
+                    input_contract_json={"required": ["input"]},
+                    output_schema_json={"type": "object"},
+                    status="active",
+                    change_reason="test",
+                    approved_by="",
+                ),
+                "prompt_definitions_active_requires_approval",
+            ),
+            (
+                RecipeDefinition(
+                    recipe_key=f"runtime_recipe_{uuid4().hex[:8]}",
+                    version=1,
+                    selector_json={"content_type": "journal", "task": "angle"},
+                    recipe_json={"grounded": True},
+                    status="active",
+                ),
+                "recipe_definitions_active_requires_approval",
+            ),
+            (
+                RecipeDefinition(
+                    recipe_key=f"runtime_recipe_{uuid4().hex[:8]}",
+                    version=1,
+                    selector_json={"content_type": "journal", "task": "angle"},
+                    recipe_json={"grounded": True},
+                    status="active",
+                    approved_by="",
+                ),
+                "recipe_definitions_active_requires_approval",
+            ),
+        ]
+        for row, error_code in invalid_rows:
+            with pytest.raises(DBAPIError, match=error_code):
+                async with session.begin_nested():
+                    session.add(row)
+                    await session.flush()
+
+        settings = SettingsVersion(
+            project_id=project.id,
+            scope_type="project",
+            scope_key=project.slug,
+            version=1,
+            settings_json={"test": "settings"},
+            status="draft",
+            change_reason="test",
+        )
+        prompt = PromptDefinition(
+            prompt_key=f"runtime_prompt_{uuid4().hex[:8]}",
+            version=1,
+            purpose="test",
+            body="grounded",
+            input_contract_json={"required": ["input"]},
+            output_schema_json={"type": "object"},
+            status="draft",
+            change_reason="test",
+        )
+        recipe = RecipeDefinition(
+            recipe_key=f"runtime_recipe_{uuid4().hex[:8]}",
+            version=1,
+            selector_json={"content_type": "journal", "task": "angle"},
+            recipe_json={"grounded": True},
+            status="draft",
+        )
+        session.add_all([settings, prompt, recipe])
+        await session.flush()
+        settings.status = "active"
+        settings.approved_by = "founder"
+        prompt.status = "active"
+        prompt.approved_by = "founder"
+        recipe.status = "active"
+        recipe.approved_by = "founder"
+        await session.flush()
 
 
 class FakeAngleRunner:
@@ -454,7 +685,9 @@ async def test_cli_angle_bridge_records_modelcall_and_passes_only_sanitized_inpu
         )
         assert prompt is not None and recipe is not None
         prompt.status = "active"
+        prompt.approved_by = "founder"
         recipe.status = "active"
+        recipe.approved_by = "founder"
         session.add(snapshot)
         await session.flush()
         run.settings_snapshot_id = snapshot.id
@@ -507,3 +740,18 @@ async def test_cli_angle_bridge_records_modelcall_and_passes_only_sanitized_inpu
             "usage": {"input_tokens": 10, "output_tokens": 20},
         }
         assert len(result.candidates) == 3
+        assert result.artifact.content_json["model"] == {
+            "provider": "codex_cli",
+            "model": "test-model",
+        }
+
+        before_requests = len(fake.requests)
+        with pytest.raises(AngleGenerationError, match="angle_model_route_mismatch"):
+            await AngleGenerator(max_attempts=1).generate_candidates(
+                session,
+                journal_input_bundle_id=bundle_artifact.id,
+                model=port,
+                provider="antigravity_cli",
+                model_name="model-B",
+            )
+        assert len(fake.requests) == before_requests

@@ -70,6 +70,7 @@ T05.4–T05.7: DONE
 O4 OriginalityPack approval gate: READY
 CE05 PR-B.2: READY FOR REVIEW
 T05.8–T05.9: READY FOR REVIEW
+CE05 PR-B.2A: ACTIVE / PR #35 / BLOCKER HARDENING
 T05.10–T05.22: NOT STARTED
 
 PR-B.1 merge: PR #32 / `50083129794e35314cf351acdbcd48d7fe5e4ef9`
@@ -104,6 +105,26 @@ The `angle_candidates` Artifact also stores `model_input.content_hash`, covering
 sanitized payload passed to the model. Approval and handoff rebuild and rehash that payload;
 Evidence, Claim, or SourceDocument snapshot mutation fails closed as
 `angle_model_input_snapshot_stale`.
+
+## CE05 PR-B.2A blocker-hardening checkpoint
+
+```text
+PR: #35 / CE05 PR-B.2A — Production Model Runtime Activation
+Branch: ce05-model-runtime-activation
+Start HEAD: dd99eb255d290167d1c33af7362df1d4ad92b3b1
+Scope: blocker fixes only
+Migration: 20260909_0017 (head)
+Status: READY FOR RE-REVIEW after local gates; not merged
+```
+
+The resolver now fails closed when the same settings path has different values across
+SYSTEM/PROJECT/CONTENT_TYPE/LOCALE/RUN_OVERRIDE; equal values and disjoint paths remain valid.
+Codex execution verifies the installed CLI feature controls before use and explicitly disables
+local execution/tool surfaces, apps/plugins/MCP-apps, and web search while retaining the isolated
+read-only ephemeral invocation. Migration 0017 requires non-empty human approval metadata for
+active SettingsVersion, PromptDefinition, and RecipeDefinition rows and preserves active payload
+immutability. Angle artifact provider/model metadata is derived from the exact SettingsSnapshot
+route; caller mismatch fails closed. No real O4/model/provider call was performed.
 
 Last merged PR:
 

@@ -36,6 +36,11 @@ def _immutable_trigger(
             f"""
             CREATE FUNCTION {function_name}() RETURNS trigger AS $$
             BEGIN
+                IF TG_OP <> 'DELETE' AND NEW.status = 'active' AND (
+                    NEW.approved_by IS NULL OR btrim(NEW.approved_by) = ''
+                ) THEN
+                    RAISE EXCEPTION '{table_name}_active_requires_approval';
+                END IF;
                 IF TG_OP = 'DELETE' AND OLD.status = 'active' THEN
                     RAISE EXCEPTION '{table_name}_active_is_immutable';
                 END IF;
@@ -54,7 +59,7 @@ def _immutable_trigger(
         sa.text(
             f"""
             CREATE TRIGGER {trigger_name}
-            BEFORE UPDATE OR DELETE ON {table_name}
+            BEFORE INSERT OR UPDATE OR DELETE ON {table_name}
             FOR EACH ROW EXECUTE FUNCTION {function_name}()
             """
         )
