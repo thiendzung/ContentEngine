@@ -520,6 +520,26 @@ DONE. NeedHypothesis remains `PROPOSED`, ContentExperiment remains `PLANNED / PE
 ContentRun remains `2`, KnowledgeCandidate remains `0`, and T04.24–T04.35 remain NOT
 STARTED. PR #28 is CLOSED / MERGED / PASS; current active slice is PR-F.
 
+### CE04 final documentation closeout
+
+CE04 STATUS: `CLOSED / PASS`
+
+T04.1–T04.35: `DONE`
+
+PR #29: `MERGED`
+
+Merge commit: `e6f7ac185094d7898cfb8df3c26b38f8fc4f4718`
+
+Post-merge CI #430: `PASS`
+
+Post-merge verify: `PASS`
+
+Branch cleanup: `DONE`
+
+Next phase: `CE05 — Journal Engine V1`
+
+CE05: `NOT STARTED`
+
 ---
 
 ## CE05 — Journal Engine V1
