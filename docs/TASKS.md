@@ -538,15 +538,18 @@ Branch cleanup: `DONE`
 
 Next phase: `CE05 — Journal Engine V1`
 
-CE05: `NOT STARTED`
+CE05: `ACTIVE / PR-A`
 
 ---
 
 ## CE05 — Journal Engine V1
 
-- [ ] T05.1 ContentCase/LocaleVariant Journal UI.
-- [ ] T05.2 Internal knowledge recall.
-- [ ] T05.3 Content Memory overlap check stub.
+- Current PR: `CE05 PR-A — Journal Context + Memory`.
+- Branch: `ce05-journal-context-memory`.
+- Scope: `T05.1–T05.3`.
+- [x] T05.1 ContentCase/LocaleVariant Journal UI.
+- [x] T05.2 Internal knowledge recall.
+- [x] T05.3 Content Memory overlap check stub.
 - [ ] T05.4 Discovery Research step.
 - [ ] T05.5 Opportunity Map selection handoff.
 - [ ] T05.6 Evidence Research + EvidenceSet step.
@@ -561,6 +564,11 @@ CE05: `NOT STARTED`
 - [ ] T05.15 Basic source-copy check.
 - [ ] T05.16 Final content package.
 - [ ] T05.17 One real MOTGU Journal end-to-end candidate.
+- [ ] T05.18 Critical Gate Regression.
+- [ ] T05.19 Resume / Replay Gate.
+- [ ] T05.20 Human Review Surface.
+- [ ] T05.21 CE05 Metrics Baseline.
+- [ ] T05.22 CE05 Closeout.
 
 ---
 

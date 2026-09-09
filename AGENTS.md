@@ -398,10 +398,10 @@ Never claim completion without evidence.
 
 Current priority:
 
-`CE04 — Knowledge + Production Research`
+`CE05 — Journal Engine V1`
 
 Current implementation slice:
 
-`T04.18–T04.23`
+`T05.1–T05.3`
 
-CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE03 PR-A = CLOSED / MERGED / PASS. CE03 PR-B = CLOSED / MERGED / PASS. CE03 PR-C = CLOSED / MERGED / PASS. CE03 PR-D = CLOSED / MERGED / PASS. CE03 PR-E = CLOSED / MERGED / PASS. CE04 = ACTIVE. CE04 PR-A = CLOSED / MERGED / PASS. CE04 PR-B = CLOSED / MERGED / PASS. CE04 PR-C = CLOSED / MERGED / PASS. CE04 PR-D = CLOSED / MERGED / PASS. CE04 PR-D merge commit = `46af24d6c17df483fdc32721f14bc2f9156d0d76`. CE04 PR-E = ACTIVE / DRAFT. T04.1–T04.17 = DONE. T04.18–T04.23 = ACTIVE / NOT DONE. T04.24–T04.31 = NOT STARTED. Current PR = `CE04 PR-E — Evidence Research + Evidence Set` (DRAFT). Current implementation slice = `T04.18–T04.23`. Branch = `ce04-evidence-research-evidence-set`. Base main = `a52052adde3cf19889098013fd5065f86cab62fb`. Start log = `docs/logs/2026-09-07-ce04-pr-e-start.md`. Architecture decision = `docs/logs/2026-09-07-ce04-pr-e-architecture-decision.md`. Do not run research/provider, create ContentCase in activation, tick T04.18–T04.23, start T04.24+ or merge.
+CE01 is CLOSED / PASS. CE02 is CLOSED / PASS. CE03 is CLOSED / PASS. CE04 is CLOSED / PASS, including PR-A through PR-F. CE05 is ACTIVE. CE05 PR-A = READY FOR REVIEW. T05.1–T05.3 = READY FOR REVIEW. T05.4–T05.22 = NOT STARTED. Current PR = `CE05 PR-A — Journal Context + Memory`. Current implementation slice = `T05.1–T05.3`. Branch = `ce05-journal-context-memory`. Base main = `2d7a5c37c03d85e941ed3c897670887fe2f98704`. Start log = `docs/logs/2026-09-09-ce05-pr-a-start.md`. Architecture decision = `docs/logs/2026-09-09-ce05-pr-a-architecture-decision.md`. Do not run research/provider, create a new ContentCase, start T05.4+ or merge.

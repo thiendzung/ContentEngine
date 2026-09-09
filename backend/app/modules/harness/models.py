@@ -175,6 +175,10 @@ class ContextManifest(TimestampMixin, Base):
     recipe_version: Mapped[str] = mapped_column(String(100), nullable=False)
     evidence_set_id: Mapped[UUID | None] = mapped_column(ForeignKey("evidence_sets.id"))
     originality_pack_id: Mapped[UUID | None] = mapped_column(ForeignKey("originality_packs.id"))
+    context_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
+    approved_knowledge_refs_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     knowledge_chunk_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     golden_example_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     tool_result_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

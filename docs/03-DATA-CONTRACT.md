@@ -585,6 +585,8 @@ Unique recommendation: `(run_id, step_key, attempt)`.
 - `assertion_audit`
 - `final_content`
 - `publish_package`
+- `memory_overlap`
+- `journal_context`
 
 ### ContextManifest
 
@@ -598,7 +600,9 @@ Snapshot model đã nhìn thấy gì cho một call/step quan trọng.
 - `recipe_version`
 - `evidence_set_id`
 - `originality_pack_id` nullable
-- `knowledge_chunk_ids_json`
+- `context_artifact_id` nullable
+- `approved_knowledge_refs_json`
+- `knowledge_chunk_refs_json`
 - `golden_example_ids_json`
 - `tool_result_refs_json`
 - `content_hash`

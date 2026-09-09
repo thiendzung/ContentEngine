@@ -105,6 +105,11 @@ Output: `memory_gap_report` + recommendation:
 - `merge`;
 - `do_not_write`.
 
+CE05 stores the report as the immutable `memory_overlap` Artifact. The upstream
+Opportunity Map decision remains authoritative for `MERGE`, `LINK_ONLY`, and
+`DO_NOT_WRITE`; the Journal layer may not silently convert those decisions into a
+new write.
+
 ## 7. Editorial Calibration Pack và Golden Set
 
 ### Seed Calibration Pack

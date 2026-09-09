@@ -1,6 +1,6 @@
 {
   "name": "motgu-contentengine-frontend",
-  "version": "0.1.0-ce01",
+  "version": "0.1.0-ce05",
   "private": true,
   "scripts": {
     "dev": "next dev",

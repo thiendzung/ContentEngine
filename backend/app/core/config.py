@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_env: str = "development"
-    app_version: str = "0.1.0-ce04"
+    app_version: str = "0.1.0-ce05"
     database_url: str = (
         "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
     )
