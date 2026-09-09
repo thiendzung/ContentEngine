@@ -1,46 +1,68 @@
-# CE05 PR-B.2A — blocker hardening closeout
+# CE05 PR-B.2A — final Codex no-tool blocker closeout
 
 Date: 2026-09-09
 
 ## Scope
 
-Fix PR #35 blockers only. No real O4/model/provider call and no merge.
+Close the final PR #35 Codex no-tool blocker only. No real O4/model/provider call and no merge.
 
 ```text
 Branch: ce05-model-runtime-activation
-Start HEAD: dd99eb255d290167d1c33af7362df1d4ad92b3b1
-End HEAD: 1093234ada81f41f70b350ae7f15e6803721e997
+Start HEAD: b8eb1cacd1db699f95c50eaf037c8ba8d145ffa6
+Implementation HEAD: 86b2ceb
 PR: #35
-Migration: 20260909_0017
+Migration: 20260909_0017 (existing; no migration created)
 ```
 
-## Fixes
+## Final blocker fix
 
-1. Settings resolution now fails closed with `settings_override_policy_missing` when
-   equal paths differ across SYSTEM, PROJECT, CONTENT_TYPE, LOCALE, or RUN_OVERRIDE.
-   Equal values and disjoint paths remain valid.
-2. Codex no-tool execution verifies CLI support for `--disable` and the required feature
-   names, then explicitly disables `shell_tool`, `unified_exec`, `code_mode`, apps,
-   plugins, MCP apps, and web search. The invocation retains `--ignore-user-config`,
-   `--ephemeral`, isolated temporary cwd, and read-only sandbox.
-3. Migration 0017 enforces non-empty `approved_by` for active SettingsVersion,
-   PromptDefinition, and RecipeDefinition rows. Draft-to-active with approval is allowed;
-   active payload mutation remains rejected.
-4. Angle artifact model metadata is derived from the exact SettingsSnapshot route. A
-   caller route mismatch fails closed before a model request.
+Codex runtime is pinned to `codex-cli 0.153.4`; another installed version fails closed as
+`agent_runner_version_not_approved` before capability/auth/model execution. The exact rust-v
+0.153.4 feature list was audited and all required no-tool controls are checked before use:
+
+```text
+shell_tool
+unified_exec
+code_mode
+view_image
+shell_snapshot
+multi_agent
+apps
+plugins
+enable_mcp_apps
+tool_suggest
+in_app_browser
+in_app_local_automation
+browser_use
+browser_use_full_cdp_access
+browser_use_external
+computer_use
+remote_plugin
+plugin_sharing
+image_generation
+skill_mcp_dependency_install
+skill_search
+```
+
+Execution emits one explicit `--disable <feature>` pair for every feature above, plus
+`-c web_search="disabled"`, `--ignore-user-config`, `--ephemeral`, isolated temporary cwd,
+and `--sandbox read-only`. Missing capability fails closed as
+`agent_tool_disable_unsupported`; API keys are excluded from the child environment.
+
+The previous settings override, migration approval, and exact model provenance fixes remain
+unchanged. No real O4/model/provider call was performed.
 
 ## Evidence
 
-- Focused CE05 runtime/Angle tests: `27 passed`.
-- Full backend: `357 passed`.
+- Focused CE05 runtime tests: `15 passed`.
+- Full backend: `359 passed`.
 - Ruff: pass.
 - mypy: pass.
 - Migration round-trip `20260909_0017 → 20260909_0016 → 20260909_0017`: pass;
   test DB ended at `20260909_0017 (head)`.
 - OpenAPI export: pass; no API contract change.
 - Frontend lint, typecheck, and build: pass; generated build artifacts were not committed.
-- CI: runs `34344664463` (code commit) and `34344902485` (final docs commit),
-  job `quality`, both PASS.
+- CI: pending final push.
 
 ## O4 read-only state
 
@@ -63,8 +85,20 @@ provider/tool calls: 0
 
 Codex CLI support was verified locally at `codex-cli 0.153.4`; no model execution was run.
 
+The O4 runtime counters remain:
+
+```text
+ContentRun: 0
+journal_input_bundle: 0
+angle_candidates: 0
+AngleApproval: 0
+ModelCall: 0
+provider/tool calls: 0
+NeedHypothesis: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
+```
+
 ## Status
 
-`READY FOR RE-REVIEW`
+`READY FOR FINAL RE-REVIEW`
 
 PR #35 remains OPEN and unmerged.
