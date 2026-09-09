@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, StepRun
-from app.modules.knowledge.models import EvidenceSet, EvidenceSetApproval, OriginalityPack
+from app.modules.knowledge.models import Evidence, EvidenceSet, EvidenceSetApproval, OriginalityPack
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.discovery.service import (
@@ -402,8 +402,18 @@ class JournalResearchHandoff:
             raise JournalResearchHandoffError("evidence_set_snapshot_stale")
         try:
             evidence_ids = tuple(UUID(value) for value in evidence_set.evidence_ids_json)
-        except ValueError as exc:
+        except (AttributeError, TypeError, ValueError) as exc:
             raise JournalResearchHandoffError("evidence_set_snapshot_invalid") from exc
+        if len(set(evidence_ids)) != len(evidence_ids):
+            raise JournalResearchHandoffError("evidence_set_member_duplicate")
+
+        evidence_rows = list(
+            (await session.scalars(select(Evidence).where(Evidence.id.in_(evidence_ids)))).all()
+        )
+        if len(evidence_rows) != len(evidence_ids):
+            raise JournalResearchHandoffError("evidence_set_member_missing")
+        if {row.id for row in evidence_rows} != set(evidence_ids):
+            raise JournalResearchHandoffError("evidence_set_member_mismatch")
 
         approvals = list(
             (

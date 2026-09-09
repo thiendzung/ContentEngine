@@ -8,12 +8,13 @@ from uuid import UUID, uuid4
 
 import pytest
 from evidence_set_helpers import create_locked_evidence_set
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
 from app.modules.content_engine.journal.research_handoff import (
+    EvidenceSetHandoff,
     JournalResearchHandoff,
     JournalResearchHandoffError,
     ResearchDecision,
@@ -27,7 +28,15 @@ from app.modules.content_engine.models import (
     Project,
 )
 from app.modules.harness.models import Artifact, ContentRun, StepRun
-from app.modules.knowledge.models import EvidenceSet, EvidenceSetApproval, OriginalityPack
+from app.modules.knowledge.models import (
+    Claim,
+    Evidence,
+    EvidenceSet,
+    EvidenceSetApproval,
+    OriginalityPack,
+    Source,
+    SourceDocument,
+)
 from app.modules.knowledge.originality_pack import approve_originality_pack
 from app.modules.knowledge.persistence import content_hash, evidence_set_hash
 from app.modules.research.contracts import ProductionResearchRequest
@@ -162,8 +171,9 @@ class FakeEvidenceWorkflow:
 
 
 class HistoricalLockedEvidenceSession:
-    def __init__(self, evidence_set: EvidenceSet) -> None:
+    def __init__(self, evidence_set: EvidenceSet, evidence_rows: list[Evidence]) -> None:
         self.evidence_set = evidence_set
+        self.evidence_rows = evidence_rows
 
     async def get(self, model: object, object_id: UUID) -> object | None:
         if model is EvidenceSet and object_id == self.evidence_set.id:
@@ -171,8 +181,59 @@ class HistoricalLockedEvidenceSession:
         return None
 
     async def scalars(self, query: object) -> SimpleNamespace:
-        del query
-        return SimpleNamespace(all=lambda: [])
+        entity = getattr(query, "column_descriptions", [{}])[0].get("entity")
+        rows = self.evidence_rows if entity is Evidence else []
+        return SimpleNamespace(all=lambda: rows)
+
+
+async def _evidence_row(session: AsyncSession, *, project_id: UUID, suffix: str = "") -> Evidence:
+    source = Source(
+        project_id=project_id,
+        source_type="web",
+        title="Synthetic evidence source",
+        canonical_url=f"https://example.test/evidence/{uuid4()}",
+        locale="en",
+        provenance_json={"fixture": "ce05"},
+        captured_at=datetime.now(UTC),
+        fingerprint=f"ce05-evidence-source-{uuid4().hex}",
+    )
+    session.add(source)
+    await session.flush()
+    evidence_text = f"Synthetic evidence {suffix or uuid4().hex}."
+    document = SourceDocument(
+        source_id=source.id,
+        document_version=1,
+        canonical_url=source.canonical_url,
+        fetched_at=datetime.now(UTC),
+        content_hash=content_hash(evidence_text),
+        content_markdown=evidence_text,
+        metadata_json={"fixture": "ce05"},
+        reader="fixture",
+        provider="fixture",
+    )
+    claim = Claim(
+        project_id=project_id,
+        statement=f"CE05 synthetic evidence {suffix or uuid4().hex}",
+        claim_type="fact",
+        entity_refs_json=[],
+    )
+    session.add_all([document, claim])
+    await session.flush()
+    evidence = Evidence(
+        claim_id=claim.id,
+        source_document_id=document.id,
+        locator="fixture:1",
+        excerpt=evidence_text,
+        relation="supports",
+        quality_metadata_json={"fixture": True},
+        provenance_json={
+            "source_id": str(source.id),
+            "source_document_id": str(document.id),
+        },
+    )
+    session.add(evidence)
+    await session.flush()
+    return evidence
 
 
 @pytest.mark.asyncio
@@ -254,11 +315,12 @@ async def test_opportunity_handoff_requires_explicit_human_selection() -> None:
 async def test_evidence_research_handoff_requires_exact_approved_locked_snapshot() -> None:
     async with isolated_session() as session:
         project, content_case, _opportunity, need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id)
         evidence_set = await create_locked_evidence_set(
             session,
             project_id=project.id,
             content_case_id=content_case.id,
-            evidence_ids=[str(uuid4())],
+            evidence_ids=[str(evidence.id)],
             locked_by="evidence reviewer",
         )
         pack = OriginalityPack(
@@ -304,6 +366,7 @@ async def test_evidence_research_handoff_requires_exact_approved_locked_snapshot
         assert research_handoff.evidence_set.evidence_set_id == evidence_set.id
         assert research_handoff.evidence_set.version == evidence_set.version
         assert research_handoff.evidence_set.content_hash == evidence_set.content_hash
+        assert research_handoff.evidence_set.evidence_ids == (evidence.id,)
         assert research_handoff.originality_pack.originality_pack_id == pack.id
 
         with pytest.raises(
@@ -497,8 +560,9 @@ async def test_historical_locked_evidence_set_without_retrofit_approval_passes()
         locked_at=datetime.now(UTC),
         locked_by=None,
     )
+    evidence = Evidence(id=UUID(evidence_ids[0]))
     handoff = await JournalResearchHandoff().handoff_evidence_set(
-        HistoricalLockedEvidenceSession(evidence_set),
+        HistoricalLockedEvidenceSession(evidence_set, [evidence]),
         project_id=project_id,
         content_case_id=content_case_id,
         evidence_set_id=evidence_set.id,
@@ -513,6 +577,7 @@ async def test_historical_locked_evidence_set_without_retrofit_approval_passes()
 async def test_evidence_set_gate_rejects_draft_and_stale_snapshot() -> None:
     async with isolated_session() as session:
         project, content_case, _opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id)
         evidence_ids = [str(uuid4())]
         evidence_set = EvidenceSet(
             project_id=project.id,
@@ -539,7 +604,7 @@ async def test_evidence_set_gate_rejects_draft_and_stale_snapshot() -> None:
             session,
             project_id=project.id,
             content_case_id=content_case.id,
-            evidence_ids=[str(uuid4())],
+            evidence_ids=[str(evidence.id)],
             version=2,
         )
         original_hash = evidence_set.content_hash
@@ -560,11 +625,12 @@ async def test_evidence_set_gate_rejects_draft_and_stale_snapshot() -> None:
 async def test_evidence_set_gate_accepts_exact_approval_and_rejects_wrong_lineage() -> None:
     async with isolated_session() as session:
         project, content_case, _opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id)
         evidence_set = await create_locked_evidence_set(
             session,
             project_id=project.id,
             content_case_id=content_case.id,
-            evidence_ids=[str(uuid4())],
+            evidence_ids=[str(evidence.id)],
         )
         handoff = JournalResearchHandoff()
         valid = await handoff.handoff_evidence_set(
@@ -592,6 +658,77 @@ async def test_evidence_set_gate_accepts_exact_approval_and_rejects_wrong_lineag
             match="evidence_set_approval_snapshot_mismatch",
         ):
             await handoff.handoff_evidence_set(
+                session,
+                project_id=project.id,
+                content_case_id=content_case.id,
+                evidence_set_id=evidence_set.id,
+                expected_version=evidence_set.version,
+                expected_content_hash=evidence_set.content_hash,
+            )
+
+
+@pytest.mark.asyncio
+async def test_evidence_set_gate_rejects_missing_member() -> None:
+    async with isolated_session() as session:
+        project, content_case, _opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id, suffix="present")
+        evidence_ids = [str(evidence.id), str(uuid4())]
+        evidence_set = await create_locked_evidence_set(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            evidence_ids=evidence_ids,
+        )
+
+        with pytest.raises(JournalResearchHandoffError, match="evidence_set_member_missing"):
+            await JournalResearchHandoff().handoff_evidence_set(
+                session,
+                project_id=project.id,
+                content_case_id=content_case.id,
+                evidence_set_id=evidence_set.id,
+                expected_version=evidence_set.version,
+                expected_content_hash=evidence_set.content_hash,
+            )
+
+
+@pytest.mark.asyncio
+async def test_evidence_set_gate_rejects_malformed_member_id() -> None:
+    async with isolated_session() as session:
+        project, content_case, _opportunity, _need = await _content_case(session)
+        evidence_ids = ["not-a-uuid"]
+        evidence_set = await create_locked_evidence_set(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            evidence_ids=evidence_ids,
+        )
+
+        with pytest.raises(JournalResearchHandoffError, match="evidence_set_snapshot_invalid"):
+            await JournalResearchHandoff().handoff_evidence_set(
+                session,
+                project_id=project.id,
+                content_case_id=content_case.id,
+                evidence_set_id=evidence_set.id,
+                expected_version=evidence_set.version,
+                expected_content_hash=evidence_set.content_hash,
+            )
+
+
+@pytest.mark.asyncio
+async def test_evidence_set_gate_rejects_duplicate_member_id() -> None:
+    async with isolated_session() as session:
+        project, content_case, _opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id)
+        evidence_ids = [str(evidence.id), str(evidence.id)]
+        evidence_set = await create_locked_evidence_set(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            evidence_ids=evidence_ids,
+        )
+
+        with pytest.raises(JournalResearchHandoffError, match="evidence_set_member_duplicate"):
+            await JournalResearchHandoff().handoff_evidence_set(
                 session,
                 project_id=project.id,
                 content_case_id=content_case.id,
@@ -657,11 +794,12 @@ async def test_research_decision_is_bounded() -> None:
 async def test_journal_input_bundle_is_idempotent_and_reuse_has_zero_calls() -> None:
     async with isolated_session() as session:
         project, content_case, opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id)
         evidence_set = await create_locked_evidence_set(
             session,
             project_id=project.id,
             content_case_id=content_case.id,
-            evidence_ids=[str(uuid4())],
+            evidence_ids=[str(evidence.id)],
         )
         pack = await _approved_pack(session, content_case_id=content_case.id)
         run, step = await _run_and_step(session, project=project, content_case=content_case)
@@ -720,14 +858,71 @@ async def test_journal_input_bundle_is_idempotent_and_reuse_has_zero_calls() -> 
 
 
 @pytest.mark.asyncio
-async def test_journal_input_bundle_rejects_blocked_and_mutated_approved_pack() -> None:
+async def test_invalid_evidence_set_member_does_not_create_input_bundle() -> None:
     async with isolated_session() as session:
         project, content_case, opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id, suffix="present")
+        evidence_ids = [str(evidence.id), str(uuid4())]
         evidence_set = await create_locked_evidence_set(
             session,
             project_id=project.id,
             content_case_id=content_case.id,
-            evidence_ids=[str(uuid4())],
+            evidence_ids=evidence_ids,
+        )
+        pack = await _approved_pack(session, content_case_id=content_case.id)
+        run, step = await _run_and_step(session, project=project, content_case=content_case)
+        handoff = JournalResearchHandoff()
+        pack_handoff = await handoff.handoff_originality_pack(
+            session,
+            content_case_id=content_case.id,
+            originality_pack_id=pack.id,
+        )
+        evidence_handoff = EvidenceSetHandoff(
+            evidence_set_id=evidence_set.id,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            version=evidence_set.version,
+            content_hash=evidence_set.content_hash,
+            evidence_ids=(evidence.id, UUID(evidence_ids[1])),
+            approval_id=None,
+            approved_by=None,
+        )
+
+        with pytest.raises(JournalResearchHandoffError, match="evidence_set_member_missing"):
+            await handoff.persist_journal_input_bundle(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                research_decision=ResearchDecision.REUSE_EXISTING,
+                opportunity_id=opportunity.id,
+                evidence_set=evidence_handoff,
+                originality_pack=pack_handoff,
+                provider_calls=0,
+                model_calls=0,
+            )
+
+        assert (
+            await session.scalar(
+                select(func.count(Artifact.id)).where(
+                    Artifact.run_id == run.id,
+                    Artifact.artifact_type == "journal_input_bundle",
+                )
+            )
+            == 0
+        )
+        assert step.output_artifact_refs_json == []
+
+
+@pytest.mark.asyncio
+async def test_journal_input_bundle_rejects_blocked_and_mutated_approved_pack() -> None:
+    async with isolated_session() as session:
+        project, content_case, opportunity, _need = await _content_case(session)
+        evidence = await _evidence_row(session, project_id=project.id)
+        evidence_set = await create_locked_evidence_set(
+            session,
+            project_id=project.id,
+            content_case_id=content_case.id,
+            evidence_ids=[str(evidence.id)],
         )
         pack = await _approved_pack(session, content_case_id=content_case.id)
         run, step = await _run_and_step(session, project=project, content_case=content_case)
