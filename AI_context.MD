@@ -112,13 +112,13 @@ Evidence, Claim, or SourceDocument snapshot mutation fails closed as
 PR: #35 / CE05 PR-B.2A — Production Model Runtime Activation
 Branch: ce05-model-runtime-activation
 Start HEAD: b8eb1cacd1db699f95c50eaf037c8ba8d145ffa6
-End HEAD: 86b2ceb (implementation; docs closeout follows)
+Implementation HEAD: 86b2ceb5f91626c54ba0b2a4853de1fd9495af4e
 Scope: Codex no-tool blocker only
 Migration: 20260909_0017 (head)
 Status: READY FOR FINAL RE-REVIEW; OPEN / not merged
 Focused CE05 runtime tests: 15 passed
 Full backend: 359 passed
-CI: pending final push
+CI: run 34355533154 / PASS
 ```
 
 Codex runtime is pinned to the exact installed `codex-cli 0.153.4`; any other version fails

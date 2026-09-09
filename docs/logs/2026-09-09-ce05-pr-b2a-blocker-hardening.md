@@ -9,7 +9,7 @@ Close the final PR #35 Codex no-tool blocker only. No real O4/model/provider cal
 ```text
 Branch: ce05-model-runtime-activation
 Start HEAD: b8eb1cacd1db699f95c50eaf037c8ba8d145ffa6
-Implementation HEAD: 86b2ceb
+Implementation HEAD: 86b2ceb5f91626c54ba0b2a4853de1fd9495af4e
 PR: #35
 Migration: 20260909_0017 (existing; no migration created)
 ```
@@ -62,7 +62,7 @@ unchanged. No real O4/model/provider call was performed.
   test DB ended at `20260909_0017 (head)`.
 - OpenAPI export: pass; no API contract change.
 - Frontend lint, typecheck, and build: pass; generated build artifacts were not committed.
-- CI: pending final push.
+- CI: run `34355533154` / PASS; quality job `102479123153`.
 
 ## O4 read-only state
 
