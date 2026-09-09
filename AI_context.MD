@@ -34,14 +34,14 @@ Never merge automatically.
 ```text
 Project: ContentEngine
 Phase: CE04 — Knowledge + Production Research
-CE04: ACTIVE
+CE04: CLOSED / PASS
 
 PR-A: CLOSED / MERGED / PASS
 PR-B: CLOSED / MERGED / PASS
 PR-C: CLOSED / MERGED / PASS
 PR-D: CLOSED / MERGED / PASS
 PR-E: CLOSED / MERGED / PASS
-PR-F: ACTIVE / READY FOR REVIEW
+PR-F: CLOSED / MERGED / PASS
 
 T04.1–T04.17: DONE
 T04.18–T04.23: DONE
@@ -57,15 +57,20 @@ T04.32: DONE
 T04.33: DONE
 T04.34: DONE
 T04.35: DONE
+
+Final merge:
+PR #29
+Merge commit: e6f7ac185094d7898cfb8df3c26b38f8fc4f4718
+Post-merge CI: #430 / run 34305124113 / PASS
+Post-merge verify: PASS
+CE05: READY TO PLAN / NOT STARTED
 ```
 
 Current PR:
 
 ```text
-CE04 PR-F — Knowledge Admission + Provenance Gates
-Branch: ce04-knowledge-admission-provenance
-Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
-Status: OPEN / READY FOR REVIEW
+none
+Post-merge neutral checkpoint on main
 ```
 
 # Locked O4
@@ -234,14 +239,16 @@ T04.23 OriginalityPack builder: DONE
 PR #28: CLOSED / MERGED / PASS
 ```
 
-# PR-F activation checkpoint
+# CE04 final post-merge checkpoint
 
 ```text
-PR-F: ACTIVE / DRAFT
-Branch: ce04-knowledge-admission-provenance
-Base main: 85636cb4c562d4dd1ea37bff507dd75ea89bc201
-Scope: T04.24–T04.35
-Implementation checkpoint: T04.24–T04.31 complete; T04.32–T04.35 not started
+CE04: CLOSED / PASS
+PR-F: CLOSED / MERGED / PASS
+Branch: none
+Final main: e6f7ac185094d7898cfb8df3c26b38f8fc4f4718
+Post-merge CI: #430 / run 34305124113 / PASS
+Post-merge verify: PASS
+CE05: READY TO PLAN / NOT STARTED
 ```
 
 PR-F order:
@@ -680,7 +687,7 @@ T04.35: NOT STARTED
 Next action: T04.35 CE04 final regression and closeout
 ```
 
-# PR-F T04.35 final regression pre-merge closeout
+# PR-F T04.35 final regression and post-merge closeout
 
 The final CE04 regression passed on the dedicated test database and the normal application
 database remained read-only. Full backend runs after the migration round-trip were both
@@ -702,11 +709,11 @@ KnowledgeCandidate: 4 (APPROVED=2, REJECTED=2, CANDIDATE=0)
 Provider/Search/URL calls: 0
 CE04 exit gates A–H: PASS
 T04.1–T04.35: DONE
-PR #29: READY FOR USER MERGE
-CE04 implementation: COMPLETE
-Merge: PENDING USER
-Post-merge verify: PENDING
-CE05: DO NOT START
+PR #29: MERGED
+CE04: CLOSED / PASS
+Merge commit: e6f7ac185094d7898cfb8df3c26b38f8fc4f4718
+Post-merge verify: PASS
+CE05: READY TO PLAN / NOT STARTED
 ```
 
 # Curated EvidenceSet v8 checkpoint
