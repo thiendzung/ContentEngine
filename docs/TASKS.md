@@ -166,43 +166,53 @@ Real T05.13 gate proved:
 
 ### Current gate — T05.14 ASSERTION AUDIT
 
-Owner: **MG Content Engine**.
+Owner: **MG Content Engine** for implementation/contract/review; Agent Local executes only the exact post-merge real runtime gate.
 
-Status:
+Implementation PR includes:
 
-- [ ] **T05.14 Assertion Audit — ACTIVE / implementation not yet started.**
+- [x] exact immutable VI/EN v2 input binding and hash revalidation;
+- [x] deterministic visible-copy segmentation;
+- [x] bounded model assertion extraction/classification only — no rewrite;
+- [x] exact-substring validation for each assertion;
+- [x] location-bounded Evidence/Originality refs;
+- [x] persisted Evidence ID → Claim ID mapping in code;
+- [x] deterministic critical unsupported/contradicted escalation for factual/brand/artist-intent/visual/live assertions;
+- [x] immutable `assertion_audit` Artifact + deterministic `QualityEvaluation` persistence using existing contracts;
+- [x] exact audit fingerprint/reuse contract;
+- [x] independent VI/EN prompt/recipe registry in migration `20260910_0021`;
+- [x] approved local-agent runtime bridge with no tools/research/sibling draft;
+- [x] production CLI + focused tests;
+- [x] exact Agent Local task with mandatory local Git synchronization before task read/execution.
 
-Canonical minimum contract:
+Post-merge Agent Local task:
 
-```text
-revised draft v2
-→ extract important factual/interpretive assertions
-→ map to Claim/EvidenceSet or approved first-party/Originality material
-→ classify assertion/support status
-→ hard fail critical unsupported or contradicted assertions
-```
+`docs/logs/2026-09-10-ce05-real-o4-assertion-audit-agent-local-task.md`
 
-Implementation/real-gate requirements:
+T05.14 status:
 
-- [ ] audit only the exact immutable VI/EN v2 snapshots above;
-- [ ] preserve exact EvidenceSet/OriginalityPack/Outline lineage and hashes;
-- [ ] classify at least fact, brand statement, artist intent, interpretation, opinion, visual observation and practical/live information where present;
-- [ ] map factual assertions to locked Claim/Evidence or approved first-party material; do not backfill new evidence after writing;
-- [ ] check live-information semantics so price/availability are never validated from stale editorial memory;
-- [ ] critical unsupported assertion count = 0;
-- [ ] critical contradicted assertion count = 0;
-- [ ] invented artist intent/brand story = 0;
-- [ ] no unsupported investment/appreciation, universal fair-price formula or fake scarcity/urgency;
-- [ ] persist reviewable audit evidence using existing canonical Artifact/QualityEvaluation contracts unless a proven data-contract blocker requires a narrow schema addition;
-- [ ] deterministic hard gates must not be overridable by an aggregate/model score;
-- [ ] exact rerun/idempotency must not duplicate audit records/artifacts;
-- [ ] source drafts remain immutable and no research/provider/tool expansion occurs;
-- [ ] T05.15 source-copy check remains NOT STARTED until T05.14 PASS.
+- [ ] **T05.14 Assertion Audit — implementation in current PR; real runtime/content gate pending after merge.**
 
-Audit attention carried from T05.13 MG review:
+Real T05.14 gate requires:
 
-- EN `read-availability`: explicitly classify the sentence that sale status/location do not by themselves establish artwork value; do not silently treat it as an externally proven universal fact.
-- EN `begin-with-the-work`: treat `most recent listing information` as reader guidance; it must not substitute for canonical live state when a concrete commerce fact is asserted.
+- [ ] local `main` synchronized exactly to merged T05.14 implementation before local task files are read;
+- [ ] BOTH exact locale sources preflighted before auditing either locale;
+- [ ] migration `20260910_0021` + exact VI/EN assertion-audit prompt/recipe registry verified;
+- [ ] real VI assertion audit executed against exact v2 snapshot;
+- [ ] real EN assertion audit executed against exact v2 snapshot;
+- [ ] one `assertion_audit` Artifact and one deterministic hard-gate `QualityEvaluation` per locale;
+- [ ] every required standfirst/lead/body/closing segment audited, with title/headings explicitly accounted for;
+- [ ] assertion text remains an exact substring of its source segment;
+- [ ] Evidence/Originality refs remain within exact location support boundaries;
+- [ ] Evidence refs map to persisted Claim IDs through code;
+- [ ] VI `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
+- [ ] EN `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
+- [ ] the two EN attention items are explicitly classified rather than silently treated as external factual proof;
+- [ ] no research/Search/URL/ToolCall, sibling draft or translation input;
+- [ ] exact reruns reuse the same audit artifacts/evaluations with `model_attempts=0` and zero further side effects;
+- [ ] source v2 drafts and all upstream lineage remain immutable;
+- [ ] MG reviews the full real audit output and marks T05.14 PASS.
+
+If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
 ### Critical path after T05.14 PASS
 
@@ -218,11 +228,13 @@ Audit attention carried from T05.13 MG review:
 ### Immediate sequence
 
 ```text
-T05.13 REAL REVIEW/REVISE PASS
-→ semantic closeout / activate T05.14
-→ T05.14 Assertion Audit implementation + CI
+T05.14 implementation + final CI/review
 → Founder merge
-→ bounded real VI/EN v2 assertion audit
+→ Agent Local synchronizes local main exactly to origin/main
+→ real VI/EN assertion audits from exact v2 snapshots
+→ deterministic critical unsupported/contradicted gate
+→ exact reruns prove audit reuse / zero extra model calls
+→ MG reviews full audit outputs
 → if PASS: T05.15 source-copy check
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS
