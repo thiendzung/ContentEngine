@@ -6,15 +6,16 @@ GitHub/repository state is canonical. This file contains only the current semant
 
 ## Start here
 
-Every agent must:
+Every agent must synchronize its local repository before reading local task files or executing local code:
 
 ```text
-git fetch origin --prune
-→ use clean current main or the exact assigned branch
-→ read AGENTS.md
-→ read AI_context.MD
-→ read docs/TASKS.md
-→ read the exact assigned task in docs/logs/ when one exists
+git status --porcelain
+→ if unexpected local changes: STOP / BLOCKED; do not reset/stash/delete automatically
+→ git fetch origin --prune
+→ git checkout main (or exact assigned branch)
+→ git pull --ff-only origin main when assigned to current main
+→ verify HEAD == expected GitHub ref and working tree clean
+→ read LOCAL copies of AGENTS.md, AI_context.MD, docs/TASKS.md and exact task log
 → confirm scope + stop conditions
 → execute only the assigned work
 ```
@@ -27,22 +28,23 @@ Do not infer or start the next task. Do not merge unless acting as Founder with 
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
-CURRENT GATE: REAL BILINGUAL DRAFT GATE — BLOCKED ON MISSING vi-VN LocaleVariant
-CURRENT OWNER: MG owns blocker resolution/editorial review; Agent Local executes only the exact vi-VN repair + bilingual Writer runtime task
+CURRENT GATE: T05.13 — REAL BILINGUAL REVIEW / REVISE GATE
+CURRENT OWNER: MG owns T05.13 implementation + editorial review; Agent Local executes only the exact delegated real runtime gate after merge
 ```
 
 ## Current progress
 
 - CE01–CE04: CLOSED / PASS.
-- CE05 T05.1–T05.9: DONE / MERGED.
-- Real O4 Angle runtime/content gate: PASS.
+- CE05 T05.1–T05.10: DONE / MERGED / real gates PASS.
 - Founder-selected `angle-01`: durably approved and exact handoff verified.
-- T05.10 production Outline implementation: DONE / MERGED.
-- Real O4 Outline runtime + MG editorial gate: PASS.
+- Missing real `vi-VN` LocaleVariant: repaired through the bounded approved data task.
 - T05.11/T05.12 bilingual Writer implementation: DONE / MERGED.
-- First real bilingual Writer preflight: **BLOCKED / correct fail-closed** because the real ContentCase has `0` `vi-VN` LocaleVariants and exactly `1` `en` LocaleVariant.
-- Blocked preflight produced zero migration/model/run/artifact/tool side effects.
-- T05.13–T05.22: NOT STARTED.
+- Real T05.11/T05.12 runtime/provenance/independence gate: **PASS**.
+- VI Writer v1: real immutable draft, zero declared unresolved factual claims.
+- EN Writer v1: real immutable draft, five declared absence notes; no missing facts were invented.
+- Writer-gate contract correction: non-zero declared gaps may enter T05.13; `unresolved_factual_claim_count = 0` is a mandatory T05.13 EXIT gate before Assertion Audit.
+- T05.13 Review/Revise implementation: carried by the PR containing this semantic transition; real runtime gate is next after merge.
+- T05.14–T05.22: NOT STARTED.
 
 Git commit, PR and CI status must be read directly from GitHub; do not mirror changing GitHub state here.
 
@@ -54,8 +56,8 @@ ContentOpportunity: 068991ab-de34-4787-9c38-8935c3f0e2da
 NeedHypothesis: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
 ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5
 SOURCE O4 RUN: 43cc7684-c15d-45b2-8de9-dc04777b1808
-EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / v8 / locked
-OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / approved
+EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / v8 / locked / hash 83d8ff62f639fc51e24072d194cdddfe01db467100f885ca1024e1597e14c71a
+OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / approved / hash d2f193a68b8454114f18dff4d65e5c8b26c494636e1200e55a3fb4c6797eb238
 journal_input_bundle: abaffbbb-9d7a-4c7c-af8c-d28b79ee3991 / v1 / hash 894e608b640bf4d3e67de8a4e7f94991d7637ca3c0392de1d00c1966c234cd3b
 Angle artifact: 854d4f34-22c0-4a9e-8d00-0f7f9461036d / v1 / hash e49941402aed35b5714c1367ab1c7c0864b111aaca782e446f3cb280332f94fe
 AngleApproval: cebc0f94-77f9-4655-9141-41cd8a5dfc14
@@ -68,93 +70,81 @@ WORKING TITLE: A First-Time Buyer’s Checklist for Understanding an Artwork’s
 
 NeedHypothesis remains `PROPOSED` unless a later approved task explicitly changes that contract.
 
-## T05.11/T05.12 Writer contract
-
-- `vi-VN` and `en` are sibling drafts generated directly from the same accepted Outline.
-- Each locale must bind one exact persisted `LocaleVariant`; missing/ambiguous variant fails closed before Writer execution.
-- The source O4 run remains the upstream Angle/Outline run and is not reused as a bilingual execution container.
-- Each locale gets a separate `localize` ContentRun with the same ContentCase and exact immutable SettingsSnapshot, plus an immutable `writer_handoff` binding source O4 run + accepted Outline + target LocaleVariant.
-- Neither locale may inspect, translate, quote or depend on the sibling draft/run as writing input.
-- Both share exact factual truth, brand position, core reader value, entity identity and content hypothesis; sentence-level equivalence is not required.
-- Each locale has its own active prompt/recipe and its own `writer_vi` / `writer_en` StepRun + ModelCall + ContextManifest.
-- Both locale runs deliberately reuse the immutable upstream SettingsSnapshot's already-approved `angle` provider/model route; no SettingsSnapshot is rewritten.
-- Every lead/section must carry the exact Evidence/Originality refs already assigned by the accepted Outline. No support-ref expansion is allowed in Writer.
-- If a useful new factual claim lacks support, Writer must declare it in `unresolved_factual_claims`; it must not invent the claim.
-- No specific current artwork price, status, location, artist intent, provenance, scarcity or MOTGU pricing method may be invented.
-- Exact repeated execution for one locale must reuse the same writer run/handoff/immutable `journal_draft` Artifact without another model call.
-- No research/tool call is allowed.
-
-## Proven runtime blocker
-
-The first production preflight on clean main proved:
+## Locked real bilingual Writer v1 inputs to T05.13
 
 ```text
-ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5
-vi-VN LocaleVariant: 0
-en LocaleVariant: 1
-  ID: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
-  status: draft
-  primary_question: How do I know if an original artwork is fairly priced?
-  primary_intent: evaluate
-Migration remained: 20260910_0018
-Writer ContentRuns / handoffs / drafts / ModelCalls / ToolCalls: unchanged at 0
+vi-VN LocaleVariant: e982a60f-05f0-4e15-9ed3-397db9486dfa
+vi-VN Writer run: 1f0b91a7-39d7-449f-84ad-988fd1e8f44e
+vi-VN writer_handoff: a98cb643-681a-42f6-a26f-746a8792883b / hash 4bb4a4c50a18c815017d24997edbb3cfc58d64107d65eef0d0dd07eb2c843730
+vi-VN draft v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede / hash 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
+vi-VN source unresolved count: 0
+
+en LocaleVariant: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
+en Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
+en writer_handoff: 2aca6d2d-4ee0-4eaf-bb0c-ac2a8cd6b8b9 / hash 90fe6010a59a3985bfd295bdc51d7e0e3905b83ed1b2c55add803c05d7dca691
+en draft v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837 / hash cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
+en source unresolved count: 5
 ```
 
-This is a production-data completeness blocker, not an implementation failure.
+Both Writer runs are independent `localize` runs bound to the same ContentCase, accepted Outline and immutable SettingsSnapshot. Exact Writer reruns proved artifact reuse with zero extra ModelCalls. ToolCalls remained zero and upstream state remained immutable.
 
-Canonical O4 already fixes `suggested_role=cluster` and `intent=evaluate`. MG therefore authorizes one bounded missing-record repair only; no architecture or upstream strategy change is required.
+## Writer gate contract correction
 
-Approved minimal `vi-VN` strategy:
+`unresolved_factual_claims` is a safety handoff field. Writer is required to declare a useful intended factual claim when bounded input cannot support it instead of inventing the fact.
 
-```text
-locale: vi-VN
-content_role: cluster
-primary_question: Làm sao để biết giá của một tác phẩm nghệ thuật nguyên bản có hợp lý hay không?
-primary_intent: evaluate
-secondary_intent: null
-primary_query: null
-keyword_notes_json: []
-emotion_arc_json: []
-must_include_json: []
-must_not_claim_json: []
-status: draft
-```
+Therefore T05.11/T05.12 does **not** require zero declared gaps. It requires truthful declaration, exact support/provenance, bilingual independence and no invented fact.
 
-Empty locale-specific fields are intentional because no Vietnamese-specific query/keyword evidence has been approved.
+The real EN v1 five entries describe missing artwork-specific data rather than false claims asserted by the prose. No new research is required merely to clear those absence notes.
+
+Canonical decision record:
+
+`docs/logs/2026-09-10-ce05-writer-gate-contract-correction.md`
+
+## T05.13 Review/Revise contract
+
+- Revise each locale independently from its exact immutable source draft v1; no sibling draft input and no translation workflow.
+- Stay inside the existing locale Writer `localize` ContentRun; do not create another ContentRun.
+- Use one locale-specific `review_revise_vi` / `review_revise_en` StepRun + ContextManifest + ModelCall flow.
+- Reuse the same immutable SettingsSnapshot and approved `codex_cli / gpt-5.6-luna` route.
+- Bind exact source draft, writer_handoff, accepted Outline, EvidenceSet and OriginalityPack.
+- Preserve exact Outline section IDs/order and exact Evidence/Originality refs.
+- Resolve each declared gap only by removing/softening unsupported intended claims or writing generic guidance that does not depend on missing facts.
+- Never fabricate missing artwork, artist, commerce, comparison or market facts.
+- Improve native-language clarity and reader-facing prose within the existing factual/support boundaries.
+- Persist a new immutable `journal_draft` version; source v1 remains unchanged.
+- Final document-level and section-level `unresolved_factual_claims` arrays must all be empty.
+- No research, Search, URL or ToolCall.
+- Exact rerun must reuse the same revised artifact with zero extra ModelCall.
 
 ## Next action
 
-After the blocker-handoff PR carrying this state is merged, Agent Local executes exactly:
+After the T05.13 implementation PR is merged, Agent Local synchronizes local `main` with GitHub and executes exactly:
 
-`docs/logs/2026-09-10-ce05-real-o4-vi-locale-repair-and-resume-agent-local-task.md`
+`docs/logs/2026-09-10-ce05-real-o4-review-revise-agent-local-task.md`
 
 Expected sequence:
 
 ```text
-revalidate blocker + immutable upstream
-→ create/reuse exactly one approved vi-VN LocaleVariant
-→ prove only LocaleVariant delta 1 → 2 and no non-target side effects
-→ re-run original bilingual Writer gate from the beginning
-→ migration 20260910_0019 + exact registry verification
-→ vi-VN localize run + writer_handoff + real Writer model call + immutable draft
-→ en localize run + writer_handoff + independent real Writer model call + immutable draft
-→ identical locale reruns prove writer-run/artifact reuse / zero extra model calls
-→ MG reviews both full drafts + bilingual independence
-→ only if PASS: T05.13 Review/Revise
+sync local main exactly to origin/main
+→ verify exact source v1 drafts + upstream hashes
+→ migration 20260910_0020 + exact review/revise registry
+→ real vi-VN bounded review/revise → immutable draft v2
+→ real en bounded review/revise → immutable draft v2
+→ both v2 have zero unresolved factual claims
+→ exact reruns prove v2 reuse / zero extra model calls
+→ MG reviews both revised full drafts
+→ only if PASS: T05.14 Assertion Audit
 ```
 
-Do not start T05.13 before the real bilingual draft content gate is explicitly closed.
+Do not start T05.14 before the real T05.13 content/provenance gate is explicitly closed.
 
 ## Current blockers
 
-- `missing_vi_locale_variant` — proven by real two-locale preflight.
-- Resolution is already bounded in `docs/logs/2026-09-10-ce05-real-o4-vi-locale-repair-and-resume-agent-local-task.md`.
-
-No other implementation/runtime blocker is currently known.
+No known implementation blocker. The real T05.13 runtime gate remains to be executed after merge.
 
 ## Human decision required
 
-None at this moment. Escalate only if the existing EN strategy differs from the locked O4 `cluster/evaluate` contract, an existing VI row appears with different semantics, or generated drafts expose a genuine product/brand decision that cannot be resolved from accepted calibration and hard boundaries.
+None at this moment. Final content approval remains a later mandatory Founder gate; T05.13 is not final approval.
 
 ## Operating constraints
 
@@ -162,6 +152,6 @@ None at this moment. Escalate only if the existing EN strategy differs from the 
 - No new provider, agent, generic framework, architecture redesign or automated publishing before ONE REAL JOURNAL PASS unless a hard blocker proves it necessary.
 - Dynamic truth: Git/GitHub owns HEAD, PR, CI and branch state.
 - Semantic truth: repository specs, `AGENTS.md`, this file and `docs/TASKS.md`.
-- A PR that changes a knowable phase/gate state includes that semantic state transition in the same PR.
+- A PR that changes a knowable phase/gate state includes that semantic transition in the same PR.
 - Do not start task N+1 while shared semantic context still describes task N as active.
 - `ModelCall.result_artifact_id` direct linkage remains post-T05.17 hardening unless it becomes blocking.
