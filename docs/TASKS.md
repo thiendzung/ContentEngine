@@ -79,6 +79,7 @@ Prove one real MOTGU Journal candidate end-to-end before adding more infrastruct
 - [x] T05.10 Outline with evidence mapping — implementation + one real O4 runtime + MG editorial gate PASS.
 - [x] T05.11 Draft writer `vi-VN` — implementation + real runtime/provenance/independence gate PASS.
 - [x] T05.12 Draft writer `en` independently from Vietnamese — implementation + real runtime/provenance/independence gate PASS.
+- [x] T05.13 bounded Review/Revise — implementation + real bilingual runtime/content/provenance/idempotency gate PASS.
 
 ### Locked real O4 upstream lineage
 
@@ -100,11 +101,11 @@ SettingsSnapshot: 8f687d1c-1cba-4571-8960-77d7faf18453
 SettingsSnapshot hash: d26829305c979d6cb8bd0f6ae72d795d6c21ca2c5eae9f5c3e6bf3ef0d8a176c
 ```
 
+NeedHypothesis `530bdd27-f008-4910-9b3b-df83e007cfa2` remains `PROPOSED`.
+
 ### T05.11/T05.12 real Writer closeout
 
-The missing `vi-VN` LocaleVariant was repaired through the bounded approved data task before either Writer ran.
-
-Exact real Writer outputs:
+Exact real Writer v1 outputs:
 
 ```text
 vi-VN LocaleVariant: e982a60f-05f0-4e15-9ed3-397db9486dfa
@@ -120,78 +121,91 @@ en draft hash: cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
 en source unresolved count: 5
 ```
 
-Real runtime proved:
-
-- [x] exactly one `vi-VN` and one `en` LocaleVariant;
-- [x] two distinct `localize` ContentRuns, one per locale;
-- [x] same accepted Outline, EvidenceSet, OriginalityPack and immutable SettingsSnapshot;
-- [x] independent VI/EN prompt/recipe/task keys;
-- [x] no sibling-draft or translation-source input;
-- [x] exact section IDs/order and exact Evidence/Originality refs preserved;
-- [x] no unsupported artwork/artist/commerce/market fact invented;
-- [x] ToolCalls = 0;
-- [x] exact reruns reuse the same Writer run/handoff/draft with zero extra ModelCalls;
-- [x] source O4 run and all upstream artifacts remain immutable.
-
-Contract correction:
-
-`unresolved_factual_claims` is a deliberate safety handoff field. A Writer may enter T05.13 with declared gaps when it avoided writing the unsupported fact. Zero unresolved is therefore the **T05.13 exit gate**, not the T05.11/T05.12 entry gate.
+Writer gate proved exact support/provenance, bilingual independence, no sibling/translation input, ToolCalls=0, exact rerun reuse and upstream immutability. The five EN v1 entries were accepted safety absence notes, not asserted unsupported facts. Zero unresolved was correctly enforced at T05.13 exit rather than T05.11/T05.12 exit.
 
 Canonical decision:
 
 `docs/logs/2026-09-10-ce05-writer-gate-contract-correction.md`
 
-The five EN v1 items are accepted absence notes for T05.13. They do not require new research merely to enter revision.
+### T05.13 real Review/Revise closeout
 
-### Current gate — T05.13 REAL BILINGUAL REVIEW / REVISE
+Canonical closeout:
 
-Owner: **MG Content Engine** for implementation/contract/editorial review.
+`docs/logs/2026-09-10-ce05-t05-13-real-gate-closeout.md`
 
-Post-merge Agent Local task:
+Exact revised outputs entering T05.14:
 
-`docs/logs/2026-09-10-ce05-real-o4-review-revise-agent-local-task.md`
+```text
+vi-VN Writer run: 1f0b91a7-39d7-449f-84ad-988fd1e8f44e
+vi-VN source v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede / 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
+vi-VN revised v2: a0afa7d0-af3d-4669-ae18-54c54b87731f / da5fd6e78e19bf4c395797d39379fdb66fd9766f75649e3054e03a0a03677e85
+vi-VN v2 unresolved count: 0
 
-T05.13 status:
+en Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
+en source v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837 / cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
+en revised v2: d512f3f4-bc28-473b-9de1-f0a838940191 / e65472ebb266a0a62ef1d4d855fefb36d23a72e28eeedbbd30acbec7fe1bc034
+en v2 unresolved count: 0
+```
 
-- [ ] **T05.13 Review/revise bounded loop — implementation in current PR; real runtime/content gate pending.**
+Real T05.13 gate proved:
 
-Implementation gate requires:
+- [x] local main synchronized exactly to the merged T05.13 implementation;
+- [x] migration `20260910_0020` and exact VI/EN review/revise registry verified;
+- [x] source v1 IDs/versions/hashes and full upstream lineage revalidated;
+- [x] same existing locale Writer `localize` runs reused; no new ContentRun;
+- [x] one real bounded review/revise model flow per locale;
+- [x] exact Outline section IDs/order and Evidence/Originality refs preserved;
+- [x] no sibling draft, translation, research, Search, URL or ToolCall input;
+- [x] no missing artwork/artist/commerce/comparison/market fact invented;
+- [x] one immutable v2 created per locale; source v1 remained immutable;
+- [x] document-level and section-level `unresolved_factual_claims` all equal `[]`;
+- [x] both Writer runs returned to `waiting_approval`;
+- [x] exact reruns reused the same v2 artifacts with `model_attempts=0` and zero further side effects;
+- [x] EvidenceSet, OriginalityPack, selected Angle, accepted Outline, SettingsSnapshot, NeedHypothesis and source O4 artifacts remained unchanged;
+- [x] MG reviewed both full v2 drafts against v1, Outline, Evidence and Originality boundaries and marked T05.13 **PASS**.
 
-- [ ] exact immutable source draft v1 loaded by ID/version/hash;
-- [ ] source draft lineage revalidated against same Writer run/handoff/Outline/EvidenceSet/OriginalityPack/SettingsSnapshot;
-- [ ] same locale Writer run reused; no new ContentRun;
-- [ ] locale-specific `review_revise_vi` / `review_revise_en` StepRun + ContextManifest + ModelCall;
-- [ ] locale-specific active prompt/recipe registry through migration `20260910_0020`;
-- [ ] same approved `codex_cli / gpt-5.6-luna` route reused from immutable SettingsSnapshot;
-- [ ] no sibling draft input / no translation workflow;
-- [ ] no research/Search/URL/ToolCall;
-- [ ] exact Outline section IDs/order and support refs preserved;
-- [ ] no new Evidence/Originality refs;
-- [ ] declared gaps resolved only by removing/softening unsupported intended claims or using generic guidance that does not depend on missing facts;
-- [ ] no missing artwork/artist/commerce/comparison/market fact invented;
-- [ ] source v1 remains immutable;
-- [ ] revised output persists as a new immutable `journal_draft` version;
-- [ ] every document-level and section-level `unresolved_factual_claims` list is empty at T05.13 exit;
-- [ ] exact rerun reuses revised artifact with zero extra ModelCall;
-- [ ] focused tests + regression/lint/type/migration gates pass.
+### Current gate — T05.14 ASSERTION AUDIT
 
-Real T05.13 gate additionally requires:
+Owner: **MG Content Engine**.
 
-- [ ] migration `20260910_0020` applied and exact VI/EN review/revise registry verified;
-- [ ] exact real VI v1 and EN v1 source snapshots verified unchanged;
-- [ ] real VI review/revise produces one v2 in VI Writer run;
-- [ ] real EN review/revise produces one v2 in EN Writer run;
-- [ ] both revised drafts have zero unresolved factual claims;
-- [ ] both Writer runs return to `waiting_approval`;
-- [ ] support refs remain exactly equal to accepted Outline;
-- [ ] both source v1 artifacts remain immutable;
-- [ ] no upstream mutation and ToolCalls remain zero;
-- [ ] exact repeated executions prove zero additional StepRun/ContextManifest/ModelCall/Artifact work;
-- [ ] MG reviews both full revised drafts and marks T05.13 PASS.
+Status:
 
-### Critical path after T05.13 PASS
+- [ ] **T05.14 Assertion Audit — ACTIVE / implementation not yet started.**
 
-- [ ] T05.14 Assertion Audit.
+Canonical minimum contract:
+
+```text
+revised draft v2
+→ extract important factual/interpretive assertions
+→ map to Claim/EvidenceSet or approved first-party/Originality material
+→ classify assertion/support status
+→ hard fail critical unsupported or contradicted assertions
+```
+
+Implementation/real-gate requirements:
+
+- [ ] audit only the exact immutable VI/EN v2 snapshots above;
+- [ ] preserve exact EvidenceSet/OriginalityPack/Outline lineage and hashes;
+- [ ] classify at least fact, brand statement, artist intent, interpretation, opinion, visual observation and practical/live information where present;
+- [ ] map factual assertions to locked Claim/Evidence or approved first-party material; do not backfill new evidence after writing;
+- [ ] check live-information semantics so price/availability are never validated from stale editorial memory;
+- [ ] critical unsupported assertion count = 0;
+- [ ] critical contradicted assertion count = 0;
+- [ ] invented artist intent/brand story = 0;
+- [ ] no unsupported investment/appreciation, universal fair-price formula or fake scarcity/urgency;
+- [ ] persist reviewable audit evidence using existing canonical Artifact/QualityEvaluation contracts unless a proven data-contract blocker requires a narrow schema addition;
+- [ ] deterministic hard gates must not be overridable by an aggregate/model score;
+- [ ] exact rerun/idempotency must not duplicate audit records/artifacts;
+- [ ] source drafts remain immutable and no research/provider/tool expansion occurs;
+- [ ] T05.15 source-copy check remains NOT STARTED until T05.14 PASS.
+
+Audit attention carried from T05.13 MG review:
+
+- EN `read-availability`: explicitly classify the sentence that sale status/location do not by themselves establish artwork value; do not silently treat it as an externally proven universal fact.
+- EN `begin-with-the-work`: treat `most recent listing information` as reader guidance; it must not substitute for canonical live state when a concrete commerce fact is asserted.
+
+### Critical path after T05.14 PASS
+
 - [ ] T05.15 Basic source-copy check.
 - [ ] T05.16 Final content package.
 - [ ] T05.17 One real MOTGU Journal end-to-end candidate.
@@ -204,17 +218,12 @@ Real T05.13 gate additionally requires:
 ### Immediate sequence
 
 ```text
-T05.13 implementation + CI
+T05.13 REAL REVIEW/REVISE PASS
+→ semantic closeout / activate T05.14
+→ T05.14 Assertion Audit implementation + CI
 → Founder merge
-→ Agent Local synchronizes local main exactly to origin/main
-→ migration 20260910_0020 + exact registry verification
-→ real vi-VN review/revise from exact v1 → immutable v2
-→ real en review/revise from exact v1 → immutable v2
-→ zero unresolved + exact support refs
-→ exact reruns prove v2 reuse / zero extra model calls
-→ MG reviews both revised drafts
-→ if PASS: T05.14 Assertion Audit
-→ T05.15 source-copy check
+→ bounded real VI/EN v2 assertion audit
+→ if PASS: T05.15 source-copy check
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS
 ```
