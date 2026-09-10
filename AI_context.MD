@@ -27,8 +27,8 @@ Do not infer or start the next task. Do not merge unless acting as Founder with 
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
-CURRENT GATE: REAL BILINGUAL DRAFT GATE
-CURRENT OWNER: MG owns T05.11/T05.12 implementation + editorial review; Agent Local executes only the exact delegated real runtime gate
+CURRENT GATE: REAL BILINGUAL DRAFT GATE — BLOCKED ON MISSING vi-VN LocaleVariant
+CURRENT OWNER: MG owns blocker resolution/editorial review; Agent Local executes only the exact vi-VN repair + bilingual Writer runtime task
 ```
 
 ## Current progress
@@ -39,7 +39,9 @@ CURRENT OWNER: MG owns T05.11/T05.12 implementation + editorial review; Agent Lo
 - Founder-selected `angle-01`: durably approved and exact handoff verified.
 - T05.10 production Outline implementation: DONE / MERGED.
 - Real O4 Outline runtime + MG editorial gate: PASS.
-- T05.11/T05.12 bilingual Writer implementation: merged state expected from the PR carrying this file; real runtime/content gate is next.
+- T05.11/T05.12 bilingual Writer implementation: DONE / MERGED.
+- First real bilingual Writer preflight: **BLOCKED / correct fail-closed** because the real ContentCase has `0` `vi-VN` LocaleVariants and exactly `1` `en` LocaleVariant.
+- Blocked preflight produced zero migration/model/run/artifact/tool side effects.
 - T05.13–T05.22: NOT STARTED.
 
 Git commit, PR and CI status must be read directly from GitHub; do not mirror changing GitHub state here.
@@ -82,19 +84,58 @@ NeedHypothesis remains `PROPOSED` unless a later approved task explicitly change
 - Exact repeated execution for one locale must reuse the same writer run/handoff/immutable `journal_draft` Artifact without another model call.
 - No research/tool call is allowed.
 
+## Proven runtime blocker
+
+The first production preflight on clean main proved:
+
+```text
+ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5
+vi-VN LocaleVariant: 0
+en LocaleVariant: 1
+  ID: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
+  status: draft
+  primary_question: How do I know if an original artwork is fairly priced?
+  primary_intent: evaluate
+Migration remained: 20260910_0018
+Writer ContentRuns / handoffs / drafts / ModelCalls / ToolCalls: unchanged at 0
+```
+
+This is a production-data completeness blocker, not an implementation failure.
+
+Canonical O4 already fixes `suggested_role=cluster` and `intent=evaluate`. MG therefore authorizes one bounded missing-record repair only; no architecture or upstream strategy change is required.
+
+Approved minimal `vi-VN` strategy:
+
+```text
+locale: vi-VN
+content_role: cluster
+primary_question: Làm sao để biết giá của một tác phẩm nghệ thuật nguyên bản có hợp lý hay không?
+primary_intent: evaluate
+secondary_intent: null
+primary_query: null
+keyword_notes_json: []
+emotion_arc_json: []
+must_include_json: []
+must_not_claim_json: []
+status: draft
+```
+
+Empty locale-specific fields are intentional because no Vietnamese-specific query/keyword evidence has been approved.
+
 ## Next action
 
-After the T05.11/T05.12 implementation PR is merged, Agent Local executes exactly:
+After the blocker-handoff PR carrying this state is merged, Agent Local executes exactly:
 
-`docs/logs/2026-09-10-ce05-real-o4-bilingual-writers-agent-local-task.md`
+`docs/logs/2026-09-10-ce05-real-o4-vi-locale-repair-and-resume-agent-local-task.md`
 
 Expected sequence:
 
 ```text
-preflight exact vi-VN + en LocaleVariants
-→ migration 20260910_0019
-→ verify exact VI + EN prompt/recipe registry
-→ revalidate accepted Outline + immutable upstream snapshots
+revalidate blocker + immutable upstream
+→ create/reuse exactly one approved vi-VN LocaleVariant
+→ prove only LocaleVariant delta 1 → 2 and no non-target side effects
+→ re-run original bilingual Writer gate from the beginning
+→ migration 20260910_0019 + exact registry verification
 → vi-VN localize run + writer_handoff + real Writer model call + immutable draft
 → en localize run + writer_handoff + independent real Writer model call + immutable draft
 → identical locale reruns prove writer-run/artifact reuse / zero extra model calls
@@ -106,11 +147,14 @@ Do not start T05.13 before the real bilingual draft content gate is explicitly c
 
 ## Current blockers
 
-No implementation blocker known. Real runtime must first prove that the real ContentCase contains exactly one `vi-VN` and one `en` LocaleVariant. If either is missing/ambiguous, Agent Local must stop; it may not create or repair locale metadata on its own.
+- `missing_vi_locale_variant` — proven by real two-locale preflight.
+- Resolution is already bounded in `docs/logs/2026-09-10-ce05-real-o4-vi-locale-repair-and-resume-agent-local-task.md`.
+
+No other implementation/runtime blocker is currently known.
 
 ## Human decision required
 
-None at this moment. Escalate only if real locale metadata or generated drafts expose a genuine product/brand decision that cannot be resolved from the accepted calibration and hard boundaries.
+None at this moment. Escalate only if the existing EN strategy differs from the locked O4 `cluster/evaluate` contract, an existing VI row appears with different semantics, or generated drafts expose a genuine product/brand decision that cannot be resolved from accepted calibration and hard boundaries.
 
 ## Operating constraints
 
