@@ -4,6 +4,15 @@ Owner: **Agent Local**
 
 Status before merge of the T05.14 implementation PR: **INACTIVE**
 
+The prior failed v1 Vietnamese audit eval is an immutable diagnostic. The next
+execution must use the matching v2 generator/evaluator semantics and create or
+reuse only the matching v2 handoff/eval run. A hard-gate assertion returned with
+`support_status=opinion|interpretation` is not a schema blocker: deterministic
+validation normalizes it to `support_status=unsupported` and
+`severity=critical`. A completed audit with that result is persisted as
+`audit_result=fail` and reported `NEEDS CHANGES`, not `BLOCKED`. Exact completed
+v2 reruns remain idempotent. T05.15 remains blocked until T05.14 passes.
+
 ## Objective
 
 Execute T05.14 Assertion Audit locally against the exact immutable real `vi-VN` and `en` revised Journal draft v2 artifacts that passed T05.13.
@@ -132,6 +141,7 @@ Verify read-only before migration/model execution:
 - the exact English Writer run is `waiting_approval`; the known failed Vietnamese Writer run is accepted only for the exact locked source run and v2 draft listed above;
 - each run binds its exact LocaleVariant and the same locked SettingsSnapshot;
 - exact v2 Artifact IDs/versions/hashes match and recompute correctly;
+- the next audit handoff/eval fingerprint binds generator/evaluator semantic v2;
 - both v2 drafts have zero document-level and section-level unresolved factual claims;
 - exact accepted Outline ID/version/hash and support refs still match;
 - exact EvidenceSet v8 remains locked with unchanged hash;

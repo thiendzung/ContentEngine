@@ -236,6 +236,15 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
         assert model.received is not None
         received_segments = cast(list[object], model.received["source_segments"])
         assert len(received_segments) == len(audit_input.segments)
+        audit_policy = cast(dict[str, object], model.received["audit_policy"])
+        requirements = cast(list[str], audit_policy["requirements"])
+        assert {
+            "use_opinion_or_interpretation_types_for_genuine_editorial_guidance_or_judgement",
+            "hard_gate_types_require_factual_or_approved_support",
+            "classify_unsupported_hard_gate_claims_as_unsupported_not_opinion_or_interpretation",
+            "generic_guidance_to_check_current_listing_or_status_is_not_a_concrete_live_fact",
+            "brand_statements_as_motgu_truth_require_approved_evidence_or_originality_support",
+        }.issubset(requirements)
 
         evaluations = list(
             (
@@ -327,13 +336,7 @@ async def test_assertion_audit_accepts_opinion_support_for_interpretation() -> N
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "assertion_type",
-    ["fact", "artist_intent", "visual_observation", "practical_live_information"],
-)
-async def test_assertion_audit_rejects_opinion_support_for_factual_types(
-    assertion_type: str,
-) -> None:
+async def test_assertion_audit_accepts_opinion_support_for_opinion() -> None:
     async with isolated_session() as session:
         fixture, source, audit_input = await _source(session)
         output = _passing_output(audit_input)
@@ -342,34 +345,130 @@ async def test_assertion_audit_rejects_opinion_support_for_factual_types(
         target["assertions"] = [
             {
                 "assertion_text": target["source_text"],
-                "assertion_type": assertion_type,
+                "assertion_type": "opinion",
                 "support_status": "opinion",
                 "severity": "none",
                 "evidence_refs": [],
+                "originality_refs": [],
+                "rationale": "Bounded editorial opinion.",
+            }
+        ]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+
+        assert result.result == "pass"
+        assertion = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "closing:1"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == "opinion"
+        assert assertion.support_status == "opinion"
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_accepts_supported_brand_statement_with_allowed_ref() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "standfirst")
+        evidence_ref = cast(tuple[str, ...], audit_input.segments[1].allowed_evidence_refs)[0]
+        target["assertions"] = [
+            {
+                "assertion_text": target["source_text"],
+                "assertion_type": "brand_statement",
+                "support_status": "supported",
+                "severity": "none",
+                "evidence_refs": [evidence_ref],
+                "originality_refs": [],
+                "rationale": "Supported by the allowed persisted evidence ref.",
+            }
+        ]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+
+        assert result.result == "pass"
+        assertion = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == "brand_statement"
+        assert assertion.support_status == "supported"
+        assert assertion.claim_refs == (audit_input.evidence_claim_refs[evidence_ref],)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("assertion_type", "support_status"),
+    [
+        (assertion_type, support_status)
+        for assertion_type in [
+            "fact",
+            "brand_statement",
+            "artist_intent",
+            "visual_observation",
+            "practical_live_information",
+        ]
+        for support_status in ["opinion", "interpretation"]
+    ],
+)
+async def test_assertion_audit_normalizes_hard_type_nonfactual_support_to_critical_fail(
+    assertion_type: str, support_status: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "standfirst")
+        evidence_ref = audit_input.segments[1].allowed_evidence_refs[0]
+        target["assertions"] = [
+            {
+                "assertion_text": target["source_text"],
+                "assertion_type": assertion_type,
+                "support_status": support_status,
+                "severity": "none",
+                "evidence_refs": [evidence_ref],
                 "originality_refs": [],
                 "rationale": "Must not bypass the hard gate as opinion.",
             }
         ]
 
-        with pytest.raises(AssertionAuditError, match="assertion_audit_model_output_invalid"):
-            await _run_audit(
-                session,
-                fixture=fixture,
-                source=source,
-                model=FakeAuditModel([output]),
-            )
-
-        artifacts = list(
-            (
-                await session.scalars(
-                    select(Artifact).where(
-                        Artifact.run_id == fixture.writer_input.writer_run.id,
-                        Artifact.artifact_type == "assertion_audit",
-                    )
-                )
-            ).all()
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
         )
-        assert artifacts == []
+
+        assert result.result == "fail"
+        assert result.critical_unsupported_count == 1
+        assert result.critical_contradicted_count == 0
+        assert result.evaluation.result == "fail"
+        assertion = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == assertion_type
+        assert assertion.support_status == "unsupported"
+        assert assertion.severity == "critical"
+        assert assertion.evidence_refs == (evidence_ref,)
+        assert assertion.claim_refs == (audit_input.evidence_claim_refs[evidence_ref],)
 
 
 @pytest.mark.asyncio
