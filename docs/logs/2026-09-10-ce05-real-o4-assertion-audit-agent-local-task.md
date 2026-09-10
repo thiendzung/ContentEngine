@@ -5,13 +5,13 @@ Owner: **Agent Local**
 Status before merge of the T05.14 implementation PR: **INACTIVE**
 
 The prior failed v1 Vietnamese audit eval is an immutable diagnostic. The next
-execution must use the matching v2 generator/evaluator semantics and create or
-reuse only the matching v2 handoff/eval run. A hard-gate assertion returned with
+execution must use the matching v3 generator/evaluator semantics and create or
+reuse only the matching v3 handoff/eval run. A hard-gate assertion returned with
 `support_status=opinion|interpretation` is not a schema blocker: deterministic
 validation normalizes it to `support_status=unsupported` and
 `severity=critical`. A completed audit with that result is persisted as
 `audit_result=fail` and reported `NEEDS CHANGES`, not `BLOCKED`. Exact completed
-v2 reruns remain idempotent. T05.15 remains blocked until T05.14 passes.
+v3 reruns remain idempotent. T05.15 remains blocked until T05.14 passes.
 
 ## Objective
 
@@ -29,6 +29,27 @@ For each locale:
 - rerun the identical command and prove exact audit-run/handoff/artifact/evaluation reuse with zero additional ModelCall.
 
 Do not start T05.15 source-copy checking.
+
+## Location-scoped support normalization
+
+The Assertion Audit generator is `ce05.journal_assertion_audit.v3` and the
+deterministic hard-gate evaluator is `ce05.assertion_audit.hard_gate.v3`.
+`ASSERTION_AUDIT_SCHEMA_VERSION` remains `1` because the persisted output shape
+is unchanged.
+
+For every model Evidence/Originality reference, deterministic validation first
+performs the existing syntactic normalization and then intersects the result
+with the exact `segment.allowed_evidence_refs` or
+`segment.allowed_originality_refs`. Every out-of-location reference is
+discarded and is never mapped to a Claim or persisted as valid support. When a
+model returns `support_status=supported` but no valid location-scoped support
+remains, deterministic validation changes it to `unsupported`.
+
+The existing v2 hard-type rule remains: for `fact`, `brand_statement`,
+`artist_intent`, `visual_observation` and `practical_live_information`,
+`support_status=opinion|interpretation` normalizes to
+`support_status=unsupported` and `severity=critical`. The completed audit then
+fails through the hard gate rather than becoming a schema/runtime blocker.
 
 ## Local repository synchronization — mandatory first step
 
@@ -141,7 +162,7 @@ Verify read-only before migration/model execution:
 - the exact English Writer run is `waiting_approval`; the known failed Vietnamese Writer run is accepted only for the exact locked source run and v2 draft listed above;
 - each run binds its exact LocaleVariant and the same locked SettingsSnapshot;
 - exact v2 Artifact IDs/versions/hashes match and recompute correctly;
-- the next audit handoff/eval fingerprint binds generator/evaluator semantic v2;
+- the next audit handoff/eval fingerprint binds generator/evaluator semantic v3;
 - both v2 drafts have zero document-level and section-level unresolved factual claims;
 - exact accepted Outline ID/version/hash and support refs still match;
 - exact EvidenceSet v8 remains locked with unchanged hash;
@@ -340,8 +361,8 @@ STOP and report `BLOCKED` if:
 - any locked ID/version/hash mismatches;
 - either source v2 is mutated/stale or has unresolved claims;
 - provider/model/prompt/recipe is missing, stale or ambiguous;
-- any Evidence ref is outside the locked EvidenceSet;
-- Claim mapping for a referenced Evidence row is missing;
+- any retained Evidence ref is outside the locked EvidenceSet;
+- Claim mapping for a retained Evidence row is missing;
 - the model requests research/tool access;
 - sibling/translation input appears;
 - bounded schema/coverage validation attempts are exhausted;

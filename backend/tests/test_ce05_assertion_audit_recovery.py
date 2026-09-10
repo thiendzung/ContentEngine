@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import copy
+from uuid import uuid4
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,16 +24,20 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
     create_cli_assertion_audit_model_port,
 )
 from app.modules.content_engine.journal.assertion_audit_execution import (
+    _handoff_payload,
     prepare_assertion_audit_run,
 )
+from app.modules.content_engine.journal.writer import _canonical_hash
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import (
     Artifact,
+    ContentRun,
     ContextManifest,
     ModelCall,
     QualityEvaluation,
     StepRun,
+    utc_now,
 )
 from app.modules.harness.persistence import (
     InvalidStateTransitionError,
@@ -255,6 +262,63 @@ async def test_assertion_audit_failed_eval_is_preserved_and_retry_uses_new_eval_
         assert retry.audit_run_reused is False
         with pytest.raises(InvalidStateTransitionError):
             await transition_run(session, run_id=execution.audit_run.id, status="running")
+
+
+@pytest.mark.asyncio
+async def test_v2_failed_eval_diagnostic_is_not_reused_by_v3() -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, source_input = await _source(session)
+        await _mark_source_waiting(session, source_input=source_input)
+        source_run = source_input.writer_input.writer_run
+        settings_snapshot = await session.get(SettingsSnapshot, source_run.settings_snapshot_id)
+        assert settings_snapshot is not None
+        task_key = f"assertion_audit_{source_input.writer_input.locale}"
+        legacy_payload = copy.deepcopy(
+            _handoff_payload(
+                source_input=source_input,
+                settings_snapshot=settings_snapshot,
+                task_key=task_key,
+            )
+        )
+        generator = legacy_payload["generator"]
+        assert isinstance(generator, dict)
+        generator["version"] = "ce05.journal_assertion_audit.v2"
+        legacy_run = ContentRun(
+            id=uuid4(),
+            project_id=source_run.project_id,
+            content_case_id=source_run.content_case_id,
+            locale_variant_id=source_input.writer_input.locale_variant.id,
+            content_item_id=source_run.content_item_id,
+            run_mode="eval",
+            status="failed",
+            current_step=task_key,
+            settings_snapshot_id=source_run.settings_snapshot_id,
+            started_at=utc_now(),
+            failure_code="legacy_assertion_audit_failed",
+        )
+        session.add(legacy_run)
+        await session.flush()
+        legacy_handoff = Artifact(
+            run_id=legacy_run.id,
+            artifact_type="assertion_audit_handoff",
+            locale=source_input.writer_input.locale,
+            version=1,
+            content_json=legacy_payload,
+            content_hash=_canonical_hash(legacy_payload),
+        )
+        session.add(legacy_handoff)
+        await session.flush()
+
+        execution = await _prepare(session, source_input=source_input)
+
+        assert execution.audit_run.id != legacy_run.id
+        assert execution.audit_run.status == "pending"
+        assert execution.handoff.id != legacy_handoff.id
+        assert (
+            execution.handoff.content_json["generator"]["version"]
+            == ASSERTION_AUDIT_GENERATOR_VERSION
+        )
+        assert execution.audit_run_reused is False
 
 
 @pytest.mark.asyncio

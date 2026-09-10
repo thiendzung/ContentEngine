@@ -18,7 +18,8 @@ from test_ce05_writer import (
 
 from app.modules.content_engine.journal.assertion_audit import (
     ASSERTION_AUDIT_EVALUATOR_KEY,
-    AssertionAuditError,
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
+    ASSERTION_AUDIT_GENERATOR_VERSION,
     AssertionAuditGenerator,
     AssertionAuditInput,
     load_assertion_audit_input,
@@ -230,6 +231,11 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
         assert second.model_attempts == 0
         assert second.artifact.id == first.artifact.id
         assert second.evaluation.id == first.evaluation.id
+        assert (
+            first.artifact.content_json["generator"]["version"]
+            == ASSERTION_AUDIT_GENERATOR_VERSION
+        )
+        assert first.evaluation.evaluator_version == ASSERTION_AUDIT_EVALUATOR_VERSION
         assert first.critical_unsupported_count == 0
         assert first.critical_contradicted_count == 0
         assert model.calls == 1
@@ -244,6 +250,9 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
             "classify_unsupported_hard_gate_claims_as_unsupported_not_opinion_or_interpretation",
             "generic_guidance_to_check_current_listing_or_status_is_not_a_concrete_live_fact",
             "brand_statements_as_motgu_truth_require_approved_evidence_or_originality_support",
+            "use_only_support_refs_allowed_for_the_exact_source_segment",
+            "discard_out_of_location_support_refs_deterministically",
+            "supported_without_valid_location_support_becomes_unsupported",
         }.issubset(requirements)
 
         evaluations = list(
@@ -472,7 +481,7 @@ async def test_assertion_audit_normalizes_hard_type_nonfactual_support_to_critic
 
 
 @pytest.mark.asyncio
-async def test_assertion_audit_rejects_support_ref_outside_exact_location() -> None:
+async def test_assertion_audit_discards_out_of_location_originality_ref() -> None:
     async with isolated_session() as session:
         fixture, source, audit_input = await _source(session)
         output = _passing_output(audit_input)
@@ -481,26 +490,123 @@ async def test_assertion_audit_rejects_support_ref_outside_exact_location() -> N
         assertion = cast(list[dict[str, object]], target["assertions"])[0]
         assertion["assertion_type"] = "fact"
         assertion["support_status"] = "supported"
+        assertion["originality_refs"] = ["docs/other-location.md#ORIG-01"]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+        audited = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "closing:1"
+            for assertion in segment.assertions
+        )
+        assert result.result == "fail"
+        assert result.critical_unsupported_count == 1
+        assert audited.support_status == "unsupported"
+        assert audited.severity == "critical"
+        assert audited.originality_refs == ()
+        assert audited.claim_refs == ()
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_discards_out_of_location_evidence_ref() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "standfirst")
+        assertion = cast(list[dict[str, object]], target["assertions"])[0]
         assertion["evidence_refs"] = ["00000000-0000-0000-0000-000000000000"]
 
-        with pytest.raises(AssertionAuditError, match="assertion_audit_model_output_invalid"):
-            await _run_audit(
-                session,
-                fixture=fixture,
-                source=source,
-                model=FakeAuditModel([output]),
-            )
-        artifacts = list(
-            (
-                await session.scalars(
-                    select(Artifact).where(
-                        Artifact.run_id == fixture.writer_input.writer_run.id,
-                        Artifact.artifact_type == "assertion_audit",
-                    )
-                )
-            ).all()
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
         )
-        assert artifacts == []
+        audited = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert result.result == "fail"
+        assert result.critical_unsupported_count == 1
+        assert audited.support_status == "unsupported"
+        assert audited.severity == "critical"
+        assert audited.evidence_refs == ()
+        assert audited.claim_refs == ()
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_keeps_valid_ref_and_discards_mixed_invalid_refs() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "standfirst")
+        assertion = cast(list[dict[str, object]], target["assertions"])[0]
+        valid_ref = audit_input.segments[1].allowed_evidence_refs[0]
+        assertion["evidence_refs"] = [valid_ref, "00000000-0000-0000-0000-000000000000"]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+        audited = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert result.result == "pass"
+        assert audited.support_status == "supported"
+        assert audited.evidence_refs == (valid_ref,)
+        assert audited.claim_refs == (audit_input.evidence_claim_refs[valid_ref],)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("support_status", ["unsupported", "contradicted"])
+async def test_assertion_audit_invalid_refs_cannot_soften_unsupported_or_contradicted(
+    support_status: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "standfirst")
+        assertion = cast(list[dict[str, object]], target["assertions"])[0]
+        assertion["support_status"] = support_status
+        assertion["evidence_refs"] = ["00000000-0000-0000-0000-000000000000"]
+        assertion["originality_refs"] = ["docs/other-location.md#ORIG-01"]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+        audited = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert audited.support_status == support_status
+        assert audited.evidence_refs == ()
+        assert audited.originality_refs == ()
+        assert audited.claim_refs == ()
+        if support_status == "unsupported":
+            assert result.critical_unsupported_count == 1
+        else:
+            assert result.critical_contradicted_count == 1
+        assert result.result == "fail"
 
 
 @pytest.mark.asyncio

@@ -35,9 +35,9 @@ from app.modules.harness.models import (
 )
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet
 
-ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v2"
+ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v3"
 ASSERTION_AUDIT_SCHEMA_VERSION = 1
-ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v2"
+ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v3"
 ASSERTION_AUDIT_EVALUATOR_KEY = "assertion_audit_hard_gate"
 
 _ASSERTION_TYPES = {
@@ -419,6 +419,11 @@ async def load_assertion_audit_input(
                 "classify_unsupported_hard_gate_claims_as_unsupported_not_opinion_or_interpretation",
                 "generic_guidance_to_check_current_listing_or_status_is_not_a_concrete_live_fact",
                 "brand_statements_as_motgu_truth_require_approved_evidence_or_originality_support",
+                "use_only_support_refs_allowed_for_the_exact_source_segment",
+                "return_no_support_refs_when_no_exact_location_support_applies",
+                "discard_out_of_location_support_refs_deterministically",
+                "supported_without_valid_location_support_becomes_unsupported",
+                "generic_reader_guidance_uses_opinion_or_interpretation_without_unrelated_support_refs",
                 "never_add_research_or_new_facts",
                 "critical_unsupported_or_contradicted_assertions_fail",
             ],
@@ -480,21 +485,15 @@ def _validate_assertion(
         )
     except WriterGenerationError as exc:
         raise AssertionAuditError(exc.code) from exc
-    if any(ref not in segment.allowed_evidence_refs for ref in evidence_refs):
-        raise AssertionAuditError(
-            "assertion_audit_evidence_ref_outside_location",
-            segment.segment_id,
-        )
-    if any(ref not in segment.allowed_originality_refs for ref in originality_refs):
-        raise AssertionAuditError(
-            "assertion_audit_originality_ref_outside_location",
-            segment.segment_id,
-        )
+    evidence_refs = tuple(ref for ref in evidence_refs if ref in segment.allowed_evidence_refs)
+    originality_refs = tuple(
+        ref for ref in originality_refs if ref in segment.allowed_originality_refs
+    )
     if assertion_type in _HARD_FAIL_TYPES and support_status in {"opinion", "interpretation"}:
         support_status = "unsupported"
         model_severity = "critical"
     if support_status == "supported" and not evidence_refs and not originality_refs:
-        raise AssertionAuditError("assertion_audit_supported_without_ref", segment.segment_id)
+        support_status = "unsupported"
     if support_status == "interpretation" and assertion_type not in {
         "interpretation",
         "brand_statement",
