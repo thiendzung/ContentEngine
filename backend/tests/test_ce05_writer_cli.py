@@ -17,7 +17,7 @@ def test_real_o4_writer_cli_help() -> None:
 
     assert completed.returncode == 0, completed.stderr
     for flag in (
-        "--run-id",
+        "--source-run-id",
         "--outline-artifact-id",
         "--outline-artifact-version",
         "--outline-artifact-hash",
