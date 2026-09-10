@@ -24,6 +24,7 @@ from app.modules.content_engine.journal.writer import (
     WriterGenerator,
     WriterInput,
     WriterModelPort,
+    ensure_writer_run,
     load_writer_input,
 )
 from app.modules.content_engine.journal.writer_agent_bridge import (
@@ -31,14 +32,14 @@ from app.modules.content_engine.journal.writer_agent_bridge import (
     create_cli_writer_model_port,
     writer_registry_config,
 )
-from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentCapability,
     AgentRunnerRegistry,
     AgentRunRequest,
     AgentRunResult,
 )
-from app.modules.harness.models import ContextManifest, ModelCall, StepRun
+from app.modules.harness.models import ContentRun, ContextManifest, ModelCall, StepRun
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 from app.modules.system.settings_service import settings_hash
@@ -55,11 +56,6 @@ class FakeWriterModel:
         self.calls += 1
         self.received = copy.deepcopy(input_bundle)
         return self.outputs[min(self.calls - 1, len(self.outputs) - 1)]
-
-
-class RoutedWriterModel(FakeWriterModel):
-    def resolved_model_identity(self) -> tuple[str, str]:
-        return "codex_cli", "test-model"
 
 
 class FakeWriterRunner:
@@ -111,13 +107,62 @@ async def _outline_result(
         fixture,
         FakeOutlineModel([_outline_payload(fixture.bundle)]),
     )
+    fixture.run.status = "waiting_approval"
+    await session.flush()
     return fixture, result
+
+
+async def _ensure_variant(
+    session: AsyncSession,
+    *,
+    run: ContentRun,
+    locale: str,
+) -> LocaleVariant:
+    existing = await session.scalar(
+        select(LocaleVariant).where(
+            LocaleVariant.content_case_id == run.content_case_id,
+            LocaleVariant.locale == locale,
+        )
+    )
+    if existing is not None:
+        return existing
+    variant = LocaleVariant(
+        content_case_id=run.content_case_id,
+        locale=locale,
+        content_role="cluster",
+        primary_question=(
+            "Người mua lần đầu nên xem xét điều gì khi hiểu giá một tác phẩm nghệ thuật?"
+            if locale == "vi-VN"
+            else "What should a first-time buyer examine when understanding an artwork price?"
+        ),
+        primary_intent="evaluate",
+        secondary_intent="trust",
+        primary_query="giá tác phẩm nghệ thuật" if locale == "vi-VN" else "price of art",
+        keyword_notes_json=[],
+        emotion_arc_json=["uncertainty", "clarity", "confidence"],
+        must_include_json=["answer early", "calm questions"],
+        must_not_claim_json=["universal fair price", "investment promise"],
+        status="draft",
+    )
+    session.add(variant)
+    await session.flush()
+    return variant
 
 
 async def _writer_fixture(session: AsyncSession, *, locale: str) -> WriterFixture:
     outline_fixture, outline_result = await _outline_result(session)
+    await _ensure_variant(session, run=outline_fixture.run, locale=locale)
+    handoff = await ensure_writer_run(
+        session,
+        source_run_id=outline_fixture.run.id,
+        outline_artifact_id=outline_result.artifact.id,
+        expected_outline_version=outline_result.artifact.version,
+        expected_outline_hash=outline_result.artifact.content_hash,
+        locale=locale,
+    )
     writer_input = await load_writer_input(
         session,
+        writer_run_id=handoff.run.id,
         outline_artifact_id=outline_result.artifact.id,
         expected_outline_version=outline_result.artifact.version,
         expected_outline_hash=outline_result.artifact.content_hash,
@@ -125,10 +170,11 @@ async def _writer_fixture(session: AsyncSession, *, locale: str) -> WriterFixtur
     )
     task_key = f"writer-test-{locale}"
     step = StepRun(
-        run_id=outline_result.artifact.run_id,
+        run_id=handoff.run.id,
         step_key=task_key,
         attempt=1,
         status="running",
+        input_artifact_refs_json=[str(handoff.artifact.id), str(outline_result.artifact.id)],
     )
     session.add(step)
     await session.flush()
@@ -136,7 +182,7 @@ async def _writer_fixture(session: AsyncSession, *, locale: str) -> WriterFixtur
     recipe_version = f"writer-test-recipe-{locale}:v1"
     manifest = await build_context_manifest(
         session,
-        run_id=outline_result.artifact.run_id,
+        run_id=handoff.run.id,
         step_run_id=step.id,
         inputs=ContextInputs(
             prompt_version=prompt_version,
@@ -212,6 +258,7 @@ async def _generate_draft(
 ) -> WriterGenerationResult:
     return await WriterGenerator(max_attempts=1).generate_draft(
         session,
+        writer_run_id=fixture.writer_input.writer_run.id,
         outline_artifact_id=fixture.outline_result.artifact.id,
         expected_outline_version=fixture.outline_result.artifact.version,
         expected_outline_hash=fixture.outline_result.artifact.content_hash,
@@ -226,7 +273,7 @@ async def _generate_draft(
 
 
 @pytest.mark.asyncio
-async def test_writer_binds_outline_support_and_reuses_exact_locale_artifact() -> None:
+async def test_writer_binds_locale_outline_support_and_reuses_exact_artifact() -> None:
     async with isolated_session() as session:
         fixture = await _writer_fixture(session, locale="vi-VN")
         model = FakeWriterModel([_draft_payload(fixture.writer_input, "vi-VN")])
@@ -237,10 +284,13 @@ async def test_writer_binds_outline_support_and_reuses_exact_locale_artifact() -
         assert second.reused is True
         assert second.model_attempts == 0
         assert first.artifact.id == second.artifact.id
-        assert first.artifact.content_hash == second.artifact.content_hash
-        assert first.draft.locale == "vi-VN"
+        assert first.artifact.run_id == fixture.writer_input.writer_run.id
+        assert first.artifact.run_id != fixture.outline_result.artifact.run_id
+        assert first.artifact.locale == "vi-VN"
+        assert fixture.writer_input.locale_variant.locale == "vi-VN"
         assert model.calls == 1
         assert model.received is not None
+        assert cast(dict[str, object], model.received["locale_variant"])["locale"] == "vi-VN"
         serialized = json.dumps(model.received, ensure_ascii=False, sort_keys=True)
         assert "other_locale_draft" not in serialized
         assert "translation_source" not in serialized
@@ -248,71 +298,103 @@ async def test_writer_binds_outline_support_and_reuses_exact_locale_artifact() -
 
 
 @pytest.mark.asyncio
-async def test_vi_and_en_are_independent_siblings_from_same_outline() -> None:
+async def test_vi_and_en_use_distinct_locale_runs_from_same_outline() -> None:
     async with isolated_session() as session:
         outline_fixture, outline_result = await _outline_result(session)
-        inputs: dict[str, WriterInput] = {}
-        results: dict[str, WriterGenerationResult] = {}
-        models: dict[str, FakeWriterModel] = {}
         for locale in ("vi-VN", "en"):
-            writer_input = await load_writer_input(
-                session,
-                outline_artifact_id=outline_result.artifact.id,
-                expected_outline_version=outline_result.artifact.version,
-                expected_outline_hash=outline_result.artifact.content_hash,
-                locale=locale,
-            )
-            step = StepRun(
-                run_id=outline_result.artifact.run_id,
-                step_key=f"sibling-{locale}",
-                attempt=1,
-                status="running",
-            )
-            session.add(step)
-            await session.flush()
-            manifest = await build_context_manifest(
-                session,
-                run_id=outline_result.artifact.run_id,
-                step_run_id=step.id,
-                inputs=ContextInputs(
-                    prompt_version=f"sibling-{locale}:v1",
-                    recipe_version=f"sibling-recipe-{locale}:v1",
-                    evidence_set_id=outline_fixture.bundle.evidence_set_id,
-                    originality_pack_id=outline_fixture.bundle.originality_pack_id,
-                ),
-            )
-            model = FakeWriterModel([_draft_payload(writer_input, locale)])
-            result = await WriterGenerator(max_attempts=1).generate_draft(
-                session,
-                outline_artifact_id=outline_result.artifact.id,
-                expected_outline_version=outline_result.artifact.version,
-                expected_outline_hash=outline_result.artifact.content_hash,
-                locale=locale,
-                model=model,
-                provider="fixture-provider",
-                model_name="fixture-model",
-                context_manifest_id=manifest.id,
-                prompt_version=f"sibling-{locale}:v1",
-                recipe_version=f"sibling-recipe-{locale}:v1",
-            )
-            inputs[locale] = writer_input
-            results[locale] = result
-            models[locale] = model
+            await _ensure_variant(session, run=outline_fixture.run, locale=locale)
 
-        assert results["vi-VN"].artifact.id != results["en"].artifact.id
-        assert results["vi-VN"].artifact.locale == "vi-VN"
-        assert results["en"].artifact.locale == "en"
-        assert inputs["vi-VN"].outline_artifact.id == inputs["en"].outline_artifact.id
-        assert models["vi-VN"].received is not None
-        assert models["en"].received is not None
-        assert models["vi-VN"].received["journal_outline_ref"] == models["en"].received[
-            "journal_outline_ref"
-        ]
-        assert models["vi-VN"].received["outline"] == models["en"].received["outline"]
-        assert models["vi-VN"].received["evidence_set"] == models["en"].received["evidence_set"]
-        assert models["vi-VN"].received["originality_pack"] == models["en"].received[
-            "originality_pack"
-        ]
+        inputs: dict[str, WriterInput] = {}
+        for locale in ("vi-VN", "en"):
+            handoff = await ensure_writer_run(
+                session,
+                source_run_id=outline_fixture.run.id,
+                outline_artifact_id=outline_result.artifact.id,
+                expected_outline_version=outline_result.artifact.version,
+                expected_outline_hash=outline_result.artifact.content_hash,
+                locale=locale,
+            )
+            inputs[locale] = await load_writer_input(
+                session,
+                writer_run_id=handoff.run.id,
+                outline_artifact_id=outline_result.artifact.id,
+                expected_outline_version=outline_result.artifact.version,
+                expected_outline_hash=outline_result.artifact.content_hash,
+                locale=locale,
+            )
+
+        vi = inputs["vi-VN"]
+        en = inputs["en"]
+        assert vi.writer_run.id != en.writer_run.id
+        assert vi.writer_run.id != outline_fixture.run.id
+        assert en.writer_run.id != outline_fixture.run.id
+        assert vi.writer_run.run_mode == en.writer_run.run_mode == "localize"
+        assert vi.writer_run.settings_snapshot_id == outline_fixture.run.settings_snapshot_id
+        assert en.writer_run.settings_snapshot_id == outline_fixture.run.settings_snapshot_id
+        assert vi.locale_variant.id != en.locale_variant.id
+        assert vi.locale_variant.locale == "vi-VN"
+        assert en.locale_variant.locale == "en"
+        assert vi.model_input["journal_outline_ref"] == en.model_input["journal_outline_ref"]
+        assert vi.model_input["outline"] == en.model_input["outline"]
+        assert vi.model_input["evidence_set"] == en.model_input["evidence_set"]
+        assert vi.model_input["originality_pack"] == en.model_input["originality_pack"]
+        assert vi.model_input["locale_variant"] != en.model_input["locale_variant"]
+
+        second_vi = await ensure_writer_run(
+            session,
+            source_run_id=outline_fixture.run.id,
+            outline_artifact_id=outline_result.artifact.id,
+            expected_outline_version=outline_result.artifact.version,
+            expected_outline_hash=outline_result.artifact.content_hash,
+            locale="vi-VN",
+        )
+        assert second_vi.created is False
+        assert second_vi.run.id == vi.writer_run.id
+
+
+@pytest.mark.asyncio
+async def test_missing_target_locale_variant_fails_before_writer_run_creation() -> None:
+    async with isolated_session() as session:
+        outline_fixture, outline_result = await _outline_result(session)
+        existing_vi = await session.scalar(
+            select(LocaleVariant).where(
+                LocaleVariant.content_case_id == outline_fixture.run.content_case_id,
+                LocaleVariant.locale == "vi-VN",
+            )
+        )
+        assert existing_vi is None
+        before = len(
+            list(
+                (
+                    await session.scalars(
+                        select(ContentRun).where(
+                            ContentRun.content_case_id == outline_fixture.run.content_case_id
+                        )
+                    )
+                ).all()
+            )
+        )
+        with pytest.raises(WriterGenerationError, match="writer_locale_variant_missing"):
+            await ensure_writer_run(
+                session,
+                source_run_id=outline_fixture.run.id,
+                outline_artifact_id=outline_result.artifact.id,
+                expected_outline_version=outline_result.artifact.version,
+                expected_outline_hash=outline_result.artifact.content_hash,
+                locale="vi-VN",
+            )
+        after = len(
+            list(
+                (
+                    await session.scalars(
+                        select(ContentRun).where(
+                            ContentRun.content_case_id == outline_fixture.run.content_case_id
+                        )
+                    )
+                ).all()
+            )
+        )
+        assert after == before
 
 
 @pytest.mark.asyncio
@@ -338,6 +420,7 @@ async def test_writer_stale_outline_fails_before_model_call() -> None:
         with pytest.raises(WriterGenerationError, match="writer_outline_snapshot_mismatch"):
             await WriterGenerator(max_attempts=1).generate_draft(
                 session,
+                writer_run_id=fixture.writer_input.writer_run.id,
                 outline_artifact_id=fixture.outline_result.artifact.id,
                 expected_outline_version=fixture.outline_result.artifact.version,
                 expected_outline_hash="0" * 64,
@@ -353,16 +436,9 @@ async def test_writer_stale_outline_fails_before_model_call() -> None:
 
 
 @pytest.mark.asyncio
-async def test_writer_bridge_uses_locale_registry_and_records_modelcall() -> None:
+async def test_writer_bridge_uses_locale_registry_and_writer_run_modelcall() -> None:
     async with isolated_session() as session:
-        outline_fixture, outline_result = await _outline_result(session)
-        writer_input = await load_writer_input(
-            session,
-            outline_artifact_id=outline_result.artifact.id,
-            expected_outline_version=outline_result.artifact.version,
-            expected_outline_hash=outline_result.artifact.content_hash,
-            locale="en",
-        )
+        fixture = await _writer_fixture(session, locale="en")
         config = writer_registry_config("en")
         prompt = await active_prompt_definition(session, prompt_key=config.prompt_key)
         recipe = await active_recipe_definition(
@@ -375,22 +451,26 @@ async def test_writer_bridge_uses_locale_registry_and_records_modelcall() -> Non
         prompt_version = f"{prompt.prompt_key}:v{prompt.version}"
         recipe_version = f"{recipe.recipe_key}:v{recipe.version}"
         step = StepRun(
-            run_id=outline_result.artifact.run_id,
+            run_id=fixture.writer_input.writer_run.id,
             step_key=config.task_key,
             attempt=1,
             status="running",
+            input_artifact_refs_json=[
+                str(fixture.writer_input.handoff_artifact.id),
+                str(fixture.outline_result.artifact.id),
+            ],
         )
         session.add(step)
         await session.flush()
         manifest = await build_context_manifest(
             session,
-            run_id=outline_result.artifact.run_id,
+            run_id=fixture.writer_input.writer_run.id,
             step_run_id=step.id,
             inputs=ContextInputs(
                 prompt_version=prompt_version,
                 recipe_version=recipe_version,
-                evidence_set_id=outline_fixture.bundle.evidence_set_id,
-                originality_pack_id=outline_fixture.bundle.originality_pack_id,
+                evidence_set_id=fixture.outline_fixture.bundle.evidence_set_id,
+                originality_pack_id=fixture.outline_fixture.bundle.originality_pack_id,
             ),
         )
         route_settings = {
@@ -400,39 +480,41 @@ async def test_writer_bridge_uses_locale_registry_and_records_modelcall() -> Non
             },
         }
         snapshot = SettingsSnapshot(
-            id=outline_fixture.run.settings_snapshot_id,
-            project_id=outline_fixture.run.project_id,
+            id=fixture.writer_input.writer_run.settings_snapshot_id,
+            project_id=fixture.writer_input.writer_run.project_id,
             resolved_settings_json=route_settings,
             source_version_refs_json=["writer-test"],
             content_hash=settings_hash(route_settings),
         )
-        fake = FakeWriterRunner(_draft_payload(writer_input, "en"))
+        fake = FakeWriterRunner(_draft_payload(fixture.writer_input, "en"))
         registry = AgentRunnerRegistry()
         registry.register("codex_cli", fake)
         port = await create_cli_writer_model_port(
             session,
-            run_id=outline_fixture.run.id,
+            run_id=fixture.writer_input.writer_run.id,
             settings_snapshot=snapshot,
             context_manifest_id=manifest.id,
             runner_registry=registry,
             locale="en",
         )
-        result = await port.generate(input_bundle=writer_input.model_input, attempt=1)
+        result = await port.generate(input_bundle=fixture.writer_input.model_input, attempt=1)
 
-        assert result == _draft_payload(writer_input, "en")
+        assert result == _draft_payload(fixture.writer_input, "en")
         assert len(fake.requests) == 1
         request = fake.requests[0]
         assert request.provider == "codex_cli"
         assert request.model == "test-model"
         assert set(request.working_context) == {"writer_model_input"}
-        assert "journal_draft" not in json.dumps(request.working_context, sort_keys=True)
+        writer_context = cast(dict[str, object], request.working_context["writer_model_input"])
+        assert cast(dict[str, object], writer_context["locale_variant"])["locale"] == "en"
         call = await session.scalar(
             select(ModelCall).where(
-                ModelCall.run_id == outline_fixture.run.id,
+                ModelCall.run_id == fixture.writer_input.writer_run.id,
                 ModelCall.task_key == config.task_key,
             )
         )
         assert call is not None
+        assert call.run_id != fixture.outline_fixture.run.id
         assert call.status == "completed"
         assert call.runtime_metadata_json is not None
         assert call.runtime_metadata_json["route_reuse"] == WRITER_ROUTE_TASK_KEY
