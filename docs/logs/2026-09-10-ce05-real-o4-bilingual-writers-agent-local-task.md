@@ -139,8 +139,8 @@ First execution per locale:
 - `reused=false`;
 - dedicated StepRun completed (`writer_vi` or `writer_en`);
 - dedicated ContextManifest with exact prompt/recipe versions;
-- dedicated completed ModelCall on the locale Writer run;
-- same provider/model route;
+- exactly `model_attempts` completed ModelCall rows on the locale Writer run (`1..2`);
+- same provider/model route for every attempt;
 - locale Writer run returns to `waiting_approval`;
 - source O4 run remains `waiting_approval` and unchanged.
 
@@ -235,8 +235,8 @@ locale Writer ContentRuns: 0 -> 2
 writer_handoff artifacts:  0 -> 2
 journal_draft vi-VN:       0 -> 1
 journal_draft en:          0 -> 1
-writer_vi ModelCall:       0 -> 1
-writer_en ModelCall:       0 -> 1
+writer_vi ModelCalls:      0 -> 1..2 (must equal vi-VN model_attempts)
+writer_en ModelCalls:      0 -> 1..2 (must equal en model_attempts)
 ToolCall:                   0 -> 0
 source O4 ContentRun:       unchanged
 ```
