@@ -13,7 +13,7 @@ Maximum active work:
 + 1 delegated local verification task
 ```
 
-Do not activate the next task until the current semantic state is correct in the same PR that completes the current task.
+Do not activate the next task until the current semantic state is correct in the same PR where that transition is knowable. Runtime/human outcomes may require one intentional follow-up state transition after evidence exists.
 
 ---
 
@@ -85,37 +85,55 @@ Prove one real MOTGU Journal candidate end-to-end before adding more infrastruct
 - [x] T05.8 Angle generator structured output implementation.
 - [x] T05.9 Angle approval state/runtime bridge implementation.
 
-T05.8–T05.9 implementation is merged. No real O4 Angle result has yet passed the content gate.
+### Real O4 Angle Gate — PASS FOR HUMAN SELECTION
 
-### Current gate — REAL O4 ANGLE GATE
+Real runtime evidence:
 
-Owner: **MG Content Engine**.
+- [x] real O4 ContentRun created through the approved path;
+- [x] real `journal_input_bundle` created;
+- [x] exact locked EvidenceSet/snapshot binding verified;
+- [x] approved real model route used;
+- [x] exact sanitized model input provenance retained;
+- [x] model output provenance retained;
+- [x] 4 schema-valid, materially usable Angle candidates produced;
+- [x] important factual premises bounded by allowed evidence;
+- [x] no invented MOTGU/business fact identified in MG gate review;
+- [x] Angles address the real first-time-buyer price question;
+- [x] no generic filler blocker identified;
+- [x] MG review = PASS FOR HUMAN SELECTION;
+- [x] Founder selected one exact Angle without infrastructure/code changes.
 
-Delegated local execution: **Agent Local** using:
+Founder decision on 2026-09-10: **`angle-01`**.
 
-`docs/logs/2026-09-10-ce05-real-o4-angle-gate-agent-local-task.md`
+Selected working title: `A First-Time Buyer’s Checklist for Understanding an Artwork’s Price`.
 
-Gate is PASS only when all are true:
+Decision/evidence log:
 
-- [ ] real O4 ContentRun created through the approved path;
-- [ ] real `journal_input_bundle` created;
-- [ ] exact locked EvidenceSet/snapshot binding verified;
-- [ ] approved real model route used;
-- [ ] exact sanitized model input provenance retained;
-- [ ] model output provenance retained;
-- [ ] 3–5 materially different Angles produced;
-- [ ] important factual premises are grounded;
-- [ ] zero invented MOTGU/business fact;
-- [ ] Angles address the actual reader question/problem;
-- [ ] no generic AI filler;
-- [ ] MG review = PASS;
-- [ ] Founder can choose one exact Angle without infrastructure/code changes.
+`docs/logs/2026-09-10-ce05-real-o4-angle-selection.md`
 
-A technically successful model call with weak Angles is **FAIL**, not PASS.
+### Current gate — ANGLE-01 APPROVAL PERSISTENCE
 
-### Critical path after Angle selection
+Owner: **Agent Local**, exact delegated runtime/database task only.
 
-- [ ] T05.10 Outline with evidence mapping.
+Task:
+
+`docs/logs/2026-09-10-ce05-angle01-approval-agent-local-task.md`
+
+Gate is PASS only when:
+
+- [ ] exactly one AngleApproval exists for Angle artifact `854d4f34-22c0-4a9e-8d00-0f7f9461036d` v1 / exact hash;
+- [ ] selected candidate is exactly `angle-01`;
+- [ ] selected candidate hash is persisted and revalidated;
+- [ ] `approved_by=founder` with the locked approval reason;
+- [ ] approved-angle handoff verifies the same artifact/candidate snapshot;
+- [ ] identical retry reuses the same approval ID;
+- [ ] no model/provider/tool call is added;
+- [ ] EvidenceSet, OriginalityPack and NeedHypothesis remain unchanged;
+- [ ] MG reviews the persistence evidence before T05.10 starts.
+
+### Critical path after approval persistence
+
+- [ ] T05.10 Outline with evidence mapping. **PREPARED / BLOCKED ON ANGLE APPROVAL**
 - [ ] T05.11 Draft writer `vi-VN`.
 - [ ] T05.12 Draft writer `en` independently from Vietnamese.
 - [ ] T05.13 Review/revise bounded loop.
@@ -128,6 +146,26 @@ A technically successful model call with weak Angles is **FAIL**, not PASS.
 - [ ] T05.20 Human Review Surface.
 - [ ] T05.21 CE05 Metrics Baseline.
 - [ ] T05.22 CE05 Closeout.
+
+Prepared T05.10 contract:
+
+`docs/logs/2026-09-10-ce05-t05-10-outline-mg-task.md`
+
+### Immediate sequence
+
+```text
+Founder selected angle-01
+→ persist exact AngleApproval
+→ verify approved-angle handoff
+→ MG closes approval gate
+→ T05.10 Outline
+→ T05.11 + T05.12 VI/EN drafts
+→ T05.13 Review/Revise
+→ T05.14 Assertion Audit
+→ T05.15 source-copy check
+→ T05.16 Final Package
+→ T05.17 ONE REAL JOURNAL PASS
+```
 
 ### Critical-path rule
 
@@ -142,19 +180,9 @@ Until T05.17 reaches one real Journal candidate:
 - [ ] no automated merge;
 - [ ] no CI optimization unless CI itself becomes a proven blocker.
 
-### Immediate sequence
+Backlog after T05.17 unless proven blocking earlier:
 
-```text
-REAL O4 ANGLE GATE
-→ Founder selects exact Angle
-→ T05.10 Outline
-→ T05.11 + T05.12 VI/EN drafts
-→ T05.13 Review/Revise
-→ T05.14 Assertion Audit
-→ T05.15 source-copy check
-→ T05.16 Final Package
-→ T05.17 ONE REAL JOURNAL PASS
-```
+- [ ] link Angle ModelCall `result_artifact_id` directly to the persisted Angle artifact or establish the equivalent canonical output-reference contract.
 
 ---
 
