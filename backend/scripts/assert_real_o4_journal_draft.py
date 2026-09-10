@@ -75,7 +75,9 @@ def _non_empty(value: str) -> str:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the bounded CE05 T05.14 assertion audit for one exact revised Journal draft."
+        description=(
+            "Run the bounded CE05 T05.14 assertion audit for one exact revised Journal draft."
+        )
     )
     parser.add_argument("--writer-run-id", required=True, type=_uuid_arg)
     parser.add_argument("--revised-draft-artifact-id", required=True, type=_uuid_arg)
