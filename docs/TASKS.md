@@ -164,11 +164,11 @@ Real T05.13 gate proved:
 - [x] EvidenceSet, OriginalityPack, selected Angle, accepted Outline, SettingsSnapshot, NeedHypothesis and source O4 artifacts remained unchanged;
 - [x] MG reviewed both full v2 drafts against v1, Outline, Evidence and Originality boundaries and marked T05.13 **PASS**.
 
-### Current gate — T05.14 ASSERTION AUDIT
+### Current gate — T05.14 EN POST-AUDIT CONTENT REMEDIATION
 
 Owner: **MG Content Engine** for implementation/contract/review; Agent Local executes only the exact post-merge real runtime gate.
 
-Implementation PR includes:
+Merged T05.14 Assertion Audit implementation through PR #46 includes:
 
 - [x] exact immutable VI/EN v2 input binding and hash revalidation;
 - [x] deterministic visible-copy segmentation;
@@ -183,33 +183,46 @@ Implementation PR includes:
 - [x] approved local-agent runtime bridge with no tools/research/sibling draft;
 - [x] production CLI + focused tests;
 - [x] exact Agent Local task with mandatory local Git synchronization before task read/execution.
+- [ ] bounded EN post-audit revision step in the existing Writer `localize` run;
+- [ ] exact persisted five-finding binding and deterministic non-target immutability;
+- [ ] immutable EN `journal_draft` v3 with exact rerun reuse;
+- [ ] post-merge EN revision → Assertion Audit v3 re-audit task.
 
-Post-merge Agent Local task:
+Post-merge real Assertion Audit task:
 
 `docs/logs/2026-09-10-ce05-real-o4-assertion-audit-agent-local-task.md`
 
-T05.14 status:
+T05.14 real v3 status:
 
-- [ ] **T05.14 Assertion Audit — implementation in current PR; real runtime/content gate pending after merge.**
+- [x] **T05.14 Assertion Audit — VI PASS / EN NEEDS CHANGES after the real v3 runtime gate.**
 
-Real T05.14 gate requires:
+Current implementation task:
 
-- [ ] local `main` synchronized exactly to merged T05.14 implementation before local task files are read;
-- [ ] BOTH exact locale sources preflighted before auditing either locale;
-- [ ] migration `20260910_0021` + exact VI/EN assertion-audit prompt/recipe registry verified;
-- [ ] real VI assertion audit executed against exact v2 snapshot;
-- [ ] real EN assertion audit executed against exact v2 snapshot;
-- [ ] one `assertion_audit` Artifact and one deterministic hard-gate `QualityEvaluation` per locale;
-- [ ] every required standfirst/lead/body/closing segment audited, with title/headings explicitly accounted for;
-- [ ] assertion text remains an exact substring of its source segment;
-- [ ] Evidence/Originality refs remain within exact location support boundaries;
-- [ ] Evidence refs map to persisted Claim IDs through code;
-- [ ] VI `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
+`docs/logs/2026-09-10-ce05-t05-14-en-post-audit-revision-agent-local-task.md`
+
+The current PR adds a bounded English-only remediation path. It binds the exact persisted
+EN v2 audit findings, creates one immutable EN `journal_draft` v3 in the existing Writer
+run, and leaves the VI PASS artifact immutable. Production revision and re-audit are
+inactive until this implementation is merged.
+
+Real T05.14 v3 gate evidence:
+
+- [x] local `main` synchronized exactly to merged T05.14 implementation before the real task;
+- [x] BOTH exact locale sources preflighted before auditing either locale;
+- [x] migration `20260910_0021` + exact VI/EN assertion-audit prompt/recipe registry verified;
+- [x] real VI assertion audit executed against exact v2 snapshot;
+- [x] real EN assertion audit executed against exact v2 snapshot;
+- [x] one `assertion_audit` Artifact and one deterministic hard-gate `QualityEvaluation` per locale;
+- [x] every required standfirst/lead/body/closing segment audited, with title/headings explicitly accounted for;
+- [x] assertion text remains an exact substring of its source segment;
+- [x] Evidence/Originality refs remain within exact location support boundaries;
+- [x] Evidence refs map to persisted Claim IDs through code;
+- [x] VI `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
 - [ ] EN `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
-- [ ] the two EN attention items are explicitly classified rather than silently treated as external factual proof;
-- [ ] no research/Search/URL/ToolCall, sibling draft or translation input;
-- [ ] exact reruns reuse the same audit artifacts/evaluations with `model_attempts=0` and zero further side effects;
-- [ ] source v2 drafts and all upstream lineage remain immutable;
+- [x] the two EN attention items are explicitly classified rather than silently treated as external factual proof;
+- [x] no research/Search/URL/ToolCall, sibling draft or translation input;
+- [x] exact reruns reuse the same audit artifacts/evaluations with `model_attempts=0` and zero further side effects;
+- [x] source v2 drafts and all upstream lineage remain immutable;
 - [ ] MG reviews the full real audit output and marks T05.14 PASS.
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
@@ -228,13 +241,11 @@ If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` a
 ### Immediate sequence
 
 ```text
-T05.14 implementation + final CI/review
+T05.14 EN post-audit remediation implementation + final CI/review
 → Founder merge
-→ Agent Local synchronizes local main exactly to origin/main
-→ real VI/EN assertion audits from exact v2 snapshots
-→ deterministic critical unsupported/contradicted gate
-→ exact reruns prove audit reuse / zero extra model calls
-→ MG reviews full audit outputs
+→ Agent Local runs EN revision and exact revision reuse
+→ Agent Local runs EN Assertion Audit v3 and exact audit reuse
+→ MG reviews full EN v3 draft/audit output
 → if PASS: T05.15 source-copy check
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS
