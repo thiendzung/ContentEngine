@@ -18,7 +18,6 @@ from app.modules.content_engine.journal.writer import (
     WriterInput,
     _canonical_hash,
     _dict,
-    _execution_manifest,
     _model_identity,
     _normalize_evidence_refs,
     _normalize_originality_refs,
@@ -27,7 +26,13 @@ from app.modules.content_engine.journal.writer import (
     load_writer_input,
     writer_model_input_hash,
 )
-from app.modules.harness.models import Artifact, ContextManifest, QualityEvaluation, StepRun
+from app.modules.harness.models import (
+    Artifact,
+    ContentRun,
+    ContextManifest,
+    QualityEvaluation,
+    StepRun,
+)
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet
 
 ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v1"
@@ -158,6 +163,36 @@ class AssertionAuditError(ValueError):
     def __init__(self, code: str, detail: str | None = None) -> None:
         self.code = code
         super().__init__(f"{code}: {detail}" if detail else code)
+
+
+async def _audit_execution_manifest(
+    session: AsyncSession,
+    *,
+    audit_input: AssertionAuditInput,
+    context_manifest_id: UUID,
+    prompt_version: str,
+    recipe_version: str,
+    execution_run_id: UUID | None = None,
+) -> ContextManifest:
+    manifest = await session.get(ContextManifest, context_manifest_id)
+    run_id = execution_run_id or audit_input.writer_input.writer_run.id
+    run = await session.get(ContentRun, run_id)
+    if run is None:
+        raise AssertionAuditError("assertion_audit_execution_run_missing")
+    if manifest is None or manifest.run_id != run.id:
+        raise AssertionAuditError("assertion_audit_context_manifest_mismatch")
+    if manifest.settings_snapshot_id != run.settings_snapshot_id:
+        raise AssertionAuditError("assertion_audit_settings_snapshot_mismatch")
+    bundle = audit_input.writer_input.outline_input.bundle
+    if manifest.evidence_set_id != bundle.evidence_set_id:
+        raise AssertionAuditError("assertion_audit_context_evidence_mismatch")
+    if manifest.originality_pack_id != bundle.originality_pack_id:
+        raise AssertionAuditError("assertion_audit_context_originality_mismatch")
+    if manifest.prompt_version != prompt_version:
+        raise AssertionAuditError("assertion_audit_prompt_snapshot_mismatch")
+    if manifest.recipe_version != recipe_version:
+        raise AssertionAuditError("assertion_audit_recipe_snapshot_mismatch")
+    return manifest
 
 
 def _string_list(value: object, code: str) -> list[str]:
@@ -638,12 +673,14 @@ async def _existing_audit(
     *,
     audit_input: AssertionAuditInput,
     fingerprint: str,
+    execution_run_id: UUID | None = None,
 ) -> AssertionAuditResult | None:
+    run_id = execution_run_id or audit_input.writer_input.writer_run.id
     artifacts = list(
         (
             await session.scalars(
                 select(Artifact).where(
-                    Artifact.run_id == audit_input.writer_input.writer_run.id,
+                    Artifact.run_id == run_id,
                     Artifact.artifact_type == "assertion_audit",
                     Artifact.locale == audit_input.writer_input.locale,
                 )
@@ -702,7 +739,9 @@ async def _persist_audit(
     prompt_version: str,
     recipe_version: str,
     context_manifest: ContextManifest,
+    execution_run_id: UUID | None = None,
 ) -> AssertionAuditResult:
+    run_id = execution_run_id or audit_input.writer_input.writer_run.id
     summary = _summary(segments)
     payload: dict[str, object] = {
         "schema_version": ASSERTION_AUDIT_SCHEMA_VERSION,
@@ -714,6 +753,7 @@ async def _persist_audit(
             "version": audit_input.source_artifact.version,
             "content_hash": audit_input.source_artifact.content_hash,
         },
+        "source_writer_run_id": str(audit_input.writer_input.writer_run.id),
         "journal_outline": {
             "id": str(audit_input.writer_input.outline_artifact.id),
             "version": audit_input.writer_input.outline_artifact.version,
@@ -746,7 +786,7 @@ async def _persist_audit(
     }
     content_hash = _canonical_hash(payload)
     artifact = Artifact(
-        run_id=audit_input.writer_input.writer_run.id,
+        run_id=run_id,
         step_run_id=context_manifest.step_run_id,
         artifact_type="assertion_audit",
         locale=audit_input.writer_input.locale,
@@ -830,6 +870,7 @@ class AssertionAuditGenerator:
         context_manifest_id: UUID,
         prompt_version: str,
         recipe_version: str,
+        execution_run_id: UUID | None = None,
     ) -> AssertionAuditResult:
         audit_input = await load_assertion_audit_input(
             session,
@@ -842,12 +883,13 @@ class AssertionAuditGenerator:
             expected_outline_hash=expected_outline_hash,
             locale=locale,
         )
-        manifest = await _execution_manifest(
+        manifest = await _audit_execution_manifest(
             session,
-            writer_input=audit_input.writer_input,
+            audit_input=audit_input,
             context_manifest_id=context_manifest_id,
             prompt_version=prompt_version,
             recipe_version=recipe_version,
+            execution_run_id=execution_run_id,
         )
         routed = _model_identity(model)
         if routed is not None and (provider.strip(), model_name.strip()) != routed:
@@ -869,6 +911,7 @@ class AssertionAuditGenerator:
             session,
             audit_input=audit_input,
             fingerprint=fingerprint,
+            execution_run_id=execution_run_id,
         )
         if existing is not None:
             return existing
@@ -905,6 +948,7 @@ class AssertionAuditGenerator:
                 prompt_version=prompt_version,
                 recipe_version=recipe_version,
                 context_manifest=manifest,
+                execution_run_id=execution_run_id,
             )
         raise AssertionAuditError("assertion_audit_model_output_invalid") from last_error
 

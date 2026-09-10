@@ -11,12 +11,13 @@ Execute T05.14 Assertion Audit locally against the exact immutable real `vi-VN` 
 For each locale:
 
 - audit the exact v2 artifact; never rewrite it;
-- use the existing locale Writer `localize` ContentRun;
+- use the existing locale Writer `localize` ContentRun as a read-only source;
+- create or reuse a dedicated locale Assertion Audit `eval` ContentRun;
 - bind exact Outline, locked EvidenceSet, approved OriginalityPack and immutable SettingsSnapshot;
 - execute the locale-specific assertion-audit prompt/recipe through the already approved model route;
-- persist exactly one immutable `assertion_audit` Artifact and one deterministic `QualityEvaluation`;
+- persist an immutable `assertion_audit_handoff` on the audit eval run, then exactly one immutable `assertion_audit` Artifact and one deterministic `QualityEvaluation` on that same eval run;
 - require `critical_unsupported_count = 0` and `critical_contradicted_count = 0` for PASS;
-- rerun the identical command and prove exact artifact/evaluation reuse with zero additional ModelCall.
+- rerun the identical command and prove exact audit-run/handoff/artifact/evaluation reuse with zero additional ModelCall.
 
 Do not start T05.15 source-copy checking.
 
@@ -127,7 +128,8 @@ Verify read-only before migration/model execution:
 - local `main` is exactly synchronized and clean;
 - `AI_context.MD` current gate is T05.14 REAL ASSERTION AUDIT;
 - migration is exactly `20260910_0020` or already `20260910_0021`;
-- both exact Writer runs exist, are distinct `localize` runs and are `waiting_approval`;
+- both exact Writer runs exist, are distinct `localize` runs, and bind their exact LocaleVariant;
+- the exact English Writer run is `waiting_approval`; the known failed Vietnamese Writer run is accepted only for the exact locked source run and v2 draft listed above;
 - each run binds its exact LocaleVariant and the same locked SettingsSnapshot;
 - exact v2 Artifact IDs/versions/hashes match and recompute correctly;
 - both v2 drafts have zero document-level and section-level unresolved factual claims;
@@ -136,7 +138,7 @@ Verify read-only before migration/model execution:
 - exact OriginalityPack remains approved with unchanged snapshot hash/approval metadata;
 - selected `angle-01`, AngleApproval and NeedHypothesis state remain unchanged;
 - source O4 run/artifacts remain unchanged;
-- no `assertion_audit_vi` / `assertion_audit_en` StepRun, `assertion_audit` Artifact or target `QualityEvaluation` exists unless this exact task was already completed and is being idempotently rechecked;
+- no matching non-terminal assertion-audit eval run/handoff, `assertion_audit_vi` / `assertion_audit_en` StepRun, `assertion_audit` Artifact or target `QualityEvaluation` exists unless this exact task was already completed and is being idempotently rechecked; failed/cancelled prior audit eval runs remain preserved and are not reused;
 - authenticated approved local runner preflight succeeds with no-tool controls.
 
 If either locale fails preflight: **STOP / BLOCKED before auditing either locale**. Do not repair data yourself.
@@ -222,21 +224,23 @@ Then execute the identical VI command again, followed by the identical EN comman
 
 ## Required first-execution result per locale
 
-- same existing locale Writer run; no new ContentRun;
-- exactly one new `assertion_audit_vi` or `assertion_audit_en` StepRun;
-- exactly one new ContextManifest with exact audit prompt/recipe refs;
+- same existing locale Writer run remains unchanged and read-only;
+- exactly one new or reused dedicated `eval` ContentRun for the locale;
+- exactly one immutable `assertion_audit_handoff` bound to that eval run;
+- exactly one new `assertion_audit_vi` or `assertion_audit_en` StepRun on that eval run;
+- exactly one new ContextManifest with exact audit prompt/recipe refs on that eval run;
 - exact same SettingsSnapshot and `codex_cli / gpt-5.6-luna` route;
 - one bounded model extraction/classification flow with `model_attempts` in `1..2`;
 - source v2 remains immutable;
-- one immutable `assertion_audit` Artifact v1;
-- one deterministic `QualityEvaluation` using evaluator key `assertion_audit_hard_gate`;
+- one immutable `assertion_audit` Artifact v1 on the eval run;
+- one deterministic `QualityEvaluation` using evaluator key `assertion_audit_hard_gate` on the eval run;
 - every required standfirst/lead/body/closing segment is audited;
 - title/heading may be `non_assertive` only when explicitly accounted for;
 - each assertion text is an exact substring of its source segment;
 - each Evidence/Originality ref is within the exact support refs allowed for that segment;
 - Evidence refs map to persisted Claim IDs through code, not model invention;
 - ToolCalls remain zero;
-- Writer run returns to `waiting_approval`.
+- the audit eval run completes; the source Writer run remains in its original status (including the known failed VI run).
 
 ## Hard gate
 
@@ -274,6 +278,8 @@ Specific EN attention:
 Second identical execution per locale must return:
 
 - same Writer run;
+- same completed audit eval run;
+- same `assertion_audit_handoff` ID/hash;
 - same source v2;
 - same Assertion Audit Artifact ID/version/hash;
 - same QualityEvaluation ID;
@@ -298,12 +304,14 @@ Report before/after scoped counts for:
 Expected intended first-run delta:
 
 ```text
-ContentRuns:                         no change
+ContentRuns:                         +1 dedicated eval run per locale
 source journal_draft v1/v2:          no change
-assertion_audit_vi StepRun:          0 -> 1
-assertion_audit_en StepRun:          0 -> 1
-assertion_audit_vi ModelCalls:        0 -> 1..2
-assertion_audit_en ModelCalls:        0 -> 1..2
+assertion_audit_vi StepRun:          0 -> 1 on VI eval run
+assertion_audit_en StepRun:          0 -> 1 on EN eval run
+assertion_audit_vi ModelCalls:        0 -> 1..2 on VI eval run
+assertion_audit_en ModelCalls:        0 -> 1..2 on EN eval run
+assertion_audit_vi handoff:          0 -> 1 on VI eval run
+assertion_audit_en handoff:          0 -> 1 on EN eval run
 VI assertion_audit Artifact:          0 -> 1
 EN assertion_audit Artifact:          0 -> 1
 VI hard-gate QualityEvaluation:       0 -> 1
