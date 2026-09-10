@@ -138,7 +138,7 @@ def render_writer_prompt(
 
 
 class CliWriterModelPort(WriterModelPort):
-    """Use one immutable run snapshot plus locale-specific Writer registry definitions."""
+    """Use one immutable Writer-run snapshot plus locale-specific registry definitions."""
 
     def __init__(
         self,
@@ -192,19 +192,25 @@ class CliWriterModelPort(WriterModelPort):
             raise WriterGenerationError("writer_model_input_not_sanitized")
         required = {
             "locale",
+            "independence_rule",
+            "writer_handoff_ref",
             "journal_outline_ref",
+            "content_case",
+            "locale_variant",
             "outline",
             "approved_angle",
             "opportunity",
             "evidence_set",
             "originality_pack",
-            "independence_rule",
             "hard_guard",
         }
         if not required.issubset(sanitized):
             raise WriterGenerationError("writer_model_input_incomplete")
         if sanitized.get("locale") != self._config.locale:
             raise WriterGenerationError("writer_model_input_locale_mismatch")
+        variant = sanitized.get("locale_variant")
+        if not isinstance(variant, dict) or variant.get("locale") != self._config.locale:
+            raise WriterGenerationError("writer_model_input_locale_variant_mismatch")
         cloned = json.loads(json.dumps(sanitized, ensure_ascii=False))
         if not isinstance(cloned, dict):
             raise WriterGenerationError("writer_model_input_invalid")
