@@ -28,10 +28,10 @@ Do not infer or start the next task. Do not merge unless acting as Founder with 
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
-CURRENT GATE: T05.14 — EN POST-AUDIT CONTENT REMEDIATION
-CURRENT OWNER: MG owns contract/review; Agent Local implements only the exact bounded EN post-audit revision task on the assigned PR branch
-NEXT ACTION: implement bounded EN-only post-audit revision, merge after CI/review, then run real EN v3 revision + T05.14 re-audit; keep VI PASS immutable
-BLOCKERS: no infrastructure blocker known; EN v2 has five unsupported audit findings that must be revised before T05.14 can pass
+CURRENT GATE: T05.14 — EN FINAL CLOSING CLEANUP
+CURRENT OWNER: MG owns contract/review; Agent Local implements only the exact deterministic EN cleanup task on the assigned PR branch
+NEXT ACTION: review/merge PR #48 after CI, then run deterministic EN v4 cleanup and Assertion Audit v3 re-audit; keep VI PASS immutable
+BLOCKERS: EN v3 re-audit completed NEEDS CHANGES with the sole remaining finding `closing:3`; deterministic EN v4 cleanup is pending
 HUMAN DECISION REQUIRED: none; final content approval remains later
 ```
 
@@ -43,6 +43,8 @@ HUMAN DECISION REQUIRED: none; final content approval remains later
 - T05.13 bounded Review/Revise: DONE / real bilingual gate PASS.
 - T05.14 Assertion Audit implementation/recovery/normalization: MERGED through PR #46.
 - T05.14 real v3 audit: **VI PASS / EN NEEDS CHANGES**.
+- EN v3 re-audit is completed; the sole remaining finding is `closing:3` unsupported critical `brand_statement`.
+- PR #48 implements deterministic EN v4 cleanup; production cleanup and final re-audit are pending merge.
 - T05.15–T05.22: NOT STARTED.
 
 Dynamic commit/PR/CI state must be read directly from GitHub.
@@ -81,7 +83,7 @@ VI contradicted: 0
 
 This PASS is accepted for T05.14. Do not spend another model call on VI unless a later upstream/content change invalidates this exact snapshot.
 
-## Locked EN remediation input
+## Historical EN five-finding remediation input
 
 ```text
 EN LocaleVariant: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
@@ -117,7 +119,32 @@ section:ask-for-context:3 — interpretation / unsupported / medium
 "These questions invite useful explanation without turning the conversation into a pricing formula."
 ```
 
-All five must be resolved because Assertion Audit returns `warn` when any unsupported/contradicted assertion remains; the T05.14 acceptance is `audit_result=pass`.
+All five findings were resolved by the merged PR #47 remediation path. This block is
+historical input evidence; the current EN v3 re-audit state is recorded below.
+
+## Locked EN v3 re-audit result and final cleanup
+
+The five-finding EN remediation/re-audit completed. The EN v3 re-audit returned one
+additional unsupported critical finding only:
+
+```text
+EN v3 draft: 47aa458c-0be8-4045-a1ec-5d8dcd6bc3e5 / v3 / hash 8c5785a6bcfccd907265a1a24a3fd636f12677136a4fd42641c44e0be318f4ce
+EN v3 failed audit Artifact: c9f3020c-5671-4e69-a550-73a3f743e993 / v1 / hash a80b882418bc6333d123a7ff02c814bd55eb29b12261e1b1a48efd01d1e574d9
+EN v3 failed QualityEvaluation: 7909a671-81a6-44cf-a9fe-0b38f578c070
+EN result: fail
+EN unsupported: 1
+EN contradicted: 0
+EN critical unsupported: 1
+EN critical contradicted: 0
+sole finding: closing:3 / brand_statement / unsupported / critical
+sole finding text: There is nothing formal about asking for a clearer answer.
+```
+
+The approved implementation is a deterministic deletion of that exact closing sentence,
+creating immutable EN `journal_draft` v4 in the same Writer run with zero ModelCalls and
+zero ToolCalls. PR #48 is the current implementation; production v4 cleanup and v4
+Assertion Audit re-audit are pending. T05.15 remains **NOT STARTED** and blocked on the
+final EN Assertion Audit PASS.
 
 ## Remediation contract
 
@@ -161,12 +188,11 @@ Exact implementation task:
 
 ```text
 sync clean main
-→ verify locked VI PASS + EN v2/audit FAIL input
-→ apply/verify post-audit registry migration if present
-→ EN v2 → bounded EN v3 revision
-→ exact revision rerun = reuse / zero model calls
-→ Assertion Audit v3 against exact EN v3
-→ exact EN audit rerun = reuse / zero model calls
+→ verify migration 20260910_0022 + locked VI PASS + EN v3/audit FAIL input
+→ deterministic EN v4 exact-sentence cleanup
+→ exact cleanup rerun = reuse / zero side effects
+→ Assertion Audit v3 against exact EN v4
+→ exact EN audit rerun = reuse / zero side effects
 → if EN pass and unsupported/contradicted = 0: T05.14 PASS
 → only then activate T05.15
 ```
