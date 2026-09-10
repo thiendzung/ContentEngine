@@ -17,10 +17,11 @@ _PROMPTS = (
     (
         "00000000-0000-0000-0000-000000000024",
         "journal_writer_vi",
-        "Write one native Vietnamese Journal draft directly from the accepted Outline.",
+        "Write one native Vietnamese Journal draft directly from the accepted Outline and exact vi-VN LocaleVariant.",
         (
-            "Return JSON only. Write a natural vi-VN Journal draft directly from the supplied accepted Outline and shared evidence. "
+            "Return JSON only. Write a natural vi-VN Journal draft directly from the supplied accepted Outline, exact target LocaleVariant and shared evidence. "
             "This is not a translation task and you must not inspect, infer from, quote or depend on an English draft. "
+            "Use the target LocaleVariant for locale-specific primary question, intent, query notes, emotion arc, must-include and must-not-claim constraints. "
             "Answer the primary reader question early, then follow the Outline section order exactly. "
             "Write for a first-time art buyer in clear, calm, personal Vietnamese: useful before poetic, low-pressure, no luxury or investment framing. "
             "For each section copy evidence_refs and originality_refs exactly from that Outline section; do not add, remove or substitute support refs. "
@@ -34,10 +35,11 @@ _PROMPTS = (
     (
         "00000000-0000-0000-0000-000000000025",
         "journal_writer_en",
-        "Write one native English Journal draft directly from the accepted Outline.",
+        "Write one native English Journal draft directly from the accepted Outline and exact en LocaleVariant.",
         (
-            "Return JSON only. Write a natural English Journal draft directly from the supplied accepted Outline and shared evidence. "
+            "Return JSON only. Write a natural English Journal draft directly from the supplied accepted Outline, exact target LocaleVariant and shared evidence. "
             "This is an independent writing task: do not translate, inspect, infer from, quote or depend on a Vietnamese draft. "
+            "Use the target LocaleVariant for locale-specific primary question, intent, query notes, emotion arc, must-include and must-not-claim constraints. "
             "Answer the primary reader question early, then follow the Outline section order exactly. "
             "Write for a first-time art buyer in clear, calm, personal English: useful before poetic, low-pressure, no luxury or investment framing. "
             "For each section copy evidence_refs and originality_refs exactly from that Outline section; do not add, remove or substitute support refs. "
@@ -56,14 +58,14 @@ _RECIPES = (
         "journal_writer_vi_v1",
         "vi-VN",
         "writer_vi",
-        "native_vi_from_outline",
+        "native_vi_from_outline_and_locale_variant",
     ),
     (
         "00000000-0000-0000-0000-000000000035",
         "journal_writer_en_v1",
         "en",
         "writer_en",
-        "native_en_from_outline",
+        "native_en_from_outline_and_locale_variant",
     ),
 )
 
@@ -155,13 +157,16 @@ def upgrade() -> None:
                     "input_contract_json": {
                         "required": [
                             "locale",
+                            "independence_rule",
+                            "writer_handoff_ref",
                             "journal_outline_ref",
+                            "content_case",
+                            "locale_variant",
                             "outline",
                             "approved_angle",
                             "opportunity",
                             "evidence_set",
                             "originality_pack",
-                            "independence_rule",
                             "hard_guard",
                         ],
                         "forbidden": [
@@ -211,6 +216,7 @@ def upgrade() -> None:
                     "recipe_json": {
                         "strategy": strategy,
                         "steps": [
+                            "bind_exact_locale_variant",
                             "answer_primary_question_early",
                             "follow_outline_section_order",
                             "carry_exact_support_refs",
@@ -221,6 +227,7 @@ def upgrade() -> None:
                         ],
                         "constraints": [
                             "accepted_outline_only",
+                            "exact_locale_variant_required",
                             "independent_locale_generation",
                             "no_translation_source",
                             "no_new_research",
