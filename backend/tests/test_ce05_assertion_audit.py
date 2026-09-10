@@ -30,7 +30,13 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
 )
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import AgentRunnerRegistry
-from app.modules.harness.models import Artifact, ContextManifest, ModelCall, QualityEvaluation, StepRun
+from app.modules.harness.models import (
+    Artifact,
+    ContextManifest,
+    ModelCall,
+    QualityEvaluation,
+    StepRun,
+)
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 from app.modules.system.settings_service import (
     active_prompt_definition,
@@ -228,7 +234,8 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
         assert first.critical_contradicted_count == 0
         assert model.calls == 1
         assert model.received is not None
-        assert len(cast(list[object], model.received["source_segments"])) == len(audit_input.segments)
+        received_segments = cast(list[object], model.received["source_segments"])
+        assert len(received_segments) == len(audit_input.segments)
 
         evaluations = list(
             (
