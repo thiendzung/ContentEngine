@@ -1,4 +1,4 @@
-"""Persist one exact Founder-approved Journal Angle candidate."""
+"""Persist and verify one exact Founder-approved Journal Angle candidate."""
 
 # ruff: noqa: E402
 
@@ -17,7 +17,10 @@ if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
 from app.core.database import SessionLocal
-from app.modules.content_engine.journal.angle import approve_angle_candidate
+from app.modules.content_engine.journal.angle import (
+    approve_angle_candidate,
+    handoff_approved_angle,
+)
 from app.modules.harness.models import Artifact
 
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -31,7 +34,10 @@ def _uuid_arg(value: str) -> UUID:
 
 
 def _positive_int_arg(value: str) -> int:
-    parsed = int(value)
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
     if parsed <= 0:
         raise argparse.ArgumentTypeError("must be a positive integer")
     return parsed
@@ -52,7 +58,7 @@ def _hash_arg(value: str) -> str:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Persist one exact human-approved Journal Angle candidate."
+        description="Persist and verify one exact human-approved Journal Angle candidate."
     )
     parser.add_argument("--angle-artifact-id", required=True, type=_uuid_arg)
     parser.add_argument("--expected-artifact-version", required=True, type=_positive_int_arg)
@@ -91,7 +97,10 @@ def _candidate_hash_from_artifact(artifact: Artifact, selected_angle_id: str) ->
 
 async def _run(args: argparse.Namespace) -> None:
     angle_artifact_id = cast(UUID, args.angle_artifact_id)
+    artifact_version = cast(int, args.expected_artifact_version)
+    artifact_hash = cast(str, args.expected_artifact_hash)
     selected_angle_id = cast(str, args.selected_angle_id)
+
     async with SessionLocal() as session:
         artifact = await session.get(Artifact, angle_artifact_id)
         if artifact is None:
@@ -100,27 +109,41 @@ async def _run(args: argparse.Namespace) -> None:
         approval = await approve_angle_candidate(
             session,
             angle_artifact_id=angle_artifact_id,
-            expected_artifact_version=cast(int, args.expected_artifact_version),
-            expected_artifact_hash=cast(str, args.expected_artifact_hash),
+            expected_artifact_version=artifact_version,
+            expected_artifact_hash=artifact_hash,
             selected_angle_id=selected_angle_id,
             expected_candidate_hash=candidate_hash,
             approved_by=cast(str, args.approved_by),
             approval_reason=cast(str, args.approval_reason),
         )
         await session.commit()
+        approval_id = approval.id
+
+    async with SessionLocal() as session:
+        handoff = await handoff_approved_angle(
+            session,
+            angle_artifact_id=angle_artifact_id,
+            expected_artifact_version=artifact_version,
+            expected_artifact_hash=artifact_hash,
+            selected_angle_id=selected_angle_id,
+            expected_candidate_hash=candidate_hash,
+        )
+        if handoff.approval.id != approval_id:
+            raise ValueError("angle_approval_handoff_mismatch")
 
     print(
         json.dumps(
             {
-                "approval_id": str(approval.id),
-                "run_id": str(approval.run_id),
-                "angle_artifact_id": str(approval.angle_artifact_id),
-                "angle_artifact_version": approval.angle_artifact_version,
-                "angle_artifact_hash": approval.angle_artifact_hash,
-                "selected_angle_id": approval.selected_angle_id,
-                "selected_candidate_hash": approval.selected_candidate_hash,
-                "approved_by": approval.approved_by,
-                "approval_reason": approval.approval_reason,
+                "approval_id": str(handoff.approval.id),
+                "run_id": str(handoff.approval.run_id),
+                "angle_artifact_id": str(handoff.artifact.id),
+                "angle_artifact_version": handoff.artifact.version,
+                "angle_artifact_hash": handoff.artifact.content_hash,
+                "selected_angle_id": handoff.candidate.angle_id,
+                "selected_candidate_hash": candidate_hash,
+                "approved_by": handoff.approval.approved_by,
+                "approval_reason": handoff.approval.approval_reason,
+                "handoff_verified": True,
             },
             ensure_ascii=False,
             sort_keys=True,
