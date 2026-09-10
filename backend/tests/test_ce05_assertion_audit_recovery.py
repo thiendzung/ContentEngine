@@ -11,6 +11,8 @@ from test_ce05_assertion_audit import (
 )
 
 from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
+    ASSERTION_AUDIT_GENERATOR_VERSION,
     AssertionAuditError,
     AssertionAuditGenerator,
 )
@@ -138,6 +140,15 @@ async def test_assertion_audit_recovery_owns_eval_records_and_reuses_completed_r
         assert second_execution.handoff.id == first_execution.handoff.id
         assert first_result.artifact.run_id == first_execution.audit_run.id
         assert first_result.evaluation.run_id == first_execution.audit_run.id
+        assert (
+            first_execution.handoff.content_json["generator"]["version"]
+            == ASSERTION_AUDIT_GENERATOR_VERSION
+        )
+        assert (
+            first_result.artifact.content_json["generator"]["version"]
+            == ASSERTION_AUDIT_GENERATOR_VERSION
+        )
+        assert first_result.evaluation.evaluator_version == ASSERTION_AUDIT_EVALUATOR_VERSION
         assert second_result.reused is True
         assert second_result.model_attempts == 0
         assert second_result.artifact.id == first_result.artifact.id

@@ -35,9 +35,9 @@ from app.modules.harness.models import (
 )
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet
 
-ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v1"
+ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v2"
 ASSERTION_AUDIT_SCHEMA_VERSION = 1
-ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v1"
+ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v2"
 ASSERTION_AUDIT_EVALUATOR_KEY = "assertion_audit_hard_gate"
 
 _ASSERTION_TYPES = {
@@ -414,6 +414,11 @@ async def load_assertion_audit_input(
                 "distinguish_external_fact_from_editorial_guidance",
                 "do_not_treat_negated_investment_or_scarcity_guards_as_promotional_claims",
                 "do_not_treat_generic_live_data_guidance_as_a_concrete_current_commerce_fact",
+                "use_opinion_or_interpretation_types_for_genuine_editorial_guidance_or_judgement",
+                "hard_gate_types_require_factual_or_approved_support",
+                "classify_unsupported_hard_gate_claims_as_unsupported_not_opinion_or_interpretation",
+                "generic_guidance_to_check_current_listing_or_status_is_not_a_concrete_live_fact",
+                "brand_statements_as_motgu_truth_require_approved_evidence_or_originality_support",
                 "never_add_research_or_new_facts",
                 "critical_unsupported_or_contradicted_assertions_fail",
             ],
@@ -485,6 +490,9 @@ def _validate_assertion(
             "assertion_audit_originality_ref_outside_location",
             segment.segment_id,
         )
+    if assertion_type in _HARD_FAIL_TYPES and support_status in {"opinion", "interpretation"}:
+        support_status = "unsupported"
+        model_severity = "critical"
     if support_status == "supported" and not evidence_refs and not originality_refs:
         raise AssertionAuditError("assertion_audit_supported_without_ref", segment.segment_id)
     if support_status == "interpretation" and assertion_type not in {
