@@ -16,6 +16,7 @@ from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
     WriterInput,
+    WriterModelPort,
     _canonical_hash,
     _dict,
     _execution_manifest,
@@ -46,7 +47,13 @@ _ASSERTION_TYPES = {
 }
 _SUPPORT_STATUSES = {"supported", "unsupported", "contradicted", "interpretation", "opinion"}
 _SEVERITIES = {"none", "low", "medium", "high", "critical"}
-_FACTUAL_TYPES = {"fact", "artist_intent", "visual_observation", "practical_live_information"}
+_HARD_FAIL_TYPES = {
+    "fact",
+    "brand_statement",
+    "artist_intent",
+    "visual_observation",
+    "practical_live_information",
+}
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -395,7 +402,7 @@ def _severity_for(
     support_status: str,
     model_severity: str,
 ) -> str:
-    if support_status in {"unsupported", "contradicted"} and assertion_type in _FACTUAL_TYPES:
+    if support_status in {"unsupported", "contradicted"} and assertion_type in _HARD_FAIL_TYPES:
         return "critical"
     if support_status == "contradicted" and model_severity in {"none", "low", "medium"}:
         return "high"
@@ -435,9 +442,15 @@ def _validate_assertion(
     except WriterGenerationError as exc:
         raise AssertionAuditError(exc.code) from exc
     if any(ref not in segment.allowed_evidence_refs for ref in evidence_refs):
-        raise AssertionAuditError("assertion_audit_evidence_ref_outside_location", segment.segment_id)
+        raise AssertionAuditError(
+            "assertion_audit_evidence_ref_outside_location",
+            segment.segment_id,
+        )
     if any(ref not in segment.allowed_originality_refs for ref in originality_refs):
-        raise AssertionAuditError("assertion_audit_originality_ref_outside_location", segment.segment_id)
+        raise AssertionAuditError(
+            "assertion_audit_originality_ref_outside_location",
+            segment.segment_id,
+        )
     if support_status == "supported" and not evidence_refs and not originality_refs:
         raise AssertionAuditError("assertion_audit_supported_without_ref", segment.segment_id)
     if support_status == "interpretation" and assertion_type not in {
@@ -493,8 +506,14 @@ def validate_assertion_audit_output(
     audited: list[AuditedSegment] = []
     for source, raw_segment in zip(audit_input.segments, raw_segments, strict=True):
         value = _dict(raw_segment, "assertion_audit_segment_invalid")
-        if value.get("segment_id") != source.segment_id or value.get("source_text") != source.source_text:
-            raise AssertionAuditError("assertion_audit_segment_snapshot_mismatch", source.segment_id)
+        if (
+            value.get("segment_id") != source.segment_id
+            or value.get("source_text") != source.source_text
+        ):
+            raise AssertionAuditError(
+                "assertion_audit_segment_snapshot_mismatch",
+                source.segment_id,
+            )
         disposition = _text(value.get("disposition"), "assertion_audit_disposition_required")
         if disposition not in {"assertive", "non_assertive"}:
             raise AssertionAuditError("assertion_audit_disposition_invalid")
@@ -505,11 +524,17 @@ def validate_assertion_audit_output(
         if not isinstance(raw_assertions, list):
             raise AssertionAuditError("assertion_audit_assertions_invalid")
         if source.required_assertive and disposition != "assertive":
-            raise AssertionAuditError("assertion_audit_required_segment_not_audited", source.segment_id)
+            raise AssertionAuditError(
+                "assertion_audit_required_segment_not_audited",
+                source.segment_id,
+            )
         if disposition == "assertive" and not raw_assertions:
             raise AssertionAuditError("assertion_audit_assertive_segment_empty", source.segment_id)
         if disposition == "non_assertive" and raw_assertions:
-            raise AssertionAuditError("assertion_audit_non_assertive_has_assertions", source.segment_id)
+            raise AssertionAuditError(
+                "assertion_audit_non_assertive_has_assertions",
+                source.segment_id,
+            )
         assertions = tuple(
             _validate_assertion(item, segment=source, audit_input=audit_input)
             for item in raw_assertions
@@ -770,7 +795,11 @@ class AssertionAuditGenerator:
     """Extract and classify assertions; deterministic validation owns the hard gate."""
 
     def __init__(self, *, max_attempts: int = 2) -> None:
-        if isinstance(max_attempts, bool) or not isinstance(max_attempts, int) or not 1 <= max_attempts <= 3:
+        if (
+            isinstance(max_attempts, bool)
+            or not isinstance(max_attempts, int)
+            or not 1 <= max_attempts <= 3
+        ):
             raise ValueError("max_attempts must be between 1 and 3")
         self.max_attempts = max_attempts
 
@@ -811,7 +840,7 @@ class AssertionAuditGenerator:
             prompt_version=prompt_version,
             recipe_version=recipe_version,
         )
-        routed = _model_identity(cast(object, model))
+        routed = _model_identity(cast(WriterModelPort, model))
         if routed is not None and (provider.strip(), model_name.strip()) != routed:
             raise AssertionAuditError("assertion_audit_model_route_mismatch")
         artifact_provider, artifact_model = routed or (provider.strip(), model_name.strip())
@@ -827,17 +856,28 @@ class AssertionAuditGenerator:
             recipe_version=recipe_version,
             context_manifest_hash=manifest.content_hash,
         )
-        existing = await _existing_audit(session, audit_input=audit_input, fingerprint=fingerprint)
+        existing = await _existing_audit(
+            session,
+            audit_input=audit_input,
+            fingerprint=fingerprint,
+        )
         if existing is not None:
             return existing
 
         last_error: AssertionAuditError | None = None
         for attempt in range(1, self.max_attempts + 1):
             try:
-                raw = await model.generate(input_bundle=copy.deepcopy(audit_input.model_input), attempt=attempt)
+                raw = await model.generate(
+                    input_bundle=copy.deepcopy(audit_input.model_input),
+                    attempt=attempt,
+                )
                 segments = validate_assertion_audit_output(raw, audit_input=audit_input)
             except (AssertionAuditError, WriterGenerationError) as exc:
-                last_error = exc if isinstance(exc, AssertionAuditError) else AssertionAuditError(exc.code)
+                last_error = (
+                    exc
+                    if isinstance(exc, AssertionAuditError)
+                    else AssertionAuditError(exc.code)
+                )
                 if attempt == self.max_attempts:
                     raise AssertionAuditError(
                         "assertion_audit_model_output_invalid",
