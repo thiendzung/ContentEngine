@@ -12,9 +12,11 @@ from test_ce05_outline import (
     FakeOutlineModel,
     OutlineFixture,
     _approved_fixture,
-    _generate as _generate_outline,
     _outline_payload,
     isolated_session,
+)
+from test_ce05_outline import (
+    _generate as _generate_outline,
 )
 
 from app.modules.content_engine.journal.outline import OutlineGenerationResult
@@ -41,8 +43,11 @@ from app.modules.harness.agent_runner import (
 )
 from app.modules.harness.models import ContentRun, ContextManifest, ModelCall, StepRun
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
-from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
-from app.modules.system.settings_service import settings_hash
+from app.modules.system.settings_service import (
+    active_prompt_definition,
+    active_recipe_definition,
+    settings_hash,
+)
 
 
 class FakeWriterModel:
@@ -228,13 +233,22 @@ def _draft_payload(writer_input: WriterInput, locale: str) -> dict[str, object]:
     if locale == "vi-VN":
         title = "Hiểu giá một tác phẩm nghệ thuật: những điều nên hỏi trước khi quyết định"
         standfirst = "Một hướng dẫn bình tĩnh cho người mua tác phẩm gốc lần đầu."
-        lead = "Giá niêm yết không tự nó cho biết một tác phẩm có phù hợp với quyết định của bạn hay không."
+        lead = (
+            "Giá niêm yết không tự nó cho biết một tác phẩm có phù hợp "
+            "với quyết định của bạn hay không."
+        )
         closing = "Hãy dành thời gian nhìn lại những gì bạn đã biết và hỏi thêm khi cần."
     else:
         title = "Understanding an artwork's price: what to ask before you decide"
         standfirst = "A calm guide for a first-time buyer of an original artwork."
-        lead = "A listed price alone cannot tell you whether a work fits the decision in front of you."
-        closing = "Take your time, review what you know, and ask for context where you still need it."
+        lead = (
+            "A listed price alone cannot tell you whether a work fits the decision "
+            "in front of you."
+        )
+        closing = (
+            "Take your time, review what you know, and ask for context "
+            "where you still need it."
+        )
     return {
         "locale": locale,
         "title": title,
