@@ -1,4 +1,4 @@
-"""Generate or reuse one real O4 Journal draft directly from the accepted Outline."""
+"""Generate or reuse one real O4 Journal draft from a locale-specific Writer run."""
 
 # ruff: noqa: E402
 
@@ -24,6 +24,7 @@ from app.core.database import SessionLocal
 from app.modules.content_engine.journal.writer import (
     WriterGenerationError,
     WriterGenerator,
+    ensure_writer_run,
     load_writer_input,
 )
 from app.modules.content_engine.journal.writer_agent_bridge import (
@@ -75,9 +76,12 @@ def _non_empty(value: str) -> str:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate/reuse one real O4 Journal locale draft from the accepted Outline."
+        description=(
+            "Generate/reuse one real O4 Journal locale draft from the accepted Outline "
+            "inside an exact locale-specific localize ContentRun."
+        )
     )
-    parser.add_argument("--run-id", required=True, type=_uuid_arg)
+    parser.add_argument("--source-run-id", required=True, type=_uuid_arg)
     parser.add_argument("--outline-artifact-id", required=True, type=_uuid_arg)
     parser.add_argument("--outline-artifact-version", required=True, type=_positive_int)
     parser.add_argument("--outline-artifact-hash", required=True, type=_hash_arg)
@@ -144,7 +148,7 @@ async def _existing_manifest(
 
 
 async def _run(args: argparse.Namespace) -> None:
-    run_id = cast(UUID, args.run_id)
+    source_run_id = cast(UUID, args.source_run_id)
     outline_artifact_id = cast(UUID, args.outline_artifact_id)
     outline_version = cast(int, args.outline_artifact_version)
     outline_hash = cast(str, args.outline_artifact_hash)
@@ -154,19 +158,26 @@ async def _run(args: argparse.Namespace) -> None:
     config = writer_registry_config(locale)
 
     async with SessionLocal() as session:
-        writer_input = await load_writer_input(
+        handoff = await ensure_writer_run(
             session,
+            source_run_id=source_run_id,
             outline_artifact_id=outline_artifact_id,
             expected_outline_version=outline_version,
             expected_outline_hash=outline_hash,
             locale=locale,
         )
-        if writer_input.outline_artifact.run_id != run_id:
-            raise WriterGenerationError("writer_run_mismatch")
-        run = await session.get(ContentRun, run_id)
-        if run is None:
-            raise WriterGenerationError("writer_run_not_found")
-        if run.status not in {"waiting_approval", "running"}:
+        run = handoff.run
+        writer_input = await load_writer_input(
+            session,
+            writer_run_id=run.id,
+            outline_artifact_id=outline_artifact_id,
+            expected_outline_version=outline_version,
+            expected_outline_hash=outline_hash,
+            locale=locale,
+        )
+        if writer_input.handoff_artifact.id != handoff.artifact.id:
+            raise WriterGenerationError("writer_handoff_mismatch")
+        if run.status not in {"pending", "waiting_approval"}:
             raise WriterGenerationError("writer_run_state_invalid", run.status)
         settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
         if settings_snapshot is None:
@@ -208,7 +219,10 @@ async def _run(args: argparse.Namespace) -> None:
                 step_key=config.task_key,
                 attempt=1,
                 status="pending",
-                input_artifact_refs_json=[str(writer_input.outline_artifact.id)],
+                input_artifact_refs_json=[
+                    str(writer_input.handoff_artifact.id),
+                    str(writer_input.outline_artifact.id),
+                ],
                 output_artifact_refs_json=[],
             )
             session.add(step)
@@ -264,8 +278,6 @@ async def _run(args: argparse.Namespace) -> None:
             raise WriterGenerationError("writer_task_key_mismatch")
 
         if is_new_step:
-            if run.status != "waiting_approval":
-                raise WriterGenerationError("writer_new_step_requires_waiting_approval")
             await transition_run(session, run_id=run.id, status="running")
             run.current_step = config.task_key
             await transition_step_run(session, step_run_id=step.id, status="running")
@@ -273,6 +285,7 @@ async def _run(args: argparse.Namespace) -> None:
         try:
             result = await WriterGenerator(max_attempts=2).generate_draft(
                 session,
+                writer_run_id=run.id,
                 outline_artifact_id=outline_artifact_id,
                 expected_outline_version=outline_version,
                 expected_outline_hash=outline_hash,
@@ -308,9 +321,16 @@ async def _run(args: argparse.Namespace) -> None:
         print(
             json.dumps(
                 {
-                    "run_id": str(run.id),
-                    "run_status": run.status,
+                    "source_run_id": str(source_run_id),
+                    "writer_run_id": str(run.id),
+                    "writer_run_mode": run.run_mode,
+                    "writer_run_status": run.status,
+                    "writer_run_created": handoff.created,
                     "locale": locale,
+                    "locale_variant_id": str(writer_input.locale_variant.id),
+                    "locale_variant_status": writer_input.locale_variant.status,
+                    "writer_handoff_artifact_id": str(writer_input.handoff_artifact.id),
+                    "writer_handoff_hash": writer_input.handoff_artifact.content_hash,
                     "task_key": config.task_key,
                     "step_run_id": str(step.id),
                     "step_status": step.status,
