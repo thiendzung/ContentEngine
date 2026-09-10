@@ -734,7 +734,7 @@ class OutlineGenerator:
             return existing
 
         last_error: OutlineGenerationError | None = None
-        model_input = cast(dict[str, object], copy.deepcopy(outline_input.model_input))
+        model_input = copy.deepcopy(outline_input.model_input)
         for attempt in range(1, self.max_attempts + 1):
             try:
                 raw = await model.generate(input_bundle=model_input, attempt=attempt)
