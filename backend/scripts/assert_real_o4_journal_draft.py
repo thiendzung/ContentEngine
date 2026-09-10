@@ -13,9 +13,6 @@ from pathlib import Path
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
@@ -31,6 +28,9 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
     assertion_audit_registry_config,
     create_cli_assertion_audit_model_port,
 )
+from app.modules.content_engine.journal.assertion_audit_execution import (
+    prepare_assertion_audit_run,
+)
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentRunner,
@@ -38,9 +38,8 @@ from app.modules.harness.agent_runner import (
     AntigravityCliRunner,
     CodexCliRunner,
 )
-from app.modules.harness.models import ContextManifest, StepRun
 from app.modules.harness.persistence import transition_run, transition_step_run
-from app.modules.harness.runtime import ContextInputs, SettingsModelRouter, build_context_manifest
+from app.modules.harness.runtime import SettingsModelRouter
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -100,54 +99,6 @@ def _runner(provider: str) -> AgentRunner:
     raise AssertionAuditError("assertion_audit_agent_provider_unsupported", provider)
 
 
-async def _audit_step(
-    session: AsyncSession,
-    *,
-    run_id: UUID,
-    task_key: str,
-) -> StepRun | None:
-    rows = list(
-        (
-            await session.scalars(
-                select(StepRun)
-                .where(StepRun.run_id == run_id, StepRun.step_key == task_key)
-                .order_by(StepRun.attempt)
-            )
-        ).all()
-    )
-    if not rows:
-        return None
-    if len(rows) != 1:
-        raise AssertionAuditError("assertion_audit_step_attempt_conflict", task_key)
-    return rows[0]
-
-
-async def _existing_manifest(
-    session: AsyncSession,
-    *,
-    step: StepRun,
-    prompt_version: str,
-    recipe_version: str,
-) -> ContextManifest | None:
-    rows = list(
-        (
-            await session.scalars(
-                select(ContextManifest).where(
-                    ContextManifest.run_id == step.run_id,
-                    ContextManifest.step_run_id == step.id,
-                    ContextManifest.prompt_version == prompt_version,
-                    ContextManifest.recipe_version == recipe_version,
-                )
-            )
-        ).all()
-    )
-    if not rows:
-        return None
-    if len(rows) != 1:
-        raise AssertionAuditError("assertion_audit_context_manifest_duplicate")
-    return rows[0]
-
-
 async def _run(args: argparse.Namespace) -> None:
     writer_run_id = cast(UUID, args.writer_run_id)
     revised_draft_id = cast(UUID, args.revised_draft_artifact_id)
@@ -173,10 +124,8 @@ async def _run(args: argparse.Namespace) -> None:
             expected_outline_hash=outline_hash,
             locale=locale,
         )
-        run = audit_input.writer_input.writer_run
-        if run.status != "waiting_approval":
-            raise AssertionAuditError("assertion_audit_run_state_invalid", run.status)
-        settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+        source_run = audit_input.writer_input.writer_run
+        settings_snapshot = await session.get(SettingsSnapshot, source_run.settings_snapshot_id)
         if settings_snapshot is None:
             raise AssertionAuditError("assertion_audit_settings_snapshot_missing")
 
@@ -208,59 +157,16 @@ async def _run(args: argparse.Namespace) -> None:
         registry = AgentRunnerRegistry()
         registry.register(route.primary.provider, selected_runner)
 
-        step = await _audit_step(session, run_id=run.id, task_key=config.task_key)
-        is_new_step = step is None
-        if step is None:
-            step = StepRun(
-                run_id=run.id,
-                step_key=config.task_key,
-                attempt=1,
-                status="pending",
-                input_artifact_refs_json=[
-                    str(audit_input.source_artifact.id),
-                    str(audit_input.writer_input.handoff_artifact.id),
-                    str(audit_input.writer_input.outline_artifact.id),
-                ],
-                output_artifact_refs_json=[],
-            )
-            session.add(step)
-            await session.flush()
-        elif step.status != "completed":
-            raise AssertionAuditError("assertion_audit_existing_step_not_reusable", step.status)
-
-        manifest = await _existing_manifest(
+        execution = await prepare_assertion_audit_run(
             session,
-            step=step,
+            source_input=audit_input,
+            task_key=config.task_key,
             prompt_version=prompt_version,
             recipe_version=recipe_version,
         )
-        if manifest is None:
-            if not is_new_step:
-                raise AssertionAuditError("assertion_audit_context_manifest_missing")
-            upstream = audit_input.writer_input.outline_input.bundle.context_manifest
-            manifest = await build_context_manifest(
-                session,
-                run_id=run.id,
-                step_run_id=step.id,
-                inputs=ContextInputs(
-                    prompt_version=prompt_version,
-                    recipe_version=recipe_version,
-                    evidence_set_id=audit_input.writer_input.outline_input.bundle.evidence_set_id,
-                    originality_pack_id=(
-                        audit_input.writer_input.outline_input.bundle.originality_pack_id
-                    ),
-                    approved_knowledge_refs=(
-                        tuple(upstream.approved_knowledge_refs_json) if upstream is not None else ()
-                    ),
-                    knowledge_chunk_refs=(
-                        tuple(upstream.knowledge_chunk_refs_json) if upstream is not None else ()
-                    ),
-                    golden_example_refs=(
-                        tuple(upstream.golden_example_refs_json) if upstream is not None else ()
-                    ),
-                    tool_result_refs=(),
-                ),
-            )
+        run = execution.audit_run
+        step = execution.step_run
+        manifest = execution.context_manifest
 
         port = await create_cli_assertion_audit_model_port(
             session,
@@ -275,15 +181,16 @@ async def _run(args: argparse.Namespace) -> None:
         if port.task_key != config.task_key:
             raise AssertionAuditError("assertion_audit_task_key_mismatch")
 
-        if is_new_step:
+        if run.status == "pending":
             await transition_run(session, run_id=run.id, status="running")
             run.current_step = config.task_key
+        if step.status == "pending":
             await transition_step_run(session, step_run_id=step.id, status="running")
 
         try:
             result = await AssertionAuditGenerator(max_attempts=2).audit_draft(
                 session,
-                writer_run_id=run.id,
+                writer_run_id=source_run.id,
                 revised_draft_artifact_id=revised_draft_id,
                 expected_revised_draft_version=revised_draft_version,
                 expected_revised_draft_hash=revised_draft_hash,
@@ -297,27 +204,34 @@ async def _run(args: argparse.Namespace) -> None:
                 context_manifest_id=manifest.id,
                 prompt_version=prompt_version,
                 recipe_version=recipe_version,
+                execution_run_id=run.id,
             )
         except Exception as exc:
-            if is_new_step and step.status == "running":
+            if step.status == "running":
                 await transition_step_run(session, step_run_id=step.id, status="failed")
-            if is_new_step and run.status == "running":
+            if run.status == "running":
                 run.failure_code = f"{config.task_key}_failed"
                 run.failure_message = str(exc)[:2000]
                 await transition_run(session, run_id=run.id, status="failed")
             await session.commit()
             raise
 
-        if is_new_step:
+        if step.status == "running":
             await transition_step_run(session, step_run_id=step.id, status="completed")
-            await transition_run(session, run_id=run.id, status="waiting_approval")
+        if run.status == "running":
+            await transition_run(session, run_id=run.id, status="completed")
         await session.commit()
 
         print(
             json.dumps(
                 {
-                    "writer_run_id": str(run.id),
-                    "writer_run_status": run.status,
+                    "source_writer_run_id": str(source_run.id),
+                    "source_writer_run_status": source_run.status,
+                    "audit_run_id": str(run.id),
+                    "audit_run_status": run.status,
+                    "audit_run_reused": execution.audit_run_reused,
+                    "assertion_audit_handoff_id": str(execution.handoff.id),
+                    "assertion_audit_handoff_hash": execution.handoff.content_hash,
                     "locale": locale,
                     "locale_variant_id": str(audit_input.writer_input.locale_variant.id),
                     "task_key": config.task_key,
