@@ -85,55 +85,82 @@ Prove one real MOTGU Journal candidate end-to-end before adding more infrastruct
 - [x] T05.8 Angle generator structured output implementation.
 - [x] T05.9 Angle approval state/runtime bridge implementation.
 
-### Real O4 Angle Gate — PASS FOR HUMAN SELECTION
-
-Real runtime evidence:
+### Real O4 Angle + approval gates — PASS
 
 - [x] real O4 ContentRun created through the approved path;
 - [x] real `journal_input_bundle` created;
 - [x] exact locked EvidenceSet/snapshot binding verified;
 - [x] approved real model route used;
-- [x] exact sanitized model input provenance retained;
-- [x] model output provenance retained;
-- [x] 4 schema-valid, materially usable Angle candidates produced;
-- [x] important factual premises bounded by allowed evidence;
-- [x] no invented MOTGU/business fact identified in MG gate review;
-- [x] Angles address the real first-time-buyer price question;
-- [x] no generic filler blocker identified;
-- [x] MG review = PASS FOR HUMAN SELECTION;
-- [x] Founder selected one exact Angle without infrastructure/code changes.
+- [x] exact sanitized model input/model output provenance retained;
+- [x] 4 materially usable Angle candidates produced;
+- [x] MG content gate passed for human selection;
+- [x] Founder selected exact `angle-01`;
+- [x] exact durable AngleApproval persisted;
+- [x] selected candidate hash revalidated;
+- [x] approved-angle handoff verified;
+- [x] identical approval retry reused the same approval ID;
+- [x] upstream EvidenceSet/OriginalityPack/NeedHypothesis/bundle remained unchanged.
 
-Founder decision on 2026-09-10: **`angle-01`**.
+Locked selection:
 
-Selected working title: `A First-Time Buyer’s Checklist for Understanding an Artwork’s Price`.
+```text
+ContentRun: 43cc7684-c15d-45b2-8de9-dc04777b1808
+Angle artifact: 854d4f34-22c0-4a9e-8d00-0f7f9461036d / v1
+Angle artifact hash: e49941402aed35b5714c1367ab1c7c0864b111aaca782e446f3cb280332f94fe
+AngleApproval: cebc0f94-77f9-4655-9141-41cd8a5dfc14
+Selected Angle: angle-01
+Candidate hash: 72ad8714e7d21cbcc04421f2141d8e2f4ead212ad8f674f21de122f19b622872
+Working title: A First-Time Buyer’s Checklist for Understanding an Artwork’s Price
+```
 
-Decision/evidence log:
+Approval closeout:
 
-`docs/logs/2026-09-10-ce05-real-o4-angle-selection.md`
+`docs/logs/2026-09-10-ce05-angle01-approval-closeout.md`
 
-### Current gate — ANGLE-01 APPROVAL PERSISTENCE
+### Current gate — REAL O4 OUTLINE GATE
 
-Owner: **Agent Local**, exact delegated runtime/database task only.
+Owner: **MG Content Engine** for implementation/contract/editorial review.
 
-Task:
+Delegated local execution after this implementation PR is merged:
 
-`docs/logs/2026-09-10-ce05-angle01-approval-agent-local-task.md`
+`docs/logs/2026-09-10-ce05-real-o4-outline-agent-local-task.md`
 
-Gate is PASS only when:
+T05.10 status:
 
-- [ ] exactly one AngleApproval exists for Angle artifact `854d4f34-22c0-4a9e-8d00-0f7f9461036d` v1 / exact hash;
-- [ ] selected candidate is exactly `angle-01`;
-- [ ] selected candidate hash is persisted and revalidated;
-- [ ] `approved_by=founder` with the locked approval reason;
-- [ ] approved-angle handoff verifies the same artifact/candidate snapshot;
-- [ ] identical retry reuses the same approval ID;
-- [ ] no model/provider/tool call is added;
-- [ ] EvidenceSet, OriginalityPack and NeedHypothesis remain unchanged;
-- [ ] MG reviews the persistence evidence before T05.10 starts.
+- [ ] **T05.10 Outline with evidence mapping — implementation in current PR; real runtime/content gate still pending.**
 
-### Critical path after approval persistence
+Implementation gate requires:
 
-- [ ] T05.10 Outline with evidence mapping. **PREPARED / BLOCKED ON ANGLE APPROVAL**
+- [ ] exact approved `angle-01` is required; stale/wrong/conflicting approval fails closed;
+- [ ] immutable/versioned `journal_outline` Artifact;
+- [ ] exact bundle/EvidenceSet/OriginalityPack/Angle/AngleApproval bindings;
+- [ ] primary answer explicitly precedes section structure;
+- [ ] 3–8 meaningful sections with purpose and answer direction;
+- [ ] factual sections require allowed Evidence refs;
+- [ ] MOTGU-original sections require approved Originality refs;
+- [ ] mixed sections require both;
+- [ ] claim guards, reader movement and optional useful internal-link targets are explicit;
+- [ ] unsupported/out-of-set refs fail closed;
+- [ ] bounded structured model output validation;
+- [ ] no research/tool calls;
+- [ ] exact repeat reuses the same Outline artifact without another model call;
+- [ ] focused tests + regression/lint/type/migration gates pass.
+
+Real O4 Outline gate additionally requires:
+
+- [ ] migration `20260910_0018` applied and registry verified;
+- [ ] the real run's immutable SettingsSnapshot is unchanged;
+- [ ] provider/model remains exactly the already-approved `codex_cli / gpt-5.6-luna` route from that snapshot;
+- [ ] active `journal_outline:v1` prompt and `journal_outline_v1:v1` recipe are used and recorded in the Outline ContextManifest;
+- [ ] one real Outline model execution produces a grounded, useful Outline;
+- [ ] run returns to `waiting_approval` after Outline completion;
+- [ ] identical second execution proves zero extra model call/artifact;
+- [ ] MG editorial review = PASS.
+
+Design note: because SettingsSnapshot is immutable for the run and this real run predates T05.10, the Outline step deliberately reuses the exact already-approved Angle provider/model route for provider/model selection. It does not mutate or replace the run SettingsSnapshot. Prompt/recipe identity is independently versioned and bound in the T05.10 ContextManifest.
+
+### Critical path after real Outline PASS
+
 - [ ] T05.11 Draft writer `vi-VN`.
 - [ ] T05.12 Draft writer `en` independently from Vietnamese.
 - [ ] T05.13 Review/revise bounded loop.
@@ -147,19 +174,14 @@ Gate is PASS only when:
 - [ ] T05.21 CE05 Metrics Baseline.
 - [ ] T05.22 CE05 Closeout.
 
-Prepared T05.10 contract:
-
-`docs/logs/2026-09-10-ce05-t05-10-outline-mg-task.md`
-
 ### Immediate sequence
 
 ```text
-Founder selected angle-01
-→ persist exact AngleApproval
-→ verify approved-angle handoff
-→ MG closes approval gate
-→ T05.10 Outline
-→ T05.11 + T05.12 VI/EN drafts
+T05.10 implementation + CI
+→ Founder merge
+→ Agent Local real O4 Outline
+→ MG reviews full Outline
+→ if PASS: T05.11 + T05.12 VI/EN writers
 → T05.13 Review/Revise
 → T05.14 Assertion Audit
 → T05.15 source-copy check
@@ -182,7 +204,7 @@ Until T05.17 reaches one real Journal candidate:
 
 Backlog after T05.17 unless proven blocking earlier:
 
-- [ ] link Angle ModelCall `result_artifact_id` directly to the persisted Angle artifact or establish the equivalent canonical output-reference contract.
+- [ ] link Angle/Outline ModelCall `result_artifact_id` directly to the persisted output artifact or establish the equivalent canonical output-reference contract.
 
 ---
 
