@@ -1,259 +1,202 @@
-# CHECKLIST — CONTENTENGINE
+# CHECKLIST — ContentEngine Execution Gates
 
-## A. Trước khi bắt đầu task
+Use this file as the default pre-task, pre-PR and post-merge gate. Exact task files may add stricter requirements.
 
-- [ ] Đọc `README.md` và docs liên quan.
-- [ ] Xác định phase/task ID.
-- [ ] Main sạch và đồng bộ remote.
-- [ ] Tạo branch riêng cho task/phase.
-- [ ] Ghi rõ GOAL, SCOPE, NON-GOALS.
-- [ ] Xác định source of truth bị tác động.
-- [ ] Xác định data/API contract bị tác động.
-- [ ] Xác định test/evidence cần có trước khi code.
-- [ ] Nếu yêu cầu xung đột canonical docs, vào Contract Change Mode trước.
+## A. Before starting any task
 
-## B. Architecture
+- [ ] Read `AGENTS.md`.
+- [ ] Read `AI_context.MD`.
+- [ ] Read `docs/TASKS.md`.
+- [ ] Read affected canonical spec(s).
+- [ ] Read exact delegated task in `docs/logs/` when one exists.
+- [ ] Fetch latest GitHub state.
+- [ ] Confirm clean main or exact assigned branch.
+- [ ] Confirm TASK ID / OWNER.
+- [ ] Confirm GOAL / SCOPE / NON-GOALS.
+- [ ] Confirm allowed files/actions.
+- [ ] Confirm acceptance gates and stop conditions.
+- [ ] Confirm no stale semantic checkpoint.
+- [ ] Confirm WIP <= 1 primary implementation + 1 local verification task.
 
-- [ ] Logic nằm đúng module owner.
-- [ ] Router/controller mỏng.
-- [ ] Không import chéo tùy tiện giữa modules.
-- [ ] Shared infrastructure chỉ đưa vào `core` khi thật sự dùng chung.
-- [ ] Research provider code nằm sau provider seam, không hardcode trong content workflow.
-- [ ] Không hardcode business settings/model/prompt production trong workflow.
-- [ ] Không tạo generic workflow engine nếu state machine đơn giản đủ dùng.
-- [ ] External side effect có idempotency/reconciliation.
-- [ ] State transition explicit và test được.
+If instructions conflict with canonical contracts, enter Contract Change Mode before implementation.
 
-## C. Content identity / song ngữ
+## B. Scope / contract gate
 
-- [ ] Có ContentCase cho phần chung.
-- [ ] Có LocaleVariant riêng cho từng locale.
-- [ ] Không dùng dịch Việt → Anh làm workflow mặc định.
-- [ ] Query/Keyword Plan giữ locale riêng, không dịch rồi coi là cùng demand.
-- [ ] ContentItem có ID ổn định qua các lần update/refresh.
-- [ ] Mỗi lần thay đổi publishable content tạo ContentVersion rõ ràng.
-- [ ] Run mode được xác định: create/update/refresh/localize.
+- [ ] Exact scope is explicit.
+- [ ] Non-goals are respected.
+- [ ] No unrelated refactor.
+- [ ] No speculative abstraction.
+- [ ] No new provider/agent/framework unless explicitly approved.
+- [ ] No architecture redesign unless the task is an approved contract change.
+- [ ] Owner/module boundaries remain correct.
 
-## D. Data / provenance
+## C. Data / provenance gate
 
-- [ ] Có `project_id` khi resource thuộc project.
-- [ ] Có provenance cho knowledge/evidence/media/research signal.
-- [ ] Có version/snapshot cho config ảnh hưởng output.
-- [ ] Không overwrite lịch sử quan trọng.
-- [ ] Có dedupe/fingerprint khi ingest.
-- [ ] EvidenceSet bất biến sau khi lock.
-- [ ] ContextManifest ghi lại context quan trọng đã đưa vào model.
-- [ ] Raw provider result giữ được khi cần audit nhưng không tự thành knowledge truth.
-- [ ] Migration strategy rõ.
+- [ ] Required provenance is preserved.
+- [ ] Exact IDs/versions/hashes are bound where required.
+- [ ] Immutable artifacts remain immutable.
+- [ ] Stale snapshot/input is detected and fails closed.
+- [ ] Discovery signals are not promoted to factual Evidence.
+- [ ] Critical assertions map to EvidenceSet.
+- [ ] ContextManifest/input provenance is retained for important model calls.
 
-## E. Harness
+## D. Failure / retry gate
 
-- [ ] Step có status/attempt.
-- [ ] Output được persist trước state transition.
-- [ ] Production job có durable queue/state.
-- [ ] Worker claim có lease/heartbeat khi cần.
-- [ ] Worker chết có thể reclaim/resume.
-- [ ] Retry bounded và dựa trên error class.
-- [ ] Budget được enforce.
-- [ ] Approval là durable state.
-- [ ] Artifact version mới không reuse approval cũ.
-- [ ] Tool/model call có telemetry.
-- [ ] Side effect có durable intent/outbox hoặc cơ chế tương đương.
-- [ ] Kết quả side effect không rõ phải reconciliation trước retry.
+- [ ] Failure path is explicit.
+- [ ] Fail-closed behavior is preserved where required.
+- [ ] Retry is bounded.
+- [ ] Idempotency is proven for repeatable operations.
+- [ ] Partial failure does not create false success.
+- [ ] Ambiguous side effects reconcile before retry.
+- [ ] Restart/resume behavior is tested when relevant.
 
-## F. Research / Search / Evidence
+## E. Model / tool gate
 
-### Search
-- [ ] Internal MOTGU knowledge được kiểm tra trước external web.
-- [ ] Serper dùng cho Google discovery signal, không mặc định làm authority judge.
-- [ ] Tavily/Exa chỉ gọi khi cần thêm source quality/coverage/depth.
-- [ ] Jina chỉ đọc selected URL; không quyết định authority.
-- [ ] Brave không được gọi mặc định nếu chưa có lý do coverage/fallback.
-- [ ] Không gọi mọi provider cho mọi query.
-- [ ] Có provider call budget + stop-when-sufficient.
-- [ ] Search position không bị dùng như source quality score.
-- [ ] Sales/competitor page được đánh dấu đúng vai trò, không tự thành factual evidence.
-- [ ] Second-hop được dùng để tìm source gốc khi nguồn tổng hợp có citation hữu ích.
-- [ ] Manual ChatGPT/Gemini Deep Research report không tự thành factual authority; phải theo source URLs.
+- [ ] Exact task key/route is resolved through approved settings.
+- [ ] Exact approved provider/model provenance is retained.
+- [ ] Model input is sanitized and bounded.
+- [ ] Model output is schema-validated when structured output is required.
+- [ ] Budget/timeout is bounded.
+- [ ] No unapproved tools/capabilities are available.
+- [ ] Secrets are absent from prompts/logs/artifacts.
+- [ ] Runtime success is not treated as content-quality success.
 
-### Discovery vs Evidence
-- [ ] Discovery Research trả lời người đọc/query/gap, không bị dùng nhầm làm factual evidence.
-- [ ] Evidence Research kiểm chứng claim.
-- [ ] Claim quan trọng map về EvidenceSet.
-- [ ] Contradiction không bị che.
-- [ ] Authority/freshness rule được áp dụng.
-- [ ] Retrieved content giữ provenance.
-- [ ] OriginalityPack có nguyên liệu riêng của MOTGU.
-- [ ] OriginalityPack quá yếu → research/đổi angle/update/do-not-write.
+## F. Database / migration gate
 
-### Knowledge ingest / Obsidian
-- [ ] Raw SERP/API payload không mirror vào Obsidian mặc định.
-- [ ] Knowledge Candidate có source refs/provenance.
-- [ ] Candidate không tự thành Approved Knowledge.
-- [ ] Obsidian note không tự trở thành source of truth chỉ vì tồn tại.
+- [ ] Migration is required only if contract/schema changes.
+- [ ] Upgrade passes.
+- [ ] Downgrade/round-trip passes when applicable.
+- [ ] Dedicated test database is used for destructive test behavior.
+- [ ] Normal application database is protected from test mutation.
+- [ ] Existing canonical rows/artifacts remain unchanged unless the task explicitly allows mutation.
 
-## G. Opportunity Map Mini
+## G. Content gate
 
-### Opportunity Map contract (PR-C)
+- [ ] Audience/problem/intent are clear.
+- [ ] OriginalityPack is approved and relevant.
+- [ ] EvidenceSet is locked and correct.
+- [ ] No invented MOTGU fact.
+- [ ] No invented artist intent.
+- [ ] No fake scarcity.
+- [ ] No filler or keyword stuffing.
+- [ ] VI and EN are independently written from shared factual foundations.
+- [ ] Source-copy/phrase-overlap risk is checked.
+- [ ] Human final approval remains required for publishable output.
 
-- [ ] Signal source_kind/scope tách biệt với NeedHypothesis status.
-- [ ] Observation không chứa interpretation như fact; provenance và dedupe giữ đủ.
-- [ ] Support/contradiction/alternative explanations/missing evidence được ghi rõ.
-- [ ] Founder seed không được gọi là nhu cầu khách MOTGU đã xác nhận.
-- [ ] ContentOpportunity có editorial contract, decision, target refs và human selection.
-- [ ] ContentExperiment có hypothesis version, expected behaviour và review window.
-- [ ] Signal không tự promote thành customer truth từ một click/inquiry/dwell time.
-- [ ] Jina structured provenance/links và token-budget failure đã test trước real seed.
+## H. Test gate
 
-- [ ] Có seed topic/question rõ.
-- [ ] PAA/Related/Autocomplete/organic signals được normalize + dedupe.
-- [ ] Question được phân loại theo problem + intent + audience stage khi có thể.
-- [ ] Cluster dựa trên answer/problem/intent, không chỉ string similarity.
-- [ ] Có kiểm tra existing content trước CREATE.
-- [ ] Có pillar/cluster suggestion khi thật sự phù hợp.
-- [ ] Có Niche Candidate và giải thích MOTGU Right-to-Win.
-- [ ] Có content decision: CREATE/UPDATE/REFRESH/MERGE/LINK_ONLY/DO_NOT_WRITE.
-- [ ] Priority dùng NOW/NEXT/LATER/NO với reasons, không giả chính xác 0–100.
-- [ ] Mỗi candidate giữ source/signal refs.
-- [ ] Human chọn opportunity trước khi đưa sang Golden Journal.
-
-## H. Content
-
-- [ ] Audience rõ.
-- [ ] Problem/desire rõ.
-- [ ] Intent rõ.
-- [ ] Content hypothesis rõ.
-- [ ] Reader before/after rõ.
-- [ ] Emotional arc hợp lý, không ép cảm xúc giả.
-- [ ] Originality rõ và có nguyên liệu cụ thể.
-- [ ] Pillar/cluster role rõ.
-- [ ] Internal links có ích cho người đọc.
-- [ ] Không filler/keyword stuffing.
-
-## I. Artwork / Media
-
-- [ ] Canonical Artwork facts lấy đúng nguồn.
-- [ ] Media description map về MediaAsset.
-- [ ] Visual claim quan trọng map về approved MediaObservation khi cần.
-- [ ] Artist intent có provenance.
-- [ ] Price/availability không lấy từ memory stale.
-
-## J. Quality
-
-### Deterministic
-- [ ] Required fields đầy đủ.
-- [ ] Critical assertion map được về evidence.
-- [ ] Canonical facts không drift.
-- [ ] Không duplicate/content identity conflict.
-- [ ] Source-copy/phrase-overlap không vượt ngưỡng.
-
-### Model-based
-- [ ] Reader value pass.
-- [ ] Brand voice pass.
-- [ ] Originality pass.
-- [ ] Reader transformation hợp lý.
-- [ ] Language naturalness pass.
-- [ ] Search/AI readability pass.
-
-### Human
-- [ ] Human final approval có record.
-- [ ] Feels like MOTGU được đánh giá.
-- [ ] Factual/source-copy concern được ghi nhận.
-- [ ] Không tối ưu theo Rank Math overall score.
-
-## K. Learning
-
-- [ ] Human edit delta được lưu khi phù hợp.
-- [ ] Output mới không tự thành Golden Example.
-- [ ] Calibration Pack/Golden/Weak examples có human approval.
-- [ ] Learning chỉ là candidate trước human approval.
-- [ ] Candidate có evidence refs, scope và confidence.
-- [ ] Có kiểm tra đủ dữ liệu trước khi kết luận.
-- [ ] Thay đổi production settings chạy regression.
-- [ ] Pairwise candidate vs baseline khi phù hợp.
-- [ ] Không tự học từ một tín hiệu đơn lẻ thành global rule.
-
-## L. Measurement
-
-- [ ] Published content map được về ContentItem/Version/Case/Variant.
-- [ ] Core metrics được normalize khi cần so sánh.
-- [ ] Raw provider payload giữ được khi cần audit.
-- [ ] System có thể báo `INSUFFICIENT_DATA`.
-- [ ] Rank Math chỉ là technical signal phụ.
-- [ ] Search Console query khi đưa lại Keyword Plan chỉ là signal, không tự đổi strategy.
-
-## M. Test
+Run only relevant gates, but do not skip a gate merely because output looks correct.
 
 ### Backend
-- [ ] format/lint pass.
-- [ ] type/static checks pass nếu áp dụng.
-- [ ] unit tests pass.
-- [ ] integration tests pass.
-- [ ] OpenAPI generation pass.
-- [ ] migration test pass.
 
-### Research
-- [ ] provider adapter timeout/error path.
-- [ ] provider budget/stop rule.
-- [ ] query normalize/dedupe.
-- [ ] source refs giữ nguyên qua Keyword Plan.
-- [ ] raw SERP không auto-ingest Obsidian.
+- [ ] focused tests pass.
+- [ ] broader regression passes when implementation behavior changed.
+- [ ] lint/format pass.
+- [ ] type/static checks pass.
+- [ ] OpenAPI generation passes if backend contract is affected.
 
 ### Frontend
-- [ ] lint pass.
-- [ ] typecheck pass.
-- [ ] build pass.
-- [ ] critical interaction tests pass.
+
+- [ ] lint pass if affected.
+- [ ] typecheck pass if affected.
+- [ ] build pass if affected.
+- [ ] critical interaction tests pass if affected.
 
 ### Workflow
+
 - [ ] happy path.
 - [ ] failure path.
-- [ ] retry.
-- [ ] restart/resume.
-- [ ] worker lease reclaim nếu liên quan.
-- [ ] approval pause/resume.
-- [ ] duplicate protection.
-- [ ] ambiguous side-effect reconciliation.
-- [ ] ContextManifest reproducibility.
+- [ ] retry/idempotency.
+- [ ] approval state when relevant.
+- [ ] restart/resume when relevant.
+- [ ] provenance/reproducibility when relevant.
 
-## N. Trước commit
+## I. Pre-review gate — mandatory before PR is declared ready
 
-- [ ] `git diff` đã review.
-- [ ] Không có secret/API key.
-- [ ] Không có debug/temp file.
-- [ ] Docs cập nhật nếu contract đổi.
-- [ ] Tests/evidence ghi lại được.
-- [ ] Commit message mô tả đúng mục tiêu.
+### CONTRACT
+- [ ] exact scope.
+- [ ] non-goals respected.
 
-## O. Trước PR
+### DATA
+- [ ] provenance correct.
+- [ ] snapshot/hash binding correct.
+- [ ] immutable where required.
 
-PR report:
+### FAILURE
+- [ ] fail closed.
+- [ ] stale input handled.
+- [ ] retry/idempotency checked.
+- [ ] partial failure checked.
+
+### MODEL
+- [ ] exact route provenance.
+- [ ] exact sanitized input provenance.
+- [ ] budget bounded.
+- [ ] no unapproved tools/capabilities.
+
+### DB
+- [ ] migration safe if present.
+- [ ] upgrade/downgrade or round-trip checked when applicable.
+- [ ] normal DB protected.
+
+### TEST
+- [ ] focused tests.
+- [ ] regression where needed.
+- [ ] lint/type.
+- [ ] frontend if affected.
+
+### STATE
+- [ ] `AI_context.MD` describes the semantic state expected after merge.
+- [ ] `docs/TASKS.md` reflects the same semantic state.
+- [ ] exact task/evidence log exists when needed.
+- [ ] no dynamic HEAD/PR/CI status is copied into long-lived current context.
+- [ ] no stale semantic checkpoint remains.
+
+## J. Before commit / PR
+
+- [ ] Diff reviewed.
+- [ ] No secret/API key.
+- [ ] No debug/temp/generated junk file.
+- [ ] Commit message matches one objective.
+- [ ] PR is small enough to review coherently.
+- [ ] Required evidence is included or linked.
+- [ ] Unresolved contract blocker = do not mark ready.
+
+PR report format:
 
 ```text
 GOAL
-
+SCOPE / NON-GOALS
 FILES CHANGED
-
 EVIDENCE
-
 RISKS / BLOCKERS
-
+STATE TRANSITION
 STATUS
-
 NEXT
 ```
 
-- [ ] PR nhỏ, một mục tiêu chính.
-- [ ] CI pass.
-- [ ] Không merge khi còn unresolved contract issue.
-- [ ] Review comments được xử lý hoặc giải thích.
+MG may report only:
 
-## P. Sau merge
+- `READY TO MERGE`
+- `BLOCKED`
+- `NEED HUMAN DECISION`
 
-- [ ] Đồng bộ main.
-- [ ] Xác minh local main = origin/main.
-- [ ] Working tree sạch.
-- [ ] Xóa task branch khi phù hợp.
-- [ ] Chạy post-merge smoke test.
-- [ ] Cập nhật TASKS phase state.
-- [ ] Chỉ bắt đầu task tiếp theo sau checkpoint/review.
+## K. After merge
+
+- [ ] Verify merged GitHub state directly.
+- [ ] Verify required CI/checks.
+- [ ] Verify expected semantic state in `AI_context.MD` and `docs/TASKS.md`.
+- [ ] Verify no unintended DB/data mutation when relevant.
+- [ ] Delete obsolete task branch when appropriate.
+- [ ] Do not create a routine context-sync PR if the merged PR already included the correct state transition.
+- [ ] Only activate the next task after the current gate is closed and shared context is correct.
+
+## L. Current CE05 speed rule
+
+Until one real Journal passes T05.17:
+
+- [ ] every new task must shorten or unblock `Real O4 Angle → Outline → VI/EN → Audit → Final`;
+- [ ] otherwise put it in backlog;
+- [ ] no CI optimization unless CI becomes a demonstrated blocker;
+- [ ] no branch-cleanup work except when it directly prevents execution;
+- [ ] no meta-work after the governance/state reset unless a hard blocker requires it.
