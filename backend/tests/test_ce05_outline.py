@@ -369,17 +369,16 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
                 "agent_angle": {"provider": "codex_cli", "model": "test-model"}
             },
         }
+        # Test the bridge against the run's existing immutable snapshot identity without
+        # persisting or mutating any SettingsSnapshot/ContextManifest row.
         snapshot = SettingsSnapshot(
+            id=fixture.run.settings_snapshot_id,
             project_id=fixture.run.project_id,
             resolved_settings_json=route_settings,
             source_version_refs_json=["outline-test"],
             content_hash=settings_hash(route_settings),
         )
-        session.add(snapshot)
-        await session.flush()
-        fixture.run.settings_snapshot_id = snapshot.id
-        fixture.manifest.settings_snapshot_id = snapshot.id
-        await session.flush()
+        assert fixture.manifest.settings_snapshot_id == snapshot.id
 
         prompt = await session.scalar(
             select(PromptDefinition).where(PromptDefinition.prompt_key == OUTLINE_PROMPT_KEY)
