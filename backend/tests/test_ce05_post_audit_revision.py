@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import copy
+import json
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_ce05_assertion_audit import (
     _passing_output,
@@ -19,6 +21,8 @@ from test_ce05_writer import (
 )
 
 import app.modules.content_engine.journal.post_audit_revision as revision_module
+import app.modules.content_engine.journal.post_audit_revision_agent_bridge as revision_bridge
+import scripts.post_audit_revision_real_o4_en as revision_cli
 from app.modules.content_engine.journal.assertion_audit import (
     _summary,
     load_assertion_audit_input,
@@ -44,13 +48,14 @@ from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import (
     Artifact,
     ContentRun,
+    ContextManifest,
     ModelCall,
     QualityEvaluation,
     StepRun,
     ToolCall,
     utc_now,
 )
-from app.modules.harness.persistence import transition_run
+from app.modules.harness.persistence import RUN_TRANSITIONS, transition_run, transition_step_run
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 from app.modules.system.settings_service import settings_hash
 
@@ -399,7 +404,7 @@ async def test_post_audit_revision_binds_exact_findings_and_reuses_v3(
             run_id=fixture.writer_input.writer_run.id,
             step_key="post_audit_revise_en",
             attempt=1,
-            status="running",
+            status="pending",
             input_artifact_refs_json=[str(source.id), str(audit.id)],
         )
         session.add(revision_step)
@@ -416,6 +421,12 @@ async def test_post_audit_revision_binds_exact_findings_and_reuses_v3(
                 tool_result_refs=(),
             ),
         )
+        await transition_run(
+            session,
+            run_id=fixture.writer_input.writer_run.id,
+            status="running",
+        )
+        await transition_step_run(session, step_run_id=revision_step.id, status="running")
         first = await PostAuditRevisionGenerator(max_attempts=1).revise_draft(
             session,
             revision_input=revision_input,
@@ -425,6 +436,12 @@ async def test_post_audit_revision_binds_exact_findings_and_reuses_v3(
             context_manifest=manifest,
             prompt_version=fixture.prompt_version,
             recipe_version=fixture.recipe_version,
+        )
+        await transition_step_run(session, step_run_id=revision_step.id, status="completed")
+        await transition_run(
+            session,
+            run_id=fixture.writer_input.writer_run.id,
+            status="waiting_approval",
         )
         second = await PostAuditRevisionGenerator(max_attempts=1).revise_draft(
             session,
@@ -538,6 +555,12 @@ async def test_post_audit_revision_bridge_owns_call_by_new_step_without_tools(
             context_manifest_id=manifest.id,
             runner_registry=registry,
         )
+        with pytest.raises(Exception, match="post_audit_revision_model_input_not_sanitized"):
+            await port.generate(
+                input_bundle={**revision_input.model_input, "sibling_draft": {"locale": "vi"}},
+                attempt=1,
+            )
+        assert runner.requests == []
         result = await port.generate(input_bundle=revision_input.model_input, attempt=1)
 
         assert result == {"locale": "en", "revisions": []}
@@ -637,3 +660,194 @@ def test_post_audit_revision_rejects_missing_or_extra_target_ids() -> None:
     payload = {"locale": "en", "revisions": []}
     with pytest.raises(Exception, match="post_audit_revision_target_count_invalid"):
         validate_post_audit_revision_output(payload, revision_input=cast(object, None))
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_post_audit_revision_cli_failure_retry_and_exact_reuse(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async with isolated_session() as session:
+        _patch_test_targets(monkeypatch)
+        fixture, source, audit, quality = await _failed_audit_fixture(session)
+        await _ensure_revision_registry(session)
+        valid_output = {
+            "locale": "en",
+            "revisions": [
+                {
+                    "segment_id": segment_id,
+                    "source_text": TARGET_SOURCE_TEXTS[segment_id],
+                    "replacement_text": replacement,
+                }
+                for segment_id, replacement in TARGET_REPLACEMENTS.items()
+            ],
+        }
+        invalid_runner = FakeWriterRunner({"locale": "en", "revisions": []})
+        valid_runner = FakeWriterRunner(valid_output)
+
+        class _SessionContext:
+            async def __aenter__(self) -> AsyncSession:
+                return session
+
+            async def __aexit__(self, *args: object) -> None:
+                return None
+
+        async def _no_commit() -> None:
+            return None
+
+        monkeypatch.setattr(session, "commit", _no_commit)
+        monkeypatch.setattr(revision_cli, "SessionLocal", lambda: _SessionContext())
+
+        class _FakeRouter:
+            def resolve(self, *, task_key: str, settings_snapshot: SettingsSnapshot) -> object:
+                del task_key, settings_snapshot
+                return SimpleNamespace(
+                    primary=SimpleNamespace(provider="codex_cli", model="test-model")
+                )
+
+        monkeypatch.setattr(revision_cli, "SettingsModelRouter", _FakeRouter)
+        monkeypatch.setattr(revision_bridge, "SettingsModelRouter", _FakeRouter)
+
+        args = SimpleNamespace(
+            writer_run_id=fixture.writer_input.writer_run.id,
+            source_draft_artifact_id=source.id,
+            source_draft_version=2,
+            source_draft_hash=source.content_hash,
+            failed_audit_artifact_id=audit.id,
+            failed_audit_version=1,
+            failed_audit_hash=audit.content_hash,
+            failed_quality_evaluation_id=quality.id,
+            outline_artifact_id=fixture.outline_result.artifact.id,
+            outline_artifact_version=fixture.outline_result.artifact.version,
+            outline_artifact_hash=fixture.outline_result.artifact.content_hash,
+            expected_provider="codex_cli",
+            expected_model="test-model",
+        )
+        monkeypatch.setattr(revision_cli, "_runner", lambda provider: invalid_runner)
+        with pytest.raises(Exception, match="post_audit_revision_model_output_invalid"):
+            await revision_cli._run(args)
+        capsys.readouterr()
+
+        run = await session.get(ContentRun, fixture.writer_input.writer_run.id)
+        assert run is not None
+        assert run.status == "waiting_approval"
+        assert run.status != "failed"
+        steps = list(
+            (
+                await session.scalars(
+                    select(StepRun)
+                    .where(
+                        StepRun.run_id == run.id,
+                        StepRun.step_key == "post_audit_revise_en",
+                    )
+                    .order_by(StepRun.attempt)
+                )
+            ).all()
+        )
+        assert len(steps) == 1
+        assert steps[0].attempt == 1
+        assert steps[0].status == "failed"
+        assert await session.scalar(
+            select(func.count())
+            .select_from(Artifact)
+            .where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "journal_draft",
+                Artifact.version == 3,
+            )
+        ) == 0
+
+        monkeypatch.setattr(revision_cli, "_runner", lambda provider: valid_runner)
+        await revision_cli._run(args)
+        retry_output = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+        assert retry_output["step_attempt"] == 2
+        assert retry_output["step_status"] == "completed"
+        assert retry_output["writer_run_status"] == "waiting_approval"
+        assert retry_output["reused"] is False
+        assert retry_output["model_attempts"] == 1
+
+        run = await session.get(ContentRun, run.id)
+        assert run is not None
+        assert run.status == "waiting_approval"
+        steps = list(
+            (
+                await session.scalars(
+                    select(StepRun)
+                    .where(
+                        StepRun.run_id == run.id,
+                        StepRun.step_key == "post_audit_revise_en",
+                    )
+                    .order_by(StepRun.attempt)
+                )
+            ).all()
+        )
+        assert [(step.attempt, step.status) for step in steps] == [(1, "failed"), (2, "completed")]
+        v3 = await session.scalar(
+            select(Artifact).where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "journal_draft",
+                Artifact.version == 3,
+            )
+        )
+        assert v3 is not None
+        assert v3.step_run_id == steps[1].id
+        assert len(valid_runner.requests) == 1
+
+        counts_before = {
+            "steps": await session.scalar(
+                select(func.count()).select_from(StepRun).where(StepRun.run_id == run.id)
+            ),
+            "manifests": await session.scalar(
+                select(func.count())
+                .select_from(ContextManifest)
+                .where(ContextManifest.run_id == run.id)
+            ),
+            "model_calls": await session.scalar(
+                select(func.count()).select_from(ModelCall).where(ModelCall.run_id == run.id)
+            ),
+            "drafts": await session.scalar(
+                select(func.count()).select_from(Artifact).where(
+                    Artifact.run_id == run.id,
+                    Artifact.artifact_type == "journal_draft",
+                )
+            ),
+            "tool_calls": await session.scalar(
+                select(func.count()).select_from(ToolCall).where(ToolCall.run_id == run.id)
+            ),
+        }
+        await revision_cli._run(args)
+        reuse_output = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+        assert reuse_output["step_attempt"] == 2
+        assert reuse_output["step_run_id"] == str(steps[1].id)
+        assert reuse_output["reused"] is True
+        assert reuse_output["model_attempts"] == 0
+        assert reuse_output["revised_draft_artifact_id"] == str(v3.id)
+        assert len(valid_runner.requests) == 1
+        counts_after = {
+            "steps": await session.scalar(
+                select(func.count()).select_from(StepRun).where(StepRun.run_id == run.id)
+            ),
+            "manifests": await session.scalar(
+                select(func.count())
+                .select_from(ContextManifest)
+                .where(ContextManifest.run_id == run.id)
+            ),
+            "model_calls": await session.scalar(
+                select(func.count()).select_from(ModelCall).where(ModelCall.run_id == run.id)
+            ),
+            "drafts": await session.scalar(
+                select(func.count()).select_from(Artifact).where(
+                    Artifact.run_id == run.id,
+                    Artifact.artifact_type == "journal_draft",
+                )
+            ),
+            "tool_calls": await session.scalar(
+                select(func.count()).select_from(ToolCall).where(ToolCall.run_id == run.id)
+            ),
+        }
+        assert counts_after == counts_before
+
+
+def test_post_audit_revision_preserves_terminal_failed_run_transition() -> None:
+    assert RUN_TRANSITIONS["failed"] == set()
+    assert RUN_TRANSITIONS["completed"] == set()

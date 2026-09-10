@@ -41,7 +41,7 @@ from app.modules.harness.agent_runner import (
     CodexCliRunner,
 )
 from app.modules.harness.models import ContextManifest, StepRun
-from app.modules.harness.persistence import transition_run, transition_step_run
+from app.modules.harness.persistence import create_step_retry, transition_run, transition_step_run
 from app.modules.harness.runtime import ContextInputs, SettingsModelRouter, build_context_manifest
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
@@ -103,7 +103,11 @@ def _runner(provider: str) -> AgentRunner:
     raise WriterGenerationError("post_audit_revision_agent_provider_unsupported", provider)
 
 
-async def _step(session: AsyncSession, *, run_id: UUID) -> StepRun | None:
+async def _step(
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+) -> tuple[StepRun | None, bool]:
     rows = list(
         (
             await session.scalars(
@@ -112,13 +116,28 @@ async def _step(session: AsyncSession, *, run_id: UUID) -> StepRun | None:
                     StepRun.run_id == run_id,
                     StepRun.step_key == POST_AUDIT_REVISION_TASK_KEY,
                 )
-                .order_by(StepRun.attempt)
+                .order_by(StepRun.attempt, StepRun.created_at, StepRun.id)
             )
         ).all()
     )
-    if len(rows) > 1:
+    if not rows:
+        return None, True
+    attempts = [row.attempt for row in rows]
+    if attempts != list(range(1, len(rows) + 1)):
         raise WriterGenerationError("post_audit_revision_step_attempt_conflict")
-    return rows[0] if rows else None
+    latest = rows[-1]
+    if latest.status == "completed":
+        if any(row.status != "failed" for row in rows[:-1]):
+            raise WriterGenerationError("post_audit_revision_step_history_conflict")
+        return latest, False
+    if latest.status == "failed":
+        if any(row.status != "failed" for row in rows[:-1]):
+            raise WriterGenerationError("post_audit_revision_step_history_conflict")
+        return await create_step_retry(session, failed_step_run_id=latest.id), True
+    raise WriterGenerationError(
+        "post_audit_revision_step_existing_not_terminal",
+        latest.status,
+    )
 
 
 async def _manifest(
@@ -226,8 +245,7 @@ async def _run(args: argparse.Namespace) -> None:
         registry = AgentRunnerRegistry()
         registry.register(route.primary.provider, selected_runner)
 
-        step = await _step(session, run_id=run.id)
-        is_new_step = step is None
+        step, step_created = await _step(session, run_id=run.id)
         if step is None:
             step = StepRun(
                 run_id=run.id,
@@ -244,11 +262,6 @@ async def _run(args: argparse.Namespace) -> None:
             )
             session.add(step)
             await session.flush()
-        elif step.status != "completed":
-            raise WriterGenerationError(
-                "post_audit_revision_existing_step_not_reusable",
-                step.status,
-            )
         expected_refs = {
             str(revision_input.source_artifact.id),
             str(revision_input.audit_artifact.id),
@@ -257,7 +270,7 @@ async def _run(args: argparse.Namespace) -> None:
         }
         if (
             step.step_key != POST_AUDIT_REVISION_TASK_KEY
-            or step.attempt != 1
+            or step.attempt <= 0
             or not expected_refs.issubset(set(step.input_artifact_refs_json))
         ):
             raise WriterGenerationError("post_audit_revision_step_input_mismatch")
@@ -270,7 +283,7 @@ async def _run(args: argparse.Namespace) -> None:
             revision_input=revision_input,
         )
         if manifest is None:
-            if not is_new_step:
+            if not step_created:
                 raise WriterGenerationError("post_audit_revision_context_manifest_missing")
             upstream = revision_input.writer_input.outline_input.bundle.context_manifest
             manifest = await build_context_manifest(
@@ -308,7 +321,7 @@ async def _run(args: argparse.Namespace) -> None:
         if port.task_key != POST_AUDIT_REVISION_TASK_KEY:
             raise WriterGenerationError("post_audit_revision_task_key_mismatch")
 
-        if is_new_step:
+        if step_created:
             await transition_run(session, run_id=run.id, status="running")
             run.current_step = POST_AUDIT_REVISION_TASK_KEY
             await transition_step_run(session, step_run_id=step.id, status="running")
@@ -324,17 +337,15 @@ async def _run(args: argparse.Namespace) -> None:
                 prompt_version=prompt_version,
                 recipe_version=recipe_version,
             )
-        except Exception as exc:
-            if is_new_step and step.status == "running":
+        except Exception:
+            if step_created and step.status == "running":
                 await transition_step_run(session, step_run_id=step.id, status="failed")
-            if is_new_step and run.status == "running":
-                run.failure_code = f"{POST_AUDIT_REVISION_TASK_KEY}_failed"
-                run.failure_message = str(exc)[:2000]
-                await transition_run(session, run_id=run.id, status="failed")
+            if step_created and run.status == "running":
+                await transition_run(session, run_id=run.id, status="waiting_approval")
             await session.commit()
             raise
 
-        if is_new_step:
+        if step_created:
             await transition_step_run(session, step_run_id=step.id, status="completed")
             await transition_run(session, run_id=run.id, status="waiting_approval")
         await session.commit()
@@ -346,6 +357,7 @@ async def _run(args: argparse.Namespace) -> None:
                     "locale": "en",
                     "task_key": POST_AUDIT_REVISION_TASK_KEY,
                     "step_run_id": str(step.id),
+                    "step_attempt": step.attempt,
                     "step_status": step.status,
                     "settings_snapshot_id": str(settings_snapshot.id),
                     "settings_snapshot_hash": settings_snapshot.content_hash,

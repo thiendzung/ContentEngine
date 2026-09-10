@@ -632,6 +632,7 @@ async def _existing_revision(
     revision_input: PostAuditRevisionInput,
     writer_input: WriterInput,
     fingerprint: str,
+    expected_step_run_id: UUID,
 ) -> PostAuditRevisionResult | None:
     artifacts = list(
         (
@@ -659,6 +660,11 @@ async def _existing_revision(
     if len(matching) != 1 or matching[0].version != revision_input.source_artifact.version + 1:
         raise WriterGenerationError("post_audit_revision_artifact_version_conflict")
     artifact = matching[0]
+    if artifact.step_run_id != expected_step_run_id:
+        raise WriterGenerationError("post_audit_revision_artifact_step_mismatch")
+    step = await session.get(StepRun, expected_step_run_id)
+    if step is None or step.status != "completed":
+        raise WriterGenerationError("post_audit_revision_completed_step_required")
     payload = _dict(artifact.content_json, "post_audit_revision_artifact_payload_invalid")
     draft_payload = _dict(payload.get("draft"), "post_audit_revision_draft_payload_invalid")
     draft = _validate_model_output(draft_payload, writer_input=writer_input)
@@ -848,7 +854,7 @@ class PostAuditRevisionGenerator:
         recipe_version: str,
     ) -> PostAuditRevisionResult:
         writer_input = _revision_writer_input(revision_input)
-        if writer_input.writer_run.status != "waiting_approval":
+        if writer_input.writer_run.status in {"completed", "failed", "cancelled"}:
             raise WriterGenerationError("post_audit_writer_run_state_invalid")
         if context_manifest.settings_snapshot_id != writer_input.writer_run.settings_snapshot_id:
             raise WriterGenerationError("post_audit_revision_settings_snapshot_mismatch")
@@ -890,14 +896,22 @@ class PostAuditRevisionGenerator:
             recipe_version=recipe_version,
             context_manifest_hash=context_manifest.content_hash,
         )
+        context_step_id = context_manifest.step_run_id
+        if context_step_id is None:
+            raise WriterGenerationError("post_audit_revision_step_ownership_mismatch")
         existing = await _existing_revision(
             session,
             revision_input=revision_input,
             writer_input=writer_input,
             fingerprint=fingerprint,
+            expected_step_run_id=context_step_id,
         )
         if existing is not None:
+            if writer_input.writer_run.status != "waiting_approval":
+                raise WriterGenerationError("post_audit_writer_run_state_invalid")
             return existing
+        if writer_input.writer_run.status != "running" or step.status != "running":
+            raise WriterGenerationError("post_audit_revision_generation_state_invalid")
         latest = await session.scalar(
             select(func.max(Artifact.version)).where(
                 Artifact.run_id == writer_input.writer_run.id,
