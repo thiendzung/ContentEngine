@@ -290,6 +290,89 @@ async def test_assertion_audit_escalates_unsupported_fact_to_critical_fail() -> 
 
 
 @pytest.mark.asyncio
+async def test_assertion_audit_accepts_opinion_support_for_interpretation() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "closing:1")
+        target["assertions"] = [
+            {
+                "assertion_text": target["source_text"],
+                "assertion_type": "interpretation",
+                "support_status": "opinion",
+                "severity": "none",
+                "evidence_refs": [],
+                "originality_refs": [],
+                "rationale": "Bounded interpretation classified as editorial opinion.",
+            }
+        ]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+
+        assert result.result == "pass"
+        assertion = next(
+            assertion
+            for segment in result.segments
+            if segment.segment_id == "closing:1"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == "interpretation"
+        assert assertion.support_status == "opinion"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "assertion_type",
+    ["fact", "artist_intent", "visual_observation", "practical_live_information"],
+)
+async def test_assertion_audit_rejects_opinion_support_for_factual_types(
+    assertion_type: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        target = next(segment for segment in segments if segment["segment_id"] == "closing:1")
+        target["assertions"] = [
+            {
+                "assertion_text": target["source_text"],
+                "assertion_type": assertion_type,
+                "support_status": "opinion",
+                "severity": "none",
+                "evidence_refs": [],
+                "originality_refs": [],
+                "rationale": "Must not bypass the hard gate as opinion.",
+            }
+        ]
+
+        with pytest.raises(AssertionAuditError, match="assertion_audit_model_output_invalid"):
+            await _run_audit(
+                session,
+                fixture=fixture,
+                source=source,
+                model=FakeAuditModel([output]),
+            )
+
+        artifacts = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.run_id == fixture.writer_input.writer_run.id,
+                        Artifact.artifact_type == "assertion_audit",
+                    )
+                )
+            ).all()
+        )
+        assert artifacts == []
+
+
+@pytest.mark.asyncio
 async def test_assertion_audit_rejects_support_ref_outside_exact_location() -> None:
     async with isolated_session() as session:
         fixture, source, audit_input = await _source(session)

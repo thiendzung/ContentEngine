@@ -457,7 +457,11 @@ def _validate_assertion(
         "brand_statement",
     }:
         raise AssertionAuditError("assertion_audit_interpretation_type_mismatch")
-    if support_status == "opinion" and assertion_type != "opinion":
+    if support_status == "opinion" and assertion_type not in {
+        "opinion",
+        "interpretation",
+        "brand_statement",
+    }:
         raise AssertionAuditError("assertion_audit_opinion_type_mismatch")
     if assertion_type == "artist_intent" and support_status != "supported":
         model_severity = "critical"
