@@ -13,10 +13,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.outline import OutlineInput, load_outline_input
-from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
+from app.modules.content_engine.models import ContentCase, LocaleVariant
+from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun, utc_now
 
 WRITER_SCHEMA_VERSION = 1
 WRITER_GENERATOR_VERSION = "ce05.journal_writer.v1"
+WRITER_HANDOFF_SCHEMA_VERSION = 1
 SUPPORTED_WRITER_LOCALES = {"vi-VN", "en"}
 
 
@@ -86,7 +88,18 @@ class JournalDraft:
 
 
 @dataclass(frozen=True, slots=True)
+class WriterRunHandoff:
+    run: ContentRun
+    locale_variant: LocaleVariant
+    artifact: Artifact
+    created: bool
+
+
+@dataclass(frozen=True, slots=True)
 class WriterInput:
+    writer_run: ContentRun
+    locale_variant: LocaleVariant
+    handoff_artifact: Artifact
     outline_artifact: Artifact
     outline_payload: dict[str, object]
     outline_input: OutlineInput
@@ -194,6 +207,45 @@ def _generation_fingerprint(
     )
 
 
+def _case_payload(content_case: ContentCase) -> dict[str, object]:
+    return {
+        "id": str(content_case.id),
+        "project_id": str(content_case.project_id),
+        "content_type": content_case.content_type,
+        "audience_hypothesis_id": (
+            str(content_case.audience_hypothesis_id)
+            if content_case.audience_hypothesis_id is not None
+            else None
+        ),
+        "need_hypothesis_id": str(content_case.need_hypothesis_id),
+        "content_opportunity_id": str(content_case.content_opportunity_id),
+        "desired_action": content_case.desired_action,
+        "content_hypothesis": content_case.content_hypothesis,
+        "originality_statement": content_case.originality_statement,
+        "reader_before": content_case.reader_before,
+        "reader_after": content_case.reader_after,
+        "status": content_case.status,
+    }
+
+
+def _variant_payload(variant: LocaleVariant) -> dict[str, object]:
+    return {
+        "id": str(variant.id),
+        "content_case_id": str(variant.content_case_id),
+        "locale": variant.locale,
+        "content_role": variant.content_role,
+        "primary_question": variant.primary_question,
+        "primary_intent": variant.primary_intent,
+        "secondary_intent": variant.secondary_intent,
+        "primary_query": variant.primary_query,
+        "keyword_notes": variant.keyword_notes_json,
+        "emotion_arc": variant.emotion_arc_json,
+        "must_include": variant.must_include_json,
+        "must_not_claim": variant.must_not_claim_json,
+        "status": variant.status,
+    }
+
+
 def _outline_upstream(payload: dict[str, object]) -> tuple[UUID, int, str, str, str, UUID]:
     approved = _dict(payload.get("approved_angle"), "writer_approved_angle_ref_invalid")
     artifact_ref = _dict(approved.get("artifact"), "writer_angle_artifact_ref_invalid")
@@ -231,17 +283,13 @@ def _outline_upstream(payload: dict[str, object]) -> tuple[UUID, int, str, str, 
     )
 
 
-async def load_writer_input(
+async def _load_exact_outline(
     session: AsyncSession,
     *,
     outline_artifact_id: UUID,
     expected_outline_version: int,
     expected_outline_hash: str,
-    locale: str,
-) -> WriterInput:
-    """Reload one exact Outline and build an allow-listed locale-independent Writer input."""
-
-    target_locale = _locale(locale)
+) -> tuple[Artifact, dict[str, object], dict[str, object], OutlineInput]:
     artifact = await session.get(Artifact, outline_artifact_id)
     if artifact is None or artifact.artifact_type != "journal_outline":
         raise WriterGenerationError("writer_outline_not_found")
@@ -253,7 +301,6 @@ async def load_writer_input(
     if payload.get("artifact_type") != "journal_outline":
         raise WriterGenerationError("writer_outline_payload_invalid")
     outline_payload = _dict(payload.get("outline"), "writer_outline_content_invalid")
-
     (
         angle_artifact_id,
         angle_version,
@@ -275,7 +322,205 @@ async def load_writer_input(
     except ValueError as exc:
         raise WriterGenerationError("writer_outline_upstream_invalid", str(exc)) from exc
     if upstream.approved_angle.artifact.run_id != artifact.run_id:
-        raise WriterGenerationError("writer_run_mismatch")
+        raise WriterGenerationError("writer_outline_source_run_mismatch")
+    return artifact, payload, outline_payload, upstream
+
+
+def _writer_handoff_payload(
+    *,
+    source_run: ContentRun,
+    outline_artifact: Artifact,
+    locale_variant: LocaleVariant,
+) -> dict[str, object]:
+    return {
+        "schema_version": WRITER_HANDOFF_SCHEMA_VERSION,
+        "artifact_type": "writer_handoff",
+        "source_run_id": str(source_run.id),
+        "source_outline": {
+            "id": str(outline_artifact.id),
+            "version": outline_artifact.version,
+            "content_hash": outline_artifact.content_hash,
+        },
+        "content_case_id": str(source_run.content_case_id),
+        "target_locale_variant": {
+            "id": str(locale_variant.id),
+            "locale": locale_variant.locale,
+        },
+        "settings_snapshot_id": str(source_run.settings_snapshot_id),
+    }
+
+
+async def ensure_writer_run(
+    session: AsyncSession,
+    *,
+    source_run_id: UUID,
+    outline_artifact_id: UUID,
+    expected_outline_version: int,
+    expected_outline_hash: str,
+    locale: str,
+) -> WriterRunHandoff:
+    """Create/reuse one locale-specific Writer run without changing the shared upstream run."""
+
+    target_locale = _locale(locale)
+    outline_artifact, _payload, _outline, _upstream = await _load_exact_outline(
+        session,
+        outline_artifact_id=outline_artifact_id,
+        expected_outline_version=expected_outline_version,
+        expected_outline_hash=expected_outline_hash,
+    )
+    if outline_artifact.run_id != source_run_id:
+        raise WriterGenerationError("writer_source_run_mismatch")
+    source_run = await session.get(ContentRun, source_run_id)
+    if source_run is None:
+        raise WriterGenerationError("writer_source_run_not_found")
+    if source_run.status not in {"waiting_approval", "completed"}:
+        raise WriterGenerationError("writer_source_run_state_invalid", source_run.status)
+    content_case = await session.get(ContentCase, source_run.content_case_id)
+    if content_case is None or content_case.project_id != source_run.project_id:
+        raise WriterGenerationError("writer_content_case_invalid")
+    variants = list(
+        (
+            await session.scalars(
+                select(LocaleVariant).where(
+                    LocaleVariant.content_case_id == source_run.content_case_id,
+                    LocaleVariant.locale == target_locale,
+                )
+            )
+        ).all()
+    )
+    if not variants:
+        raise WriterGenerationError("writer_locale_variant_missing", target_locale)
+    if len(variants) != 1:
+        raise WriterGenerationError("writer_locale_variant_ambiguous", target_locale)
+    variant = variants[0]
+
+    handoff_payload = _writer_handoff_payload(
+        source_run=source_run,
+        outline_artifact=outline_artifact,
+        locale_variant=variant,
+    )
+    handoff_hash = _canonical_hash(handoff_payload)
+    existing_handoffs = list(
+        (
+            await session.scalars(
+                select(Artifact).where(
+                    Artifact.artifact_type == "writer_handoff",
+                    Artifact.content_hash == handoff_hash,
+                )
+            )
+        ).all()
+    )
+    if len(existing_handoffs) > 1:
+        raise WriterGenerationError("writer_handoff_duplicate")
+    if existing_handoffs:
+        handoff = existing_handoffs[0]
+        if handoff.content_json != handoff_payload:
+            raise WriterGenerationError("writer_handoff_hash_collision")
+        run = await session.get(ContentRun, handoff.run_id)
+        if run is None:
+            raise WriterGenerationError("writer_run_not_found")
+        if (
+            run.id == source_run.id
+            or run.project_id != source_run.project_id
+            or run.content_case_id != source_run.content_case_id
+            or run.locale_variant_id != variant.id
+            or run.settings_snapshot_id != source_run.settings_snapshot_id
+            or run.run_mode != "localize"
+        ):
+            raise WriterGenerationError("writer_handoff_run_mismatch")
+        return WriterRunHandoff(
+            run=run,
+            locale_variant=variant,
+            artifact=handoff,
+            created=False,
+        )
+
+    run = ContentRun(
+        project_id=source_run.project_id,
+        content_case_id=source_run.content_case_id,
+        locale_variant_id=variant.id,
+        content_item_id=None,
+        run_mode="localize",
+        status="pending",
+        current_step=None,
+        settings_snapshot_id=source_run.settings_snapshot_id,
+        started_at=utc_now(),
+    )
+    session.add(run)
+    await session.flush()
+    handoff = Artifact(
+        run_id=run.id,
+        artifact_type="writer_handoff",
+        locale=target_locale,
+        version=1,
+        content_json=handoff_payload,
+        content_hash=handoff_hash,
+    )
+    session.add(handoff)
+    await session.flush()
+    return WriterRunHandoff(
+        run=run,
+        locale_variant=variant,
+        artifact=handoff,
+        created=True,
+    )
+
+
+async def load_writer_input(
+    session: AsyncSession,
+    *,
+    writer_run_id: UUID,
+    outline_artifact_id: UUID,
+    expected_outline_version: int,
+    expected_outline_hash: str,
+    locale: str,
+) -> WriterInput:
+    """Reload one exact accepted Outline and exact locale-specific Writer-run contract."""
+
+    target_locale = _locale(locale)
+    artifact, payload, outline_payload, upstream = await _load_exact_outline(
+        session,
+        outline_artifact_id=outline_artifact_id,
+        expected_outline_version=expected_outline_version,
+        expected_outline_hash=expected_outline_hash,
+    )
+    source_run = await session.get(ContentRun, artifact.run_id)
+    writer_run = await session.get(ContentRun, writer_run_id)
+    if source_run is None or writer_run is None:
+        raise WriterGenerationError("writer_run_not_found")
+    if writer_run.id == source_run.id:
+        raise WriterGenerationError("writer_locale_run_required")
+    if (
+        writer_run.project_id != source_run.project_id
+        or writer_run.content_case_id != source_run.content_case_id
+        or writer_run.settings_snapshot_id != source_run.settings_snapshot_id
+        or writer_run.run_mode != "localize"
+    ):
+        raise WriterGenerationError("writer_run_lineage_mismatch")
+    variant = await session.get(LocaleVariant, writer_run.locale_variant_id)
+    content_case = await session.get(ContentCase, writer_run.content_case_id)
+    if variant is None or content_case is None:
+        raise WriterGenerationError("writer_locale_context_missing")
+    if variant.content_case_id != content_case.id or variant.locale != target_locale:
+        raise WriterGenerationError("writer_locale_variant_mismatch")
+    if content_case.project_id != writer_run.project_id:
+        raise WriterGenerationError("writer_content_case_invalid")
+
+    expected_handoff_payload = _writer_handoff_payload(
+        source_run=source_run,
+        outline_artifact=artifact,
+        locale_variant=variant,
+    )
+    expected_handoff_hash = _canonical_hash(expected_handoff_payload)
+    handoff = await session.scalar(
+        select(Artifact).where(
+            Artifact.run_id == writer_run.id,
+            Artifact.artifact_type == "writer_handoff",
+            Artifact.content_hash == expected_handoff_hash,
+        )
+    )
+    if handoff is None or handoff.content_json != expected_handoff_payload:
+        raise WriterGenerationError("writer_handoff_missing_or_stale")
 
     opportunity = _dict(upstream.model_input.get("opportunity"), "writer_opportunity_invalid")
     evidence_set = _dict(upstream.model_input.get("evidence_set"), "writer_evidence_input_invalid")
@@ -286,14 +531,21 @@ async def load_writer_input(
     model_input: dict[str, object] = {
         "locale": target_locale,
         "independence_rule": (
-            "Generate directly from the approved Outline and shared evidence. "
+            "Generate directly from the approved Outline, target LocaleVariant and shared evidence. "
             "Do not translate, inspect, quote or depend on another locale draft."
         ),
+        "writer_handoff_ref": {
+            "id": str(handoff.id),
+            "content_hash": handoff.content_hash,
+            "source_run_id": str(source_run.id),
+        },
         "journal_outline_ref": {
             "id": str(artifact.id),
             "version": artifact.version,
             "content_hash": artifact.content_hash,
         },
+        "content_case": _case_payload(content_case),
+        "locale_variant": _variant_payload(variant),
         "outline": cast(dict[str, object], _clone_json(outline_payload)),
         "approved_angle": cast(dict[str, object], _clone_json(payload["approved_angle"])),
         "opportunity": cast(dict[str, object], _clone_json(opportunity)),
@@ -306,6 +558,9 @@ async def load_writer_input(
         ),
     }
     return WriterInput(
+        writer_run=writer_run,
+        locale_variant=variant,
+        handoff_artifact=handoff,
         outline_artifact=artifact,
         outline_payload=outline_payload,
         outline_input=upstream,
@@ -470,8 +725,8 @@ async def _execution_manifest(
     recipe_version: str,
 ) -> ContextManifest:
     manifest = await session.get(ContextManifest, context_manifest_id)
-    run = await session.get(ContentRun, writer_input.outline_artifact.run_id)
-    if manifest is None or run is None or manifest.run_id != run.id:
+    run = writer_input.writer_run
+    if manifest is None or manifest.run_id != run.id:
         raise WriterGenerationError("writer_context_manifest_mismatch")
     if manifest.settings_snapshot_id != run.settings_snapshot_id:
         raise WriterGenerationError("writer_settings_snapshot_mismatch")
@@ -498,7 +753,7 @@ async def _existing_draft(
             await session.scalars(
                 select(Artifact)
                 .where(
-                    Artifact.run_id == writer_input.outline_artifact.run_id,
+                    Artifact.run_id == writer_input.writer_run.id,
                     Artifact.artifact_type == "journal_draft",
                     Artifact.locale == writer_input.locale,
                 )
@@ -539,7 +794,7 @@ async def persist_journal_draft(
     generator_version: str = WRITER_GENERATOR_VERSION,
     schema_version: int = WRITER_SCHEMA_VERSION,
 ) -> Artifact:
-    """Persist one immutable locale draft bound to the exact accepted Outline."""
+    """Persist one immutable locale draft bound to the exact accepted Outline and locale run."""
 
     if not provider.strip() or not model.strip():
         raise WriterGenerationError("writer_model_metadata_required")
@@ -563,6 +818,13 @@ async def persist_journal_draft(
         "artifact_type": "journal_draft",
         "locale": writer_input.locale,
         "generation_fingerprint": fingerprint,
+        "writer_handoff": {
+            "id": str(writer_input.handoff_artifact.id),
+            "content_hash": writer_input.handoff_artifact.content_hash,
+            "source_run_id": str(writer_input.outline_artifact.run_id),
+            "writer_run_id": str(writer_input.writer_run.id),
+            "locale_variant_id": str(writer_input.locale_variant.id),
+        },
         "journal_outline": {
             "id": str(writer_input.outline_artifact.id),
             "version": writer_input.outline_artifact.version,
@@ -594,7 +856,7 @@ async def persist_journal_draft(
     content_hash = _canonical_hash(payload)
     existing = await session.scalar(
         select(Artifact).where(
-            Artifact.run_id == writer_input.outline_artifact.run_id,
+            Artifact.run_id == writer_input.writer_run.id,
             Artifact.artifact_type == "journal_draft",
             Artifact.locale == writer_input.locale,
             Artifact.content_hash == content_hash,
@@ -606,13 +868,12 @@ async def persist_journal_draft(
         return existing
     latest_version = await session.scalar(
         select(func.max(Artifact.version)).where(
-            Artifact.run_id == writer_input.outline_artifact.run_id,
+            Artifact.run_id == writer_input.writer_run.id,
             Artifact.artifact_type == "journal_draft",
-            Artifact.locale == writer_input.locale,
         )
     )
     artifact = Artifact(
-        run_id=writer_input.outline_artifact.run_id,
+        run_id=writer_input.writer_run.id,
         step_run_id=context_manifest.step_run_id,
         artifact_type="journal_draft",
         locale=writer_input.locale,
@@ -648,6 +909,7 @@ class WriterGenerator:
         self,
         session: AsyncSession,
         *,
+        writer_run_id: UUID,
         outline_artifact_id: UUID,
         expected_outline_version: int,
         expected_outline_hash: str,
@@ -663,6 +925,7 @@ class WriterGenerator:
     ) -> WriterGenerationResult:
         writer_input = await load_writer_input(
             session,
+            writer_run_id=writer_run_id,
             outline_artifact_id=outline_artifact_id,
             expected_outline_version=expected_outline_version,
             expected_outline_hash=expected_outline_hash,
@@ -748,8 +1011,11 @@ __all__ = [
     "WriterGenerator",
     "WriterInput",
     "WriterModelPort",
+    "WriterRunHandoff",
     "WRITER_GENERATOR_VERSION",
+    "WRITER_HANDOFF_SCHEMA_VERSION",
     "WRITER_SCHEMA_VERSION",
+    "ensure_writer_run",
     "load_writer_input",
     "persist_journal_draft",
     "writer_model_input_hash",
