@@ -39,7 +39,7 @@ from app.modules.harness.agent_runner import (
     AntigravityCliRunner,
     CodexCliRunner,
 )
-from app.modules.harness.models import ContentRun, ContextManifest, StepRun
+from app.modules.harness.models import ContextManifest, StepRun
 from app.modules.harness.persistence import transition_run, transition_step_run
 from app.modules.harness.runtime import ContextInputs, SettingsModelRouter, build_context_manifest
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
