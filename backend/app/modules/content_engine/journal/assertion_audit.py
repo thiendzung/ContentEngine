@@ -669,6 +669,8 @@ async def _existing_audit(
     if evaluation.result != summary["result"]:
         raise AssertionAuditError("assertion_audit_evaluation_stale")
     result = summary["result"]
+    if not isinstance(result, str):
+        raise AssertionAuditError("assertion_audit_summary_result_invalid")
     return AssertionAuditResult(
         artifact=artifact,
         evaluation=evaluation,
@@ -756,7 +758,10 @@ async def _persist_audit(
             raise AssertionAuditError("assertion_audit_artifact_step_mismatch")
         step.output_artifact_refs_json = [*step.output_artifact_refs_json, str(artifact.id)]
         await session.flush()
-    result = summary["result"]
+    result_value = summary["result"]
+    if not isinstance(result_value, str):
+        raise AssertionAuditError("assertion_audit_summary_result_invalid")
+    result = result_value
     severity = "critical" if result == "fail" else ("medium" if result == "warn" else "none")
     evaluation = QualityEvaluation(
         run_id=artifact.run_id,
