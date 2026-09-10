@@ -16,7 +16,6 @@ from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
     WriterInput,
-    WriterModelPort,
     _canonical_hash,
     _dict,
     _execution_manifest,
@@ -669,11 +668,12 @@ async def _existing_audit(
     evaluation = await _evaluation_for(session, artifact=artifact)
     if evaluation.result != summary["result"]:
         raise AssertionAuditError("assertion_audit_evaluation_stale")
+    result = summary["result"]
     return AssertionAuditResult(
         artifact=artifact,
         evaluation=evaluation,
         segments=segments,
-        result=cast(str, summary["result"]),
+        result=result,
         critical_unsupported_count=cast(int, summary["critical_unsupported_count"]),
         critical_contradicted_count=cast(int, summary["critical_contradicted_count"]),
         unsupported_count=cast(int, summary["unsupported_count"]),
@@ -756,7 +756,7 @@ async def _persist_audit(
             raise AssertionAuditError("assertion_audit_artifact_step_mismatch")
         step.output_artifact_refs_json = [*step.output_artifact_refs_json, str(artifact.id)]
         await session.flush()
-    result = cast(str, summary["result"])
+    result = summary["result"]
     severity = "critical" if result == "fail" else ("medium" if result == "warn" else "none")
     evaluation = QualityEvaluation(
         run_id=artifact.run_id,
@@ -840,7 +840,7 @@ class AssertionAuditGenerator:
             prompt_version=prompt_version,
             recipe_version=recipe_version,
         )
-        routed = _model_identity(cast(WriterModelPort, model))
+        routed = _model_identity(model)
         if routed is not None and (provider.strip(), model_name.strip()) != routed:
             raise AssertionAuditError("assertion_audit_model_route_mismatch")
         artifact_provider, artifact_model = routed or (provider.strip(), model_name.strip())
