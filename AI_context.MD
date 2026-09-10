@@ -44,14 +44,14 @@ CURRENT OWNER: MG owns T05.11/T05.12 implementation + editorial review; Agent Lo
 
 Git commit, PR and CI status must be read directly from GitHub; do not mirror changing GitHub state here.
 
-## Locked real O4 lineage
+## Locked real O4 upstream lineage
 
 ```text
 Founder framing: How do I know if an original artwork is fairly priced?
 ContentOpportunity: 068991ab-de34-4787-9c38-8935c3f0e2da
 NeedHypothesis: 530bdd27-f008-4910-9b3b-df83e007cfa2 = PROPOSED
 ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5
-ContentRun: 43cc7684-c15d-45b2-8de9-dc04777b1808
+SOURCE O4 RUN: 43cc7684-c15d-45b2-8de9-dc04777b1808
 EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / v8 / locked
 OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / approved
 journal_input_bundle: abaffbbb-9d7a-4c7c-af8c-d28b79ee3991 / v1 / hash 894e608b640bf4d3e67de8a4e7f94991d7637ca3c0392de1d00c1966c234cd3b
@@ -60,6 +60,7 @@ AngleApproval: cebc0f94-77f9-4655-9141-41cd8a5dfc14
 SELECTED ANGLE: angle-01
 Candidate hash: 72ad8714e7d21cbcc04421f2141d8e2f4ead212ad8f674f21de122f19b622872
 Outline artifact: 39e0a6a3-d735-432b-9353-1da8314b72cd / v1 / hash 4f4a746bc4b10625be50b5cc4c2311cad7a1ebee5797bcde8058c622eed351ea
+SettingsSnapshot: 8f687d1c-1cba-4571-8960-77d7faf18453 / hash d26829305c979d6cb8bd0f6ae72d795d6c21ca2c5eae9f5c3e6bf3ef0d8a176c
 WORKING TITLE: A First-Time Buyer’s Checklist for Understanding an Artwork’s Price
 ```
 
@@ -68,14 +69,17 @@ NeedHypothesis remains `PROPOSED` unless a later approved task explicitly change
 ## T05.11/T05.12 Writer contract
 
 - `vi-VN` and `en` are sibling drafts generated directly from the same accepted Outline.
-- Neither locale may inspect, translate, quote or depend on the sibling draft.
+- Each locale must bind one exact persisted `LocaleVariant`; missing/ambiguous variant fails closed before Writer execution.
+- The source O4 run remains the upstream Angle/Outline run and is not reused as a bilingual execution container.
+- Each locale gets a separate `localize` ContentRun with the same ContentCase and exact immutable SettingsSnapshot, plus an immutable `writer_handoff` binding source O4 run + accepted Outline + target LocaleVariant.
+- Neither locale may inspect, translate, quote or depend on the sibling draft/run as writing input.
 - Both share exact factual truth, brand position, core reader value, entity identity and content hypothesis; sentence-level equivalence is not required.
 - Each locale has its own active prompt/recipe and its own `writer_vi` / `writer_en` StepRun + ModelCall + ContextManifest.
-- Both deliberately reuse the immutable real run's already-approved `angle` provider/model route; the SettingsSnapshot is never rewritten.
+- Both locale runs deliberately reuse the immutable upstream SettingsSnapshot's already-approved `angle` provider/model route; no SettingsSnapshot is rewritten.
 - Every lead/section must carry the exact Evidence/Originality refs already assigned by the accepted Outline. No support-ref expansion is allowed in Writer.
 - If a useful new factual claim lacks support, Writer must declare it in `unresolved_factual_claims`; it must not invent the claim.
 - No specific current artwork price, status, location, artist intent, provenance, scarcity or MOTGU pricing method may be invented.
-- Exact repeated execution for one locale must reuse the same immutable `journal_draft` Artifact without another model call.
+- Exact repeated execution for one locale must reuse the same writer run/handoff/immutable `journal_draft` Artifact without another model call.
 - No research/tool call is allowed.
 
 ## Next action
@@ -87,14 +91,13 @@ After the T05.11/T05.12 implementation PR is merged, Agent Local executes exactl
 Expected sequence:
 
 ```text
-migration 20260910_0019
+preflight exact vi-VN + en LocaleVariants
+→ migration 20260910_0019
 → verify exact VI + EN prompt/recipe registry
 → revalidate accepted Outline + immutable upstream snapshots
-→ real vi-VN Writer model call
-→ immutable vi-VN journal_draft
-→ real EN Writer model call directly from same Outline
-→ immutable EN journal_draft
-→ identical locale reruns prove artifact reuse / zero extra model calls
+→ vi-VN localize run + writer_handoff + real Writer model call + immutable draft
+→ en localize run + writer_handoff + independent real Writer model call + immutable draft
+→ identical locale reruns prove writer-run/artifact reuse / zero extra model calls
 → MG reviews both full drafts + bilingual independence
 → only if PASS: T05.13 Review/Revise
 ```
@@ -103,11 +106,11 @@ Do not start T05.13 before the real bilingual draft content gate is explicitly c
 
 ## Current blockers
 
-None known. Real Writer execution requires local DB migration/runtime and authenticated no-tool CLI runner verification.
+No implementation blocker known. Real runtime must first prove that the real ContentCase contains exactly one `vi-VN` and one `en` LocaleVariant. If either is missing/ambiguous, Agent Local must stop; it may not create or repair locale metadata on its own.
 
 ## Human decision required
 
-None at this moment. Escalate only if real drafts expose a genuine product/brand decision that cannot be resolved from the accepted calibration and hard boundaries.
+None at this moment. Escalate only if real locale metadata or generated drafts expose a genuine product/brand decision that cannot be resolved from the accepted calibration and hard boundaries.
 
 ## Operating constraints
 
