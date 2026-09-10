@@ -293,7 +293,10 @@ async def _load_exact_outline(
     artifact = await session.get(Artifact, outline_artifact_id)
     if artifact is None or artifact.artifact_type != "journal_outline":
         raise WriterGenerationError("writer_outline_not_found")
-    if artifact.version != expected_outline_version or artifact.content_hash != expected_outline_hash:
+    if (
+        artifact.version != expected_outline_version
+        or artifact.content_hash != expected_outline_hash
+    ):
         raise WriterGenerationError("writer_outline_snapshot_mismatch")
     payload = _dict(artifact.content_json, "writer_outline_payload_invalid")
     if _canonical_hash(payload) != artifact.content_hash:
@@ -531,8 +534,9 @@ async def load_writer_input(
     model_input: dict[str, object] = {
         "locale": target_locale,
         "independence_rule": (
-            "Generate directly from the approved Outline, target LocaleVariant and shared evidence. "
-            "Do not translate, inspect, quote or depend on another locale draft."
+            "Generate directly from the approved Outline, target LocaleVariant "
+            "and shared evidence. Do not translate, inspect, quote or depend on "
+            "another locale draft."
         ),
         "writer_handoff_ref": {
             "id": str(handoff.id),
