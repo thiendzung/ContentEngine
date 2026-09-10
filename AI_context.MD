@@ -28,9 +28,9 @@ Do not infer or start the next task. Do not merge unless acting as Founder with 
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
-CURRENT GATE: T05.14 — ASSERTION AUDIT
-CURRENT OWNER: MG Content Engine
-NEXT ACTION: implement bounded T05.14 Assertion Audit against the exact real VI/EN draft v2 artifacts; do not start T05.15
+CURRENT GATE: T05.14 — REAL BILINGUAL ASSERTION AUDIT GATE
+CURRENT OWNER: MG owns implementation/review; Agent Local executes only the exact post-merge local runtime task
+NEXT ACTION: merge the T05.14 implementation only after CI/review PASS, then Agent Local syncs main and executes the exact real audit task
 BLOCKERS: none known
 HUMAN DECISION REQUIRED: none at this gate; final content approval remains later
 ```
@@ -40,11 +40,11 @@ HUMAN DECISION REQUIRED: none at this gate; final content approval remains later
 - CE01–CE04: CLOSED / PASS.
 - CE05 T05.1–T05.10: DONE / MERGED / real gates PASS.
 - T05.11/T05.12 bilingual Writer: implementation + real runtime/provenance/independence gate PASS.
-- T05.13 bounded Review/Revise: implementation merged; real bilingual runtime/content/provenance/idempotency gate **PASS** after MG review.
-- T05.14 Assertion Audit: **ACTIVE / NOT YET IMPLEMENTED**.
+- T05.13 bounded Review/Revise: implementation + real bilingual runtime/content/provenance/idempotency gate **PASS**.
+- T05.14 Assertion Audit implementation: carried by the current implementation PR; real runtime gate is pending after merge.
 - T05.15–T05.22: NOT STARTED.
 
-Git commit, PR and CI status must be read directly from GitHub; do not mirror changing GitHub state here.
+Dynamic commit/PR/CI state must be read directly from GitHub.
 
 ## Locked real O4 upstream lineage
 
@@ -67,67 +67,88 @@ SettingsSnapshot: 8f687d1c-1cba-4571-8960-77d7faf18453 / hash d26829305c979d6cb8
 
 NeedHypothesis remains `PROPOSED` unless a later approved task explicitly changes that contract.
 
-## Locked real bilingual outputs entering T05.14
+## Exact real bilingual sources entering T05.14
 
 ```text
 vi-VN LocaleVariant: e982a60f-05f0-4e15-9ed3-397db9486dfa
 vi-VN Writer run: 1f0b91a7-39d7-449f-84ad-988fd1e8f44e
-vi-VN source draft v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede / hash 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
 vi-VN revised draft v2: a0afa7d0-af3d-4669-ae18-54c54b87731f / hash da5fd6e78e19bf4c395797d39379fdb66fd9766f75649e3054e03a0a03677e85
-vi-VN v2 unresolved factual claims: 0
+vi-VN unresolved factual claims: 0
 
 en LocaleVariant: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
 en Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
-en source draft v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837 / hash cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
 en revised draft v2: d512f3f4-bc28-473b-9de1-f0a838940191 / hash e65472ebb266a0a62ef1d4d855fefb36d23a72e28eeedbbd30acbec7fe1bc034
-en v2 unresolved factual claims: 0
+en unresolved factual claims: 0
 ```
 
-T05.13 proved for both locales:
-
-- exact v1 source snapshot and upstream lineage verified;
-- same existing `localize` Writer run reused; no new ContentRun;
-- exact Outline section IDs/order and Evidence/Originality refs preserved;
-- no sibling draft/translation input;
-- no new research, Search, URL or ToolCall;
-- no missing artwork, artist, commerce, comparison or market fact invented;
-- source v1 remained immutable;
-- one immutable v2 persisted per locale;
-- all document-level and section-level unresolved lists are empty;
-- exact rerun reused the same v2 with `model_attempts=0` and zero additional side effects;
-- Writer runs returned to `waiting_approval`;
-- upstream O4 state and hashes remained unchanged.
-
-Canonical gate closeout:
+Canonical T05.13 closeout:
 
 `docs/logs/2026-09-10-ce05-t05-13-real-gate-closeout.md`
 
-## T05.14 Assertion Audit contract
+## T05.14 implementation contract
 
-Canonical specs require, after Draft/Revision and before final approval:
+T05.14 implements the canonical flow:
 
 ```text
-content
-→ extract important factual/interpretive assertions
-→ map to Claim/EvidenceSet or approved first-party/Originality material
-→ classify support status
-→ hard fail critical unsupported or contradicted assertions
+immutable revised draft v2
+→ deterministic visible-copy segmentation
+→ bounded model assertion extraction/classification
+→ deterministic exact-substring + location-support validation
+→ Evidence ID → persisted Claim ID mapping in code
+→ deterministic critical unsupported/contradicted hard gate
+→ immutable assertion_audit Artifact
+→ deterministic QualityEvaluation
 ```
 
-Minimum assertion categories include fact, brand statement, artist intent, interpretation, opinion, visual observation and practical/live information. Live price/availability facts must be checked against canonical sources rather than stale memory.
+Rules:
 
-T05.14 is bounded to the two exact v2 artifacts above. It must not add research, mutate the drafts, silently expand the EvidenceSet, or start the source-copy check.
+- model does not rewrite content and does not own the final hard-gate decision;
+- every standfirst/lead/body/closing sentence must be explicitly audited;
+- title/heading may be marked non-assertive only when explicitly accounted for;
+- assertion text must be a verbatim substring of the exact source segment;
+- Evidence/Originality refs may only come from the exact support refs allowed at that source location;
+- Claim refs are derived from persisted Evidence rows, never invented by the model;
+- unsupported/contradicted factual, artist-intent, visual-observation or practical-live assertions are deterministically escalated to critical;
+- critical unsupported or contradicted assertions hard-fail regardless of model severity/aggregate judgement;
+- no new research, Search, URL, ToolCall, sibling draft or translation source;
+- source drafts and upstream lineage remain immutable;
+- persist through existing Artifact + QualityEvaluation contracts; no Assertion table/schema expansion in T05.14;
+- exact rerun must reuse the same audit artifact/evaluation with zero extra ModelCall.
 
-Audit attention carried from MG T05.13 review, not pre-judged failures:
+Registry migration:
 
-- EN `read-availability`: classify the sentence that sale status/location do not by themselves establish artwork value; verify it remains editorial guidance/guard rather than unsupported universal fact.
-- EN `begin-with-the-work`: classify `most recent listing information` carefully; do not let it substitute for the canonical-live-data rule when a concrete commerce fact is asserted.
+`20260910_0021`
+
+Runtime task after merge:
+
+`docs/logs/2026-09-10-ce05-real-o4-assertion-audit-agent-local-task.md`
+
+## Real T05.14 acceptance
+
+Both exact locales must return:
+
+```text
+audit_result = pass
+critical_unsupported_count = 0
+critical_contradicted_count = 0
+```
+
+and prove exact rerun/idempotency, zero ToolCalls, exact source/upstream immutability, and one deterministic QualityEvaluation per assertion-audit artifact.
+
+If an audit completes as `warn` or `fail`, T05.14 is `NEEDS CHANGES`; Agent Local must not rewrite the content or start T05.15.
+
+Explicit EN audit attention:
+
+- `read-availability`: classify the statement that sale status/location should not create urgency and do not by themselves establish artwork value without falsely labeling the broader value wording as external universal fact;
+- `begin-with-the-work`: classify `most recent listing information` as reader guidance, not as proof of a concrete current commerce fact.
 
 ## Next action
 
-MG implements T05.14 against the exact v2 snapshots and adds deterministic/fail-closed acceptance where possible. Any model-assisted assertion extraction/evaluation is a signal constrained by the locked EvidenceSet/OriginalityPack; it cannot promote new facts.
+Finish implementation CI/review. After Founder merge, Agent Local synchronizes local `main` completely before reading task files and executes exactly:
 
-Do not start T05.15 source-copy check until T05.14 is explicitly PASS.
+`CE05-T05.14-REAL-LOCAL`
+
+Do not start T05.15 source-copy check until the real T05.14 gate is explicitly PASS.
 
 ## Operating constraints
 
