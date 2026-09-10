@@ -28,23 +28,21 @@ Do not infer or start the next task. Do not merge unless acting as Founder with 
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
-CURRENT GATE: T05.13 — REAL BILINGUAL REVIEW / REVISE GATE
-CURRENT OWNER: MG owns T05.13 implementation + editorial review; Agent Local executes only the exact delegated real runtime gate after merge
+CURRENT GATE: T05.14 — ASSERTION AUDIT
+CURRENT OWNER: MG Content Engine
+NEXT ACTION: implement bounded T05.14 Assertion Audit against the exact real VI/EN draft v2 artifacts; do not start T05.15
+BLOCKERS: none known
+HUMAN DECISION REQUIRED: none at this gate; final content approval remains later
 ```
 
 ## Current progress
 
 - CE01–CE04: CLOSED / PASS.
 - CE05 T05.1–T05.10: DONE / MERGED / real gates PASS.
-- Founder-selected `angle-01`: durably approved and exact handoff verified.
-- Missing real `vi-VN` LocaleVariant: repaired through the bounded approved data task.
-- T05.11/T05.12 bilingual Writer implementation: DONE / MERGED.
-- Real T05.11/T05.12 runtime/provenance/independence gate: **PASS**.
-- VI Writer v1: real immutable draft, zero declared unresolved factual claims.
-- EN Writer v1: real immutable draft, five declared absence notes; no missing facts were invented.
-- Writer-gate contract correction: non-zero declared gaps may enter T05.13; `unresolved_factual_claim_count = 0` is a mandatory T05.13 EXIT gate before Assertion Audit.
-- T05.13 Review/Revise implementation: carried by the PR containing this semantic transition; real runtime gate is next after merge.
-- T05.14–T05.22: NOT STARTED.
+- T05.11/T05.12 bilingual Writer: implementation + real runtime/provenance/independence gate PASS.
+- T05.13 bounded Review/Revise: implementation merged; real bilingual runtime/content/provenance/idempotency gate **PASS** after MG review.
+- T05.14 Assertion Audit: **ACTIVE / NOT YET IMPLEMENTED**.
+- T05.15–T05.22: NOT STARTED.
 
 Git commit, PR and CI status must be read directly from GitHub; do not mirror changing GitHub state here.
 
@@ -65,86 +63,71 @@ SELECTED ANGLE: angle-01
 Candidate hash: 72ad8714e7d21cbcc04421f2141d8e2f4ead212ad8f674f21de122f19b622872
 Outline artifact: 39e0a6a3-d735-432b-9353-1da8314b72cd / v1 / hash 4f4a746bc4b10625be50b5cc4c2311cad7a1ebee5797bcde8058c622eed351ea
 SettingsSnapshot: 8f687d1c-1cba-4571-8960-77d7faf18453 / hash d26829305c979d6cb8bd0f6ae72d795d6c21ca2c5eae9f5c3e6bf3ef0d8a176c
-WORKING TITLE: A First-Time Buyer’s Checklist for Understanding an Artwork’s Price
 ```
 
 NeedHypothesis remains `PROPOSED` unless a later approved task explicitly changes that contract.
 
-## Locked real bilingual Writer v1 inputs to T05.13
+## Locked real bilingual outputs entering T05.14
 
 ```text
 vi-VN LocaleVariant: e982a60f-05f0-4e15-9ed3-397db9486dfa
 vi-VN Writer run: 1f0b91a7-39d7-449f-84ad-988fd1e8f44e
-vi-VN writer_handoff: a98cb643-681a-42f6-a26f-746a8792883b / hash 4bb4a4c50a18c815017d24997edbb3cfc58d64107d65eef0d0dd07eb2c843730
-vi-VN draft v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede / hash 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
-vi-VN source unresolved count: 0
+vi-VN source draft v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede / hash 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
+vi-VN revised draft v2: a0afa7d0-af3d-4669-ae18-54c54b87731f / hash da5fd6e78e19bf4c395797d39379fdb66fd9766f75649e3054e03a0a03677e85
+vi-VN v2 unresolved factual claims: 0
 
 en LocaleVariant: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
 en Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
-en writer_handoff: 2aca6d2d-4ee0-4eaf-bb0c-ac2a8cd6b8b9 / hash 90fe6010a59a3985bfd295bdc51d7e0e3905b83ed1b2c55add803c05d7dca691
-en draft v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837 / hash cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
-en source unresolved count: 5
+en source draft v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837 / hash cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
+en revised draft v2: d512f3f4-bc28-473b-9de1-f0a838940191 / hash e65472ebb266a0a62ef1d4d855fefb36d23a72e28eeedbbd30acbec7fe1bc034
+en v2 unresolved factual claims: 0
 ```
 
-Both Writer runs are independent `localize` runs bound to the same ContentCase, accepted Outline and immutable SettingsSnapshot. Exact Writer reruns proved artifact reuse with zero extra ModelCalls. ToolCalls remained zero and upstream state remained immutable.
+T05.13 proved for both locales:
 
-## Writer gate contract correction
+- exact v1 source snapshot and upstream lineage verified;
+- same existing `localize` Writer run reused; no new ContentRun;
+- exact Outline section IDs/order and Evidence/Originality refs preserved;
+- no sibling draft/translation input;
+- no new research, Search, URL or ToolCall;
+- no missing artwork, artist, commerce, comparison or market fact invented;
+- source v1 remained immutable;
+- one immutable v2 persisted per locale;
+- all document-level and section-level unresolved lists are empty;
+- exact rerun reused the same v2 with `model_attempts=0` and zero additional side effects;
+- Writer runs returned to `waiting_approval`;
+- upstream O4 state and hashes remained unchanged.
 
-`unresolved_factual_claims` is a safety handoff field. Writer is required to declare a useful intended factual claim when bounded input cannot support it instead of inventing the fact.
+Canonical gate closeout:
 
-Therefore T05.11/T05.12 does **not** require zero declared gaps. It requires truthful declaration, exact support/provenance, bilingual independence and no invented fact.
+`docs/logs/2026-09-10-ce05-t05-13-real-gate-closeout.md`
 
-The real EN v1 five entries describe missing artwork-specific data rather than false claims asserted by the prose. No new research is required merely to clear those absence notes.
+## T05.14 Assertion Audit contract
 
-Canonical decision record:
+Canonical specs require, after Draft/Revision and before final approval:
 
-`docs/logs/2026-09-10-ce05-writer-gate-contract-correction.md`
+```text
+content
+→ extract important factual/interpretive assertions
+→ map to Claim/EvidenceSet or approved first-party/Originality material
+→ classify support status
+→ hard fail critical unsupported or contradicted assertions
+```
 
-## T05.13 Review/Revise contract
+Minimum assertion categories include fact, brand statement, artist intent, interpretation, opinion, visual observation and practical/live information. Live price/availability facts must be checked against canonical sources rather than stale memory.
 
-- Revise each locale independently from its exact immutable source draft v1; no sibling draft input and no translation workflow.
-- Stay inside the existing locale Writer `localize` ContentRun; do not create another ContentRun.
-- Use one locale-specific `review_revise_vi` / `review_revise_en` StepRun + ContextManifest + ModelCall flow.
-- Reuse the same immutable SettingsSnapshot and approved `codex_cli / gpt-5.6-luna` route.
-- Bind exact source draft, writer_handoff, accepted Outline, EvidenceSet and OriginalityPack.
-- Preserve exact Outline section IDs/order and exact Evidence/Originality refs.
-- Resolve each declared gap only by removing/softening unsupported intended claims or writing generic guidance that does not depend on missing facts.
-- Never fabricate missing artwork, artist, commerce, comparison or market facts.
-- Improve native-language clarity and reader-facing prose within the existing factual/support boundaries.
-- Persist a new immutable `journal_draft` version; source v1 remains unchanged.
-- Final document-level and section-level `unresolved_factual_claims` arrays must all be empty.
-- No research, Search, URL or ToolCall.
-- Exact rerun must reuse the same revised artifact with zero extra ModelCall.
+T05.14 is bounded to the two exact v2 artifacts above. It must not add research, mutate the drafts, silently expand the EvidenceSet, or start the source-copy check.
+
+Audit attention carried from MG T05.13 review, not pre-judged failures:
+
+- EN `read-availability`: classify the sentence that sale status/location do not by themselves establish artwork value; verify it remains editorial guidance/guard rather than unsupported universal fact.
+- EN `begin-with-the-work`: classify `most recent listing information` carefully; do not let it substitute for the canonical-live-data rule when a concrete commerce fact is asserted.
 
 ## Next action
 
-After the T05.13 implementation PR is merged, Agent Local synchronizes local `main` with GitHub and executes exactly:
+MG implements T05.14 against the exact v2 snapshots and adds deterministic/fail-closed acceptance where possible. Any model-assisted assertion extraction/evaluation is a signal constrained by the locked EvidenceSet/OriginalityPack; it cannot promote new facts.
 
-`docs/logs/2026-09-10-ce05-real-o4-review-revise-agent-local-task.md`
-
-Expected sequence:
-
-```text
-sync local main exactly to origin/main
-→ verify exact source v1 drafts + upstream hashes
-→ migration 20260910_0020 + exact review/revise registry
-→ real vi-VN bounded review/revise → immutable draft v2
-→ real en bounded review/revise → immutable draft v2
-→ both v2 have zero unresolved factual claims
-→ exact reruns prove v2 reuse / zero extra model calls
-→ MG reviews both revised full drafts
-→ only if PASS: T05.14 Assertion Audit
-```
-
-Do not start T05.14 before the real T05.13 content/provenance gate is explicitly closed.
-
-## Current blockers
-
-No known implementation blocker. The real T05.13 runtime gate remains to be executed after merge.
-
-## Human decision required
-
-None at this moment. Final content approval remains a later mandatory Founder gate; T05.13 is not final approval.
+Do not start T05.15 source-copy check until T05.14 is explicitly PASS.
 
 ## Operating constraints
 
