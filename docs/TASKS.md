@@ -183,10 +183,13 @@ Merged T05.14 Assertion Audit implementation through PR #46 includes:
 - [x] approved local-agent runtime bridge with no tools/research/sibling draft;
 - [x] production CLI + focused tests;
 - [x] exact Agent Local task with mandatory local Git synchronization before task read/execution.
-- [ ] bounded EN post-audit revision step in the existing Writer `localize` run;
-- [ ] exact persisted five-finding binding and deterministic non-target immutability;
-- [ ] immutable EN `journal_draft` v3 with exact rerun reuse;
-- [ ] post-merge EN revision → Assertion Audit v3 re-audit task.
+- [x] bounded EN post-audit revision step in the existing Writer `localize` run;
+- [x] exact persisted five-finding binding and deterministic non-target immutability;
+- [x] immutable EN `journal_draft` v3 with exact rerun reuse;
+- [x] post-merge EN revision → Assertion Audit v3 re-audit task executed;
+- [ ] deterministic deletion of the sole EN v3 `closing:3` unsupported critical sentence;
+- [ ] immutable EN `journal_draft` v4 in the same Writer run with cleanup idempotency;
+- [ ] post-merge EN v4 cleanup → Assertion Audit v3 re-audit task.
 
 Post-merge real Assertion Audit task:
 
@@ -198,11 +201,11 @@ T05.14 real v3 status:
 
 Current implementation task:
 
-`docs/logs/2026-09-10-ce05-t05-14-en-post-audit-revision-agent-local-task.md`
+`docs/logs/2026-09-10-ce05-t05-14-en-final-closing-cleanup-agent-local-task.md`
 
-The current PR adds a bounded English-only remediation path. It binds the exact persisted
-EN v2 audit findings, creates one immutable EN `journal_draft` v3 in the existing Writer
-run, and leaves the VI PASS artifact immutable. Production revision and re-audit are
+The current PR adds a deterministic English-only final cleanup path. It binds the exact
+persisted EN v3 audit finding, creates one immutable EN `journal_draft` v4 in the existing
+Writer run, and leaves the VI PASS artifact immutable. Production cleanup and re-audit are
 inactive until this implementation is merged.
 
 Real T05.14 v3 gate evidence:
@@ -223,7 +226,10 @@ Real T05.14 v3 gate evidence:
 - [x] no research/Search/URL/ToolCall, sibling draft or translation input;
 - [x] exact reruns reuse the same audit artifacts/evaluations with `model_attempts=0` and zero further side effects;
 - [x] source v2 drafts and all upstream lineage remain immutable;
-- [ ] MG reviews the full real audit output and marks T05.14 PASS.
+- [x] EN v3 re-audit completed and the sole remaining finding is `closing:3` unsupported critical `brand_statement`;
+- [ ] deterministic EN v4 cleanup completes with zero ModelCalls/ToolCalls;
+- [ ] EN v4 `audit_result=pass`, unsupported=0, contradicted=0;
+- [ ] MG reviews the full final EN v4 cleanup/re-audit output and marks T05.14 PASS.
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
@@ -241,11 +247,11 @@ If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` a
 ### Immediate sequence
 
 ```text
-T05.14 EN post-audit remediation implementation + final CI/review
+T05.14 EN final closing cleanup implementation + final CI/review
 → Founder merge
-→ Agent Local runs EN revision and exact revision reuse
+→ Agent Local runs deterministic EN v4 cleanup and exact cleanup reuse
 → Agent Local runs EN Assertion Audit v3 and exact audit reuse
-→ MG reviews full EN v3 draft/audit output
+→ MG reviews full EN v4 draft/audit output
 → if PASS: T05.15 source-copy check
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS
