@@ -14,6 +14,7 @@ from typing import cast
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(_BACKEND_ROOT) not in sys.path:
@@ -98,13 +99,10 @@ def _runner(provider: str) -> AgentRunner:
     raise OutlineGenerationError("outline_agent_provider_unsupported", provider)
 
 
-async def _outline_step(session: object, *, run_id: UUID) -> StepRun | None:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
-    typed_session = cast(AsyncSession, session)
+async def _outline_step(session: AsyncSession, *, run_id: UUID) -> StepRun | None:
     rows = list(
         (
-            await typed_session.scalars(
+            await session.scalars(
                 select(StepRun)
                 .where(StepRun.run_id == run_id, StepRun.step_key == OUTLINE_TASK_KEY)
                 .order_by(StepRun.attempt)
@@ -119,18 +117,15 @@ async def _outline_step(session: object, *, run_id: UUID) -> StepRun | None:
 
 
 async def _existing_manifest(
-    session: object,
+    session: AsyncSession,
     *,
     step: StepRun,
     prompt_version: str,
     recipe_version: str,
 ) -> ContextManifest | None:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
-    typed_session = cast(AsyncSession, session)
     rows = list(
         (
-            await typed_session.scalars(
+            await session.scalars(
                 select(ContextManifest).where(
                     ContextManifest.run_id == step.run_id,
                     ContextManifest.step_run_id == step.id,
@@ -326,7 +321,9 @@ async def _run(args: argparse.Namespace) -> None:
                     "angle_artifact_id": str(outline_input.approved_angle.artifact.id),
                     "angle_approval_id": str(outline_input.approved_angle.approval.id),
                     "selected_angle_id": outline_input.approved_angle.candidate.angle_id,
-                    "selected_candidate_hash": outline_input.approved_angle.approval.selected_candidate_hash,
+                    "selected_candidate_hash": (
+                        outline_input.approved_angle.approval.selected_candidate_hash
+                    ),
                     "journal_input_bundle_id": str(outline_input.bundle.artifact.id),
                     "journal_input_bundle_hash": outline_input.bundle.artifact.content_hash,
                     "outline_artifact_id": str(result.artifact.id),
