@@ -25,7 +25,7 @@ from app.modules.content_engine.journal.writer import (
     persist_journal_draft,
     writer_model_input_hash,
 )
-from app.modules.harness.models import Artifact, ContextManifest
+from app.modules.harness.models import Artifact
 
 REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v1"
 REVIEW_REVISE_SCHEMA_VERSION = 1
