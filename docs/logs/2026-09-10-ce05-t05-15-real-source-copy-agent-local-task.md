@@ -76,8 +76,8 @@ noncanonical Originality ref. In particular inspect `lead:3` and
 noncanonical spellings but persisted data is canonical, record that as report
 transcription only. If persisted data is noncanonical, stop **BLOCKED**.
 
-Use `backend/.venv/bin/python -m scripts.source_copy_real_o4_journal` from
-`backend/` with these exact arguments:
+From the repository root, use
+`backend/.venv/bin/python -m scripts.source_copy_real_o4_journal` with these exact arguments:
 
 ```bash
 backend/.venv/bin/python -m scripts.source_copy_real_o4_journal \
