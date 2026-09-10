@@ -418,7 +418,7 @@ async def test_writer_support_drift_fails_closed() -> None:
         invalid = _draft_payload(fixture.writer_input, "en")
         sections = cast(list[object], invalid["sections"])
         first = cast(dict[str, object], sections[0])
-        first["evidence_refs"] = [str(fixture.outline_fixture.bundle.evidence_ids[0])]
+        first["evidence_refs"] = ["00000000-0000-0000-0000-000000000000"]
         model = FakeWriterModel([invalid])
 
         with pytest.raises(WriterGenerationError, match="writer_model_output_invalid"):
