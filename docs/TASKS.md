@@ -164,7 +164,7 @@ Real T05.13 gate proved:
 - [x] EvidenceSet, OriginalityPack, selected Angle, accepted Outline, SettingsSnapshot, NeedHypothesis and source O4 artifacts remained unchanged;
 - [x] MG reviewed both full v2 drafts against v1, Outline, Evidence and Originality boundaries and marked T05.13 **PASS**.
 
-### Current gate — T05.14 EN POST-AUDIT CONTENT REMEDIATION
+### T05.14 FINAL CLOSEOUT / CURRENT GATE — T05.15 BASIC SOURCE-COPY
 
 Owner: **MG Content Engine** for implementation/contract/review; Agent Local executes only the exact post-merge real runtime gate.
 
@@ -187,9 +187,9 @@ Merged T05.14 Assertion Audit implementation through PR #46 includes:
 - [x] exact persisted five-finding binding and deterministic non-target immutability;
 - [x] immutable EN `journal_draft` v3 with exact rerun reuse;
 - [x] post-merge EN revision → Assertion Audit v3 re-audit task executed;
-- [ ] deterministic deletion of the sole EN v3 `closing:3` unsupported critical sentence;
-- [ ] immutable EN `journal_draft` v4 in the same Writer run with cleanup idempotency;
-- [ ] post-merge EN v4 cleanup → Assertion Audit v3 re-audit task.
+- [x] deterministic deletion of the sole EN v3 `closing:3` unsupported critical sentence;
+- [x] immutable EN `journal_draft` v4 in the same Writer run with cleanup idempotency;
+- [x] post-merge EN v4 cleanup → Assertion Audit v3 re-audit completed with T05.14 PASS.
 
 Post-merge real Assertion Audit task:
 
@@ -197,16 +197,11 @@ Post-merge real Assertion Audit task:
 
 T05.14 real v3 status:
 
-- [x] **T05.14 Assertion Audit — VI PASS / EN NEEDS CHANGES after the real v3 runtime gate.**
+- [x] **T05.14 Assertion Audit — VI PASS / EN final cleanup and re-audit PASS.**
 
-Current implementation task:
-
-`docs/logs/2026-09-10-ce05-t05-14-en-final-closing-cleanup-agent-local-task.md`
-
-The current PR adds a deterministic English-only final cleanup path. It binds the exact
-persisted EN v3 audit finding, creates one immutable EN `journal_draft` v4 in the existing
-Writer run, and leaves the VI PASS artifact immutable. Production cleanup and re-audit are
-inactive until this implementation is merged.
+T05.14 final cleanup implementation and production re-audit are complete. The exact
+English v4 artifact and PASS audit remain immutable inputs for later gates; the VI PASS
+artifact and all shared upstream records remain immutable.
 
 Real T05.14 v3 gate evidence:
 
@@ -221,21 +216,38 @@ Real T05.14 v3 gate evidence:
 - [x] Evidence/Originality refs remain within exact location support boundaries;
 - [x] Evidence refs map to persisted Claim IDs through code;
 - [x] VI `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
-- [ ] EN `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
+- [x] EN `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
 - [x] the two EN attention items are explicitly classified rather than silently treated as external factual proof;
 - [x] no research/Search/URL/ToolCall, sibling draft or translation input;
 - [x] exact reruns reuse the same audit artifacts/evaluations with `model_attempts=0` and zero further side effects;
 - [x] source v2 drafts and all upstream lineage remain immutable;
 - [x] EN v3 re-audit completed and the sole remaining finding is `closing:3` unsupported critical `brand_statement`;
-- [ ] deterministic EN v4 cleanup completes with zero ModelCalls/ToolCalls;
-- [ ] EN v4 `audit_result=pass`, unsupported=0, contradicted=0;
-- [ ] MG reviews the full final EN v4 cleanup/re-audit output and marks T05.14 PASS.
+- [x] deterministic EN v4 cleanup completes with zero ModelCalls/ToolCalls;
+- [x] EN v4 `audit_result=pass`, unsupported=0, contradicted=0;
+- [x] MG reviews the full final EN v4 cleanup/re-audit output and marks T05.14 PASS.
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
-### Critical path after T05.14 PASS
+### Current gate — T05.15 BASIC SOURCE-COPY
 
-- [ ] T05.15 Basic source-copy check.
+Owner: **Agent Local** implements the bounded deterministic gate on PR #49; MG reviews
+the implementation and Founder controls merge. Production T05.15 is not executed in
+the implementation task.
+
+- [ ] deterministic exact contiguous normalized-token overlap only;
+- [ ] locked EvidenceSet excerpts and approved OriginalityPack text fields only;
+- [ ] dedicated locale `eval` ContentRun with immutable handoff, check Artifact and
+  deterministic QualityEvaluation;
+- [ ] exact completed rerun reuses all outputs with zero side effects;
+- [ ] post-merge real task:
+  `docs/logs/2026-09-10-ce05-t05-15-real-source-copy-agent-local-task.md`;
+- [ ] T05.15 real VI/EN gate after implementation merge.
+
+No model/provider/tool/research/vector/fuzzy/translation similarity is in scope.
+T05.16 remains NOT STARTED until both locales pass the real T05.15 gate.
+
+### Critical path after T05.15 PASS
+
 - [ ] T05.16 Final content package.
 - [ ] T05.17 One real MOTGU Journal end-to-end candidate.
 - [ ] T05.18 Critical Gate Regression.
@@ -247,12 +259,10 @@ If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` a
 ### Immediate sequence
 
 ```text
-T05.14 EN final closing cleanup implementation + final CI/review
+T05.15 basic source-copy implementation + final CI/review
 → Founder merge
-→ Agent Local runs deterministic EN v4 cleanup and exact cleanup reuse
-→ Agent Local runs EN Assertion Audit v3 and exact audit reuse
-→ MG reviews full EN v4 draft/audit output
-→ if PASS: T05.15 source-copy check
+→ Agent Local runs deterministic VI/EN source-copy check and exact reruns
+→ MG reviews exact findings/provenance and marks T05.15 PASS
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS
 ```

@@ -74,6 +74,22 @@ from app.modules.content_engine.journal.research_handoff import (
     originality_pack_snapshot_hash,
     select_research_decision,
 )
+from app.modules.content_engine.journal.source_copy import (
+    SOURCE_COPY_EVALUATOR_KEY,
+    SOURCE_COPY_EVALUATOR_VERSION,
+    SOURCE_COPY_GENERATOR_VERSION,
+    SOURCE_COPY_SCHEMA_VERSION,
+    SourceCopyCheck,
+    SourceCopyError,
+    SourceCopyFinding,
+    SourceCopyGenerator,
+    SourceCopyInput,
+    SourceCopyResult,
+    SourceCopySource,
+    check_source_copy,
+    execute_source_copy,
+    load_source_copy_input,
+)
 
 __all__ = [
     "ANGLE_CANDIDATES_SCHEMA_VERSION",
@@ -121,6 +137,17 @@ __all__ = [
     "OutlineSection",
     "PersistedJournalContext",
     "ResearchDecision",
+    "SOURCE_COPY_EVALUATOR_KEY",
+    "SOURCE_COPY_EVALUATOR_VERSION",
+    "SOURCE_COPY_GENERATOR_VERSION",
+    "SOURCE_COPY_SCHEMA_VERSION",
+    "SourceCopyCheck",
+    "SourceCopyError",
+    "SourceCopyFinding",
+    "SourceCopyGenerator",
+    "SourceCopyInput",
+    "SourceCopyResult",
+    "SourceCopySource",
     "angle_candidate_hash",
     "angle_model_input_hash",
     "approve_angle_candidate",
@@ -138,4 +165,7 @@ __all__ = [
     "render_angle_prompt",
     "render_outline_prompt",
     "select_research_decision",
+    "check_source_copy",
+    "execute_source_copy",
+    "load_source_copy_input",
 ]
