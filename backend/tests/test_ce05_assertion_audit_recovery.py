@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -13,11 +14,16 @@ from test_ce05_assertion_audit import (
     isolated_session,
 )
 
+from app.core.database import engine
 from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_KEY,
     ASSERTION_AUDIT_EVALUATOR_VERSION,
     ASSERTION_AUDIT_GENERATOR_VERSION,
     AssertionAuditError,
     AssertionAuditGenerator,
+    _fingerprint,
+    _summary,
+    validate_assertion_audit_output,
 )
 from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
     assertion_audit_registry_config,
@@ -27,7 +33,7 @@ from app.modules.content_engine.journal.assertion_audit_execution import (
     _handoff_payload,
     prepare_assertion_audit_run,
 )
-from app.modules.content_engine.journal.writer import _canonical_hash
+from app.modules.content_engine.journal.writer import _canonical_hash, writer_model_input_hash
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import (
@@ -44,6 +50,7 @@ from app.modules.harness.persistence import (
     transition_run,
     transition_step_run,
 )
+from app.modules.harness.runtime import _stable_hash
 from app.modules.system.settings_service import (
     active_prompt_definition,
     active_recipe_definition,
@@ -118,6 +125,485 @@ async def _audit(
     if execution.audit_run.status == "running":
         await transition_run(session, run_id=execution.audit_run.id, status="completed")
     return result
+
+
+async def _duplicate_completed_audit(
+    session: AsyncSession,
+    *,
+    source_input,
+    source_execution,
+    source_result,
+    created_at: datetime,
+    conflicting_summary: bool = False,
+    malformed: str | None = None,
+    run_status: str = "completed",
+):
+    """Create a historical duplicate fixture without changing the source run."""
+
+    source_run = source_input.writer_input.writer_run
+    payload = copy.deepcopy(source_execution.handoff.content_json)
+    assert isinstance(payload, dict)
+    duplicate_run = ContentRun(
+        id=uuid4(),
+        project_id=source_run.project_id,
+        content_case_id=source_run.content_case_id,
+        locale_variant_id=source_run.locale_variant_id,
+        content_item_id=source_run.content_item_id,
+        run_mode="eval",
+        status=run_status,
+        current_step=source_execution.step_run.step_key,
+        settings_snapshot_id=source_run.settings_snapshot_id,
+        started_at=created_at,
+        completed_at=created_at + timedelta(seconds=1),
+        created_at=created_at,
+        updated_at=created_at,
+    )
+    session.add(duplicate_run)
+    await session.flush()
+
+    duplicate_handoff = Artifact(
+        run_id=duplicate_run.id,
+        artifact_type="assertion_audit_handoff",
+        locale=source_input.writer_input.locale,
+        version=1,
+        content_json=payload,
+        content_hash=_canonical_hash(payload),
+    )
+    session.add(duplicate_handoff)
+    await session.flush()
+
+    duplicate_step = StepRun(
+        run_id=duplicate_run.id,
+        step_key=source_execution.step_run.step_key,
+        attempt=1,
+        status="completed",
+        input_artifact_refs_json=[
+            str(duplicate_handoff.id),
+            str(source_input.source_artifact.id),
+            str(source_input.writer_input.outline_artifact.id),
+        ],
+        output_artifact_refs_json=[],
+        started_at=created_at,
+        completed_at=created_at + timedelta(seconds=1),
+        created_at=created_at,
+        updated_at=created_at,
+    )
+    session.add(duplicate_step)
+    await session.flush()
+
+    source_manifest = source_execution.context_manifest
+    manifest_payload = {
+        "run_id": str(duplicate_run.id),
+        "step_run_id": str(duplicate_step.id),
+        "settings_snapshot_id": str(duplicate_run.settings_snapshot_id),
+        "prompt_version": source_manifest.prompt_version,
+        "recipe_version": source_manifest.recipe_version,
+        "evidence_set_id": str(source_manifest.evidence_set_id),
+        "originality_pack_id": str(source_manifest.originality_pack_id),
+        "context_artifact_id": (
+            str(source_manifest.context_artifact_id)
+            if source_manifest.context_artifact_id is not None
+            else None
+        ),
+        "approved_knowledge_refs": source_manifest.approved_knowledge_refs_json,
+        "knowledge_chunk_refs": source_manifest.knowledge_chunk_refs_json,
+        "golden_example_refs": source_manifest.golden_example_refs_json,
+        "tool_result_refs": source_manifest.tool_result_refs_json,
+    }
+    duplicate_manifest = ContextManifest(
+        run_id=duplicate_run.id,
+        step_run_id=duplicate_step.id,
+        settings_snapshot_id=duplicate_run.settings_snapshot_id,
+        prompt_version=source_manifest.prompt_version,
+        recipe_version=source_manifest.recipe_version,
+        evidence_set_id=source_manifest.evidence_set_id,
+        originality_pack_id=source_manifest.originality_pack_id,
+        context_artifact_id=source_manifest.context_artifact_id,
+        approved_knowledge_refs_json=copy.deepcopy(source_manifest.approved_knowledge_refs_json),
+        knowledge_chunk_refs_json=copy.deepcopy(source_manifest.knowledge_chunk_refs_json),
+        golden_example_refs_json=copy.deepcopy(source_manifest.golden_example_refs_json),
+        tool_result_refs_json=copy.deepcopy(source_manifest.tool_result_refs_json),
+        content_hash=_stable_hash(manifest_payload),
+    )
+    if malformed != "missing_manifest":
+        session.add(duplicate_manifest)
+        await session.flush()
+        if malformed == "duplicate_manifest":
+            session.add(
+                ContextManifest(
+                    run_id=duplicate_run.id,
+                    step_run_id=duplicate_step.id,
+                    settings_snapshot_id=duplicate_run.settings_snapshot_id,
+                    prompt_version=source_manifest.prompt_version,
+                    recipe_version=source_manifest.recipe_version,
+                    evidence_set_id=source_manifest.evidence_set_id,
+                    originality_pack_id=source_manifest.originality_pack_id,
+                    context_artifact_id=source_manifest.context_artifact_id,
+                    approved_knowledge_refs_json=copy.deepcopy(
+                        source_manifest.approved_knowledge_refs_json
+                    ),
+                    knowledge_chunk_refs_json=copy.deepcopy(
+                        source_manifest.knowledge_chunk_refs_json
+                    ),
+                    golden_example_refs_json=copy.deepcopy(
+                        source_manifest.golden_example_refs_json
+                    ),
+                    tool_result_refs_json=copy.deepcopy(source_manifest.tool_result_refs_json),
+                    content_hash=_stable_hash(manifest_payload),
+                )
+            )
+            await session.flush()
+    manifest_for_payload = (
+        duplicate_manifest if malformed != "missing_manifest" else source_manifest
+    )
+
+    source_payload = source_result.artifact.content_json
+    assert isinstance(source_payload, dict)
+    audit_payload = copy.deepcopy(source_payload)
+    model_payload = audit_payload.get("model")
+    assert isinstance(model_payload, dict)
+    provider = model_payload["provider"]
+    model = model_payload["model"]
+    assert isinstance(provider, str)
+    assert isinstance(model, str)
+    if conflicting_summary:
+        segments = audit_payload["segments"]
+        assert isinstance(segments, list)
+        for segment in segments:
+            assert isinstance(segment, dict)
+            assertions = segment["assertions"]
+            assert isinstance(assertions, list)
+            if assertions:
+                assertion = assertions[0]
+                assert isinstance(assertion, dict)
+                assertion["support_status"] = "unsupported"
+                assertion["severity"] = "critical"
+                break
+        validated = validate_assertion_audit_output(
+            {"locale": source_input.writer_input.locale, "segments": segments},
+            audit_input=source_input,
+        )
+        audit_payload["summary"] = _summary(validated)
+    if malformed == "wrong_source":
+        source_draft = audit_payload["source_draft"]
+        assert isinstance(source_draft, dict)
+        source_draft["id"] = str(uuid4())
+    execution_context = audit_payload["execution_context"]
+    assert isinstance(execution_context, dict)
+    execution_context = audit_payload["execution_context"]
+    assert isinstance(execution_context, dict)
+    audit_payload["execution_context"] = {
+        **execution_context,
+        "context_manifest_id": str(manifest_for_payload.id),
+        "context_manifest_hash": manifest_for_payload.content_hash,
+    }
+    audit_payload["generation_fingerprint"] = _fingerprint(
+        audit_input=source_input,
+        model_input_hash=writer_model_input_hash(source_input.model_input),
+        provider=provider,
+        model=model,
+        prompt_version=source_manifest.prompt_version,
+        recipe_version=source_manifest.recipe_version,
+        context_manifest_hash=manifest_for_payload.content_hash,
+    )
+    duplicate_artifact = Artifact(
+        run_id=duplicate_run.id,
+        step_run_id=duplicate_step.id,
+        artifact_type="assertion_audit",
+        locale=source_input.writer_input.locale,
+        version=1,
+        content_json=audit_payload,
+        content_hash=(
+            "0" * 64
+            if malformed == "stale_artifact_hash"
+            else _canonical_hash(audit_payload)
+        ),
+    )
+    if malformed != "missing_artifact":
+        session.add(duplicate_artifact)
+        await session.flush()
+        duplicate_step.output_artifact_refs_json = [str(duplicate_artifact.id)]
+        if malformed == "duplicate_artifact":
+            session.add(
+                Artifact(
+                    run_id=duplicate_run.id,
+                    step_run_id=duplicate_step.id,
+                    artifact_type="assertion_audit",
+                    locale=source_input.writer_input.locale,
+                    version=2,
+                    content_json=copy.deepcopy(audit_payload),
+                    content_hash=_canonical_hash(audit_payload),
+                )
+            )
+        for _attempt in range(int(model_payload["model_calls"])):
+            session.add(
+                ModelCall(
+                    run_id=duplicate_run.id,
+                    step_run_id=duplicate_step.id,
+                    context_manifest_id=duplicate_manifest.id,
+                    task_key=duplicate_step.step_key,
+                    provider=provider,
+                    model=model,
+                    purpose="Fixture assertion audit",
+                    prompt_version=source_manifest.prompt_version,
+                    started_at=created_at,
+                    completed_at=created_at + timedelta(seconds=1),
+                    finish_reason="stop",
+                    status="completed",
+                )
+            )
+    summary = audit_payload["summary"]
+    assert isinstance(summary, dict)
+    if malformed not in {"missing_evaluation", "missing_artifact"}:
+        evaluation = QualityEvaluation(
+            run_id=duplicate_run.id,
+            artifact_id=duplicate_artifact.id,
+            evaluator_key=ASSERTION_AUDIT_EVALUATOR_KEY,
+            evaluator_version=ASSERTION_AUDIT_EVALUATOR_VERSION,
+            evaluator_type="deterministic",
+            result=str(summary["result"]),
+            score=None,
+            severity="critical" if summary["result"] == "fail" else "none",
+            findings_json={
+                "source_draft_id": str(source_input.source_artifact.id),
+                "source_draft_hash": source_input.source_artifact.content_hash,
+                "assertion_audit_artifact_id": str(duplicate_artifact.id),
+                "assertion_audit_hash": duplicate_artifact.content_hash,
+                **summary,
+            },
+        )
+        session.add(evaluation)
+        if malformed == "duplicate_evaluation":
+            session.add(
+                QualityEvaluation(
+                    run_id=duplicate_run.id,
+                    artifact_id=duplicate_artifact.id,
+                    evaluator_key=ASSERTION_AUDIT_EVALUATOR_KEY,
+                    evaluator_version=ASSERTION_AUDIT_EVALUATOR_VERSION,
+                    evaluator_type="deterministic",
+                    result=str(summary["result"]),
+                    score=None,
+                    severity="critical" if summary["result"] == "fail" else "none",
+                    findings_json=copy.deepcopy(evaluation.findings_json),
+                )
+            )
+    if malformed == "duplicate_step":
+        session.add(
+            StepRun(
+                run_id=duplicate_run.id,
+                step_key=duplicate_step.step_key,
+                attempt=2,
+                status="completed",
+                input_artifact_refs_json=copy.deepcopy(
+                    duplicate_step.input_artifact_refs_json
+                ),
+                output_artifact_refs_json=[],
+                started_at=created_at,
+                completed_at=created_at + timedelta(seconds=1),
+            )
+        )
+    await session.flush()
+    return duplicate_run, duplicate_handoff, duplicate_step, duplicate_manifest, duplicate_artifact
+
+
+async def _runtime_counts(session: AsyncSession) -> dict[str, int]:
+    models = {
+        "content_runs": ContentRun,
+        "step_runs": StepRun,
+        "context_manifests": ContextManifest,
+        "model_calls": ModelCall,
+        "artifacts": Artifact,
+        "quality_evaluations": QualityEvaluation,
+    }
+    return {
+        table: len((await session.scalars(select(model))).all())
+        for table, model in models.items()
+    }
+
+
+async def _add_fixture_model_call(session: AsyncSession, *, execution) -> None:
+    session.add(
+        ModelCall(
+            run_id=execution.audit_run.id,
+            step_run_id=execution.step_run.id,
+            context_manifest_id=execution.context_manifest.id,
+            task_key=execution.step_run.step_key,
+            provider="fixture-provider",
+            model="fixture-model",
+            purpose="Fixture assertion audit",
+            prompt_version="assertion-test:v1",
+            started_at=utc_now(),
+            completed_at=utc_now(),
+            finish_reason="stop",
+            status="completed",
+        )
+    )
+    await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_completed_duplicates_recover_canonical_without_side_effects() -> None:
+    async with isolated_session() as session:
+        fixture, _source_artifact, source_input = await _source(session)
+        await _mark_source_waiting(session, source_input=source_input)
+        execution = await _prepare(session, source_input=source_input)
+        result = await _audit(
+            session,
+            source_input=source_input,
+            execution=execution,
+            model=FakeAuditModel([_passing_output(source_input)]),
+        )
+        await _add_fixture_model_call(session, execution=execution)
+        duplicate = await _duplicate_completed_audit(
+            session,
+            source_input=source_input,
+            source_execution=execution,
+            source_result=result,
+            created_at=execution.audit_run.created_at + timedelta(seconds=1),
+        )
+        historical = {
+            execution.audit_run.id: (
+                execution.audit_run.status,
+                result.artifact.content_hash,
+                result.evaluation.id,
+            ),
+            duplicate[0].id: (duplicate[0].status, duplicate[4].content_hash, None),
+        }
+        before = await _runtime_counts(session)
+
+        recovered = await _prepare(session, source_input=source_input)
+        assert recovered.audit_run.id == execution.audit_run.id
+        assert recovered.handoff.id == execution.handoff.id
+        assert recovered.audit_run_reused is True
+        assert recovered.reusable_run_count == 2
+        assert recovered.duplicate_recovery_used is True
+        assert set(recovered.duplicate_run_ids) == {execution.audit_run.id, duplicate[0].id}
+
+        rerun_model = FakeAuditModel([_passing_output(source_input)])
+        rerun = await _audit(
+            session,
+            source_input=source_input,
+            execution=recovered,
+            model=rerun_model,
+        )
+        after = await _runtime_counts(session)
+        assert after == before
+        assert rerun.reused is True
+        assert rerun.model_attempts == 0
+        assert rerun.artifact.id == result.artifact.id
+        assert rerun.evaluation.id == result.evaluation.id
+        assert rerun_model.calls == 0
+        assert historical[execution.audit_run.id] == (
+            execution.audit_run.status,
+            result.artifact.content_hash,
+            result.evaluation.id,
+        )
+        assert historical[duplicate[0].id] == (
+            duplicate[0].status,
+            duplicate[4].content_hash,
+            None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_conflicting_completed_duplicates_fail_closed() -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, source_input = await _source(session)
+        await _mark_source_waiting(session, source_input=source_input)
+        execution = await _prepare(session, source_input=source_input)
+        result = await _audit(
+            session,
+            source_input=source_input,
+            execution=execution,
+            model=FakeAuditModel([_passing_output(source_input)]),
+        )
+        await _add_fixture_model_call(session, execution=execution)
+        await _duplicate_completed_audit(
+            session,
+            source_input=source_input,
+            source_execution=execution,
+            source_result=result,
+            created_at=execution.audit_run.created_at + timedelta(seconds=1),
+            conflicting_summary=True,
+        )
+
+        with pytest.raises(AssertionAuditError, match="assertion_audit_duplicate_summary_conflict"):
+            await _prepare(session, source_input=source_input)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        "missing_manifest",
+        "missing_artifact",
+        "missing_evaluation",
+        "duplicate_step",
+        "duplicate_manifest",
+        "duplicate_artifact",
+        "duplicate_evaluation",
+        "stale_artifact_hash",
+        "wrong_source",
+    ],
+)
+async def test_malformed_completed_duplicate_fails_closed(malformed: str) -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, source_input = await _source(session)
+        await _mark_source_waiting(session, source_input=source_input)
+        execution = await _prepare(session, source_input=source_input)
+        result = await _audit(
+            session,
+            source_input=source_input,
+            execution=execution,
+            model=FakeAuditModel([_passing_output(source_input)]),
+        )
+        await _duplicate_completed_audit(
+            session,
+            source_input=source_input,
+            source_execution=execution,
+            source_result=result,
+            created_at=execution.audit_run.created_at + timedelta(seconds=1),
+            malformed=malformed,
+        )
+
+        with pytest.raises(AssertionAuditError):
+            await _prepare(session, source_input=source_input)
+
+
+@pytest.mark.asyncio
+async def test_active_duplicate_fails_closed_without_mutation() -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, source_input = await _source(session)
+        await _mark_source_waiting(session, source_input=source_input)
+        first = await _prepare(session, source_input=source_input)
+        result = await _audit(
+            session,
+            source_input=source_input,
+            execution=first,
+            model=FakeAuditModel([_passing_output(source_input)]),
+        )
+        await _duplicate_completed_audit(
+            session,
+            source_input=source_input,
+            source_execution=first,
+            source_result=result,
+            created_at=first.audit_run.created_at + timedelta(seconds=1),
+            run_status="running",
+        )
+
+        with pytest.raises(AssertionAuditError, match="assertion_audit_active_duplicate"):
+            await _prepare(session, source_input=source_input)
+
+
+def test_postgresql_source_writer_lock_is_the_concurrency_serialization_point() -> None:
+    assert engine.dialect.name == "postgresql"
+    statement = (
+        select(ContentRun)
+        .where(ContentRun.id == uuid4())
+        .with_for_update()
+    )
+    compiled = str(statement.compile(dialect=engine.sync_engine.dialect))
+    assert "FOR UPDATE" in compiled
 
 
 @pytest.mark.asyncio

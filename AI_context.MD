@@ -27,11 +27,11 @@ Do not infer or start the next task. Founder owns final merge.
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: get one safe, traceable MOTGU Journal into controlled real operation, then harden from observed failures
-CURRENT GATE: T05.15 — EN SOURCE-COPY WARNING REMEDIATION
-CURRENT OWNER: Founder merge gate; MG review of PR #51 implementation is complete
-NEXT ACTION: Founder merges PR #51, then Agent Local runs exact EN v5 cleanup → Assertion Audit v3 → Source-copy v2 runtime task; if PASS, MG opens the minimal T05.16/T05.17 operational slice
-BLOCKERS: one historical EN v4 source-copy warning is being deterministically remediated; VI source-copy is already PASS
-HUMAN DECISION REQUIRED: MERGE PR #51 after final exact-head CI
+CURRENT GATE: T05.15 — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
+CURRENT OWNER: Founder merge gate; MG code/contract review of PR #52 is complete
+NEXT ACTION: Founder merges PR #52, then Agent Local runs the exact resume task to reuse the canonical EN v5 Assertion Audit twice and run EN v5 Source-copy v2 twice; if PASS, MG closes T05.15 and opens the minimal T05.16/T05.17 operational slice
+BLOCKERS: no implementation blocker; production duplicate recovery and EN v5 Source-copy remain pending PR #52 merge
+HUMAN DECISION REQUIRED: MERGE PR #52 after final exact-head CI
 ```
 
 ## Operating mode — PRODUCTION FIRST
@@ -40,86 +40,92 @@ Canonical decision:
 
 `docs/logs/2026-09-11-ce05-production-first-operating-mode.md`
 
-After T05.15 final PASS, do not complete speculative hardening before first use. The critical path is:
+Critical path after T05.15 closes:
 
 ```text
-T05.15 PASS
-→ T05.16 minimal operational package
+T05.16 minimal operational package
 → Founder final content approval
-→ T05.17 one real operational Journal using a controlled manual publish handoff if needed
-→ observe real failures/operator friction
-→ T05.18–T05.22 harden from actual evidence
+→ T05.17 one real operational Journal using controlled manual publish handoff if needed
+→ observe actual failure/friction
+→ T05.18–T05.22 harden from evidence
 ```
 
-T05.18–T05.22 remain CE05 closeout work but do not block the first operational Journal after T05.17 unless a safety/data-integrity defect is discovered.
+T05.18–T05.22 do not block the first operational Journal unless an observed safety/data-integrity defect requires it.
 
 ## Current progress
 
 - CE01–CE04: CLOSED / PASS.
 - T05.1–T05.13: DONE / PASS.
-- T05.14: DONE historically; final content snapshot must be revalidated if EN changes.
-- T05.15 implementation + legacy VI compatibility: MERGED.
-- T05.15 real VI result: **PASS** (`warn=0`, `fail=0`, max overlap 1).
-- T05.15 real EN v4 result: **WARN** (`warn=1`, `fail=0`, max overlap 9).
-- PR #51 deterministic EN v4→v5 cleanup implementation: MG code review PASS; production execution waits for merge.
-- T05.16–T05.17: NOT STARTED; they form the next minimal operational slice after T05.15 PASS.
-- T05.18–T05.22: NOT STARTED; post-operation hardening/metrics/closeout.
+- T05.14: DONE historically; EN v5 must be the current revalidated final snapshot.
+- T05.15 VI source-copy: **PASS** (`warn=0`, `fail=0`, max overlap 1).
+- PR #51 deterministic EN v4→v5 cleanup: MERGED.
+- EN v5 cleanup: **PASS**, immutable v5 created, exact cleanup rerun reused with zero side effects.
+- EN v5 Assertion Audit content result: **PASS** on two concurrent completed eval runs.
+- Historical EN v5 Assertion Audit duplicate set remains preserved and immutable.
+- PR #52 concurrency/idempotency recovery implementation: **MG REVIEW PASS**; row-lock serialization, deterministic completed-duplicate recovery and PostgreSQL concurrency regression are implemented. Final exact-head CI is required before merge.
+- EN v5 Source-copy: NOT EXECUTED.
+- T05.16–T05.17: next minimal operational slice after T05.15 PASS.
+- T05.18–T05.22: post-operation hardening/metrics/closeout.
 
 Exact implementation task:
 
-`docs/logs/2026-09-11-ce05-t05-15-en-source-copy-warning-cleanup-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-t05-15-assertion-audit-concurrency-recovery-agent-local-task.md`
 
 Exact post-merge runtime task:
 
-`docs/logs/2026-09-11-ce05-t05-15-en-v5-cleanup-reaudit-source-copy-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-t05-15-resume-after-assertion-audit-duplicate-agent-local-task.md`
 
 ## Locked current runtime evidence
 
 ```text
-main at real run: caf7fcbe82a054d7353c7a966be06def4cda864a
+Main at blocked runtime: b825b0901f6bc489cd5dbfa380429c516a3963ab
 
 VI source-copy Artifact: aa822f6f-c000-4008-a814-23e4d6a4caa2 / v1
 VI source-copy hash: 46a839f51225a9c83a7d8330a1d6da86e03992359f258e9f945bbee0c971a891
 VI source-copy QE: 6b1d467b-10f8-4d35-ada0-a9be0ed3138c
 VI result: pass / warn=0 / fail=0
 
-EN Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
-EN source draft: 4a1d9636-fdb5-4372-b0df-e0662f797008 / v4
-EN source hash: d28c45ea436bef844b17f37d0168c2a9601e0a143dbf3fee6a029671e85de89a
-EN source-copy Artifact: 98f04bc7-6653-46c0-a5c2-fea0b9d5137c / v1
-EN source-copy hash: fb893704ca6771b326dd6197543dc474f519f0de5640fffadc7c60dbc722ed25
-EN source-copy QE: 3d5fedcb-8572-4923-8f99-f5fb64a82279
-EN result: warn / warn=1 / fail=0 / max_overlap=9
-warning location: section:understand-price-context:2
-warning overlap: personal interests of both the seller and the purchaser
-warning source: evidence:5e97ed0d-8989-47d3-af4e-b2f29a5110cd / evidence_excerpt
+EN Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5 / waiting_approval
+EN v5 draft: 4c17db56-e912-4097-92a0-d95f5d4fe565 / v5
+EN v5 hash: 0525177d2ca44c772eb69467ca99298a34d6404e31d62dea49acdfa920c0ad69
+EN cleanup StepRun: bcc34d62-5b87-4924-a703-55d30d6552ed
+
+Assertion Audit completed duplicate A:
+run b59976a8-579f-4e35-81ab-728c7fe10c93
+artifact 4e0974f9-ab1d-4565-bcc2-8c145099ac6d
+QE 78a1ada8-e731-46af-bac4-90dcc7596eed
+result pass / unsupported=0 / contradicted=0 / critical=0
+
+Assertion Audit completed duplicate B:
+run 806c753c-c8f1-4fd6-9966-0bcabef1a6d2
+artifact 758886d1-0283-4609-9225-eb6f205f292a
+QE 66ad0285-d26f-4f54-a5a9-8b8a675a485b
+result pass
+
+Historical reuse error before PR #52: assertion_audit_reusable_run_duplicate
+EN v5 Source-copy records: none
 ```
 
-## Locked remediation decision
+Historical duplicates are immutable evidence. Do not delete, rewrite, cancel, fail or resurrect them.
+
+## Locked recovery decision
+
+This is a real harness defect discovered by operation, so it is fixed now under production-first mode.
 
 ```text
-Replace exactly:
-personal interests of both the seller and the purchaser
+same source Writer row
+→ SELECT ... FOR UPDATE before exact-handoff lookup/create
+→ serialize future same-source Assertion Audit preparation
 
-With exactly:
-different priorities on each side of the transaction
+existing exact completed duplicate set
+→ validate every candidate independently
+→ fail closed if active/malformed/conflicting
+→ if all completed candidates are valid and deterministic hard-gate summary/result + route/prompt/recipe agree
+→ choose canonical by stable (created_at, id) ordering
+→ preserve all duplicate records
+→ reuse canonical artifact/QE with model_attempts=0 and zero new side effects
 ```
 
-No model for the cleanup. Persist immutable EN v5 in the same Writer run. All non-target copy/fields remain byte-identical.
+Do not change Assertion Audit generator/evaluator/schema semantics. Do not change Source-copy v2. No migration or generic concurrency framework.
 
-Post-merge validation order remains mandatory:
-
-```text
-EN v4 → deterministic v5 cleanup
-→ cleanup idempotency
-→ EN Assertion Audit v3 on v5
-→ audit idempotency
-→ require assertion audit PASS
-→ EN Source-copy v2 on v5
-→ source-copy idempotency
-→ require pass / warn=0 / fail=0
-→ verify VI PASS + shared upstream immutable
-→ STOP
-```
-
-Do not modify or rerun VI. Do not start T05.16 until T05.15 final runtime PASS is reviewed by MG.
+After PR #52 is merged, Agent Local runs only the exact resume task above, proves canonical audit reuse twice, then runs EN v5 Source-copy v2 twice. T05.16 remains blocked until T05.15 final runtime PASS is reviewed by MG.

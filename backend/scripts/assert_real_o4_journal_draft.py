@@ -163,6 +163,8 @@ async def _run(args: argparse.Namespace) -> None:
             task_key=config.task_key,
             prompt_version=prompt_version,
             recipe_version=recipe_version,
+            provider=expected_provider,
+            model=expected_model,
         )
         run = execution.audit_run
         step = execution.step_run
@@ -230,6 +232,11 @@ async def _run(args: argparse.Namespace) -> None:
                     "audit_run_id": str(run.id),
                     "audit_run_status": run.status,
                     "audit_run_reused": execution.audit_run_reused,
+                    "reusable_run_count": execution.reusable_run_count,
+                    "duplicate_run_ids": [
+                        str(run_id) for run_id in execution.duplicate_run_ids
+                    ],
+                    "duplicate_recovery_used": execution.duplicate_recovery_used,
                     "assertion_audit_handoff_id": str(execution.handoff.id),
                     "assertion_audit_handoff_hash": execution.handoff.content_hash,
                     "locale": locale,
