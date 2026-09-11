@@ -28,10 +28,10 @@ PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: get one safe, traceable MOTGU Journal into controlled real operation, then harden from observed failures
 CURRENT GATE: T05.15 — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
-CURRENT OWNER: Agent Local implements the bounded PR #53 hard-gate-equivalence fix; MG reviews; Founder merges
-NEXT ACTION: Founder merges PR #53, then Agent Local reruns only the existing resume task; T05.16 remains blocked until final T05.15 runtime PASS
-BLOCKERS: PR #52 concurrency recovery is merged; real recovery exposed that assertion_count was incorrectly treated as a duplicate hard-gate conflict
-HUMAN DECISION REQUIRED: MERGE PR #53 after exact-head CI
+CURRENT OWNER: Founder merge gate; MG review of PR #53 implementation is complete
+NEXT ACTION: Founder merges PR #53, then Agent Local reruns only the existing resume task; if PASS, MG closes T05.15 and opens the minimal T05.16/T05.17 operational slice
+BLOCKERS: no implementation blocker; production canonical audit recovery and EN v5 Source-copy remain pending PR #53 merge
+HUMAN DECISION REQUIRED: MERGE PR #53 after final exact-head CI
 ```
 
 ## Operating mode — PRODUCTION FIRST
@@ -64,14 +64,14 @@ T05.18–T05.22 do not block the first operational Journal unless an observed sa
 - Historical EN v5 Assertion Audit duplicate set remains preserved and immutable.
 - PR #52 concurrency/idempotency recovery: **MERGED**; row-lock serialization, deterministic completed-duplicate recovery and PostgreSQL concurrency regression are present.
 - Real recovery exposed a narrower equivalence bug: `assertion_count` was incorrectly treated as a hard-gate conflict even though both historical audits independently PASS every hard-gate count at zero.
-- PR #53 bounded hard-gate-equivalence fix: **IN PROGRESS**; no production runtime execution is part of this implementation.
+- PR #53 bounded hard-gate-equivalence fix: **MG REVIEW PASS**; `assertion_count` is excluded while deterministic hard-gate result/counts and route/prompt/recipe conflict checks remain fail-closed. Founder merge + real resume remain pending.
 - EN v5 Source-copy: NOT EXECUTED.
 - T05.16–T05.17: next minimal operational slice after T05.15 PASS.
 - T05.18–T05.22: post-operation hardening/metrics/closeout.
 
 Exact implementation task:
 
-`docs/logs/2026-09-11-ce05-t05-15-assertion-audit-concurrency-recovery-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-t05-15-hard-gate-summary-equivalence-fix-agent-local-task.md`
 
 Exact post-merge runtime task:
 
@@ -80,7 +80,7 @@ Exact post-merge runtime task:
 ## Locked current runtime evidence
 
 ```text
-Main at blocked runtime: b825b0901f6bc489cd5dbfa380429c516a3963ab
+Main at blocked runtime: f4494eeedc8144517c8f776ab2e5d0601035dd26
 
 VI source-copy Artifact: aa822f6f-c000-4008-a814-23e4d6a4caa2 / v1
 VI source-copy hash: 46a839f51225a9c83a7d8330a1d6da86e03992359f258e9f945bbee0c971a891
@@ -96,15 +96,17 @@ Assertion Audit completed duplicate A:
 run b59976a8-579f-4e35-81ab-728c7fe10c93
 artifact 4e0974f9-ab1d-4565-bcc2-8c145099ac6d
 QE 78a1ada8-e731-46af-bac4-90dcc7596eed
+assertion_count 32
 result pass / unsupported=0 / contradicted=0 / critical=0
 
 Assertion Audit completed duplicate B:
 run 806c753c-c8f1-4fd6-9966-0bcabef1a6d2
 artifact 758886d1-0283-4609-9225-eb6f205f292a
 QE 66ad0285-d26f-4f54-a5a9-8b8a675a485b
-result pass
+assertion_count 38
+result pass / unsupported=0 / contradicted=0 / critical=0
 
-Historical reuse error before PR #52: assertion_audit_reusable_run_duplicate
+Observed post-#52 recovery error: assertion_audit_duplicate_summary_conflict
 EN v5 Source-copy records: none
 ```
 
@@ -112,7 +114,7 @@ Historical duplicates are immutable evidence. Do not delete, rewrite, cancel, fa
 
 ## Locked recovery decision
 
-This is a real harness defect discovered by operation, so it is fixed now under production-first mode.
+This is a real harness defect discovered by operation, so it is fixed under production-first mode.
 
 ```text
 same source Writer row
