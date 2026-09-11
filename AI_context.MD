@@ -27,11 +27,11 @@ Founder owns final merge and final operational content approval.
 PROJECT: ContentEngine
 PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
 CURRENT OUTCOME: produce the first real MOTGU Journal Operational Package V0
-CURRENT GATE: FINAL GUIDANCE NORMALIZATION → VI/EN HARD GATES → PACKAGE
-CURRENT OWNER: Founder merge gate; after merge Agent Local executes one final normalization-to-package sprint
-NEXT ACTION: create VI v4 by recasting the exact four persisted VI hard findings as reader guidance, re-audit VI, audit EN v2 with one bounded mirror-normalization allowance, run Source-copy VI+EN, then create Operational Package V0
-BLOCKERS: latest VI re-audit has exactly four critical unsupported findings at verify-work-facts:1, separate-transaction-costs:2, confirm-availability:2, understand-appraisal-limits:4; zero contradicted
-HUMAN DECISION REQUIRED: merge the final normalization task PR; next intended human stop is Founder review of Operational Package V0
+CURRENT GATE: SINGLE EN FACTUAL DELETE → SOURCE-COPY → PACKAGE
+CURRENT OWNER: Founder merge gate; after merge Agent Local deletes one exact EN hard-fail sentence, re-audits EN, then runs VI/EN Source-copy and packages the candidate
+NEXT ACTION: preserve final VI v4 PASS, create EN v3 by deleting exactly the one unsupported factual sentence at section:understand-appraisal-limits:3 with zero model calls, re-audit EN, run Source-copy VI+EN, create Operational Package V0
+BLOCKERS: VI is final PASS; EN v2 Assertion Audit has exactly one critical unsupported factual sentence and zero contradicted findings
+HUMAN DECISION REQUIRED: merge the EN factual-delete task; next intended human stop is Founder review of Operational Package V0
 ```
 
 ## Accepted immutable operational lineage
@@ -61,69 +61,80 @@ AngleApproval: 0d963563-c8d7-4095-8a11-9539bd457554
 Outline: 8dbc2f75-d439-44f1-9822-4775a333b81e / v1 / 3bdd650b3fe2e56a4d86e7a85ae010099f6004d8e1827e935eea414ef2b864e4
 ```
 
-Do not research again. Do not change EvidenceSet, OriginalityPack, Angle, Outline, Writer generation, or broad Review/Revise.
+Do not research again. Do not change EvidenceSet, OriginalityPack, Angle, AngleApproval, Outline, Writer generation, or broad Review/Revise.
 
-## Current VI state
+## Final VI state — locked
 
 ```text
 VI Writer run: 612a9ab1-8a8e-4fca-b467-d78c6a5e71cd
-VI v3: acf72dae-2423-472c-9500-80865432005d
-VI v3 hash: 4562a63cdcb3167bf831adadce3165a318481b7c703683013c863826b61b74c4
+VI v4: ea15233d-3080-4c73-80d1-f6d9f2ec076b
+VI v4 hash: 4c53601a2342637cee13a5ae2cfdb4beb877adb5d32053e8930bdb661194742f
 
-Latest VI audit run: e8ab777e-20e4-490c-97b4-2002c41c17a3
-Audit artifact: cf74c06f-df67-407c-bdbc-665d5e767441 / v1
-Audit hash: 829ba9fd42a3aa7e751597b5fc0d9144a735e283a6d20894052c8b6b33620e8d
-QE: ae7ca88d-a105-4764-8ffb-7352193e928f
-result: fail
-unsupported: 4
-critical_unsupported: 4
+VI PASS audit eval run: 3611f549-3711-4f5b-96d3-96fb8195c98f
+VI PASS handoff: 7c852ab9-9579-465f-8c3e-e2dd45e8d045
+VI PASS audit artifact: c1df6865-a664-4c2a-a37f-c17d967e38ad / v1
+VI PASS audit hash: 868c9d6a0b99266c1b12fab7db4231f50ba013a78e46b3e376ca7e9cb2162253
+VI PASS QE: 6cbfc9e1-bf7b-4831-9cca-84bb0259a368
+result: pass
+unsupported: 0
 contradicted: 0
+critical_unsupported: 0
 critical_contradicted: 0
-
-findings:
-- section:verify-work-facts:1
-- section:separate-transaction-costs:2
-- section:confirm-availability:2
-- section:understand-appraisal-limits:4
 ```
 
-The observed four statements are to be recast as explicit reader guidance, not supported by new research and not waived by changing the evaluator.
+VI is finished. Do not edit or re-audit it in the next task unless read-only verification proves the exact final state invalid; invalid => BLOCKED, not repair.
 
-## Current EN state
+## Current EN blocker
 
 ```text
 EN Writer run: e0bc9d52-0b07-4dc4-b5e9-2cfe861658f4
 EN v2: ade3242e-6264-45ca-b8fd-5a48070f913f
 EN v2 hash: 390243d6f7bed879ea62ceec410c68a9048ac02da0c4eb2ba8e079bfbedd0790
+
+EN failed audit eval run: 0042b3f9-b6a8-433e-b87d-45193d22742e
+EN failed audit handoff: 25a64474-b556-47a2-b75e-2a1b43ae1ebc
+EN failed audit artifact: b8555851-162e-4e3e-8b88-0e3e55557e5f
+EN failed audit hash: 725803eb4794de4697fc750180e7b848188f532b82df63c13fed189884e8d0e1
+EN failed QE: 65ca0571-8542-481a-88dd-a9b35efc39aa
+result: fail
+critical_unsupported: 1
+contradicted: 0
+segment: section:understand-appraisal-limits:3
 ```
 
-EN has not yet reached Assertion Audit on this fresh operational lineage.
+Exact unsupported sentence:
+
+```text
+The materials considered in that setting may include size, medium, physical condition, provenance, comparable sales and appraised value, alongside research on relevant public and private sales.
+```
+
+This sentence is not required for the article's operational value. Delete it exactly rather than adding research or changing the evaluator.
 
 ## Exact post-merge task
 
-`docs/logs/2026-09-11-ce05-fast-final-normalization-to-package-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-fast-en-factual-delete-to-package-agent-local-task.md`
 
 Task ID:
 
-`CE05-FAST-FINAL-NORMALIZATION-TO-PACKAGE-LOCAL`
+`CE05-FAST-EN-FACTUAL-DELETE-TO-PACKAGE-LOCAL`
 
 Fast path:
 
 ```text
-VI v3 + exact four failed findings
-→ deterministic VI v4 guidance normalization / zero model calls
-→ VI Assertion Audit
-→ EN v2 Assertion Audit
-→ one bounded EN mirror normalization only if exact allowlisted findings require it
-→ VI + EN Source-copy
+lock VI v4 PASS unchanged
+→ exact EN v2 failed finding verification
+→ deterministic exact sentence deletion → EN v3 / zero model calls
+→ EN Assertion Audit
+→ hard-clean
+→ VI Source-copy + EN Source-copy
 → fail_count = 0
 → Operational Package V0
 → Founder final operational approval
 ```
 
-If a new unrelated VI hard finding appears after the final guidance normalization, report `BLOCKED_ASSERTION_AUDIT_INSTABILITY`; do not enter endless content-repair loops. That becomes observed harness behavior for post-operation hardening.
+If EN v3 produces a new hard finding after this exact deletion, report `BLOCKED_ASSERTION_AUDIT_INSTABILITY`; do not enter another content-edit loop. Preserve it as observed harness behavior for post-operation hardening.
 
-Non-critical warnings proceed to the package and must be surfaced verbatim. No auto-publish.
+Non-critical Source-copy or Audit warnings proceed to package verbatim. No auto-publish.
 
 ## Progress interpretation
 
