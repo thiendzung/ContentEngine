@@ -41,9 +41,9 @@ from app.modules.harness.persistence import transition_run, transition_step_run
 from app.modules.knowledge.models import Evidence, EvidenceSet, OriginalityPack
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 
-SOURCE_COPY_GENERATOR_VERSION = "ce05.journal_source_copy.v1"
+SOURCE_COPY_GENERATOR_VERSION = "ce05.journal_source_copy.v2"
 SOURCE_COPY_EVALUATOR_KEY = "source_copy_basic_gate"
-SOURCE_COPY_EVALUATOR_VERSION = "ce05.source_copy.basic_gate.v1"
+SOURCE_COPY_EVALUATOR_VERSION = "ce05.source_copy.basic_gate.v2"
 SOURCE_COPY_SCHEMA_VERSION = 1
 SOURCE_COPY_HANDOFF_SCHEMA_VERSION = 1
 SOURCE_COPY_TASK_KEYS = {"vi-VN": "source_copy_check_vi", "en": "source_copy_check_en"}
@@ -52,7 +52,10 @@ SOURCE_COPY_WARN_MAX_TOKENS = 11
 SOURCE_COPY_WARN_MIN_TOKENS = 8
 SOURCE_COPY_FAIL_MIN_TOKENS = 12
 
-_TOKEN = re.compile(r"[^\W_]+(?:['’][^\W_]+)*", re.UNICODE)
+# Punctuation is a word-token boundary.  In particular, straight and curly
+# apostrophes both split a word so typography-only changes cannot evade the
+# exact contiguous-token check.
+_TOKEN = re.compile(r"[^\W_]+", re.UNICODE)
 _SOURCE_KINDS = {
     "evidence_excerpt",
     "originality_material",

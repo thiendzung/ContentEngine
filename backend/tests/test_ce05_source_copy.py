@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 from typing import cast
 
 import pytest
@@ -11,6 +12,8 @@ from test_ce05_writer import FakeWriterModel, _draft_payload, _generate_draft, _
 
 from app.modules.content_engine.journal.assertion_audit import _source_segments
 from app.modules.content_engine.journal.source_copy import (
+    SOURCE_COPY_EVALUATOR_VERSION,
+    SOURCE_COPY_GENERATOR_VERSION,
     SOURCE_COPY_TASK_KEYS,
     SourceCopyError,
     SourceCopyInput,
@@ -36,7 +39,8 @@ from app.modules.harness.models import (
     utc_now,
 )
 from app.modules.harness.persistence import transition_run
-from app.modules.knowledge.models import EvidenceSet
+from app.modules.knowledge.models import EvidenceSet, OriginalityPack
+from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 
 
 def _segment(text: str) -> object:
@@ -61,6 +65,49 @@ def test_source_copy_normalization_preserves_english_and_vietnamese_diacritics()
         "thuật",
     )
     assert normalize_source_copy_tokens("Café, café") == ("café", "café")
+
+
+def test_source_copy_normalization_treats_straight_and_curly_apostrophes_as_boundaries() -> None:
+    assert normalize_source_copy_tokens("artwork's price") == (
+        "artwork",
+        "s",
+        "price",
+    )
+    assert normalize_source_copy_tokens("artwork's price") == normalize_source_copy_tokens(
+        "artwork’s price"
+    )
+
+
+@pytest.mark.parametrize(
+    ("count", "classification"),
+    [(7, None), (8, "warn"), (11, "warn"), (12, "fail")],
+)
+def test_source_copy_apostrophe_typography_cannot_bypass_thresholds(
+    count: int, classification: str | None
+) -> None:
+    prefix = _words(count - 2)
+    draft_text = f"{prefix} buyer's"
+    source_text = f"{prefix} buyer’s"
+    source = SourceCopySource(
+        source_kind="evidence_excerpt",
+        source_ref="evidence:apostrophe",
+        source_field="evidence_excerpt",
+        source_text=source_text,
+        source_text_hash="e" * 64,
+    )
+    result = check_source_copy(
+        locale="en",
+        segments=(_segment(draft_text),),
+        sources=(source,),
+    )
+    assert normalize_source_copy_tokens(draft_text) == normalize_source_copy_tokens(source_text)
+    assert result.max_overlap_tokens == count
+    if classification is None:
+        assert result.result == "pass"
+        assert result.findings == ()
+    else:
+        assert result.result == classification
+        assert result.findings[0].overlap_token_count == count
 
 
 @pytest.mark.parametrize(
@@ -252,6 +299,15 @@ async def test_source_copy_uses_dedicated_eval_and_exact_completed_rerun_is_side
         assert first.artifact.content_json["model_calls"] == 0
         assert first.artifact.content_json["tool_calls"] == 0
         assert first.artifact.content_json["source_corpus"]
+        assert (
+            first.artifact.content_json["algorithm"]["generator_version"]
+            == SOURCE_COPY_GENERATOR_VERSION
+        )
+        assert (
+            first.artifact.content_json["algorithm"]["evaluator_version"]
+            == SOURCE_COPY_EVALUATOR_VERSION
+        )
+        assert first.evaluation.evaluator_version == SOURCE_COPY_EVALUATOR_VERSION
 
 
 @pytest.mark.asyncio(loop_scope="module")
@@ -336,6 +392,44 @@ async def test_source_copy_rejects_unlocked_evidence_and_unapproved_originality(
         evidence_set_row.status = "draft"
         with pytest.raises(SourceCopyError, match="source_copy_evidence_set_snapshot_mismatch"):
             await _build_sources(session, source_input=source_input)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_source_copy_rejects_unapproved_originality_pack_fail_closed() -> None:
+    async with isolated_session() as session:
+        source_input = await _source_input(session)
+        approved_pack = await session.get(
+            OriginalityPack,
+            source_input.writer_input.outline_input.bundle.originality_pack_id,
+        )
+        assert approved_pack is not None
+        draft_pack = OriginalityPack(
+            content_case_id=approved_pack.content_case_id,
+            item_refs_json=copy.deepcopy(approved_pack.item_refs_json),
+            summary=approved_pack.summary,
+            status="draft",
+        )
+        session.add(draft_pack)
+        await session.flush()
+        draft_bundle = replace(
+            source_input.writer_input.outline_input.bundle,
+            originality_pack_id=draft_pack.id,
+            originality_pack_hash=originality_pack_snapshot_hash(draft_pack),
+        )
+        draft_outline_input = replace(
+            source_input.writer_input.outline_input,
+            bundle=draft_bundle,
+        )
+        draft_writer_input = replace(
+            source_input.writer_input,
+            outline_input=draft_outline_input,
+        )
+        draft_source_input = replace(source_input, writer_input=draft_writer_input)
+        with pytest.raises(
+            SourceCopyError,
+            match="source_copy_originality_pack_snapshot_mismatch",
+        ):
+            await _build_sources(session, source_input=draft_source_input)
 
 
 @pytest.mark.asyncio(loop_scope="module")

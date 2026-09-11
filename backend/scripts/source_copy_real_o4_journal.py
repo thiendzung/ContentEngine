@@ -19,6 +19,10 @@ if str(_BACKEND_ROOT) not in sys.path:
 
 from app.core.database import SessionLocal
 from app.modules.content_engine.journal.source_copy import (
+    SOURCE_COPY_EVALUATOR_KEY,
+    SOURCE_COPY_EVALUATOR_VERSION,
+    SOURCE_COPY_GENERATOR_VERSION,
+    SOURCE_COPY_SCHEMA_VERSION,
     SOURCE_COPY_TASK_KEYS,
     execute_source_copy,
     load_source_copy_input,
@@ -163,10 +167,10 @@ async def _run(args: argparse.Namespace) -> None:
                     "quality_evaluation_id": str(result.evaluation.id),
                     "quality_result": result.evaluation.result,
                     "algorithm": "exact_contiguous_normalized_token_overlap",
-                    "generator_version": "ce05.journal_source_copy.v1",
-                    "evaluator_key": "source_copy_basic_gate",
-                    "evaluator_version": "ce05.source_copy.basic_gate.v1",
-                    "schema_version": 1,
+                    "generator_version": SOURCE_COPY_GENERATOR_VERSION,
+                    "evaluator_key": SOURCE_COPY_EVALUATOR_KEY,
+                    "evaluator_version": SOURCE_COPY_EVALUATOR_VERSION,
+                    "schema_version": SOURCE_COPY_SCHEMA_VERSION,
                     "summary": result.check.summary(),
                     "findings": [finding.to_dict() for finding in result.check.findings],
                     "model_attempts": result.model_attempts,
