@@ -235,10 +235,32 @@ structural entries before validation; required content and structural assertive
 segments remain fail-closed under the existing hard gates. No content, route,
 prompt, recipe, schema, migration or production runtime change is in scope.
 
-- [ ] PR #61 structural Assertion Audit normalization implementation and tests;
-- [ ] post-merge EN v3 Assertion Audit → Source-copy → Operational Package resume;
+- [x] PR #61 structural Assertion Audit normalization implementation and tests;
+- [x] post-merge EN v3 Assertion Audit executed; the generic-guidance finding is
+  carried into the current PR #62 normalization gate;
 
-### Next gate — T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
+### Current gate — T05.14 ASSERTION AUDIT V4 GENERIC VERIFICATION GUIDANCE NORMALIZATION
+
+PR #61 fixed the observed structural output-shape instability. The first post-#61
+EN v3 audit then exposed one new classifier-boundary hard finding at
+`section:confirm-availability:2`: generic verification guidance was classified as
+unsupported `practical_live_information`. EN v3 and the failed diagnostic eval
+`becca4f9-44f2-4283-901d-fcd355e0f459` remain immutable history.
+
+Owner: **Agent Local** implements the narrow validator/evaluator normalization on
+PR #62; Founder controls merge. No production runtime or model execution is in
+scope before merge.
+
+- [ ] PR #62 Assertion Audit generator/evaluator v4 implementation and regression tests;
+- [ ] post-merge EN v3 Assertion Audit v4 → Source-copy VI+EN → Operational Package V0;
+- [ ] T05.15 and later gates remain NOT STARTED until this gate passes.
+
+The v4 boundary preserves concrete live facts and all other hard types as
+critical fail, while allowing only bounded locale verification guidance without
+exact support refs to normalize to editorial opinion. Schema remains `1`; no
+prompt/recipe, provider/model, migration or content change is in scope.
+
+### Historical T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
 
 ### T05.15 implementation status — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
 

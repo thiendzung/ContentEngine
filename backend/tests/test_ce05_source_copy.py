@@ -20,7 +20,9 @@ from test_ce05_assertion_audit import (
 from test_ce05_assertion_audit_recovery import _audit, _prepare
 from test_ce05_writer import FakeWriterModel, _draft_payload, _generate_draft, _writer_fixture
 
+import app.modules.content_engine.journal.assertion_audit as assertion_audit_module
 from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
     AssertionAuditError,
     _source_segments,
 )
@@ -232,7 +234,7 @@ async def _source_input(session: AsyncSession, *, locale: str = "en") -> SourceC
         run_id=audit_run.id,
         artifact_id=audit_artifact.id,
         evaluator_key="assertion_audit_hard_gate",
-        evaluator_version="ce05.assertion_audit.hard_gate.v3",
+        evaluator_version=ASSERTION_AUDIT_EVALUATOR_VERSION,
         evaluator_type="deterministic",
         result="pass",
         severity="none",
@@ -257,6 +259,256 @@ async def _source_input(session: AsyncSession, *, locale: str = "en") -> SourceC
         ),
         segments=_source_segments(generated.draft),
     )
+
+
+async def _persisted_audit_source(
+    session: AsyncSession,
+    *,
+    audit_output: dict[str, object] | None = None,
+    generator_version: str = "ce05.journal_assertion_audit.v4",
+    evaluator_version: str = "ce05.assertion_audit.hard_gate.v4",
+) -> tuple[object, Artifact, object, object]:
+    fixture, source, audit_input = await _source(session)
+    await transition_run(
+        session,
+        run_id=audit_input.writer_input.writer_run.id,
+        status="running",
+    )
+    await transition_run(
+        session,
+        run_id=audit_input.writer_input.writer_run.id,
+        status="waiting_approval",
+    )
+    audit_input.writer_input.writer_run.status = "waiting_approval"
+    previous_generator_version = assertion_audit_module.ASSERTION_AUDIT_GENERATOR_VERSION
+    previous_evaluator_version = assertion_audit_module.ASSERTION_AUDIT_EVALUATOR_VERSION
+    assertion_audit_module.ASSERTION_AUDIT_GENERATOR_VERSION = generator_version
+    assertion_audit_module.ASSERTION_AUDIT_EVALUATOR_VERSION = evaluator_version
+    try:
+        execution = await _prepare(session, source_input=audit_input)
+        result = await _audit(
+            session,
+            source_input=audit_input,
+            execution=execution,
+            model=FakeAuditModel([audit_output or _passing_output(audit_input)]),
+        )
+    finally:
+        assertion_audit_module.ASSERTION_AUDIT_GENERATOR_VERSION = previous_generator_version
+        assertion_audit_module.ASSERTION_AUDIT_EVALUATOR_VERSION = previous_evaluator_version
+    return fixture, source, audit_input, result
+
+
+async def _load_persisted_source_copy(
+    session: AsyncSession,
+    *,
+    fixture: object,
+    source: Artifact,
+    audit_result: object,
+) -> SourceCopyInput:
+    writer_input = fixture.writer_input
+    return await load_source_copy_input(
+        session,
+        writer_run_id=writer_input.writer_run.id,
+        source_draft_artifact_id=source.id,
+        expected_source_draft_version=source.version,
+        expected_source_draft_hash=source.content_hash,
+        assertion_audit_artifact_id=audit_result.artifact.id,
+        expected_assertion_audit_version=audit_result.artifact.version,
+        expected_assertion_audit_hash=audit_result.artifact.content_hash,
+        assertion_audit_quality_evaluation_id=audit_result.evaluation.id,
+        outline_artifact_id=writer_input.outline_artifact.id,
+        expected_outline_version=writer_input.outline_artifact.version,
+        expected_outline_hash=writer_input.outline_artifact.content_hash,
+        locale=writer_input.locale,
+    )
+
+
+@pytest.mark.asyncio
+async def test_source_copy_accepts_v3_assertion_audit_pair_after_v4_ships() -> None:
+    async with isolated_session() as session:
+        fixture, source, _audit_input, audit_result = await _persisted_audit_source(
+            session,
+            generator_version="ce05.journal_assertion_audit.v3",
+            evaluator_version="ce05.assertion_audit.hard_gate.v3",
+        )
+
+        loaded = await _load_persisted_source_copy(
+            session,
+            fixture=fixture,
+            source=source,
+            audit_result=audit_result,
+        )
+        assert loaded.assertion_audit_artifact.content_json["generator"] == {
+            "version": "ce05.journal_assertion_audit.v3",
+            "schema_version": 1,
+        }
+        assert loaded.assertion_audit_evaluation.evaluator_version == (
+            "ce05.assertion_audit.hard_gate.v3"
+        )
+
+
+@pytest.mark.asyncio
+async def test_source_copy_accepts_v4_assertion_audit_pair() -> None:
+    async with isolated_session() as session:
+        fixture, source, _audit_input, audit_result = await _persisted_audit_source(session)
+        loaded = await _load_persisted_source_copy(
+            session,
+            fixture=fixture,
+            source=source,
+            audit_result=audit_result,
+        )
+        assert loaded.assertion_audit_evaluation.evaluator_version == (
+            "ce05.assertion_audit.hard_gate.v4"
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("artifact_version", "evaluation_version"),
+    [
+        ("ce05.journal_assertion_audit.v3", "ce05.assertion_audit.hard_gate.v4"),
+        ("ce05.journal_assertion_audit.v4", "ce05.assertion_audit.hard_gate.v3"),
+    ],
+)
+async def test_source_copy_rejects_mismatched_assertion_audit_version_pairs(
+    artifact_version: str,
+    evaluation_version: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source, _audit_input, audit_result = await _persisted_audit_source(
+            session,
+            generator_version=artifact_version,
+            evaluator_version=evaluation_version,
+        )
+
+        with pytest.raises(
+            SourceCopyError,
+            match="source_copy_assertion_audit_evaluation_mismatch",
+        ):
+            await _load_persisted_source_copy(
+                session,
+                fixture=fixture,
+                source=source,
+                audit_result=audit_result,
+            )
+
+
+@pytest.mark.asyncio
+async def test_source_copy_accepts_noncritical_assertion_audit_warning() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        target = next(
+            segment
+            for segment in cast(list[dict[str, object]], output["segments"])
+            if segment["segment_id"] == "closing:1"
+        )
+        assertions = cast(list[dict[str, object]], target["assertions"])
+        assertions[0]["assertion_type"] = "interpretation"
+        assertions[0]["support_status"] = "unsupported"
+        assertions[0]["severity"] = "medium"
+        await transition_run(
+            session,
+            run_id=audit_input.writer_input.writer_run.id,
+            status="running",
+        )
+        await transition_run(
+            session,
+            run_id=audit_input.writer_input.writer_run.id,
+            status="waiting_approval",
+        )
+        audit_input.writer_input.writer_run.status = "waiting_approval"
+        execution = await _prepare(session, source_input=audit_input)
+        audit_result = await _audit(
+            session,
+            source_input=audit_input,
+            execution=execution,
+            model=FakeAuditModel([output]),
+        )
+        assert audit_result.result == "warn"
+        assert audit_result.critical_unsupported_count == 0
+        assert audit_result.critical_contradicted_count == 0
+
+        loaded = await _load_persisted_source_copy(
+            session,
+            fixture=fixture,
+            source=source,
+            audit_result=audit_result,
+        )
+        assert loaded.assertion_audit_evaluation.result == "warn"
+
+
+@pytest.mark.asyncio
+async def test_source_copy_rejects_critical_assertion_audit_failure() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        target = next(
+            segment
+            for segment in cast(list[dict[str, object]], output["segments"])
+            if segment["segment_id"] == "standfirst"
+        )
+        target["assertions"] = [
+            {
+                "assertion_text": target["source_text"],
+                "assertion_type": "fact",
+                "support_status": "unsupported",
+                "severity": "low",
+                "evidence_refs": [],
+                "originality_refs": [],
+                "rationale": "Critical unsupported fixture.",
+            }
+        ]
+        await transition_run(
+            session,
+            run_id=audit_input.writer_input.writer_run.id,
+            status="running",
+        )
+        await transition_run(
+            session,
+            run_id=audit_input.writer_input.writer_run.id,
+            status="waiting_approval",
+        )
+        audit_input.writer_input.writer_run.status = "waiting_approval"
+        execution = await _prepare(session, source_input=audit_input)
+        audit_result = await _audit(
+            session,
+            source_input=audit_input,
+            execution=execution,
+            model=FakeAuditModel([output]),
+        )
+        assert audit_result.result == "fail"
+        with pytest.raises(SourceCopyError, match="source_copy_assertion_audit_not_pass"):
+            await _load_persisted_source_copy(
+                session,
+                fixture=fixture,
+                source=source,
+                audit_result=audit_result,
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mismatch", ["result", "findings"])
+async def test_source_copy_rejects_assertion_audit_quality_mismatch(mismatch: str) -> None:
+    async with isolated_session() as session:
+        fixture, source, _audit_input, audit_result = await _persisted_audit_source(session)
+        if mismatch == "result":
+            audit_result.evaluation.result = "warn"
+        else:
+            findings = cast(dict[str, object], audit_result.evaluation.findings_json)
+            findings["unsupported_count"] = 99
+        await session.flush()
+
+        with pytest.raises(
+            SourceCopyError,
+            match="source_copy_assertion_audit_evaluation_mismatch",
+        ):
+            await _load_persisted_source_copy(
+                session,
+                fixture=fixture,
+                source=source,
+                audit_result=audit_result,
+            )
 
 
 async def _legacy_source_copy_input(

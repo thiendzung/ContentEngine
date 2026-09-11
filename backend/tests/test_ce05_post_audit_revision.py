@@ -24,6 +24,8 @@ import app.modules.content_engine.journal.post_audit_revision as revision_module
 import app.modules.content_engine.journal.post_audit_revision_agent_bridge as revision_bridge
 import scripts.post_audit_revision_real_o4_en as revision_cli
 from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
+    ASSERTION_AUDIT_GENERATOR_VERSION,
     _summary,
     load_assertion_audit_input,
     validate_assertion_audit_output,
@@ -264,7 +266,7 @@ async def _failed_audit_fixture(
         },
         "model_input": {"content_hash": "a" * 64},
         "execution_context": {"context_manifest_id": str(fixture.manifest.id)},
-        "generator": {"version": "ce05.journal_assertion_audit.v3", "schema_version": 1},
+        "generator": {"version": ASSERTION_AUDIT_GENERATOR_VERSION, "schema_version": 1},
         "model": {"provider": "fixture-provider", "model": "fixture-model", "model_calls": 1},
         "segments": [segment.to_dict() for segment in audited],
         "summary": summary,
@@ -283,7 +285,7 @@ async def _failed_audit_fixture(
         run_id=eval_run.id,
         artifact_id=audit_artifact.id,
         evaluator_key="assertion_audit_hard_gate",
-        evaluator_version="ce05.assertion_audit.hard_gate.v3",
+        evaluator_version=ASSERTION_AUDIT_EVALUATOR_VERSION,
         evaluator_type="deterministic",
         result="fail",
         severity="critical",

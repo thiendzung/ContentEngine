@@ -35,9 +35,9 @@ from app.modules.harness.models import (
 )
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet
 
-ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v3"
+ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v4"
 ASSERTION_AUDIT_SCHEMA_VERSION = 1
-ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v3"
+ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v4"
 ASSERTION_AUDIT_EVALUATOR_KEY = "assertion_audit_hard_gate"
 
 _ASSERTION_TYPES = {
@@ -57,6 +57,33 @@ _HARD_FAIL_TYPES = {
     "artist_intent",
     "visual_observation",
     "practical_live_information",
+}
+_VERIFICATION_GUIDANCE_PREFIXES = {
+    "en": (
+        "check ",
+        "confirm ",
+        "verify ",
+        "ask ",
+        "you can check ",
+        "you can confirm ",
+        "you can verify ",
+        "you can ask ",
+    ),
+    "vi-vn": (
+        "kiểm tra ",
+        "xác nhận ",
+        "hỏi ",
+        "hãy kiểm tra ",
+        "hãy xác nhận ",
+        "hãy hỏi ",
+        "bạn có thể kiểm tra ",
+        "bạn có thể xác nhận ",
+        "bạn có thể hỏi ",
+    ),
+}
+_VERIFICATION_GUIDANCE_CAUSAL_CONNECTORS = {
+    "en": (" because ", " since ", " given that "),
+    "vi-vn": (" vì ", " bởi vì "),
 }
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
@@ -424,6 +451,9 @@ async def load_assertion_audit_input(
                 "discard_out_of_location_support_refs_deterministically",
                 "supported_without_valid_location_support_becomes_unsupported",
                 "generic_reader_guidance_uses_opinion_or_interpretation_without_unrelated_support_refs",
+                "verification_guidance_requires_bounded_locale_prefix",
+                "causal_verification_guidance_remains_a_concrete_live_claim",
+                "only_unsupported_or_opinion_practical_guidance_without_refs_may_normalize",
                 "never_add_research_or_new_facts",
                 "critical_unsupported_or_contradicted_assertions_fail",
             ],
@@ -453,6 +483,18 @@ def _severity_for(
     if support_status == "unsupported" and model_severity == "none":
         return "medium"
     return model_severity
+
+
+def _is_generic_verification_guidance(*, assertion_text: str, locale: str) -> bool:
+    normalized = " ".join(assertion_text.split()).casefold()
+    language_prefixes = _VERIFICATION_GUIDANCE_PREFIXES.get(locale.casefold())
+    if language_prefixes is None:
+        return False
+    connectors = _VERIFICATION_GUIDANCE_CAUSAL_CONNECTORS[locale.casefold()]
+    padded = f" {normalized} "
+    if any(connector in padded for connector in connectors):
+        return False
+    return any(normalized.startswith(prefix) for prefix in language_prefixes)
 
 
 def _validate_assertion(
@@ -489,6 +531,19 @@ def _validate_assertion(
     originality_refs = tuple(
         ref for ref in originality_refs if ref in segment.allowed_originality_refs
     )
+    if (
+        assertion_type == "practical_live_information"
+        and support_status in {"unsupported", "opinion", "interpretation"}
+        and not evidence_refs
+        and not originality_refs
+        and _is_generic_verification_guidance(
+            assertion_text=assertion_text,
+            locale=audit_input.writer_input.locale,
+        )
+    ):
+        assertion_type = "opinion"
+        support_status = "opinion"
+        model_severity = "none"
     if assertion_type in _HARD_FAIL_TYPES and support_status in {"opinion", "interpretation"}:
         support_status = "unsupported"
         model_severity = "critical"
