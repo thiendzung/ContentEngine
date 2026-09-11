@@ -21,6 +21,7 @@ from test_ce05_assertion_audit_recovery import _audit, _prepare
 from test_ce05_writer import FakeWriterModel, _draft_payload, _generate_draft, _writer_fixture
 
 from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
     AssertionAuditError,
     _source_segments,
 )
@@ -232,7 +233,7 @@ async def _source_input(session: AsyncSession, *, locale: str = "en") -> SourceC
         run_id=audit_run.id,
         artifact_id=audit_artifact.id,
         evaluator_key="assertion_audit_hard_gate",
-        evaluator_version="ce05.assertion_audit.hard_gate.v3",
+        evaluator_version=ASSERTION_AUDIT_EVALUATOR_VERSION,
         evaluator_type="deterministic",
         result="pass",
         severity="none",

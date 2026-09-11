@@ -27,11 +27,11 @@ Founder owns final merge and final operational content approval.
 PROJECT: ContentEngine
 PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
 CURRENT OUTCOME: produce the first real MOTGU Journal Operational Package V0
-CURRENT GATE: PR #61 FOUNDER MERGE GATE — ASSERTION AUDIT STRUCTURAL OUTPUT NORMALIZATION
-CURRENT OWNER: Founder merge authority; implementation/review/CI are complete; no production runtime until merge
-NEXT ACTION: merge PR #61, then execute the exact EN v3 Assertion Audit → Source-copy VI+EN → Operational Package V0 resume task
-BLOCKERS: no implementation blocker; runtime remains paused until the structural-normalization fix is merged
-HUMAN DECISION REQUIRED: Founder merge PR #61; next intended human stop is Founder review of Operational Package V0
+CURRENT GATE: PR #62 IMPLEMENTATION — ASSERTION AUDIT GENERIC VERIFICATION GUIDANCE NORMALIZATION
+CURRENT OWNER: Agent Local implementation on PR #62; Founder merge authority; no production runtime during implementation
+NEXT ACTION: merge PR #62, then execute the exact EN v3 Assertion Audit v4 → Source-copy VI+EN → Operational Package V0 resume task
+BLOCKERS: EN v3 is immutable; the first post-#61 audit exposed one classifier-boundary finding at section:confirm-availability:2; no content edit is authorized
+HUMAN DECISION REQUIRED: review/merge PR #62 before the post-merge resume
 ```
 
 ## Accepted immutable operational lineage
@@ -97,6 +97,10 @@ Failure: assertion_audit_model_output_invalid: bounded retries exhausted (assert
 
 EN v3 is the final operational content candidate for this gate. The failure above is a harness/model-output-shape failure, not a content verdict. Do not create EN v4 or edit prose for it.
 
+The preserved post-#61 classifier-boundary diagnostic is eval
+`becca4f9-44f2-4283-901d-fcd355e0f459`; it remains read-only history for the PR #62
+v4 replacement audit.
+
 PR #61 fixes only this observed structural case:
 
 ```text
@@ -107,22 +111,27 @@ source.required_assertive = false
 → persist structural segment as non_assertive / assertions=[]
 ```
 
-Required content segments remain fail-closed. Structural segments that the model marks `assertive` still undergo full assertion validation and hard gates. Assertion Audit generator/evaluator/schema, prompt/recipe, provider/model and migrations remain unchanged.
+Required content segments remain fail-closed. Structural segments that the model marks `assertive` still undergo full assertion validation and hard gates. PR #62 changes only the Assertion Audit generator/evaluator semantic versions and narrow validator boundary; schema, prompt/recipe, provider/model and migrations remain unchanged.
+
+The first post-#61 EN v3 audit then exposed one generic verification-guidance
+classifier-boundary finding at `section:confirm-availability:2`. PR #62 is the
+narrow v4 validator/evaluator normalization for that case; EN v3 remains immutable,
+and the failed diagnostic eval `becca4f9-44f2-4283-901d-fcd355e0f459` is preserved.
 
 ## Exact post-merge task
 
-`docs/logs/2026-09-11-ce05-resume-en-v3-audit-to-package-after-structural-normalization-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-resume-en-v3-v4-audit-to-package-after-guidance-normalization-agent-local-task.md`
 
 Task ID:
 
-`CE05-RESUME-EN-V3-AUDIT-TO-PACKAGE-AFTER-STRUCTURAL-NORMALIZATION-LOCAL`
+`CE05-RESUME-EN-V3-V4-AUDIT-TO-PACKAGE-AFTER-GUIDANCE-NORMALIZATION-LOCAL`
 
 Fast path:
 
 ```text
 lock VI v4 PASS unchanged
 → lock EN v3 unchanged
-→ replacement EN Assertion Audit using current route
+→ replacement EN v3 Assertion Audit v4 using current route
 → exact audit rerun reuse / model_attempts=0 / zero side effects
 → require audit_result != fail and critical counts = 0
 → VI Source-copy + exact reuse

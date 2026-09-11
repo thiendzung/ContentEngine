@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
     ASSERTION_AUDIT_GENERATOR_VERSION,
     ASSERTION_AUDIT_SCHEMA_VERSION,
     AssertionAuditError,
@@ -604,7 +605,7 @@ async def load_source_copy_input(
         or evaluation.run_id != audit.run_id
         or evaluation.artifact_id != audit.id
         or evaluation.evaluator_key != "assertion_audit_hard_gate"
-        or evaluation.evaluator_version != "ce05.assertion_audit.hard_gate.v3"
+        or evaluation.evaluator_version != ASSERTION_AUDIT_EVALUATOR_VERSION
         or evaluation.evaluator_type != "deterministic"
         or evaluation.result != "pass"
         or evaluation.findings_json != expected_findings

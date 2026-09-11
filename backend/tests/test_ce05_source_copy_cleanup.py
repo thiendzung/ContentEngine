@@ -20,7 +20,10 @@ from test_ce05_writer import (
 
 import app.modules.content_engine.journal.source_copy_cleanup as cleanup_module
 import scripts.source_copy_cleanup_real_o4_en as cleanup_cli
-from app.modules.content_engine.journal.assertion_audit import _source_segments
+from app.modules.content_engine.journal.assertion_audit import (
+    ASSERTION_AUDIT_EVALUATOR_VERSION,
+    _source_segments,
+)
 from app.modules.content_engine.journal.source_copy import (
     SourceCopyCheck,
     SourceCopyFinding,
@@ -170,7 +173,7 @@ async def _cleanup_fixture(session: AsyncSession) -> SourceCopyCleanupInput:
         run_id=audit_run.id,
         artifact_id=audit_artifact.id,
         evaluator_key="assertion_audit_hard_gate",
-        evaluator_version="ce05.assertion_audit.hard_gate.v3",
+        evaluator_version=ASSERTION_AUDIT_EVALUATOR_VERSION,
         evaluator_type="deterministic",
         result="pass",
         severity="none",
