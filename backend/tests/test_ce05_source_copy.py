@@ -1,16 +1,32 @@
 from __future__ import annotations
 
 import copy
+import subprocess
+import sys
 from dataclasses import replace
+from pathlib import Path
 from typing import cast
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from test_ce05_assertion_audit import isolated_session
+from test_ce05_assertion_audit import (
+    FakeAuditModel,
+    _passing_output,
+    _source,
+    isolated_session,
+)
+from test_ce05_assertion_audit_recovery import _audit, _prepare
 from test_ce05_writer import FakeWriterModel, _draft_payload, _generate_draft, _writer_fixture
 
-from app.modules.content_engine.journal.assertion_audit import _source_segments
+from app.modules.content_engine.journal.assertion_audit import (
+    AssertionAuditError,
+    _source_segments,
+)
+from app.modules.content_engine.journal.assertion_audit_execution import (
+    validate_source_writer_eligibility,
+)
 from app.modules.content_engine.journal.source_copy import (
     SOURCE_COPY_EVALUATOR_VERSION,
     SOURCE_COPY_GENERATOR_VERSION,
@@ -23,6 +39,7 @@ from app.modules.content_engine.journal.source_copy import (
     check_source_copy,
     classify_source_copy_overlap,
     execute_source_copy,
+    load_source_copy_input,
     normalize_source_copy_text,
     normalize_source_copy_tokens,
 )
@@ -180,6 +197,8 @@ async def _source_input(session: AsyncSession, *, locale: str = "en") -> SourceC
         fixture,
         FakeWriterModel([_draft_payload(fixture.writer_input, locale)]),
     )
+
+
     writer_run = fixture.writer_input.writer_run
     await transition_run(session, run_id=writer_run.id, status="running")
     await transition_run(session, run_id=writer_run.id, status="waiting_approval")
@@ -238,6 +257,171 @@ async def _source_input(session: AsyncSession, *, locale: str = "en") -> SourceC
         ),
         segments=_source_segments(generated.draft),
     )
+
+
+async def _legacy_source_copy_input(
+    session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[object, Artifact, SourceCopyInput]:
+    import app.modules.content_engine.journal.assertion_audit_execution as execution_module
+
+    fixture, source, audit_input = await _source(session, locale="vi-VN")
+    writer_run = audit_input.writer_input.writer_run
+    await transition_run(session, run_id=writer_run.id, status="running")
+    await transition_run(session, run_id=writer_run.id, status="failed")
+    writer_run.failure_code = "assertion_audit_vi_failed"
+    monkeypatch.setattr(execution_module, "LEGACY_FAILED_VI_WRITER_RUN_ID", writer_run.id)
+    monkeypatch.setattr(execution_module, "LEGACY_FAILED_VI_DRAFT_ID", source.id)
+    monkeypatch.setattr(
+        execution_module,
+        "LEGACY_FAILED_VI_DRAFT_VERSION",
+        source.version,
+    )
+    monkeypatch.setattr(
+        execution_module,
+        "LEGACY_FAILED_VI_DRAFT_HASH",
+        source.content_hash,
+    )
+    execution = await _prepare(session, source_input=audit_input)
+    audit_result = await _audit(
+        session,
+        source_input=audit_input,
+        execution=execution,
+        model=FakeAuditModel([_passing_output(audit_input)]),
+    )
+    assert audit_result.result == "pass"
+    loaded = await load_source_copy_input(
+        session,
+        writer_run_id=writer_run.id,
+        source_draft_artifact_id=source.id,
+        expected_source_draft_version=source.version,
+        expected_source_draft_hash=source.content_hash,
+        assertion_audit_artifact_id=audit_result.artifact.id,
+        expected_assertion_audit_version=audit_result.artifact.version,
+        expected_assertion_audit_hash=audit_result.artifact.content_hash,
+        assertion_audit_quality_evaluation_id=audit_result.evaluation.id,
+        outline_artifact_id=audit_input.writer_input.outline_artifact.id,
+        expected_outline_version=audit_input.writer_input.outline_artifact.version,
+        expected_outline_hash=audit_input.writer_input.outline_artifact.content_hash,
+        locale="vi-VN",
+    )
+    return fixture, source, loaded
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_source_copy_accepts_exact_legacy_vi_failed_writer_as_immutable_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, source, source_input = await _legacy_source_copy_input(session, monkeypatch)
+        writer_run = source_input.writer_input.writer_run
+        snapshot = copy.deepcopy(source.content_json)
+        assert writer_run.status == "failed"
+        assert writer_run.failure_code == "assertion_audit_vi_failed"
+        assert source_input.source_artifact.id == source.id
+        assert source_input.source_artifact.version == source.version
+        assert source_input.source_artifact.content_hash == source.content_hash
+        assert source_input.source_artifact.content_json == snapshot
+        assert source_input.sources
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("locale", ["vi-VN", "en"])
+async def test_source_copy_keeps_waiting_approval_writer_eligibility(locale: str) -> None:
+    async with isolated_session() as session:
+        _fixture, source, source_input = await _source(session, locale=locale)
+        source_input.writer_input.writer_run.status = "waiting_approval"
+        validate_source_writer_eligibility(
+            writer_input=source_input.writer_input,
+            source_artifact=source,
+        )
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize(
+    ("locale", "status"),
+    [
+        ("vi-VN", "failed"),
+        ("en", "failed"),
+        ("vi-VN", "cancelled"),
+        ("vi-VN", "completed"),
+    ],
+)
+async def test_source_copy_rejects_nonlegacy_terminal_writer_states(
+    locale: str, status: str
+) -> None:
+    async with isolated_session() as session:
+        _fixture, source, source_input = await _source(session, locale=locale)
+        source_input.writer_input.writer_run.status = status
+        with pytest.raises(
+            AssertionAuditError,
+            match="assertion_audit_source_writer_state_invalid",
+        ):
+            validate_source_writer_eligibility(
+                writer_input=source_input.writer_input,
+                source_artifact=source,
+            )
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("mismatch", ["id", "version", "hash"])
+async def test_source_copy_rejects_legacy_writer_with_wrong_draft_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+) -> None:
+    import app.modules.content_engine.journal.assertion_audit_execution as execution_module
+
+    async with isolated_session() as session:
+        _fixture, source, source_input = await _source(session, locale="vi-VN")
+        writer_run = source_input.writer_input.writer_run
+        writer_run.status = "failed"
+        monkeypatch.setattr(execution_module, "LEGACY_FAILED_VI_WRITER_RUN_ID", writer_run.id)
+        monkeypatch.setattr(execution_module, "LEGACY_FAILED_VI_DRAFT_ID", source.id)
+        monkeypatch.setattr(
+            execution_module,
+            "LEGACY_FAILED_VI_DRAFT_VERSION",
+            source.version,
+        )
+        monkeypatch.setattr(
+            execution_module,
+            "LEGACY_FAILED_VI_DRAFT_HASH",
+            source.content_hash,
+        )
+        wrong_source = Artifact(
+            run_id=source.run_id,
+            artifact_type="journal_draft",
+            locale="vi-VN",
+            version=source.version,
+            content_json=source.content_json,
+            content_hash=source.content_hash,
+        )
+        if mismatch == "id":
+            wrong_source.id = uuid4()
+        elif mismatch == "version":
+            wrong_source.version = source.version + 1
+        else:
+            wrong_source.content_hash = "0" * 64
+        with pytest.raises(
+            AssertionAuditError,
+            match="assertion_audit_source_writer_state_invalid",
+        ):
+            validate_source_writer_eligibility(
+                writer_input=source_input.writer_input,
+                source_artifact=wrong_source,
+            )
+
+
+def test_source_copy_cli_resolves_from_backend_execution_root() -> None:
+    backend_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "-m", "scripts.source_copy_real_o4_journal", "--help"],
+        cwd=backend_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "source-copy" in result.stdout
 
 
 @pytest.mark.asyncio(loop_scope="module")

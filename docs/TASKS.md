@@ -228,14 +228,20 @@ Real T05.14 v3 gate evidence:
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
-### Current gate — T05.15 BASIC SOURCE-COPY
+### Current gate — T05.15 BASIC SOURCE-COPY / LEGACY VI PREFLIGHT COMPATIBILITY
 
-Owner: **Agent Local** implements the bounded deterministic gate on PR #49; MG reviews
-the implementation and Founder controls merge. Production T05.15 is not executed in
-the implementation task.
+Owner: **Agent Local** implements the bounded deterministic gate and its exact legacy
+VI source-run compatibility; MG reviews the implementation and Founder controls merge.
+Production T05.15 is not executed in the implementation task.
+
+The first post-merge real preflight stopped before creating source-copy records because
+the exact accepted T05.14 VI v2 source Writer is terminal `failed`. T05.15 must reuse
+the existing T05.14 eligibility exception for that one immutable source lineage and
+continue rejecting arbitrary failed/cancelled/completed source Writer runs.
 
 - [ ] deterministic exact contiguous normalized-token overlap only;
 - [ ] locked EvidenceSet excerpts and approved OriginalityPack text fields only;
+- [ ] exact T05.14 source-writer eligibility reused without resurrecting the failed VI run;
 - [ ] dedicated locale `eval` ContentRun with immutable handoff, check Artifact and
   deterministic QualityEvaluation;
 - [ ] exact completed rerun reuses all outputs with zero side effects;

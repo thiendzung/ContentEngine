@@ -14,7 +14,7 @@ from app.modules.content_engine.journal.assertion_audit import (
     AssertionAuditError,
     AssertionAuditInput,
 )
-from app.modules.content_engine.journal.writer import _canonical_hash
+from app.modules.content_engine.journal.writer import WriterInput, _canonical_hash
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun, utc_now
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
@@ -81,20 +81,33 @@ def _handoff_payload(
     }
 
 
-def _validate_source_writer_state(source_input: AssertionAuditInput) -> None:
-    run = source_input.writer_input.writer_run
+def validate_source_writer_eligibility(
+    *,
+    writer_input: WriterInput,
+    source_artifact: Artifact,
+) -> None:
+    """Validate the exact source-writer states accepted by T05.14."""
+
+    run = writer_input.writer_run
     if run.status == "waiting_approval":
         return
     if (
         run.status == "failed"
         and run.id == LEGACY_FAILED_VI_WRITER_RUN_ID
-        and source_input.writer_input.locale == "vi-VN"
-        and source_input.source_artifact.id == LEGACY_FAILED_VI_DRAFT_ID
-        and source_input.source_artifact.version == LEGACY_FAILED_VI_DRAFT_VERSION
-        and source_input.source_artifact.content_hash == LEGACY_FAILED_VI_DRAFT_HASH
+        and writer_input.locale == "vi-VN"
+        and source_artifact.id == LEGACY_FAILED_VI_DRAFT_ID
+        and source_artifact.version == LEGACY_FAILED_VI_DRAFT_VERSION
+        and source_artifact.content_hash == LEGACY_FAILED_VI_DRAFT_HASH
     ):
         return
     raise AssertionAuditError("assertion_audit_source_writer_state_invalid", run.status)
+
+
+def _validate_source_writer_state(source_input: AssertionAuditInput) -> None:
+    validate_source_writer_eligibility(
+        writer_input=source_input.writer_input,
+        source_artifact=source_input.source_artifact,
+    )
 
 
 def _validate_handoff(
@@ -337,4 +350,5 @@ __all__ = [
     "AssertionAuditRunContext",
     "ensure_assertion_audit_run",
     "prepare_assertion_audit_run",
+    "validate_source_writer_eligibility",
 ]

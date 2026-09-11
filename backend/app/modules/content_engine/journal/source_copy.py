@@ -20,11 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.content_engine.journal.assertion_audit import (
     ASSERTION_AUDIT_GENERATOR_VERSION,
     ASSERTION_AUDIT_SCHEMA_VERSION,
+    AssertionAuditError,
     AuditSourceSegment,
     _source_segments,
     _summary,
     load_assertion_audit_input,
     validate_assertion_audit_output,
+)
+from app.modules.content_engine.journal.assertion_audit_execution import (
+    validate_source_writer_eligibility,
 )
 from app.modules.content_engine.journal.writer import (
     JournalDraft,
@@ -467,10 +471,6 @@ async def load_source_copy_input(
         expected_outline_hash=expected_outline_hash,
         locale=locale,
     )
-    if writer_input.writer_run.status != "waiting_approval":
-        raise SourceCopyError(
-            "source_copy_writer_run_state_invalid", writer_input.writer_run.status
-        )
     source = await session.get(Artifact, source_draft_artifact_id)
     if (
         source is None
@@ -481,6 +481,15 @@ async def load_source_copy_input(
         or source.content_hash != expected_source_draft_hash
     ):
         raise SourceCopyError("source_copy_source_draft_snapshot_mismatch")
+    try:
+        validate_source_writer_eligibility(
+            writer_input=writer_input,
+            source_artifact=source,
+        )
+    except AssertionAuditError as exc:
+        raise SourceCopyError(
+            "source_copy_writer_run_state_invalid", writer_input.writer_run.status
+        ) from exc
     payload = _dict(source.content_json, "source_copy_source_draft_payload_invalid")
     if _canonical_hash(payload) != source.content_hash:
         raise SourceCopyError("source_copy_source_draft_snapshot_stale")
