@@ -228,29 +228,30 @@ Real T05.14 v3 gate evidence:
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
-### Current gate — T05.15 BASIC SOURCE-COPY / LEGACY VI PREFLIGHT COMPATIBILITY
+### Current gate — T05.15 EN SOURCE-COPY WARNING REMEDIATION
 
-Owner: **Agent Local** implements the bounded deterministic gate and its exact legacy
-VI source-run compatibility; MG reviews the implementation and Founder controls merge.
-Production T05.15 is not executed in the implementation task.
+Owner: **Agent Local** implements the bounded deterministic EN cleanup on PR #51;
+MG reviews the implementation and Founder controls merge. Production cleanup,
+re-audit and source-copy are not executed in the implementation task.
 
-The first post-merge real preflight stopped before creating source-copy records because
-the exact accepted T05.14 VI v2 source Writer is terminal `failed`. T05.15 must reuse
-the existing T05.14 eligibility exception for that one immutable source lineage and
-continue rejecting arbitrary failed/cancelled/completed source Writer runs.
+The exact VI T05.15 source-copy result is PASS. The exact EN v4 source-copy result is
+WARN with one valid 9-token finding at
+`section:understand-price-context:2`. The current bounded implementation task
+deterministically replaces that approved warning text in EN v5, then the post-merge
+task re-runs EN Assertion Audit v3 and Source-copy v2.
 
-- [ ] deterministic exact contiguous normalized-token overlap only;
-- [ ] locked EvidenceSet excerpts and approved OriginalityPack text fields only;
-- [ ] exact T05.14 source-writer eligibility reused without resurrecting the failed VI run;
-- [ ] dedicated locale `eval` ContentRun with immutable handoff, check Artifact and
-  deterministic QualityEvaluation;
-- [ ] exact completed rerun reuses all outputs with zero side effects;
-- [ ] post-merge real task:
-  `docs/logs/2026-09-10-ce05-t05-15-real-source-copy-agent-local-task.md`;
-- [ ] T05.15 real VI/EN gate after implementation merge.
+- [x] source-copy v2 tokenizer, thresholds, corpus and evaluator remain unchanged;
+- [x] exact EN warning and approved replacement are bound in the implementation task;
+- [ ] PR #51 implementation: deterministic EN v4→v5 cleanup with retry/idempotency;
+- [ ] post-merge runtime task:
+  `docs/logs/2026-09-11-ce05-t05-15-en-v5-cleanup-reaudit-source-copy-agent-local-task.md`;
+- [ ] EN v5 Assertion Audit v3 PASS and exact rerun reuse;
+- [ ] EN v5 Source-copy v2 pass/warn=0/fail=0 and exact rerun reuse;
+- [ ] verify existing VI PASS and all shared upstream lineage remain immutable.
 
 No model/provider/tool/research/vector/fuzzy/translation similarity is in scope.
-T05.16 remains NOT STARTED until both locales pass the real T05.15 gate.
+No production runtime cleanup is executed on PR #51. T05.16 remains NOT STARTED until
+the post-merge bilingual T05.15 sequence passes.
 
 ### Critical path after T05.15 PASS
 
@@ -265,9 +266,9 @@ T05.16 remains NOT STARTED until both locales pass the real T05.15 gate.
 ### Immediate sequence
 
 ```text
-T05.15 basic source-copy implementation + final CI/review
+T05.15 EN warning-remediation implementation + final CI/review
 → Founder merge
-→ Agent Local runs deterministic VI/EN source-copy check and exact reruns
+→ Agent Local runs EN v5 cleanup → Assertion Audit v3 → Source-copy v2 and exact reruns
 → MG reviews exact findings/provenance and marks T05.15 PASS
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS

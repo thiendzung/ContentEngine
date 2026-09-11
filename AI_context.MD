@@ -27,9 +27,9 @@ Do not infer or start the next task. Founder owns final merge.
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
-CURRENT GATE: T05.15 — BASIC SOURCE-COPY / EN WARNING REMEDIATION
-CURRENT OWNER: Agent Local implements only the exact bounded EN cleanup task on the assigned PR branch; MG reviews; Founder merges
-NEXT ACTION: implement deterministic EN v4→v5 source-copy warning cleanup, pass CI/review, Founder merge, then run EN v5 Assertion Audit v3 + Source-copy v2
+CURRENT GATE: T05.15 — EN SOURCE-COPY WARNING REMEDIATION
+CURRENT OWNER: Agent Local implements only the exact bounded EN cleanup task on the assigned branch; MG reviews; Founder merges
+NEXT ACTION: implement deterministic EN v4→v5 cleanup, pass CI/review, Founder merge, then run the exact EN v5 Assertion Audit v3 → Source-copy v2 task
 BLOCKERS: one valid EN source-copy warning remains; VI source-copy is PASS
 HUMAN DECISION REQUIRED: none during implementation
 ```
@@ -42,6 +42,7 @@ HUMAN DECISION REQUIRED: none during implementation
 - T05.15 implementation + legacy VI compatibility: MERGED.
 - T05.15 real VI result: **PASS** (`warn=0`, `fail=0`, max overlap 1).
 - T05.15 real EN v4 result: **WARN** (`warn=1`, `fail=0`, max overlap 9).
+- T05.15 EN warning-remediation implementation: **PENDING MERGE**; deterministic v5 cleanup is not yet executed in production.
 - T05.16–T05.22: NOT STARTED.
 
 Exact implementation task:
