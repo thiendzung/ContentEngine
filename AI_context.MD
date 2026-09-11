@@ -26,13 +26,32 @@ Do not infer or start the next task. Founder owns final merge.
 ```text
 PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
-CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
+CURRENT OUTCOME: get one safe, traceable MOTGU Journal into controlled real operation, then harden from observed failures
 CURRENT GATE: T05.15 — EN SOURCE-COPY WARNING REMEDIATION
-CURRENT OWNER: Agent Local implements only the exact bounded EN cleanup task on the assigned branch; MG reviews; Founder merges
-NEXT ACTION: implement deterministic EN v4→v5 cleanup, pass CI/review, Founder merge, then run the exact EN v5 Assertion Audit v3 → Source-copy v2 task
-BLOCKERS: one valid EN source-copy warning remains; VI source-copy is PASS
-HUMAN DECISION REQUIRED: none during implementation
+CURRENT OWNER: Founder merge gate; MG review of PR #51 implementation is complete
+NEXT ACTION: Founder merges PR #51, then Agent Local runs exact EN v5 cleanup → Assertion Audit v3 → Source-copy v2 runtime task; if PASS, MG opens the minimal T05.16/T05.17 operational slice
+BLOCKERS: one historical EN v4 source-copy warning is being deterministically remediated; VI source-copy is already PASS
+HUMAN DECISION REQUIRED: MERGE PR #51 after final exact-head CI
 ```
+
+## Operating mode — PRODUCTION FIRST
+
+Canonical decision:
+
+`docs/logs/2026-09-11-ce05-production-first-operating-mode.md`
+
+After T05.15 final PASS, do not complete speculative hardening before first use. The critical path is:
+
+```text
+T05.15 PASS
+→ T05.16 minimal operational package
+→ Founder final content approval
+→ T05.17 one real operational Journal using a controlled manual publish handoff if needed
+→ observe real failures/operator friction
+→ T05.18–T05.22 harden from actual evidence
+```
+
+T05.18–T05.22 remain CE05 closeout work but do not block the first operational Journal after T05.17 unless a safety/data-integrity defect is discovered.
 
 ## Current progress
 
@@ -42,12 +61,17 @@ HUMAN DECISION REQUIRED: none during implementation
 - T05.15 implementation + legacy VI compatibility: MERGED.
 - T05.15 real VI result: **PASS** (`warn=0`, `fail=0`, max overlap 1).
 - T05.15 real EN v4 result: **WARN** (`warn=1`, `fail=0`, max overlap 9).
-- T05.15 EN warning-remediation implementation: **PENDING MERGE**; deterministic v5 cleanup is not yet executed in production.
-- T05.16–T05.22: NOT STARTED.
+- PR #51 deterministic EN v4→v5 cleanup implementation: MG code review PASS; production execution waits for merge.
+- T05.16–T05.17: NOT STARTED; they form the next minimal operational slice after T05.15 PASS.
+- T05.18–T05.22: NOT STARTED; post-operation hardening/metrics/closeout.
 
 Exact implementation task:
 
 `docs/logs/2026-09-11-ce05-t05-15-en-source-copy-warning-cleanup-agent-local-task.md`
+
+Exact post-merge runtime task:
+
+`docs/logs/2026-09-11-ce05-t05-15-en-v5-cleanup-reaudit-source-copy-agent-local-task.md`
 
 ## Locked current runtime evidence
 
@@ -83,7 +107,7 @@ different priorities on each side of the transaction
 
 No model for the cleanup. Persist immutable EN v5 in the same Writer run. All non-target copy/fields remain byte-identical.
 
-Because EN copy changes, post-merge validation order is mandatory:
+Post-merge validation order remains mandatory:
 
 ```text
 EN v4 → deterministic v5 cleanup
@@ -98,4 +122,4 @@ EN v4 → deterministic v5 cleanup
 → STOP
 ```
 
-T05.16 remains blocked until that sequence passes. Do not modify or rerun VI during the remediation implementation.
+Do not modify or rerun VI. Do not start T05.16 until T05.15 final runtime PASS is reviewed by MG.
