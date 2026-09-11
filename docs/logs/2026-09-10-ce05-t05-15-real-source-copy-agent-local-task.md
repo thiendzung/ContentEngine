@@ -76,11 +76,12 @@ noncanonical Originality ref. In particular inspect `lead:3` and
 noncanonical spellings but persisted data is canonical, record that as report
 transcription only. If persisted data is noncanonical, stop **BLOCKED**.
 
-From the repository root, use
-`backend/.venv/bin/python -m scripts.source_copy_real_o4_journal` with these exact arguments:
+From the `backend` execution root, use
+`.venv/bin/python -m scripts.source_copy_real_o4_journal` with these exact arguments:
 
 ```bash
-backend/.venv/bin/python -m scripts.source_copy_real_o4_journal \
+cd backend
+.venv/bin/python -m scripts.source_copy_real_o4_journal \
   --preflight-only --locale vi-VN \
   --writer-run-id 1f0b91a7-39d7-449f-84ad-988fd1e8f44e \
   --source-draft-artifact-id a0afa7d0-af3d-4669-ae18-54c54b87731f \
@@ -94,7 +95,7 @@ backend/.venv/bin/python -m scripts.source_copy_real_o4_journal \
   --outline-artifact-version 1 \
   --outline-artifact-hash 4f4a746bc4b10625be50b5cc4c2311cad7a1ebee5797bcde8058c622eed351ea
 
-backend/.venv/bin/python -m scripts.source_copy_real_o4_journal \
+.venv/bin/python -m scripts.source_copy_real_o4_journal \
   --preflight-only --locale en \
   --writer-run-id b2e86caf-a7a2-463a-8c8c-9e94e02272f5 \
   --source-draft-artifact-id 4a1d9636-fdb5-4372-b0df-e0662f797008 \
