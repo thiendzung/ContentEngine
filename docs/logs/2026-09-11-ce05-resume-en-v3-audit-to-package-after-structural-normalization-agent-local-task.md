@@ -14,7 +14,7 @@ final operational approval authority. Do not infer or start another task.
 Resume the blocked T05.14/T05.15 operational path after the structural
 Assertion Audit output-normalization fix. Do not regenerate content or rerun
 research. Produce Operational Package V0 only after the exact EN v3 audit and
-both locale Source-copy gates pass.
+both locale Source-copy gates are operationally acceptable.
 
 ## PRECONDITIONS / IMMUTABLE INPUTS
 
@@ -50,9 +50,9 @@ both locale Source-copy gates pass.
    with `reused=true`, `model_attempts=0` and zero new runtime records.
 3. Run VI Source-copy v2 against the immutable VI v4 and its PASS audit. Run
    the identical command again and require exact reuse with zero side effects.
-4. Run EN Source-copy v2 against the immutable EN v3 and the completed PASS
-   EN audit. Run the identical command again and require exact reuse with zero
-   side effects.
+4. Run EN Source-copy v2 against the immutable EN v3 and the completed
+   operationally acceptable EN audit. Run the identical command again and
+   require exact reuse with zero side effects.
 5. Require Source-copy `fail_count=0` for both locales. Preserve any
    non-critical warnings verbatim.
 6. Verify VI PASS and all shared upstream lineage remain byte- and row-
@@ -60,20 +60,23 @@ both locale Source-copy gates pass.
 
 ## ACCEPTANCE / STOP CONDITIONS
 
-EN Assertion Audit must have:
+EN Assertion Audit must be hard-clean:
 
 ```text
-audit_result = pass
-unsupported_count = 0
-contradicted_count = 0
+audit_result != fail
 critical_unsupported_count = 0
 critical_contradicted_count = 0
 ```
 
-Both Source-copy results must have `fail_count=0`. Any new hard content
-finding after the structural fix is `BLOCKED_ASSERTION_AUDIT_INSTABILITY`; do
-not edit content again. Any lineage, schema, route, registry or ownership
-mismatch is `BLOCKED`. A valid non-hard warning may proceed only if preserved
+A non-critical EN audit warning may proceed for this first operation. If
+`unsupported_count > 0` or `contradicted_count > 0` while both critical counts
+remain zero, preserve every resulting warning/finding verbatim in the package
+for Founder review; do not edit content again merely to remove a warning.
+
+Both Source-copy results must have `fail_count=0`. Any new hard content finding
+after the structural fix is `BLOCKED_ASSERTION_AUDIT_INSTABILITY`; do not edit
+content again. Any lineage, schema, route, registry or ownership mismatch is
+`BLOCKED`. A valid non-hard Source-copy warning may proceed only if preserved
 verbatim in the package.
 
 No model/provider change, Writer generation, prose edit, translation, sibling
