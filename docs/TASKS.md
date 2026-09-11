@@ -228,30 +228,28 @@ Real T05.14 v3 gate evidence:
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
-### Current gate — T05.15 EN SOURCE-COPY WARNING REMEDIATION
+### Current gate — T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
 
-Owner: **Agent Local** implements the bounded deterministic EN cleanup on PR #51;
-MG reviews the implementation and Founder controls merge. Production cleanup,
-re-audit and source-copy are not executed in the implementation task.
+Owner: **Agent Local** implements the bounded execution-boundary recovery task;
+MG reviews and Founder controls merge. The EN v5 content audit is PASS, but two
+historical completed eval runs for the same exact handoff currently block safe
+idempotent reuse. No production runtime recovery is executed in the implementation task.
 
-The exact VI T05.15 source-copy result is PASS. The exact EN v4 source-copy result is
-WARN with one valid 9-token finding at
-`section:understand-price-context:2`. The current bounded implementation task
-deterministically replaces that approved warning text in EN v5, then the post-merge
-task re-runs EN Assertion Audit v3 and Source-copy v2.
-
-- [x] source-copy v2 tokenizer, thresholds, corpus and evaluator remain unchanged;
-- [x] exact EN warning and approved replacement are bound in the implementation task;
-- [ ] PR #51 implementation: deterministic EN v4→v5 cleanup with retry/idempotency;
-- [ ] post-merge runtime task:
-  `docs/logs/2026-09-11-ce05-t05-15-en-v5-cleanup-reaudit-source-copy-agent-local-task.md`;
-- [ ] EN v5 Assertion Audit v3 PASS and exact rerun reuse;
+- [x] T05.15 EN v5 deterministic cleanup completed and immutable v5 is locked;
+- [x] EN v5 Assertion Audit content result is PASS on both preserved completed eval runs;
+- [ ] serialize same-source audit preparation with the source Writer row lock;
+- [ ] validate and deterministically recover equivalent completed duplicate audits;
+- [ ] preserve active, malformed and conflicting duplicates as fail-closed conditions;
+- [ ] post-merge resume task:
+  `docs/logs/2026-09-11-ce05-t05-15-resume-after-assertion-audit-duplicate-agent-local-task.md`;
+- [ ] EN v5 Assertion Audit reuse twice with zero side effects;
 - [ ] EN v5 Source-copy v2 pass/warn=0/fail=0 and exact rerun reuse;
 - [ ] verify existing VI PASS and all shared upstream lineage remain immutable.
 
-No model/provider/tool/research/vector/fuzzy/translation similarity is in scope.
-No production runtime cleanup is executed on PR #51. T05.16 remains NOT STARTED until
-the post-merge bilingual T05.15 sequence passes.
+Assertion Audit generator/evaluator/schema semantics and Source-copy v2 remain unchanged.
+No migration, new provider/model/tool, research, draft edit or generic concurrency
+framework is in scope. T05.16 remains NOT STARTED until the post-merge T05.15
+sequence passes.
 
 ### Critical path after T05.15 PASS
 
@@ -266,9 +264,9 @@ the post-merge bilingual T05.15 sequence passes.
 ### Immediate sequence
 
 ```text
-T05.15 EN warning-remediation implementation + final CI/review
+T05.15 Assertion Audit concurrency/idempotency recovery implementation + final CI/review
 → Founder merge
-→ Agent Local runs EN v5 cleanup → Assertion Audit v3 → Source-copy v2 and exact reruns
+→ Agent Local runs canonical EN v5 Assertion Audit reuse → Source-copy v2 and exact reruns
 → MG reviews exact findings/provenance and marks T05.15 PASS
 → T05.16 Final Package
 → T05.17 ONE REAL JOURNAL PASS
