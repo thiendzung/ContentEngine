@@ -28,10 +28,10 @@ PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: get one safe, traceable MOTGU Journal into controlled real operation, then harden from observed failures
 CURRENT GATE: T05.15 — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
-CURRENT OWNER: Agent Local implements the exact bounded harness recovery task; MG reviews; Founder merges
-NEXT ACTION: fix same-source Assertion Audit serialization + deterministic recovery of the two preserved equivalent completed EN v5 audit runs; after merge resume EN v5 audit reuse → Source-copy v2
-BLOCKERS: EN v5 content audit itself PASS, but duplicate completed eval runs make exact reuse fail with assertion_audit_reusable_run_duplicate; EN v5 Source-copy has not run
-HUMAN DECISION REQUIRED: none during implementation
+CURRENT OWNER: Founder merge gate; MG code/contract review of PR #52 is complete
+NEXT ACTION: Founder merges PR #52, then Agent Local runs the exact resume task to reuse the canonical EN v5 Assertion Audit twice and run EN v5 Source-copy v2 twice; if PASS, MG closes T05.15 and opens the minimal T05.16/T05.17 operational slice
+BLOCKERS: no implementation blocker; production duplicate recovery and EN v5 Source-copy remain pending PR #52 merge
+HUMAN DECISION REQUIRED: MERGE PR #52 after final exact-head CI
 ```
 
 ## Operating mode — PRODUCTION FIRST
@@ -61,9 +61,9 @@ T05.18–T05.22 do not block the first operational Journal unless an observed sa
 - PR #51 deterministic EN v4→v5 cleanup: MERGED.
 - EN v5 cleanup: **PASS**, immutable v5 created, exact cleanup rerun reused with zero side effects.
 - EN v5 Assertion Audit content result: **PASS** on two concurrent completed eval runs.
-- EN v5 Assertion Audit idempotency: **BLOCKED** because the same exact handoff produced two completed eval runs and future reuse fails closed on the duplicate set.
+- Historical EN v5 Assertion Audit duplicate set remains preserved and immutable.
+- PR #52 concurrency/idempotency recovery implementation: **MG REVIEW PASS**; row-lock serialization, deterministic completed-duplicate recovery and PostgreSQL concurrency regression are implemented. Final exact-head CI is required before merge.
 - EN v5 Source-copy: NOT EXECUTED.
-- T05.15 concurrency/idempotency recovery implementation: **IN PROGRESS**; production runtime is not executed on this implementation branch.
 - T05.16–T05.17: next minimal operational slice after T05.15 PASS.
 - T05.18–T05.22: post-operation hardening/metrics/closeout.
 
@@ -71,7 +71,7 @@ Exact implementation task:
 
 `docs/logs/2026-09-11-ce05-t05-15-assertion-audit-concurrency-recovery-agent-local-task.md`
 
-Post-merge runtime task to be added by this implementation:
+Exact post-merge runtime task:
 
 `docs/logs/2026-09-11-ce05-t05-15-resume-after-assertion-audit-duplicate-agent-local-task.md`
 
@@ -102,7 +102,7 @@ artifact 758886d1-0283-4609-9225-eb6f205f292a
 QE 66ad0285-d26f-4f54-a5a9-8b8a675a485b
 result pass
 
-Current reuse error: assertion_audit_reusable_run_duplicate
+Historical reuse error before PR #52: assertion_audit_reusable_run_duplicate
 EN v5 Source-copy records: none
 ```
 
@@ -128,4 +128,4 @@ existing exact completed duplicate set
 
 Do not change Assertion Audit generator/evaluator/schema semantics. Do not change Source-copy v2. No migration or generic concurrency framework.
 
-After the recovery PR is merged, Agent Local runs only the exact resume task created by that PR, proves canonical audit reuse twice, then runs EN v5 Source-copy v2 twice. T05.16 remains blocked until T05.15 final runtime PASS is reviewed by MG.
+After PR #52 is merged, Agent Local runs only the exact resume task above, proves canonical audit reuse twice, then runs EN v5 Source-copy v2 twice. T05.16 remains blocked until T05.15 final runtime PASS is reviewed by MG.
