@@ -28,10 +28,10 @@ PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: get one safe, traceable MOTGU Journal into controlled real operation, then harden from observed failures
 CURRENT GATE: T05.15 — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
-CURRENT OWNER: Founder merge gate; MG code/contract review of PR #52 is complete
-NEXT ACTION: Founder merges PR #52, then Agent Local runs the exact resume task to reuse the canonical EN v5 Assertion Audit twice and run EN v5 Source-copy v2 twice; if PASS, MG closes T05.15 and opens the minimal T05.16/T05.17 operational slice
-BLOCKERS: no implementation blocker; production duplicate recovery and EN v5 Source-copy remain pending PR #52 merge
-HUMAN DECISION REQUIRED: MERGE PR #52 after final exact-head CI
+CURRENT OWNER: Agent Local implements the bounded PR #53 hard-gate-equivalence fix; MG reviews; Founder merges
+NEXT ACTION: Founder merges PR #53, then Agent Local reruns only the existing resume task; T05.16 remains blocked until final T05.15 runtime PASS
+BLOCKERS: PR #52 concurrency recovery is merged; real recovery exposed that assertion_count was incorrectly treated as a duplicate hard-gate conflict
+HUMAN DECISION REQUIRED: MERGE PR #53 after exact-head CI
 ```
 
 ## Operating mode — PRODUCTION FIRST
@@ -62,7 +62,9 @@ T05.18–T05.22 do not block the first operational Journal unless an observed sa
 - EN v5 cleanup: **PASS**, immutable v5 created, exact cleanup rerun reused with zero side effects.
 - EN v5 Assertion Audit content result: **PASS** on two concurrent completed eval runs.
 - Historical EN v5 Assertion Audit duplicate set remains preserved and immutable.
-- PR #52 concurrency/idempotency recovery implementation: **MG REVIEW PASS**; row-lock serialization, deterministic completed-duplicate recovery and PostgreSQL concurrency regression are implemented. Final exact-head CI is required before merge.
+- PR #52 concurrency/idempotency recovery: **MERGED**; row-lock serialization, deterministic completed-duplicate recovery and PostgreSQL concurrency regression are present.
+- Real recovery exposed a narrower equivalence bug: `assertion_count` was incorrectly treated as a hard-gate conflict even though both historical audits independently PASS every hard-gate count at zero.
+- PR #53 bounded hard-gate-equivalence fix: **IN PROGRESS**; no production runtime execution is part of this implementation.
 - EN v5 Source-copy: NOT EXECUTED.
 - T05.16–T05.17: next minimal operational slice after T05.15 PASS.
 - T05.18–T05.22: post-operation hardening/metrics/closeout.
@@ -120,12 +122,14 @@ same source Writer row
 existing exact completed duplicate set
 → validate every candidate independently
 → fail closed if active/malformed/conflicting
-→ if all completed candidates are valid and deterministic hard-gate summary/result + route/prompt/recipe agree
+→ if all completed candidates are valid and deterministic hard-gate result/counts + route/prompt/recipe agree
+  (`assertion_count` may differ)
 → choose canonical by stable (created_at, id) ordering
 → preserve all duplicate records
 → reuse canonical artifact/QE with model_attempts=0 and zero new side effects
 ```
 
 Do not change Assertion Audit generator/evaluator/schema semantics. Do not change Source-copy v2. No migration or generic concurrency framework.
+The hard-gate equivalence signature is `result`, critical/non-critical unsupported and contradicted counts, provider/model and prompt/recipe versions; model assertion cardinality is excluded.
 
-After PR #52 is merged, Agent Local runs only the exact resume task above, proves canonical audit reuse twice, then runs EN v5 Source-copy v2 twice. T05.16 remains blocked until T05.15 final runtime PASS is reviewed by MG.
+After PR #53 is merged, Agent Local runs only the exact resume task above, proves canonical audit reuse twice, then runs EN v5 Source-copy v2 twice. T05.16 remains blocked until T05.15 final runtime PASS is reviewed by MG.

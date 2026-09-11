@@ -230,16 +230,19 @@ If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` a
 
 ### Current gate — T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
 
-Owner: **Agent Local** implements the bounded execution-boundary recovery task;
-MG reviews and Founder controls merge. The EN v5 content audit is PASS, but two
-historical completed eval runs for the same exact handoff currently block safe
-idempotent reuse. No production runtime recovery is executed in the implementation task.
+Owner: **Agent Local** implements the bounded hard-gate-equivalence fix on PR #53;
+MG reviews and Founder controls merge. PR #52 concurrency serialization/recovery is
+merged. Real recovery exposed that two independently valid completed eval runs have
+different model `assertion_count` values (32 vs 38), which must not block reuse. No
+production runtime recovery is executed in the implementation task.
 
 - [x] T05.15 EN v5 deterministic cleanup completed and immutable v5 is locked;
 - [x] EN v5 Assertion Audit content result is PASS on both preserved completed eval runs;
-- [ ] serialize same-source audit preparation with the source Writer row lock;
-- [ ] validate and deterministically recover equivalent completed duplicate audits;
-- [ ] preserve active, malformed and conflicting duplicates as fail-closed conditions;
+- [x] serialize same-source audit preparation with the source Writer row lock;
+- [x] validate and deterministically recover equivalent completed duplicate audits;
+- [x] preserve active, malformed and conflicting duplicates as fail-closed conditions;
+- [ ] PR #53 hard-gate equivalence fix: exclude model `assertion_count` while retaining
+  deterministic result/counts and route/prompt/recipe conflict checks;
 - [ ] post-merge resume task:
   `docs/logs/2026-09-11-ce05-t05-15-resume-after-assertion-audit-duplicate-agent-local-task.md`;
 - [ ] EN v5 Assertion Audit reuse twice with zero side effects;

@@ -281,16 +281,18 @@ async def ensure_assertion_audit_run(
             for run, handoff in completed
         ]
         first = candidates[0]
-        summary_keys = (
+        hard_gate_summary_keys = (
             "result",
-            "assertion_count",
             "critical_unsupported_count",
             "critical_contradicted_count",
             "unsupported_count",
             "contradicted_count",
         )
         for candidate in candidates[1:]:
-            if any(candidate.summary[key] != first.summary[key] for key in summary_keys):
+            if any(
+                candidate.summary[key] != first.summary[key]
+                for key in hard_gate_summary_keys
+            ):
                 raise AssertionAuditError("assertion_audit_duplicate_summary_conflict")
             if (
                 candidate.provider,

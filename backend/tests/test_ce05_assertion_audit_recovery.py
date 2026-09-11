@@ -135,6 +135,7 @@ async def _duplicate_completed_audit(
     source_result,
     created_at: datetime,
     conflicting_summary: bool = False,
+    assertion_count_delta: int = 0,
     malformed: str | None = None,
     run_status: str = "completed",
 ):
@@ -266,9 +267,22 @@ async def _duplicate_completed_audit(
     model = model_payload["model"]
     assert isinstance(provider, str)
     assert isinstance(model, str)
+    segments = audit_payload["segments"]
+    assert isinstance(segments, list)
+    if assertion_count_delta:
+        assert assertion_count_delta > 0
+        for segment in segments:
+            assert isinstance(segment, dict)
+            assertions = segment["assertions"]
+            assert isinstance(assertions, list)
+            if assertions:
+                assertions.extend(
+                    copy.deepcopy(assertions[0]) for _ in range(assertion_count_delta)
+                )
+                break
+        else:
+            pytest.fail("fixture requires an assertive segment")
     if conflicting_summary:
-        segments = audit_payload["segments"]
-        assert isinstance(segments, list)
         for segment in segments:
             assert isinstance(segment, dict)
             assertions = segment["assertions"]
@@ -279,6 +293,7 @@ async def _duplicate_completed_audit(
                 assertion["support_status"] = "unsupported"
                 assertion["severity"] = "critical"
                 break
+    if assertion_count_delta or conflicting_summary:
         validated = validate_assertion_audit_output(
             {"locale": source_input.writer_input.locale, "segments": segments},
             audit_input=source_input,
@@ -442,7 +457,7 @@ async def _add_fixture_model_call(session: AsyncSession, *, execution) -> None:
 
 
 @pytest.mark.asyncio
-async def test_completed_duplicates_recover_canonical_without_side_effects() -> None:
+async def test_completed_duplicates_with_different_assertion_counts_recover() -> None:
     async with isolated_session() as session:
         fixture, _source_artifact, source_input = await _source(session)
         await _mark_source_waiting(session, source_input=source_input)
@@ -460,7 +475,17 @@ async def test_completed_duplicates_recover_canonical_without_side_effects() -> 
             source_execution=execution,
             source_result=result,
             created_at=execution.audit_run.created_at + timedelta(seconds=1),
+            assertion_count_delta=6,
         )
+        source_payload = result.artifact.content_json
+        duplicate_payload = duplicate[4].content_json
+        assert isinstance(source_payload, dict)
+        assert isinstance(duplicate_payload, dict)
+        source_summary = source_payload["summary"]
+        duplicate_summary = duplicate_payload["summary"]
+        assert isinstance(source_summary, dict)
+        assert isinstance(duplicate_summary, dict)
+        assert duplicate_summary["assertion_count"] == source_summary["assertion_count"] + 6
         historical = {
             execution.audit_run.id: (
                 execution.audit_run.status,

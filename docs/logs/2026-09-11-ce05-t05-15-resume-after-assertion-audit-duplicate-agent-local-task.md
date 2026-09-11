@@ -100,6 +100,10 @@ Artifact `aa822f6f-c000-4008-a814-23e4d6a4caa2` / v1 /
 `46a839f51225a9c83a7d8330a1d6da86e03992359f258e9f945bbee0c971a891`, QE
 `6b1d467b-10f8-4d35-ada0-a9be0ed3138c`.
 
+The model-extracted `assertion_count` may differ between independently valid
+duplicates; equivalence uses only the deterministic hard-gate result/counts and
+the provider/model plus prompt/recipe versions.
+
 ## Exact runtime sequence
 
 All commands run from `backend`. No command may use research, Search, URLs,
