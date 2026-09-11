@@ -19,119 +19,122 @@ git status --porcelain
 → execute exact task only
 ```
 
-Do not infer or start the next task. Founder owns final merge.
+Founder owns final merge and final operational content approval.
 
 ## Current window
 
 ```text
 PROJECT: ContentEngine
-PHASE: CE05 — Journal Engine V1
-CURRENT OUTCOME: get one safe, traceable MOTGU Journal into controlled real operation, then harden from observed failures
-CURRENT GATE: T05.15 — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
-CURRENT OWNER: Founder merge gate; MG review of PR #53 implementation is complete
-NEXT ACTION: Founder merges PR #53, then Agent Local reruns only the existing resume task; if PASS, MG closes T05.15 and opens the minimal T05.16/T05.17 operational slice
-BLOCKERS: no implementation blocker; production canonical audit recovery and EN v5 Source-copy remain pending PR #53 merge
-HUMAN DECISION REQUIRED: MERGE PR #53 after final exact-head CI
+PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
+CURRENT OUTCOME: get the first real MOTGU Journal package ready for Founder approval on the runtime database actually in use
+CURRENT GATE: FAST OPERATIONAL RESET / FRESH ACCEPTANCE
+CURRENT OWNER: Founder merges the reset PR; Agent Local executes one bounded end-to-end sprint; MG reviews the final package
+NEXT ACTION: after merge, Agent Local resolves the active DB once, then continues fresh end-to-end until a hard blocker or Operational Package V0 is ready for Founder approval
+BLOCKERS: historical CE05 UUID lineage is absent from configured `contentengine`; under fresh acceptance this is no longer a blocker
+HUMAN DECISION REQUIRED: merge the reset PR; after execution, only final operational content/package approval
 ```
 
-## Operating mode — PRODUCTION FIRST
+## Why the gate changed
 
-Canonical decision:
-
-`docs/logs/2026-09-11-ce05-production-first-operating-mode.md`
-
-Critical path after T05.15 closes:
+After PR #53 merged, Agent Local verified the configured runtime database `contentengine` at migration `20260910_0022 (head)` contains:
 
 ```text
-T05.16 minimal operational package
-→ Founder final content approval
-→ T05.17 one real operational Journal using controlled manual publish handoff if needed
-→ observe actual failure/friction
-→ T05.18–T05.22 harden from evidence
+ContentCase = 0
+ContentRun = 0
+Artifact = 0
+QualityEvaluation = 0
 ```
 
-T05.18–T05.22 do not block the first operational Journal unless an observed safety/data-integrity defect requires it.
+The old O4 runtime UUID lineage cannot be resumed there. We will not recreate historical rows merely to satisfy old IDs.
 
-## Current progress
+Canonical reset decision:
 
-- CE01–CE04: CLOSED / PASS.
-- T05.1–T05.13: DONE / PASS.
-- T05.14: DONE historically; EN v5 must be the current revalidated final snapshot.
-- T05.15 VI source-copy: **PASS** (`warn=0`, `fail=0`, max overlap 1).
-- PR #51 deterministic EN v4→v5 cleanup: MERGED.
-- EN v5 cleanup: **PASS**, immutable v5 created, exact cleanup rerun reused with zero side effects.
-- EN v5 Assertion Audit content result: **PASS** on two concurrent completed eval runs.
-- Historical EN v5 Assertion Audit duplicate set remains preserved and immutable.
-- PR #52 concurrency/idempotency recovery: **MERGED**; row-lock serialization, deterministic completed-duplicate recovery and PostgreSQL concurrency regression are present.
-- Real recovery exposed a narrower equivalence bug: `assertion_count` was incorrectly treated as a hard-gate conflict even though both historical audits independently PASS every hard-gate count at zero.
-- PR #53 bounded hard-gate-equivalence fix: **MG REVIEW PASS**; `assertion_count` is excluded while deterministic hard-gate result/counts and route/prompt/recipe conflict checks remain fail-closed. Founder merge + real resume remain pending.
-- EN v5 Source-copy: NOT EXECUTED.
-- T05.16–T05.17: next minimal operational slice after T05.15 PASS.
-- T05.18–T05.22: post-operation hardening/metrics/closeout.
+`docs/logs/2026-09-11-ce05-fast-operational-reset.md`
 
-Exact implementation task:
+Exact post-merge execution task:
 
-`docs/logs/2026-09-11-ce05-t05-15-hard-gate-summary-equivalence-fix-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-fast-operational-reset-agent-local-task.md`
 
-Exact post-merge runtime task:
-
-`docs/logs/2026-09-11-ce05-t05-15-resume-after-assertion-audit-duplicate-agent-local-task.md`
-
-## Locked current runtime evidence
+## Founder-locked product direction
 
 ```text
-Main at blocked runtime: f4494eeedc8144517c8f776ab2e5d0601035dd26
-
-VI source-copy Artifact: aa822f6f-c000-4008-a814-23e4d6a4caa2 / v1
-VI source-copy hash: 46a839f51225a9c83a7d8330a1d6da86e03992359f258e9f945bbee0c971a891
-VI source-copy QE: 6b1d467b-10f8-4d35-ada0-a9be0ed3138c
-VI result: pass / warn=0 / fail=0
-
-EN Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5 / waiting_approval
-EN v5 draft: 4c17db56-e912-4097-92a0-d95f5d4fe565 / v5
-EN v5 hash: 0525177d2ca44c772eb69467ca99298a34d6404e31d62dea49acdfa920c0ad69
-EN cleanup StepRun: bcc34d62-5b87-4924-a703-55d30d6552ed
-
-Assertion Audit completed duplicate A:
-run b59976a8-579f-4e35-81ab-728c7fe10c93
-artifact 4e0974f9-ab1d-4565-bcc2-8c145099ac6d
-QE 78a1ada8-e731-46af-bac4-90dcc7596eed
-assertion_count 32
-result pass / unsupported=0 / contradicted=0 / critical=0
-
-Assertion Audit completed duplicate B:
-run 806c753c-c8f1-4fd6-9966-0bcabef1a6d2
-artifact 758886d1-0283-4609-9225-eb6f205f292a
-QE 66ad0285-d26f-4f54-a5a9-8b8a675a485b
-assertion_count 38
-result pass / unsupported=0 / contradicted=0 / critical=0
-
-Observed post-#52 recovery error: assertion_audit_duplicate_summary_conflict
-EN v5 Source-copy records: none
+Question: How do I know if an original artwork is fairly priced?
+Audience: first-time art buyer
+Angle: A First-Time Buyer’s Checklist for Understanding an Artwork’s Price
 ```
 
-Historical duplicates are immutable evidence. Do not delete, rewrite, cancel, fail or resurrect them.
+Keep:
 
-## Locked recovery decision
+- no universal pricing formula;
+- market/context facts separate from personal purchase decisions;
+- no invented live artwork/artist/business facts;
+- no investment/appreciation, luxury/status, fake scarcity or pressure framing.
 
-This is a real harness defect discovered by operation, so it is fixed under production-first mode.
+## Fast operational path
 
 ```text
-same source Writer row
-→ SELECT ... FOR UPDATE before exact-handoff lookup/create
-→ serialize future same-source Assertion Audit preparation
-
-existing exact completed duplicate set
-→ validate every candidate independently
-→ fail closed if active/malformed/conflicting
-→ if all completed candidates are valid and deterministic hard-gate result/counts + route/prompt/recipe agree
-  (`assertion_count` may differ)
-→ choose canonical by stable (created_at, id) ordering
-→ preserve all duplicate records
-→ reuse canonical artifact/QE with model_attempts=0 and zero new side effects
+resolve active runtime DB once
+→ fresh Founder-selected planning spine if needed
+→ bounded real Evidence Research
+→ reviewed + approved + locked EvidenceSet
+→ Founder-authorized approved OriginalityPack
+→ fresh Journal ContentRun + journal_input_bundle
+→ Angle generation + pre-authorized deterministic checklist-direction selection
+→ Outline
+→ VI + EN writers
+→ Review/Revise
+→ Assertion Audit VI + EN
+→ Source-copy VI + EN
+→ require NO HARD FAIL
+→ deterministic Operational Package V0 JSON + Markdown
+→ Founder final operational approval
+→ controlled manual placement/publish
+→ observe real friction
+→ harden from evidence
 ```
 
-Do not change Assertion Audit generator/evaluator/schema semantics. Do not change Source-copy v2. No migration or generic concurrency framework.
-The hard-gate equivalence signature is `result`, critical/non-critical unsupported and contradicted counts, provider/model and prompt/recipe versions; model assertion cardinality is excluded.
+Do not stop after successful intermediate sub-gates. The Agent Local task stops only on a hard blocker or when the package is ready for Founder approval.
 
-After PR #53 is merged, Agent Local runs only the exact resume task above, proves canonical audit reuse twice, then runs EN v5 Source-copy v2 twice. T05.16 remains blocked until T05.15 final runtime PASS is reviewed by MG.
+## First-operation quality policy
+
+Underlying validators are unchanged.
+
+Hard blockers:
+
+- structural/provenance/hash/lineage corruption;
+- EvidenceSet not valid/approved/locked;
+- OriginalityPack not valid/approved;
+- Assertion Audit `fail` or any critical unsupported/contradicted assertion;
+- Source-copy `fail_count > 0`;
+- unapproved provider/model/tool;
+- missing final VI or EN visible content;
+- destructive/unbounded mutation or secret exposure.
+
+Non-critical warnings may proceed to the first Operational Package V0 but must be preserved verbatim and surfaced to Founder for final accept/reject.
+
+No auto-publish is authorized.
+
+## Progress interpretation
+
+Historical CE05 engineering through T05.15 remains useful implementation/regression evidence, but old runtime row identities are no longer the operational acceptance target.
+
+For the fresh candidate:
+
+```text
+hard quality gates clean → T05.15 intent satisfied
+Operational Package V0 ready → T05.16 substantively complete
+Founder approves package → T05.17 ready for controlled real operation
+```
+
+T05.18–T05.22 remain post-operation hardening/metrics/closeout and do not block the first real Journal unless an observed safety/data-integrity issue requires them.
+
+## Operating rule after first placement
+
+```text
+REAL RUN
+→ OBSERVE
+→ CLASSIFY
+→ FIX THE SMALLEST REAL BOTTLENECK
+→ ADD REGRESSION/HARNESS FOR THAT FAILURE MODE
+→ RUN AGAIN
+```
