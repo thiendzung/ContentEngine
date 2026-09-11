@@ -28,10 +28,10 @@ PROJECT: ContentEngine
 PHASE: CE05 — Journal Engine V1
 CURRENT OUTCOME: prove one real MOTGU Journal candidate end-to-end
 CURRENT GATE: T05.15 — BASIC SOURCE-COPY CHECK / LEGACY VI PREFLIGHT COMPATIBILITY
-CURRENT OWNER: MG owns contract/review; Agent Local implements only the exact legacy VI source-run compatibility task on the assigned PR branch
-NEXT ACTION: fix T05.15 preflight to reuse the exact T05.14 legacy VI source-writer eligibility rule; pass CI/review; Founder merge; rerun full real VI+EN T05.15 from clean main
-BLOCKERS: real T05.15 preflight stopped because VI Writer run is terminal failed, although exact VI v2 + PASS Assertion Audit is an already-approved immutable legacy source lineage
-HUMAN DECISION REQUIRED: none now; final content approval remains later
+CURRENT OWNER: Founder merge gate; MG review is complete; Agent Local waits for the exact post-merge runtime task
+NEXT ACTION: Founder merges PR #50, then Agent Local synchronizes clean main and reruns the full real VI+EN T05.15 task from both preflights
+BLOCKERS: none in the compatibility implementation; production T05.15 remains pending merge and rerun
+HUMAN DECISION REQUIRED: MERGE PR #50
 ```
 
 ## Current progress
@@ -40,14 +40,16 @@ HUMAN DECISION REQUIRED: none now; final content approval remains later
 - T05.1–T05.13: DONE / PASS.
 - T05.14 Assertion Audit: DONE / real bilingual PASS.
 - T05.15 implementation: MERGED via PR #49 at main `76fc19cb3b91d22799418673f9a7edbd0d0b5276`.
-- T05.15 first real attempt: BLOCKED in read-only preflight before any source-copy runtime record was created.
+- T05.15 first real attempt: BLOCKED read-only because the accepted VI Writer source is terminal `failed`; zero source-copy runtime records were created.
+- T05.15 legacy VI compatibility: IMPLEMENTED / MG REVIEW PASS on PR #50; exact implementation head before this semantic-state update was `ac3332948e83f567b5a47cba1f7e2af54996a127`; GitHub CI #528 PASS.
+- T05.15 real VI/EN gate: PENDING post-merge rerun from the beginning.
 - T05.16–T05.22: NOT STARTED.
 
-Exact compatibility task:
+Compatibility task:
 
 `docs/logs/2026-09-11-ce05-t05-15-legacy-vi-source-run-compat-agent-local-task.md`
 
-Existing real runtime task to rerun after compatibility merge:
+Exact real runtime task to rerun after compatibility merge:
 
 `docs/logs/2026-09-10-ce05-t05-15-real-source-copy-agent-local-task.md`
 
@@ -79,7 +81,7 @@ EN PASS audit: d6d5c88c-83d5-4804-8314-da98edccac9b / 373b106234a9bedf22e1f47eee
 EN PASS QE: 5962482f-3cc5-41ed-92b7-f294446b8728
 ```
 
-T05.14 already owns an exact exception that permits the above failed VI Writer run only as the immutable source for the exact VI v2 draft. T05.15 must reuse that exact eligibility rule; it must not accept arbitrary failed Writer runs and must not mutate the VI Writer run.
+T05.14 owns one exact source-writer exception: the above failed VI Writer run may be read only with that exact VI v2 draft identity/version/hash. T05.15 reuses that canonical eligibility validator; arbitrary failed/cancelled/completed Writer runs remain rejected. The VI Writer status and failure code must remain unchanged.
 
 ## T05.15 unchanged bounded semantics
 
