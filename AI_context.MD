@@ -27,11 +27,11 @@ Founder owns final merge and final operational content approval.
 PROJECT: ContentEngine
 PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
 CURRENT OUTCOME: produce the first real MOTGU Journal Operational Package V0
-CURRENT GATE: SINGLE EN FACTUAL DELETE → SOURCE-COPY → PACKAGE
-CURRENT OWNER: Founder merge gate; after merge Agent Local deletes one exact EN hard-fail sentence, re-audits EN, then runs VI/EN Source-copy and packages the candidate
-NEXT ACTION: preserve final VI v4 PASS, create EN v3 by deleting exactly the one unsupported factual sentence at section:understand-appraisal-limits:3 with zero model calls, re-audit EN, run Source-copy VI+EN, create Operational Package V0
-BLOCKERS: VI is final PASS; EN v2 Assertion Audit has exactly one critical unsupported factual sentence and zero contradicted findings
-HUMAN DECISION REQUIRED: merge the EN factual-delete task; next intended human stop is Founder review of Operational Package V0
+CURRENT GATE: ASSERTION AUDIT OPTIONAL-NONASSERTIVE HARNESS NORMALIZATION
+CURRENT OWNER: Agent Local implements the bounded validator regression fix on PR branch; MG reviews; Founder merges
+NEXT ACTION: normalize only optional source segments (`required_assertive=false`) that the model explicitly marks `non_assertive` but also returns stray assertions; keep required segments and optional assertive segments fully hard-gated; add regression + post-merge EN v3 resume task
+BLOCKERS: EN v3 content cleanup is complete, but EN Assertion Audit exhausted retries because a schema-valid title output was `non_assertive` with stray assertions; this is a harness/parser defect, not another content-edit target
+HUMAN DECISION REQUIRED: none during implementation; Founder merge after MG review, then next intended human stop is Operational Package V0 approval
 ```
 
 ## Accepted immutable operational lineage
@@ -82,59 +82,78 @@ critical_unsupported: 0
 critical_contradicted: 0
 ```
 
-VI is finished. Do not edit or re-audit it in the next task unless read-only verification proves the exact final state invalid; invalid => BLOCKED, not repair.
+VI is finished. Do not edit or re-audit it. Downstream Source-copy may consume this exact immutable PASS state after the EN audit is hard-clean.
 
-## Current EN blocker
+## Final EN content candidate — locked pending audit
 
 ```text
 EN Writer run: e0bc9d52-0b07-4dc4-b5e9-2cfe861658f4
-EN v2: ade3242e-6264-45ca-b8fd-5a48070f913f
-EN v2 hash: 390243d6f7bed879ea62ceec410c68a9048ac02da0c4eb2ba8e079bfbedd0790
-
-EN failed audit eval run: 0042b3f9-b6a8-433e-b87d-45193d22742e
-EN failed audit handoff: 25a64474-b556-47a2-b75e-2a1b43ae1ebc
-EN failed audit artifact: b8555851-162e-4e3e-8b88-0e3e55557e5f
-EN failed audit hash: 725803eb4794de4697fc750180e7b848188f532b82df63c13fed189884e8d0e1
-EN failed QE: 65ca0571-8542-481a-88dd-a9b35efc39aa
-result: fail
-critical_unsupported: 1
-contradicted: 0
-segment: section:understand-appraisal-limits:3
+EN v3: 35e34197-dc2f-40df-bc36-5551ff75d159
+EN v3 hash: e7a67adab019f014736e80896ad13fcd38f88c04b73b627c8aedd2365cc396a6
+cleanup model/provider/tool calls: 0
 ```
 
-Exact unsupported sentence:
+EN v3 removed exactly the single factual sentence previously hard-failed at `section:understand-appraisal-limits:3`. Do not edit EN content again in the harness-fix task.
+
+Latest EN v3 audit attempt:
 
 ```text
-The materials considered in that setting may include size, medium, physical condition, provenance, comparable sales and appraised value, alongside research on relevant public and private sales.
+Eval run: ff9de525-dffd-4a12-9dbc-0cb3393dec4e / failed
+Failure: assertion_audit_model_output_invalid: bounded retries exhausted (assertion_audit_non_assertive_has_assertions: title)
+Valid audit Artifact/QE: none
 ```
 
-This sentence is not required for the article's operational value. Delete it exactly rather than adding research or changing the evaluator.
+This is a technical validator/model-output-shape blocker. The title and section headings are optional `required_assertive=false` source segments. Current JSON output schema permits assertion arrays independently of disposition. A model response that explicitly says an optional segment is `non_assertive` but also emits stray assertions must be normalized at the validator boundary instead of failing the whole audit.
 
-## Exact post-merge task
+## Exact implementation task
 
-`docs/logs/2026-09-11-ce05-fast-en-factual-delete-to-package-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-assertion-audit-nonassertive-normalization-agent-local-task.md`
 
 Task ID:
 
-`CE05-FAST-EN-FACTUAL-DELETE-TO-PACKAGE-LOCAL`
+`CE05-ASSERTION-AUDIT-NONASSERTIVE-NORMALIZATION-LOCAL`
 
-Fast path:
+Required semantics:
+
+```text
+required_assertive=true
+→ existing strict behavior unchanged
+
+required_assertive=false + disposition=assertive
+→ existing assertion validation + hard gate unchanged
+
+required_assertive=false + disposition=non_assertive
+→ discard stray assertion payload deterministically
+→ audited assertions = empty
+→ no technical model-output failure
+```
+
+Do not bump Assertion Audit generator/schema/evaluator/prompt/recipe versions. This is bounded normalization of schema-valid optional-segment noise, not a hard-gate semantics change. No migration.
+
+## Post-merge fast path
+
+Implementation task must add:
+
+`docs/logs/2026-09-11-ce05-fast-en-v3-audit-resume-to-package-agent-local-task.md`
+
+Then after Founder merge:
 
 ```text
 lock VI v4 PASS unchanged
-→ exact EN v2 failed finding verification
-→ deterministic exact sentence deletion → EN v3 / zero model calls
-→ EN Assertion Audit
-→ hard-clean
-→ VI Source-copy + EN Source-copy
-→ fail_count = 0
+→ EN v3 Assertion Audit under normalized optional-segment validator
+→ require valid hard-clean result
+→ exact EN audit reuse proof
+→ VI Source-copy v2
+→ EN Source-copy v2
+→ require fail_count=0 for both
+→ exact Source-copy reuse proof
 → Operational Package V0
 → Founder final operational approval
 ```
 
-If EN v3 produces a new hard finding after this exact deletion, report `BLOCKED_ASSERTION_AUDIT_INSTABILITY`; do not enter another content-edit loop. Preserve it as observed harness behavior for post-operation hardening.
+If EN produces a valid hard content failure, stop and report it; do not edit content again in that task. If a different technical harness error appears, report it as harness evidence.
 
-Non-critical Source-copy or Audit warnings proceed to package verbatim. No auto-publish.
+Non-critical Audit/Source-copy warnings proceed to the package verbatim. No auto-publish.
 
 ## Progress interpretation
 
