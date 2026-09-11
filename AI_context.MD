@@ -27,11 +27,11 @@ Founder owns final merge and final operational content approval.
 PROJECT: ContentEngine
 PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
 CURRENT OUTCOME: produce the first real MOTGU Journal Operational Package V0
-CURRENT GATE: T05.14 STRUCTURAL ASSERTION AUDIT OUTPUT NORMALIZATION
-CURRENT OWNER: Agent Local implementation on PR #61; Founder merge authority; no production runtime during implementation
-NEXT ACTION: merge PR #61, then run the exact post-merge EN v3 Assertion Audit → Source-copy → Operational Package resume task
-BLOCKERS: merged T05.14 resume exposed a validator-shape blocker when a structural non-assertive segment carried extra model assertions; no content change is authorized
-HUMAN DECISION REQUIRED: review/merge PR #61 before the bounded post-merge resume task
+CURRENT GATE: PR #61 FOUNDER MERGE GATE — ASSERTION AUDIT STRUCTURAL OUTPUT NORMALIZATION
+CURRENT OWNER: Founder merge authority; implementation/review/CI are complete; no production runtime until merge
+NEXT ACTION: merge PR #61, then execute the exact EN v3 Assertion Audit → Source-copy VI+EN → Operational Package V0 resume task
+BLOCKERS: no implementation blocker; runtime remains paused until the structural-normalization fix is merged
+HUMAN DECISION REQUIRED: Founder merge PR #61; next intended human stop is Founder review of Operational Package V0
 ```
 
 ## Accepted immutable operational lineage
@@ -82,64 +82,62 @@ critical_unsupported: 0
 critical_contradicted: 0
 ```
 
-VI is finished. Do not edit or re-audit it in the next task unless read-only verification proves the exact final state invalid; invalid => BLOCKED, not repair.
+VI is finished. Do not edit or re-audit it unless read-only verification proves the exact accepted state invalid; invalid => BLOCKED, not repair.
 
-## Current EN blocker
+## Final EN content + observed harness diagnostic
 
 ```text
 EN Writer run: e0bc9d52-0b07-4dc4-b5e9-2cfe861658f4
-EN v2: ade3242e-6264-45ca-b8fd-5a48070f913f
-EN v2 hash: 390243d6f7bed879ea62ceec410c68a9048ac02da0c4eb2ba8e079bfbedd0790
+EN v3: 35e34197-dc2f-40df-bc36-5551ff75d159
+EN v3 hash: e7a67adab019f014736e80896ad13fcd38f88c04b73b627c8aedd2365cc396a6
 
-EN failed audit eval run: 0042b3f9-b6a8-433e-b87d-45193d22742e
-EN failed audit handoff: 25a64474-b556-47a2-b75e-2a1b43ae1ebc
-EN failed audit artifact: b8555851-162e-4e3e-8b88-0e3e55557e5f
-EN failed audit hash: 725803eb4794de4697fc750180e7b848188f532b82df63c13fed189884e8d0e1
-EN failed QE: 65ca0571-8542-481a-88dd-a9b35efc39aa
-result: fail
-critical_unsupported: 1
-contradicted: 0
-segment: section:understand-appraisal-limits:3
+Failed EN audit eval run: ff9de525-dffd-4a12-9dbc-0cb3393dec4e
+Failure: assertion_audit_model_output_invalid: bounded retries exhausted (assertion_audit_non_assertive_has_assertions: title)
 ```
 
-Exact unsupported sentence:
+EN v3 is the final operational content candidate for this gate. The failure above is a harness/model-output-shape failure, not a content verdict. Do not create EN v4 or edit prose for it.
+
+PR #61 fixes only this observed structural case:
 
 ```text
-The materials considered in that setting may include size, medium, physical condition, provenance, comparable sales and appraised value, alongside research on relevant public and private sales.
+source.required_assertive = false
++ model disposition = non_assertive
++ model emits extra assertions
+→ deterministically discard extra assertions
+→ persist structural segment as non_assertive / assertions=[]
 ```
 
-This sentence is not required for the article's operational value. Delete it exactly rather than adding research or changing the evaluator.
+Required content segments remain fail-closed. Structural segments that the model marks `assertive` still undergo full assertion validation and hard gates. Assertion Audit generator/evaluator/schema, prompt/recipe, provider/model and migrations remain unchanged.
 
 ## Exact post-merge task
 
-`docs/logs/2026-09-11-ce05-fast-en-factual-delete-to-package-agent-local-task.md`
+`docs/logs/2026-09-11-ce05-resume-en-v3-audit-to-package-after-structural-normalization-agent-local-task.md`
 
 Task ID:
 
-`CE05-FAST-EN-FACTUAL-DELETE-TO-PACKAGE-LOCAL`
+`CE05-RESUME-EN-V3-AUDIT-TO-PACKAGE-AFTER-STRUCTURAL-NORMALIZATION-LOCAL`
 
 Fast path:
 
 ```text
 lock VI v4 PASS unchanged
-→ exact EN v2 failed finding verification
-→ deterministic exact sentence deletion → EN v3 / zero model calls
-→ EN Assertion Audit
-→ hard-clean
-→ VI Source-copy + EN Source-copy
-→ fail_count = 0
+→ lock EN v3 unchanged
+→ replacement EN Assertion Audit using current route
+→ exact audit rerun reuse / model_attempts=0 / zero side effects
+→ require audit_result != fail and critical counts = 0
+→ VI Source-copy + exact reuse
+→ EN Source-copy + exact reuse
+→ require fail_count = 0 for both locales
 → Operational Package V0
 → Founder final operational approval
 ```
 
-If EN v3 produces a new hard finding after this exact deletion, report `BLOCKED_ASSERTION_AUDIT_INSTABILITY`; do not enter another content-edit loop. Preserve it as observed harness behavior for post-operation hardening.
-
-Non-critical Source-copy or Audit warnings proceed to package verbatim. No auto-publish.
+Non-critical Assertion Audit or Source-copy warnings may proceed to the first Operational Package only when preserved verbatim for Founder review. Any new hard content finding stops execution; do not resume content whack-a-mole.
 
 ## Progress interpretation
 
 ```text
-VI + EN Assertion Audit hard-clean + Source-copy fail_count=0 → T05.15 intent satisfied
+VI PASS + EN Assertion Audit critical counts=0 + Source-copy fail_count=0 → T05.15 operational intent satisfied
 Operational Package V0 ready → T05.16 substantively complete
 Founder approves package → T05.17 ready for controlled first operation
 ```
