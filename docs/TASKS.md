@@ -164,7 +164,7 @@ Real T05.13 gate proved:
 - [x] EvidenceSet, OriginalityPack, selected Angle, accepted Outline, SettingsSnapshot, NeedHypothesis and source O4 artifacts remained unchanged;
 - [x] MG reviewed both full v2 drafts against v1, Outline, Evidence and Originality boundaries and marked T05.13 **PASS**.
 
-### T05.14 FINAL CLOSEOUT / CURRENT GATE — T05.15 BASIC SOURCE-COPY
+### T05.14 FINAL CLOSEOUT / STRUCTURAL NORMALIZATION HOTFIX
 
 Owner: **MG Content Engine** for implementation/contract/review; Agent Local executes only the exact post-merge real runtime gate.
 
@@ -228,7 +228,19 @@ Real T05.14 v3 gate evidence:
 
 If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
 
-### Current gate — T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
+Merged T05.14 resume exposed a narrow harness blocker: a structural segment with
+`required_assertive=false` and `disposition=non_assertive` could still contain
+model assertion entries. PR #61 deterministically discards only those extra
+structural entries before validation; required content and structural assertive
+segments remain fail-closed under the existing hard gates. No content, route,
+prompt, recipe, schema, migration or production runtime change is in scope.
+
+- [ ] PR #61 structural Assertion Audit normalization implementation and tests;
+- [ ] post-merge EN v3 Assertion Audit → Source-copy → Operational Package resume;
+
+### Next gate — T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
+
+### T05.15 implementation status — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
 
 Owner: **Agent Local** implements the bounded hard-gate-equivalence fix on PR #53;
 MG reviews and Founder controls merge. PR #52 concurrency serialization/recovery is

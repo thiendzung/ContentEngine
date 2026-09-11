@@ -576,10 +576,12 @@ def validate_assertion_audit_output(
         if disposition == "assertive" and not raw_assertions:
             raise AssertionAuditError("assertion_audit_assertive_segment_empty", source.segment_id)
         if disposition == "non_assertive" and raw_assertions:
-            raise AssertionAuditError(
-                "assertion_audit_non_assertive_has_assertions",
-                source.segment_id,
-            )
+            if source.required_assertive:
+                raise AssertionAuditError(
+                    "assertion_audit_non_assertive_has_assertions",
+                    source.segment_id,
+                )
+            raw_assertions = []
         assertions = tuple(
             _validate_assertion(item, segment=source, audit_input=audit_input)
             for item in raw_assertions

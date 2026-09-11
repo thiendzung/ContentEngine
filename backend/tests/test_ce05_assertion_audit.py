@@ -20,9 +20,11 @@ from app.modules.content_engine.journal.assertion_audit import (
     ASSERTION_AUDIT_EVALUATOR_KEY,
     ASSERTION_AUDIT_EVALUATOR_VERSION,
     ASSERTION_AUDIT_GENERATOR_VERSION,
+    AssertionAuditError,
     AssertionAuditGenerator,
     AssertionAuditInput,
     load_assertion_audit_input,
+    validate_assertion_audit_output,
 )
 from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
     ASSERTION_AUDIT_ROUTE_TASK_KEY,
@@ -268,6 +270,90 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
         assert len(evaluations) == 1
         assert evaluations[0].evaluator_type == "deterministic"
         assert evaluations[0].result == "pass"
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_discards_extra_structural_non_assertive_assertions() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        title = next(segment for segment in segments if segment["segment_id"] == "title")
+        title["assertions"] = [{"assertion-shaped": "junk that must be discarded"}]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+
+        normalized_title = next(
+            segment for segment in result.segments if segment.segment_id == "title"
+        )
+        assert normalized_title.disposition == "non_assertive"
+        assert normalized_title.assertions == ()
+        assert result.result == "pass"
+        assert result.evaluation.findings_json["assertion_count"] == sum(
+            segment.required_assertive for segment in audit_input.segments
+        )
+        assert result.critical_unsupported_count == 0
+        assert result.critical_contradicted_count == 0
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_required_segment_non_assertive_remains_fail_closed() -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        standfirst = next(segment for segment in segments if segment["segment_id"] == "standfirst")
+        standfirst["disposition"] = "non_assertive"
+        standfirst["assertions"] = []
+        with pytest.raises(
+            AssertionAuditError,
+            match="assertion_audit_required_segment_not_audited",
+        ):
+            validate_assertion_audit_output(output, audit_input=audit_input)
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_structural_assertive_segment_keeps_hard_gate() -> None:
+    async with isolated_session() as session:
+        fixture, source, audit_input = await _source(session)
+        output = _passing_output(audit_input)
+        segments = cast(list[dict[str, object]], output["segments"])
+        title = next(segment for segment in segments if segment["segment_id"] == "title")
+        title["disposition"] = "assertive"
+        title["non_assertive_reason"] = ""
+        title["assertions"] = [
+            {
+                "assertion_text": title["source_text"],
+                "assertion_type": "fact",
+                "support_status": "unsupported",
+                "severity": "low",
+                "evidence_refs": [],
+                "originality_refs": [],
+                "rationale": "Structural assertive content remains subject to the hard gate.",
+            }
+        ]
+
+        result = await _run_audit(
+            session,
+            fixture=fixture,
+            source=source,
+            model=FakeAuditModel([output]),
+        )
+
+        normalized_title = next(
+            segment for segment in result.segments if segment.segment_id == "title"
+        )
+        assertion = normalized_title.assertions[0]
+        assert normalized_title.disposition == "assertive"
+        assert assertion.support_status == "unsupported"
+        assert assertion.severity == "critical"
+        assert result.result == "fail"
+        assert result.critical_unsupported_count == 1
 
 
 @pytest.mark.asyncio

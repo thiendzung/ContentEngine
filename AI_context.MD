@@ -27,11 +27,11 @@ Founder owns final merge and final operational content approval.
 PROJECT: ContentEngine
 PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
 CURRENT OUTCOME: produce the first real MOTGU Journal Operational Package V0
-CURRENT GATE: SINGLE EN FACTUAL DELETE → SOURCE-COPY → PACKAGE
-CURRENT OWNER: Founder merge gate; after merge Agent Local deletes one exact EN hard-fail sentence, re-audits EN, then runs VI/EN Source-copy and packages the candidate
-NEXT ACTION: preserve final VI v4 PASS, create EN v3 by deleting exactly the one unsupported factual sentence at section:understand-appraisal-limits:3 with zero model calls, re-audit EN, run Source-copy VI+EN, create Operational Package V0
-BLOCKERS: VI is final PASS; EN v2 Assertion Audit has exactly one critical unsupported factual sentence and zero contradicted findings
-HUMAN DECISION REQUIRED: merge the EN factual-delete task; next intended human stop is Founder review of Operational Package V0
+CURRENT GATE: T05.14 STRUCTURAL ASSERTION AUDIT OUTPUT NORMALIZATION
+CURRENT OWNER: Agent Local implementation on PR #61; Founder merge authority; no production runtime during implementation
+NEXT ACTION: merge PR #61, then run the exact post-merge EN v3 Assertion Audit → Source-copy → Operational Package resume task
+BLOCKERS: merged T05.14 resume exposed a validator-shape blocker when a structural non-assertive segment carried extra model assertions; no content change is authorized
+HUMAN DECISION REQUIRED: review/merge PR #61 before the bounded post-merge resume task
 ```
 
 ## Accepted immutable operational lineage
