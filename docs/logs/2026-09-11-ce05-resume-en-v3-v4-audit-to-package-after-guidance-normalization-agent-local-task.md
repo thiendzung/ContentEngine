@@ -26,6 +26,7 @@ VI remains read-only:
 - Writer v4 artifact `ea15233d-3080-4c73-80d1-f6d9f2ec076b`;
 - content hash `4c53601a2342637cee13a5ae2cfdb4beb877adb5d32053e8930bdb661194742f`;
 - existing PASS audit eval `3611f549-3711-4f5b-96d3-96fb8195c98f`;
+- existing PASS audit uses Assertion Audit generator/evaluator v3/v3 and is read-only;
 - PASS audit artifact `c1df6865-a664-4c2a-a37f-c17d967e38ad`;
 - PASS audit hash `868c9d6a0b99266c1b12fab7db4231f50ba013a78e46b3e376ca7e9cb2162253`.
 
@@ -39,7 +40,8 @@ NeedHypothesis and Writer lineage must remain unchanged.
 
 ## EXACT SEQUENCE
 
-1. Lock and revalidate the exact VI v4 and EN v3 sources and shared upstream lineage.
+1. Lock and revalidate the exact VI v4 and EN v3 sources and shared upstream lineage;
+   verify the existing VI v3/v3 PASS audit read-only and do not re-audit VI.
 2. Run the replacement EN Assertion Audit with `codex_cli / gpt-5.6-luna`, current
    v4 registry, and no tools, research, Search, URLs or sibling-locale input.
 3. Run the identical EN audit command again. It must reuse the same v4 eval,

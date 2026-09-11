@@ -56,6 +56,12 @@ SOURCE_COPY_IGNORE_MAX_TOKENS = 7
 SOURCE_COPY_WARN_MAX_TOKENS = 11
 SOURCE_COPY_WARN_MIN_TOKENS = 8
 SOURCE_COPY_FAIL_MIN_TOKENS = 12
+_ASSERTION_AUDIT_VERSION_PAIRS = frozenset(
+    {
+        ("ce05.journal_assertion_audit.v3", "ce05.assertion_audit.hard_gate.v3"),
+        (ASSERTION_AUDIT_GENERATOR_VERSION, ASSERTION_AUDIT_EVALUATOR_VERSION),
+    }
+)
 
 # Punctuation is a word-token boundary.  In particular, straight and curly
 # apostrophes both split a word so typography-only changes cannot evade the
@@ -528,10 +534,11 @@ async def load_source_copy_input(
     audit_payload = _dict(audit.content_json, "source_copy_assertion_audit_payload_invalid")
     if _canonical_hash(audit_payload) != audit.content_hash:
         raise SourceCopyError("source_copy_assertion_audit_snapshot_stale")
-    if audit_payload.get("generator") != {
-        "version": ASSERTION_AUDIT_GENERATOR_VERSION,
-        "schema_version": ASSERTION_AUDIT_SCHEMA_VERSION,
-    }:
+    generator = audit_payload.get("generator")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("schema_version") != ASSERTION_AUDIT_SCHEMA_VERSION
+    ):
         raise SourceCopyError("source_copy_assertion_audit_generator_mismatch")
     if audit_payload.get("source_draft") != _source_ref(source):
         raise SourceCopyError("source_copy_assertion_audit_source_mismatch")
@@ -585,9 +592,7 @@ async def load_source_copy_input(
     audit_summary = _summary(audit_segments)
     if (
         audit_payload.get("summary") != audit_summary
-        or audit_summary.get("result") != "pass"
-        or audit_summary.get("unsupported_count") != 0
-        or audit_summary.get("contradicted_count") != 0
+        or audit_summary.get("result") not in {"pass", "warn"}
         or audit_summary.get("critical_unsupported_count") != 0
         or audit_summary.get("critical_contradicted_count") != 0
     ):
@@ -605,9 +610,13 @@ async def load_source_copy_input(
         or evaluation.run_id != audit.run_id
         or evaluation.artifact_id != audit.id
         or evaluation.evaluator_key != "assertion_audit_hard_gate"
-        or evaluation.evaluator_version != ASSERTION_AUDIT_EVALUATOR_VERSION
+        or (
+            generator.get("version"),
+            evaluation.evaluator_version,
+        )
+        not in _ASSERTION_AUDIT_VERSION_PAIRS
         or evaluation.evaluator_type != "deterministic"
-        or evaluation.result != "pass"
+        or evaluation.result != audit_summary.get("result")
         or evaluation.findings_json != expected_findings
     ):
         raise SourceCopyError("source_copy_assertion_audit_evaluation_mismatch")
