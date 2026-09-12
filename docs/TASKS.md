@@ -12,7 +12,7 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
 | LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
-| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A Writer generation PASS/CLOSED. VI is fully hard-clean. EN v3 exists after R2 and its Assertion Audit surfaced two new critical unsupported closing brand statements. LF-04B.R3 is the only open recovery: deterministic EN v3->v4 full-closing replacement, one re-audit, Source-copy, then bilingual final verification. Exact task `logs/2026-09-12-lf04b-en-closing-cleanup-task.md` |
+| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A generation PASS/CLOSED; LF-04B quality PASS COMPLETE / MG ACCEPTED. LF-04C is the only active slice: deterministic Operational Package V0, then STOP for Founder final content approval. Exact task `logs/2026-09-13-lf04c-operational-package-task.md` |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
@@ -26,7 +26,7 @@ CE01's historical Golden Journal reached human review; that is not evidence that
 
 ## CE05 - Journal Engine V1
 
-Status: ACTIVE. M1 ONE REAL JOURNAL PASS: IN PROGRESS / not achieved.
+Status: ACTIVE. M1 ONE REAL JOURNAL PASS: IN PROGRESS / not achieved until final approval + canonical ContentVersion + one controlled real operation.
 
 Implementation foundation retained:
 
@@ -50,17 +50,16 @@ Implementation foundation retained:
 Current checkpoint:
 
 - canonical Angle + AngleApproval and persisted-approved Outline remain unchanged;
-- independent Writer v1 drafts exist for VI and EN;
-- VI final draft is immutable v3 `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
+- final VI is immutable v3 `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
 - VI Assertion Audit v5 PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
 - VI Source-copy v2 PASS: `fail_count=0`, `warn_count=0`, no findings;
-- EN Review/Revise v2 remains immutable `b9dddad3-bfbe-47f7-a7f0-dcd0b0af75f0`, hash `efc4796cdbb3b6c3d9c91140ea7573c7c0f41cf37b4f4b0c87e95a59aebd0478`;
-- LF-04B.R2 deterministic cleanup produced immutable EN v3 `fbe198b0-298a-486a-a49f-4503b2b2ef06`, hash `f11cd66c30d4c98016586466294ff4e77756c409b0a5d32aeece345771bdbc13`;
-- EN v3 Assertion Audit v5 run `35197ea7-2179-443a-9c1f-e0e0e21e5819` completed `fail` with exactly two unsupported/critical closing brand statements and zero contradicted;
-- exact EN v3 hard findings are closing sentences `If the work still feels right after you have checked the context and practical details, you can decide at your own pace.` and `The price is one part of the conversation—not a verdict on the artwork or on you as a buyer.`; both have no Evidence/Originality refs;
-- EN Source-copy has not run;
-- broad EN Review/Revise rerun is forbidden;
-- active recovery is one deterministic zero-model replacement of the full EN v3 closing, then one v4 re-audit and Source-copy.
+- final EN is immutable v4 `43007d23-8fbf-498d-ac49-436414c87aaf`, hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`;
+- EN Assertion Audit v5 PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
+- EN Source-copy v2 hard gate PASS: result `warn`, `fail_count=0`, `warn_count=2`, `finding_count=2`, `max_overlap_tokens=9`;
+- surviving warning 1: `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`;
+- surviving warning 2: `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`;
+- MG editorial review ACCEPTED final VI/EN unchanged for Founder final review;
+- LF-04B quality pass complete; no quality stage may be rerun merely for polish.
 
 ### M1 remaining acceptance
 
@@ -69,28 +68,25 @@ Current checkpoint:
 - [x] Valid generated and approved Angle on fresh lineage.
 - [x] Valid generated and persisted-approved Outline on fresh lineage.
 - [x] Generate independent VI and EN Writer v1 content on the fresh lineage.
-- [x] VI bounded Review/Revise executed once and preserved as immutable v2.
-- [x] Resolve VI exact audit hard findings through authorized deterministic cleanup; final VI audit + Source-copy hard-clean.
-- [x] EN bounded Review/Revise executed once and preserved as immutable v2.
-- [x] Resolve EN v2 subject-matter audit finding through authorized deterministic cleanup; EN v3 persisted immutably.
-- [ ] Resolve exact persisted EN v3 closing hard findings through LF-04B.R3 deterministic cleanup; no broad rerun/evaluator weakening.
-- [ ] EN final Assertion Audit non-fail, critical unsupported = 0, critical contradicted = 0.
-- [ ] EN Source-copy fail_count = 0.
-- [ ] Complete final independent VI and EN visible content and MG review.
-- [ ] All non-critical warnings preserved verbatim.
-- [ ] T05.16 Operational Package V0 JSON + Markdown + hashes; pre-approval status explicit.
-- [ ] Founder final approval bound to final content; canonical ContentVersion after approval.
-- [ ] T05.17 One real Journal end-to-end on current local runtime.
+- [x] VI bounded Review/Revise + authorized deterministic cleanup complete.
+- [x] EN bounded Review/Revise + authorized deterministic cleanup complete.
+- [x] Both final Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
+- [x] Both final Source-copy checks `fail_count = 0`.
+- [x] Complete final independent VI and EN visible content and MG review.
+- [x] All surviving non-critical warnings identified and preserved verbatim for packaging.
+- [ ] T05.16 Operational Package V0 JSON + Markdown + SHA-256; pre-approval status explicit. ACTIVE as LF-04C.
+- [ ] Founder final approval bound to exact final content/package; canonical ContentVersion only after approval.
+- [ ] T05.17 One real Journal end-to-end on current local runtime / controlled operational handoff.
 
 ### After M1, not its prerequisite
 
-- [ ] T05.18 Critical Gate Regression - prioritize observed failures, including foreign-script contamination and late surfacing unsupported closing brand statements.
+- [ ] T05.18 Critical Gate Regression - prioritize observed failures: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.
-- [ ] T05.20 Human Review Surface - smallest useful surface first.
+- [ ] T05.20 Human Review Surface - smallest useful Review Console first, based on actual operator friction.
 - [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
 - [ ] T05.22 CE05 Closeout - not inferred from code coverage alone.
 
-Before M1 no new provider/agent/framework, speculative abstraction, WordPress, automatic publishing/merge, repeated DB recovery, CI tuning without blocker or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
+Before M1: no new provider/agent/framework, speculative abstraction, WordPress automation, automatic publishing/merge, repeated DB recovery, CI tuning without a real blocker, or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
 
 ## CE06 - Full Quality + Golden Regression
 
