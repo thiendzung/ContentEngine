@@ -52,4 +52,4 @@ async def test_unlisted_frontend_origin_is_not_allowed() -> None:
 def test_cors_wildcard_is_rejected() -> None:
     settings = Settings(app_env="development", cors_allowed_origins="*")
     with pytest.raises(ValueError, match="cors_wildcard_not_allowed"):
-        settings.resolved_cors_allowed_origins
+        assert settings.resolved_cors_allowed_origins
