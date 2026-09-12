@@ -74,9 +74,31 @@ Task file:
 
 `docs/logs/2026-09-12-lf04a-bilingual-writer-execution-task.md`
 
-Execution pattern:
+### Codex version gate incident
 
-1. Agent Local read-only Phase A verifies exact upstream, migration head, persisted OutlineApproval, locale variants, Writer prompt/recipe/route, runner capability and absence of Writer records.
+The first LF-04A Phase A on merged main `7b30db37dcf7ee2099c62805fa4faacc498bb62e` stopped correctly at `agent_runner_version_not_approved`: the ChatGPT app bundled binary had changed from the repository-approved `codex-cli 0.153.4` to `codex-cli 0.154.0-alpha.6.2`.
+
+Agent Local verified that no Writer command, ModelCall, ToolCall, DB write, migration or runtime mutation occurred. MG then authorized only a read-only capability audit of the exact installed binary.
+
+Audit PASS evidence is recorded in:
+
+`docs/logs/2026-09-12-lf04a-codex-0154-capability-audit.md`
+
+The audited binary:
+
+- reports exact version `codex-cli 0.154.0-alpha.6.2`;
+- supports `--disable`;
+- exposes every one of the 21 existing ContentEngine-required no-tool feature names;
+- passes cached-session auth;
+- was not used for model execution during the audit.
+
+The repository therefore changes only the exact approved version pin to `codex-cli 0.154.0-alpha.6.2`. Exact-version fail-closed behavior, no-tool checks, read-only sandbox, web disabled, ignored user config and ephemeral execution remain unchanged. No version range, wildcard or automatic-latest acceptance is allowed.
+
+After this version-pin PR is merged, Agent Local must synchronize clean `main` and rerun LF-04A Phase A only. A prior blocked preflight is not permission to skip directly to Writer execution.
+
+Execution pattern after the rerun passes:
+
+1. Agent Local read-only Phase A verifies exact upstream, migration head, persisted OutlineApproval, locale variants, Writer prompt/recipe/route, exact approved runner version/capability and absence of Writer records.
 2. Founder runs the production `vi-VN` Writer CLI exactly once.
 3. Only if VI exits successfully, Founder runs the production `en` Writer CLI exactly once.
 4. Agent Local performs read-only Phase D verification and returns both complete persisted drafts for MG review.
