@@ -10,9 +10,9 @@ Maximum WIP: one implementation plus related local verification; one executor on
 |---|---|---|---|---|
 | LF-00 | MG / Founder | Local-first spec, plan, task, checklist and roles | Founder decision | DONE - merged in main; no runtime completion implied |
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY; reviewed summary in `logs/2026-09-12-lf01-mg-reviewed-evidence.md` |
-| LF-02 | MG + Founder + Agent Local verification | Thin official Angle CLI plus one Founder-assisted execution on exact fresh lineage | LF-01 reviewed | ACTIVE - code/task change first; after merge execute `logs/2026-09-12-lf02-founder-angle-execution-task.md`; stop for Angle selection |
-| LF-03 | Agent Local / MG review | Resume same fresh lineage after approved Angle through next real editorial gate | Valid approved Angle + exact runtime task/budget | NOT STARTED; no inferred approval or Outline start |
-| LF-04 | MG + Agent Local + Founder | Operational Package V0, checks, exact final approval | LF-03 artifacts | NOT STARTED; closes M1 with real local evidence |
+| LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected by Founder, exact AngleApproval persisted and handoff verified; closeout `logs/2026-09-12-lf02-angle-approved-closeout.md` |
+| LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline from the approved Angle, verify it, stop for Founder Outline approval | Valid approved Angle + exact runtime task/budget | ACTIVE - execute `logs/2026-09-12-lf03-founder-outline-execution-task.md`; no writers before separate Outline approval |
+| LF-04 | MG + Agent Local + Founder | Resume after approved Outline through independent VI/EN, bounded review/checks, Operational Package V0 and exact final approval | Valid approved Outline + exact runtime task/budget | NOT STARTED; no inferred approval or writer start |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG; last two on same merged version, no case-specific code; safe resume |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG; no auto-publish or full CE08 completion claim |
@@ -47,15 +47,15 @@ Implementation foundation retained:
 - [x] Source-copy v2; canonical audit pairs v3/v3, v4/v4, v5/v5 only; mixed pairs reject.
 - [x] Focused retry/idempotency/recovery/provenance regression coverage.
 
-Current checkpoint: `logs/2026-09-12-ce05-m1-one-real-journal-pass-status.md`. Runtime recovery selected FRESH_ACTIVE_DB; no repeat historical scan. LF-01 reverified the exact fresh bindings and classified the blocked generation as an outer execution-policy rejection before ContentEngine/model start. Do not recreate the candidate or restart research.
+Current checkpoint: LF-02 is closed on the same fresh lineage with canonical generated Angle `angle-01` and exact Founder approval/handoff. LF-03 is the current gate: one grounded Outline generation from that approved snapshot, followed by a separate Founder Outline decision. Do not regenerate Angle or restart research.
 
 ### M1 remaining acceptance
 
 - [x] Verify current EvidenceSet ID/version/hash, approved/locked state, metadata and bundle binding.
 - [x] Verify current OriginalityPack ID/hash, approved state and bundle binding.
 - [x] Classify Angle execution blocker: OUTER_EXECUTION_POLICY, not a proven ContentEngine error.
-- [ ] Clear Angle execution through an explicitly permitted path without weakening safeguards.
-- [ ] Valid generated and approved Angle on fresh lineage.
+- [x] Clear Angle execution through an explicitly permitted path without weakening safeguards.
+- [x] Valid generated and approved Angle on fresh lineage.
 - [ ] Valid generated and approved Outline on fresh lineage.
 - [ ] Complete final independent VI and EN visible content.
 - [ ] Bounded Review/Revise complete.
