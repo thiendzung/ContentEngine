@@ -55,60 +55,93 @@ The first real independent VI and EN Writer drafts exist on the same approved Ou
 
 Writer generation/provenance passed; zero ToolCalls. Do not regenerate or hand-edit the v1 drafts.
 
-## LF-04B — ACTIVE, VI HARD-FAIL PRESERVED
+## LF-04B — ACTIVE, VI HARD-CLEAN / EN ONE HARD FINDING
 
-Founder executed the VI quality block exactly once on main `fdf2a5b7042add5d7df3a41fa000a1b708cce13a`.
+PR #72 merged at main `efa4dfb833658eed7b62435625503f59b6a8a51f`. Agent Local executed LF-04B.R1 exactly.
 
-### VI Review/Revise — completed
+### VI final quality state — PASS
 
-- source v1 remained immutable;
-- revised draft `06c9182c-2d3f-4ff5-b9d8-77ab6ed2aa75`, v2;
-- hash `9357603c2e73dd23daa8a3e3c48f6ea1de93e594c77377448635e30cb3024519`;
-- StepRun `fd19f072-1aab-425e-9547-7b1d643a7a15`;
-- ContextManifest `e3e81b05-d1e6-41e1-af34-0f22749d1ebe`;
-- prompt `journal_review_revise_vi:v1`;
-- recipe `journal_review_revise_vi_v1:v1`;
-- model attempts `1`;
+The preserved VI v2 hard-fail was repaired with exactly four deterministic zero-model operations.
+
+- final VI draft `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, v3;
+- hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
+- cleanup StepRun `1ed4b71c-35e7-42d5-ba8b-e18835cf23b1`, completed;
+- generator `ce05.lf04b.vi_deterministic_cleanup.v1`, schema `0`;
+- cleanup model/provider/tool calls `0/0/0`;
+- no Arabic/Hebrew-range characters remain;
+- non-target copy and all Evidence/Originality refs unchanged.
+
+VI Assertion Audit v5:
+
+- eval run `02fcb350-28d9-4ced-a15f-f81ff5a99920`;
+- audit artifact `83a82acf-b673-4482-ad32-d4f8b887291d`, v1, hash `53ff298706bc22ae1b828aa0438d40c20903a3d8c3eba5357d46d3c369903d2c`;
+- QualityEvaluation `8f867c0d-f90b-46ac-8e29-f9d37f82f63e`;
+- result `pass`;
+- unsupported/critical unsupported `0/0`;
+- contradicted/critical contradicted `0/0`;
+- warnings/findings none;
+- one ModelCall.
+
+VI Source-copy v2:
+
+- eval run `64c5e189-48e5-49ae-8633-8cd5a6372d62`;
+- artifact `e4ccbfd4-67c5-47ca-b2f8-acb9607aecc8`, v1, hash `c389f9fd9c404c7fe1cfb6f3907d6cdae194237186b29f6b2c0ddf4dc167634b`;
+- QualityEvaluation `420cefa8-44db-4430-abc4-01cdf5ffb98b`;
+- result `pass`, `fail_count=0`, `warn_count=0`, `finding_count=0`, `max_overlap_tokens=1`;
+- model/provider/tool calls `0/0/0`.
+
+### EN Review/Revise — completed
+
+- EN v1 preserved immutable;
+- revised draft `b9dddad3-bfbe-47f7-a7f0-dcd0b0af75f0`, v2;
+- hash `efc4796cdbb3b6c3d9c91140ea7573c7c0f41cf37b4f4b0c87e95a59aebd0478`;
+- StepRun `77121086-ee42-4dc1-85fd-6ff41ee0862d`;
+- ContextManifest `563ef36c-4bc2-4d93-bbb1-91a38dee512b`;
+- ModelCall `10c8ad78-0f86-4c6c-a9de-05521b36e390`, completed;
 - unresolved factual claims `0`.
 
-### VI Assertion Audit v5 — completed / FAIL
+### EN Assertion Audit v5 — completed / FAIL
 
-- audit run `1b22aedb-82e4-4cb4-a21e-4811bb7f7060`;
-- audit artifact `e567c643-9898-459b-9845-073d2513e9bd`, v1;
-- hash `b6dc37df91c0b0b699292f8e0269192b6f75fa39ab65f8dedee419591a7bdefa`;
-- QualityEvaluation `7f3453f6-8346-4ca9-981a-ec78d4de787c`;
+- audit run `2f0067c2-ecc0-492d-8a79-2a50b440a0cf`;
+- audit artifact `732f0033-b57f-489c-a91e-638b30078b6b`, v1;
+- hash `00cc7e8cc11363b897b5157dac599ef7438aad13092381e63e6149f68250b84c`;
+- QualityEvaluation `90944b70-d92f-4ddc-a294-f41a74186033`;
 - result `fail`;
-- unsupported `3`, critical unsupported `3`;
-- contradicted `0`, critical contradicted `0`;
-- model attempts `2`.
+- unsupported/critical unsupported `1/1`;
+- contradicted/critical contradicted `0/0`;
+- one ModelCall.
 
-The original VI shell block stopped at its assertion exactly as designed. VI Source-copy did not run. EN quality execution did not run.
+Exact only hard finding:
 
-The three hard findings are content-specific: unsupported subject-matter assertion embedded in the lead, unsupported subject-matter factual sentence bound only to `context_only` evidence, and unsupported closing brand statement. VI v2 also contains one stray Hebrew fragment `בלבד`. These are not grounds to weaken or version-bump Assertion Audit and not grounds to rerun broad Review/Revise.
+- segment `section:subject-matter:2`;
+- exact sentence `Subject matter is one factor that may be considered when valuing an artwork, so it belongs in the conversation alongside other evidence.`;
+- bound Evidence row is `context_only`, not direct assertive support.
 
-## Current exact task — LF-04B.R1
+EN Source-copy did not run. Do not rerun EN Review/Revise.
+
+## Current exact task — LF-04B.R2
 
 Use the smallest proven recovery:
 
-`deterministic VI v2 -> v3 cleanup (zero model) -> VI re-audit v5 -> VI Source-copy v2 -> if PASS resume EN quality block once -> STOP for MG review`
+`deterministic EN v2 -> v3 one-sentence cleanup (zero model) -> EN re-audit v5 once -> EN Source-copy v2 once -> read-only bilingual final verification -> STOP for MG review`
 
 Exact task:
 
-`docs/logs/2026-09-12-lf04b-vi-deterministic-cleanup-task.md`
+`docs/logs/2026-09-12-lf04b-en-deterministic-cleanup-task.md`
 
 Authoritative rules:
 
-1. Do NOT rerun VI Review/Revise.
-2. Preserve v1, v2, failed audit and failed QE immutably.
-3. Revalidate the exact failed audit snapshot before mutation.
-4. Apply only the four exact copy operations in the task using a temporary local deterministic Python script; zero model/provider/tool/research calls.
-5. Persist one exact immutable VI v3 with explicit cleanup provenance and non-target-copy equality proof.
-6. Run current Assertion Audit v5 once on v3. Hard acceptance: non-fail, critical unsupported `0`, critical contradicted `0`.
-7. Only then run Source-copy v2 once on v3. Hard acceptance: fail_count `0`.
-8. Only if VI is fully hard-clean may EN execute the existing LF-04B quality block exactly once.
-9. No Operational Package, final approval, ContentVersion or publishing in this recovery task.
+1. Preserve EN v1/v2 and failed audit/QE immutably.
+2. Revalidate exact EN failed snapshot before mutation.
+3. Replace only the one exact unsupported subject-matter factual sentence with exact reader guidance from the task.
+4. Persist one immutable EN v3 with explicit deterministic cleanup provenance; model/provider/tool calls `0/0/0`.
+5. Prove every non-target copy segment and every Evidence/Originality ref is unchanged.
+6. Run current Assertion Audit v5 once on EN v3. Hard acceptance: non-fail, critical unsupported `0`, critical contradicted `0`.
+7. Only then run Source-copy v2 once. Hard acceptance: `fail_count=0`.
+8. If both locales are hard-clean, return full final VI/EN visible content and all warnings/findings, then STOP for MG/LF-04C.
+9. No second cleanup, broad Review/Revise rerun, evaluator weakening, Operational Package, final approval, ContentVersion or publishing in R2.
 
-Historical precedent exists for exact deterministic post-audit cleanup without weakening evaluators or rebuilding the engine; use the same operating principle, not the historical candidate IDs/content.
+Current total ModelCalls reported through the failed EN audit: `10`. ToolCalls remain `0`.
 
 ## State that must not regress
 
