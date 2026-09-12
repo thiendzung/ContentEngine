@@ -12,7 +12,7 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
 | LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
-| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A Writer generation PASS/CLOSED; LF-04B VI Review/Revise v2 completed but Assertion Audit v5 correctly hard-failed. LF-04B.R1 is the only open recovery: deterministic VI v2->v3 cleanup, re-audit, Source-copy, then resume EN only if VI passes. Exact task `logs/2026-09-12-lf04b-vi-deterministic-cleanup-task.md` |
+| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A Writer generation PASS/CLOSED. VI is fully hard-clean after LF-04B.R1. EN Review/Revise v2 exists; EN Assertion Audit v5 correctly hard-failed on one context-only subject-matter assertion. LF-04B.R2 is the only open recovery: deterministic EN v2->v3 one-sentence cleanup, one re-audit, Source-copy, then bilingual final verification. Exact task `logs/2026-09-12-lf04b-en-deterministic-cleanup-task.md` |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
@@ -51,12 +51,15 @@ Current checkpoint:
 
 - canonical Angle + AngleApproval and persisted-approved Outline remain unchanged;
 - independent Writer v1 drafts exist for VI and EN;
-- VI Review/Revise created immutable v2 `06c9182c-2d3f-4ff5-b9d8-77ab6ed2aa75`, hash `9357603c2e73dd23daa8a3e3c48f6ea1de93e594c77377448635e30cb3024519`;
-- VI Assertion Audit v5 run `1b22aedb-82e4-4cb4-a21e-4811bb7f7060` completed `fail` with exactly 3 unsupported/critical and 0 contradicted;
-- VI Source-copy has not run;
-- EN LF-04B quality block has not run;
-- broad VI Review/Revise rerun is forbidden;
-- active recovery is one deterministic zero-model VI cleanup with four exact operations, then one re-audit, then Source-copy, then EN only if VI passes.
+- VI final draft is immutable v3 `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
+- VI Assertion Audit v5 PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
+- VI Source-copy v2 PASS: `fail_count=0`, `warn_count=0`, no findings;
+- EN Review/Revise created immutable v2 `b9dddad3-bfbe-47f7-a7f0-dcd0b0af75f0`, hash `efc4796cdbb3b6c3d9c91140ea7573c7c0f41cf37b4f4b0c87e95a59aebd0478`;
+- EN Assertion Audit v5 run `2f0067c2-ecc0-492d-8a79-2a50b440a0cf` completed `fail` with exactly one unsupported/critical assertion and zero contradicted;
+- exact EN hard finding is `section:subject-matter:2`: `Subject matter is one factor that may be considered when valuing an artwork, so it belongs in the conversation alongside other evidence.`; bound Evidence is `context_only`;
+- EN Source-copy has not run;
+- broad EN Review/Revise rerun is forbidden;
+- active recovery is one deterministic zero-model EN replacement, then one re-audit and Source-copy.
 
 ### M1 remaining acceptance
 
@@ -66,10 +69,12 @@ Current checkpoint:
 - [x] Valid generated and persisted-approved Outline on fresh lineage.
 - [x] Generate independent VI and EN Writer v1 content on the fresh lineage.
 - [x] VI bounded Review/Revise executed once and preserved as immutable v2.
-- [ ] Resolve exact persisted VI audit hard findings through authorized deterministic cleanup; no broad rerun/evaluator weakening.
-- [ ] Both final Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
-- [ ] Both Source-copy checks fail_count = 0.
-- [ ] Complete final independent VI and EN visible content.
+- [x] Resolve VI exact audit hard findings through authorized deterministic cleanup; final VI audit + Source-copy hard-clean.
+- [x] EN bounded Review/Revise executed once and preserved as immutable v2.
+- [ ] Resolve exact persisted EN audit hard finding through authorized deterministic cleanup; no broad rerun/evaluator weakening.
+- [ ] EN final Assertion Audit non-fail, critical unsupported = 0, critical contradicted = 0.
+- [ ] EN Source-copy fail_count = 0.
+- [ ] Complete final independent VI and EN visible content and MG review.
 - [ ] All non-critical warnings preserved verbatim.
 - [ ] T05.16 Operational Package V0 JSON + Markdown + hashes; pre-approval status explicit.
 - [ ] Founder final approval bound to final content; canonical ContentVersion after approval.
@@ -83,7 +88,7 @@ Current checkpoint:
 - [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
 - [ ] T05.22 CE05 Closeout - not inferred from code coverage alone.
 
-Before M1 no new provider/agent/framework, speculative abstraction, WordPress, automatic publishing/merge, repeated historical DB recovery, CI tuning without blocker or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
+Before M1 no new provider/agent/framework, speculative abstraction, WordPress, automatic publishing/merge, repeated DB recovery, CI tuning without blocker or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
 
 ## CE06 - Full Quality + Golden Regression
 
