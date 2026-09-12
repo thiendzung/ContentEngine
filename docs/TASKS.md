@@ -12,7 +12,7 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
 | LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
-| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A Writer generation PASS/CLOSED. VI is fully hard-clean after LF-04B.R1. EN Review/Revise v2 exists; EN Assertion Audit v5 correctly hard-failed on one context-only subject-matter assertion. LF-04B.R2 is the only open recovery: deterministic EN v2->v3 one-sentence cleanup, one re-audit, Source-copy, then bilingual final verification. Exact task `logs/2026-09-12-lf04b-en-deterministic-cleanup-task.md` |
+| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A Writer generation PASS/CLOSED. VI is fully hard-clean. EN v3 exists after R2 and its Assertion Audit surfaced two new critical unsupported closing brand statements. LF-04B.R3 is the only open recovery: deterministic EN v3->v4 full-closing replacement, one re-audit, Source-copy, then bilingual final verification. Exact task `logs/2026-09-12-lf04b-en-closing-cleanup-task.md` |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
@@ -54,12 +54,13 @@ Current checkpoint:
 - VI final draft is immutable v3 `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
 - VI Assertion Audit v5 PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
 - VI Source-copy v2 PASS: `fail_count=0`, `warn_count=0`, no findings;
-- EN Review/Revise created immutable v2 `b9dddad3-bfbe-47f7-a7f0-dcd0b0af75f0`, hash `efc4796cdbb3b6c3d9c91140ea7573c7c0f41cf37b4f4b0c87e95a59aebd0478`;
-- EN Assertion Audit v5 run `2f0067c2-ecc0-492d-8a79-2a50b440a0cf` completed `fail` with exactly one unsupported/critical assertion and zero contradicted;
-- exact EN hard finding is `section:subject-matter:2`: `Subject matter is one factor that may be considered when valuing an artwork, so it belongs in the conversation alongside other evidence.`; bound Evidence is `context_only`;
+- EN Review/Revise v2 remains immutable `b9dddad3-bfbe-47f7-a7f0-dcd0b0af75f0`, hash `efc4796cdbb3b6c3d9c91140ea7573c7c0f41cf37b4f4b0c87e95a59aebd0478`;
+- LF-04B.R2 deterministic cleanup produced immutable EN v3 `fbe198b0-298a-486a-a49f-4503b2b2ef06`, hash `f11cd66c30d4c98016586466294ff4e77756c409b0a5d32aeece345771bdbc13`;
+- EN v3 Assertion Audit v5 run `35197ea7-2179-443a-9c1f-e0e0e21e5819` completed `fail` with exactly two unsupported/critical closing brand statements and zero contradicted;
+- exact EN v3 hard findings are closing sentences `If the work still feels right after you have checked the context and practical details, you can decide at your own pace.` and `The price is one part of the conversation—not a verdict on the artwork or on you as a buyer.`; both have no Evidence/Originality refs;
 - EN Source-copy has not run;
 - broad EN Review/Revise rerun is forbidden;
-- active recovery is one deterministic zero-model EN replacement, then one re-audit and Source-copy.
+- active recovery is one deterministic zero-model replacement of the full EN v3 closing, then one v4 re-audit and Source-copy.
 
 ### M1 remaining acceptance
 
@@ -71,7 +72,8 @@ Current checkpoint:
 - [x] VI bounded Review/Revise executed once and preserved as immutable v2.
 - [x] Resolve VI exact audit hard findings through authorized deterministic cleanup; final VI audit + Source-copy hard-clean.
 - [x] EN bounded Review/Revise executed once and preserved as immutable v2.
-- [ ] Resolve exact persisted EN audit hard finding through authorized deterministic cleanup; no broad rerun/evaluator weakening.
+- [x] Resolve EN v2 subject-matter audit finding through authorized deterministic cleanup; EN v3 persisted immutably.
+- [ ] Resolve exact persisted EN v3 closing hard findings through LF-04B.R3 deterministic cleanup; no broad rerun/evaluator weakening.
 - [ ] EN final Assertion Audit non-fail, critical unsupported = 0, critical contradicted = 0.
 - [ ] EN Source-copy fail_count = 0.
 - [ ] Complete final independent VI and EN visible content and MG review.
@@ -82,7 +84,7 @@ Current checkpoint:
 
 ### After M1, not its prerequisite
 
-- [ ] T05.18 Critical Gate Regression - prioritize observed failures.
+- [ ] T05.18 Critical Gate Regression - prioritize observed failures, including foreign-script contamination and late surfacing unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.
 - [ ] T05.20 Human Review Surface - smallest useful surface first.
 - [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
