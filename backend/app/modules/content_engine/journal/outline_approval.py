@@ -83,7 +83,11 @@ def _validate_snapshot(
 ) -> None:
     if artifact.artifact_type != "journal_outline":
         raise OutlineApprovalError("outline_approval_artifact_type_invalid")
-    if isinstance(expected_version, bool) or not isinstance(expected_version, int) or expected_version <= 0:
+    if (
+        isinstance(expected_version, bool)
+        or not isinstance(expected_version, int)
+        or expected_version <= 0
+    ):
         raise OutlineApprovalError("outline_approval_artifact_version_invalid")
     if not _valid_hash(expected_hash):
         raise OutlineApprovalError("outline_approval_artifact_hash_invalid")
