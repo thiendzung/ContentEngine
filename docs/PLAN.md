@@ -1,442 +1,51 @@
-# PLAN — CONTENTENGINE V1
+# PLAN - ContentEngine finish-first delivery
 
-## Contract update — PR #5 before real-seed Gate B
+Effective after Founder merges the 2026-09-12 local-first contract. Implementation status is in `TASKS.md`; the current working window is `../AI_context.MD`. Requirements: `20-LOCAL-FIRST-DELIVERY-SPEC.md`, foundational specs 00-12 and Journal spec 19.
 
-Planning center: Signal → NeedHypothesis → Opportunity Map → human selection → content
-→ ContentExperiment → measured observations → reviewed hypothesis changes.
-PR-B upgrades Jina structured provenance/links/token budget; no new provider.
-PR-C is **Opportunity Map Mini**, including the existing Keyword/Question Map tool.
-CE02 implements Signal/NeedHypothesis/ContentOpportunity/ContentExperiment, replacing
-legacy ProblemDesire/AudienceSignal before persistence. Existing keyword tasks below
-are substeps, not a separate customer-truth pipeline. Real seed is a founder-proposed
-need hypothesis. CI must pass before the bounded live Gate B run; merge stays gated.
+## Delivery order
 
-## Nguyên tắc lộ trình
+| Milestone | Deliverable | Exit evidence | Not a prerequisite |
+|---|---|---|---|
+| M1 - finish | One real Journal VI/EN approved on the Founder's local runtime | Valid current lineage, three editorial approvals, hard-clean checks, package with hashes, final approval | New infrastructure/provider, WordPress, broad hardening |
+| M2 - repeat | Three distinct real Journal cases total, including M1 | Last two on the same merged runtime version without case-specific code; safe resume; separate test DB; backup/restore; small operator path | Full dashboard, generic runner, cloud deployment |
+| M3 - place and measure | Safe manual Journal placement and traceable measurement baseline | URL/external ID bound to approved ContentItem/Version and hypothesis; observations or explicit insufficient data | Full Artwork engine, full analytics automation, auto-publish |
+| M4 - improve from evidence | Controlled editorial and audience learning | Frozen baseline/candidate comparison, human edits, negative cases, approved changes with rollback | Automated strategy changes |
 
-Không xây toàn bộ máy rồi mới kiểm tra bài viết có tốt hay không.
+No calendar promises. Gates, not elapsed days or PR count, determine progress. M2-M4 are PLANNED, not authorized execution tasks. Per-run feedback capture starts now.
 
-Lộ trình V1 dùng hai đường song song:
+## Immediate M1 sequence
 
-```text
-A. Chứng minh chất lượng nội dung thật sớm
-B. Tự động hóa và làm hệ thống bền dần từng lớp
-```
+1. LF-01: Agent Local verifies the current DB/input bindings and classifies the Angle blocker in one read-only evidence packet. No research, model generation, content approval or runtime writes.
+2. LF-02: MG reviews that evidence. If code is defective, make one bounded fix with focused tests and related local verification. If only permission/invocation is wrong, resolve it without inventing a code change. Do not bypass safeguards.
+3. LF-03: issue one bounded runtime task covering all authorized Journal steps until an actual editorial decision or conclusive blocker. Reuse the SAME fresh run and bundle. Budget, expected refs and allowed actions must be explicit.
+4. LF-04: produce Operational Package V0, complete applicable checks, obtain Founder final approval and bind it to final bytes. Close M1 only with real local evidence.
 
-Mỗi phase chỉ thêm những viên cần cho phase kế tiếp.
+No PR for each shell command. A code change and its tests, relevant evidence and semantic transition belong in one coherent PR. Runtime-only evidence can be batched at a material gate. Never merge or silently advance a gate to reduce paperwork.
 
-Research/Keyword Plan phải phục vụ trực tiếp một bài thật; không được biến thành dự án SEO riêng trước Golden Journal.
+## After M1
 
----
+Prioritize M2 work by the first real bottleneck: existing-script entrypoint, actionable failure reporting, local/test isolation, backup/restore, safe restart/resume. Investigate duplicated context and usage capture only with a before/after check. Do not turn every suggested improvement into mandatory work before the next article.
 
-## CE00 — Foundation Contracts
+Use human review burden, approved output and repeated failures as the first baseline. Record latency/calls and known usage too; do not manufacture monetary estimates for missing CLI telemetry.
 
-Mục tiêu: khóa sản phẩm và kiến trúc trước code.
+In M3 prefer the simplest approved manual placement before building the complete WordPress adapter. Preserve final version/URL identity, media rights, approval and check references. Capture real observations; do not infer demand or success from an AI score.
 
-Status: **CLOSED**.
+M4 starts with editorial batches and only later audience/strategy changes when evidence is sufficient. A failed article can improve the test set without becoming a global rule.
 
-Deliverables:
+## Mapping to the existing CE roadmap
 
-- North Star;
-- non-negotiables;
-- architecture;
-- data contract;
-- settings contract;
-- harness spec;
-- memory/learning spec;
-- quality spec;
-- Journal spec;
-- Artwork spec;
-- publish/measure spec;
-- AGENTS.md;
-- implementation task map;
-- consistency review.
-
-Exit gate đã đạt:
-
-- content identity/version rõ;
-- song ngữ ContentCase/LocaleVariant rõ;
-- EvidenceSet/Assertion Audit rõ;
-- settings source of truth rõ;
-- worker/retry/idempotency rõ;
-- quality tối thiểu xuất hiện trước Journal đầu tiên;
-- Walking Skeleton nằm trong CE01.
-
----
+| CE phase | Retained scope | Delivery policy |
+|---|---|---|
+| CE00-CE04 | Contracts; walking skeleton; data/settings; durable harness; production research | Previously CLOSED/PASS; do not rebuild |
+| CE05 | Journal context/research, Angle/Outline, independent writers, checks/package, review surface, metrics, closeout | M1 first; applicable T05.18-T05.22 in M2 |
+| CE06 | Full quality evaluators, Golden/Weak sets and pairwise regression | Start with small real-case regressions; expand by evidence |
+| CE07 | Artwork canonical facts, media, artist context, independent writers and gates | Not opened by this plan |
+| CE08 | WordPress draft/version mapping, reconciliation and measurement adapters | M3 may take a small manual Journal handoff/identity slice first; full phase remains open |
+| CE09 | Content memory, overlap, edit delta, learning lifecycle and 1/3/6-month review | Capture records now; automate by measured need |
+| CE10 | Intentional 10-20-hypothesis pilot and roadmap review | After repeatable local delivery; not a volume quota |
 
-## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
-
-Mục tiêu: repo chạy được và tạo **một Journal MOTGU thật ở mức thử nghiệm** càng sớm càng tốt.
-
-### A. Hạ tầng tối thiểu
-
-- backend FastAPI skeleton;
-- frontend Next.js shell tối thiểu;
-- PostgreSQL + migrations;
-- module boundaries;
-- config loader;
-- health endpoints;
-- test/lint/build/CI cơ bản.
+This delivery order replaces the assumption that every full CE06/CE07 feature must precede first Journal placement. It does not renumber tasks, erase historical work or weaken hard gates. The prior phase plan is preserved at `logs/2026-09-12-plan-before-local-first.md` as history, not the active schedule.
 
-### B. Research/Search spike tối thiểu
+## Change selection rule
 
-Không làm full CE04 ở đây.
-
-Chỉ chứng minh đường:
-
-```text
-1 seed thật
-→ Serper discovery
-→ Tavily/Exa khi Google nhiều sales/SEO noise
-→ chọn vài URL tốt
-→ Jina đọc selected URLs
-→ structured Discovery Report
-```
-
-Default stack:
-
-- Serper = Google/PAA/Related/Autocomplete/organic discovery;
-- Tavily = source discovery;
-- Exa = semantic/second-hop discovery;
-- Jina = selected URL reader;
-- Brave = optional fallback, chưa cần build nếu chưa có use case.
-
-Manual ChatGPT/Gemini Deep Research được phép dùng cho topic khó và nhập lại dưới dạng research artifact + source URLs.
-
-### C. Opportunity Map Mini
-
-Từ founder-proposed NeedHypothesis và các signals thật tạo:
-
-```text
-MARKET / SEARCH / MOTGU Signal
-→ normalize + provenance + dedupe/repost grouping
-→ NeedHypothesis + support/contradiction/alternatives/gaps
-→ Keyword/Question Map
-→ problem / intent classification
-→ simple topic clusters
-→ pillar / cluster suggestions
-→ niche candidates
-→ CREATE / UPDATE / MERGE / DO_NOT_WRITE
-→ human chọn 1 opportunity
-```
-
-Không cần:
-
-- keyword-volume database;
-- paid difficulty score;
-- backlink analysis;
-- crawl competitor lớn;
-- auto content calendar.
-
-### D. Editorial calibration tối thiểu
-
-- 3–5 positive excerpts cho locale được thử;
-- 3–5 negative excerpts;
-- human review rubric;
-- một ContentCase thật từ opportunity được chọn;
-- một LocaleVariant thật;
-- selected/manual EvidenceSet;
-- Manual OriginalityPack.
-
-### E. Walking Skeleton
-
-```text
-NeedHypothesis + traceable Signals
-→ Opportunity Map Mini
-→ Human chọn opportunity
-→ ContentCase / LocaleVariant
-→ EvidenceSet + OriginalityPack
-→ Angle
-→ Outline
-→ Draft
-→ Basic Assertion Audit
-→ Human Review
-```
-
-Chưa cần:
-
-- Content Memory thông minh;
-- WordPress publish;
-- durable worker hoàn chỉnh;
-- multi-project;
-- full automatic research orchestration.
-
-Exit gate:
-
-1. repo build/test sạch;
-2. một seed thật tạo được Keyword Plan dễ hiểu;
-3. human chọn được ít nhất một opportunity có lý do rõ;
-4. selected sources tốt hơn việc lấy mặc định top 1–5 Google;
-5. một Journal thật được tạo từ dữ liệu thật;
-6. người duyệt xác định rõ bài có đáng tiếp tục phát triển không;
-7. các lỗi research/content contract được ghi lại trước khi tự động hóa thêm.
-
-Nếu chất lượng chưa đạt, sửa Research/Content/Settings/Quality contract trước khi sang CE02.
-
----
-
-## CE02 — Core Data + Settings
-
-Mục tiêu: biến dữ liệu thử nghiệm CE01 thành dữ liệu có cấu trúc/version.
-
-Deliverables:
-
-- Project;
-- ContentCase;
-- LocaleVariant;
-- ContentItem/ContentVersion;
-- versioned Settings + immutable SettingsSnapshot;
-- Prompt/Recipe Registry;
-- Brand/Language DNA;
-- Editorial Calibration Pack storage;
-- Source/SourceDocument;
-- Entity/Claim/Evidence/EvidenceSet;
-- OriginalityPack;
-- MediaAsset/MediaObservation;
-- ContentRun/StepRun/Artifact/Approval;
-- ContextManifest;
-- ModelCall/ToolCall;
-- QualityEvaluation;
-- structured Research artifacts;
-- Keyword Plan artifact/version contract.
-
-Exit gate:
-
-- core data create/read/version được;
-- run giữ settings snapshot bất biến;
-- ContextManifest tái hiện được input quan trọng;
-- vi/en chia sẻ ContentCase nhưng có LocaleVariant riêng;
-- research/keyword artifacts giữ source refs và locale.
-
----
-
-## CE03 — Durable Harness
-
-Mục tiêu: workflow chạy bền, dừng rồi tiếp tục được, không làm trùng việc ngoài hệ thống.
-
-Deliverables:
-
-- run state machine;
-- durable job queue;
-- worker claim/lease/heartbeat;
-- checkpoints;
-- retry/error classes;
-- approval pause/resume;
-- budgets;
-- model router/tool adapter;
-- telemetry;
-- outbox/reconciliation cho side effect;
-- restart/resume tests;
-- replay/eval mode.
-
-Exit gate:
-
-- synthetic workflow survive restart;
-- expired worker lease được lấy lại an toàn;
-- bounded retry;
-- no duplicate side effects;
-- biết chính xác model đã nhận context nào.
-
----
-
-## CE04 — Knowledge + Production Research
-
-Mục tiêu: nâng Research Spike CE01 thành workflow có thể chạy lặp lại, giữ provenance và tái sử dụng knowledge.
-
-Deliverables:
-
-- source ingest;
-- fingerprint/dedupe;
-- canonical text/Markdown;
-- chunking;
-- entity refs;
-- retrieval;
-- provider routing/budget/fallback production;
-- Discovery Research workflow;
-- Keyword Plan workflow;
-- Evidence Research workflow;
-- source selection + commercial-bias/authority metadata;
-- second-hop research;
-- authority rules;
-- Claim/Evidence ledger;
-- EvidenceSet lock;
-- OriginalityPack builder;
-- Knowledge Candidate extraction;
-- candidate/approved admission;
-- Obsidian mirror/export;
-- memory gap report;
-- basic contradiction handling.
-
-Exit gate:
-
-- same source ingest twice no duplicate;
-- retrieved item có provenance;
-- Discovery output không bị dùng nhầm làm factual evidence;
-- unsupported claim detectable;
-- EvidenceSet bất biến sau lock;
-- raw SERP/API payload không làm bẩn Obsidian;
-- một research run có thể giải thích provider nào được gọi và vì sao;
-- Keyword Plan giữ được nguồn signal cho từng opportunity.
-
----
-
-## CE05 — Journal Engine V1
-
-Mục tiêu: nâng Walking Skeleton thành workflow Journal dùng được lặp lại.
-
-Deliverables:
-
-- ContentCase/LocaleVariant UI;
-- memory overlap check stub;
-- research workflows;
-- opportunity selection handoff;
-- angle generation/approval;
-- outline;
-- draft;
-- bounded review/revise;
-- independent `vi-VN`/`en` writers;
-- assertion audit;
-- final package;
-- basic source-copy check.
-
-Exit gate:
-
-- ít nhất một Journal thật chạy end-to-end tới final approval;
-- zero critical unsupported assertion;
-- human review đạt chuẩn tối thiểu đã đặt ở CE01.
-
----
-
-## CE06 — Full Quality + Golden Regression
-
-Mục tiêu: biến đánh giá thủ công ban đầu thành hệ thống so sánh và chống đi lùi.
-
-Deliverables:
-
-- deterministic quality checks;
-- model-based evaluators;
-- human evaluation UI;
-- source-copy evaluator;
-- Golden/Weak fixtures;
-- pairwise regression runner;
-- candidate vs baseline report.
-
-Exit gate:
-
-- model/prompt/settings candidate không promote nếu chưa có regression report;
-- hard fact gates không phụ thuộc hoàn toàn vào model judge;
-- Golden Set có human approval.
-
----
-
-## CE07 — Artwork Engine V1
-
-Mục tiêu: tạo Artwork content chính xác, giàu giá trị riêng và có căn cứ từ ảnh/dữ liệu thật.
-
-Deliverables:
-
-- WordPress/WooCommerce canonical Artwork adapter;
-- artwork fact lock;
-- MediaAsset/MediaObservation flow;
-- artist context retrieval;
-- artist-intent provenance rule;
-- bilingual output;
-- assertion audit;
-- related content/link package.
-
-Exit gate:
-
-- một Artwork thật chạy end-to-end;
-- zero canonical fact drift;
-- mọi mô tả hình ảnh quan trọng map được về media evidence.
-
----
-
-## CE08 — WordPress Draft + Measurement Foundation
-
-Mục tiêu: đưa bài sang web an toàn và chuẩn bị đo kết quả.
-
-Deliverables:
-
-- WordPress draft adapter;
-- ContentItem ↔ WordPress mapping;
-- ContentVersion publish history;
-- idempotency/outbox/reconciliation;
-- Search Console import;
-- Analytics import;
-- normalized core metrics;
-- Rank Math technical signal spike nếu truy cập ổn định;
-- hypothesis mapping.
-
-Exit gate:
-
-- Journal + Artwork tạo draft WordPress an toàn;
-- retry không tạo duplicate;
-- metrics trace về ContentCase/LocaleVariant/content hypothesis.
-
----
-
-## CE09 — Content Memory + Learning Loop
-
-Mục tiêu: dùng kho bài và dữ liệu thật để tránh trùng, tìm pattern và học có kiểm soát.
-
-Deliverables:
-
-- ContentItem/Version memory;
-- duplicate/intent overlap detector;
-- update/refresh/merge/do-not-write recommendation;
-- human edit delta;
-- learning candidates;
-- audience signals;
-- minimum-evidence rules;
-- 1/3/6-month review reports.
-
-Exit gate:
-
-- system giải thích được học gì và dựa trên dữ liệu nào;
-- biết khi nào dữ liệu chưa đủ;
-- không tự đổi production settings.
-
----
-
-## CE10 — Production Pilot
-
-Run 10–20 content hypotheses có chủ đích.
-
-Mục tiêu:
-
-- kiểm chứng quality process;
-- tìm failure modes;
-- tune cost;
-- tune human approval load;
-- establish first stable Golden Set;
-- collect first real audience signals;
-- quyết định nên đào sâu ngách nào.
-
-Không mở CRM/Sales Agent trước CE10 review.
-
----
-
-## Thứ tự ưu tiên nếu phải cắt scope
-
-Giữ trước:
-
-1. chất lượng một bài thật;
-2. audience/problem đúng;
-3. source/evidence đúng;
-4. MOTGU originality;
-5. human approval;
-6. content identity/version;
-7. reproducibility;
-8. durable run;
-9. measurement/learning.
-
-Hoãn trước:
-
-1. multi-project UI;
-2. generic workflow builder;
-3. full Memory Tree;
-4. nhiều integrations;
-5. Brave/default extra providers khi chưa có use case;
-6. keyword volume/backlink suite;
-7. nhiều model/provider chỉ để có lựa chọn;
-8. automation publish hoàn toàn.
+Every proposed change states: observed problem, affected outcome, smallest fix, evidence of success, rollback, and what is deliberately NOT being built. Before M1 it must directly unblock the current real Journal or fix demonstrated security/data-integrity risk. Otherwise it stays in backlog.

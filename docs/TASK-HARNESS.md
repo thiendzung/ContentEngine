@@ -1,135 +1,70 @@
-# TASK HARNESS — ContentEngine
+# TASK HARNESS - one bounded outcome
 
-Use this template for every delegated task that needs exact execution. Store the filled task under `docs/logs/YYYY-MM-DD-<task>-task.md`.
+Fill under `docs/logs/YYYY-MM-DD-<task>-task.md`. A planned task is not execution permission. Founder dispatches the merged task; MG owns scope/review.
 
-## Task identity
+## Identity and outcome
 
-```text
-TASK ID:
-OWNER:
-OBJECTIVE:
-```
+TASK ID / OWNER / REVIEWER:
+OBJECTIVE (one observable outcome):
+MILESTONE / DEPENDENCY:
+STATE (planned, dispatched, reported, verified):
 
-## Base / branch
+## Ref and synchronization
 
-```text
-EXPECTED BASE:
-BRANCH:
-```
+Repository / base-selection rule / assigned branch:
+Required merged task/contract:
+Expected SHA (resolve live at dispatch unless pinned):
 
-Use live GitHub state to verify the actual current SHA. Do not copy a stale SHA forward without checking it.
+Inspect changes first; stop on unexpected work. Fetch origin, synchronize assigned ref without destructive reset, require clean tree/matching SHA, then read checked-out AGENTS, AI_context.MD, TASKS, CHECKLIST, this task and affected specs. A moved base/changed gate requires revalidation, not guessing. No deployed-code switch while a runtime step is executing.
 
-## Read first
+## Local target and inputs
 
-- `AGENTS.md`
-- `AI_context.MD`
-- `docs/TASKS.md`
-- `docs/CHECKLIST.md`
-- affected canonical spec(s)
+Operational vs disposable test DB identity:
+Compose project/volume/migration:
+Run/artifact/settings refs and expected versions/hashes:
+Canonical checkpoint/evidence pointer:
 
-## Preconditions
+No private connection strings/secrets. Verify observations locally, not from a Markdown checkpoint alone.
 
-- [ ] repository fetched/pruned;
-- [ ] correct branch checked out;
-- [ ] working tree clean;
-- [ ] current semantic gate matches this task;
-- [ ] required local services/database/settings are available;
-- [ ] no other conflicting task is active.
+## Permissions and budgets
 
-## Scope
+| Action | Allowed? | Exact boundary |
+|---|---|---|
+| Read operational DB | | Read-only transaction; required queries only |
+| Write runtime/artifacts | | Exact entities/actions |
+| Model/research call | | Route, max calls/attempts/duration/cost |
+| Code change | | Exact file allowlist and smallest change |
+| Migration/install/service change | | Permission and recovery |
+| Record editorial approval | | Verifiable human decision/delegation only |
+| Git evidence branch/PR | | Exact paths; no main write |
+| Publish/merge | No by default | Founder approval/merge authority |
 
-List only actions required to satisfy the objective.
+Unknown budget/permission means stop. Do not generalize authorization to another model, action or artifact.
 
-## Non-goals
+## Scope / non-goals / files
 
-List actions that must not be attempted in this task.
+Only work needed for the outcome. Exact writable files or NONE. No redesign, provider/agent/framework expansion, secret logging, destructive data changes, safety bypass or self-selected next task.
 
-## Files allowed
+## Commands and branches
 
-List exact files/directories that may be edited. Use `NONE` for a verification-only task.
+Use documented entrypoints or code-verified read-only probes. Proposed commands must be marked NOT IMPLEMENTED, not presented as runnable.
 
-## Allowed actions
+For each branch: condition -> permitted action -> evidence -> stop. Cover changed input, outer denial, CLI/auth failure, ambiguous effect and success. No new approval for each command already covered.
 
-List allowed commands, probes, runtime calls and small scoped fixes.
+## Evidence and acceptance
 
-## Forbidden actions
+Start/end SHA/tree; sanitized DB identity; verified refs/hashes; relevant counters/results; commands executed; rejecting layer/error/last completed step; checks not run.
 
-Always include when relevant:
+Evidence file / branch:
+Private artifacts retained locally:
+Objective acceptance checks:
 
-- no architecture redesign;
-- no scope expansion;
-- no new provider/agent/framework;
-- no merge;
-- no secret logging/commit;
-- no destructive production-data mutation unless explicitly authorized;
-- no self-directed next task.
+Runtime success, quality, code merge and publication are separate decisions. Never mark unobserved gates PASS.
 
-## Commands / probes
+## Stop and report
 
-Use exact commands when known. If a required command is not documented or safely inferable from repository code, stop and report `BLOCKED` instead of inventing a new execution path.
+Stop on unexpected work, changed target/input, unauthorized/unsafe action, secret risk, scope expansion, exhausted budget, required human decision or conclusive outcome. No bypass and no next task.
 
-## Required evidence
+`TASK ID / START-END REF / LOCAL TARGET / FILES CHANGED / COMMANDS EXECUTED / EVIDENCE / ACCEPTANCE / CHECKS NOT RUN / RISKS-BLOCKERS / STATUS / NEXT FOR MG`
 
-Capture only evidence needed to prove the gate, for example:
-
-- start/end branch state;
-- migration state;
-- focused test output;
-- relevant row/artifact IDs and content hashes;
-- exact model/task route provenance;
-- input/output artifact provenance;
-- before/after counts where mutation safety matters;
-- blocker/error code when failed.
-
-Never include credentials or secret values.
-
-## Acceptance gates
-
-Every gate must be objectively testable. Runtime success and product/content quality are separate gates.
-
-## Stop conditions
-
-Stop immediately when:
-
-- a precondition is false;
-- required state/hash/version differs from the task contract;
-- an unapproved migration/provider/model/tool is required;
-- a secret would need to be copied into repo/log output;
-- the task would require architecture/scope expansion;
-- the requested gate has passed or failed conclusively.
-
-Do not infer or begin the next task.
-
-## Pre-review
-
-Before reporting success, run the applicable sections of `docs/CHECKLIST.md`, especially:
-
-- CONTRACT;
-- DATA;
-- FAILURE;
-- MODEL;
-- DB;
-- TEST;
-- STATE.
-
-## Report format
-
-```text
-TASK ID
-START STATE
-END STATE
-FILES CHANGED
-COMMANDS / PROBES EXECUTED
-EVIDENCE
-ACCEPTANCE GATES
-RISKS / BLOCKERS
-STATUS
-```
-
-Allowed Agent Local status:
-
-- `READY FOR REVIEW`
-- `BLOCKED`
-- `NEEDS CHANGES`
-
-Agent Local must stop after the report.
+Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. Send one sanitized packet at a meaningful gate; MG reviews and updates the next state. If GitHub evidence publication is unavailable, return sanitized evidence through Founder and state it is not yet in the repository.
