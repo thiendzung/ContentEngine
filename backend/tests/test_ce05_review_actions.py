@@ -27,7 +27,7 @@ from app.modules.content_engine.models import (
     LocaleVariant,
     SettingsSnapshot,
 )
-from app.modules.harness.models import Approval, Artifact, ContentRun
+from app.modules.harness.models import Approval, Artifact, ContentRun, QualityEvaluation
 from app.modules.harness.persistence import pause_for_approval
 
 
@@ -36,8 +36,8 @@ class PendingReviewFixture:
     content_case_id: UUID
     variant: LocaleVariant
     writer_run: ContentRun
+    source_draft: Artifact
     final_artifact: Artifact
-    current_audit: Artifact
 
 
 async def _pending_fixture(session) -> PendingReviewFixture:
@@ -113,7 +113,7 @@ async def _pending_fixture(session) -> PendingReviewFixture:
     session.add_all([source_draft, final_artifact])
     await session.flush()
 
-    current_audit, _source_copy = await _persist_quality(
+    await _persist_quality(
         session,
         project=project,
         content_case=content_case,
@@ -145,9 +145,63 @@ async def _pending_fixture(session) -> PendingReviewFixture:
         content_case_id=content_case.id,
         variant=variant,
         writer_run=writer_run,
+        source_draft=source_draft,
         final_artifact=final_artifact,
-        current_audit=current_audit,
     )
+
+
+async def _persist_new_failing_audit(session, fixture: PendingReviewFixture) -> None:
+    audit_run = ContentRun(
+        project_id=fixture.writer_run.project_id,
+        content_case_id=fixture.writer_run.content_case_id,
+        locale_variant_id=fixture.variant.id,
+        content_item_id=fixture.writer_run.content_item_id,
+        run_mode="eval",
+        status="completed",
+        current_step="assertion_audit",
+        settings_snapshot_id=fixture.writer_run.settings_snapshot_id,
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
+    )
+    session.add(audit_run)
+    await session.flush()
+    payload = {
+        "source_draft": {
+            "id": str(fixture.source_draft.id),
+            "version": fixture.source_draft.version,
+            "content_hash": fixture.source_draft.content_hash,
+        },
+        "summary": {
+            "result": "fail",
+            "critical_unsupported_count": 1,
+            "critical_contradicted_count": 0,
+            "unsupported_count": 1,
+            "contradicted_count": 0,
+        },
+    }
+    audit = Artifact(
+        run_id=audit_run.id,
+        artifact_type="assertion_audit",
+        locale="en",
+        version=1,
+        content_json=payload,
+        content_hash=_hash(payload),
+    )
+    session.add(audit)
+    await session.flush()
+    session.add(
+        QualityEvaluation(
+            run_id=audit_run.id,
+            artifact_id=audit.id,
+            evaluator_key="assertion_audit_hard_gate",
+            evaluator_version="ce05.assertion_audit.hard_gate.v5",
+            evaluator_type="deterministic",
+            result="fail",
+            severity="critical",
+            findings_json={"fixture": True},
+        )
+    )
+    await session.flush()
 
 
 async def _counts(session) -> tuple[int, int]:
@@ -279,13 +333,7 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
 async def test_review_action_quality_failure_creates_no_decision() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
-        payload = dict(fixture.current_audit.content_json or {})
-        summary = dict(payload["summary"])
-        summary["result"] = "fail"
-        summary["critical_unsupported_count"] = 1
-        payload["summary"] = summary
-        fixture.current_audit.content_json = payload
-        await session.flush()
+        await _persist_new_failing_audit(session, fixture)
         before = await _counts(session)
         with pytest.raises(ReviewActionError, match="review_action_quality_blocked"):
             await submit_review_decision(
