@@ -13,7 +13,7 @@ Maximum active work:
 + 1 delegated local verification task
 ```
 
-Local agents must synchronize their local repository to the exact GitHub ref before reading local task files or running local code. Do not activate the next task until the current semantic state is correct in the same PR where that transition is knowable.
+Local agents must synchronize their local repository to the exact GitHub ref before reading local task files or running local code. Do not activate the next task until the current semantic state is correct.
 
 ---
 
@@ -27,7 +27,7 @@ Status: **CLOSED / PASS**.
 
 Status: **CLOSED / PASS**.
 
-Key outcome: one real Golden Journal walking skeleton reached human review with zero critical unsupported assertions.
+Key outcome: one Golden Journal walking skeleton reached human review with zero critical unsupported assertions.
 
 ---
 
@@ -61,260 +61,221 @@ Canonical closeout evidence is retained in `docs/logs/`.
 
 Status: **ACTIVE**.
 
-### Goal
+### M1 — ONE REAL JOURNAL PASS
 
-Prove one real MOTGU Journal candidate end-to-end before adding more infrastructure.
+Status: **IN PROGRESS**.
 
-### Completed foundation
+Goal:
+
+> Prove one real MOTGU Journal candidate end-to-end before adding more infrastructure.
+
+The CE05 North Star remains:
+
+```text
+selected opportunity
+→ ContentCase + bounded inputs
+→ approved angle
+→ approved outline
+→ independent VI/EN drafts
+→ bounded revision
+→ assertion/source checks
+→ Operational Package
+→ final human approval
+```
+
+### Completed implementation foundation
 
 - [x] T05.1 ContentCase/LocaleVariant Journal UI.
 - [x] T05.2 Internal knowledge recall.
-- [x] T05.3 Content Memory overlap check stub.
+- [x] T05.3 Content Memory overlap foundation.
 - [x] T05.4 Discovery Research step.
 - [x] T05.5 Opportunity Map selection handoff.
 - [x] T05.6 Evidence Research + EvidenceSet step.
 - [x] T05.7 OriginalityPack step.
 - [x] T05.8 Angle generator structured output implementation.
 - [x] T05.9 Angle approval state/runtime bridge implementation.
-- [x] T05.10 Outline with evidence mapping — implementation + one real O4 runtime + MG editorial gate PASS.
-- [x] T05.11 Draft writer `vi-VN` — implementation + real runtime/provenance/independence gate PASS.
-- [x] T05.12 Draft writer `en` independently from Vietnamese — implementation + real runtime/provenance/independence gate PASS.
-- [x] T05.13 bounded Review/Revise — implementation + real bilingual runtime/content/provenance/idempotency gate PASS.
+- [x] T05.10 Outline with evidence mapping implementation and prior real-runtime proof.
+- [x] T05.11 Vietnamese Writer implementation and prior real-runtime proof.
+- [x] T05.12 English Writer implementation and bilingual-independence proof.
+- [x] T05.13 bounded Review/Revise implementation and prior real-runtime proof.
+- [x] Assertion Audit production harness implemented and hardened through generator/evaluator v5, schema 1.
+- [x] Structural non-assertive normalization remains fail-closed for required/assertive content.
+- [x] Sentence-level bounded reader-guidance normalization merged in PR #63.
+- [x] Source-copy v2 implemented.
+- [x] Source-copy accepts only canonical Assertion Audit pairs v3/v3, v4/v4 and v5/v5; mixed pairs reject.
+- [x] Important retry/idempotency/recovery/provenance paths have focused regression coverage.
 
-### Locked real O4 upstream lineage
+Historical real O4 and pre-reset runtime evidence remains in `docs/logs/`. Those historical UUIDs are not prerequisites for the active M1 candidate when absent from the active runtime database.
 
-```text
-Source O4 ContentRun: 43cc7684-c15d-45b2-8de9-dc04777b1808
-ContentCase: 9ec6133b-5f14-46d0-9866-e3b049e537b5
-EvidenceSet: c5d46edb-3557-4efb-a479-8dd5702ae6c9 / v8 / locked
-EvidenceSet hash: 83d8ff62f639fc51e24072d194cdddfe01db467100f885ca1024e1597e14c71a
-OriginalityPack: 6bd287ec-43f9-4d69-957c-2223f258f909 / approved
-OriginalityPack hash: d2f193a68b8454114f18dff4d65e5c8b26c494636e1200e55a3fb4c6797eb238
-Angle artifact: 854d4f34-22c0-4a9e-8d00-0f7f9461036d / v1
-Angle artifact hash: e49941402aed35b5714c1367ab1c7c0864b111aaca782e446f3cb280332f94fe
-AngleApproval: cebc0f94-77f9-4655-9141-41cd8a5dfc14
-Selected Angle: angle-01
-Candidate hash: 72ad8714e7d21cbcc04421f2141d8e2f4ead212ad8f674f21de122f19b622872
-Outline artifact: 39e0a6a3-d735-432b-9353-1da8314b72cd / v1
-Outline hash: 4f4a746bc4b10625be50b5cc4c2311cad7a1ebee5797bcde8058c622eed351ea
-SettingsSnapshot: 8f687d1c-1cba-4571-8960-77d7faf18453
-SettingsSnapshot hash: d26829305c979d6cb8bd0f6ae72d795d6c21ca2c5eae9f5c3e6bf3ef0d8a176c
-```
-
-NeedHypothesis `530bdd27-f008-4910-9b3b-df83e007cfa2` remains `PROPOSED`.
-
-### T05.11/T05.12 real Writer closeout
-
-Exact real Writer v1 outputs:
-
-```text
-vi-VN LocaleVariant: e982a60f-05f0-4e15-9ed3-397db9486dfa
-vi-VN Writer run: 1f0b91a7-39d7-449f-84ad-988fd1e8f44e
-vi-VN draft v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede
-vi-VN draft hash: 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
-vi-VN source unresolved count: 0
-
-en LocaleVariant: 19d6b5e8-8ed9-4e3c-b9e3-69add06b09bc
-en Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
-en draft v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837
-en draft hash: cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
-en source unresolved count: 5
-```
-
-Writer gate proved exact support/provenance, bilingual independence, no sibling/translation input, ToolCalls=0, exact rerun reuse and upstream immutability. The five EN v1 entries were accepted safety absence notes, not asserted unsupported facts. Zero unresolved was correctly enforced at T05.13 exit rather than T05.11/T05.12 exit.
+### Active operating decision — fresh runtime acceptance
 
 Canonical decision:
 
-`docs/logs/2026-09-10-ce05-writer-gate-contract-correction.md`
+`docs/logs/2026-09-11-ce05-fast-operational-reset.md`
 
-### T05.13 real Review/Revise closeout
+Rules:
 
-Canonical closeout:
+- do not recreate old UUIDs;
+- do not copy synthetic historical audit/evaluation rows;
+- one cheap runtime recovery scan only;
+- if no complete compatible lineage exists, use the active `contentengine` database and continue fresh;
+- only hard quality/data-integrity/security failures stop the first operational Journal;
+- non-critical warnings may proceed when preserved verbatim for Founder review.
 
-`docs/logs/2026-09-10-ce05-t05-13-real-gate-closeout.md`
+The authorized recovery scan has now completed. No complete compatible current lineage was found elsewhere. Selected path is:
 
-Exact revised outputs entering T05.14:
+`FRESH_ACTIVE_DB`
+
+Do not repeat historical database recovery unless Founder/MG explicitly reopens it.
+
+### Active fresh M1 runtime checkpoint
+
+Runtime:
 
 ```text
-vi-VN Writer run: 1f0b91a7-39d7-449f-84ad-988fd1e8f44e
-vi-VN source v1: 19c2c580-efb6-43ba-b1a9-0625f0804ede / 972093122732100b891651398677812942dcd759ed9f9e0a9122f92666cd0cc6
-vi-VN revised v2: a0afa7d0-af3d-4669-ae18-54c54b87731f / da5fd6e78e19bf4c395797d39379fdb66fd9766f75649e3054e03a0a03677e85
-vi-VN v2 unresolved count: 0
-
-en Writer run: b2e86caf-a7a2-463a-8c8c-9e94e02272f5
-en source v1: fdf54b59-92d3-4c42-ac14-e5a7ada26837 / cf1dbc56812dc6d0918b8accaf9d34c583a6719a6a2f86135e5e222069bdc495
-en revised v2: d512f3f4-bc28-473b-9de1-f0a838940191 / e65472ebb266a0a62ef1d4d855fefb36d23a72e28eeedbbd30acbec7fe1bc034
-en v2 unresolved count: 0
+Database: localhost:5432/contentengine
+Migration: 20260910_0022 (head)
+main checkpoint before context update: debc0897e2f985e1d0662e9e594894e40401d1b8
 ```
 
-Real T05.13 gate proved:
+Fresh planning/runtime lineage:
 
-- [x] local main synchronized exactly to the merged T05.13 implementation;
-- [x] migration `20260910_0020` and exact VI/EN review/revise registry verified;
-- [x] source v1 IDs/versions/hashes and full upstream lineage revalidated;
-- [x] same existing locale Writer `localize` runs reused; no new ContentRun;
-- [x] one real bounded review/revise model flow per locale;
-- [x] exact Outline section IDs/order and Evidence/Originality refs preserved;
-- [x] no sibling draft, translation, research, Search, URL or ToolCall input;
-- [x] no missing artwork/artist/commerce/comparison/market fact invented;
-- [x] one immutable v2 created per locale; source v1 remained immutable;
-- [x] document-level and section-level `unresolved_factual_claims` all equal `[]`;
-- [x] both Writer runs returned to `waiting_approval`;
-- [x] exact reruns reused the same v2 artifacts with `model_attempts=0` and zero further side effects;
-- [x] EvidenceSet, OriginalityPack, selected Angle, accepted Outline, SettingsSnapshot, NeedHypothesis and source O4 artifacts remained unchanged;
-- [x] MG reviewed both full v2 drafts against v1, Outline, Evidence and Originality boundaries and marked T05.13 **PASS**.
+```text
+ContentCase: f0bfbad7-c266-4de1-8fd4-a85ad206e6ce
+NeedHypothesis: 604f4e5a-68b8-4503-997a-494eff79d448
+ContentOpportunity: 83275ff5-19c8-4753-8c01-2135ad6c9dd1
+HumanSelection: 4ea09a4d-fa71-444f-87b0-0368de809387
+ContentExperiment: 7d8bbc52-1287-4f5c-b024-2686d5e7114d
+SettingsSnapshot: 1169921c-a649-4f93-bf1a-f8daa2f15338
+Settings hash: ebf8c32758311160e4c6d91d4bf6c6f59d9a9e97da7ba8af56f7f615373f9054
+Journal ContentRun: a92f6f69-1c83-4aca-9a2f-e547dd15b85f
+journal_input_bundle: d65aa864-e2fe-4c94-92f3-8d73ea89a8db
+Bundle hash: a7f8f2a815c943963e8fc018a4888611f1cf696fc63992cdf226406f3c7441e0
+Journal run state: waiting_approval
+```
 
-### T05.14 FINAL CLOSEOUT / STRUCTURAL NORMALIZATION HOTFIX
+This is the active M1 candidate. Do not create another fresh Journal run merely because Angle execution is blocked.
 
-Owner: **MG Content Engine** for implementation/contract/review; Agent Local executes only the exact post-merge real runtime gate.
+### Fresh evidence status
 
-Merged T05.14 Assertion Audit implementation through PR #46 includes:
+- [x] first evidence pass executed;
+- [x] first pass was insufficient;
+- [x] one authorized targeted retry executed;
+- [x] retry produced 8 support claims from 3 readable source documents;
+- [ ] before Angle, read-only verify the final fresh EvidenceSet ID/version/hash/status/approval/lock state;
+- [ ] before Angle, read-only verify the final fresh OriginalityPack ID/hash/status/approval state;
+- [ ] verify both are the exact inputs bound to `journal_input_bundle d65aa864-e2fe-4c94-92f3-8d73ea89a8db`.
 
-- [x] exact immutable VI/EN v2 input binding and hash revalidation;
-- [x] deterministic visible-copy segmentation;
-- [x] bounded model assertion extraction/classification only — no rewrite;
-- [x] exact-substring validation for each assertion;
-- [x] location-bounded Evidence/Originality refs;
-- [x] persisted Evidence ID → Claim ID mapping in code;
-- [x] deterministic critical unsupported/contradicted escalation for factual/brand/artist-intent/visual/live assertions;
-- [x] immutable `assertion_audit` Artifact + deterministic `QualityEvaluation` persistence using existing contracts;
-- [x] exact audit fingerprint/reuse contract;
-- [x] independent VI/EN prompt/recipe registry in migration `20260910_0021`;
-- [x] approved local-agent runtime bridge with no tools/research/sibling draft;
-- [x] production CLI + focused tests;
-- [x] exact Agent Local task with mandatory local Git synchronization before task read/execution.
-- [x] bounded EN post-audit revision step in the existing Writer `localize` run;
-- [x] exact persisted five-finding binding and deterministic non-target immutability;
-- [x] immutable EN `journal_draft` v3 with exact rerun reuse;
-- [x] post-merge EN revision → Assertion Audit v3 re-audit task executed;
-- [x] deterministic deletion of the sole EN v3 `closing:3` unsupported critical sentence;
-- [x] immutable EN `journal_draft` v4 in the same Writer run with cleanup idempotency;
-- [x] post-merge EN v4 cleanup → Assertion Audit v3 re-audit completed with T05.14 PASS.
+The last runtime report omitted the final EvidenceSet/OriginalityPack identifiers. Do not infer them. Verify them once, then proceed. If valid, do not research again.
 
-Post-merge real Assertion Audit task:
+### CURRENT GATE — REAL ANGLE EXECUTION
 
-`docs/logs/2026-09-10-ce05-real-o4-assertion-audit-agent-local-task.md`
+Status: **BLOCKED**.
 
-T05.14 real v3 status:
+Observed runtime evidence:
 
-- [x] **T05.14 Assertion Audit — VI PASS / EN final cleanup and re-audit PASS.**
+```text
+Angle ModelCalls: 0
+ContentEngine ToolCalls: 0
+Current Journal ModelCalls: 0
+Current Journal ToolCalls: 0
+Angle artifact: none
+Operational Package: none
+```
 
-T05.14 final cleanup implementation and production re-audit are complete. The exact
-English v4 artifact and PASS audit remain immutable inputs for later gates; the VI PASS
-artifact and all shared upstream records remain immutable.
+Blocker:
 
-Real T05.14 v3 gate evidence:
+`authorized Angle model execution was rejected by the local execution safety gate, including when separated from approval.`
 
-- [x] local `main` synchronized exactly to merged T05.14 implementation before the real task;
-- [x] BOTH exact locale sources preflighted before auditing either locale;
-- [x] migration `20260910_0021` + exact VI/EN assertion-audit prompt/recipe registry verified;
-- [x] real VI assertion audit executed against exact v2 snapshot;
-- [x] real EN assertion audit executed against exact v2 snapshot;
-- [x] one `assertion_audit` Artifact and one deterministic hard-gate `QualityEvaluation` per locale;
-- [x] every required standfirst/lead/body/closing segment audited, with title/headings explicitly accounted for;
-- [x] assertion text remains an exact substring of its source segment;
-- [x] Evidence/Originality refs remain within exact location support boundaries;
-- [x] Evidence refs map to persisted Claim IDs through code;
-- [x] VI `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
-- [x] EN `audit_result=pass`, `critical_unsupported_count=0`, `critical_contradicted_count=0`;
-- [x] the two EN attention items are explicitly classified rather than silently treated as external factual proof;
-- [x] no research/Search/URL/ToolCall, sibling draft or translation input;
-- [x] exact reruns reuse the same audit artifacts/evaluations with `model_attempts=0` and zero further side effects;
-- [x] source v2 drafts and all upstream lineage remain immutable;
-- [x] EN v3 re-audit completed and the sole remaining finding is `closing:3` unsupported critical `brand_statement`;
-- [x] deterministic EN v4 cleanup completes with zero ModelCalls/ToolCalls;
-- [x] EN v4 `audit_result=pass`, unsupported=0, contradicted=0;
-- [x] MG reviews the full final EN v4 cleanup/re-audit output and marks T05.14 PASS.
+Interpretation:
 
-If an audit completes as `warn` or `fail`, Agent Local returns `NEEDS CHANGES` and does not rewrite the content. Infrastructure/provenance/schema mismatches remain fail-closed `BLOCKED`.
+- this is the current smallest real bottleneck;
+- it is not a DB-recovery blocker;
+- it is not an Evidence sufficiency blocker unless the read-only binding verification fails;
+- it is not an Assertion Audit or Source-copy blocker;
+- no synthetic Angle candidate or safety bypass is allowed.
 
-Merged T05.14 resume exposed a narrow harness blocker: a structural segment with
-`required_assertive=false` and `disposition=non_assertive` could still contain
-model assertion entries. PR #61 deterministically discards only those extra
-structural entries before validation; required content and structural assertive
-segments remain fail-closed under the existing hard gates. No content, route,
-prompt, recipe, schema, migration or production runtime change is in scope.
+### Immediate sequence
 
-- [x] PR #61 structural Assertion Audit normalization implementation and tests;
-- [x] post-merge EN v3 Assertion Audit executed; the generic-guidance finding is
-  carried into the current PR #62 normalization gate;
+```text
+read-only verify fresh EvidenceSet + OriginalityPack bindings
+→ identify the exact reason the authorized Angle execution safety gate rejects the run
+→ fix only the smallest proven invocation/code defect if one exists
+→ reuse SAME ContentRun + SAME journal_input_bundle
+→ Angle generation
+→ pre-authorized deterministic Angle selection + AngleApproval
+→ Outline
+→ independent VI + EN writers
+→ bounded Review/Revise
+→ Assertion Audit v5 for both locales
+→ require audit_result != fail and critical counts = 0
+→ Source-copy v2 for both locales
+→ require fail_count = 0
+→ Operational Package V0 JSON + Markdown + SHA-256
+→ Founder final operational approval
+→ M1 — ONE REAL JOURNAL PASS
+```
 
-### Current gate — T05.14 ASSERTION AUDIT V5 SEGMENT-LEVEL GUIDANCE NORMALIZATION
+### M1 progress
 
-PR #62 shipped Assertion Audit v4 and Source-copy v3/v3 + v4/v4 compatibility.
-The exact immutable EN v3 v4 audit then produced three critical unsupported
-findings. Read-only preflight confirmed `lead:1` is a genuine unsupported factual
-claim; `section:verify-work-facts:2` and `section:confirm-availability:2` are
-bounded reader guidance with allowed Originality provenance.
+```text
+Runtime DB resolution       PASS
+Fresh planning spine        PASS
+Evidence research           PASS — 8 supports / 3 readable docs
+EvidenceSet/Originality     VERIFY CURRENT BINDINGS BEFORE ANGLE
+Journal input bundle        PASS
+Angle                       BLOCKED — CURRENT GATE
+Outline                     NOT STARTED on fresh candidate
+VI/EN Writer                NOT STARTED on fresh candidate
+Review/Revise               NOT STARTED on fresh candidate
+Assertion Audit v5          NOT STARTED on fresh candidate
+Source-copy v2              NOT STARTED on fresh candidate
+T05.16 Final Package        NOT STARTED
+Founder final approval      NOT STARTED
+T05.17 One Real Journal     NOT ACHIEVED
+```
 
-Owner: **Agent Local** implements the final bounded validator/evaluator fix on
-PR #63; Founder controls merge. No production runtime or model execution is in
-scope before merge. EN v3 and all prior audit diagnostics remain immutable.
+### M1 hard exit criteria
 
-- [ ] PR #63 Assertion Audit generator/evaluator v5 source-sentence guidance normalization;
-- [ ] PR #63 Source-copy v3/v3 + v4/v4 + v5/v5 compatibility and regressions;
-- [ ] post-merge deterministic EN v3 → EN v4 `lead:1` cleanup → Assertion Audit v5 → Source-copy → Operational Package V0;
-- [ ] T05.15 and later gates remain NOT STARTED until this gate passes.
+M1 can be marked PASS only when one fresh real candidate has:
 
-The v5 boundary normalizes only bounded reader guidance from the full source
-sentence, including allowed Originality provenance. `lead:1`, concrete live facts,
-causal/semicolon clauses, Evidence-backed/support/contradicted assertions and all
-other hard types remain fail-closed. Schema remains `1`; prompt/recipe,
-provider/model and migration remain unchanged. V5 is the final classifier
-normalization before first operation.
+- [ ] a valid approved Angle;
+- [ ] a valid approved Outline;
+- [ ] complete final VI visible content;
+- [ ] complete final EN visible content;
+- [ ] bounded Review/Revise complete;
+- [ ] VI Assertion Audit result not `fail`, critical unsupported = 0, critical contradicted = 0;
+- [ ] EN Assertion Audit result not `fail`, critical unsupported = 0, critical contradicted = 0;
+- [ ] VI Source-copy `fail_count = 0`;
+- [ ] EN Source-copy `fail_count = 0`;
+- [ ] every non-critical warning preserved verbatim;
+- [ ] deterministic Operational Package V0 JSON + Markdown with SHA-256;
+- [ ] Founder final operational approval.
 
-### Historical T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
+### T05.16 / T05.17
 
-### T05.15 implementation status — ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
+- [ ] T05.16 Final content package — **NOT YET ACHIEVED ON THE FRESH M1 CANDIDATE**.
+- [ ] T05.17 One real MOTGU Journal end-to-end candidate — **NOT YET ACHIEVED**.
 
-Owner: **Agent Local** implements the bounded hard-gate-equivalence fix on PR #53;
-MG reviews and Founder controls merge. PR #52 concurrency serialization/recovery is
-merged. Real recovery exposed that two independently valid completed eval runs have
-different model `assertion_count` values (32 vs 38), which must not block reuse. No
-production runtime recovery is executed in the implementation task.
+### Post-M1 hardening
 
-- [x] T05.15 EN v5 deterministic cleanup completed and immutable v5 is locked;
-- [x] EN v5 Assertion Audit content result is PASS on both preserved completed eval runs;
-- [x] serialize same-source audit preparation with the source Writer row lock;
-- [x] validate and deterministically recover equivalent completed duplicate audits;
-- [x] preserve active, malformed and conflicting duplicates as fail-closed conditions;
-- [ ] PR #53 hard-gate equivalence fix: exclude model `assertion_count` while retaining
-  deterministic result/counts and route/prompt/recipe conflict checks;
-- [ ] post-merge resume task:
-  `docs/logs/2026-09-11-ce05-t05-15-resume-after-assertion-audit-duplicate-agent-local-task.md`;
-- [ ] EN v5 Assertion Audit reuse twice with zero side effects;
-- [ ] EN v5 Source-copy v2 pass/warn=0/fail=0 and exact rerun reuse;
-- [ ] verify existing VI PASS and all shared upstream lineage remain immutable.
+Keep after the first real Journal unless a demonstrated safety/data-integrity issue requires earlier work:
 
-Assertion Audit generator/evaluator/schema semantics and Source-copy v2 remain unchanged.
-No migration, new provider/model/tool, research, draft edit or generic concurrency
-framework is in scope. T05.16 remains NOT STARTED until the post-merge T05.15
-sequence passes.
-
-### Critical path after T05.15 PASS
-
-- [ ] T05.16 Final content package.
-- [ ] T05.17 One real MOTGU Journal end-to-end candidate.
 - [ ] T05.18 Critical Gate Regression.
 - [ ] T05.19 Resume / Replay Gate.
 - [ ] T05.20 Human Review Surface.
 - [ ] T05.21 CE05 Metrics Baseline.
 - [ ] T05.22 CE05 Closeout.
 
-### Immediate sequence
+### Critical-path rule until M1 PASS
 
-```text
-T05.15 Assertion Audit concurrency/idempotency recovery implementation + final CI/review
-→ Founder merge
-→ Agent Local runs canonical EN v5 Assertion Audit reuse → Source-copy v2 and exact reruns
-→ MG reviews exact findings/provenance and marks T05.15 PASS
-→ T05.16 Final Package
-→ T05.17 ONE REAL JOURNAL PASS
-```
+Every new task must directly shorten or unblock:
 
-### Critical-path rule
+`Angle → Outline → VI/EN → Review → Audit → Source-copy → Package → Founder approval`
 
-Until T05.17 reaches one real Journal candidate:
+Otherwise backlog it.
+
+Before M1 PASS:
 
 - [ ] no new provider;
 - [ ] no new agent role;
@@ -322,12 +283,14 @@ Until T05.17 reaches one real Journal candidate:
 - [ ] no architecture redesign;
 - [ ] no speculative abstraction;
 - [ ] no automated publishing;
+- [ ] no WordPress work;
 - [ ] no automated merge;
-- [ ] no CI optimization unless CI itself becomes a proven blocker.
+- [ ] no CI optimization unless CI itself becomes a demonstrated blocker;
+- [ ] no Assertion Audit v6 unless Founder/MG explicitly reopens the contract after a final hard failure.
 
-Backlog after T05.17 unless proven blocking earlier:
+Canonical current M1 checkpoint:
 
-- [ ] link Angle/Outline/Writer/Review ModelCall `result_artifact_id` directly to persisted output artifacts or establish the equivalent canonical output-reference contract.
+`docs/logs/2026-09-12-ce05-m1-one-real-journal-pass-status.md`
 
 ---
 
