@@ -1,46 +1,153 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from uuid import UUID
+
 import pytest
-from sqlalchemy import delete, func, select
-from test_ce05_review_console import ReviewFixture, _approved_fixture, isolated_session
+from sqlalchemy import func, select
+from test_ce05_review_console import (
+    _approved_fixture,
+    _base_case,
+    _draft,
+    _hash,
+    _persist_lineage,
+    _persist_quality,
+    isolated_session,
+)
 
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.journal.review_actions import (
     ReviewActionError,
     submit_review_decision,
 )
-from app.modules.content_engine.models import ContentVersion
-from app.modules.harness.models import Approval
+from app.modules.content_engine.models import (
+    ContentItem,
+    ContentVersion,
+    LocaleVariant,
+    SettingsSnapshot,
+)
+from app.modules.harness.models import Approval, Artifact, ContentRun
 from app.modules.harness.persistence import pause_for_approval
 
 
-async def _pending_fixture(session) -> ReviewFixture:
-    fixture = await _approved_fixture(session)
-    locale = "en"
-    await session.execute(
-        delete(ContentVersion).where(ContentVersion.id == fixture.versions[locale].id)
+@dataclass
+class PendingReviewFixture:
+    content_case_id: UUID
+    variant: LocaleVariant
+    writer_run: ContentRun
+    final_artifact: Artifact
+    current_audit: Artifact
+
+
+async def _pending_fixture(session) -> PendingReviewFixture:
+    project, content_case, _opportunity = await _base_case(session)
+    snapshot = SettingsSnapshot(
+        project_id=project.id,
+        resolved_settings_json={"models": {}},
+        source_version_refs_json=["fixture"],
+        content_hash="a" * 64,
     )
-    await session.execute(
-        delete(Approval).where(Approval.id == fixture.final_approvals[locale].id)
+    session.add(snapshot)
+    await session.flush()
+
+    variant = LocaleVariant(
+        content_case_id=content_case.id,
+        locale="en",
+        content_role="cluster",
+        primary_question="What can an artwork price tell me?",
+        primary_intent="evaluate",
     )
-    run = fixture.writer_runs[locale]
-    run.status = "running"
-    run.completed_at = None
+    session.add(variant)
+    await session.flush()
+    await _persist_lineage(
+        session,
+        project=project,
+        content_case=content_case,
+        snapshot=snapshot,
+        variant=variant,
+    )
+
+    item = ContentItem(
+        project_id=project.id,
+        content_case_id=content_case.id,
+        locale_variant_id=variant.id,
+        content_type="journal",
+        canonical_key=f"journal:{content_case.id}:en",
+    )
+    session.add(item)
+    await session.flush()
+
+    writer_run = ContentRun(
+        project_id=project.id,
+        content_case_id=content_case.id,
+        locale_variant_id=variant.id,
+        content_item_id=item.id,
+        run_mode="create",
+        status="running",
+        current_step="final_review",
+        settings_snapshot_id=snapshot.id,
+        started_at=datetime.now(UTC),
+    )
+    session.add(writer_run)
+    await session.flush()
+
+    draft_payload = _draft("en")
+    draft_hash = _hash(draft_payload)
+    source_draft = Artifact(
+        run_id=writer_run.id,
+        artifact_type="journal_draft",
+        locale="en",
+        version=4,
+        content_json=draft_payload,
+        content_hash=draft_hash,
+    )
+    final_artifact = Artifact(
+        run_id=writer_run.id,
+        artifact_type="final_content",
+        locale="en",
+        version=1,
+        content_json=draft_payload,
+        content_hash=draft_hash,
+    )
+    session.add_all([source_draft, final_artifact])
+    await session.flush()
+
+    current_audit, _source_copy = await _persist_quality(
+        session,
+        project=project,
+        content_case=content_case,
+        snapshot=snapshot,
+        variant=variant,
+        item=item,
+        writer_run=writer_run,
+        source_draft=source_draft,
+    )
     await session.flush()
     await pause_for_approval(
         session,
-        run_id=run.id,
+        run_id=writer_run.id,
         step_key="final_review",
-        artifact_id=fixture.final_artifacts[locale].id,
+        artifact_id=final_artifact.id,
     )
     await session.flush()
+
     detail = await get_action_aware_review_case(
         session,
-        content_case_id=fixture.content_case.id,
+        content_case_id=content_case.id,
     )
-    panel = next(row for row in detail.locales if row.locale == locale)
+    panel = detail.locales[0]
     assert panel.next_action == "AWAITING_FOUNDER_APPROVAL"
-    return fixture
+    assert panel.content_item_id == item.id
+    assert panel.final_content is not None
+    assert panel.final_content.id == final_artifact.id
+    return PendingReviewFixture(
+        content_case_id=content_case.id,
+        variant=variant,
+        writer_run=writer_run,
+        final_artifact=final_artifact,
+        current_audit=current_audit,
+    )
 
 
 async def _counts(session) -> tuple[int, int]:
@@ -58,8 +165,8 @@ async def test_review_action_approve_persists_version_and_completes_run() -> Non
         before = await _counts(session)
         result = await submit_review_decision(
             session,
-            content_case_id=fixture.content_case.id,
-            locale_variant_id=fixture.variants["en"].id,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
             decision="approved",
             actor_id="founder",
             comment="Duyệt từ giao diện.",
@@ -70,9 +177,9 @@ async def test_review_action_approve_persists_version_and_completes_run() -> Non
         assert result.writer_run_status == "completed"
         detail = await get_action_aware_review_case(
             session,
-            content_case_id=fixture.content_case.id,
+            content_case_id=fixture.content_case_id,
         )
-        panel = next(row for row in detail.locales if row.locale == "en")
+        panel = detail.locales[0]
         assert panel.next_action == "APPROVED_NOT_PUBLISHED"
         assert panel.final_approval is not None
         assert panel.final_approval.decision == "approved"
@@ -86,8 +193,8 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
         with pytest.raises(ReviewActionError, match="review_action_comment_required"):
             await submit_review_decision(
                 session,
-                content_case_id=fixture.content_case.id,
-                locale_variant_id=fixture.variants["en"].id,
+                content_case_id=fixture.content_case_id,
+                locale_variant_id=fixture.variant.id,
                 decision="changes_requested",
                 actor_id="founder",
                 comment="",
@@ -96,8 +203,8 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
 
         result = await submit_review_decision(
             session,
-            content_case_id=fixture.content_case.id,
-            locale_variant_id=fixture.variants["en"].id,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
             decision="changes_requested",
             actor_id="founder",
             comment="Rút gọn đoạn mở đầu.",
@@ -107,9 +214,9 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
         assert result.writer_run_status == "running"
         detail = await get_action_aware_review_case(
             session,
-            content_case_id=fixture.content_case.id,
+            content_case_id=fixture.content_case_id,
         )
-        panel = next(row for row in detail.locales if row.locale == "en")
+        panel = detail.locales[0]
         assert panel.consistency_state == "CONSISTENT"
         assert panel.next_action == "REVISION_REQUESTED"
         assert panel.final_approval is not None
@@ -123,8 +230,8 @@ async def test_review_action_reject_cancels_without_content_version() -> None:
         before = await _counts(session)
         result = await submit_review_decision(
             session,
-            content_case_id=fixture.content_case.id,
-            locale_variant_id=fixture.variants["en"].id,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
             decision="rejected",
             actor_id="founder",
             comment="Không phù hợp định hướng.",
@@ -134,9 +241,9 @@ async def test_review_action_reject_cancels_without_content_version() -> None:
         assert result.writer_run_status == "cancelled"
         detail = await get_action_aware_review_case(
             session,
-            content_case_id=fixture.content_case.id,
+            content_case_id=fixture.content_case_id,
         )
-        panel = next(row for row in detail.locales if row.locale == "en")
+        panel = detail.locales[0]
         assert panel.consistency_state == "CONSISTENT"
         assert panel.next_action == "REJECTED"
 
@@ -147,8 +254,8 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
         fixture = await _pending_fixture(session)
         first = await submit_review_decision(
             session,
-            content_case_id=fixture.content_case.id,
-            locale_variant_id=fixture.variants["en"].id,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
             decision="approved",
             actor_id="founder",
             comment="Duyệt.",
@@ -156,8 +263,8 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
         counts = await _counts(session)
         replay = await submit_review_decision(
             session,
-            content_case_id=fixture.content_case.id,
-            locale_variant_id=fixture.variants["en"].id,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
             decision="approved",
             actor_id="founder",
             comment="Duyệt.",
@@ -172,20 +279,19 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
 async def test_review_action_quality_failure_creates_no_decision() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
-        audit = fixture.current_audits["en"]
-        payload = dict(audit.content_json)
+        payload = dict(fixture.current_audit.content_json or {})
         summary = dict(payload["summary"])
         summary["result"] = "fail"
         summary["critical_unsupported_count"] = 1
         payload["summary"] = summary
-        audit.content_json = payload
+        fixture.current_audit.content_json = payload
         await session.flush()
         before = await _counts(session)
         with pytest.raises(ReviewActionError, match="review_action_quality_blocked"):
             await submit_review_decision(
                 session,
-                content_case_id=fixture.content_case.id,
-                locale_variant_id=fixture.variants["en"].id,
+                content_case_id=fixture.content_case_id,
+                locale_variant_id=fixture.variant.id,
                 decision="approved",
                 actor_id="founder",
                 comment="Duyệt.",
