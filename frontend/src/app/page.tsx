@@ -159,7 +159,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(payload?.detail ?? `Yêu cầu thất bại (${response.status})`);
+    throw new Error(apiErrorLabel(payload?.detail) ?? `Yêu cầu thất bại (${response.status})`);
   }
   return response.json() as Promise<T>;
 }
@@ -192,25 +192,109 @@ function stateLabel(value: string): string {
     QUALITY_BLOCKED: "Bị chặn bởi chất lượng",
     INCONSISTENT_STATE: "Trạng thái không nhất quán",
     NOT_READY: "Chưa sẵn sàng",
+    REVISION_REQUESTED: "Đã yêu cầu sửa",
+    REJECTED: "Đã từ chối",
   };
   return labels[value] ?? value;
+}
+
+function lifecycleLabel(value: string | null): string {
+  if (!value) return "đang chờ";
+  const labels: Record<string, string> = {
+    approved: "đã duyệt",
+    published: "đã xuất bản",
+    draft: "bản nháp",
+    pending: "đang chờ",
+    active: "đang hoạt động",
+    running: "đang chạy",
+    waiting_approval: "chờ duyệt",
+    completed: "đã hoàn thành",
+    cancelled: "đã dừng",
+    ready: "sẵn sàng",
+  };
+  return labels[value] ?? "trạng thái kỹ thuật";
+}
+
+function decisionLabel(value: string): string {
+  const labels: Record<string, string> = {
+    approved: "Đã duyệt",
+    changes_requested: "Đã yêu cầu sửa",
+    rejected: "Đã từ chối",
+  };
+  return labels[value] ?? "Đã ghi quyết định";
+}
+
+function actorLabel(value: string): string {
+  if (value === "founder") return "Người sáng lập";
+  return "Người duyệt";
+}
+
+function opportunityDecisionLabel(value: string): string {
+  const labels: Record<string, string> = {
+    go: "Tiếp tục",
+    proceed: "Tiếp tục",
+    hold: "Tạm giữ",
+    drop: "Dừng",
+    reject: "Dừng",
+  };
+  return labels[value.toLowerCase()] ?? value;
 }
 
 function actionLabel(value: string): string {
   const labels: Record<string, string> = {
     "Approved; publishing not authorized": "Đã duyệt; chưa cho phép xuất bản",
-    "Awaiting Founder final approval": "Đang chờ Founder duyệt nội dung cuối",
+    "Awaiting Founder final approval": "Đang chờ Người sáng lập duyệt nội dung cuối",
     "Review current content": "Cần xem và duyệt nội dung hiện tại",
-    "Current bytes are blocked by quality gates": "Nội dung hiện tại chưa qua cổng chất lượng",
+    "Current bytes are blocked by quality gates": "Nội dung hiện tại chưa qua kiểm tra chất lượng",
     "Resolve conflicting persisted bindings": "Cần xử lý dữ liệu liên kết không nhất quán",
     "Content is not ready for review": "Nội dung chưa sẵn sàng để duyệt",
+    "Founder đã yêu cầu sửa": "Người sáng lập đã yêu cầu sửa",
+    "Founder đã từ chối": "Người sáng lập đã từ chối",
     Published: "Đã xuất bản",
   };
   return labels[value] ?? value;
 }
 
-function findingText(finding: Record<string, unknown>): string {
-  const segment = typeof finding.draft_segment_id === "string" ? finding.draft_segment_id : "mục";
+function issueLabel(value: string): string {
+  const labels: Record<string, string> = {
+    conflicting_final_approval_state: "Có nhiều quyết định duyệt cuối không tương thích.",
+    nonapproved_decision_has_active_content_version: "Quyết định không duyệt đang xung đột với phiên bản nội dung đã kích hoạt.",
+    content_version_missing_final_approval: "Phiên bản nội dung đã duyệt nhưng thiếu quyết định duyệt cuối tương ứng.",
+    final_approval_missing_content_version: "Đã có quyết định duyệt cuối nhưng chưa có phiên bản nội dung tương ứng.",
+  };
+  return labels[value] ?? "Có dữ liệu kỹ thuật cần kiểm tra trước khi tiếp tục.";
+}
+
+function sourceKindLabel(value: unknown): string {
+  if (value === "evidence_excerpt") return "trích dẫn từ nguồn";
+  if (value === "originality_material") return "tư liệu gốc";
+  if (value === "source_document") return "tài liệu nguồn";
+  return "nguồn tham chiếu";
+}
+
+function apiErrorLabel(value: string | undefined): string | null {
+  if (!value) return null;
+  const labels: Record<string, string> = {
+    review_action_actor_required: "Thiếu người thực hiện quyết định.",
+    review_action_comment_required: "Cần ghi lý do khi yêu cầu sửa hoặc từ chối.",
+    review_action_locale_not_found: "Không tìm thấy bản ngôn ngữ cần duyệt.",
+    review_action_inconsistent_state: "Dữ liệu hiện tại không nhất quán; chưa thể ghi quyết định.",
+    review_action_quality_blocked: "Nội dung chưa đạt điều kiện chất lượng để duyệt.",
+    review_action_final_binding_missing: "Thiếu liên kết tới nội dung cuối.",
+    review_action_final_binding_mismatch: "Liên kết nội dung cuối không khớp.",
+    review_action_final_content_invalid: "Nội dung cuối không hợp lệ.",
+    review_action_content_version_conflict: "Có xung đột phiên bản nội dung đã duyệt.",
+    review_action_decision_conflict: "Đã tồn tại một quyết định khác cho nội dung này.",
+    review_action_content_item_missing: "Thiếu mục nội dung cần duyệt.",
+    review_action_partial_approved_state: "Trạng thái duyệt trước đó chưa hoàn chỉnh.",
+    review_action_not_awaiting_founder: "Nội dung hiện không ở trạng thái chờ duyệt cuối.",
+    review_action_run_state_invalid: "Trạng thái xử lý hiện tại không cho phép ghi quyết định.",
+  };
+  const code = Object.keys(labels).find((key) => value.includes(key));
+  return code ? labels[code] : "Không thể lưu quyết định do trạng thái dữ liệu hiện tại.";
+}
+
+function findingText(finding: Record<string, unknown>, index: number): string {
   const draftSpan =
     typeof finding.matched_draft_span === "object" && finding.matched_draft_span !== null
       ? (finding.matched_draft_span as Record<string, unknown>)
@@ -221,9 +305,9 @@ function findingText(finding: Record<string, unknown>): string {
       : typeof finding.normalized_match === "string"
         ? finding.normalized_match
         : "";
-  const source = typeof finding.source_kind === "string" ? finding.source_kind : "nguồn";
+  const source = sourceKindLabel(finding.source_kind);
   const tokens = typeof finding.overlap_token_count === "number" ? finding.overlap_token_count : null;
-  return `${segment} — trùng “${matched}”; nguồn ${source}${tokens === null ? "" : `; ${tokens} token`}`;
+  return `Cảnh báo ${index + 1} — trùng “${matched}”; ${source}${tokens === null ? "" : `; ${tokens} từ`}`;
 }
 
 function articleMarkdown(panel: LocalePanel): string {
@@ -289,7 +373,7 @@ function LocaleArticle({
     <article className="locale-panel">
       <header className="locale-header">
         <div>
-          <p className="eyebrow">{localeLabel(panel.locale)} · {panel.locale}</p>
+          <p className="eyebrow">{localeLabel(panel.locale)}</p>
           <h2>{panel.article?.title ?? "Chưa có nội dung cuối"}</h2>
         </div>
         <div className="header-badges">
@@ -300,10 +384,10 @@ function LocaleArticle({
 
       <div className="version-line">
         <span>
-          Phiên bản nội dung {panel.content_version_no ?? "—"} · {panel.content_version_status ?? "đang chờ"}
+          Phiên bản nội dung {panel.content_version_no ?? "—"} · {lifecycleLabel(panel.content_version_status)}
         </span>
         <span>
-          Duyệt cuối: {panel.final_approval ? `${panel.final_approval.decision} · ${panel.final_approval.actor_id}` : "chưa có"}
+          Duyệt cuối: {panel.final_approval ? `${decisionLabel(panel.final_approval.decision)} · ${actorLabel(panel.final_approval.actor_id)}` : "chưa có"}
         </span>
       </div>
 
@@ -318,7 +402,6 @@ function LocaleArticle({
           <p className="lead">{panel.article.lead_markdown}</p>
           {panel.article.sections.map((section) => (
             <section className="article-section" key={section.section_id}>
-              <p className="section-id">{section.section_id}</p>
               <h3>{section.heading}</h3>
               <p className="markdown-copy">{section.body_markdown}</p>
             </section>
@@ -341,7 +424,7 @@ function LocaleArticle({
           <p className="label">Kiểm tra trùng nguồn</p>
           <strong>{stateLabel(panel.source_copy.result.toUpperCase())}</strong>
           <small>
-            lỗi {panel.source_copy.fail_count} · cảnh báo {panel.source_copy.warn_count} · tối đa {panel.source_copy.max_overlap_tokens} token
+            lỗi {panel.source_copy.fail_count} · cảnh báo {panel.source_copy.warn_count} · tối đa {panel.source_copy.max_overlap_tokens} từ
           </small>
         </div>
       </div>
@@ -350,7 +433,7 @@ function LocaleArticle({
         <section className="warnings">
           <p className="label">Cảnh báo còn lại</p>
           {panel.source_copy.findings.map((finding, index) => (
-            <p key={`${panel.locale}-finding-${index}`}>{findingText(finding)}</p>
+            <p key={`${panel.locale}-finding-${index}`}>{findingText(finding, index)}</p>
           ))}
         </section>
       )}
@@ -358,7 +441,7 @@ function LocaleArticle({
       {panel.issues.length > 0 && (
         <section className="issues">
           <p className="label">Vấn đề nhất quán dữ liệu</p>
-          {panel.issues.map((issue) => <p key={issue}>{issue}</p>)}
+          {panel.issues.map((issue) => <p key={issue}>{issueLabel(issue)}</p>)}
         </section>
       )}
 
@@ -368,7 +451,7 @@ function LocaleArticle({
 
       {canDecide && (
         <section className="review-decision-panel">
-          <p className="label">Quyết định của Founder</p>
+          <p className="label">Quyết định của Người sáng lập</p>
           <textarea
             onChange={(event) => setComment(event.target.value)}
             placeholder="Ghi chú hoặc lý do. Bắt buộc nếu yêu cầu sửa hoặc từ chối."
@@ -390,14 +473,14 @@ function LocaleArticle({
           <div><dt>Mục nội dung</dt><dd>{panel.content_item_id ?? "—"}</dd></div>
           <div><dt>Khóa chuẩn</dt><dd>{panel.canonical_key ?? "—"}</dd></div>
           <div><dt>Phiên bản nội dung</dt><dd>{panel.content_version_id ?? "—"}</dd></div>
-          <div><dt>Writer run</dt><dd>{panel.provenance.writer_run_id ?? "—"}</dd></div>
+          <div><dt>Lượt viết</dt><dd>{panel.provenance.writer_run_id ?? "—"}</dd></div>
           <div><dt>Bản nháp nguồn</dt><dd>{panel.provenance.source_draft?.id ?? "—"}</dd></div>
           <div><dt>Nội dung cuối</dt><dd>{panel.final_content?.id ?? "—"}</dd></div>
-          <div><dt>Hash nội dung cuối</dt><dd>{panel.final_content?.content_hash ?? "—"}</dd></div>
+          <div><dt>Dấu kiểm nội dung cuối</dt><dd>{panel.final_content?.content_hash ?? "—"}</dd></div>
           <div><dt>Duyệt cuối</dt><dd>{panel.final_approval?.id ?? "—"}</dd></div>
-          <div><dt>Artifact kiểm tra</dt><dd>{panel.assertion_audit.artifact?.id ?? "—"}</dd></div>
+          <div><dt>Mã dữ liệu kiểm tra</dt><dd>{panel.assertion_audit.artifact?.id ?? "—"}</dd></div>
           <div><dt>Đánh giá chất lượng</dt><dd>{panel.assertion_audit.quality_evaluation_id ?? "—"}</dd></div>
-          <div><dt>Artifact trùng nguồn</dt><dd>{panel.source_copy.artifact?.id ?? "—"}</dd></div>
+          <div><dt>Mã dữ liệu trùng nguồn</dt><dd>{panel.source_copy.artifact?.id ?? "—"}</dd></div>
           <div><dt>Đánh giá trùng nguồn</dt><dd>{panel.source_copy.quality_evaluation_id ?? "—"}</dd></div>
         </dl>
       </details>
@@ -494,7 +577,7 @@ export default function Home() {
 
       {!loading && !error && cases.length === 0 && (
         <section className="empty-state">
-          <h2>Chưa có bài Journal</h2>
+          <h2>Chưa có bài nội dung</h2>
           <p>Bảng duyệt sẽ hiển thị khi ContentEngine có bài đã được lưu.</p>
         </section>
       )}
@@ -523,7 +606,7 @@ export default function Home() {
 
             {selectedSummary && (
               <div className="case-facts">
-                <p><span>Quyết định cơ hội</span>{selectedSummary.opportunity_decision}</p>
+                <p><span>Quyết định cơ hội</span>{opportunityDecisionLabel(selectedSummary.opportunity_decision)}</p>
                 <p><span>Mã bài</span>{shortId(selectedSummary.id)}</p>
                 <p><span>Nhất quán</span>{stateLabel(selectedSummary.consistency_state)}</p>
               </div>
@@ -548,7 +631,7 @@ export default function Home() {
                 {detail.issues.length > 0 && (
                   <section className="issues">
                     <p className="label">Vấn đề nhất quán của bài</p>
-                    {detail.issues.map((issue) => <p key={issue}>{issue}</p>)}
+                    {detail.issues.map((issue) => <p key={issue}>{issueLabel(issue)}</p>)}
                   </section>
                 )}
 
@@ -575,13 +658,13 @@ export default function Home() {
                     <div>
                       <p className="label">Góc tiếp cận</p>
                       <strong>{detail.angle?.selected_working_title ?? detail.angle?.selected_angle_id ?? "Chưa xác định"}</strong>
-                      <p>Artifact: {detail.angle?.artifact.id ?? "—"}</p>
+                      <p>Mã dữ liệu: {detail.angle?.artifact.id ?? "—"}</p>
                       <p>Duyệt: {detail.angle?.approval_id ?? "—"}</p>
                     </div>
                     <div>
                       <p className="label">Dàn ý</p>
-                      <strong>{detail.outline ? `Đã duyệt bởi ${detail.outline.approved_by}` : "Chưa xác định"}</strong>
-                      <p>Artifact: {detail.outline?.artifact.id ?? "—"}</p>
+                      <strong>{detail.outline ? `Đã duyệt bởi ${actorLabel(detail.outline.approved_by)}` : "Chưa xác định"}</strong>
+                      <p>Mã dữ liệu: {detail.outline?.artifact.id ?? "—"}</p>
                       <p>Duyệt: {detail.outline?.approval_id ?? "—"}</p>
                     </div>
                   </div>
