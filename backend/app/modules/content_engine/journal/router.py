@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -12,6 +12,11 @@ from app.core.database import get_db
 from app.modules.content_engine.journal.context import (
     JournalContextError,
     build_journal_context,
+)
+from app.modules.content_engine.journal.review_actions import (
+    ReviewActionError,
+    ReviewDecisionResult,
+    submit_review_decision,
 )
 from app.modules.content_engine.journal.review_console import (
     ReviewCaseDetail,
@@ -45,6 +50,11 @@ class JournalCaseResponse(BaseModel):
     opportunity_decision: str
     opportunity_selected_by: str | None
     variants: list[JournalVariantResponse]
+
+
+class ReviewDecisionRequest(BaseModel):
+    decision: Literal["approved", "changes_requested", "rejected"]
+    comment: str | None = None
 
 
 @router.get("/content-cases", response_model=list[JournalCaseResponse])
@@ -105,6 +115,33 @@ async def get_journal_review_case(
 ) -> ReviewCaseDetail:
     try:
         return await get_review_case(session, content_case_id=content_case_id)
+    except ReviewConsoleError as exc:
+        status_code = 404 if exc.code.endswith("not_found") else 422
+        raise HTTPException(status_code=status_code, detail=exc.code) from exc
+
+
+@router.post(
+    "/review-cases/{content_case_id}/locales/{locale_variant_id}/decision",
+    response_model=ReviewDecisionResult,
+)
+async def decide_journal_review_locale(
+    content_case_id: UUID,
+    locale_variant_id: UUID,
+    payload: ReviewDecisionRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ReviewDecisionResult:
+    try:
+        async with session.begin():
+            return await submit_review_decision(
+                session,
+                content_case_id=content_case_id,
+                locale_variant_id=locale_variant_id,
+                decision=payload.decision,
+                actor_id="founder",
+                comment=payload.comment,
+            )
+    except ReviewActionError as exc:
+        raise HTTPException(status_code=409, detail=exc.code) from exc
     except ReviewConsoleError as exc:
         status_code = 404 if exc.code.endswith("not_found") else 422
         raise HTTPException(status_code=status_code, detail=exc.code) from exc
