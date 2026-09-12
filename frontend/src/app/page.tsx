@@ -365,7 +365,8 @@ export default function Home() {
   const [selectedCaseId, setSelectedCaseId] = useState("");
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const selectedSummary = useMemo(
     () => cases.find((item) => item.id === selectedCaseId) ?? null,
@@ -373,23 +374,20 @@ export default function Home() {
   );
 
   useEffect(() => {
-    setLoading(true);
     loadJson<CaseSummary[]>("/journal/review-cases")
       .then((loadedCases) => {
         setCases(loadedCases);
-        setSelectedCaseId(loadedCases[0]?.id ?? "");
+        const firstCaseId = loadedCases[0]?.id ?? "";
+        if (firstCaseId) setDetailLoading(true);
+        setSelectedCaseId(firstCaseId);
         setError("");
       })
       .catch((requestError: Error) => setError(requestError.message))
-      .finally(() => setLoading(false));
+      .finally(() => setListLoading(false));
   }, []);
 
   useEffect(() => {
-    if (!selectedCaseId) {
-      setDetail(null);
-      return;
-    }
-    setLoading(true);
+    if (!selectedCaseId) return;
     loadJson<CaseDetail>(`/journal/review-cases/${selectedCaseId}`)
       .then((loadedDetail) => {
         setDetail(loadedDetail);
@@ -399,7 +397,7 @@ export default function Home() {
         setDetail(null);
         setError(requestError.message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => setDetailLoading(false));
   }, [selectedCaseId]);
 
   const panels = useMemo(() => {
@@ -410,6 +408,16 @@ export default function Home() {
       return a.locale.localeCompare(b.locale);
     });
   }, [detail]);
+
+  function selectCase(caseId: string) {
+    if (caseId === selectedCaseId) return;
+    setDetailLoading(true);
+    setDetail(null);
+    setError("");
+    setSelectedCaseId(caseId);
+  }
+
+  const loading = listLoading || detailLoading;
 
   return (
     <main>
@@ -455,7 +463,7 @@ export default function Home() {
                     contentCase.id === selectedCaseId ? "case-card active" : "case-card"
                   }
                   key={contentCase.id}
-                  onClick={() => setSelectedCaseId(contentCase.id)}
+                  onClick={() => selectCase(contentCase.id)}
                   type="button"
                 >
                   <span className="case-question">{contentCase.opportunity_question}</span>
