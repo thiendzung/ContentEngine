@@ -24,9 +24,9 @@ If any value differs, STOP and report. Do not repair/research/recreate.
 
 Agent Local may perform read-only preflight and post-run inspection. It must NOT attempt the generation command if its host policy denies model execution.
 
-Founder authorizes, by explicitly dispatching this task, one direct execution of the repository's safe Angle CLI from a normal local terminal that permits the command. The runtime itself may use at most the existing AngleGenerator contract of two model attempts total, only for structured-output validation. No research calls, no fallback-provider switching and no retry after the script exits.
+Founder authorizes, by explicitly dispatching this task, one direct execution of the repository's safe Angle CLI from a normal local terminal that permits the command. LF-02 allows exactly one model attempt, with the existing 300-second Angle timeout. There is no automatic generation retry in this task. The route uses the existing cached authenticated CLI session; if the CLI requests login, a new paid credential, purchase/billing action or a different model/provider, stop and report instead of proceeding.
 
-Permitted DB writes are only those made by the canonical Angle runtime: one Angle StepRun/context manifest, bounded ModelCall record(s), one immutable `angle_candidates` artifact, and normal run/step state transitions. No EvidenceSet, OriginalityPack, settings, approval, migration or other content mutation is authorized.
+Permitted DB writes are only those made by the canonical Angle runtime: one Angle StepRun/context manifest, one bounded ModelCall record, one immutable `angle_candidates` artifact, and normal run/step state transitions. No EvidenceSet, OriginalityPack, settings, approval, migration or other content mutation is authorized.
 
 If the Founder terminal, OS or another policy refuses the command, stop. Do not disguise, split, weaken safeguards or find an alternate provider merely to make it run.
 
@@ -58,7 +58,7 @@ After Founder reports command completion, Agent Local verifies:
 
 - run and Angle StepRun status;
 - ContextManifest ID/hash and exact settings/evidence/originality binding;
-- Angle ModelCall count/status/provider/model and sanitized input provenance;
+- the single Angle ModelCall status/provider/model and sanitized input provenance;
 - ToolCall delta remains zero;
 - Angle artifact ID/version/hash and candidate count;
 - EvidenceSet, OriginalityPack and SettingsSnapshot unchanged;

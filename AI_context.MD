@@ -42,7 +42,7 @@ Task file:
 
 `docs/logs/2026-09-12-lf02-founder-angle-execution-task.md`
 
-LF-02 permission is bounded to the same run/bundle/settings and route. Existing AngleGenerator validation retry allows at most two model attempts total. No research, provider fallback, approval, migration or Outline is authorized. If the terminal/OS refuses execution, stop rather than bypassing it.
+LF-02 permission is bounded to the same run/bundle/settings and route. The LF-02 CLI intentionally allows exactly one model attempt with the existing 300-second Angle timeout; no automatic generation retry, research, provider fallback, approval, migration or Outline is authorized. If the terminal/OS refuses execution, stop rather than bypassing it.
 
 Success: 3-5 schema-valid Angle candidates persisted with exact provenance, ToolCall delta zero and no unintended upstream mutation. Then stop for Founder/MG selection.
 

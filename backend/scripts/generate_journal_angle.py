@@ -226,7 +226,7 @@ async def _run(args: argparse.Namespace) -> None:
         await transition_step_run(session, step_run_id=step.id, status="running")
 
         try:
-            result = await AngleGenerator(max_attempts=2).generate_candidates(
+            result = await AngleGenerator(max_attempts=1).generate_candidates(
                 session,
                 journal_input_bundle_id=bundle.artifact.id,
                 expected_bundle_hash=bundle.artifact.content_hash,
