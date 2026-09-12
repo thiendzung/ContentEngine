@@ -32,14 +32,24 @@ def _raw_quality(panel: ReviewLocalePanel) -> str:
         return "FAIL"
     if audit.result == "pending" or source_copy.result == "pending":
         return "PENDING"
-    if audit.result == "warn" or source_copy.result == "warn" or source_copy.warn_count > 0:
+    if (
+        audit.result == "warn"
+        or source_copy.result == "warn"
+        or source_copy.warn_count > 0
+    ):
         return "WARN"
     return "PASS"
 
 
 def _aggregate(locales: list[ReviewLocalePanel]) -> tuple[str, str, str, str, str]:
     if not locales:
-        return "PENDING", "NOT_PUBLISHED", "CONSISTENT", "NOT_READY", "No locale variants"
+        return (
+            "PENDING",
+            "NOT_PUBLISHED",
+            "CONSISTENT",
+            "NOT_READY",
+            "Không có biến thể ngôn ngữ",
+        )
     published = any(panel.publication_state == "PUBLISHED" for panel in locales)
     publication = "PUBLISHED" if published else "NOT_PUBLISHED"
     if any(panel.consistency_state == "INCONSISTENT" for panel in locales):
@@ -72,10 +82,19 @@ def _aggregate(locales: list[ReviewLocalePanel]) -> tuple[str, str, str, str, st
     )
     labels = {panel.next_action: panel.next_action_label for panel in locales}
     code = next((item for item in priority if item in labels), locales[0].next_action)
-    return quality, publication, "CONSISTENT", code, labels.get(code, locales[0].next_action_label)
+    return (
+        quality,
+        publication,
+        "CONSISTENT",
+        code,
+        labels.get(code, locales[0].next_action_label),
+    )
 
 
-async def _apply_final_decisions(session: AsyncSession, detail: ReviewCaseDetail) -> ReviewCaseDetail:
+async def _apply_final_decisions(
+    session: AsyncSession,
+    detail: ReviewCaseDetail,
+) -> ReviewCaseDetail:
     for panel in detail.locales:
         if panel.final_content is None:
             continue
@@ -93,7 +112,9 @@ async def _apply_final_decisions(session: AsyncSession, detail: ReviewCaseDetail
             continue
         decision = decisions[0]
         remaining_issues = [
-            issue for issue in panel.issues if issue != "conflicting_final_approval_state"
+            issue
+            for issue in panel.issues
+            if issue != "conflicting_final_approval_state"
         ]
         if panel.content_version_status in {"approved", "published"}:
             remaining_issues.append("nonapproved_decision_has_active_content_version")
@@ -111,10 +132,10 @@ async def _apply_final_decisions(session: AsyncSession, detail: ReviewCaseDetail
             panel.next_action_label = "Resolve conflicting persisted bindings"
         elif decision.decision == "changes_requested":
             panel.next_action = "REVISION_REQUESTED"
-            panel.next_action_label = "Revision requested by Founder"
+            panel.next_action_label = "Founder đã yêu cầu sửa"
         else:
             panel.next_action = "REJECTED"
-            panel.next_action_label = "Rejected by Founder"
+            panel.next_action_label = "Founder đã từ chối"
 
     if detail.issues:
         return detail
@@ -136,7 +157,9 @@ async def get_action_aware_review_case(
     return await _apply_final_decisions(session, detail)
 
 
-async def list_action_aware_review_cases(session: AsyncSession) -> list[ReviewCaseSummary]:
+async def list_action_aware_review_cases(
+    session: AsyncSession,
+) -> list[ReviewCaseSummary]:
     case_ids = list(
         (
             await session.scalars(
@@ -148,7 +171,10 @@ async def list_action_aware_review_cases(session: AsyncSession) -> list[ReviewCa
     )
     summaries: list[ReviewCaseSummary] = []
     for content_case_id in case_ids:
-        detail = await get_action_aware_review_case(session, content_case_id=content_case_id)
+        detail = await get_action_aware_review_case(
+            session,
+            content_case_id=content_case_id,
+        )
         summaries.append(
             ReviewCaseSummary(
                 id=detail.id,
