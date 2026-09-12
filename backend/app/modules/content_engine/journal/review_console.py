@@ -21,7 +21,7 @@ from app.modules.harness.models import Approval, Artifact, ContentRun, QualityEv
 
 
 class ReviewConsoleError(ValueError):
-    """Raised when a read-only Journal review representation cannot be resolved safely."""
+    """Raised when a Journal review representation cannot be resolved safely."""
 
     def __init__(self, code: str, detail: str | None = None) -> None:
         self.code = code
@@ -173,6 +173,7 @@ class ReviewCaseDetail(BaseModel):
     quality_state: str
     publication_state: str
     consistency_state: str
+    issues: list[str] = Field(default_factory=list)
     next_action: str
     next_action_label: str
 
@@ -432,7 +433,11 @@ def _quality_state(audit: ReviewAuditState, source_copy: ReviewSourceCopyState) 
         return "FAIL"
     if audit.result == "pending" or source_copy.result == "pending":
         return "PENDING"
-    if audit.result == "warn" or source_copy.result == "warn" or source_copy.warn_count > 0:
+    if (
+        audit.result == "warn"
+        or source_copy.result == "warn"
+        or source_copy.warn_count > 0
+    ):
         return "WARN"
     return "PASS"
 
@@ -451,82 +456,112 @@ def _next_action(
         return "INCONSISTENT_STATE", "Resolve conflicting persisted bindings"
     if quality_state == "FAIL":
         return "QUALITY_BLOCKED", "Current bytes are blocked by quality gates"
+    if final_artifact is not None and final_approval is None:
+        return "AWAITING_FOUNDER_APPROVAL", "Awaiting Founder final approval"
     if version is not None and version.status == "published":
         return "PUBLISHED", "Published"
     if version is not None and version.status == "approved":
         return "APPROVED_NOT_PUBLISHED", "Approved; publishing not authorized"
-    if final_artifact is not None and final_approval is None:
-        return "AWAITING_FOUNDER_APPROVAL", "Awaiting Founder final approval"
-    if has_review_output or (writer_run is not None and writer_run.status == "waiting_approval"):
+    if has_review_output or (
+        writer_run is not None and writer_run.status == "waiting_approval"
+    ):
         return "REVIEW_REQUIRED", "Review current content"
     return "NOT_READY", "Content is not ready for review"
 
 
-def _resolve_lineage(rows: _CaseRows) -> tuple[ReviewAngleLineage | None, ReviewOutlineLineage | None]:
+def _resolve_lineage(
+    rows: _CaseRows,
+) -> tuple[ReviewAngleLineage | None, ReviewOutlineLineage | None, list[str]]:
+    issues: list[str] = []
     if len(rows.outline_approvals) > 1:
-        return None, None
+        return None, None, ["multiple_outline_approvals"]
+    if len(rows.outline_approvals) == 0 and len(rows.angle_approvals) > 1:
+        return None, None, ["multiple_angle_approvals"]
+
     outline_lineage: ReviewOutlineLineage | None = None
     angle_lineage: ReviewAngleLineage | None = None
     if len(rows.outline_approvals) == 1:
         approval = rows.outline_approvals[0]
         artifact = rows.artifact_by_id.get(approval.outline_artifact_id)
-        if artifact is not None:
-            outline_lineage = ReviewOutlineLineage(
-                artifact=_artifact_ref(artifact),
-                approval_id=approval.id,
-                approved_by=approval.approved_by,
-            )
-            payload = _dict(artifact.content_json)
-            approved_angle = _dict(payload.get("approved_angle")) if payload else None
-            angle_artifact_ref = _dict(approved_angle.get("artifact")) if approved_angle else None
-            angle_approval_ref = _dict(approved_angle.get("approval")) if approved_angle else None
-            if angle_artifact_ref and angle_approval_ref:
-                raw_angle_id = angle_artifact_ref.get("id")
-                raw_approval_id = angle_approval_ref.get("id")
-                try:
-                    angle_artifact_id = UUID(cast(str, raw_angle_id))
-                    angle_approval_id = UUID(cast(str, raw_approval_id))
-                except (TypeError, ValueError):
-                    angle_artifact_id = None
-                    angle_approval_id = None
-                if angle_artifact_id is not None and angle_approval_id is not None:
-                    angle_artifact = rows.artifact_by_id.get(angle_artifact_id)
-                    angle_approval = next(
-                        (row for row in rows.angle_approvals if row.id == angle_approval_id),
-                        None,
-                    )
-                    if angle_artifact is not None and angle_approval is not None:
-                        title: str | None = None
-                        angle_payload = _dict(angle_artifact.content_json)
-                        raw_candidates = angle_payload.get("candidates") if angle_payload else None
-                        if isinstance(raw_candidates, list):
-                            for raw in raw_candidates:
-                                candidate = _dict(raw)
-                                if (
-                                    candidate
-                                    and candidate.get("angle_id") == angle_approval.selected_angle_id
-                                    and isinstance(candidate.get("working_title"), str)
-                                ):
-                                    title = cast(str, candidate["working_title"])
-                                    break
-                        angle_lineage = ReviewAngleLineage(
-                            artifact=_artifact_ref(angle_artifact),
-                            approval_id=angle_approval.id,
-                            selected_angle_id=angle_approval.selected_angle_id,
-                            selected_working_title=title,
-                            approved_by=angle_approval.approved_by,
-                        )
+        if artifact is None:
+            return None, None, ["approved_outline_artifact_missing"]
+        outline_lineage = ReviewOutlineLineage(
+            artifact=_artifact_ref(artifact),
+            approval_id=approval.id,
+            approved_by=approval.approved_by,
+        )
+        payload = _dict(artifact.content_json)
+        approved_angle = _dict(payload.get("approved_angle")) if payload else None
+        angle_artifact_ref = (
+            _dict(approved_angle.get("artifact")) if approved_angle else None
+        )
+        angle_approval_ref = (
+            _dict(approved_angle.get("approval")) if approved_angle else None
+        )
+        if angle_artifact_ref is None or angle_approval_ref is None:
+            return None, outline_lineage, ["approved_outline_angle_binding_missing"]
+        raw_angle_id = angle_artifact_ref.get("id")
+        raw_approval_id = angle_approval_ref.get("id")
+        try:
+            angle_artifact_id = UUID(cast(str, raw_angle_id))
+            angle_approval_id = UUID(cast(str, raw_approval_id))
+        except (TypeError, ValueError):
+            return None, outline_lineage, ["approved_outline_angle_binding_invalid"]
+        angle_artifact = rows.artifact_by_id.get(angle_artifact_id)
+        angle_approval = next(
+            (row for row in rows.angle_approvals if row.id == angle_approval_id),
+            None,
+        )
+        if angle_artifact is None or angle_approval is None:
+            return None, outline_lineage, ["approved_angle_binding_not_found"]
+
+        title: str | None = None
+        angle_payload = _dict(angle_artifact.content_json)
+        raw_candidates = angle_payload.get("candidates") if angle_payload else None
+        if isinstance(raw_candidates, list):
+            for raw in raw_candidates:
+                candidate = _dict(raw)
+                if candidate is None:
+                    continue
+                if candidate.get("angle_id") != angle_approval.selected_angle_id:
+                    continue
+                working_title = candidate.get("working_title")
+                if isinstance(working_title, str):
+                    title = working_title
+                break
+        angle_lineage = ReviewAngleLineage(
+            artifact=_artifact_ref(angle_artifact),
+            approval_id=angle_approval.id,
+            selected_angle_id=angle_approval.selected_angle_id,
+            selected_working_title=title,
+            approved_by=angle_approval.approved_by,
+        )
     elif len(rows.angle_approvals) == 1:
         approval = rows.angle_approvals[0]
         artifact = rows.artifact_by_id.get(approval.angle_artifact_id)
-        if artifact is not None:
+        if artifact is None:
+            issues.append("approved_angle_artifact_missing")
+        else:
             angle_lineage = ReviewAngleLineage(
                 artifact=_artifact_ref(artifact),
                 approval_id=approval.id,
                 selected_angle_id=approval.selected_angle_id,
                 approved_by=approval.approved_by,
             )
-    return angle_lineage, outline_lineage
+    return angle_lineage, outline_lineage, issues
+
+
+def _current_version(rows: _CaseRows, item: ContentItem | None) -> ContentVersion | None:
+    if item is None:
+        return None
+    active = [
+        row
+        for row in rows.versions
+        if row.content_item_id == item.id and row.status in {"approved", "published"}
+    ]
+    if not active:
+        return None
+    return max(active, key=lambda row: (row.version_no, str(row.id)))
 
 
 def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePanel:
@@ -537,16 +572,7 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
         consistency_state = "INCONSISTENT"
         issues.append("multiple_content_items_for_locale_variant")
     item = variant_items[0] if len(variant_items) == 1 else None
-
-    version: ContentVersion | None = None
-    if item is not None:
-        active_versions = [
-            row
-            for row in rows.versions
-            if row.content_item_id == item.id and row.status in {"approved", "published"}
-        ]
-        if active_versions:
-            version = max(active_versions, key=lambda row: (row.version_no, str(row.id)))
+    version = _current_version(rows, item)
 
     final_artifact: Artifact | None = None
     if version is not None and version.final_artifact_id is not None:
@@ -556,14 +582,16 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
             issues.append("content_version_final_artifact_invalid")
             final_artifact = None
     elif item is not None:
-        candidates = [
-            artifact
-            for artifact in rows.artifacts
-            if artifact.artifact_type == "final_content"
-            and artifact.locale == variant.locale
-            and rows.run_by_id.get(artifact.run_id) is not None
-            and rows.run_by_id[artifact.run_id].locale_variant_id == variant.id
-        ]
+        candidates = []
+        for artifact in rows.artifacts:
+            run = rows.run_by_id.get(artifact.run_id)
+            if (
+                artifact.artifact_type == "final_content"
+                and artifact.locale == variant.locale
+                and run is not None
+                and run.locale_variant_id == variant.id
+            ):
+                candidates.append(artifact)
         if len(candidates) == 1:
             final_artifact = candidates[0]
         elif len(candidates) > 1:
@@ -580,20 +608,37 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
     elif final_artifact is not None:
         writer_run = rows.run_by_id.get(final_artifact.run_id)
 
+    if version is not None and final_artifact is not None:
+        if version.content_json != final_artifact.content_json:
+            consistency_state = "INCONSISTENT"
+            issues.append("content_version_final_content_payload_mismatch")
+        if writer_run is not None and final_artifact.run_id != writer_run.id:
+            consistency_state = "INCONSISTENT"
+            issues.append("final_content_writer_run_mismatch")
+
     final_approval: Approval | None = None
     if final_artifact is not None:
         final_approvals = [
             approval
             for approval in rows.approvals
-            if approval.artifact_id == final_artifact.id and approval.step_key == "final_review"
+            if approval.artifact_id == final_artifact.id
+            and approval.step_key == "final_review"
         ]
         if len(final_approvals) == 1 and final_approvals[0].decision == "approved":
             final_approval = final_approvals[0]
         elif len(final_approvals) > 1 or (
-            len(final_approvals) == 1 and final_approvals[0].decision != "approved"
+            len(final_approvals) == 1
+            and final_approvals[0].decision != "approved"
         ):
             consistency_state = "INCONSISTENT"
             issues.append("conflicting_final_approval_state")
+    if (
+        version is not None
+        and version.status in {"approved", "published"}
+        and final_approval is None
+    ):
+        consistency_state = "INCONSISTENT"
+        issues.append("content_version_missing_final_approval")
 
     source_draft: Artifact | None = None
     if writer_run is not None and final_artifact is not None:
@@ -616,7 +661,10 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
     if source_draft is not None:
         audit_candidates: list[Artifact] = []
         for artifact in rows.artifacts:
-            if artifact.artifact_type != "assertion_audit" or artifact.locale != variant.locale:
+            if (
+                artifact.artifact_type != "assertion_audit"
+                or artifact.locale != variant.locale
+            ):
                 continue
             payload = _dict(artifact.content_json)
             if payload is not None and _source_ref_matches(payload, source_draft):
@@ -640,8 +688,12 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
                     artifact=_artifact_ref(audit_artifact),
                     quality_evaluation_id=qe.id,
                     result=str(summary.get("result", qe.result)),
-                    critical_unsupported_count=_int(summary.get("critical_unsupported_count")),
-                    critical_contradicted_count=_int(summary.get("critical_contradicted_count")),
+                    critical_unsupported_count=_int(
+                        summary.get("critical_unsupported_count")
+                    ),
+                    critical_contradicted_count=_int(
+                        summary.get("critical_contradicted_count")
+                    ),
                     unsupported_count=_int(summary.get("unsupported_count")),
                     contradicted_count=_int(summary.get("contradicted_count")),
                 )
@@ -653,7 +705,10 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
     if source_draft is not None and audit_artifact is not None:
         copy_candidates: list[Artifact] = []
         for artifact in rows.artifacts:
-            if artifact.artifact_type != "source_copy_check" or artifact.locale != variant.locale:
+            if (
+                artifact.artifact_type != "source_copy_check"
+                or artifact.locale != variant.locale
+            ):
                 continue
             payload = _dict(artifact.content_json)
             if (
@@ -668,7 +723,11 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
             summary = _dict(payload.get("summary")) or {}
             raw_findings = payload.get("findings")
             findings = (
-                [cast(dict[str, Any], row) for row in raw_findings if isinstance(row, dict)]
+                [
+                    cast(dict[str, Any], row)
+                    for row in raw_findings
+                    if isinstance(row, dict)
+                ]
                 if isinstance(raw_findings, list)
                 else []
             )
@@ -700,12 +759,16 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
     quality_state = _quality_state(audit, source_copy)
     if consistency_state == "INCONSISTENT":
         quality_state = "FAIL"
-    publication_state = "PUBLISHED" if version is not None and version.status == "published" else "NOT_PUBLISHED"
+    publication_state = (
+        "PUBLISHED"
+        if version is not None and version.status == "published"
+        else "NOT_PUBLISHED"
+    )
     has_review_output = any(
         artifact.artifact_type == "journal_draft"
         and artifact.locale == variant.locale
-        and rows.run_by_id.get(artifact.run_id) is not None
-        and rows.run_by_id[artifact.run_id].locale_variant_id == variant.id
+        and (run := rows.run_by_id.get(artifact.run_id)) is not None
+        and run.locale_variant_id == variant.id
         for artifact in rows.artifacts
     )
     next_action, next_action_label = _next_action(
@@ -759,13 +822,22 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
     )
 
 
-def _aggregate_locales(locales: list[ReviewLocalePanel]) -> tuple[str, str, str, str, str]:
+def _aggregate_locales(
+    locales: list[ReviewLocalePanel],
+) -> tuple[str, str, str, str, str]:
     if not locales:
-        return "PENDING", "NOT_PUBLISHED", "CONSISTENT", "NOT_READY", "No locale variants"
+        return (
+            "PENDING",
+            "NOT_PUBLISHED",
+            "CONSISTENT",
+            "NOT_READY",
+            "No locale variants",
+        )
+    published = any(panel.publication_state == "PUBLISHED" for panel in locales)
     if any(panel.consistency_state == "INCONSISTENT" for panel in locales):
         return (
             "FAIL",
-            "PUBLISHED" if any(panel.publication_state == "PUBLISHED" for panel in locales) else "NOT_PUBLISHED",
+            "PUBLISHED" if published else "NOT_PUBLISHED",
             "INCONSISTENT",
             "INCONSISTENT_STATE",
             "Resolve conflicting persisted bindings",
@@ -780,9 +852,7 @@ def _aggregate_locales(locales: list[ReviewLocalePanel]) -> tuple[str, str, str,
         if "WARN" in quality_values
         else "PASS"
     )
-    publication_state = (
-        "PUBLISHED" if any(panel.publication_state == "PUBLISHED" for panel in locales) else "NOT_PUBLISHED"
-    )
+    publication_state = "PUBLISHED" if published else "NOT_PUBLISHED"
     priority = (
         "QUALITY_BLOCKED",
         "AWAITING_FOUNDER_APPROVAL",
@@ -792,17 +862,35 @@ def _aggregate_locales(locales: list[ReviewLocalePanel]) -> tuple[str, str, str,
         "PUBLISHED",
     )
     by_code = {panel.next_action: panel.next_action_label for panel in locales}
-    next_action = next((code for code in priority if code in by_code), locales[0].next_action)
-    return quality_state, publication_state, "CONSISTENT", next_action, by_code.get(
-        next_action, locales[0].next_action_label
+    next_action = next(
+        (code for code in priority if code in by_code),
+        locales[0].next_action,
+    )
+    return (
+        quality_state,
+        publication_state,
+        "CONSISTENT",
+        next_action,
+        by_code.get(next_action, locales[0].next_action_label),
     )
 
 
-async def get_review_case(session: AsyncSession, *, content_case_id: UUID) -> ReviewCaseDetail:
+async def get_review_case(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+) -> ReviewCaseDetail:
     rows = await _load_case_rows(session, content_case_id)
     panels = [_resolve_locale(rows, variant) for variant in rows.variants]
-    quality, publication, consistency, next_action, next_label = _aggregate_locales(panels)
-    angle, outline = _resolve_lineage(rows)
+    quality, publication, consistency, next_action, next_label = _aggregate_locales(
+        panels
+    )
+    angle, outline, lineage_issues = _resolve_lineage(rows)
+    if lineage_issues:
+        quality = "FAIL"
+        consistency = "INCONSISTENT"
+        next_action = "INCONSISTENT_STATE"
+        next_label = "Resolve conflicting persisted bindings"
     return ReviewCaseDetail(
         id=rows.content_case.id,
         status=rows.content_case.status,
@@ -818,6 +906,7 @@ async def get_review_case(session: AsyncSession, *, content_case_id: UUID) -> Re
         quality_state=quality,
         publication_state=publication,
         consistency_state=consistency,
+        issues=lineage_issues,
         next_action=next_action,
         next_action_label=next_label,
     )
