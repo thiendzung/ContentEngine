@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from sqlalchemy import delete, func, select
 
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
@@ -50,6 +51,7 @@ async def _counts(session) -> tuple[int, int]:
     return approvals, versions
 
 
+@pytest.mark.asyncio
 async def test_review_action_approve_persists_version_and_completes_run() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
@@ -76,11 +78,12 @@ async def test_review_action_approve_persists_version_and_completes_run() -> Non
         assert panel.final_approval.decision == "approved"
 
 
+@pytest.mark.asyncio
 async def test_review_action_changes_requested_is_durable_and_requires_comment() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
         before = await _counts(session)
-        try:
+        with pytest.raises(ReviewActionError, match="review_action_comment_required"):
             await submit_review_decision(
                 session,
                 content_case_id=fixture.content_case.id,
@@ -89,10 +92,6 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
                 actor_id="founder",
                 comment="",
             )
-        except ReviewActionError as exc:
-            assert exc.code == "review_action_comment_required"
-        else:
-            raise AssertionError("missing comment must fail")
         assert await _counts(session) == before
 
         result = await submit_review_decision(
@@ -117,6 +116,7 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
         assert panel.final_approval.decision == "changes_requested"
 
 
+@pytest.mark.asyncio
 async def test_review_action_reject_cancels_without_content_version() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
@@ -141,6 +141,7 @@ async def test_review_action_reject_cancels_without_content_version() -> None:
         assert panel.next_action == "REJECTED"
 
 
+@pytest.mark.asyncio
 async def test_review_action_exact_replay_creates_no_duplicate() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
@@ -167,6 +168,7 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
         assert await _counts(session) == counts
 
 
+@pytest.mark.asyncio
 async def test_review_action_quality_failure_creates_no_decision() -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
@@ -179,7 +181,7 @@ async def test_review_action_quality_failure_creates_no_decision() -> None:
         audit.content_json = payload
         await session.flush()
         before = await _counts(session)
-        try:
+        with pytest.raises(ReviewActionError, match="review_action_quality_blocked"):
             await submit_review_decision(
                 session,
                 content_case_id=fixture.content_case.id,
@@ -188,13 +190,10 @@ async def test_review_action_quality_failure_creates_no_decision() -> None:
                 actor_id="founder",
                 comment="Duyệt.",
             )
-        except ReviewActionError as exc:
-            assert exc.code == "review_action_quality_blocked"
-        else:
-            raise AssertionError("quality failure must block decision")
         assert await _counts(session) == before
 
 
+@pytest.mark.asyncio
 async def test_m1_already_approved_state_exposes_no_write_action() -> None:
     async with isolated_session() as session:
         fixture = await _approved_fixture(session)
