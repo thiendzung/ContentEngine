@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import delete, func, select
+from test_ce05_review_console import ReviewFixture, _approved_fixture, isolated_session
 
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.journal.review_actions import (
@@ -11,7 +12,6 @@ from app.modules.content_engine.journal.review_actions import (
 from app.modules.content_engine.models import ContentVersion
 from app.modules.harness.models import Approval
 from app.modules.harness.persistence import pause_for_approval
-from test_ce05_review_console import ReviewFixture, _approved_fixture, isolated_session
 
 
 async def _pending_fixture(session) -> ReviewFixture:
