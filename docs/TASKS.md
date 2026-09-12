@@ -9,18 +9,18 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | ID | Owner | Scope | Dependency | State / acceptance |
 |---|---|---|---|---|
 | LF-00 | MG / Founder | Local-first spec, plan, task, checklist and roles | Founder decision | DONE - merged in main; no runtime completion implied |
-| LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY; reviewed summary in `logs/2026-09-12-lf01-mg-reviewed-evidence.md` |
-| LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected by Founder, exact AngleApproval persisted and handoff verified; closeout `logs/2026-09-12-lf02-angle-approved-closeout.md` |
-| LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle + exact runtime task/budget | DONE / REVIEWED - canonical Outline generated, Founder approved, exact OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5` persisted and handoff verified; closeout `logs/2026-09-12-lf03-outline-approved-closeout.md` |
-| LF-04 | MG + Agent Local + Founder | Resume after persisted approved Outline through independent VI/EN, bounded review/checks, Operational Package V0 and exact final approval | Valid persisted OutlineApproval + exact runtime task/budget | ACTIVE - LF-04A Writer generation PASS/CLOSED; LF-04B is the only open slice: bounded Review/Revise -> Assertion Audit v5 -> Source-copy v2 using `logs/2026-09-12-lf04b-end-to-end-quality-pass-task.md` |
+| LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
+| LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
+| LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
+| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A Writer generation PASS/CLOSED; LF-04B VI Review/Revise v2 completed but Assertion Audit v5 correctly hard-failed. LF-04B.R1 is the only open recovery: deterministic VI v2->v3 cleanup, re-audit, Source-copy, then resume EN only if VI passes. Exact task `logs/2026-09-12-lf04b-vi-deterministic-cleanup-task.md` |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
-| LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG; last two on same merged version, no case-specific code; safe resume |
-| LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG; no auto-publish or full CE08 completion claim |
-| LF-08 | MG + Founder | Edit/failure feedback, Golden/Weak baseline, controlled changes | Real outputs/edits; audience claims need real observations | BACKLOG for automation; capture per-run evidence now |
+| LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
+| LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
+| LF-08 | MG + Founder | Edit/failure feedback, Golden/Weak baseline, controlled changes | Real outputs/edits | BACKLOG for automation; capture evidence now |
 
 ## CE00-CE04 - retained completed foundation
 
-CE00 Foundation Contracts, CE01 Repository/Research Spike/Walking Skeleton, CE02 Core Data/Settings (T02.1-T02.23), CE03 Durable Harness (T03.1-T03.20), CE04 Knowledge/Production Research (T04.1-T04.35): CLOSED / PASS per existing history. Do not rebuild.
+CE00 Foundation Contracts, CE01 Repository/Research Spike/Walking Skeleton, CE02 Core Data/Settings, CE03 Durable Harness, CE04 Knowledge/Production Research: CLOSED / PASS per existing history. Do not rebuild.
 
 CE01's historical Golden Journal reached human review; that is not evidence that the current fresh M1 lineage finished.
 
@@ -47,21 +47,29 @@ Implementation foundation retained:
 - [x] Source-copy v2; canonical audit pairs v3/v3, v4/v4, v5/v5 only; mixed pairs reject.
 - [x] Focused retry/idempotency/recovery/provenance regression coverage.
 
-Current checkpoint: same fresh lineage has canonical Angle + AngleApproval, canonical persisted-approved Outline, and two independent Writer v1 drafts. VI draft `07c2176a-0d77-4ef8-a90d-6d541b2a10c2` v1 hash `3ff54295c8179ba431562120b33bf6450f1befcbcee08d109a5cf9a34ad5dced`; EN draft `0a48779d-bd73-4b61-8aec-2715178e2514` v1 hash `35deb36fe8fc98fe5026f81f73cea1511c95b1ff4e8909f07a77c493200af916`. Writer generation/provenance PASS, zero ToolCalls. MG editorial review requires one bounded Review/Revise pass before final quality acceptance; LF-04B is now the only active slice. Do not regenerate Angle/Outline/Writer v1 drafts or restart research.
+Current checkpoint:
+
+- canonical Angle + AngleApproval and persisted-approved Outline remain unchanged;
+- independent Writer v1 drafts exist for VI and EN;
+- VI Review/Revise created immutable v2 `06c9182c-2d3f-4ff5-b9d8-77ab6ed2aa75`, hash `9357603c2e73dd23daa8a3e3c48f6ea1de93e594c77377448635e30cb3024519`;
+- VI Assertion Audit v5 run `1b22aedb-82e4-4cb4-a21e-4811bb7f7060` completed `fail` with exactly 3 unsupported/critical and 0 contradicted;
+- VI Source-copy has not run;
+- EN LF-04B quality block has not run;
+- broad VI Review/Revise rerun is forbidden;
+- active recovery is one deterministic zero-model VI cleanup with four exact operations, then one re-audit, then Source-copy, then EN only if VI passes.
 
 ### M1 remaining acceptance
 
 - [x] Verify current EvidenceSet ID/version/hash, approved/locked state, metadata and bundle binding.
 - [x] Verify current OriginalityPack ID/hash, approved state and bundle binding.
-- [x] Classify Angle execution blocker: OUTER_EXECUTION_POLICY, not a proven ContentEngine error.
-- [x] Clear Angle execution through an explicitly permitted path without weakening safeguards.
 - [x] Valid generated and approved Angle on fresh lineage.
 - [x] Valid generated and persisted-approved Outline on fresh lineage.
 - [x] Generate independent VI and EN Writer v1 content on the fresh lineage.
-- [ ] Complete final independent VI and EN visible content after bounded Review/Revise.
-- [ ] Bounded Review/Revise complete.
-- [ ] Both Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
+- [x] VI bounded Review/Revise executed once and preserved as immutable v2.
+- [ ] Resolve exact persisted VI audit hard findings through authorized deterministic cleanup; no broad rerun/evaluator weakening.
+- [ ] Both final Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
 - [ ] Both Source-copy checks fail_count = 0.
+- [ ] Complete final independent VI and EN visible content.
 - [ ] All non-critical warnings preserved verbatim.
 - [ ] T05.16 Operational Package V0 JSON + Markdown + hashes; pre-approval status explicit.
 - [ ] Founder final approval bound to final content; canonical ContentVersion after approval.
@@ -75,7 +83,7 @@ Current checkpoint: same fresh lineage has canonical Angle + AngleApproval, cano
 - [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
 - [ ] T05.22 CE05 Closeout - not inferred from code coverage alone.
 
-Before M1 no new provider/agent/framework, speculative abstraction, WordPress, automatic publishing/merge, repeated DB recovery, CI tuning without blocker or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
+Before M1 no new provider/agent/framework, speculative abstraction, WordPress, automatic publishing/merge, repeated historical DB recovery, CI tuning without blocker or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
 
 ## CE06 - Full Quality + Golden Regression
 
@@ -117,7 +125,7 @@ Status: NOT STARTED; not opened by this plan.
 
 ## CE08 - WordPress Draft + Measurement Foundation
 
-Status: NOT STARTED as full phase. LF-07 may take a small manual Journal handoff/identity slice before full CE06/CE07; it does not check off unimplemented adapters.
+Status: NOT STARTED as full phase. LF-07 may take a small manual Journal handoff/identity slice before full CE06/CE07.
 
 - [ ] T08.1 WordPress draft publish adapter.
 - [ ] T08.2 ContentItem to WordPress ID mapping.
