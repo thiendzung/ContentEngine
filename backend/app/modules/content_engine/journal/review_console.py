@@ -481,14 +481,14 @@ def _resolve_lineage(
     outline_lineage: ReviewOutlineLineage | None = None
     angle_lineage: ReviewAngleLineage | None = None
     if len(rows.outline_approvals) == 1:
-        approval = rows.outline_approvals[0]
-        artifact = rows.artifact_by_id.get(approval.outline_artifact_id)
+        outline_approval = rows.outline_approvals[0]
+        artifact = rows.artifact_by_id.get(outline_approval.outline_artifact_id)
         if artifact is None:
             return None, None, ["approved_outline_artifact_missing"]
         outline_lineage = ReviewOutlineLineage(
             artifact=_artifact_ref(artifact),
-            approval_id=approval.id,
-            approved_by=approval.approved_by,
+            approval_id=outline_approval.id,
+            approved_by=outline_approval.approved_by,
         )
         payload = _dict(artifact.content_json)
         approved_angle = _dict(payload.get("approved_angle")) if payload else None
@@ -508,11 +508,11 @@ def _resolve_lineage(
         except (TypeError, ValueError):
             return None, outline_lineage, ["approved_outline_angle_binding_invalid"]
         angle_artifact = rows.artifact_by_id.get(angle_artifact_id)
-        angle_approval = next(
+        bound_angle_approval = next(
             (row for row in rows.angle_approvals if row.id == angle_approval_id),
             None,
         )
-        if angle_artifact is None or angle_approval is None:
+        if angle_artifact is None or bound_angle_approval is None:
             return None, outline_lineage, ["approved_angle_binding_not_found"]
 
         title: str | None = None
@@ -523,7 +523,7 @@ def _resolve_lineage(
                 candidate = _dict(raw)
                 if candidate is None:
                     continue
-                if candidate.get("angle_id") != angle_approval.selected_angle_id:
+                if candidate.get("angle_id") != bound_angle_approval.selected_angle_id:
                     continue
                 working_title = candidate.get("working_title")
                 if isinstance(working_title, str):
@@ -531,22 +531,22 @@ def _resolve_lineage(
                 break
         angle_lineage = ReviewAngleLineage(
             artifact=_artifact_ref(angle_artifact),
-            approval_id=angle_approval.id,
-            selected_angle_id=angle_approval.selected_angle_id,
+            approval_id=bound_angle_approval.id,
+            selected_angle_id=bound_angle_approval.selected_angle_id,
             selected_working_title=title,
-            approved_by=angle_approval.approved_by,
+            approved_by=bound_angle_approval.approved_by,
         )
     elif len(rows.angle_approvals) == 1:
-        approval = rows.angle_approvals[0]
-        artifact = rows.artifact_by_id.get(approval.angle_artifact_id)
+        angle_approval = rows.angle_approvals[0]
+        artifact = rows.artifact_by_id.get(angle_approval.angle_artifact_id)
         if artifact is None:
             issues.append("approved_angle_artifact_missing")
         else:
             angle_lineage = ReviewAngleLineage(
                 artifact=_artifact_ref(artifact),
-                approval_id=approval.id,
-                selected_angle_id=approval.selected_angle_id,
-                approved_by=approval.approved_by,
+                approval_id=angle_approval.id,
+                selected_angle_id=angle_approval.selected_angle_id,
+                approved_by=angle_approval.approved_by,
             )
     return angle_lineage, outline_lineage, issues
 
