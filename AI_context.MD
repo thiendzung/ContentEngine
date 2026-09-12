@@ -23,7 +23,6 @@ The fresh M1 lineage has one canonical generated Angle and the first mandatory h
 - OriginalityPack `a5f40387-e758-452c-ae11-851ca9e16bb6`, approved, hash `07e781c4ab886a2a04a3c7b6451523b0636e4f86927c333b04e72245f492b3ec`;
 - Angle artifact `f70013f9-4333-4015-89a2-13efb50d1181`, v1, hash `e1a5e62d919be2eca20de685a6460fae0055c5309c6307a7b0c2573e3cc491c1`;
 - selected `angle-01 — What an Artwork Price Can—and Can’t—Tell You`;
-- candidate hash `37744627edcdfedc0f59b9e22b9fbc69a5c6b3a9547068293c567b72f0dbc53b`;
 - AngleApproval `a5db128f-4b69-4b05-8207-e4eb92ca9d42`, Founder-approved and handoff verified;
 - Angle ModelCalls `1`; ToolCalls `0`.
 
@@ -35,83 +34,84 @@ Do not regenerate or replace this Angle.
 
 One canonical grounded Outline was generated from the approved Angle, reviewed by MG, explicitly approved by Founder, then durably persisted as the second mandatory human gate.
 
-GitHub code baseline for the approval fix:
-
-- PR #68 merged;
-- merge commit `17442f63111adbc25f19ffe14ac383ab5da0cd21`;
-- migration `20260912_0023`.
-
-Canonical Outline/runtime facts accepted from Agent Local verification:
-
-- Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6`, v1;
-- hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`;
+- Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6`, v1, hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`;
 - Outline StepRun `dc733623-1043-477f-b3c0-151183f959e7`, completed;
 - ContextManifest `dd3bc35a-8ae2-48d8-b396-cb3e373c075d`, hash `7744c8b4cc6472bb7a3a43eed2ddeb75c79aca16828f16723b7b6d8019ef40a2`;
-- Outline ModelCall `496c0daf-27ad-4cea-bac7-dbe7a52bb480`, completed on `codex_cli / gpt-5.6-luna`;
-- OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5`, approved_by `founder`;
-- exact approved-Outline handoff verifies;
-- source ContentRun remains `waiting_approval`, no failure;
-- total source-run ModelCalls remain `2` (Angle + Outline); ToolCalls `0`;
-- no Writer records existed at LF-03 closeout;
-- upstream snapshots unchanged.
-
-Editorial notes carried forward for Writer/Review, not grounds for Outline regeneration:
-
-- comparable sales are context, never a self-valuation formula;
-- subject matter is only one contextual factor, never a standalone price rule;
-- appraisal-style concepts such as relative importance/market context must stay clearly separated from buyer-verifiable facts;
-- keep the primary answer natural: price is one data point whose meaning depends on context.
+- Outline ModelCall `496c0daf-27ad-4cea-bac7-dbe7a52bb480`, completed;
+- OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5`, approved_by `founder` and handoff verified;
+- source run remains `waiting_approval`, no failure;
+- source-run ModelCalls remain `2`; ToolCalls `0`.
 
 Canonical closeout: `docs/logs/2026-09-12-lf03-outline-approved-closeout.md`.
 
 Do not regenerate or manually edit this Outline. Do not replace its OutlineApproval.
 
-## Current exact task — LF-04A
+## LF-04A — PASS / CLOSED FOR GENERATION
 
-Generate the first real independent bilingual Writer outputs from the exact persisted approved Outline, then STOP for MG review.
+The first real independent VI and EN Writer drafts now exist on the same approved Outline lineage.
+
+Canonical runtime facts accepted from Founder-relayed Agent Local verification on main `549aa8095eb0af26050db4d842307bed438ca4ae`:
+
+### vi-VN
+
+- Writer run `66046633-bf57-41a8-bb80-7a60058bf7f9`, `waiting_approval`;
+- LocaleVariant `e9fcf073-24a4-4231-98a5-e68ddbf1b5f6`;
+- draft artifact `07c2176a-0d77-4ef8-a90d-6d541b2a10c2`, v1, hash `3ff54295c8179ba431562120b33bf6450f1befcbcee08d109a5cf9a34ad5dced`;
+- one completed Writer ModelCall on `codex_cli / gpt-5.6-luna` with `codex-cli 0.154.0-alpha.6.2`;
+- unresolved factual claims: none.
+
+### en
+
+- Writer run `80529fb8-afef-482f-9d54-b4a866ecaf1b`, `waiting_approval`;
+- LocaleVariant `c53a9c6c-08f0-4926-8e50-e3da6bd4a421`;
+- draft artifact `0a48779d-bd73-4b61-8aec-2715178e2514`, v1, hash `35deb36fe8fc98fe5026f81f73cea1511c95b1ff4e8909f07a77c493200af916`;
+- one completed Writer ModelCall on `codex_cli / gpt-5.6-luna` with `codex-cli 0.154.0-alpha.6.2`;
+- unresolved factual claims: none.
+
+Independence/provenance passed and ToolCalls remain zero. Upstream remains unchanged.
+
+MG editorial review requires the existing bounded Review/Revise path before accepting final content:
+
+- VI contains stray Arabic token `سواء`;
+- EN contains reader-facing internal phrase `current canonical information`;
+- comparable/private-sales wording must stay contextual and not imply guaranteed access;
+- appraisal-style concepts must remain context, not a novice self-valuation recipe;
+- subject matter remains only one contextual factor.
+
+Canonical closeout: `docs/logs/2026-09-12-lf04a-bilingual-writers-closeout.md`.
+
+Do not regenerate or hand-edit the v1 Writer drafts.
+
+## Current exact task — LF-04B
+
+Finish the current bilingual content quality path in one bounded slice:
+
+`Review/Revise -> Assertion Audit v5 -> Source-copy v2 -> STOP for MG review`
 
 Task file:
 
-`docs/logs/2026-09-12-lf04a-bilingual-writer-execution-task.md`
+`docs/logs/2026-09-12-lf04b-end-to-end-quality-pass-task.md`
 
-### Codex version gate incident
+Execution is deliberately compressed:
 
-The first LF-04A Phase A on merged main `7b30db37dcf7ee2099c62805fa4faacc498bb62e` stopped correctly at `agent_runner_version_not_approved`: the ChatGPT app bundled binary had changed from the repository-approved `codex-cli 0.153.4` to `codex-cli 0.154.0-alpha.6.2`.
+1. Founder runs the VI quality block exactly once. It chains the existing Review/Revise CLI, Assertion Audit v5 CLI and deterministic Source-copy v2 CLI. It stops automatically if a hard gate fails.
+2. Only if VI completes the full quality block, Founder runs the EN quality block exactly once.
+3. Agent Local performs one read-only post-verification and returns both full revised drafts plus every audit/source-copy warning verbatim.
+4. MG reviews the final revised visible copy and warnings. If PASS, proceed directly to LF-04C Operational Package + final human gate.
 
-Agent Local verified that no Writer command, ModelCall, ToolCall, DB write, migration or runtime mutation occurred. MG then authorized only a read-only capability audit of the exact installed binary.
+No new runtime code or orchestrator is required. Review/Revise and Assertion Audit each allow at most two internal model attempts for structured-output validation; no outer/manual rerun. Source-copy is deterministic with zero ModelCalls/provider calls/ToolCalls.
 
-Audit PASS evidence is recorded in:
+Hard acceptance:
 
-`docs/logs/2026-09-12-lf04a-codex-0154-capability-audit.md`
-
-The audited binary:
-
-- reports exact version `codex-cli 0.154.0-alpha.6.2`;
-- supports `--disable`;
-- exposes every one of the 21 existing ContentEngine-required no-tool feature names;
-- passes cached-session auth;
-- was not used for model execution during the audit.
-
-The repository therefore changes only the exact approved version pin to `codex-cli 0.154.0-alpha.6.2`. Exact-version fail-closed behavior, no-tool checks, read-only sandbox, web disabled, ignored user config and ephemeral execution remain unchanged. No version range, wildcard or automatic-latest acceptance is allowed.
-
-After this version-pin PR is merged, Agent Local must synchronize clean `main` and rerun LF-04A Phase A only. A prior blocked preflight is not permission to skip directly to Writer execution.
-
-Execution pattern after the rerun passes:
-
-1. Agent Local read-only Phase A verifies exact upstream, migration head, persisted OutlineApproval, locale variants, Writer prompt/recipe/route, exact approved runner version/capability and absence of Writer records.
-2. Founder runs the production `vi-VN` Writer CLI exactly once.
-3. Only if VI exits successfully, Founder runs the production `en` Writer CLI exactly once.
-4. Agent Local performs read-only Phase D verification and returns both complete persisted drafts for MG review.
-
-Each locale CLI has at most two internal ModelCalls only for bounded structured-output validation retry. No outer/manual rerun. Zero ToolCalls, no research/provider fallback, no settings/upstream mutation. The Writer settings route currently reuses route key `angle`; that is configuration reuse only, while the Writer model-input contract enforces independent locale generation and forbids another locale draft/translation source.
-
-Unresolved factual claims on an otherwise successful immutable draft are content-review signals: preserve them verbatim. They do not authorize hidden edits or an automatic retry.
-
-LF-04A success ends at two canonical `journal_draft` artifacts, one per locale. Do NOT run Review/Revise, Assertion Audit, Source-copy, Operational Package, final approval or ContentVersion until MG explicitly assigns the next slice.
+- both revised drafts have zero unresolved factual claims;
+- both Assertion Audits: `audit_result != fail`, critical unsupported `0`, critical contradicted `0`;
+- both Source-copy v2 checks: `fail_count = 0`;
+- every non-critical warning is preserved verbatim;
+- original Writer v1 drafts and all approved upstream remain immutable.
 
 ## State that must not regress
 
-Reuse the SAME fresh source Journal run, input bundle, approved Angle and persisted-approved Outline snapshot. Preserve independent VI/EN, bounded revision, Assertion Audit v5 and Source-copy v2. Final hard gates and Founder final approval remain unchanged. Non-critical warnings must be carried verbatim into the review package.
+Reuse the SAME fresh source Journal run, input bundle, approved Angle and persisted-approved Outline snapshot. Preserve independent VI/EN, Assertion Audit v5 and Source-copy v2. Final hard gates and Founder final approval remain unchanged.
 
 Required path:
 
