@@ -1,6 +1,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.core.config import Settings
 from app.main import app
 
 
@@ -22,3 +23,33 @@ async def test_version() -> None:
     payload = response.json()
     assert payload["version"]
     assert payload["environment"]
+
+
+@pytest.mark.asyncio
+async def test_local_frontend_origin_can_read_backend() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            "/health",
+            headers={"Origin": "http://localhost:3000"},
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+@pytest.mark.asyncio
+async def test_unlisted_frontend_origin_is_not_allowed() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            "/health",
+            headers={"Origin": "https://example.invalid"},
+        )
+
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_wildcard_is_rejected() -> None:
+    settings = Settings(app_env="development", cors_allowed_origins="*")
+    with pytest.raises(ValueError, match="cors_wildcard_not_allowed"):
+        assert settings.resolved_cors_allowed_origins

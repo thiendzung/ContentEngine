@@ -12,6 +12,7 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
     )
     test_database_url: str | None = None
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     serper_api_key: SecretStr | None = None
     tavily_api_key: SecretStr | None = None
@@ -42,6 +43,24 @@ class Settings(BaseSettings):
                 raise ValueError("test_database_url_required")
             return self.test_database_url
         return self.database_url
+
+    @property
+    def resolved_cors_allowed_origins(self) -> tuple[str, ...]:
+        """Return the explicit cross-origin browser allowlist; wildcards are forbidden."""
+        origins = tuple(
+            origin.strip().rstrip("/")
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        )
+        if "*" in origins:
+            raise ValueError("cors_wildcard_not_allowed")
+        for origin in origins:
+            parsed = urlsplit(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("invalid_cors_origin")
+            if parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
+                raise ValueError("invalid_cors_origin")
+        return origins
 
     @staticmethod
     def _database_target(url: str) -> tuple[str, int, str]:
