@@ -59,6 +59,7 @@ SOURCE_COPY_FAIL_MIN_TOKENS = 12
 _ASSERTION_AUDIT_VERSION_PAIRS = frozenset(
     {
         ("ce05.journal_assertion_audit.v3", "ce05.assertion_audit.hard_gate.v3"),
+        ("ce05.journal_assertion_audit.v4", "ce05.assertion_audit.hard_gate.v4"),
         (ASSERTION_AUDIT_GENERATOR_VERSION, ASSERTION_AUDIT_EVALUATOR_VERSION),
     }
 )

@@ -239,26 +239,29 @@ prompt, recipe, schema, migration or production runtime change is in scope.
 - [x] post-merge EN v3 Assertion Audit executed; the generic-guidance finding is
   carried into the current PR #62 normalization gate;
 
-### Current gate — T05.14 ASSERTION AUDIT V4 GENERIC VERIFICATION GUIDANCE NORMALIZATION
+### Current gate — T05.14 ASSERTION AUDIT V5 SEGMENT-LEVEL GUIDANCE NORMALIZATION
 
-PR #61 fixed the observed structural output-shape instability. The first post-#61
-EN v3 audit then exposed one new classifier-boundary hard finding at
-`section:confirm-availability:2`: generic verification guidance was classified as
-unsupported `practical_live_information`. EN v3 and the failed diagnostic eval
-`becca4f9-44f2-4283-901d-fcd355e0f459` remain immutable history.
+PR #62 shipped Assertion Audit v4 and Source-copy v3/v3 + v4/v4 compatibility.
+The exact immutable EN v3 v4 audit then produced three critical unsupported
+findings. Read-only preflight confirmed `lead:1` is a genuine unsupported factual
+claim; `section:verify-work-facts:2` and `section:confirm-availability:2` are
+bounded reader guidance with allowed Originality provenance.
 
-Owner: **Agent Local** implements the narrow validator/evaluator normalization on
-PR #62; Founder controls merge. No production runtime or model execution is in
-scope before merge.
+Owner: **Agent Local** implements the final bounded validator/evaluator fix on
+PR #63; Founder controls merge. No production runtime or model execution is in
+scope before merge. EN v3 and all prior audit diagnostics remain immutable.
 
-- [ ] PR #62 Assertion Audit generator/evaluator v4 implementation and regression tests;
-- [ ] post-merge EN v3 Assertion Audit v4 → Source-copy VI+EN → Operational Package V0;
+- [ ] PR #63 Assertion Audit generator/evaluator v5 source-sentence guidance normalization;
+- [ ] PR #63 Source-copy v3/v3 + v4/v4 + v5/v5 compatibility and regressions;
+- [ ] post-merge deterministic EN v3 → EN v4 `lead:1` cleanup → Assertion Audit v5 → Source-copy → Operational Package V0;
 - [ ] T05.15 and later gates remain NOT STARTED until this gate passes.
 
-The v4 boundary preserves concrete live facts and all other hard types as
-critical fail, while allowing only bounded locale verification guidance without
-exact support refs to normalize to editorial opinion. Schema remains `1`; no
-prompt/recipe, provider/model, migration or content change is in scope.
+The v5 boundary normalizes only bounded reader guidance from the full source
+sentence, including allowed Originality provenance. `lead:1`, concrete live facts,
+causal/semicolon clauses, Evidence-backed/support/contradicted assertions and all
+other hard types remain fail-closed. Schema remains `1`; prompt/recipe,
+provider/model and migration remain unchanged. V5 is the final classifier
+normalization before first operation.
 
 ### Historical T05.15 ASSERTION AUDIT CONCURRENCY / IDEMPOTENCY RECOVERY
 

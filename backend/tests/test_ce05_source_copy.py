@@ -363,11 +363,35 @@ async def test_source_copy_accepts_v4_assertion_audit_pair() -> None:
 
 
 @pytest.mark.asyncio
+async def test_source_copy_accepts_v5_assertion_audit_pair() -> None:
+    async with isolated_session() as session:
+        fixture, source, _audit_input, audit_result = await _persisted_audit_source(
+            session,
+            generator_version="ce05.journal_assertion_audit.v5",
+            evaluator_version="ce05.assertion_audit.hard_gate.v5",
+        )
+
+        loaded = await _load_persisted_source_copy(
+            session,
+            fixture=fixture,
+            source=source,
+            audit_result=audit_result,
+        )
+        assert loaded.assertion_audit_evaluation.evaluator_version == (
+            "ce05.assertion_audit.hard_gate.v5"
+        )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("artifact_version", "evaluation_version"),
     [
         ("ce05.journal_assertion_audit.v3", "ce05.assertion_audit.hard_gate.v4"),
         ("ce05.journal_assertion_audit.v4", "ce05.assertion_audit.hard_gate.v3"),
+        ("ce05.journal_assertion_audit.v3", "ce05.assertion_audit.hard_gate.v5"),
+        ("ce05.journal_assertion_audit.v5", "ce05.assertion_audit.hard_gate.v3"),
+        ("ce05.journal_assertion_audit.v4", "ce05.assertion_audit.hard_gate.v5"),
+        ("ce05.journal_assertion_audit.v5", "ce05.assertion_audit.hard_gate.v4"),
     ],
 )
 async def test_source_copy_rejects_mismatched_assertion_audit_version_pairs(
