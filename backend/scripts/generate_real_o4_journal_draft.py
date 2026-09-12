@@ -21,6 +21,10 @@ if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
 from app.core.database import SessionLocal
+from app.modules.content_engine.journal.outline_approval import (
+    OutlineApprovalError,
+    handoff_approved_outline,
+)
 from app.modules.content_engine.journal.writer import (
     WriterGenerationError,
     WriterGenerator,
@@ -77,7 +81,7 @@ def _non_empty(value: str) -> str:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate/reuse one real O4 Journal locale draft from the accepted Outline "
+            "Generate/reuse one real O4 Journal locale draft from the approved Outline "
             "inside an exact locale-specific localize ContentRun."
         )
     )
@@ -85,6 +89,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--outline-artifact-id", required=True, type=_uuid_arg)
     parser.add_argument("--outline-artifact-version", required=True, type=_positive_int)
     parser.add_argument("--outline-artifact-hash", required=True, type=_hash_arg)
+    parser.add_argument("--outline-approval-id", required=True, type=_uuid_arg)
     parser.add_argument("--locale", required=True, choices=("vi-VN", "en"))
     parser.add_argument("--expected-provider", required=True, type=_non_empty)
     parser.add_argument("--expected-model", required=True, type=_non_empty)
@@ -152,12 +157,26 @@ async def _run(args: argparse.Namespace) -> None:
     outline_artifact_id = cast(UUID, args.outline_artifact_id)
     outline_version = cast(int, args.outline_artifact_version)
     outline_hash = cast(str, args.outline_artifact_hash)
+    outline_approval_id = cast(UUID, args.outline_approval_id)
     locale = cast(str, args.locale)
     expected_provider = cast(str, args.expected_provider)
     expected_model = cast(str, args.expected_model)
     config = writer_registry_config(locale)
 
     async with SessionLocal() as session:
+        try:
+            approved_outline = await handoff_approved_outline(
+                session,
+                outline_artifact_id=outline_artifact_id,
+                expected_artifact_version=outline_version,
+                expected_artifact_hash=outline_hash,
+                expected_approval_id=outline_approval_id,
+            )
+        except OutlineApprovalError as exc:
+            raise WriterGenerationError("writer_outline_approval_invalid", str(exc)) from exc
+        if approved_outline.artifact.run_id != source_run_id:
+            raise WriterGenerationError("writer_outline_approval_run_mismatch")
+
         handoff = await ensure_writer_run(
             session,
             source_run_id=source_run_id,
@@ -177,6 +196,8 @@ async def _run(args: argparse.Namespace) -> None:
         )
         if writer_input.handoff_artifact.id != handoff.artifact.id:
             raise WriterGenerationError("writer_handoff_mismatch")
+        if writer_input.outline_artifact.id != approved_outline.artifact.id:
+            raise WriterGenerationError("writer_outline_approval_snapshot_mismatch")
         if run.status not in {"pending", "waiting_approval"}:
             raise WriterGenerationError("writer_run_state_invalid", run.status)
         settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
@@ -222,6 +243,7 @@ async def _run(args: argparse.Namespace) -> None:
                 input_artifact_refs_json=[
                     str(writer_input.handoff_artifact.id),
                     str(writer_input.outline_artifact.id),
+                    f"outline_approval:{approved_outline.approval.id}",
                 ],
                 output_artifact_refs_json=[],
             )
@@ -347,6 +369,7 @@ async def _run(args: argparse.Namespace) -> None:
                     "outline_artifact_id": str(writer_input.outline_artifact.id),
                     "outline_artifact_version": writer_input.outline_artifact.version,
                     "outline_artifact_hash": writer_input.outline_artifact.content_hash,
+                    "outline_approval_id": str(approved_outline.approval.id),
                     "draft_artifact_id": str(result.artifact.id),
                     "draft_artifact_version": result.artifact.version,
                     "draft_artifact_hash": result.artifact.content_hash,
