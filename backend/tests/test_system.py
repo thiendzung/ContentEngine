@@ -38,6 +38,24 @@ async def test_local_frontend_origin_can_read_backend() -> None:
 
 
 @pytest.mark.asyncio
+async def test_local_frontend_origin_can_preflight_review_post() -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.options(
+            "/journal/review-cases/00000000-0000-0000-0000-000000000001/"
+            "locales/00000000-0000-0000-0000-000000000002/decision",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "POST" in response.headers["access-control-allow-methods"]
+
+
+@pytest.mark.asyncio
 async def test_unlisted_frontend_origin_is_not_allowed() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get(
