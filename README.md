@@ -1,227 +1,100 @@
 # ContentEngine
 
-ContentEngine là hệ thống sản xuất và học từ nội dung cho MOTGU.
+ContentEngine là hệ thống sản xuất và học từ nội dung cho MOTGU. Mục tiêu đầu tiên là Journal và Artwork content chất lượng cao, tiếng Việt/tiếng Anh theo cấu hình, để xuất bản lên WordPress MOTGU.
 
-Mục tiêu đầu tiên: tạo **Journal** và **Artwork content** chất lượng cao để xuất bản lên WordPress MOTGU, bằng tiếng Việt hoặc tiếng Anh theo cấu hình.
+Không tối ưu số lượng bài. Ưu tiên giá trị thật với người đọc, độ đúng và nguồn gốc, giọng MOTGU, khả năng Search/AI hiểu, bước tiếp theo phù hợp sang Artist/Artwork/Visit/Workshop/Inquiry và khả năng học từ kết quả.
 
-ContentEngine không được tối ưu cho số lượng bài. Hệ thống phải tối ưu đồng thời cho:
+## Hoàn thành trước, hoàn thiện sau
 
-- giá trị thật với người đọc;
-- độ đúng và khả năng truy nguyên nguồn;
-- giọng thương hiệu MOTGU;
-- khả năng được Search và hệ thống AI hiểu;
-- khả năng dẫn người phù hợp sang Artist, Artwork, Visit, Workshop hoặc Inquiry;
-- khả năng đo, học và cải thiện sau mỗi chu kỳ vận hành.
+`Một Journal thật được duyệt -> chạy lặp lại trên máy local -> đưa bài lên web và đo -> cải tiến theo bằng chứng`
+
+Ứng dụng và DB vận hành trên máy Founder. Research/model vẫn cần mạng và quyền truy cập hợp lệ; đây không phải cam kết chạy hoàn toàn ngoại tuyến.
+
+- [Spec vận hành local](docs/20-LOCAL-FIRST-DELIVERY-SPEC.md)
+- [Lộ trình](docs/PLAN.md)
+- [Task và tiến độ](docs/TASKS.md)
+- [Checklist](docs/CHECKLIST.md)
+- [Góc nhìn chung hiện tại](AI_context.MD)
+- [Vai trò và quy tắc phối hợp](AGENTS.md)
+
+GitHub giữ mã, quyết định và bằng chứng đã lược bỏ dữ liệu nhạy cảm. DB/artifact thật ở local. MG làm kiến trúc, coding, review và giao việc; Agent Local chạy đúng task; Founder duyệt, merge và chuyển task. Không lưu bản sao tiến độ chi tiết trong README.
 
 ## North Star
 
-Planning contract: MARKET / SEARCH / MOTGU Signal → NeedHypothesis → Opportunity Map
-→ human selection → Research + MOTGU material → Journal/Artwork → ContentExperiment
-→ Measure → reviewed hypothesis revision. Keyword Plan là công cụ con trong Research.
-PR #5 cập nhật contract và Jina reader trước real-seed Gate B; PR-C là Opportunity Map
-Mini. Seed ban đầu là founder-proposed need hypothesis, chưa phải customer truth.
+`MARKET / SEARCH / MOTGU Signal -> NeedHypothesis -> Opportunity Map -> human selection -> Research + MOTGU material -> Journal/Artwork -> ContentExperiment -> Measure -> reviewed hypothesis revision`
 
-> Mỗi nội dung phải giải quyết một nhu cầu hoặc câu hỏi cụ thể của một nhóm người cụ thể, dựa trên bằng chứng, có giá trị riêng của MOTGU, có thể đo kết quả và tạo thêm hiểu biết về khách hàng.
+Keyword Plan là công cụ con trong Research. Seed của Founder là giả thuyết, chưa phải sự thật về khách hàng.
 
-## Local quickstart
+> Mỗi nội dung giải quyết một nhu cầu/câu hỏi cụ thể của một nhóm người cụ thể, dựa trên bằng chứng, có giá trị riêng của MOTGU, đo được và tạo thêm hiểu biết về khách hàng.
 
-```bash
-cp .env.example .env
+## Local quickstart - môi trường mới
+
+Không dùng quickstart để khởi tạo lại runtime M1 đang có. Với runtime hiện hữu, đọc `AI_context.MD` và task chính xác trước; không ghi đè `.env`, không xóa volume, không tự migrate.
+
+Chỉ với môi trường mới và được phép thiết lập:
+
+```sh
+# Chi copy khi .env chua ton tai.
+test -e .env || cp .env.example .env
 make setup
 make db-up
 make migrate
 ```
 
-Chạy backend:
+Backend và frontend ở hai terminal riêng:
 
-```bash
+```sh
+# Terminal 1
 make backend-dev
 ```
 
-Chạy frontend ở terminal khác:
-
-```bash
+```sh
+# Terminal 2
 make frontend-dev
 ```
 
-Kiểm tra:
+Địa chỉ local: frontend `http://localhost:3000`, backend health `http://localhost:8000/health`, DB health `/health/db`, version `/version`.
 
-- frontend: `http://localhost:3000`
-- backend health: `http://localhost:8000/health`
-- backend database health: `http://localhost:8000/health/db`
-- backend version: `http://localhost:8000/version`
+Trước khi kiểm thử, xác nhận `TEST_DATABASE_URL` khác DB vận hành `DATABASE_URL`; test có thể sửa dữ liệu DB kiểm thử. Chỉ chạy khi môi trường đã được xác nhận an toàn:
 
-Chạy bộ kiểm tra:
-
-```bash
+```sh
 make types
 make check
 ```
 
-Không commit `.env` hoặc API key thật.
+Thiết lập development không thay thế kiểm tra bảo mật: xác minh địa chỉ lắng nghe, không mở cổng ra internet, không đưa `.env`, API key, phiên đăng nhập hay DB dump lên GitHub. Status/preflight/resume/export gọn hơn là yêu cầu trong kế hoạch, chưa được README này tuyên bố đã có lệnh chạy.
 
 ## Phạm vi V1
 
-Trong phạm vi:
+Trong phạm vi: MOTGU-first; Journal; Artwork; ContentCase/Evidence chung với LocaleVariant VI/EN viết độc lập; Brand/Language DNA; Discovery/Evidence Research; Opportunity Map mini; Evidence Ledger; durable harness/checkpoint; quality evaluation; Content Memory; Golden/regression; human approval; WordPress handoff; học theo chu kỳ 1/3/6 tháng.
 
-- MOTGU-first, kiến trúc sẵn sàng mở rộng project sau này;
-- Journal;
-- Artwork content;
-- tiếng Việt và tiếng Anh dùng chung ContentCase/Evidence nhưng có LocaleVariant và cách viết riêng;
-- Brand DNA và Language DNA cấu hình được;
-- Discovery Research + Evidence Research;
-- Search stack tiết kiệm: Serper + Tavily + Exa + Jina, Brave chỉ fallback/coverage check;
-- Opportunity Map mini với Keyword/Question Map là công cụ con;
-- Research + Evidence Ledger;
-- durable run harness có checkpoint;
-- quality evaluation;
-- Content Memory;
-- Golden Content + regression;
-- Human approval;
-- WordPress handoff;
-- đo và học theo chu kỳ 1-3-6 tháng.
+Ngoài phạm vi: CRM, sales/customer-care agent, vận hành đa kênh, workflow automation tổng quát, multi-project UI, kho keyword khổng lồ, backlink/difficulty suite, tự đổi luật/prompt hoặc xuất bản mà không có người duyệt.
 
-Ngoài phạm vi V1:
+## Kiến trúc
 
-- CRM;
-- sales agent;
-- customer care agent;
-- vận hành đa kênh;
-- workflow automation tổng quát;
-- multi-project UI;
-- database keyword hàng chục nghìn từ;
-- backlink/keyword-difficulty suite;
-- tự động thay đổi luật hoặc prompt mà không có người duyệt.
+`Configuration -> ContentCase/LocaleVariant -> Knowledge Recall -> Discovery/Opportunity -> EvidenceSet + OriginalityPack -> Durable Harness -> Content Workflow -> Assertion Audit + Human Approval -> Publish -> Measure -> reviewed Learning`
 
-## Tài liệu canonical
+Dùng lại module và harness hiện có. Không cần cloud deployment để hoàn thành M1. Hoàn thành code không đồng nghĩa hoàn thành vận hành.
 
-Tất cả quyết định sản phẩm và kỹ thuật phải được khóa trong `docs/` trước khi implementation lớn bắt đầu.
+## Search và knowledge
 
-Thứ tự đọc:
+Serper nhìn Google/PAA/Related/Autocomplete; Tavily tìm nguồn nghiên cứu; Exa cho nguồn sâu/second-hop; Jina đọc URL đã chọn; Brave chỉ optional fallback/coverage check. Không coi thứ hạng tìm kiếm là độ tin cậy.
 
-1. `docs/00-NORTH-STAR.md`
-2. `docs/01-NON-NEGOTIABLES.md`
-3. `docs/02-ARCHITECTURE-SPEC.md`
-4. `docs/03-DATA-CONTRACT.md`
-5. `docs/04-SETTINGS-CONTRACT.md`
-6. `docs/05-HARNESS-SPEC.md`
-7. `docs/06-MEMORY-LEARNING-SPEC.md`
-8. `docs/07-QUALITY-EVAL-SPEC.md`
-9. `docs/08-JOURNAL-SPEC.md`
-10. `docs/09-ARTWORK-SPEC.md`
-11. `docs/10-PUBLISH-MEASURE-SPEC.md`
-12. `docs/11-RESEARCH-SEARCH-SPEC.md`
-13. `docs/12-OPPORTUNITY-MAP-SPEC.md`
-14. `docs/PLAN.md`
-15. `docs/TASKS.md`
-16. `docs/CHECKLIST.md`
-17. `docs/CE01-WALKING-SKELETON-RUNBOOK.md`
-18. `AGENTS.md`
+`Raw source -> Knowledge Candidate -> dedupe + provenance + review -> Approved Knowledge -> optional Obsidian mirror`
 
-## Kiến trúc tổng quát
+Không đổ raw SERP/API data vào Obsidian. Mirror không tự trở thành nguồn chuẩn. Output AI không tự trở thành factual evidence.
 
-```text
-Configuration
-    ↓
-ContentCase + LocaleVariant
-    ↓
-Knowledge Recall
-    ↓
-Discovery Research
-    ↓
-Keyword / Question / Opportunity Map
-    ↓
-Evidence Research
-    ↓
-EvidenceSet + OriginalityPack
-    ↓
-Durable Harness
-    ↓
-Content Workflow
-    ↓
-Assertion Audit + Human Approval
-    ↓
-Publish
-    ↓
-Measure
-    ↓
-Learning Loop
-    ↓
-Approved Settings / Memory / Golden Content
-```
+## Tài liệu nền tảng
 
-## Search stack V1
+Quyết định lớn cần được khóa trong docs trước implementation. Đọc theo task, không đọc lại toàn bộ lịch sử mỗi lần:
 
-```text
-Serper
-→ nhìn Google: PAA / Related / Autocomplete / organic
+- `docs/00-NORTH-STAR.md`, `docs/01-NON-NEGOTIABLES.md`, `docs/02-ARCHITECTURE-SPEC.md`.
+- `docs/03-DATA-CONTRACT.md`, `docs/04-SETTINGS-CONTRACT.md`, `docs/05-HARNESS-SPEC.md`.
+- `docs/06-MEMORY-LEARNING-SPEC.md`, `docs/07-QUALITY-EVAL-SPEC.md`.
+- `docs/08-JOURNAL-SPEC.md`, `docs/09-ARTWORK-SPEC.md`, `docs/10-PUBLISH-MEASURE-SPEC.md`.
+- `docs/11-RESEARCH-SEARCH-SPEC.md`, `docs/12-OPPORTUNITY-MAP-SPEC.md`, `docs/19-CE05-JOURNAL-ENGINE-SPEC.md`.
+- `docs/20-LOCAL-FIRST-DELIVERY-SPEC.md`, `docs/PLAN.md`, `docs/TASKS.md`, `docs/CHECKLIST.md`, `docs/TASK-HARNESS.md`.
 
-Tavily
-→ tìm nguồn nghiên cứu phù hợp khi Google nhiều sales/SEO noise
+CE01 walking-skeleton runbook và `docs/logs/` giữ bằng chứng lịch sử, không thay thế trạng thái hiện tại.
 
-Exa
-→ tìm nguồn sâu, nguồn tương tự và second-hop
-
-Jina
-→ đọc sạch các URL đã chọn
-
-Brave
-→ optional fallback / coverage check
-```
-
-Không dùng search ranking như thước đo độ tin cậy của nguồn.
-
-## Knowledge sau research
-
-Không đổ raw SERP/API data vào Obsidian.
-
-```text
-Raw source
-→ Knowledge Candidate
-→ dedupe + provenance + review
-→ Approved Knowledge
-→ Obsidian mirror khi hữu ích
-```
-
-Obsidian là workspace/mirror dễ đọc cho người, không tự trở thành source of truth chỉ vì một note tồn tại.
-
-## Nguyên tắc học từ OpenHuman
-
-ContentEngine học các nguyên lý phù hợp từ OpenHuman, không sao chép toàn bộ sản phẩm hoặc kiến trúc công nghệ:
-
-- nguồn gốc dữ liệu phải truy nguyên được;
-- ingest phải chống trùng và có ID ổn định;
-- chỉ đưa context liên quan vào model;
-- run phải có checkpoint, resume và ledger;
-- model/tool call phải có budget và telemetry;
-- memory cần lớp raw, summary và retrieval;
-- learning chỉ trở thành luật sau khi có evidence và human approval.
-
-Tham khảo: <https://github.com/tinyhumansai/openhuman>
-
-## Trạng thái
-
-- `CE00 — Foundation Contracts`: CLOSED.
-- `CE01 — Repository Skeleton + Research Spike + Walking Skeleton`: CLOSED / PASS.
-- `CE02 — Core Data + Settings`: CLOSED / PASS.
-- `CE03 — Durable Harness`: CLOSED / PASS.
-- `CE03 PR-A — Durable Queue + Lease Core`: CLOSED / MERGED / PASS.
-- `CE03 PR-B — Checkpoint + Approval + Retry + Budget`: CLOSED / MERGED / PASS.
-- `CE03 PR-C — ModelRouter + ToolAdapter + ContextManifest + Telemetry`: CLOSED / MERGED / PASS.
-- `CE03 PR-D — Outbox + Reconciliation + Restart/Resume`: CLOSED / MERGED / PASS.
-- `CE03 PR-E — Replay/Eval + CE03 Closeout`: CLOSED / MERGED / PASS.
-- `CE04 — Knowledge + Production Research`: CLOSED / PASS.
-- `CE04 PR-A — Source Ingest + Dedupe + Chunking`: CLOSED / MERGED / PASS.
-- `CE04 PR-B — Entity Linking + Retrieval + Authority Ranking`: CLOSED / MERGED / PASS.
-- `CE04 PR-C — Production ResearchRouter + Provider Adapters`: CLOSED / MERGED / PASS.
-- `CE04 PR-D — Discovery Research + Opportunity Handoff`: CLOSED / MERGED / PASS.
-- `CE04 PR-E — Evidence Research + Evidence Set`: CLOSED / MERGED / PASS.
-- `CE04 PR-F — Knowledge Admission + Provenance Gates`: CLOSED / MERGED / PASS.
-- PR #26 merge commit: `46af24d6c17df483fdc32721f14bc2f9156d0d76`.
-- `CE05 — Journal Engine V1`: ACTIVE / PR-A.
-- Current PR: `CE05 PR-A — Journal Context + Memory`.
-- Current implementation slice: `T05.1–T05.3`.
-- `T05.1–T05.3`: READY FOR REVIEW.
-- `T05.4–T05.22`: NOT STARTED.
-
-CE03 và CE04 đã CLOSED / PASS. CE05 PR-A giới hạn ở Journal surface, approved knowledge recall, memory overlap và ContextManifest; không chạy provider, không tạo workflow engine mới, không bắt đầu PR-B hoặc các task T05.4+ và không merge.
+ContentEngine học provenance, chống trùng, bounded context, checkpoint/resume, telemetry và human-approved learning từ OpenHuman; không sao chép toàn bộ kiến trúc hoặc sản phẩm: <https://github.com/tinyhumansai/openhuman>.

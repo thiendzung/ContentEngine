@@ -1,202 +1,112 @@
-# CHECKLIST — ContentEngine Execution Gates
+# CHECKLIST - ContentEngine delivery gates
 
-Use this file as the default pre-task, pre-PR and post-merge gate. Exact task files may add stricter requirements.
+Use applicable sections; mark N/A with a reason. Never claim a test ran merely because a document was reviewed. Exact tasks can impose stricter gates.
 
-## A. Before starting any task
+## A. Before work
 
-- [ ] Read `AGENTS.md`.
-- [ ] Read `AI_context.MD`.
-- [ ] Read `docs/TASKS.md`.
-- [ ] Read affected canonical spec(s).
-- [ ] Read exact delegated task in `docs/logs/` when one exists.
-- [ ] Fetch latest GitHub state.
-- [ ] Confirm clean main or exact assigned branch.
-- [ ] Confirm TASK ID / OWNER.
-- [ ] Confirm GOAL / SCOPE / NON-GOALS.
-- [ ] Confirm allowed files/actions.
-- [ ] Confirm acceptance gates and stop conditions.
-- [ ] Confirm no stale semantic checkpoint.
-- [ ] Confirm WIP <= 1 primary implementation + 1 local verification task.
+- [ ] Correct repo, clean tree and exact assigned ref; remote fetched, tested SHA recorded.
+- [ ] No forced reset/stash/clean or overwrite of unexpected local work.
+- [ ] Read checked-out AGENTS, AI_context.MD, TASKS, affected specs and exact task.
+- [ ] Owner, outcome, scope, non-goals, file allowlist and permissions explicit.
+- [ ] Actual gate agrees with task; no stale chat/UUID assumptions.
+- [ ] WIP <= one implementation plus related verification; no concurrent runtime writers.
+- [ ] Task dispatched/authorized; presence in PLAN alone is not permission.
 
-If instructions conflict with canonical contracts, enter Contract Change Mode before implementation.
+## B. Finish-first scope
 
-## B. Scope / contract gate
+- [ ] Before M1, work unblocks same real Journal or demonstrated security/data-integrity defect.
+- [ ] No speculative redesign, provider/agent/framework, broad refactor or CI tuning.
+- [ ] Existing modules/harness reused; no second engine.
+- [ ] Contract conflict resolved in affected docs/tests, not bypassed.
+- [ ] Useful bounded outcome assigned; no needless approval per command.
 
-- [ ] Exact scope is explicit.
-- [ ] Non-goals are respected.
-- [ ] No unrelated refactor.
-- [ ] No speculative abstraction.
-- [ ] No new provider/agent/framework unless explicitly approved.
-- [ ] No architecture redesign unless the task is an approved contract change.
-- [ ] Owner/module boundaries remain correct.
+## C. Local runtime and secrets
 
-## C. Data / provenance gate
+- [ ] Operational DB identity, migration, compose project/volume and run verified when relevant.
+- [ ] Existing runtime, rows and .env preserved; no fabricated rows or reinitialization.
+- [ ] TEST_DATABASE_URL resolves to a distinct DB before destructive tests.
+- [ ] No test reset, volume deletion or down -v on operational data.
+- [ ] No credentials, cookies, tokens, dumps or private/customer data in GitHub evidence.
+- [ ] Network dependence/exposure explicit; local binding verified, not assumed.
+- [ ] Runtime/schema changes permitted with appropriate backup/recovery proof.
+- [ ] Restore test uses separate disposable destination; code rollback is not DB rollback.
+- [ ] No deployed-code switch during an executing runtime step.
 
-- [ ] Required provenance is preserved.
-- [ ] Exact IDs/versions/hashes are bound where required.
-- [ ] Immutable artifacts remain immutable.
-- [ ] Stale snapshot/input is detected and fails closed.
-- [ ] Discovery signals are not promoted to factual Evidence.
-- [ ] Critical assertions map to EvidenceSet.
-- [ ] ContextManifest/input provenance is retained for important model calls.
+## D. Inputs, provenance and approvals
 
-## D. Failure / retry gate
+- [ ] IDs, versions, hashes, approval and lock match current runtime.
+- [ ] Locked EvidenceSet and immutable artifacts unchanged.
+- [ ] OriginalityPack approved/relevant; Discovery/rank is not factual evidence.
+- [ ] ContextManifest/settings/prompt/recipe/model route retained for important calls.
+- [ ] Upstream MERGE/LINK_ONLY/DO_NOT_WRITE decisions respected.
+- [ ] Angle, Outline and final approvals retained; no invented approver/delegation.
+- [ ] Changed content invalidates old approval; relevant checks rerun on final bytes.
 
-- [ ] Failure path is explicit.
-- [ ] Fail-closed behavior is preserved where required.
-- [ ] Retry is bounded.
-- [ ] Idempotency is proven for repeatable operations.
-- [ ] Partial failure does not create false success.
-- [ ] Ambiguous side effects reconcile before retry.
-- [ ] Restart/resume behavior is tested when relevant.
+## E. Failure, model and resume
 
-## E. Model / tool gate
+- [ ] Input sanitized/bounded and structured output validated.
+- [ ] Calls/retries/duration/cost bounded by approved task/settings.
+- [ ] Error identifies layer, code, last completed step; unknown stays unknown.
+- [ ] No safety bypass, disguised invocation or retry loop after outer policy denial.
+- [ ] Auth/config errors not retried as transient.
+- [ ] Partial failure cannot create false success; ambiguous effects reconciled before retry.
+- [ ] Resume/idempotency tested when changed; confirmed work not duplicated.
+- [ ] Missing usage/cost stays unknown, not zero; raw sensitive stderr not uploaded.
 
-- [ ] Exact task key/route is resolved through approved settings.
-- [ ] Exact approved provider/model provenance is retained.
-- [ ] Model input is sanitized and bounded.
-- [ ] Model output is schema-validated when structured output is required.
-- [ ] Budget/timeout is bounded.
-- [ ] No unapproved tools/capabilities are available.
-- [ ] Secrets are absent from prompts/logs/artifacts.
-- [ ] Runtime success is not treated as content-quality success.
+## F. Content and M1
 
-## F. Database / migration gate
+- [ ] Reader, question and useful next action clear; confirmed material/calibration used.
+- [ ] No invented facts/artist intent/scarcity, filler or keyword stuffing.
+- [ ] Independent complete VI/EN, not default translation.
+- [ ] Bounded Review/Revise complete.
+- [ ] Both current Assertion Audits non-fail; critical unsupported/contradicted = 0.
+- [ ] Both Source-copy fail counts zero.
+- [ ] All non-critical warnings preserved verbatim for Founder.
+- [ ] Package V0 has JSON, readable Markdown, refs/hashes; pre-approval status explicit.
+- [ ] Final approval bound to checked content; ContentVersion follows canonical order.
+- [ ] Actual local lineage proves M1; historical logs/CI alone do not.
 
-- [ ] Migration is required only if contract/schema changes.
-- [ ] Upgrade passes.
-- [ ] Downgrade/round-trip passes when applicable.
-- [ ] Dedicated test database is used for destructive test behavior.
-- [ ] Normal application database is protected from test mutation.
-- [ ] Existing canonical rows/artifacts remain unchanged unless the task explicitly allows mutation.
+## G. Tests and review
 
-## G. Content gate
+Docs-only:
+- [ ] Spec/plan/tasks/checklist/roles/context agree.
+- [ ] Task/file links resolve; no case-only duplicate AI_context file or stale next-task pointer.
+- [ ] History/CE IDs preserved; no falsely checked milestone or invented command.
+- [ ] Diff documentation-only, secret-free and in scope.
 
-- [ ] Audience/problem/intent are clear.
-- [ ] OriginalityPack is approved and relevant.
-- [ ] EvidenceSet is locked and correct.
-- [ ] No invented MOTGU fact.
-- [ ] No invented artist intent.
-- [ ] No fake scarcity.
-- [ ] No filler or keyword stuffing.
-- [ ] VI and EN are independently written from shared factual foundations.
-- [ ] Source-copy/phrase-overlap risk is checked.
-- [ ] Human final approval remains required for publishable output.
+Implementation:
+- [ ] Focused failure/contract test and relevant broader regression pass.
+- [ ] Backend lint/type; API generation when affected.
+- [ ] Frontend lint/type/build and key interactions when affected.
+- [ ] Migration upgrade and applicable downgrade/round-trip on disposable data.
+- [ ] Relevant happy/failure/retry/approval/resume/provenance paths tested.
+- [ ] Local gates run on exact candidate SHA in an authorized safe environment.
 
-## H. Test gate
+Every PR:
+- [ ] Actual diff reviewed; self-review distinguished from independent evidence.
+- [ ] Checks not run disclosed; required CI not bypassed.
+- [ ] No secrets/generated junk/unrelated changes.
+- [ ] Exact evidence included; merge-ready docs do not imply runtime completion.
 
-Run only relevant gates, but do not skip a gate merely because output looks correct.
+## H. State and merge
 
-### Backend
+- [ ] Code/task transition and semantic AI_context/TASKS update in one coherent change.
+- [ ] Runtime evidence dated/sanitized and reviewed before asserting next gate.
+- [ ] Live HEAD/PR/CI read from GitHub, not maintained as stale copies.
+- [ ] Founder alone merges; no direct main write/auto-merge.
+- [ ] After merge verify actual SHA/checks and semantic state.
+- [ ] Before local use verify deployed checkout matches approved ref.
+- [ ] Next task assigned; no routine context-sync PR/per-command paperwork loop.
 
-- [ ] focused tests pass.
-- [ ] broader regression passes when implementation behavior changed.
-- [ ] lint/format pass.
-- [ ] type/static checks pass.
-- [ ] OpenAPI generation passes if backend contract is affected.
+## I. Later gates
 
-### Frontend
+- [ ] M2: three bilingual cases total; last two on same merged version, no case-specific code; safe resume, backup/restore.
+- [ ] M3: placement authorized; content/version maps to URL/hypothesis; external edits reconciled.
+- [ ] M4: good/weak/holdout cases, human edits and evaluator errors; one major variable per comparison, rollback retained.
+- [ ] Small sample/low exposure = insufficient, not strategy conclusion; no auto-promotion.
 
-- [ ] lint pass if affected.
-- [ ] typecheck pass if affected.
-- [ ] build pass if affected.
-- [ ] critical interaction tests pass if affected.
+## Report
 
-### Workflow
+`GOAL / SCOPE / EXACT REF / FILES CHANGED / EVIDENCE / CHECKS NOT RUN / RISKS-BLOCKERS / STATE TRANSITION / STATUS / NEXT`
 
-- [ ] happy path.
-- [ ] failure path.
-- [ ] retry/idempotency.
-- [ ] approval state when relevant.
-- [ ] restart/resume when relevant.
-- [ ] provenance/reproducibility when relevant.
-
-## I. Pre-review gate — mandatory before PR is declared ready
-
-### CONTRACT
-- [ ] exact scope.
-- [ ] non-goals respected.
-
-### DATA
-- [ ] provenance correct.
-- [ ] snapshot/hash binding correct.
-- [ ] immutable where required.
-
-### FAILURE
-- [ ] fail closed.
-- [ ] stale input handled.
-- [ ] retry/idempotency checked.
-- [ ] partial failure checked.
-
-### MODEL
-- [ ] exact route provenance.
-- [ ] exact sanitized input provenance.
-- [ ] budget bounded.
-- [ ] no unapproved tools/capabilities.
-
-### DB
-- [ ] migration safe if present.
-- [ ] upgrade/downgrade or round-trip checked when applicable.
-- [ ] normal DB protected.
-
-### TEST
-- [ ] focused tests.
-- [ ] regression where needed.
-- [ ] lint/type.
-- [ ] frontend if affected.
-
-### STATE
-- [ ] `AI_context.MD` describes the semantic state expected after merge.
-- [ ] `docs/TASKS.md` reflects the same semantic state.
-- [ ] exact task/evidence log exists when needed.
-- [ ] no dynamic HEAD/PR/CI status is copied into long-lived current context.
-- [ ] no stale semantic checkpoint remains.
-
-## J. Before commit / PR
-
-- [ ] Diff reviewed.
-- [ ] No secret/API key.
-- [ ] No debug/temp/generated junk file.
-- [ ] Commit message matches one objective.
-- [ ] PR is small enough to review coherently.
-- [ ] Required evidence is included or linked.
-- [ ] Unresolved contract blocker = do not mark ready.
-
-PR report format:
-
-```text
-GOAL
-SCOPE / NON-GOALS
-FILES CHANGED
-EVIDENCE
-RISKS / BLOCKERS
-STATE TRANSITION
-STATUS
-NEXT
-```
-
-MG may report only:
-
-- `READY TO MERGE`
-- `BLOCKED`
-- `NEED HUMAN DECISION`
-
-## K. After merge
-
-- [ ] Verify merged GitHub state directly.
-- [ ] Verify required CI/checks.
-- [ ] Verify expected semantic state in `AI_context.MD` and `docs/TASKS.md`.
-- [ ] Verify no unintended DB/data mutation when relevant.
-- [ ] Delete obsolete task branch when appropriate.
-- [ ] Do not create a routine context-sync PR if the merged PR already included the correct state transition.
-- [ ] Only activate the next task after the current gate is closed and shared context is correct.
-
-## L. Current CE05 speed rule
-
-Until one real Journal passes T05.17:
-
-- [ ] every new task must shorten or unblock `Real O4 Angle → Outline → VI/EN → Audit → Final`;
-- [ ] otherwise put it in backlog;
-- [ ] no CI optimization unless CI becomes a demonstrated blocker;
-- [ ] no branch-cleanup work except when it directly prevents execution;
-- [ ] no meta-work after the governance/state reset unless a hard blocker requires it.
+Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCKED, NEED HUMAN DECISION. State which scope is ready; stop after the task.

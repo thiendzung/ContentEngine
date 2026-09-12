@@ -1,302 +1,83 @@
-# TASKS — ContentEngine V1
+# TASKS - ContentEngine delivery and progress
 
-This file is the current roadmap and progress ledger. Detailed historical evidence belongs in `docs/logs/`.
+Delivery order: `PLAN.md`. Contract: `20-LOCAL-FIRST-DELIVERY-SPEC.md`. Current gate: `../AI_context.MD`. Detailed evidence belongs in `logs/`, not repeated UUID tables here. CE task IDs are retained; LF IDs organize delivery outcomes across them.
 
-Repository phase numbering here is authoritative for active work.
+Maximum WIP: one implementation plus related local verification; one executor on the operational lineage. A planned task is not execution permission.
 
-## Operating rule
+## Active delivery work
 
-Maximum active work:
+| ID | Owner | Scope | Dependency | State / acceptance |
+|---|---|---|---|---|
+| LF-00 | MG / Founder | Local-first spec, plan, task, checklist and roles | Founder decision | Defined by this change; effective on merge; no runtime completion implied |
+| LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | NEXT, NOT EXECUTED; exact task in `logs/2026-09-12-lf01-local-angle-preflight-task.md` |
+| LF-02 | MG + local verification | Smallest proven blocker resolution, regression if code changes | Reviewed LF-01 evidence | NOT STARTED; no speculative fix; permission issue may need no code |
+| LF-03 | Agent Local / MG review | Resume same fresh lineage through authorized Journal steps | Verified inputs + cleared blocker + exact task/budget | NOT STARTED; stop at editorial gate or conclusive blocker |
+| LF-04 | MG + Agent Local + Founder | Operational Package V0, checks, exact final approval | LF-03 artifacts | NOT STARTED; closes M1 with real local evidence |
+| LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
+| LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG; last two on same merged version, no case-specific code; safe resume |
+| LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG; no auto-publish or full CE08 completion claim |
+| LF-08 | MG + Founder | Edit/failure feedback, Golden/Weak baseline, controlled changes | Real outputs/edits; audience claims need real observations | BACKLOG for automation; capture per-run evidence now |
 
-```text
-1 primary implementation task
-+ 1 delegated local verification task
-```
+## CE00-CE04 - retained completed foundation
 
-Local agents must synchronize their local repository to the exact GitHub ref before reading local task files or running local code. Do not activate the next task until the current semantic state is correct.
+CE00 Foundation Contracts, CE01 Repository/Research Spike/Walking Skeleton, CE02 Core Data/Settings (T02.1-T02.23), CE03 Durable Harness (T03.1-T03.20), CE04 Knowledge/Production Research (T04.1-T04.35): CLOSED / PASS per existing history. Do not rebuild.
 
----
+CE01's historical Golden Journal reached human review; that is not evidence that the current fresh M1 lineage finished.
 
-## CE00 — Foundation Contracts
+## CE05 - Journal Engine V1
 
-Status: **CLOSED / PASS**.
+Status: ACTIVE. M1 ONE REAL JOURNAL PASS: IN PROGRESS / not achieved.
 
----
+Implementation foundation retained:
 
-## CE01 — Repository Skeleton + Research Spike + Walking Skeleton
-
-Status: **CLOSED / PASS**.
-
-Key outcome: one Golden Journal walking skeleton reached human review with zero critical unsupported assertions.
-
----
-
-## CE02 — Core Data + Settings
-
-Status: **CLOSED / PASS**.
-
-T02.1–T02.23: **DONE**.
-
----
-
-## CE03 — Durable Harness
-
-Status: **CLOSED / PASS**.
-
-T03.1–T03.20: **DONE**.
-
----
-
-## CE04 — Knowledge + Production Research
-
-Status: **CLOSED / PASS**.
-
-T04.1–T04.35: **DONE**.
-
-Canonical closeout evidence is retained in `docs/logs/`.
-
----
-
-## CE05 — Journal Engine V1
-
-Status: **ACTIVE**.
-
-### M1 — ONE REAL JOURNAL PASS
-
-Status: **IN PROGRESS**.
-
-Goal:
-
-> Prove one real MOTGU Journal candidate end-to-end before adding more infrastructure.
-
-The CE05 North Star remains:
-
-```text
-selected opportunity
-→ ContentCase + bounded inputs
-→ approved angle
-→ approved outline
-→ independent VI/EN drafts
-→ bounded revision
-→ assertion/source checks
-→ Operational Package
-→ final human approval
-```
-
-### Completed implementation foundation
-
-- [x] T05.1 ContentCase/LocaleVariant Journal UI.
-- [x] T05.2 Internal knowledge recall.
+- [x] T05.1 ContentCase/LocaleVariant Journal surface.
+- [x] T05.2 Approved internal knowledge recall.
 - [x] T05.3 Content Memory overlap foundation.
-- [x] T05.4 Discovery Research step.
-- [x] T05.5 Opportunity Map selection handoff.
-- [x] T05.6 Evidence Research + EvidenceSet step.
-- [x] T05.7 OriginalityPack step.
-- [x] T05.8 Angle generator structured output implementation.
-- [x] T05.9 Angle approval state/runtime bridge implementation.
-- [x] T05.10 Outline with evidence mapping implementation and prior real-runtime proof.
-- [x] T05.11 Vietnamese Writer implementation and prior real-runtime proof.
-- [x] T05.12 English Writer implementation and bilingual-independence proof.
-- [x] T05.13 bounded Review/Revise implementation and prior real-runtime proof.
-- [x] Assertion Audit production harness implemented and hardened through generator/evaluator v5, schema 1.
-- [x] Structural non-assertive normalization remains fail-closed for required/assertive content.
-- [x] Sentence-level bounded reader-guidance normalization merged in PR #63.
-- [x] Source-copy v2 implemented.
-- [x] Source-copy accepts only canonical Assertion Audit pairs v3/v3, v4/v4 and v5/v5; mixed pairs reject.
-- [x] Important retry/idempotency/recovery/provenance paths have focused regression coverage.
+- [x] T05.4 Discovery Research.
+- [x] T05.5 Opportunity selection handoff.
+- [x] T05.6 Evidence Research and EvidenceSet.
+- [x] T05.7 OriginalityPack.
+- [x] T05.8 Structured Angle generator.
+- [x] T05.9 Angle approval/runtime bridge.
+- [x] T05.10 Evidence-mapped Outline implementation and historical proof.
+- [x] T05.11 VI Writer implementation and historical proof.
+- [x] T05.12 EN Writer implementation and bilingual-independence proof.
+- [x] T05.13 Bounded Review/Revise implementation and historical proof.
+- [x] Assertion Audit through generator/evaluator v5, schema 1; fail-closed hard types.
+- [x] Source-copy v2; canonical audit pairs v3/v3, v4/v4, v5/v5 only; mixed pairs reject.
+- [x] Focused retry/idempotency/recovery/provenance regression coverage.
 
-Historical real O4 and pre-reset runtime evidence remains in `docs/logs/`. Those historical UUIDs are not prerequisites for the active M1 candidate when absent from the active runtime database.
+Current checkpoint: `logs/2026-09-12-ce05-m1-one-real-journal-pass-status.md`. Runtime recovery selected FRESH_ACTIVE_DB; no repeat historical scan. Same fresh run/bundle, not a new candidate. Last report: 8 support claims / 3 readable sources; final input bindings need LF-01 verification. Angle was blocked before a model call; root cause remains unverified.
 
-### Active operating decision — fresh runtime acceptance
+### M1 remaining acceptance
 
-Canonical decision:
+- [ ] Verify current EvidenceSet ID/version/hash, approved/locked state, metadata and bundle binding.
+- [ ] Verify current OriginalityPack ID/hash, approved state and bundle binding.
+- [ ] Classify and resolve Angle execution blocker without safety bypass.
+- [ ] Valid generated and approved Angle on fresh lineage.
+- [ ] Valid generated and approved Outline on fresh lineage.
+- [ ] Complete final independent VI and EN visible content.
+- [ ] Bounded Review/Revise complete.
+- [ ] Both Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
+- [ ] Both Source-copy checks fail_count = 0.
+- [ ] All non-critical warnings preserved verbatim.
+- [ ] T05.16 Operational Package V0 JSON + Markdown + hashes; pre-approval status explicit.
+- [ ] Founder final approval bound to final content; canonical ContentVersion after approval.
+- [ ] T05.17 One real Journal end-to-end on current local runtime.
 
-`docs/logs/2026-09-11-ce05-fast-operational-reset.md`
+### After M1, not its prerequisite
 
-Rules:
+- [ ] T05.18 Critical Gate Regression - prioritize observed failures.
+- [ ] T05.19 Resume / Replay Gate - prove on real local flow.
+- [ ] T05.20 Human Review Surface - smallest useful surface first.
+- [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
+- [ ] T05.22 CE05 Closeout - not inferred from code coverage alone.
 
-- do not recreate old UUIDs;
-- do not copy synthetic historical audit/evaluation rows;
-- one cheap runtime recovery scan only;
-- if no complete compatible lineage exists, use the active `contentengine` database and continue fresh;
-- only hard quality/data-integrity/security failures stop the first operational Journal;
-- non-critical warnings may proceed when preserved verbatim for Founder review.
+Before M1 no new provider/agent/framework, speculative abstraction, WordPress, automatic publishing/merge, repeated DB recovery, CI tuning without blocker or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
 
-The authorized recovery scan has now completed. No complete compatible current lineage was found elsewhere. Selected path is:
+## CE06 - Full Quality + Golden Regression
 
-`FRESH_ACTIVE_DB`
-
-Do not repeat historical database recovery unless Founder/MG explicitly reopens it.
-
-### Active fresh M1 runtime checkpoint
-
-Runtime:
-
-```text
-Database: localhost:5432/contentengine
-Migration: 20260910_0022 (head)
-main checkpoint before context update: debc0897e2f985e1d0662e9e594894e40401d1b8
-```
-
-Fresh planning/runtime lineage:
-
-```text
-ContentCase: f0bfbad7-c266-4de1-8fd4-a85ad206e6ce
-NeedHypothesis: 604f4e5a-68b8-4503-997a-494eff79d448
-ContentOpportunity: 83275ff5-19c8-4753-8c01-2135ad6c9dd1
-HumanSelection: 4ea09a4d-fa71-444f-87b0-0368de809387
-ContentExperiment: 7d8bbc52-1287-4f5c-b024-2686d5e7114d
-SettingsSnapshot: 1169921c-a649-4f93-bf1a-f8daa2f15338
-Settings hash: ebf8c32758311160e4c6d91d4bf6c6f59d9a9e97da7ba8af56f7f615373f9054
-Journal ContentRun: a92f6f69-1c83-4aca-9a2f-e547dd15b85f
-journal_input_bundle: d65aa864-e2fe-4c94-92f3-8d73ea89a8db
-Bundle hash: a7f8f2a815c943963e8fc018a4888611f1cf696fc63992cdf226406f3c7441e0
-Journal run state: waiting_approval
-```
-
-This is the active M1 candidate. Do not create another fresh Journal run merely because Angle execution is blocked.
-
-### Fresh evidence status
-
-- [x] first evidence pass executed;
-- [x] first pass was insufficient;
-- [x] one authorized targeted retry executed;
-- [x] retry produced 8 support claims from 3 readable source documents;
-- [ ] before Angle, read-only verify the final fresh EvidenceSet ID/version/hash/status/approval/lock state;
-- [ ] before Angle, read-only verify the final fresh OriginalityPack ID/hash/status/approval state;
-- [ ] verify both are the exact inputs bound to `journal_input_bundle d65aa864-e2fe-4c94-92f3-8d73ea89a8db`.
-
-The last runtime report omitted the final EvidenceSet/OriginalityPack identifiers. Do not infer them. Verify them once, then proceed. If valid, do not research again.
-
-### CURRENT GATE — REAL ANGLE EXECUTION
-
-Status: **BLOCKED**.
-
-Observed runtime evidence:
-
-```text
-Angle ModelCalls: 0
-ContentEngine ToolCalls: 0
-Current Journal ModelCalls: 0
-Current Journal ToolCalls: 0
-Angle artifact: none
-Operational Package: none
-```
-
-Blocker:
-
-`authorized Angle model execution was rejected by the local execution safety gate, including when separated from approval.`
-
-Interpretation:
-
-- this is the current smallest real bottleneck;
-- it is not a DB-recovery blocker;
-- it is not an Evidence sufficiency blocker unless the read-only binding verification fails;
-- it is not an Assertion Audit or Source-copy blocker;
-- no synthetic Angle candidate or safety bypass is allowed.
-
-### Immediate sequence
-
-```text
-read-only verify fresh EvidenceSet + OriginalityPack bindings
-→ identify the exact reason the authorized Angle execution safety gate rejects the run
-→ fix only the smallest proven invocation/code defect if one exists
-→ reuse SAME ContentRun + SAME journal_input_bundle
-→ Angle generation
-→ pre-authorized deterministic Angle selection + AngleApproval
-→ Outline
-→ independent VI + EN writers
-→ bounded Review/Revise
-→ Assertion Audit v5 for both locales
-→ require audit_result != fail and critical counts = 0
-→ Source-copy v2 for both locales
-→ require fail_count = 0
-→ Operational Package V0 JSON + Markdown + SHA-256
-→ Founder final operational approval
-→ M1 — ONE REAL JOURNAL PASS
-```
-
-### M1 progress
-
-```text
-Runtime DB resolution       PASS
-Fresh planning spine        PASS
-Evidence research           PASS — 8 supports / 3 readable docs
-EvidenceSet/Originality     VERIFY CURRENT BINDINGS BEFORE ANGLE
-Journal input bundle        PASS
-Angle                       BLOCKED — CURRENT GATE
-Outline                     NOT STARTED on fresh candidate
-VI/EN Writer                NOT STARTED on fresh candidate
-Review/Revise               NOT STARTED on fresh candidate
-Assertion Audit v5          NOT STARTED on fresh candidate
-Source-copy v2              NOT STARTED on fresh candidate
-T05.16 Final Package        NOT STARTED
-Founder final approval      NOT STARTED
-T05.17 One Real Journal     NOT ACHIEVED
-```
-
-### M1 hard exit criteria
-
-M1 can be marked PASS only when one fresh real candidate has:
-
-- [ ] a valid approved Angle;
-- [ ] a valid approved Outline;
-- [ ] complete final VI visible content;
-- [ ] complete final EN visible content;
-- [ ] bounded Review/Revise complete;
-- [ ] VI Assertion Audit result not `fail`, critical unsupported = 0, critical contradicted = 0;
-- [ ] EN Assertion Audit result not `fail`, critical unsupported = 0, critical contradicted = 0;
-- [ ] VI Source-copy `fail_count = 0`;
-- [ ] EN Source-copy `fail_count = 0`;
-- [ ] every non-critical warning preserved verbatim;
-- [ ] deterministic Operational Package V0 JSON + Markdown with SHA-256;
-- [ ] Founder final operational approval.
-
-### T05.16 / T05.17
-
-- [ ] T05.16 Final content package — **NOT YET ACHIEVED ON THE FRESH M1 CANDIDATE**.
-- [ ] T05.17 One real MOTGU Journal end-to-end candidate — **NOT YET ACHIEVED**.
-
-### Post-M1 hardening
-
-Keep after the first real Journal unless a demonstrated safety/data-integrity issue requires earlier work:
-
-- [ ] T05.18 Critical Gate Regression.
-- [ ] T05.19 Resume / Replay Gate.
-- [ ] T05.20 Human Review Surface.
-- [ ] T05.21 CE05 Metrics Baseline.
-- [ ] T05.22 CE05 Closeout.
-
-### Critical-path rule until M1 PASS
-
-Every new task must directly shorten or unblock:
-
-`Angle → Outline → VI/EN → Review → Audit → Source-copy → Package → Founder approval`
-
-Otherwise backlog it.
-
-Before M1 PASS:
-
-- [ ] no new provider;
-- [ ] no new agent role;
-- [ ] no generic workflow builder;
-- [ ] no architecture redesign;
-- [ ] no speculative abstraction;
-- [ ] no automated publishing;
-- [ ] no WordPress work;
-- [ ] no automated merge;
-- [ ] no CI optimization unless CI itself becomes a demonstrated blocker;
-- [ ] no Assertion Audit v6 unless Founder/MG explicitly reopens the contract after a final hard failure.
-
-Canonical current M1 checkpoint:
-
-`docs/logs/2026-09-12-ce05-m1-one-real-journal-pass-status.md`
-
----
-
-## CE06 — Full Quality + Golden Regression
-
-Status: **NOT STARTED**.
+Status: NOT STARTED as full phase. Small failure regressions do not imply completion.
 
 - [ ] T06.1 Deterministic evidence/assertion evaluator.
 - [ ] T06.2 Reader value evaluator.
@@ -314,11 +95,9 @@ Status: **NOT STARTED**.
 - [ ] T06.14 Candidate vs baseline report.
 - [ ] T06.15 Regression promotion gate.
 
----
+## CE07 - Artwork Engine V1
 
-## CE07 — Artwork Engine V1
-
-Status: **NOT STARTED**.
+Status: NOT STARTED; not opened by this plan.
 
 - [ ] T07.1 WordPress/WooCommerce canonical Artwork adapter.
 - [ ] T07.2 Artwork fact lock.
@@ -327,37 +106,33 @@ Status: **NOT STARTED**.
 - [ ] T07.5 Artist context retrieval.
 - [ ] T07.6 Artist-intent provenance rule.
 - [ ] T07.7 Artwork OriginalityPack.
-- [ ] T07.8 Artwork writer `vi-VN`.
-- [ ] T07.9 Artwork writer `en`.
+- [ ] T07.8 Artwork writer vi-VN.
+- [ ] T07.9 Artwork writer en.
 - [ ] T07.10 Artwork Assertion Audit.
 - [ ] T07.11 Related content linker.
 - [ ] T07.12 Artwork quality gates.
 - [ ] T07.13 One real MOTGU Artwork candidate.
 
----
+## CE08 - WordPress Draft + Measurement Foundation
 
-## CE08 — WordPress Draft + Measurement Foundation
-
-Status: **NOT STARTED**.
+Status: NOT STARTED as full phase. LF-07 may take a small manual Journal handoff/identity slice before full CE06/CE07; it does not check off unimplemented adapters.
 
 - [ ] T08.1 WordPress draft publish adapter.
-- [ ] T08.2 ContentItem ↔ WordPress ID mapping.
+- [ ] T08.2 ContentItem to WordPress ID mapping.
 - [ ] T08.3 ContentVersion PublishEvent history.
 - [ ] T08.4 Idempotency/outbox/reconciliation.
 - [ ] T08.5 Search Console adapter.
 - [ ] T08.6 Analytics adapter.
 - [ ] T08.7 MOTGU conversion-event mapping.
 - [ ] T08.8 Normalize core PerformanceMetric values.
-- [ ] T08.9 Preserve raw provider PerformanceSnapshot.
+- [ ] T08.9 Preserve raw provider PerformanceSnapshot privately.
 - [ ] T08.10 Rank Math signal feasibility spike.
-- [ ] T08.11 Content hypothesis → metrics traceability.
-- [ ] T08.12 Feed real Search Console queries back as Discovery/Keyword Plan signals, not automatic strategy changes.
+- [ ] T08.11 Content hypothesis to metrics traceability.
+- [ ] T08.12 Feed real Search Console queries into Discovery signals, not automatic strategy changes.
 
----
+## CE09 - Content Memory + Learning
 
-## CE09 — Content Memory + Learning
-
-Status: **NOT STARTED**.
+Status: NOT STARTED as full phase. Collect useful run/edit records now; automate by evidence.
 
 - [ ] T09.1 Published ContentItem/Version memory index.
 - [ ] T09.2 Duplicate/intent overlap detector.
@@ -371,20 +146,18 @@ Status: **NOT STARTED**.
 - [ ] T09.10 Month 1 review report.
 - [ ] T09.11 Month 3 review report.
 - [ ] T09.12 Month 6 audience narrowing report.
-- [ ] T09.13 Compare planned keyword/question map with real queries and update signal strength.
+- [ ] T09.13 Compare planned questions with real queries and update signal strength.
 
----
+## CE10 - Pilot
 
-## CE10 — Pilot
+Status: NOT STARTED.
 
-Status: **NOT STARTED**.
-
-- [ ] T10.1 Define 10–20 content hypotheses.
+- [ ] T10.1 Define 10-20 content hypotheses.
 - [ ] T10.2 Balance pillar/cluster and Journal/Artwork.
 - [ ] T10.3 Run production pilot.
 - [ ] T10.4 Review quality failures.
 - [ ] T10.5 Review human editing burden.
-- [ ] T10.6 Review research provider cost/quality and remove redundant provider calls.
+- [ ] T10.6 Review provider cost/quality and redundant calls.
 - [ ] T10.7 Review cost/latency overall.
 - [ ] T10.8 Promote first stable Golden Set.
 - [ ] T10.9 Review audience signals and evidence strength.
