@@ -12,7 +12,7 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
 | LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
-| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A generation PASS/CLOSED; LF-04B quality PASS COMPLETE / MG ACCEPTED. LF-04C is the only active slice: deterministic Operational Package V0, then STOP for Founder final content approval. Exact task `logs/2026-09-13-lf04c-operational-package-task.md` |
+| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A generation PASS; LF-04B quality PASS / MG ACCEPTED; LF-04C package PASS; mandatory Founder final content gate #3 APPROVED. LF-04D is active: persist exact final approvals + canonical approved bilingual ContentVersions, NO PUBLISH. Exact task `logs/2026-09-13-lf04d-founder-final-approval-content-version-task.md` |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
@@ -26,7 +26,7 @@ CE01's historical Golden Journal reached human review; that is not evidence that
 
 ## CE05 - Journal Engine V1
 
-Status: ACTIVE. M1 ONE REAL JOURNAL PASS: IN PROGRESS / not achieved until final approval + canonical ContentVersion + one controlled real operation.
+Status: ACTIVE. M1 ONE REAL JOURNAL PASS: final persistence/closeout in progress; no publishing authority granted.
 
 Implementation foundation retained:
 
@@ -51,15 +51,16 @@ Current checkpoint:
 
 - canonical Angle + AngleApproval and persisted-approved Outline remain unchanged;
 - final VI is immutable v3 `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
-- VI Assertion Audit v5 PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
-- VI Source-copy v2 PASS: `fail_count=0`, `warn_count=0`, no findings;
+- VI Assertion Audit PASS; VI Source-copy PASS, `fail_count=0`, `warn_count=0`;
 - final EN is immutable v4 `43007d23-8fbf-498d-ac49-436414c87aaf`, hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`;
-- EN Assertion Audit v5 PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
-- EN Source-copy v2 hard gate PASS: result `warn`, `fail_count=0`, `warn_count=2`, `finding_count=2`, `max_overlap_tokens=9`;
+- EN Assertion Audit PASS; EN Source-copy hard gate PASS, `fail_count=0`, `warn_count=2`;
 - surviving warning 1: `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`;
 - surviving warning 2: `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`;
-- MG editorial review ACCEPTED final VI/EN unchanged for Founder final review;
-- LF-04B quality pass complete; no quality stage may be rerun merely for polish.
+- Operational Package V0 JSON SHA-256 `9d804da5c8d0756930b577e8e4244408cf9a8236d7b9205a8135d215e61b429a`;
+- Operational Package V0 Markdown SHA-256 `a3804dd7622b9182c581b95aa2f892df2ee82a4e83c5c9a65f55ca802fa67c9f`;
+- package generated deterministically, `not_published=true`, ModelCalls `14`, ToolCalls `0`;
+- Founder explicitly approved exact VI + EN + both package hashes and accepted both EN warnings unchanged;
+- Founder authorized approval persistence + canonical ContentVersion creation only; publish/WordPress remains forbidden.
 
 ### M1 remaining acceptance
 
@@ -67,16 +68,18 @@ Current checkpoint:
 - [x] Verify current OriginalityPack ID/hash, approved state and bundle binding.
 - [x] Valid generated and approved Angle on fresh lineage.
 - [x] Valid generated and persisted-approved Outline on fresh lineage.
-- [x] Generate independent VI and EN Writer v1 content on the fresh lineage.
+- [x] Generate independent VI and EN Writer content on fresh lineage.
 - [x] VI bounded Review/Revise + authorized deterministic cleanup complete.
 - [x] EN bounded Review/Revise + authorized deterministic cleanup complete.
-- [x] Both final Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
+- [x] Both final Assertion Audits hard-clean.
 - [x] Both final Source-copy checks `fail_count = 0`.
-- [x] Complete final independent VI and EN visible content and MG review.
-- [x] All surviving non-critical warnings identified and preserved verbatim for packaging.
-- [ ] T05.16 Operational Package V0 JSON + Markdown + SHA-256; pre-approval status explicit. ACTIVE as LF-04C.
-- [ ] Founder final approval bound to exact final content/package; canonical ContentVersion only after approval.
-- [ ] T05.17 One real Journal end-to-end on current local runtime / controlled operational handoff.
+- [x] Final independent VI/EN visible content reviewed and MG accepted.
+- [x] All surviving warnings preserved verbatim.
+- [x] T05.16 Operational Package V0 JSON + Markdown + SHA-256; pre-approval status explicit.
+- [x] Mandatory human gate #3: Founder final approval bound to exact VI/EN + package hashes.
+- [ ] Persist Founder approvals against exact final_content artifacts. ACTIVE LF-04D.
+- [ ] Create/reuse canonical ContentItem + approved ContentVersion per locale via existing canonical path. ACTIVE LF-04D.
+- [ ] Verify M1 durable closeout on current local runtime with no publish side effect.
 
 ### After M1, not its prerequisite
 
