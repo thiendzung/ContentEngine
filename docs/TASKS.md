@@ -11,8 +11,8 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-00 | MG / Founder | Local-first spec, plan, task, checklist and roles | Founder decision | DONE - merged in main; no runtime completion implied |
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY; reviewed summary in `logs/2026-09-12-lf01-mg-reviewed-evidence.md` |
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected by Founder, exact AngleApproval persisted and handoff verified; closeout `logs/2026-09-12-lf02-angle-approved-closeout.md` |
-| LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle + exact runtime task/budget | ACTIVE - canonical Outline generated and Founder approved editorially; implementation/persistence gap for durable OutlineApproval is being closed by LF-03.1; after merge execute `logs/2026-09-12-lf03-outline-approval-persistence-task.md`; no writers before PASS |
-| LF-04 | MG + Agent Local + Founder | Resume after persisted approved Outline through independent VI/EN, bounded review/checks, Operational Package V0 and exact final approval | Valid persisted OutlineApproval + exact runtime task/budget | NOT STARTED; no inferred approval or writer start |
+| LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle + exact runtime task/budget | DONE / REVIEWED - canonical Outline generated, Founder approved, exact OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5` persisted and handoff verified; closeout `logs/2026-09-12-lf03-outline-approved-closeout.md` |
+| LF-04 | MG + Agent Local + Founder | Resume after persisted approved Outline through independent VI/EN, bounded review/checks, Operational Package V0 and exact final approval | Valid persisted OutlineApproval + exact runtime task/budget | ACTIVE - LF-04A is the only open slice: execute `logs/2026-09-12-lf04a-bilingual-writer-execution-task.md`, generate independent VI/EN drafts, then STOP for MG review |
 | LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG; last two on same merged version, no case-specific code; safe resume |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG; no auto-publish or full CE08 completion claim |
@@ -47,7 +47,7 @@ Implementation foundation retained:
 - [x] Source-copy v2; canonical audit pairs v3/v3, v4/v4, v5/v5 only; mixed pairs reject.
 - [x] Focused retry/idempotency/recovery/provenance regression coverage.
 
-Current checkpoint: same fresh lineage has canonical Angle + AngleApproval and canonical Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6` v1 hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`. Founder explicitly approved that Outline after MG editorial review. LF-03.1 is closing the durable approval contract gap before any Writer run. Do not regenerate Angle/Outline or restart research.
+Current checkpoint: same fresh lineage has canonical Angle + AngleApproval and canonical Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6` v1 hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`, with persisted Founder OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5`. LF-03 is closed. LF-04A is now the only active slice: generate independent VI/EN Writer drafts from that exact approval and stop for MG review. Do not regenerate Angle/Outline or restart research.
 
 ### M1 remaining acceptance
 
@@ -56,7 +56,7 @@ Current checkpoint: same fresh lineage has canonical Angle + AngleApproval and c
 - [x] Classify Angle execution blocker: OUTER_EXECUTION_POLICY, not a proven ContentEngine error.
 - [x] Clear Angle execution through an explicitly permitted path without weakening safeguards.
 - [x] Valid generated and approved Angle on fresh lineage.
-- [ ] Valid generated and persisted-approved Outline on fresh lineage. Generated + Founder editorial decision PASS; durable OutlineApproval persistence pending LF-03.1.
+- [x] Valid generated and persisted-approved Outline on fresh lineage.
 - [ ] Complete final independent VI and EN visible content.
 - [ ] Bounded Review/Revise complete.
 - [ ] Both Assertion Audits non-fail, critical unsupported = 0, critical contradicted = 0.
