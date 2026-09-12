@@ -146,6 +146,7 @@ type CaseDetail = {
   quality_state: string;
   publication_state: string;
   consistency_state: string;
+  issues: string[];
   next_action: string;
   next_action_label: string;
 };
@@ -170,10 +171,21 @@ function localeLabel(locale: string): string {
 }
 
 function findingText(finding: Record<string, unknown>): string {
-  const segment = typeof finding.draft_segment_id === "string" ? finding.draft_segment_id : "finding";
-  const matched = typeof finding.normalized_match === "string" ? finding.normalized_match : "";
+  const segment =
+    typeof finding.draft_segment_id === "string" ? finding.draft_segment_id : "finding";
+  const draftSpan =
+    typeof finding.matched_draft_span === "object" && finding.matched_draft_span !== null
+      ? (finding.matched_draft_span as Record<string, unknown>)
+      : null;
+  const matched =
+    draftSpan && typeof draftSpan.text === "string"
+      ? draftSpan.text
+      : typeof finding.normalized_match === "string"
+        ? finding.normalized_match
+        : "";
   const source = typeof finding.source_kind === "string" ? finding.source_kind : "source";
-  const tokens = typeof finding.overlap_token_count === "number" ? finding.overlap_token_count : null;
+  const tokens =
+    typeof finding.overlap_token_count === "number" ? finding.overlap_token_count : null;
   return `${segment} — overlap “${matched}”; source ${source}${tokens === null ? "" : `; ${tokens} tokens`}`;
 }
 
@@ -206,17 +218,23 @@ function LocaleArticle({ panel }: { panel: LocalePanel }) {
         <div className="header-badges">
           <span className={badgeClass(panel.quality_state)}>{panel.quality_state}</span>
           <span className={badgeClass(panel.publication_state)}>
-            {panel.publication_state === "NOT_PUBLISHED" ? "NOT PUBLISHED" : panel.publication_state}
+            {panel.publication_state === "NOT_PUBLISHED"
+              ? "NOT PUBLISHED"
+              : panel.publication_state}
           </span>
         </div>
       </header>
 
       <div className="version-line">
         <span>
-          ContentVersion {panel.content_version_no ?? "—"} · {panel.content_version_status ?? "pending"}
+          ContentVersion {panel.content_version_no ?? "—"} ·{" "}
+          {panel.content_version_status ?? "pending"}
         </span>
         <span>
-          Final approval: {panel.final_approval ? `${panel.final_approval.decision} by ${panel.final_approval.actor_id}` : "none"}
+          Final approval:{" "}
+          {panel.final_approval
+            ? `${panel.final_approval.decision} by ${panel.final_approval.actor_id}`
+            : "none"}
         </span>
       </div>
 
@@ -247,14 +265,16 @@ function LocaleArticle({ panel }: { panel: LocalePanel }) {
           <p className="label">Assertion Audit</p>
           <strong>{panel.assertion_audit.result.toUpperCase()}</strong>
           <small>
-            critical unsupported {panel.assertion_audit.critical_unsupported_count} · contradicted {panel.assertion_audit.critical_contradicted_count}
+            critical unsupported {panel.assertion_audit.critical_unsupported_count} · contradicted{" "}
+            {panel.assertion_audit.critical_contradicted_count}
           </small>
         </div>
         <div className="quality-card">
           <p className="label">Source-copy</p>
           <strong>{panel.source_copy.result.toUpperCase()}</strong>
           <small>
-            fail {panel.source_copy.fail_count} · warn {panel.source_copy.warn_count} · max {panel.source_copy.max_overlap_tokens} tokens
+            fail {panel.source_copy.fail_count} · warn {panel.source_copy.warn_count} · max{" "}
+            {panel.source_copy.max_overlap_tokens} tokens
           </small>
         </div>
       </div>
@@ -271,7 +291,9 @@ function LocaleArticle({ panel }: { panel: LocalePanel }) {
       {panel.issues.length > 0 && (
         <section className="issues">
           <p className="label">Consistency issues</p>
-          {panel.issues.map((issue) => <p key={issue}>{issue}</p>)}
+          {panel.issues.map((issue) => (
+            <p key={issue}>{issue}</p>
+          ))}
         </section>
       )}
 
@@ -284,18 +306,54 @@ function LocaleArticle({ panel }: { panel: LocalePanel }) {
       <details className="metadata">
         <summary>Provenance & IDs</summary>
         <dl className="metadata-grid">
-          <div><dt>ContentItem</dt><dd>{panel.content_item_id ?? "—"}</dd></div>
-          <div><dt>Canonical key</dt><dd>{panel.canonical_key ?? "—"}</dd></div>
-          <div><dt>ContentVersion</dt><dd>{panel.content_version_id ?? "—"}</dd></div>
-          <div><dt>Writer run</dt><dd>{panel.provenance.writer_run_id ?? "—"}</dd></div>
-          <div><dt>Source draft</dt><dd>{panel.provenance.source_draft?.id ?? "—"}</dd></div>
-          <div><dt>Final content</dt><dd>{panel.final_content?.id ?? "—"}</dd></div>
-          <div><dt>Final hash</dt><dd>{panel.final_content?.content_hash ?? "—"}</dd></div>
-          <div><dt>Final approval</dt><dd>{panel.final_approval?.id ?? "—"}</dd></div>
-          <div><dt>Audit artifact</dt><dd>{panel.assertion_audit.artifact?.id ?? "—"}</dd></div>
-          <div><dt>Audit QE</dt><dd>{panel.assertion_audit.quality_evaluation_id ?? "—"}</dd></div>
-          <div><dt>Source-copy artifact</dt><dd>{panel.source_copy.artifact?.id ?? "—"}</dd></div>
-          <div><dt>Source-copy QE</dt><dd>{panel.source_copy.quality_evaluation_id ?? "—"}</dd></div>
+          <div>
+            <dt>ContentItem</dt>
+            <dd>{panel.content_item_id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Canonical key</dt>
+            <dd>{panel.canonical_key ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>ContentVersion</dt>
+            <dd>{panel.content_version_id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Writer run</dt>
+            <dd>{panel.provenance.writer_run_id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Source draft</dt>
+            <dd>{panel.provenance.source_draft?.id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Final content</dt>
+            <dd>{panel.final_content?.id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Final hash</dt>
+            <dd>{panel.final_content?.content_hash ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Final approval</dt>
+            <dd>{panel.final_approval?.id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Audit artifact</dt>
+            <dd>{panel.assertion_audit.artifact?.id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Audit QE</dt>
+            <dd>{panel.assertion_audit.quality_evaluation_id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Source-copy artifact</dt>
+            <dd>{panel.source_copy.artifact?.id ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Source-copy QE</dt>
+            <dd>{panel.source_copy.quality_evaluation_id ?? "—"}</dd>
+          </div>
         </dl>
       </details>
     </article>
@@ -360,14 +418,17 @@ export default function Home() {
           <p className="eyebrow">CE05 · Human Review Surface</p>
           <h1>Review Console</h1>
           <p className="intro">
-            Read-only view of the persisted Journal truth: final content, quality gates, approvals, versions and publication state.
+            Read-only view of the persisted Journal truth: final content, quality gates,
+            approvals, versions and publication state.
           </p>
         </div>
         {detail && (
           <div className="page-status">
             <span className={badgeClass(detail.quality_state)}>{detail.quality_state}</span>
             <span className={badgeClass(detail.publication_state)}>
-              {detail.publication_state === "NOT_PUBLISHED" ? "NOT PUBLISHED" : detail.publication_state}
+              {detail.publication_state === "NOT_PUBLISHED"
+                ? "NOT PUBLISHED"
+                : detail.publication_state}
             </span>
           </div>
         )}
@@ -390,15 +451,23 @@ export default function Home() {
             <div className="case-list">
               {cases.map((contentCase) => (
                 <button
-                  className={contentCase.id === selectedCaseId ? "case-card active" : "case-card"}
+                  className={
+                    contentCase.id === selectedCaseId ? "case-card active" : "case-card"
+                  }
                   key={contentCase.id}
                   onClick={() => setSelectedCaseId(contentCase.id)}
                   type="button"
                 >
                   <span className="case-question">{contentCase.opportunity_question}</span>
                   <span className="case-meta">
-                    <span className={badgeClass(contentCase.quality_state)}>{contentCase.quality_state}</span>
-                    <span>{contentCase.locales.map((locale) => localeLabel(locale.locale)).join(" · ")}</span>
+                    <span className={badgeClass(contentCase.quality_state)}>
+                      {contentCase.quality_state}
+                    </span>
+                    <span>
+                      {contentCase.locales
+                        .map((locale) => localeLabel(locale.locale))
+                        .join(" · ")}
+                    </span>
                   </span>
                   <small>{contentCase.next_action_label}</small>
                 </button>
@@ -407,9 +476,18 @@ export default function Home() {
 
             {selectedSummary && (
               <div className="case-facts">
-                <p><span>Decision</span>{selectedSummary.opportunity_decision}</p>
-                <p><span>Case</span>{shortId(selectedSummary.id)}</p>
-                <p><span>State</span>{selectedSummary.consistency_state}</p>
+                <p>
+                  <span>Decision</span>
+                  {selectedSummary.opportunity_decision}
+                </p>
+                <p>
+                  <span>Case</span>
+                  {shortId(selectedSummary.id)}
+                </p>
+                <p>
+                  <span>State</span>
+                  {selectedSummary.consistency_state}
+                </p>
               </div>
             )}
           </aside>
@@ -429,14 +507,34 @@ export default function Home() {
                   </div>
                 </section>
 
+                {detail.issues.length > 0 && (
+                  <section className="issues">
+                    <p className="label">Case consistency issues</p>
+                    {detail.issues.map((issue) => (
+                      <p key={issue}>{issue}</p>
+                    ))}
+                  </section>
+                )}
+
                 <section className="reader-context">
-                  <div><span>Reader before</span><p>{detail.reader_before}</p></div>
-                  <div><span>Reader after</span><p>{detail.reader_after}</p></div>
-                  <div><span>Hypothesis</span><p>{detail.content_hypothesis}</p></div>
+                  <div>
+                    <span>Reader before</span>
+                    <p>{detail.reader_before}</p>
+                  </div>
+                  <div>
+                    <span>Reader after</span>
+                    <p>{detail.reader_after}</p>
+                  </div>
+                  <div>
+                    <span>Hypothesis</span>
+                    <p>{detail.content_hypothesis}</p>
+                  </div>
                 </section>
 
                 <div className="bilingual-grid">
-                  {panels.map((panel) => <LocaleArticle key={panel.locale_variant_id} panel={panel} />)}
+                  {panels.map((panel) => (
+                    <LocaleArticle key={panel.locale_variant_id} panel={panel} />
+                  ))}
                 </div>
 
                 <details className="lineage">
@@ -444,13 +542,21 @@ export default function Home() {
                   <div className="lineage-grid">
                     <div>
                       <p className="label">Angle</p>
-                      <strong>{detail.angle?.selected_working_title ?? detail.angle?.selected_angle_id ?? "Not resolved"}</strong>
+                      <strong>
+                        {detail.angle?.selected_working_title ??
+                          detail.angle?.selected_angle_id ??
+                          "Not resolved"}
+                      </strong>
                       <p>Artifact: {detail.angle?.artifact.id ?? "—"}</p>
                       <p>Approval: {detail.angle?.approval_id ?? "—"}</p>
                     </div>
                     <div>
                       <p className="label">Outline</p>
-                      <strong>{detail.outline ? `Approved by ${detail.outline.approved_by}` : "Not resolved"}</strong>
+                      <strong>
+                        {detail.outline
+                          ? `Approved by ${detail.outline.approved_by}`
+                          : "Not resolved"}
+                      </strong>
                       <p>Artifact: {detail.outline?.artifact.id ?? "—"}</p>
                       <p>Approval: {detail.outline?.approval_id ?? "—"}</p>
                     </div>
