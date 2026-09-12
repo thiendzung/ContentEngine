@@ -5,10 +5,10 @@ import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
@@ -53,7 +53,11 @@ def _hash(value: object) -> str:
 
 
 def _draft(locale: str) -> dict[str, object]:
-    title = "Mức giá của tác phẩm" if locale == "vi-VN" else "What an Artwork Price Can Tell You"
+    title = (
+        "Mức giá của tác phẩm"
+        if locale == "vi-VN"
+        else "What an Artwork Price Can Tell You"
+    )
     return {
         "schema_version": 1,
         "draft": {
@@ -94,7 +98,9 @@ class ReviewFixture:
     source_copies: dict[str, Artifact]
 
 
-async def _base_case(session: AsyncSession) -> tuple[Project, ContentCase, ContentOpportunity]:
+async def _base_case(
+    session: AsyncSession,
+) -> tuple[Project, ContentCase, ContentOpportunity]:
     project = Project(slug=f"review-{uuid4().hex[:8]}", name="Review fixture")
     session.add(project)
     await session.flush()
@@ -143,34 +149,18 @@ async def _base_case(session: AsyncSession) -> tuple[Project, ContentCase, Conte
     return project, content_case, opportunity
 
 
-async def _approved_fixture(session: AsyncSession) -> ReviewFixture:
-    project, content_case, _opportunity = await _base_case(session)
-    snapshot = SettingsSnapshot(
-        project_id=project.id,
-        resolved_settings_json={"models": {}},
-        source_version_refs_json=["fixture"],
-        content_hash="a" * 64,
-    )
-    session.add(snapshot)
-    await session.flush()
-
-    variants: dict[str, LocaleVariant] = {}
-    for locale in ("vi-VN", "en"):
-        variant = LocaleVariant(
-            content_case_id=content_case.id,
-            locale=locale,
-            content_role="cluster",
-            primary_question="What can an artwork price tell me?",
-            primary_intent="evaluate",
-        )
-        session.add(variant)
-        await session.flush()
-        variants[locale] = variant
-
+async def _persist_lineage(
+    session: AsyncSession,
+    *,
+    project: Project,
+    content_case: ContentCase,
+    snapshot: SettingsSnapshot,
+    variant: LocaleVariant,
+) -> None:
     source_run = ContentRun(
         project_id=project.id,
         content_case_id=content_case.id,
-        locale_variant_id=variants["en"].id,
+        locale_variant_id=variant.id,
         run_mode="create",
         status="waiting_approval",
         current_step="outline",
@@ -246,6 +236,279 @@ async def _approved_fixture(session: AsyncSession) -> ReviewFixture:
             approval_reason="fixture",
             approved_at=datetime.now(UTC),
         )
+    )
+
+
+async def _persist_quality(
+    session: AsyncSession,
+    *,
+    project: Project,
+    content_case: ContentCase,
+    snapshot: SettingsSnapshot,
+    variant: LocaleVariant,
+    item: ContentItem,
+    writer_run: ContentRun,
+    source_draft: Artifact,
+) -> tuple[Artifact, Artifact]:
+    old_payload = _draft(variant.locale)
+    old_draft_payload = old_payload["draft"]
+    assert isinstance(old_draft_payload, dict)
+    old_draft_payload["title"] = "Old failed draft"
+    old_draft = Artifact(
+        run_id=writer_run.id,
+        artifact_type="journal_draft",
+        locale=variant.locale,
+        version=1,
+        content_json=old_payload,
+        content_hash=_hash(old_payload),
+    )
+    session.add(old_draft)
+    await session.flush()
+    old_run = ContentRun(
+        project_id=project.id,
+        content_case_id=content_case.id,
+        locale_variant_id=variant.id,
+        content_item_id=item.id,
+        run_mode="eval",
+        status="completed",
+        current_step="assertion_audit",
+        settings_snapshot_id=snapshot.id,
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
+    )
+    session.add(old_run)
+    await session.flush()
+    old_audit_payload = {
+        "source_draft": {
+            "id": str(old_draft.id),
+            "version": old_draft.version,
+            "content_hash": old_draft.content_hash,
+        },
+        "summary": {
+            "result": "fail",
+            "critical_unsupported_count": 1,
+            "critical_contradicted_count": 0,
+            "unsupported_count": 1,
+            "contradicted_count": 0,
+        },
+    }
+    old_audit = Artifact(
+        run_id=old_run.id,
+        artifact_type="assertion_audit",
+        locale=variant.locale,
+        version=1,
+        content_json=old_audit_payload,
+        content_hash=_hash(old_audit_payload),
+    )
+    session.add(old_audit)
+    await session.flush()
+    session.add(
+        QualityEvaluation(
+            run_id=old_run.id,
+            artifact_id=old_audit.id,
+            evaluator_key="assertion_audit_hard_gate",
+            evaluator_version="ce05.assertion_audit.hard_gate.v5",
+            evaluator_type="deterministic",
+            result="fail",
+            severity="critical",
+            findings_json={"fixture": True},
+        )
+    )
+
+    audit_run = ContentRun(
+        project_id=project.id,
+        content_case_id=content_case.id,
+        locale_variant_id=variant.id,
+        content_item_id=item.id,
+        run_mode="eval",
+        status="completed",
+        current_step="assertion_audit",
+        settings_snapshot_id=snapshot.id,
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
+    )
+    session.add(audit_run)
+    await session.flush()
+    audit_payload = {
+        "source_draft": {
+            "id": str(source_draft.id),
+            "version": source_draft.version,
+            "content_hash": source_draft.content_hash,
+        },
+        "summary": {
+            "result": "pass",
+            "critical_unsupported_count": 0,
+            "critical_contradicted_count": 0,
+            "unsupported_count": 0,
+            "contradicted_count": 0,
+        },
+    }
+    audit = Artifact(
+        run_id=audit_run.id,
+        artifact_type="assertion_audit",
+        locale=variant.locale,
+        version=1,
+        content_json=audit_payload,
+        content_hash=_hash(audit_payload),
+    )
+    session.add(audit)
+    await session.flush()
+    session.add(
+        QualityEvaluation(
+            run_id=audit_run.id,
+            artifact_id=audit.id,
+            evaluator_key="assertion_audit_hard_gate",
+            evaluator_version="ce05.assertion_audit.hard_gate.v5",
+            evaluator_type="deterministic",
+            result="pass",
+            severity="none",
+            findings_json={"fixture": True},
+        )
+    )
+
+    copy_run = ContentRun(
+        project_id=project.id,
+        content_case_id=content_case.id,
+        locale_variant_id=variant.id,
+        content_item_id=item.id,
+        run_mode="eval",
+        status="completed",
+        current_step="source_copy_check",
+        settings_snapshot_id=snapshot.id,
+        started_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
+    )
+    session.add(copy_run)
+    await session.flush()
+    findings: list[dict[str, object]] = []
+    if variant.locale == "en":
+        first_match = "by the same artist, and the state of the"
+        second_match = "oversize or special handling may require a quote"
+        findings = [
+            {
+                "draft_segment_id": "section:condition-and-context:1",
+                "draft_location": "section:condition-and-context",
+                "draft_text": f"{first_match} market",
+                "source_kind": "evidence_excerpt",
+                "source_ref": "evidence:fixture",
+                "source_field": "evidence_excerpt",
+                "source_text_hash": "c" * 64,
+                "matched_draft_span": {
+                    "start": 0,
+                    "end": 45,
+                    "text": first_match,
+                },
+                "matched_source_span": {
+                    "start": 0,
+                    "end": 45,
+                    "text": first_match,
+                },
+                "normalized_match": "by the same artist and the state of the",
+                "overlap_token_count": 9,
+                "classification": "warn",
+                "locale": "en",
+            },
+            {
+                "draft_segment_id": "section:practical-costs:2",
+                "draft_location": "section:practical-costs",
+                "draft_text": second_match,
+                "source_kind": "originality_material",
+                "source_ref": "originality:fixture",
+                "source_field": "material",
+                "source_text_hash": "d" * 64,
+                "matched_draft_span": {
+                    "start": 0,
+                    "end": 48,
+                    "text": second_match,
+                },
+                "matched_source_span": {
+                    "start": 0,
+                    "end": 48,
+                    "text": second_match,
+                },
+                "normalized_match": second_match,
+                "overlap_token_count": 8,
+                "classification": "warn",
+                "locale": "en",
+            },
+        ]
+    copy_summary = {
+        "result": "warn" if findings else "pass",
+        "finding_count": len(findings),
+        "warn_count": len(findings),
+        "fail_count": 0,
+        "max_overlap_tokens": 9 if findings else 0,
+    }
+    copy_payload = {
+        "source_draft": {
+            "id": str(source_draft.id),
+            "version": source_draft.version,
+            "content_hash": source_draft.content_hash,
+        },
+        "assertion_audit": {
+            "artifact": {
+                "id": str(audit.id),
+                "version": audit.version,
+                "content_hash": audit.content_hash,
+            }
+        },
+        "summary": copy_summary,
+        "findings": findings,
+    }
+    source_copy = Artifact(
+        run_id=copy_run.id,
+        artifact_type="source_copy_check",
+        locale=variant.locale,
+        version=1,
+        content_json=copy_payload,
+        content_hash=_hash(copy_payload),
+    )
+    session.add(source_copy)
+    await session.flush()
+    session.add(
+        QualityEvaluation(
+            run_id=copy_run.id,
+            artifact_id=source_copy.id,
+            evaluator_key="source_copy_basic_gate",
+            evaluator_version="ce05.source_copy.basic_gate.v2",
+            evaluator_type="deterministic",
+            result=copy_summary["result"],
+            severity="medium" if findings else "none",
+            findings_json={"fixture": True},
+        )
+    )
+    return audit, source_copy
+
+
+async def _approved_fixture(session: AsyncSession) -> ReviewFixture:
+    project, content_case, _opportunity = await _base_case(session)
+    snapshot = SettingsSnapshot(
+        project_id=project.id,
+        resolved_settings_json={"models": {}},
+        source_version_refs_json=["fixture"],
+        content_hash="a" * 64,
+    )
+    session.add(snapshot)
+    await session.flush()
+
+    variants: dict[str, LocaleVariant] = {}
+    for locale in ("vi-VN", "en"):
+        variant = LocaleVariant(
+            content_case_id=content_case.id,
+            locale=locale,
+            content_role="cluster",
+            primary_question="What can an artwork price tell me?",
+            primary_intent="evaluate",
+        )
+        session.add(variant)
+        await session.flush()
+        variants[locale] = variant
+    await _persist_lineage(
+        session,
+        project=project,
+        content_case=content_case,
+        snapshot=snapshot,
+        variant=variants["en"],
     )
 
     items: dict[str, ContentItem] = {}
@@ -329,217 +592,19 @@ async def _approved_fixture(session: AsyncSession) -> ReviewFixture:
         session.add(final_approval)
         await session.flush()
         final_approvals[locale] = final_approval
+        audit, source_copy = await _persist_quality(
+            session,
+            project=project,
+            content_case=content_case,
+            snapshot=snapshot,
+            variant=variant,
+            item=item,
+            writer_run=writer_run,
+            source_draft=source_draft,
+        )
+        current_audits[locale] = audit
+        source_copies[locale] = source_copy
 
-        # Persist an older failed audit on different bytes to prove exact-source selection.
-        old_payload = _draft(locale)
-        old_payload["draft"] = dict(old_payload["draft"], title="Old failed draft")  # type: ignore[arg-type]
-        old_draft = Artifact(
-            run_id=writer_run.id,
-            artifact_type="journal_draft",
-            locale=locale,
-            version=1,
-            content_json=old_payload,
-            content_hash=_hash(old_payload),
-        )
-        session.add(old_draft)
-        await session.flush()
-        old_audit_run = ContentRun(
-            project_id=project.id,
-            content_case_id=content_case.id,
-            locale_variant_id=variant.id,
-            content_item_id=item.id,
-            run_mode="eval",
-            status="completed",
-            current_step="assertion_audit",
-            settings_snapshot_id=snapshot.id,
-            started_at=datetime.now(UTC),
-            completed_at=datetime.now(UTC),
-        )
-        session.add(old_audit_run)
-        await session.flush()
-        old_audit_payload = {
-            "source_draft": {
-                "id": str(old_draft.id),
-                "version": old_draft.version,
-                "content_hash": old_draft.content_hash,
-            },
-            "summary": {
-                "result": "fail",
-                "critical_unsupported_count": 1,
-                "critical_contradicted_count": 0,
-                "unsupported_count": 1,
-                "contradicted_count": 0,
-            },
-        }
-        old_audit = Artifact(
-            run_id=old_audit_run.id,
-            artifact_type="assertion_audit",
-            locale=locale,
-            version=1,
-            content_json=old_audit_payload,
-            content_hash=_hash(old_audit_payload),
-        )
-        session.add(old_audit)
-        await session.flush()
-        session.add(
-            QualityEvaluation(
-                run_id=old_audit_run.id,
-                artifact_id=old_audit.id,
-                evaluator_key="assertion_audit_hard_gate",
-                evaluator_version="ce05.assertion_audit.hard_gate.v5",
-                evaluator_type="deterministic",
-                result="fail",
-                severity="critical",
-                findings_json={"fixture": True},
-            )
-        )
-
-        audit_run = ContentRun(
-            project_id=project.id,
-            content_case_id=content_case.id,
-            locale_variant_id=variant.id,
-            content_item_id=item.id,
-            run_mode="eval",
-            status="completed",
-            current_step="assertion_audit",
-            settings_snapshot_id=snapshot.id,
-            started_at=datetime.now(UTC),
-            completed_at=datetime.now(UTC),
-        )
-        session.add(audit_run)
-        await session.flush()
-        audit_payload = {
-            "source_draft": {
-                "id": str(source_draft.id),
-                "version": source_draft.version,
-                "content_hash": source_draft.content_hash,
-            },
-            "summary": {
-                "result": "pass",
-                "critical_unsupported_count": 0,
-                "critical_contradicted_count": 0,
-                "unsupported_count": 0,
-                "contradicted_count": 0,
-            },
-        }
-        audit_artifact = Artifact(
-            run_id=audit_run.id,
-            artifact_type="assertion_audit",
-            locale=locale,
-            version=1,
-            content_json=audit_payload,
-            content_hash=_hash(audit_payload),
-        )
-        session.add(audit_artifact)
-        await session.flush()
-        current_audits[locale] = audit_artifact
-        session.add(
-            QualityEvaluation(
-                run_id=audit_run.id,
-                artifact_id=audit_artifact.id,
-                evaluator_key="assertion_audit_hard_gate",
-                evaluator_version="ce05.assertion_audit.hard_gate.v5",
-                evaluator_type="deterministic",
-                result="pass",
-                severity="none",
-                findings_json={"fixture": True},
-            )
-        )
-
-        copy_run = ContentRun(
-            project_id=project.id,
-            content_case_id=content_case.id,
-            locale_variant_id=variant.id,
-            content_item_id=item.id,
-            run_mode="eval",
-            status="completed",
-            current_step="source_copy_check",
-            settings_snapshot_id=snapshot.id,
-            started_at=datetime.now(UTC),
-            completed_at=datetime.now(UTC),
-        )
-        session.add(copy_run)
-        await session.flush()
-        findings = []
-        if locale == "en":
-            findings = [
-                {
-                    "draft_segment_id": "section:condition-and-context:1",
-                    "draft_location": "section:condition-and-context",
-                    "draft_text": "by the same artist, and the state of the market",
-                    "source_kind": "evidence_excerpt",
-                    "source_ref": "evidence:fixture",
-                    "source_field": "evidence_excerpt",
-                    "source_text_hash": "c" * 64,
-                    "matched_draft_span": {"start": 0, "end": 45, "text": "by the same artist, and the state of the"},
-                    "matched_source_span": {"start": 0, "end": 45, "text": "by the same artist, and the state of the"},
-                    "normalized_match": "by the same artist and the state of the",
-                    "overlap_token_count": 9,
-                    "classification": "warn",
-                    "locale": "en",
-                },
-                {
-                    "draft_segment_id": "section:practical-costs:2",
-                    "draft_location": "section:practical-costs",
-                    "draft_text": "oversize or special handling may require a quote",
-                    "source_kind": "originality_material",
-                    "source_ref": "originality:fixture",
-                    "source_field": "material",
-                    "source_text_hash": "d" * 64,
-                    "matched_draft_span": {"start": 0, "end": 48, "text": "oversize or special handling may require a quote"},
-                    "matched_source_span": {"start": 0, "end": 48, "text": "oversize or special handling may require a quote"},
-                    "normalized_match": "oversize or special handling may require a quote",
-                    "overlap_token_count": 8,
-                    "classification": "warn",
-                    "locale": "en",
-                },
-            ]
-        copy_summary = {
-            "result": "warn" if findings else "pass",
-            "finding_count": len(findings),
-            "warn_count": len(findings),
-            "fail_count": 0,
-            "max_overlap_tokens": 9 if findings else 0,
-        }
-        copy_payload = {
-            "source_draft": {
-                "id": str(source_draft.id),
-                "version": source_draft.version,
-                "content_hash": source_draft.content_hash,
-            },
-            "assertion_audit": {
-                "artifact": {
-                    "id": str(audit_artifact.id),
-                    "version": audit_artifact.version,
-                    "content_hash": audit_artifact.content_hash,
-                }
-            },
-            "summary": copy_summary,
-            "findings": findings,
-        }
-        copy_artifact = Artifact(
-            run_id=copy_run.id,
-            artifact_type="source_copy_check",
-            locale=locale,
-            version=1,
-            content_json=copy_payload,
-            content_hash=_hash(copy_payload),
-        )
-        session.add(copy_artifact)
-        await session.flush()
-        source_copies[locale] = copy_artifact
-        session.add(
-            QualityEvaluation(
-                run_id=copy_run.id,
-                artifact_id=copy_artifact.id,
-                evaluator_key="source_copy_basic_gate",
-                evaluator_version="ce05.source_copy.basic_gate.v2",
-                evaluator_type="deterministic",
-                result=copy_summary["result"],
-                severity="medium" if findings else "none",
-                findings_json={"fixture": True},
-            )
-        )
     await session.flush()
     return ReviewFixture(
         content_case=content_case,
@@ -571,10 +636,15 @@ async def test_review_detail_resolves_current_bilingual_final_state_and_warnings
         assert by_locale["vi-VN"].quality_state == "PASS"
         assert by_locale["en"].quality_state == "WARN"
         assert by_locale["en"].source_copy.warn_count == 2
-        assert [finding["overlap_token_count"] for finding in by_locale["en"].source_copy.findings] == [9, 8]
+        overlaps = [
+            finding["overlap_token_count"]
+            for finding in by_locale["en"].source_copy.findings
+        ]
+        assert overlaps == [9, 8]
         assert detail.next_action == "APPROVED_NOT_PUBLISHED"
         assert detail.publication_state == "NOT_PUBLISHED"
-        assert detail.angle is not None and detail.angle.selected_angle_id == "angle-01"
+        assert detail.angle is not None
+        assert detail.angle.selected_angle_id == "angle-01"
         assert detail.outline is not None
 
 
@@ -585,7 +655,10 @@ async def test_review_detail_does_not_surface_older_failed_audit() -> None:
         detail = await get_review_case(session, content_case_id=fixture.content_case.id)
         by_locale = {panel.locale: panel for panel in detail.locales}
         assert by_locale["en"].assertion_audit.artifact is not None
-        assert by_locale["en"].assertion_audit.artifact.id == fixture.current_audits["en"].id
+        assert (
+            by_locale["en"].assertion_audit.artifact.id
+            == fixture.current_audits["en"].id
+        )
         assert by_locale["en"].assertion_audit.result == "pass"
         assert by_locale["en"].assertion_audit.critical_unsupported_count == 0
 
@@ -638,6 +711,20 @@ async def test_review_conflicting_final_approval_fails_closed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_review_approved_version_without_final_approval_fails_closed() -> None:
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(session)
+        approval = fixture.final_approvals["en"]
+        await session.execute(delete(Approval).where(Approval.id == approval.id))
+        await session.flush()
+        detail = await get_review_case(session, content_case_id=fixture.content_case.id)
+        en_panel = next(panel for panel in detail.locales if panel.locale == "en")
+        assert en_panel.consistency_state == "INCONSISTENT"
+        assert "content_version_missing_final_approval" in en_panel.issues
+        assert en_panel.next_action == "INCONSISTENT_STATE"
+
+
+@pytest.mark.asyncio
 async def test_review_list_is_small_and_uses_derived_summary() -> None:
     async with isolated_session() as session:
         fixture = await _approved_fixture(session)
@@ -662,13 +749,17 @@ async def test_review_reads_do_not_change_row_counts() -> None:
             ContentVersion,
         )
         before = {
-            model.__name__: int(await session.scalar(select(func.count()).select_from(model)) or 0)
+            model.__name__: int(
+                await session.scalar(select(func.count()).select_from(model)) or 0
+            )
             for model in models
         }
         await get_review_case(session, content_case_id=fixture.content_case.id)
         await list_review_cases(session)
         after = {
-            model.__name__: int(await session.scalar(select(func.count()).select_from(model)) or 0)
+            model.__name__: int(
+                await session.scalar(select(func.count()).select_from(model)) or 0
+            )
             for model in models
         }
         assert after == before
