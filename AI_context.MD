@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-12. Exact canonical filename: `AI_context.MD`.
+Updated: 2026-09-13. Exact canonical filename: `AI_context.MD`.
 
 ## Read and synchronize first
 
@@ -8,130 +8,97 @@ Inspect local changes -> fetch origin -> synchronize the exact assigned ref with
 
 ## Objective
 
-M1: ONE REAL JOURNAL PASS on the Founder's local runtime, then M2 repeatability, M3 placement/measurement, M4 evidence-led learning. Contract: `docs/20-LOCAL-FIRST-DELIVERY-SPEC.md`. Schedule: `docs/PLAN.md`.
+M1: ONE REAL JOURNAL PASS on the Founder's local runtime, then use observed friction to harden and build the smallest useful operator UI. Founder dispatches tasks; MG owns architecture/coding/review; Agent Local executes exact local verification/tasks; Founder alone merges and owns mandatory human approvals.
 
-Founder dispatches tasks by copy; MG owns architecture/coding/review; Agent Local executes exact local verification/tasks; Founder alone merges and makes final editorial decisions.
+Exactly three mandatory human gates are authoritative: Angle approval, Outline approval, final content approval.
 
 ## Canonical upstream — frozen
 
-Fresh M1 lineage remains unchanged:
-
+- ContentCase `f0bfbad7-c266-4de1-8fd4-a85ad206e6ce`;
+- NeedHypothesis `604f4e5a-68b8-4503-997a-494eff79d448`;
+- ContentOpportunity `83275ff5-19c8-4753-8c01-2135ad6c9dd1`;
+- HumanSelection `4ea09a4d-fa71-444f-87b0-0368de809387`;
+- ContentExperiment `7d8bbc52-1287-4f5c-b024-2686d5e7114d`;
 - source Journal run `a92f6f69-1c83-4aca-9a2f-e547dd15b85f`;
-- journal_input_bundle `d65aa864-e2fe-4c94-92f3-8d73ea89a8db`, hash `a7f8f2a815c943963e8fc018a4888611f1cf696fc63992cdf226406f3c7441e0`;
+- bundle `d65aa864-e2fe-4c94-92f3-8d73ea89a8db`, v1, hash `a7f8f2a815c943963e8fc018a4888611f1cf696fc63992cdf226406f3c7441e0`;
 - SettingsSnapshot `1169921c-a649-4f93-bf1a-f8daa2f15338`, hash `ebf8c32758311160e4c6d91d4bf6c6f59d9a9e97da7ba8af56f7f615373f9054`;
 - EvidenceSet `6eea3e18-0b32-4ff9-9fee-f84601fcdfc8`, v3 locked, hash `c01cddbef9d57fa62d26f1a6e1bf11620b713a9e58f3c819e4ab8e725f43e599`;
 - OriginalityPack `a5f40387-e758-452c-ae11-851ca9e16bb6`, approved, hash `07e781c4ab886a2a04a3c7b6451523b0636e4f86927c333b04e72245f492b3ec`;
 - Angle artifact `f70013f9-4333-4015-89a2-13efb50d1181`, v1, hash `e1a5e62d919be2eca20de685a6460fae0055c5309c6307a7b0c2573e3cc491c1`;
-- selected Angle `angle-01 — What an Artwork Price Can—and Can’t—Tell You`;
+- selected `angle-01 — What an Artwork Price Can—and Can’t—Tell You`;
 - AngleApproval `a5db128f-4b69-4b05-8207-e4eb92ca9d42`;
-- Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6`, v1, hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`;
+- Outline `49fae9fc-44f8-460c-a805-bba2c5a5b6e6`, v1, hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`;
 - OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5`.
 
-Do not regenerate or manually edit Angle/Outline or replace their approvals.
+Do not regenerate or mutate any frozen upstream object.
 
-## LF-04A — PASS / CLOSED FOR GENERATION
+## LF-04A — PASS / CLOSED
 
-Independent Writer v1 drafts exist on the same approved Outline lineage.
+Independent Writer generation passed on the exact approved Outline:
 
-### vi-VN Writer v1
+- VI Writer run `66046633-bf57-41a8-bb80-7a60058bf7f9`, v1 draft `07c2176a-0d77-4ef8-a90d-6d541b2a10c2`;
+- EN Writer run `80529fb8-afef-482f-9d54-b4a866ecaf1b`, v1 draft `0a48779d-bd73-4b61-8aec-2715178e2514`;
+- generation provenance/no-tool contract passed.
 
-- Writer run `66046633-bf57-41a8-bb80-7a60058bf7f9`, `waiting_approval`;
-- LocaleVariant `e9fcf073-24a4-4231-98a5-e68ddbf1b5f6`;
-- draft `07c2176a-0d77-4ef8-a90d-6d541b2a10c2`, v1, hash `3ff54295c8179ba431562120b33bf6450f1befcbcee08d109a5cf9a34ad5dced`.
+Do not regenerate Writer drafts.
 
-### en Writer v1
+## LF-04B — QUALITY PASS COMPLETE / MG ACCEPTED
 
-- Writer run `80529fb8-afef-482f-9d54-b4a866ecaf1b`, `waiting_approval`;
-- LocaleVariant `c53a9c6c-08f0-4926-8e50-e3da6bd4a421`;
-- draft `0a48779d-bd73-4b61-8aec-2715178e2514`, v1, hash `35deb36fe8fc98fe5026f81f73cea1511c95b1ff4e8909f07a77c493200af916`.
+Main after merge PR #74 is `47b3500b602aab5a354b38e3a5d1040fdc153096`.
 
-Do not regenerate or hand-edit Writer v1 drafts.
+### Final VI
 
-## LF-04B — ACTIVE, VI HARD-CLEAN / EN V3 CLOSING HARD-FAIL
+- draft `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, v3;
+- hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
+- Assertion Audit v5 artifact `83a82acf-b673-4482-ad32-d4f8b887291d`, QE `8f867c0d-f90b-46ac-8e29-f9d37f82f63e`;
+- audit PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, warnings none;
+- Source-copy v2 artifact `e4ccbfd4-67c5-47ca-b2f8-acb9607aecc8`, QE `420cefa8-44db-4430-abc4-01cdf5ffb98b`;
+- Source-copy PASS: `fail_count=0`, `warn_count=0`, findings none.
 
-Main before R3: `fe2217f0a3ea90daeea7de923ce2d1706d61a22f` (merge PR #73).
+### Final EN
 
-### VI final state — PASS
+- draft `43007d23-8fbf-498d-ac49-436414c87aaf`, v4;
+- hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`;
+- final deterministic cleanup StepRun `e9152b09-bc05-41cb-aa45-76753e51574e`, model/provider/tool calls `0/0/0`;
+- Assertion Audit v5 eval `b71f169d-7254-4084-8e60-3f58973b0652`, artifact `a24b1bd1-692f-4071-b5fd-f83fc98993b4`, QE `8ac7e092-d315-4bd8-a8d0-d96235e31eb1`;
+- audit PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, warnings none;
+- Source-copy v2 eval `1cea6440-f200-4661-a111-3cc89f402cf5`, artifact `a428d9d2-6162-4911-a53b-6609ec103cce`, QE `c3b77430-bbe2-4376-90b4-7fc8cc679769`;
+- Source-copy result `warn`, but hard gate PASS: `fail_count=0`, `warn_count=2`, `finding_count=2`, `max_overlap_tokens=9`.
 
-- final VI draft `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, v3, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
-- deterministic cleanup StepRun `1ed4b71c-35e7-42d5-ba8b-e18835cf23b1`, model/provider/tool calls `0/0/0`;
-- Assertion Audit v5 artifact `83a82acf-b673-4482-ad32-d4f8b887291d`, QE `8f867c0d-f90b-46ac-8e29-f9d37f82f63e`, PASS, unsupported/critical `0/0`, contradicted/critical `0/0`, no warnings;
-- Source-copy v2 artifact `e4ccbfd4-67c5-47ca-b2f8-acb9607aecc8`, QE `420cefa8-44db-4430-abc4-01cdf5ffb98b`, PASS, `fail_count=0`, `warn_count=0`, no findings.
+Surviving EN warnings must remain verbatim:
 
-Do not rerun VI.
+1. `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`.
+2. `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`.
 
-### EN Review/Revise v2 — preserved
+MG editorial decision: ACCEPT final VI/EN unchanged for Founder final review. These two warnings are non-critical; do not edit content to remove them.
 
-- EN v2 `b9dddad3-bfbe-47f7-a7f0-dcd0b0af75f0`, hash `efc4796cdbb3b6c3d9c91140ea7573c7c0f41cf37b4f4b0c87e95a59aebd0478`;
-- Review/Revise StepRun `77121086-ee42-4dc1-85fd-6ff41ee0862d`;
-- unresolved factual claims `0`.
+Observed recovery history is preserved as operational evidence. Do not rerun Review/Revise, Assertion Audit, Source-copy, or any cleanup stage.
 
-Its failed subject-matter audit is preserved immutable.
+Reported final lineage after LF-04B.R3: ContentRuns `11`, StepRuns `18`, Artifacts `27`, ContextManifests `12`, ModelCalls `14`, QualityEvaluations `7`, ToolCalls `0`.
 
-### LF-04B.R2 EN v3 — completed / FAIL on new closing findings
+## Current exact task — LF-04C Operational Package V0
 
-R2 correctly applied the one authorized subject-matter cleanup and produced:
+Create a deterministic pre-approval package only:
 
-- EN v3 `fbe198b0-298a-486a-a49f-4503b2b2ef06`;
-- hash `f11cd66c30d4c98016586466294ff4e77756c409b0a5d32aeece345771bdbc13`;
-- cleanup StepRun `f7020060-cf77-46a3-86a6-055ad393131a`;
-- generator `ce05.lf04b.en_deterministic_cleanup.v1`, schema `0`;
-- cleanup model/provider/tool calls `0/0/0`;
-- non-target copy and all Evidence/Originality refs unchanged.
-
-EN v3 Assertion Audit v5:
-
-- eval run `35197ea7-2179-443a-9c1f-e0e0e21e5819`;
-- StepRun `02082d09-c353-4e77-9d59-476b602a2a25`;
-- ContextManifest `a427e0d7-1478-4fff-af36-d8add6e05774`;
-- audit artifact `f411c569-4543-48fd-a9eb-a97ae7c8d2d8`, hash `88a66897b573bd7a7d15362c1f73b228d7afd89bc4de579bb4f95783d4e79c0c`;
-- QualityEvaluation `28208739-5dae-4d08-b3c8-f786de2f25a3`;
-- result `fail`;
-- unsupported/critical unsupported `2/2`;
-- contradicted/critical contradicted `0/0`.
-
-Exact new findings:
-
-1. `closing:1` — `If the work still feels right after you have checked the context and practical details, you can decide at your own pace.` — `brand_statement / unsupported / critical`, no Evidence/Originality refs.
-2. `closing:2` — `The price is one part of the conversation—not a verdict on the artwork or on you as a buyer.` — `brand_statement / unsupported / critical`, no Evidence/Originality refs.
-
-EN Source-copy has not run.
-
-## Current exact task — LF-04B.R3
-
-R2 obeyed its own stop rule. R3 is a NEW explicitly authorized recovery based on the new persisted v3 audit evidence:
-
-`deterministic EN v3 -> v4 full-closing replacement (zero model) -> EN re-audit v5 once -> EN Source-copy v2 once -> read-only bilingual final verification -> STOP for MG review`
+`final VI + final EN + exact quality/provenance refs + surviving warnings -> local JSON/Markdown + SHA-256 -> STOP for Founder final approval`
 
 Exact task:
 
-`docs/logs/2026-09-12-lf04b-en-closing-cleanup-task.md`
+`docs/logs/2026-09-13-lf04c-operational-package-task.md`
 
 Authoritative rules:
 
-1. Preserve EN v1/v2/v3 and both failed EN audit/QE snapshots immutably.
-2. Revalidate exact EN v3 + exact two closing hard findings before mutation.
-3. Replace only the full EN v3 closing with the exact reader-guidance closing in the R3 task.
-4. Persist one immutable EN v4 with deterministic provenance; model/provider/tool calls `0/0/0`.
-5. Prove every non-closing field, section and Evidence/Originality ref is unchanged.
-6. Run Assertion Audit v5 once on EN v4. Hard acceptance: non-fail, critical unsupported `0`, critical contradicted `0`.
-7. Only then run Source-copy v2 once. Hard acceptance: `fail_count=0`.
-8. If EN v4 audit still hard-fails, STOP. No further cleanup or model retry without a new MG decision.
-9. If both locales are hard-clean, return full final VI/EN content and warnings/findings, then STOP for MG/LF-04C.
-10. No Operational Package, final approval, ContentVersion or publishing in R3.
+1. Revalidate exact final VI/EN and quality bindings read-only.
+2. No model/provider/tool/research call and no DB write.
+3. Create deterministic local JSON + Markdown under `artifacts/operational/`; do not commit generated package files.
+4. Include COMPLETE VI/EN visible content and every warning verbatim.
+5. Package status must remain `READY_FOR_FOUNDER_OPERATIONAL_APPROVAL`; final Founder approval remains `PENDING`.
+6. Prove deterministic bytes/hashes and no runtime DB/model/tool side effects.
+7. Do not create final approval, ContentItem/ContentVersion, or publishing records in LF-04C.
+8. STOP for Founder third mandatory human gate.
 
-Reported lineage after R2: ContentRuns `9`, StepRuns `15`, Artifacts `22`, ContextManifests `10`, ModelCalls `13`, QualityEvaluations `5`, ToolCalls `0`.
+## Required path / next gates
 
-## State that must not regress
+`verified inputs -> Angle -> Angle approval -> Outline -> Outline approval -> independent VI/EN -> bounded Review/Revise -> Assertion Audit v5 -> authorized deterministic cleanup for exact persisted hard findings -> re-audit -> Source-copy v2 -> Operational Package V0 -> Founder final approval -> canonical ContentVersion -> one real controlled Journal operation`
 
-Required path:
-
-`verified inputs -> Angle -> Angle approval -> Outline -> Outline approval -> independent VI/EN -> bounded Review/Revise -> Assertion Audit v5 -> explicitly authorized deterministic cleanup for exact persisted hard findings -> re-audit -> Source-copy v2 -> Operational Package V0 -> Founder final approval -> canonical ContentVersion`
-
-Exactly three mandatory human gates remain authoritative: Angle approval, Outline approval, final content approval.
-
-## Frozen until M1 passes
-
-No additional provider/agent, generic framework, architecture redesign, automatic publishing/merge, WordPress work, repeated historical DB recovery or speculative CI work. No Assertion Audit v6 merely to pass one article. Only demonstrated safety/data-integrity defects may interrupt the critical path.
-
-`REAL RUN -> OBSERVE -> CLASSIFY -> SMALLEST PROVEN FIX -> REGRESSION -> RUN AGAIN`
+After M1, prioritize observed failures/regressions and then build the smallest useful Human Review Surface / Review Console. No speculative dashboard/workflow framework before M1.
