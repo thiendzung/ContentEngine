@@ -36,69 +36,88 @@ Do not regenerate or mutate any frozen upstream object.
 
 Independent Writer generation passed on the exact approved Outline:
 
-- VI Writer run `66046633-bf57-41a8-bb80-7a60058bf7f9`, v1 draft `07c2176a-0d77-4ef8-a90d-6d541b2a10c2`;
-- EN Writer run `80529fb8-afef-482f-9d54-b4a866ecaf1b`, v1 draft `0a48779d-bd73-4b61-8aec-2715178e2514`;
+- VI Writer run `66046633-bf57-41a8-bb80-7a60058bf7f9`, LocaleVariant `e9fcf073-24a4-4231-98a5-e68ddbf1b5f6`;
+- EN Writer run `80529fb8-afef-482f-9d54-b4a866ecaf1b`, LocaleVariant `c53a9c6c-08f0-4926-8e50-e3da6bd4a421`;
 - generation provenance/no-tool contract passed.
 
 Do not regenerate Writer drafts.
 
 ## LF-04B — QUALITY PASS COMPLETE / MG ACCEPTED
 
-Main after merge PR #74 is `47b3500b602aab5a354b38e3a5d1040fdc153096`.
-
 ### Final VI
 
 - draft `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, v3;
 - hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
-- Assertion Audit v5 artifact `83a82acf-b673-4482-ad32-d4f8b887291d`, QE `8f867c0d-f90b-46ac-8e29-f9d37f82f63e`;
-- audit PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, warnings none;
-- Source-copy v2 artifact `e4ccbfd4-67c5-47ca-b2f8-acb9607aecc8`, QE `420cefa8-44db-4430-abc4-01cdf5ffb98b`;
-- Source-copy PASS: `fail_count=0`, `warn_count=0`, findings none.
+- Assertion Audit v5 artifact `83a82acf-b673-4482-ad32-d4f8b887291d`, QE `8f867c0d-f90b-46ac-8e29-f9d37f82f63e`, PASS, critical unsupported/contradicted `0/0`;
+- Source-copy v2 artifact `e4ccbfd4-67c5-47ca-b2f8-acb9607aecc8`, QE `420cefa8-44db-4430-abc4-01cdf5ffb98b`, PASS, `fail_count=0`, `warn_count=0`.
 
 ### Final EN
 
 - draft `43007d23-8fbf-498d-ac49-436414c87aaf`, v4;
 - hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`;
-- final deterministic cleanup StepRun `e9152b09-bc05-41cb-aa45-76753e51574e`, model/provider/tool calls `0/0/0`;
-- Assertion Audit v5 eval `b71f169d-7254-4084-8e60-3f58973b0652`, artifact `a24b1bd1-692f-4071-b5fd-f83fc98993b4`, QE `8ac7e092-d315-4bd8-a8d0-d96235e31eb1`;
-- audit PASS: unsupported/critical `0/0`, contradicted/critical `0/0`, warnings none;
-- Source-copy v2 eval `1cea6440-f200-4661-a111-3cc89f402cf5`, artifact `a428d9d2-6162-4911-a53b-6609ec103cce`, QE `c3b77430-bbe2-4376-90b4-7fc8cc679769`;
-- Source-copy result `warn`, but hard gate PASS: `fail_count=0`, `warn_count=2`, `finding_count=2`, `max_overlap_tokens=9`.
+- Assertion Audit v5 artifact `a24b1bd1-692f-4071-b5fd-f83fc98993b4`, QE `8ac7e092-d315-4bd8-a8d0-d96235e31eb1`, PASS, critical unsupported/contradicted `0/0`;
+- Source-copy v2 artifact `a428d9d2-6162-4911-a53b-6609ec103cce`, QE `c3b77430-bbe2-4376-90b4-7fc8cc679769`, result `warn`, hard gate PASS, `fail_count=0`, `warn_count=2`, `max_overlap_tokens=9`.
 
-Surviving EN warnings must remain verbatim:
+Surviving EN warnings remain accepted and must be preserved verbatim:
 
 1. `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`.
 2. `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`.
 
-MG editorial decision: ACCEPT final VI/EN unchanged for Founder final review. These two warnings are non-critical; do not edit content to remove them.
+No further content/quality mutation is authorized.
 
-Observed recovery history is preserved as operational evidence. Do not rerun Review/Revise, Assertion Audit, Source-copy, or any cleanup stage.
+## LF-04C — OPERATIONAL PACKAGE V0 COMPLETE
 
-Reported final lineage after LF-04B.R3: ContentRuns `11`, StepRuns `18`, Artifacts `27`, ContextManifests `12`, ModelCalls `14`, QualityEvaluations `7`, ToolCalls `0`.
+Main after merge PR #75: `90eb89e562b2b4da07eba8a7711f4ee76754f096`.
 
-## Current exact task — LF-04C Operational Package V0
+Local deterministic package exists and was verified with zero DB/model/tool side effects:
 
-Create a deterministic pre-approval package only:
+- JSON `artifacts/operational/m1-journal-f72c0c87-f22d6875.json`
+- JSON SHA-256 `9d804da5c8d0756930b577e8e4244408cf9a8236d7b9205a8135d215e61b429a`
+- Markdown `artifacts/operational/m1-journal-f72c0c87-f22d6875.md`
+- Markdown SHA-256 `a3804dd7622b9182c581b95aa2f892df2ee82a4e83c5c9a65f55ca802fa67c9f`
+- package status at creation `READY_FOR_FOUNDER_OPERATIONAL_APPROVAL`
+- `not_published=true`
+- ModelCalls `14`; ToolCalls `0`.
 
-`final VI + final EN + exact quality/provenance refs + surviving warnings -> local JSON/Markdown + SHA-256 -> STOP for Founder final approval`
+## Mandatory human gate #3 — FOUNDER APPROVED
+
+Founder explicitly approved the exact current package and content unchanged on 2026-09-13:
+
+- exact VI artifact/version/hash above;
+- exact EN artifact/version/hash above;
+- exact JSON and Markdown package SHA-256 values above;
+- both non-critical EN Source-copy warnings accepted unchanged;
+- no further content edits;
+- authorization to persist Founder final approval and create canonical ContentVersion(s) through the existing canonical path;
+- NO publish or WordPress authorization.
+
+Do not reinterpret this as publishing permission.
+
+## Current exact task — LF-04D
+
+Persist the already-given Founder final approval and canonical bilingual ContentVersions using only existing merged contracts:
+
+`exact final drafts -> final_content artifacts -> harness Founder Approvals -> approved ContentVersions -> complete locale Writer runs -> STOP`
 
 Exact task:
 
-`docs/logs/2026-09-13-lf04c-operational-package-task.md`
+`docs/logs/2026-09-13-lf04d-founder-final-approval-content-version-task.md`
 
 Authoritative rules:
 
-1. Revalidate exact final VI/EN and quality bindings read-only.
-2. No model/provider/tool/research call and no DB write.
-3. Create deterministic local JSON + Markdown under `artifacts/operational/`; do not commit generated package files.
-4. Include COMPLETE VI/EN visible content and every warning verbatim.
-5. Package status must remain `READY_FOR_FOUNDER_OPERATIONAL_APPROVAL`; final Founder approval remains `PENDING`.
-6. Prove deterministic bytes/hashes and no runtime DB/model/tool side effects.
-7. Do not create final approval, ContentItem/ContentVersion, or publishing records in LF-04C.
-8. STOP for Founder third mandatory human gate.
+1. Revalidate package hashes/final artifact hashes/quality refs before write.
+2. One ContentItem identity per LocaleVariant; reuse exact existing item or create the deterministic internal key in the task.
+3. Materialize `final_content` byte-for-byte from each approved final draft; no content changes.
+4. Persist Founder decision via existing harness Approval contract with exact package/content binding in the approval comment.
+5. Only after approval create one canonical `ContentVersion(status=approved)` per locale via `create_next_content_version()`.
+6. Complete the two locale Writer runs through normal harness transitions.
+7. Model/provider/tool/research/evaluator calls remain zero for LF-04D; global ModelCalls remain 14 and ToolCalls remain 0.
+8. No PublishedContent, PublishEvent, URL mapping, WordPress or external publishing action.
+9. Partial/conflicting prior finalization => STOP rather than creating duplicates.
+10. Do not mutate the frozen source Journal run merely to make statuses prettier.
 
-## Required path / next gates
+## Required path / next gate
 
-`verified inputs -> Angle -> Angle approval -> Outline -> Outline approval -> independent VI/EN -> bounded Review/Revise -> Assertion Audit v5 -> authorized deterministic cleanup for exact persisted hard findings -> re-audit -> Source-copy v2 -> Operational Package V0 -> Founder final approval -> canonical ContentVersion -> one real controlled Journal operation`
+`verified inputs -> Angle -> Angle approval -> Outline -> Outline approval -> independent VI/EN -> Review/Revise -> Assertion Audit -> deterministic exact-finding cleanup -> Source-copy -> Operational Package V0 -> Founder final approval [DONE] -> canonical approved ContentVersions [LF-04D] -> verify M1 closeout`
 
-After M1, prioritize observed failures/regressions and then build the smallest useful Human Review Surface / Review Console. No speculative dashboard/workflow framework before M1.
+After M1, prioritize observed failure regressions and the smallest useful Human Review Surface / Review Console. No speculative dashboard/workflow framework before M1.
