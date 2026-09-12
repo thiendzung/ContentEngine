@@ -21,144 +21,210 @@ git status --porcelain
 
 Founder owns final merge and final operational content approval.
 
-## Current window
+## Current milestone
 
 ```text
-PROJECT: ContentEngine
-PHASE: CE05 — FAST OPERATIONAL ACCEPTANCE
-CURRENT OUTCOME: produce the first real MOTGU Journal Operational Package V0
-CURRENT GATE: PR #63 IMPLEMENTATION — ASSERTION AUDIT V5 SEGMENT-LEVEL GUIDANCE NORMALIZATION
-CURRENT OWNER: Agent Local implementation on PR #63; Founder merge authority; no production runtime during implementation
-NEXT ACTION: review/merge PR #63, then execute the exact EN v3 → deterministic EN v4 lead cleanup → Assertion Audit v5 → Source-copy → Operational Package task
-BLOCKERS: accepted v4 audit has one real unsupported lead:1 content finding and two bounded guidance classifier findings; EN v3 remains immutable
-HUMAN DECISION REQUIRED: review/merge PR #63 before the post-merge EN v4/v5 resume
+REPO: ContentEngine
+MILESTONE: M1 — CE05: ONE REAL JOURNAL PASS
+PHASE: CE05 — Journal Engine V1 / fast operational acceptance
+STATUS: IN PROGRESS
+CURRENT GATE: REAL ANGLE EXECUTION
+CURRENT BLOCKER: the already-authorized Angle model execution is rejected by the local execution safety gate
+NEXT OBJECTIVE: unblock only the Angle execution path, then continue the SAME fresh runtime lineage end-to-end
 ```
 
-## Accepted immutable operational lineage
+Do not confuse implementation readiness with M1 completion. The Journal Engine modules are largely implemented and regression-tested, but the current fresh operational candidate has not yet passed Angle, Outline, VI/EN, Review, Assertion Audit, Source-copy, Operational Package, and Founder approval.
+
+## Canonical repository state
+
+At the M1 status checkpoint:
 
 ```text
-Runtime DB: contentengine
+main: debc0897e2f985e1d0662e9e594894e40401d1b8
+PR #63: merged
+Assertion Audit generator: ce05.journal_assertion_audit.v5
+Assertion Audit evaluator: ce05.assertion_audit.hard_gate.v5
+Assertion Audit schema: 1
+Source-copy: v2
+Accepted Assertion Audit pairs for Source-copy: v3/v3, v4/v4, v5/v5 only
+```
+
+PR #63 is closed. Do not treat PR #63 implementation as the current gate.
+
+## Active runtime database
+
+The runtime-state resolution task performed one read-only scan of accessible local non-template, non-test PostgreSQL databases and found no complete compatible current lineage elsewhere.
+
+Selected path:
+
+```text
+FRESH_ACTIVE_DB
+Database: localhost:5432/contentengine
 Migration: 20260910_0022 (head)
-
-ContentCase: d29fe3a3-1482-4364-92b1-19cd5be595a3
-NeedHypothesis: 80afc3bb-d768-4cd6-80d5-04f1ef022bc2 / PROPOSED
-SettingsSnapshot: 989debbf-5970-44d2-baeb-a605c75e99d6
-Route: codex_cli / gpt-5.6-luna
-
-EvidenceSet: 48791ec3-bfc0-46fb-9294-eaf46754f8de / v3 / locked
-EvidenceSet hash: 952dce90b82f6aeff17bbbaf26a0d16fdcacffe2243a1dc018f2f8c58dfc8eff
-EvidenceSet approval: c0056bb2-390b-441f-8786-29fd748ab353
-Supports: 9 across www.irs.gov + mci.si.edu
-
-OriginalityPack: 4ec19fe4-ebbf-4159-bef3-791bff71eb0a / approved
-OriginalityPack hash: 618039f1fe24d31a239222b56451939c250492a36ec85253475d618517b74507
-
-Diagnostic Angle run: 36581e66-e537-4033-b717-52b7ce17043c / failed / angle_generation_failed
-Replacement Journal run: 794e9742-d642-4fad-8861-419050bab1f4 / waiting_approval
-Bundle: bfd499c0-d2ee-4720-950a-b51da0712aa1 / v1 / 538347ef77ac552d349c7ebe952a6e45ee2f05db4dce396df74792173294b209
-Founder Angle: 3a730e70-f43e-4102-848c-e9a20442cb90 / founder-angle-01
-AngleApproval: 0d963563-c8d7-4095-8a11-9539bd457554
-Outline: 8dbc2f75-d439-44f1-9822-4775a333b81e / v1 / 3bdd650b3fe2e56a4d86e7a85ae010099f6004d8e1827e935eea414ef2b864e4
+APP_ENV: development (unset -> default)
+Compose project: contentengine
+PostgreSQL container: contentengine-postgres-1
+Mounted volume: contentengine_contentengine_postgres
 ```
 
-Do not research again. Do not change EvidenceSet, OriginalityPack, Angle, AngleApproval, Outline, Writer generation, or broad Review/Revise.
+Do not scan for historical UUIDs again unless Founder/MG explicitly reopens runtime recovery. Do not recreate or copy historical rows.
 
-## Final VI state — locked
+## Active fresh M1 lineage
 
 ```text
-VI Writer run: 612a9ab1-8a8e-4fca-b467-d78c6a5e71cd
-VI v4: ea15233d-3080-4c73-80d1-f6d9f2ec076b
-VI v4 hash: 4c53601a2342637cee13a5ae2cfdb4beb877adb5d32053e8930bdb661194742f
-
-VI PASS audit eval run: 3611f549-3711-4f5b-96d3-96fb8195c98f
-VI PASS handoff: 7c852ab9-9579-465f-8c3e-e2dd45e8d045
-VI PASS audit artifact: c1df6865-a664-4c2a-a37f-c17d967e38ad / v1
-VI PASS audit hash: 868c9d6a0b99266c1b12fab7db4231f50ba013a78e46b3e376ca7e9cb2162253
-VI PASS QE: 6cbfc9e1-bf7b-4831-9cca-84bb0259a368
-result: pass
-unsupported: 0
-contradicted: 0
-critical_unsupported: 0
-critical_contradicted: 0
+ContentCase: f0bfbad7-c266-4de1-8fd4-a85ad206e6ce
+NeedHypothesis: 604f4e5a-68b8-4503-997a-494eff79d448
+ContentOpportunity: 83275ff5-19c8-4753-8c01-2135ad6c9dd1
+HumanSelection: 4ea09a4d-fa71-444f-87b0-0368de809387
+ContentExperiment: 7d8bbc52-1287-4f5c-b024-2686d5e7114d
+SettingsSnapshot: 1169921c-a649-4f93-bf1a-f8daa2f15338
+Settings hash: ebf8c32758311160e4c6d91d4bf6c6f59d9a9e97da7ba8af56f7f615373f9054
+Journal ContentRun: a92f6f69-1c83-4aca-9a2f-e547dd15b85f
+journal_input_bundle: d65aa864-e2fe-4c94-92f3-8d73ea89a8db
+Bundle hash: a7f8f2a815c943963e8fc018a4888611f1cf696fc63992cdf226406f3c7441e0
+Journal run state: waiting_approval
 ```
 
-VI is finished. Do not edit or re-audit it unless read-only verification proves the exact accepted state invalid; invalid => BLOCKED, not repair.
+This is the M1 candidate to resume. Do not create another fresh ContentCase/Journal run merely because Angle is blocked.
 
-## Final EN content + observed harness diagnostic
+## Fresh evidence state
+
+The first evidence pass did not meet sufficiency. One authorized targeted retry completed with:
 
 ```text
-EN Writer run: e0bc9d52-0b07-4dc4-b5e9-2cfe861658f4
-EN v3: 35e34197-dc2f-40df-bc36-5551ff75d159
-EN v3 hash: e7a67adab019f014736e80896ad13fcd38f88c04b73b627c8aedd2365cc396a6
-
-Failed EN audit eval run: ff9de525-dffd-4a12-9dbc-0cb3393dec4e
-Failure: assertion_audit_model_output_invalid: bounded retries exhausted (assertion_audit_non_assertive_has_assertions: title)
+8 support claims
+3 readable source documents
 ```
 
-EN v3 remains immutable during PR #63 implementation. The accepted v4 audit is
-diagnostic history, not a license to edit content before merge.
+Before invoking Angle, perform only a read-only verification that the fresh runtime has the final EvidenceSet and OriginalityPack bound to `journal_input_bundle d65aa864-e2fe-4c94-92f3-8d73ea89a8db`, including:
 
-The preserved post-#61 classifier-boundary diagnostic is eval
-`becca4f9-44f2-4283-901d-fcd355e0f459`; it remains read-only history. The accepted
-v4 replacement audit is eval `52c165c3-665e-4d5f-8d39-bc9a0c55b9eb`.
+- EvidenceSet ID/version/hash/status = locked/approved as required;
+- approval metadata;
+- OriginalityPack ID/hash/status = approved;
+- exact bundle bindings and provenance.
 
-PR #61 fixes only this observed structural case:
+The last runtime report did not include those IDs/hashes, so they must be verified rather than inferred. If valid, do not research again.
+
+## Current hard blocker — Angle execution
+
+Fresh M1 stopped before any Angle model call:
 
 ```text
-source.required_assertive = false
-+ model disposition = non_assertive
-+ model emits extra assertions
-→ deterministically discard extra assertions
-→ persist structural segment as non_assertive / assertions=[]
+Angle ModelCalls: 0
+ContentEngine ToolCalls: 0
+Current Journal ModelCalls: 0
+Current Journal ToolCalls: 0
+Angle artifact: none
+Operational Package: none
 ```
 
-Required content segments remain fail-closed. Structural segments that the model marks
-`assertive` still undergo full assertion validation and hard gates. PR #63 changes
-only the Assertion Audit generator/evaluator boundary, Source-copy audit-version
-compatibility and the bounded post-merge lead cleanup task; schema, prompt/recipe,
-provider/model and migrations remain unchanged.
+Blocker reported by Agent Local:
 
-The post-#61 EN v3 v4 audit exposed three critical unsupported findings. Read-only
-classification confirmed `lead:1` is a genuine unsupported factual claim, while
-`section:verify-work-facts:2` and `section:confirm-availability:2` are bounded reader
-guidance with allowed Originality provenance. PR #63 implements the final v5
-source-sentence guidance normalization; EN v3 remains immutable.
+`authorized Angle model execution was rejected by the local execution safety gate, including when separated from approval.`
 
-## Exact post-merge task
+This is currently the smallest real bottleneck. Treat it as an execution-path/safety-gate defect or invocation mismatch until proven otherwise.
 
-`docs/logs/2026-09-12-ce05-final-en-v4-v5-audit-to-operational-package-agent-local-task.md`
+Do not:
 
-Task ID:
+- synthesize Angle candidates;
+- bypass the execution safety gate;
+- change provider/model merely to get a result;
+- start a new generic runtime framework;
+- restart Discovery/Evidence by default;
+- create Assertion Audit v6;
+- revisit historical DB recovery.
 
-`CE05-FINAL-EN-V4-V5-AUDIT-TO-OPERATIONAL-PACKAGE-LOCAL`
+If a small code defect is proven, fix only that defect in one bounded PR and update this shared state in the same PR. If no code change is needed, resume on synchronized `main`.
 
-Fast path:
+## M1 critical path
 
 ```text
-lock VI v4 PASS unchanged
-→ lock EN v3 unchanged
-→ deterministic EN v3 → EN v4 lead replacement
-→ replacement EN v4 Assertion Audit v5 using current route
-→ exact audit rerun reuse / model_attempts=0 / zero side effects
+read-only verify fresh EvidenceSet + OriginalityPack bindings
+→ unblock authorized Angle execution
+→ reuse SAME ContentRun + SAME journal_input_bundle
+→ Angle generation
+→ pre-authorized deterministic Angle selection + AngleApproval
+→ Outline
+→ independent VI + EN writers
+→ bounded Review/Revise
+→ Assertion Audit v5 for VI + EN
 → require audit_result != fail and critical counts = 0
-→ VI Source-copy + exact reuse
-→ EN Source-copy + exact reuse
-→ require fail_count = 0 for both locales
-→ Operational Package V0
+→ Source-copy v2 for VI + EN
+→ require fail_count = 0
+→ Operational Package V0 JSON + Markdown + SHA-256
 → Founder final operational approval
+→ M1 — ONE REAL JOURNAL PASS
 ```
 
-Non-critical Assertion Audit or Source-copy warnings may proceed to the first Operational Package only when preserved verbatim for Founder review. Any new hard content finding stops execution; do not resume content whack-a-mole.
+Non-critical warnings may proceed only when preserved verbatim for Founder review.
 
-## Progress interpretation
+## Implementation readiness already proven
+
+The repository already has the required primary Journal capabilities:
+
+- ContentCase/LocaleVariant Journal surface;
+- internal knowledge recall and memory-overlap foundation;
+- Discovery and Opportunity handoff;
+- Evidence Research + EvidenceSet;
+- OriginalityPack;
+- structured Angle generation and approval bridge;
+- evidence-mapped Outline;
+- independent VI/EN Writers;
+- bounded Review/Revise;
+- Assertion Audit through v5 with fail-closed hard types;
+- Source-copy v2;
+- important retry/idempotency/recovery/provenance regression coverage.
+
+Therefore M1 is no longer an architecture-build problem. Optimize only for completing the current real candidate.
+
+## M1 progress
 
 ```text
-VI PASS + EN Assertion Audit critical counts=0 + Source-copy fail_count=0 → T05.15 operational intent satisfied
-Operational Package V0 ready → T05.16 substantively complete
-Founder approves package → T05.17 ready for controlled first operation
+Runtime DB resolution       PASS
+Fresh planning spine        PASS
+Evidence research           PASS — 8 supports / 3 readable docs
+EvidenceSet/Originality     VERIFY CURRENT BINDINGS BEFORE ANGLE
+Journal input bundle        PASS
+Angle                       BLOCKED — CURRENT GATE
+Outline                     NOT STARTED on fresh candidate
+VI/EN Writer                NOT STARTED on fresh candidate
+Review/Revise               NOT STARTED on fresh candidate
+Assertion Audit v5          NOT STARTED on fresh candidate
+Source-copy v2              NOT STARTED on fresh candidate
+Operational Package V0      NOT STARTED
+Founder final approval      NOT STARTED
+M1 ONE REAL JOURNAL PASS    NOT ACHIEVED
 ```
 
-T05.18–T05.22 remain post-operation hardening/metrics/closeout unless a real safety/data-integrity defect requires earlier action.
+## Speed rule until M1 passes
+
+Every new task must directly shorten or unblock:
+
+`Angle → Outline → VI/EN → Review → Audit → Source-copy → Package → Founder approval`
+
+Otherwise backlog it.
+
+Before M1 PASS:
+
+- no new provider;
+- no new agent role;
+- no generic workflow builder;
+- no architecture redesign;
+- no speculative abstraction;
+- no automated publishing;
+- no WordPress work;
+- no CI optimization unless CI itself blocks M1;
+- no T05.18–T05.22 hardening unless a real safety/data-integrity defect requires it.
+
+## Detailed status evidence
+
+Canonical M1 checkpoint:
+
+`docs/logs/2026-09-12-ce05-m1-one-real-journal-pass-status.md`
+
+Fast operational reset decision remains authoritative for vanished runtime UUIDs:
+
+`docs/logs/2026-09-11-ce05-fast-operational-reset.md`
 
 ## Operating rule after first placement
 
