@@ -12,7 +12,7 @@ M1: ONE REAL JOURNAL PASS on the Founder's local runtime, then M2 repeatability,
 
 Founder dispatches tasks by copy; MG owns architecture/coding/review; Agent Local executes exact local verification/tasks; Founder alone merges and makes final editorial decisions.
 
-## LF-02 reviewed result — PASS / CLOSED
+## LF-02 — PASS / CLOSED
 
 The fresh M1 lineage has one canonical generated Angle and the first mandatory human gate is persisted.
 
@@ -31,20 +31,29 @@ Canonical closeout: `docs/logs/2026-09-12-lf02-angle-approved-closeout.md`.
 
 Do not regenerate or replace this Angle.
 
-## LF-03 runtime result — Outline generated and Founder-approved editorially
+## LF-03 / LF-03.1 — PASS / CLOSED
 
-Founder executed one production Outline command on main `c57f4b1ac93726381c601690ce97fe60fe2dd6c7`. Agent Local Phase C verified canonical provenance.
+One canonical grounded Outline was generated from the approved Angle, reviewed by MG, explicitly approved by Founder, then durably persisted as the second mandatory human gate.
+
+GitHub code baseline for the approval fix:
+
+- PR #68 merged;
+- merge commit `17442f63111adbc25f19ffe14ac383ab5da0cd21`;
+- migration `20260912_0023`.
+
+Canonical Outline/runtime facts accepted from Agent Local verification:
 
 - Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6`, v1;
 - hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`;
 - Outline StepRun `dc733623-1043-477f-b3c0-151183f959e7`, completed;
 - ContextManifest `dd3bc35a-8ae2-48d8-b396-cb3e373c075d`, hash `7744c8b4cc6472bb7a3a43eed2ddeb75c79aca16828f16723b7b6d8019ef40a2`;
-- exactly one Outline ModelCall `496c0daf-27ad-4cea-bac7-dbe7a52bb480`, completed on `codex_cli / gpt-5.6-luna`;
-- total source-run ModelCalls `2` (Angle + Outline), ToolCalls `0`;
-- source ContentRun returned to `waiting_approval` with no failure;
-- all upstream snapshots unchanged.
-
-MG editorial review accepted the Outline. Founder explicitly decided: `Duyệt Outline`.
+- Outline ModelCall `496c0daf-27ad-4cea-bac7-dbe7a52bb480`, completed on `codex_cli / gpt-5.6-luna`;
+- OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5`, approved_by `founder`;
+- exact approved-Outline handoff verifies;
+- source ContentRun remains `waiting_approval`, no failure;
+- total source-run ModelCalls remain `2` (Angle + Outline); ToolCalls `0`;
+- no Writer records existed at LF-03 closeout;
+- upstream snapshots unchanged.
 
 Editorial notes carried forward for Writer/Review, not grounds for Outline regeneration:
 
@@ -53,32 +62,34 @@ Editorial notes carried forward for Writer/Review, not grounds for Outline regen
 - appraisal-style concepts such as relative importance/market context must stay clearly separated from buyer-verifiable facts;
 - keep the primary answer natural: price is one data point whose meaning depends on context.
 
-Do not regenerate or manually edit this Outline.
+Canonical closeout: `docs/logs/2026-09-12-lf03-outline-approved-closeout.md`.
 
-## Current exact task — LF-03.1
+Do not regenerate or manually edit this Outline. Do not replace its OutlineApproval.
 
-A contract gap was found during MG review: CE05 requires exactly three persisted human gates, including approved Outline, but main had durable `AngleApproval` only. The production Writer CLI accepted an exact Outline snapshot without requiring a persisted Outline approval.
+## Current exact task — LF-04A
 
-Smallest finish-first fix:
+Generate the first real independent bilingual Writer outputs from the exact persisted approved Outline, then STOP for MG review.
 
-- add immutable snapshot-bound `OutlineApproval`;
-- add migration `20260912_0023`;
-- add canonical `approve_outline_artifact()` / `handoff_approved_outline()` and `approve_outline.py`;
-- require exact `--outline-approval-id` in the production Writer CLI before Writer run/model creation;
-- record `outline_approval:<id>` in Writer StepRun input refs;
-- do not redesign the workflow or regenerate any artifact.
+Task file:
 
-After the implementation PR is merged, execute only:
+`docs/logs/2026-09-12-lf04a-bilingual-writer-execution-task.md`
 
-`docs/logs/2026-09-12-lf03-outline-approval-persistence-task.md`
+Execution pattern:
 
-That task upgrades to migration `20260912_0023`, materializes the Founder's already-made decision on Outline artifact `49fae9fc-44f8-460c-a805-bba2c5a5b6e6` v1 hash `ba556fc7026295ef0f660b2773ac4cd7c4d3df89b7aab6cb9d5a01af24419979`, verifies handoff, then stops. No Writer model call is part of LF-03.1.
+1. Agent Local read-only Phase A verifies exact upstream, migration head, persisted OutlineApproval, locale variants, Writer prompt/recipe/route, runner capability and absence of Writer records.
+2. Founder runs the production `vi-VN` Writer CLI exactly once.
+3. Only if VI exits successfully, Founder runs the production `en` Writer CLI exactly once.
+4. Agent Local performs read-only Phase D verification and returns both complete persisted drafts for MG review.
 
-Only after exact `OutlineApproval` persistence passes may LF-04 open independent VI/EN Writer execution.
+Each locale CLI has at most two internal ModelCalls only for bounded structured-output validation retry. No outer/manual rerun. Zero ToolCalls, no research/provider fallback, no settings/upstream mutation. The Writer settings route currently reuses route key `angle`; that is configuration reuse only, while the Writer model-input contract enforces independent locale generation and forbids another locale draft/translation source.
+
+Unresolved factual claims on an otherwise successful immutable draft are content-review signals: preserve them verbatim. They do not authorize hidden edits or an automatic retry.
+
+LF-04A success ends at two canonical `journal_draft` artifacts, one per locale. Do NOT run Review/Revise, Assertion Audit, Source-copy, Operational Package, final approval or ContentVersion until MG explicitly assigns the next slice.
 
 ## State that must not regress
 
-Reuse the SAME fresh source Journal run, input bundle, approved Angle and approved Outline snapshot. Preserve independent VI/EN, bounded revision, Assertion Audit v5 and Source-copy v2. Final hard gates and Founder final approval remain unchanged. Non-critical warnings must be carried verbatim into the review package.
+Reuse the SAME fresh source Journal run, input bundle, approved Angle and persisted-approved Outline snapshot. Preserve independent VI/EN, bounded revision, Assertion Audit v5 and Source-copy v2. Final hard gates and Founder final approval remain unchanged. Non-critical warnings must be carried verbatim into the review package.
 
 Required path:
 
