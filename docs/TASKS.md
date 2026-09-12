@@ -12,8 +12,8 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
 | LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
-| LF-04 | MG + Agent Local + Founder | Independent VI/EN through quality checks, Operational Package V0 and final approval | Persisted OutlineApproval | ACTIVE - LF-04A generation PASS; LF-04B quality PASS / MG ACCEPTED; LF-04C package PASS; mandatory Founder final content gate #3 APPROVED. LF-04D is active: persist exact final approvals + canonical approved bilingual ContentVersions, NO PUBLISH. Exact task `logs/2026-09-13-lf04d-founder-final-approval-content-version-task.md` |
-| LF-05 | MG + Agent Local | Small operator path, diagnostics, runtime/test isolation, backup/restore | M1 pass; select observed need | BACKLOG; no new workflow engine |
+| LF-04 | MG + Agent Local + Founder | Independent VI/EN through final approval and canonical ContentVersions | Persisted OutlineApproval | DONE / REVIEWED - M1 real bilingual Journal lineage complete through approved ContentVersions, no publish. Closeout: `logs/2026-09-13-m1-journal-closeout.md` |
+| LF-05 | MG + Agent Local | Smallest useful operator path / Human Review Surface | M1 pass | ACTIVE - T05.20A read-only Review Console over persisted real state. Exact task `logs/2026-09-13-t05-20-review-console-readonly-task.md` |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
 | LF-08 | MG + Founder | Edit/failure feedback, Golden/Weak baseline, controlled changes | Real outputs/edits | BACKLOG for automation; capture evidence now |
@@ -22,11 +22,11 @@ Maximum WIP: one implementation plus related local verification; one executor on
 
 CE00 Foundation Contracts, CE01 Repository/Research Spike/Walking Skeleton, CE02 Core Data/Settings, CE03 Durable Harness, CE04 Knowledge/Production Research: CLOSED / PASS per existing history. Do not rebuild.
 
-CE01's historical Golden Journal reached human review; that is not evidence that the current fresh M1 lineage finished.
+CE01's historical Golden Journal reached human review; that is not the M1 proof. M1 is now proven by the fresh real local lineage closed on 2026-09-13.
 
 ## CE05 - Journal Engine V1
 
-Status: ACTIVE. M1 ONE REAL JOURNAL PASS: final persistence/closeout in progress; no publishing authority granted.
+Status: ACTIVE post-M1 hardening/operator usability. **M1 ONE REAL JOURNAL PASS: COMPLETE / CLOSED.**
 
 Implementation foundation retained:
 
@@ -39,30 +39,36 @@ Implementation foundation retained:
 - [x] T05.7 OriginalityPack.
 - [x] T05.8 Structured Angle generator.
 - [x] T05.9 Angle approval/runtime bridge.
-- [x] T05.10 Evidence-mapped Outline implementation and historical proof.
-- [x] T05.11 VI Writer implementation and historical proof.
+- [x] T05.10 Evidence-mapped Outline implementation and real M1 proof.
+- [x] T05.11 VI Writer implementation and real M1 proof.
 - [x] T05.12 EN Writer implementation and bilingual-independence proof.
-- [x] T05.13 Bounded Review/Revise implementation and historical proof.
+- [x] T05.13 Bounded Review/Revise implementation and real recovery evidence.
 - [x] Assertion Audit through generator/evaluator v5, schema 1; fail-closed hard types.
 - [x] Source-copy v2; canonical audit pairs v3/v3, v4/v4, v5/v5 only; mixed pairs reject.
 - [x] Focused retry/idempotency/recovery/provenance regression coverage.
+- [x] T05.16 Operational Package V0 JSON + Markdown + SHA-256.
+- [x] Mandatory human gate #3: Founder final approval bound to exact VI/EN + package hashes.
+- [x] Canonical ContentItem + approved ContentVersion per locale persisted through existing path.
 
-Current checkpoint:
+### M1 closeout evidence
 
-- canonical Angle + AngleApproval and persisted-approved Outline remain unchanged;
-- final VI is immutable v3 `fa3fcfe8-3157-4dc5-9afe-8da21b13b576`, hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`;
-- VI Assertion Audit PASS; VI Source-copy PASS, `fail_count=0`, `warn_count=0`;
-- final EN is immutable v4 `43007d23-8fbf-498d-ac49-436414c87aaf`, hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`;
-- EN Assertion Audit PASS; EN Source-copy hard gate PASS, `fail_count=0`, `warn_count=2`;
-- surviving warning 1: `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`;
-- surviving warning 2: `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`;
-- Operational Package V0 JSON SHA-256 `9d804da5c8d0756930b577e8e4244408cf9a8236d7b9205a8135d215e61b429a`;
-- Operational Package V0 Markdown SHA-256 `a3804dd7622b9182c581b95aa2f892df2ee82a4e83c5c9a65f55ca802fa67c9f`;
-- package generated deterministically, `not_published=true`, ModelCalls `14`, ToolCalls `0`;
-- Founder explicitly approved exact VI + EN + both package hashes and accepted both EN warnings unchanged;
-- Founder authorized approval persistence + canonical ContentVersion creation only; publish/WordPress remains forbidden.
+- Merged/local finalization ref `8454e9fd3e2002901bea12c045826b1a5eac3b6d`.
+- ContentCase `f0bfbad7-c266-4de1-8fd4-a85ad206e6ce`.
+- VI approved ContentVersion `66ad367f-99af-4b37-8914-5b446fca50dd`, v1, final hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`.
+- EN approved ContentVersion `6dcc3b6a-a507-47fd-8461-e0f084427f2e`, v1, final hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`.
+- Both Writer runs completed after final approval persistence.
+- VI Assertion Audit hard-clean; VI Source-copy `fail_count=0`, `warn_count=0`.
+- EN Assertion Audit hard-clean; EN Source-copy `fail_count=0`, `warn_count=2`.
+- Accepted warning 1: `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`.
+- Accepted warning 2: `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`.
+- Operational Package JSON SHA-256 `9d804da5c8d0756930b577e8e4244408cf9a8236d7b9205a8135d215e61b429a`.
+- Operational Package Markdown SHA-256 `a3804dd7622b9182c581b95aa2f892df2ee82a4e83c5c9a65f55ca802fa67c9f`.
+- ModelCalls remained `14`; ToolCalls remained `0` through finalization.
+- published ContentVersions `0`; no PublishedContent, PublishEvent, URL mapping or WordPress/external publish action.
 
-### M1 remaining acceptance
+Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
+
+### M1 acceptance — COMPLETE
 
 - [x] Verify current EvidenceSet ID/version/hash, approved/locked state, metadata and bundle binding.
 - [x] Verify current OriginalityPack ID/hash, approved state and bundle binding.
@@ -75,21 +81,25 @@ Current checkpoint:
 - [x] Both final Source-copy checks `fail_count = 0`.
 - [x] Final independent VI/EN visible content reviewed and MG accepted.
 - [x] All surviving warnings preserved verbatim.
-- [x] T05.16 Operational Package V0 JSON + Markdown + SHA-256; pre-approval status explicit.
-- [x] Mandatory human gate #3: Founder final approval bound to exact VI/EN + package hashes.
-- [ ] Persist Founder approvals against exact final_content artifacts. ACTIVE LF-04D.
-- [ ] Create/reuse canonical ContentItem + approved ContentVersion per locale via existing canonical path. ACTIVE LF-04D.
-- [ ] Verify M1 durable closeout on current local runtime with no publish side effect.
+- [x] T05.16 Operational Package V0 deterministic JSON + Markdown + SHA-256.
+- [x] Founder final approval bound to exact final content/package.
+- [x] Founder approvals persisted against exact final_content artifacts.
+- [x] Canonical ContentItem + approved ContentVersion per locale created through existing canonical path.
+- [x] M1 durable closeout verified on current local runtime with no publish side effect.
 
-### After M1, not its prerequisite
+### Current post-M1 slice
 
-- [ ] T05.18 Critical Gate Regression - prioritize observed failures: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
+- [ ] T05.20A Human Review Surface — read-only Review Console over existing persisted truth. ACTIVE. Exact task `logs/2026-09-13-t05-20-review-console-readonly-task.md`.
+- [ ] T05.20B Approval actions — Approve / Request revision / Reject using proven existing contracts; only after T05.20A read model/local proof.
+
+### Required post-M1 hardening, not blockers for T05.20A
+
+- [ ] T05.18 Critical Gate Regression - observed failures only: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.
-- [ ] T05.20 Human Review Surface - smallest useful Review Console first, based on actual operator friction.
 - [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
-- [ ] T05.22 CE05 Closeout - not inferred from code coverage alone.
+- [ ] T05.22 CE05 Closeout - not inferred from M1 alone; follows post-M1 hardening/pilot evidence.
 
-Before M1: no new provider/agent/framework, speculative abstraction, WordPress automation, automatic publishing/merge, repeated DB recovery, CI tuning without a real blocker, or evaluator-version churn to rescue an article. Demonstrated security/data-integrity defects are the exception.
+Do not turn M1 friction into a new provider/agent/framework or speculative workflow engine. Prefer small changes proven by real operator pain.
 
 ## CE06 - Full Quality + Golden Regression
 
