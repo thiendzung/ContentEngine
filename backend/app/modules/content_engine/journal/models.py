@@ -56,4 +56,41 @@ class AngleApproval(TimestampMixin, Base):
     )
 
 
-__all__ = ["AngleApproval"]
+class OutlineApproval(TimestampMixin, Base):
+    """One immutable human decision for one exact Outline artifact snapshot."""
+
+    __tablename__ = "outline_approvals"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("content_runs.id"), nullable=False)
+    outline_artifact_id: Mapped[UUID] = mapped_column(
+        ForeignKey("artifacts.id"), nullable=False
+    )
+    outline_artifact_version: Mapped[int] = mapped_column(nullable=False)
+    outline_artifact_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    approval_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "outline_artifact_id",
+            "outline_artifact_version",
+            "outline_artifact_hash",
+            name="uq_outline_approval_artifact_snapshot",
+        ),
+        CheckConstraint(
+            "outline_artifact_version > 0",
+            name="ck_outline_approval_artifact_version_positive",
+        ),
+        CheckConstraint(
+            "outline_artifact_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_outline_approval_artifact_hash",
+        ),
+        CheckConstraint("btrim(approved_by) <> ''", name="ck_outline_approval_approved_by"),
+        CheckConstraint("btrim(approval_reason) <> ''", name="ck_outline_approval_reason"),
+        Index("ix_outline_approvals_artifact", "outline_artifact_id"),
+    )
+
+
+__all__ = ["AngleApproval", "OutlineApproval"]

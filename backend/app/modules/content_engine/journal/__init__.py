@@ -62,6 +62,13 @@ from app.modules.content_engine.journal.outline_agent_bridge import (
     create_cli_outline_model_port,
     render_outline_prompt,
 )
+from app.modules.content_engine.journal.outline_approval import (
+    ApprovedOutline,
+    OutlineApproval,
+    OutlineApprovalError,
+    approve_outline_artifact,
+    handoff_approved_outline,
+)
 from app.modules.content_engine.journal.research_handoff import (
     DiscoveryResearchHandoff,
     EvidenceResearchHandoff,
@@ -100,6 +107,7 @@ __all__ = [
     "ANGLE_TIMEOUT_SECONDS",
     "ApprovedKnowledge",
     "ApprovedAngle",
+    "ApprovedOutline",
     "AngleApproval",
     "AngleApprovalError",
     "AngleCandidate",
@@ -129,6 +137,8 @@ __all__ = [
     "OUTLINE_TIMEOUT_SECONDS",
     "OpportunitySelectionHandoff",
     "OriginalityPackHandoff",
+    "OutlineApproval",
+    "OutlineApprovalError",
     "OutlineGenerationError",
     "OutlineGenerationResult",
     "OutlineGenerator",
@@ -151,10 +161,12 @@ __all__ = [
     "angle_candidate_hash",
     "angle_model_input_hash",
     "approve_angle_candidate",
+    "approve_outline_artifact",
     "build_journal_context",
     "create_cli_angle_model_port",
     "create_cli_outline_model_port",
     "handoff_approved_angle",
+    "handoff_approved_outline",
     "load_journal_input_bundle",
     "load_outline_input",
     "originality_pack_snapshot_hash",
