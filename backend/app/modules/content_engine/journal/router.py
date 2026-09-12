@@ -13,6 +13,13 @@ from app.modules.content_engine.journal.context import (
     JournalContextError,
     build_journal_context,
 )
+from app.modules.content_engine.journal.review_console import (
+    ReviewCaseDetail,
+    ReviewCaseSummary,
+    ReviewConsoleError,
+    get_review_case,
+    list_review_cases,
+)
 from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
 
 router = APIRouter(prefix="/journal", tags=["journal"])
@@ -82,6 +89,25 @@ async def list_journal_cases(
             )
         )
     return list(grouped.values())
+
+
+@router.get("/review-cases", response_model=list[ReviewCaseSummary])
+async def list_journal_review_cases(
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> list[ReviewCaseSummary]:
+    return await list_review_cases(session)
+
+
+@router.get("/review-cases/{content_case_id}", response_model=ReviewCaseDetail)
+async def get_journal_review_case(
+    content_case_id: UUID,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ReviewCaseDetail:
+    try:
+        return await get_review_case(session, content_case_id=content_case_id)
+    except ReviewConsoleError as exc:
+        status_code = 404 if exc.code.endswith("not_found") else 422
+        raise HTTPException(status_code=status_code, detail=exc.code) from exc
 
 
 @router.get(
