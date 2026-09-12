@@ -21,6 +21,7 @@ def test_real_o4_writer_cli_help() -> None:
         "--outline-artifact-id",
         "--outline-artifact-version",
         "--outline-artifact-hash",
+        "--outline-approval-id",
         "--locale",
         "--expected-provider",
         "--expected-model",
