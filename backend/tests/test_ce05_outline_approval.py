@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import pytest
 
+from app.modules.content_engine.journal.outline_approval import (
+    OutlineApprovalError,
+    approve_outline_artifact,
+    handoff_approved_outline,
+)
 from test_ce05_outline import (
     FakeOutlineModel,
     _approved_fixture,
     _generate,
     _outline_payload,
     isolated_session,
-)
-
-from app.modules.content_engine.journal.outline_approval import (
-    OutlineApprovalError,
-    approve_outline_artifact,
-    handoff_approved_outline,
 )
 
 
