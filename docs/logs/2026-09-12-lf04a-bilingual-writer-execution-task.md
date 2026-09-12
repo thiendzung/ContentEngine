@@ -4,7 +4,7 @@ Date: 2026-09-12
 
 OWNER: Founder for the two model-backed Writer CLI commands; Agent Local for pre/post read-only verification. REVIEWER: MG Content Engine.
 
-STATE: NOT EXECUTED.
+STATE: PHASE A MUST BE RERUN AFTER THE AUDITED CODEX VERSION PIN IS MERGED.
 
 OBJECTIVE: Generate one immutable `vi-VN` Journal draft and one immutable `en` Journal draft from the exact persisted Founder-approved Outline, using separate locale-specific Writer runs and direct generation from the shared approved Outline/evidence. Then STOP for MG editorial review. Do not run Review/Revise, Assertion Audit, Source-copy, Operational Package, final approval or publishing in this task.
 
@@ -25,6 +25,20 @@ Require all of the following before model execution:
 - no Writer run, writer handoff, Writer StepRun, Writer ContextManifest, Writer ModelCall or `journal_draft` exists yet for either `vi-VN` or `en` on this lineage.
 
 If any exact upstream ID/hash/approval differs, STOP. Do not regenerate Angle/Outline, replace approval, restart research, patch DB or substitute another run.
+
+## Codex version-gate incident and audited replacement
+
+The first LF-04A Phase A on main `7b30db37dcf7ee2099c62805fa4faacc498bb62e` stopped before auth/no-tool/model execution because the bundled ChatGPT Codex CLI had changed from the then-approved `codex-cli 0.153.4` to `codex-cli 0.154.0-alpha.6.2`.
+
+No Writer command, ModelCall, ToolCall, migration, DB write or runtime mutation occurred.
+
+Agent Local then performed the MG-authorized read-only capability audit recorded at:
+
+`docs/logs/2026-09-12-lf04a-codex-0154-capability-audit.md`
+
+The exact `codex-cli 0.154.0-alpha.6.2` binary passed all required checks: `--disable` is supported, all 21 required no-tool feature names are present, cached-session auth is valid, and no model execution was involved. The repository therefore pins this exact audited version. No version range/wildcard/latest acceptance is authorized.
+
+After the version-pin PR is merged, LF-04A must rerun Phase A from clean synchronized `main`. Do not skip directly to Writer execution based on the prior blocked preflight.
 
 ## Independence contract
 
@@ -76,7 +90,8 @@ Synchronize clean `main` to exact `origin/main`. Record SHA. Read:
 4. `docs/CHECKLIST.md`
 5. `docs/20-LOCAL-FIRST-DELIVERY-SPEC.md`
 6. `docs/logs/2026-09-12-lf03-outline-approved-closeout.md`
-7. this task
+7. `docs/logs/2026-09-12-lf04a-codex-0154-capability-audit.md`
+8. this task
 
 Read-only verify:
 
@@ -86,7 +101,7 @@ Read-only verify:
 - active Writer prompt/recipe resolve unambiguously for each locale;
 - SettingsSnapshot resolves Writer route exactly to `codex_cli / gpt-5.6-luna`;
 - approved Outline handoff verifies against OutlineApproval `233e07d6-46dd-4d58-bd01-0f6cac6464f5`;
-- runner preflight passes on the approved Codex CLI, expected version `codex-cli 0.153.4`, cached authentication, no tools;
+- runner preflight passes on the exact repository-approved Codex CLI `codex-cli 0.154.0-alpha.6.2`, cached authentication and all required no-tool capability checks;
 - source-run ModelCall total remains 2 (Angle + Outline), ToolCalls remain 0;
 - no Writer records exist for either locale.
 
