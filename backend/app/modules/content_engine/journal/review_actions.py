@@ -115,6 +115,9 @@ async def submit_review_decision(
         raise ReviewActionError("review_action_final_binding_missing")
     if final_artifact.run_id != writer_run.id or writer_run.locale_variant_id != locale_variant_id:
         raise ReviewActionError("review_action_final_binding_mismatch")
+    final_content_json = final_artifact.content_json
+    if not isinstance(final_content_json, dict):
+        raise ReviewActionError("review_action_final_content_invalid")
 
     existing_decisions = list(
         (
@@ -188,7 +191,7 @@ async def submit_review_decision(
                 session,
                 content_item_id=item.id,
                 change_reason="Founder approved from Review Console",
-                content_json=final_artifact.content_json,
+                content_json=final_content_json,
                 status="approved",
                 created_by_run_id=writer_run.id,
                 final_artifact_id=final_artifact.id,
