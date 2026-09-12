@@ -42,7 +42,7 @@ Do not manually copy, translate or feed the VI output into the EN command, or vi
 
 ## Permissions and model budget
 
-Agent Local may perform Phase A and Phase C read-only verification. If its host still blocks model execution at an outer policy layer, it must not attempt the two Founder commands.
+Agent Local may perform Phase A and Phase D read-only verification. If its host still blocks model execution at an outer policy layer, it must not attempt the two Founder commands.
 
 Founder authorizes exactly one direct CLI invocation for `vi-VN` and, only if that invocation exits successfully, exactly one direct CLI invocation for `en`.
 
