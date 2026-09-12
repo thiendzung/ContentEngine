@@ -92,8 +92,6 @@ async def submit_review_decision(
     )
     if panel is None:
         raise ReviewActionError("review_action_locale_not_found")
-    if panel.consistency_state != "CONSISTENT":
-        raise ReviewActionError("review_action_inconsistent_state")
     if panel.quality_state not in {"PASS", "WARN"}:
         raise ReviewActionError("review_action_quality_blocked")
     if panel.assertion_audit.critical_unsupported_count > 0:
@@ -102,6 +100,8 @@ async def submit_review_decision(
         raise ReviewActionError("review_action_quality_blocked")
     if panel.source_copy.fail_count > 0:
         raise ReviewActionError("review_action_quality_blocked")
+    if panel.consistency_state != "CONSISTENT":
+        raise ReviewActionError("review_action_inconsistent_state")
     if panel.final_content is None or panel.provenance.writer_run_id is None:
         raise ReviewActionError("review_action_final_binding_missing")
 
