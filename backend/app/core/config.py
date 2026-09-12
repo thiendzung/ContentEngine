@@ -77,9 +77,6 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_test_database(self) -> "Settings":
-        # Resolve CORS eagerly so a malformed or wildcard browser policy fails closed at startup.
-        self.resolved_cors_allowed_origins
-
         if self.app_env.strip().lower() != "test":
             return self
         if not self.test_database_url or not self.test_database_url.strip():
