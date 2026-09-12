@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.review_console import get_review_case
+from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.content_engine.persistence import create_next_content_version
 from app.modules.harness.models import Approval, Artifact, ContentRun
@@ -85,7 +85,7 @@ async def submit_review_decision(
     if decision in {"changes_requested", "rejected"} and normalized_comment is None:
         raise ReviewActionError("review_action_comment_required")
 
-    detail = await get_review_case(session, content_case_id=content_case_id)
+    detail = await get_action_aware_review_case(session, content_case_id=content_case_id)
     panel = next(
         (row for row in detail.locales if row.locale_variant_id == locale_variant_id),
         None,
