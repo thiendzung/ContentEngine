@@ -157,6 +157,23 @@ def _with_source_text(
     )
 
 
+def _with_allowed_originality_ref(
+    audit_input: AssertionAuditInput,
+    *,
+    segment_id: str,
+    originality_ref: str,
+) -> AssertionAuditInput:
+    return replace(
+        audit_input,
+        segments=tuple(
+            replace(segment, allowed_originality_refs=(originality_ref,))
+            if segment.segment_id == segment_id
+            else segment
+            for segment in audit_input.segments
+        ),
+    )
+
+
 def _output_segment(output: dict[str, object], segment_id: str) -> dict[str, object]:
     return next(
         segment
@@ -170,7 +187,7 @@ def test_assertion_audit_generic_guidance_detector_fails_closed_for_unknown_loca
     locale: str,
 ) -> None:
     assert not _is_generic_verification_guidance(
-        assertion_text="Check the current listing before deciding.",
+        source_text="Check the current listing before deciding.",
         locale=locale,
     )
 
@@ -267,8 +284,8 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
         assert first.result == "pass"
         assert first.reused is False
         assert first.model_attempts == 1
-        assert ASSERTION_AUDIT_GENERATOR_VERSION == "ce05.journal_assertion_audit.v4"
-        assert ASSERTION_AUDIT_EVALUATOR_VERSION == "ce05.assertion_audit.hard_gate.v4"
+        assert ASSERTION_AUDIT_GENERATOR_VERSION == "ce05.journal_assertion_audit.v5"
+        assert ASSERTION_AUDIT_EVALUATOR_VERSION == "ce05.assertion_audit.hard_gate.v5"
         assert second.reused is True
         assert second.model_attempts == 0
         assert second.artifact.id == first.artifact.id
@@ -295,6 +312,10 @@ async def test_assertion_audit_persists_hard_gate_and_reuses_exact_artifact() ->
             "use_only_support_refs_allowed_for_the_exact_source_segment",
             "discard_out_of_location_support_refs_deterministically",
             "supported_without_valid_location_support_becomes_unsupported",
+            "generic_reader_guidance_uses_opinion_or_interpretation_without_evidence_refs",
+            "classify_reader_guidance_from_full_source_sentence",
+            "allowed_originality_provenance_does_not_block_guidance_normalization",
+            "only_unsupported_opinion_or_interpretation_guidance_without_evidence_refs_may_normalize",
         }.issubset(requirements)
 
         evaluations = list(
@@ -548,6 +569,217 @@ async def test_assertion_audit_normalizes_observed_generic_live_guidance_to_opin
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("source_text", "originality_ref"),
+    [
+        (
+            "Check the artwork’s identity, dimensions, materials, condition and provenance, "
+            "along with the current price when those details are available.",
+            "MOTGU-INPUT-ORIG-01",
+        ),
+        (
+            "Check them when reliable, up-to-date information is available, and use them "
+            "to understand the practical process of buying the work.",
+            "MOTGU-INPUT-ORIG-03",
+        ),
+    ],
+)
+async def test_assertion_audit_normalizes_exact_guidance_with_allowed_originality_ref(
+    source_text: str,
+    originality_ref: str,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, audit_input = await _source(session)
+        guidance_input = _with_source_text(
+            audit_input,
+            segment_id="standfirst",
+            source_text=source_text,
+        )
+        guidance_input = _with_allowed_originality_ref(
+            guidance_input,
+            segment_id="standfirst",
+            originality_ref=originality_ref,
+        )
+        output = _passing_output(guidance_input)
+        target = _output_segment(output, "standfirst")
+        target["assertions"] = [
+            {
+                "assertion_text": source_text,
+                "assertion_type": "practical_live_information",
+                "support_status": "unsupported",
+                "severity": "critical",
+                "evidence_refs": [],
+                "originality_refs": [originality_ref],
+                "rationale": "The source sentence is bounded reader guidance.",
+            }
+        ]
+
+        audited = validate_assertion_audit_output(
+            output, audit_input=guidance_input
+        )
+        assertion = next(
+            assertion
+            for segment in audited
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == "opinion"
+        assert assertion.support_status == "opinion"
+        assert assertion.severity == "none"
+        assert assertion.originality_refs == (originality_ref,)
+        assert assertion.evidence_refs == ()
+        assert assertion.claim_refs == ()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("source_text", "assertion_text"),
+    [
+        (
+            "Check the artwork’s identity, dimensions, materials, condition and provenance, "
+            "along with the current price when those details are available.",
+            "the current price",
+        ),
+        (
+            "Instead of looking for a single formula, start with the details you can verify "
+            "about the work itself.",
+            "the details you can verify",
+        ),
+        (
+            "Before deciding, write down the details you can verify about the work itself.",
+            "the details you can verify",
+        ),
+    ],
+)
+async def test_assertion_audit_uses_full_source_for_strict_subspan_guidance(
+    source_text: str,
+    assertion_text: str,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, audit_input = await _source(session)
+        guidance_input = _with_source_text(
+            audit_input,
+            segment_id="standfirst",
+            source_text=source_text,
+        )
+        output = _passing_output(guidance_input)
+        target = _output_segment(output, "standfirst")
+        target["assertions"] = [
+            {
+                "assertion_text": assertion_text,
+                "assertion_type": "fact",
+                "support_status": "unsupported",
+                "severity": "critical",
+                "evidence_refs": [],
+                "originality_refs": [guidance_input.segments[1].allowed_originality_refs[0]],
+                "rationale": "The model returned an internal guidance sub-span.",
+            }
+        ]
+
+        audited = validate_assertion_audit_output(output, audit_input=guidance_input)
+        assertion = next(
+            assertion
+            for segment in audited
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == "opinion"
+        assert assertion.support_status == "opinion"
+        assert assertion.severity == "none"
+        assert assertion.originality_refs == (
+            guidance_input.segments[1].allowed_originality_refs[0],
+        )
+
+
+@pytest.mark.asyncio
+async def test_assertion_audit_keeps_universal_price_claim_as_critical_failure() -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, audit_input = await _source(session)
+        source_text = (
+            "There is no universal formula for deciding whether an original artwork is "
+            "fairly priced."
+        )
+        content_input = _with_source_text(
+            audit_input,
+            segment_id="lead:1",
+            source_text=source_text,
+        )
+        output = _passing_output(content_input)
+        target = _output_segment(output, "lead:1")
+        target["assertions"] = [
+            {
+                "assertion_text": source_text,
+                "assertion_type": "fact",
+                "support_status": "unsupported",
+                "severity": "none",
+                "evidence_refs": [],
+                "originality_refs": [],
+                "rationale": "Unsupported universal pricing claim.",
+            }
+        ]
+
+        audited = validate_assertion_audit_output(output, audit_input=content_input)
+        assertion = next(
+            assertion
+            for segment in audited
+            if segment.segment_id == "lead:1"
+            for assertion in segment.assertions
+        )
+        assert assertion.assertion_type == "fact"
+        assert assertion.support_status == "unsupported"
+        assert assertion.severity == "critical"
+        assert _summary(audited)["result"] == "fail"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("support_status", ["supported", "contradicted"])
+async def test_assertion_audit_does_not_normalize_supported_or_contradicted_guidance(
+    support_status: str,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, _source_artifact, audit_input = await _source(session)
+        source_text = "Check the current listing before deciding."
+        guidance_input = _with_source_text(
+            audit_input,
+            segment_id="standfirst",
+            source_text=source_text,
+        )
+        output = _passing_output(guidance_input)
+        target = _output_segment(output, "standfirst")
+        target["assertions"] = [
+            {
+                "assertion_text": source_text,
+                "assertion_type": "practical_live_information",
+                "support_status": support_status,
+                "severity": "none",
+                "evidence_refs": (
+                    [guidance_input.segments[1].allowed_evidence_refs[0]]
+                    if support_status == "supported"
+                    else []
+                ),
+                "originality_refs": [],
+                "rationale": "Guidance status must remain deterministic.",
+            }
+        ]
+
+        audited = validate_assertion_audit_output(output, audit_input=guidance_input)
+        assertion = next(
+            assertion
+            for segment in audited
+            if segment.segment_id == "standfirst"
+            for assertion in segment.assertions
+        )
+        assert assertion.support_status == support_status
+        if support_status == "supported":
+            assert assertion.assertion_type == "practical_live_information"
+            assert assertion.severity == "none"
+        else:
+            assert assertion.assertion_type == "practical_live_information"
+            assert assertion.severity == "critical"
+            assert _summary(audited)["result"] == "fail"
+
+
+@pytest.mark.asyncio
 async def test_assertion_audit_normalizes_opinion_support_for_generic_live_guidance() -> None:
     async with isolated_session() as session:
         _fixture, _source_artifact, audit_input = await _source(session)
@@ -590,6 +822,7 @@ async def test_assertion_audit_normalizes_opinion_support_for_generic_live_guida
     [
         "The work is available today.",
         "Check the listing because the work is available today.",
+        "Check the listing; the work is available today.",
     ],
 )
 async def test_assertion_audit_keeps_concrete_or_causal_live_guidance_hard_gated(

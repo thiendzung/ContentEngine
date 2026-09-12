@@ -35,9 +35,9 @@ from app.modules.harness.models import (
 )
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet
 
-ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v4"
+ASSERTION_AUDIT_GENERATOR_VERSION = "ce05.journal_assertion_audit.v5"
 ASSERTION_AUDIT_SCHEMA_VERSION = 1
-ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v4"
+ASSERTION_AUDIT_EVALUATOR_VERSION = "ce05.assertion_audit.hard_gate.v5"
 ASSERTION_AUDIT_EVALUATOR_KEY = "assertion_audit_hard_gate"
 
 _ASSERTION_TYPES = {
@@ -68,6 +68,12 @@ _VERIFICATION_GUIDANCE_PREFIXES = {
         "you can confirm ",
         "you can verify ",
         "you can ask ",
+        "start with ",
+        "write down ",
+        "treat ",
+        "use ",
+        "keep ",
+        "compare ",
     ),
     "vi-vn": (
         "kiểm tra ",
@@ -85,6 +91,10 @@ _VERIFICATION_GUIDANCE_CAUSAL_CONNECTORS = {
     "en": (" because ", " since ", " given that "),
     "vi-vn": (" vì ", " bởi vì "),
 }
+_CONCRETE_LIVE_CLAUSE = re.compile(
+    r"\b(?:the\s+)?(?:work|artwork|piece|item)\b\s+(?:is|are)\s+"
+    r"(?:(?:currently|actually)\s+)?(?:available|sold|located|listed|priced)\b"
+)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -450,10 +460,12 @@ async def load_assertion_audit_input(
                 "return_no_support_refs_when_no_exact_location_support_applies",
                 "discard_out_of_location_support_refs_deterministically",
                 "supported_without_valid_location_support_becomes_unsupported",
-                "generic_reader_guidance_uses_opinion_or_interpretation_without_unrelated_support_refs",
+                "generic_reader_guidance_uses_opinion_or_interpretation_without_evidence_refs",
+                "classify_reader_guidance_from_full_source_sentence",
+                "allowed_originality_provenance_does_not_block_guidance_normalization",
                 "verification_guidance_requires_bounded_locale_prefix",
                 "causal_verification_guidance_remains_a_concrete_live_claim",
-                "only_unsupported_or_opinion_practical_guidance_without_refs_may_normalize",
+                "only_unsupported_opinion_or_interpretation_guidance_without_evidence_refs_may_normalize",
                 "never_add_research_or_new_facts",
                 "critical_unsupported_or_contradicted_assertions_fail",
             ],
@@ -485,16 +497,39 @@ def _severity_for(
     return model_severity
 
 
-def _is_generic_verification_guidance(*, assertion_text: str, locale: str) -> bool:
-    normalized = " ".join(assertion_text.split()).casefold()
+def _is_generic_verification_guidance(*, source_text: str, locale: str) -> bool:
+    normalized = " ".join(source_text.split()).casefold()
     language_prefixes = _VERIFICATION_GUIDANCE_PREFIXES.get(locale.casefold())
     if language_prefixes is None:
+        return False
+    if ";" in normalized:
         return False
     connectors = _VERIFICATION_GUIDANCE_CAUSAL_CONNECTORS[locale.casefold()]
     padded = f" {normalized} "
     if any(connector in padded for connector in connectors):
         return False
-    return any(normalized.startswith(prefix) for prefix in language_prefixes)
+    if _CONCRETE_LIVE_CLAUSE.search(normalized):
+        return False
+    if any(normalized.startswith(prefix) for prefix in language_prefixes):
+        return True
+    if locale.casefold() != "en":
+        return False
+    framed_prefixes = ("instead of ", "before deciding", "when deciding", "if ")
+    if not any(normalized.startswith(prefix) for prefix in framed_prefixes):
+        return False
+    action_phrases = (
+        " start ",
+        " write ",
+        " ask ",
+        " check ",
+        " verify ",
+        " confirm ",
+        " use ",
+        " treat ",
+        " keep ",
+        " compare ",
+    )
+    return any(phrase in padded for phrase in action_phrases)
 
 
 def _validate_assertion(
@@ -532,12 +567,11 @@ def _validate_assertion(
         ref for ref in originality_refs if ref in segment.allowed_originality_refs
     )
     if (
-        assertion_type == "practical_live_information"
+        assertion_type in {"fact", "practical_live_information"}
         and support_status in {"unsupported", "opinion", "interpretation"}
         and not evidence_refs
-        and not originality_refs
         and _is_generic_verification_guidance(
-            assertion_text=assertion_text,
+            source_text=segment.source_text,
             locale=audit_input.writer_input.locale,
         )
     ):
