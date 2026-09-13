@@ -4,7 +4,6 @@ import asyncio
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
+from app.modules.system.postgres_tools import postgres_tool_capability, postgres_tool_command
 from app.modules.system.recovery import database_fingerprint
 
 
@@ -42,18 +42,18 @@ def _backup_dir() -> Path:
     return candidate
 
 
-def _pg_connection_args(url: URL) -> tuple[list[str], dict[str, str]]:
+def _pg_connection_args(url: URL, *, container_mode: bool) -> tuple[list[str], dict[str, str]]:
     args: list[str] = []
-    if url.host:
+    if not container_mode and url.host:
         args.extend(["--host", url.host])
-    if url.port:
+    if not container_mode and url.port:
         args.extend(["--port", str(url.port)])
     if url.username:
         args.extend(["--username", url.username])
     if url.database:
         args.extend(["--dbname", url.database])
     env = os.environ.copy()
-    if url.password:
+    if not container_mode and url.password:
         env["PGPASSWORD"] = url.password
     return args, env
 
@@ -67,8 +67,9 @@ def _sha256(path: Path) -> str:
 
 
 async def _main() -> int:
-    if shutil.which("pg_dump") is None:
-        print("BACKUP: BLOCKED (pg_dump_missing)")
+    capability = postgres_tool_capability()
+    if capability is None:
+        print("BACKUP: BLOCKED (pg_dump_unavailable)")
         return 2
 
     try:
@@ -98,18 +99,24 @@ async def _main() -> int:
     finally:
         await engine.dispose()
 
-    connection_args, env = _pg_connection_args(source_url)
+    container_mode = capability.mode == "container"
+    connection_args, env = _pg_connection_args(source_url, container_mode=container_mode)
     command = [
-        "pg_dump",
+        *postgres_tool_command("pg_dump"),
         "--format=custom",
         "--no-owner",
         "--no-privileges",
-        "--file",
-        str(dump_path),
         *connection_args,
     ]
-    result = subprocess.run(command, env=env, capture_output=True, check=False)
-    if result.returncode != 0 or not dump_path.is_file():
+    with dump_path.open("wb") as dump_handle:
+        result = subprocess.run(
+            command,
+            env=env,
+            stdout=dump_handle,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    if result.returncode != 0 or not dump_path.is_file() or dump_path.stat().st_size == 0:
         dump_path.unlink(missing_ok=True)
         print("BACKUP: BLOCKED (pg_dump_failed)")
         return 2
@@ -118,6 +125,7 @@ async def _main() -> int:
         "format_version": 1,
         "created_at": datetime.now(UTC).isoformat(),
         "source_database": source_url.database,
+        "tool_mode": capability.mode,
         "dump_sha256": _sha256(dump_path),
         "fingerprint": fingerprint.to_dict(),
     }
@@ -125,7 +133,9 @@ async def _main() -> int:
         json.dumps(manifest, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"BACKUP: READY (dump={dump_path}; manifest={manifest_path})")
+    print(
+        f"BACKUP: READY (mode={capability.mode}; dump={dump_path}; manifest={manifest_path})"
+    )
     return 0
 
 
