@@ -87,12 +87,23 @@ def _tool_event(row: ToolCall) -> ProductionExecutionEvent:
     )
 
 
-def _delegation_event(row: DelegationExecution) -> ProductionExecutionEvent:
+def _delegation_event(
+    row: DelegationExecution,
+    *,
+    model_by_id: dict[UUID, ModelCall],
+) -> ProductionExecutionEvent:
+    worker_call = (
+        model_by_id.get(row.worker_model_call_id)
+        if row.worker_model_call_id is not None
+        else None
+    )
     return ProductionExecutionEvent(
         kind="delegation",
         status=row.status,
         role=row.task_key,
         technical_name=row.task_key,
+        provider=worker_call.provider if worker_call is not None else None,
+        model=worker_call.model if worker_call is not None else None,
         execution_id=row.id,
         parent_execution_id=row.parent_execution_id,
         worker_kind=row.worker_kind,
@@ -205,14 +216,22 @@ def _execution_events(
     delegations: list[DelegationExecution],
 ) -> tuple[ProductionExecutionEvent | None, list[ProductionExecutionEvent]]:
     events: list[ProductionExecutionEvent] = []
+    model_by_id = {row.id: row for row in models}
+    linked_worker_model_ids = {
+        row.worker_model_call_id
+        for row in delegations
+        if row.worker_model_call_id is not None
+    }
     for model_call in models:
+        if model_call.id in linked_worker_model_ids:
+            continue
         if model_call.started_at is not None or model_call.completed_at is not None:
             events.append(_model_event(model_call))
     for tool_call in tools:
         if tool_call.started_at is not None or tool_call.completed_at is not None:
             events.append(_tool_event(tool_call))
     for delegation in delegations:
-        events.append(_delegation_event(delegation))
+        events.append(_delegation_event(delegation, model_by_id=model_by_id))
     events.sort(key=_event_sort_key)
 
     current_worker: ProductionExecutionEvent | None
