@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import asdict, dataclass
 
 from sqlalchemy import select
@@ -9,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.modules.content_engine.models import ContentCase, ContentVersion
 from app.modules.harness.models import Approval, Artifact, ContentRun
+
+_SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class RecoverySafetyError(RuntimeError):
@@ -43,7 +46,7 @@ def validate_restore_target(*, source_url: str, restore_url: str) -> URL:
     database_name = target.database or ""
     if target.get_backend_name() != "postgresql":
         raise RecoverySafetyError("restore_database_backend_unsupported")
-    if "restore_test" not in database_name.lower():
+    if not _SAFE_IDENTIFIER.fullmatch(database_name) or "restore_test" not in database_name.lower():
         raise RecoverySafetyError("unsafe_restore_database_name")
     if _identity(source) == _identity(target):
         raise RecoverySafetyError("restore_database_matches_source")
