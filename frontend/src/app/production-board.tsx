@@ -123,25 +123,31 @@ function localeLabel(value: string): string {
   return value.toUpperCase();
 }
 
+function eventStageKey(event: ExecutionEvent): string {
+  return event.technical_name ?? event.role;
+}
+
 function workerLabel(worker: ExecutionEvent | null): string {
   if (!worker) return "Chưa có tác nhân đang chạy";
+  const stage = stageLabel(eventStageKey(worker));
   if (worker.kind === "tool") {
     return worker.technical_name?.toLowerCase().includes("antigravity")
-      ? "Antigravity"
-      : "Công cụ chuyên trách";
+      ? `Antigravity · ${stage}`
+      : `Công cụ chuyên trách · ${stage}`;
   }
-  if (worker.provider === "codex_cli") return `Codex · ${stageLabel(worker.role)}`;
-  return `Tác vụ mô hình · ${stageLabel(worker.role)}`;
+  if (worker.provider === "codex_cli") return `Codex · ${stage}`;
+  return `Tác vụ mô hình · ${stage}`;
 }
 
 function eventLabel(event: ExecutionEvent): string {
+  const stage = stageLabel(eventStageKey(event));
   if (event.kind === "tool") {
     return event.technical_name?.toLowerCase().includes("antigravity")
-      ? `Antigravity · ${stageLabel(event.role)}`
-      : `Công cụ · ${stageLabel(event.role)}`;
+      ? `Antigravity · ${stage}`
+      : `Công cụ · ${stage}`;
   }
-  if (event.provider === "codex_cli") return `Codex · ${stageLabel(event.role)}`;
-  return `Tác vụ mô hình · ${stageLabel(event.role)}`;
+  if (event.provider === "codex_cli") return `Codex · ${stage}`;
+  return `Tác vụ mô hình · ${stage}`;
 }
 
 function timeLabel(value: string): string {
