@@ -133,7 +133,7 @@ async def submit_operator_decision(
                 or selected_candidate_hash is None
             ):
                 raise OperatorControlError("operator_angle_binding_required")
-            approval = await approve_angle_candidate(
+            angle_approval = await approve_angle_candidate(
                 session,
                 angle_artifact_id=artifact_id,
                 expected_artifact_version=artifact_version,
@@ -143,14 +143,14 @@ async def submit_operator_decision(
                 approved_by=actor_id,
                 approval_reason=(comment or "Founder approved from operator control").strip(),
             )
-            approval_id = approval.id
-            run_id = approval.run_id
+            approval_id = angle_approval.id
+            run_id = angle_approval.run_id
         elif scope == "outline":
             if decision != "approved":
                 raise OperatorControlError("operator_outline_nonapprove_not_supported")
             if artifact_id is None or artifact_version is None or artifact_hash is None:
                 raise OperatorControlError("operator_outline_binding_required")
-            approval = await approve_outline_artifact(
+            outline_approval = await approve_outline_artifact(
                 session,
                 outline_artifact_id=artifact_id,
                 expected_artifact_version=artifact_version,
@@ -158,8 +158,8 @@ async def submit_operator_decision(
                 approved_by=actor_id,
                 approval_reason=(comment or "Founder approved from operator control").strip(),
             )
-            approval_id = approval.id
-            run_id = approval.run_id
+            approval_id = outline_approval.id
+            run_id = outline_approval.run_id
         else:
             if locale_variant_id is None:
                 raise OperatorControlError("operator_final_locale_required")
