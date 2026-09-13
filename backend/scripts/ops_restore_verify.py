@@ -173,8 +173,7 @@ async def _main() -> int:
                 command,
                 env=env,
                 stdin=backup_handle,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 check=False,
             )
         if result.returncode != 0:
