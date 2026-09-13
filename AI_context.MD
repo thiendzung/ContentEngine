@@ -40,6 +40,8 @@ Exact task:
 
 `docs/logs/2026-09-13-t05-22d-repo-aware-orchestration-harness-task.md`
 
+Current implementation is in PR #86. MG has wired exact repository snapshot input through the agent runner and controlled delegation, added a scoped repo-aware Codex runner, added bounded orchestration-loop contracts/tests, and prepared the exact Agent Local proof task. T05.22D is **not operationally closed** until CI and the Founder's-machine local proof are reviewed.
+
 Founder requirement: Codex and approved Antigravity/application workers may use the repository contract while producing content, under a clear harness and bounded loop.
 
 The safe runtime interpretation is not unrestricted live-filesystem access. Worker repository access must be explicit and versioned:
@@ -51,6 +53,10 @@ The safe runtime interpretation is not unrestricted live-filesystem access. Work
 - no live `.env`, untracked private files, caches or runtime DB files merely because they sit beside the checkout;
 - repository revision retained in safe execution provenance;
 - repository contents never dumped into logs.
+
+Codex repo-aware execution uses a dedicated permission profile instead of relying on the legacy broad read-only sandbox: filesystem root denied, minimal runtime readable, ephemeral runner workdir writable, exact snapshot narrowed to read-only, network disabled and approval escalation disabled. Shell is enabled only so Codex can inspect the scoped snapshot; native multi-agent/apps/plugins/browser/computer/remote-plugin and other unsafe surfaces remain disabled.
+
+Antigravity repo-aware execution remains fail-closed with `agent_repository_isolation_unproven` until the actual registered adapter/invocation and scoped isolation are proven locally. Do not bypass this because an interactive desktop app can open the repository.
 
 Required orchestration cycle:
 
@@ -68,18 +74,13 @@ Loop outcomes are limited to:
 
 Do not introduce a generic workflow engine merely to express this loop. Reuse existing ContentRun/StepRun, stage-specific bounded generators, controlled delegation and durable telemetry.
 
-## Codex / Antigravity execution constraint
+## Agent Local proof gate
 
-Codex remains coordinator. Native Codex `multi_agent`, apps/plugins and unrestricted tool surfaces stay disabled unless a separately reviewed task explicitly changes that policy.
+Exact task:
 
-A local interactive application being able to open the repo is not the same as the registered ContentEngine runner proving repo access. T05.22D must prove the exact harness invocation.
+`docs/logs/2026-09-13-t05-22d-agent-local-proof-task.md`
 
-The prior T05.22C local audit found `agy` absent. Therefore:
-
-- controlled bridge code is merged and valid;
-- `antigravity_cli` operational readiness is still unproven on the Founder's machine;
-- do not bypass the registered adapter because the Antigravity desktop/application environment can read files;
-- locate/prove the actual Antigravity invocation path before real Antigravity delegation activation.
+Agent Local must synchronize the exact PR #86 head, run focused safety/tests, execute at most one isolated synthetic Codex repo-access probe, verify operational M1 is unchanged, and report the real Antigravity adapter status. Agent Local has no code-edit scope in this proof task.
 
 ## Standing operating rules
 
@@ -96,7 +97,7 @@ The prior T05.22C local audit found `agy` absent. Therefore:
 ## Near-term backlog after T05.22D
 
 - T05.22E integrate exactly one real Journal stage through the orchestration harness; preferred first stage is `review_revise_en` because it already has bounded validation/retry behavior;
-- prove the actual Antigravity local adapter/invocation before enabling an Antigravity route;
+- prove the actual Antigravity local adapter/invocation before enabling an Antigravity repo-aware route;
 - T05.18 targeted regressions for observed M1 failure modes;
 - T05.19 real resume/replay proof;
 - T05.23 metrics baseline;
