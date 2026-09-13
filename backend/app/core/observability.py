@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from time import perf_counter
-from typing import Final
+from typing import Final, TextIO
 from uuid import uuid4
 
 from fastapi import Request, Response
@@ -42,7 +42,7 @@ _SAFE_EXTRA_FIELDS: Final[tuple[str, ...]] = (
 _LOGGER_NAMESPACE = "contentengine"
 
 
-class _ContentEngineHandler(logging.StreamHandler[str]):
+class _ContentEngineHandler(logging.StreamHandler[TextIO]):
     """Marker handler so repeated app/test initialization stays idempotent."""
 
 
