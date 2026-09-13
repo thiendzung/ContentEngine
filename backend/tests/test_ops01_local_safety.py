@@ -105,6 +105,8 @@ def test_local_backend_and_postgres_bind_only_to_loopback() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
 
+    assert "COMPOSE_PROJECT_NAME ?= contentengine" in makefile
+    assert "docker compose -p $(COMPOSE_PROJECT_NAME) up -d postgres" in makefile
     assert "--host 127.0.0.1" in makefile
     assert "--host 0.0.0.0" not in makefile
     assert '"127.0.0.1:5432:5432"' in compose
