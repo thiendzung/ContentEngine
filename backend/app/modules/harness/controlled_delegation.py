@@ -18,10 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import (
     CODEX_CLI_APPROVED_VERSION,
-    AgentRunRequest,
-    AgentRunResult,
     AgentRunnerError,
     AgentRunnerRegistry,
+    AgentRunRequest,
+    AgentRunResult,
 )
 from app.modules.harness.delegation import (
     DelegationStateError,
@@ -31,7 +31,6 @@ from app.modules.harness.delegation import (
     fail_delegation_execution,
     start_delegation_execution,
 )
-from app.modules.harness.delegation_models import DelegationExecution
 from app.modules.harness.models import Artifact, ContentRun, ModelCall
 from app.modules.harness.runtime import (
     ModelCandidate,
