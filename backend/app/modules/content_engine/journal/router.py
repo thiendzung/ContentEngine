@@ -14,13 +14,15 @@ from app.modules.content_engine.journal.context import (
     build_journal_context,
 )
 from app.modules.content_engine.journal.operator_control import (
-    CreatedJournalCase,
     OperatorCommandResult,
     OperatorControlError,
     OperatorState,
-    create_or_reuse_journal_case,
     get_operator_state,
     submit_operator_command,
+)
+from app.modules.content_engine.journal.operator_creation import (
+    OperatorCreateResult,
+    create_journal_case_with_receipt,
 )
 from app.modules.content_engine.journal.operator_decisions import (
     OperatorDecisionResult,
@@ -187,20 +189,19 @@ async def get_journal_operator_preflight() -> dict[str, object]:
     return await build_operational_preflight()
 
 
-@router.post("/operator/cases", response_model=CreatedJournalCase)
+@router.post("/operator/cases", response_model=OperatorCreateResult)
 async def create_journal_operator_case(
     payload: OperatorCreateCaseRequest,
     session: AsyncSession = Depends(get_db),  # noqa: B008
-) -> CreatedJournalCase:
-    # Creation is naturally idempotent through the selected opportunity binding. The key is
-    # accepted at the API boundary so PR5 can use one uniform mutation envelope.
-    del payload.idempotency_key
+) -> OperatorCreateResult:
     try:
         async with session.begin():
-            return await create_or_reuse_journal_case(
+            return await create_journal_case_with_receipt(
                 session,
                 content_opportunity_id=payload.content_opportunity_id,
                 expected_opportunity_version=payload.expected_opportunity_version,
+                idempotency_key=payload.idempotency_key,
+                actor_id="founder",
             )
     except OperatorControlError as exc:
         raise _operator_http_error(exc) from exc
