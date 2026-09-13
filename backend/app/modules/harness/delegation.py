@@ -133,7 +133,10 @@ async def complete_delegation_execution(
     if execution.status == "completed":
         if execution.result_artifact_id != result_artifact_id:
             raise DelegationConflictError("completed delegation result artifact mismatch")
-        if external_execution_id is not None and execution.external_execution_id != external_execution_id:
+        if (
+            external_execution_id is not None
+            and execution.external_execution_id != external_execution_id
+        ):
             raise DelegationConflictError("completed delegation external execution mismatch")
         return execution
     if execution.status != "running":
@@ -235,7 +238,11 @@ async def _validate_parent(
         raise DelegationStateError("parent DelegationExecution not found")
     if parent.run_id != run_id:
         raise DelegationStateError("parent delegation belongs to another ContentRun")
-    if parent.step_run_id is not None and step_run_id is not None and parent.step_run_id != step_run_id:
+    if (
+        parent.step_run_id is not None
+        and step_run_id is not None
+        and parent.step_run_id != step_run_id
+    ):
         raise DelegationStateError("parent delegation belongs to another StepRun")
 
 
@@ -287,7 +294,10 @@ def _assert_same_identity(
     )
     if identity != expected:
         raise DelegationConflictError("dedupe key already belongs to another delegation")
-    if external_execution_id is not None and execution.external_execution_id != external_execution_id:
+    if (
+        external_execution_id is not None
+        and execution.external_execution_id != external_execution_id
+    ):
         raise DelegationConflictError("dedupe key external execution mismatch")
 
 
