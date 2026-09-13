@@ -160,7 +160,7 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
     assert f'{json.dumps(str(seen["cwd"]))}="read"' in filesystem
     assert "permissions.content_engine_repository.network.enabled=false" in overrides
     assert set(_git(root, "status", "--porcelain").splitlines()) == {
-        " M AGENTS.md",
+        "M AGENTS.md",
         "?? .env",
         "?? private-local.txt",
     }
