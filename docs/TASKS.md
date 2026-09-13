@@ -97,21 +97,20 @@ Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
 - [x] T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED. Persisted `Codex -> subagent/application/tool` execution hierarchy, idempotent lifecycle and Production Board projection; isolated TEST DB proof passed without mutating M1.
 - [x] T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED in PR #85. Exact completed Codex delegation-plan ModelCall + immutable plan Artifact + immutable SettingsSnapshot route + exact runner version are required before one approved child worker may execute.
 - [x] T05.22D Repo-aware Orchestration Harness — DONE / VERIFIED / MERGED in PR #86. Exact reviewed head `0600646360015b1bfd0da224dbad4a75f4c82831`; merge commit `bbca36ae82d3d58803ece9581018c0d832d63897`; GitHub CI #703 PASS; Agent Local focused proof PASS; operational M1 unchanged; Antigravity UNPROVEN and repo-aware execution remains fail-closed.
+- [x] OPS-01 Local Production Safety & Recovery — DONE / VERIFIED in PR #88 pending Founder merge. Exact implementation head before semantic closeout `9de5b331c7af1a151885e9200b68dac223758319`; GitHub CI #732 PASS; Round 3 real backup/restore proof PASS; Founder-approved operational migration `20260912_0023 -> 20260913_0025` PASS; post-migration preflight READY; frozen M1 unchanged. Closeout: `logs/2026-09-13-ops-01-closeout.md`.
 
-### Current exact implementation slice — OPS-01 Local Production Safety & Recovery
+### Current exact implementation slice — T05.22E One Real Journal Stage Orchestration
 
-- [ ] application/backend and PostgreSQL loopback-only by default under the supported Founder-local operating path;
-- [ ] operational preflight reports readiness/capabilities without secret values;
-- [ ] `make check` explicitly preflights and migrates a dedicated `TEST_DATABASE_URL` before full backend tests, fails closed if unsafe/missing, and cannot silently target the operational database;
-- [ ] operational database backup procedure exists outside Git;
-- [ ] restore is proven into a separate disposable destination;
-- [ ] restored ContentCase/ContentRun/Approval/Artifact/ContentVersion lineage and relevant hashes are verified;
-- [ ] operational M1 remains unchanged during verification;
-- [ ] no Journal stage activation, publish side effect or Antigravity bypass in OPS-01.
+- [ ] integrate exactly one real Journal stage through the existing repo-aware orchestration harness;
+- [ ] preferred first stage: `review_revise_en`;
+- [ ] reuse durable ContentRun/StepRun state, existing stage-specific bounded generator/evaluator behavior, controlled delegation and persisted telemetry;
+- [ ] retain exact repository revision/tree provenance through execution;
+- [ ] bounded retry/replay/idempotency and dedupe protection remain fail-closed;
+- [ ] mandatory human gates remain hard `WAIT_HUMAN` stops;
+- [ ] no arbitrary stage execution endpoint and no broad autonomous full-pipeline mode;
+- [ ] no publish side effect and no frozen M1 mutation merely to prove the integration.
 
-After OPS-01: T05.22E integrates exactly one real Journal stage through the orchestration harness; preferred first stage remains `review_revise_en`.
-
-### Required post-M1 hardening, not blockers for OPS-01
+### Required post-M1 hardening, not blockers for T05.22E
 
 - [ ] T05.18 Critical Gate Regression - observed failures only: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.
