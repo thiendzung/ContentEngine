@@ -33,6 +33,7 @@ from app.modules.harness.delegation import (
 )
 from app.modules.harness.delegation_models import DelegationExecution
 from app.modules.harness.models import Artifact, ContentRun, ModelCall
+from app.modules.harness.repository_snapshot import RepositorySnapshotSpec
 from app.modules.harness.runtime import (
     ModelCandidate,
     ModelResponse,
@@ -131,6 +132,7 @@ class ControlledDelegationRequest:
     parent_execution_id: UUID | None = None
     attempt: int = 1
     timeout: float = 300.0
+    repository: RepositorySnapshotSpec | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,6 +276,7 @@ class ControlledDelegationBridge:
             structured_output_schema=request.structured_output_schema,
             working_context=request.working_context,
             timeout=request.timeout,
+            repository=request.repository,
         )
         try:
             result = await runner.run(agent_request)
@@ -626,6 +629,10 @@ def _runtime_metadata(
         metadata["session_id"] = result.session_id
     if result.usage is not None:
         metadata["usage"] = result.usage
+    if result.repository_revision is not None:
+        metadata["repository_revision"] = result.repository_revision
+    if result.repository_tree_hash is not None:
+        metadata["repository_tree_hash"] = result.repository_tree_hash
     return metadata
 
 
