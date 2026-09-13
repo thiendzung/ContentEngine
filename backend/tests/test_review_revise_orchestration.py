@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import copy
+from datetime import UTC, datetime
 from typing import cast
 
 import pytest
+import test_ce05_angle_approval as angle_fixture_module
 from sqlalchemy import select
 from test_ce05_review_revise import _source_draft, isolated_session
 from test_ce05_writer import _draft_payload
@@ -15,7 +17,7 @@ from app.modules.content_engine.journal.review_revise_orchestration import (
     prepare_review_revise_en_orchestration,
     run_review_revise_en_orchestration,
 )
-from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     CODEX_CLI_APPROVED_VERSION,
     AgentCapability,
@@ -25,7 +27,8 @@ from app.modules.harness.agent_runner import (
 )
 from app.modules.harness.bounded_orchestration import OrchestrationOutcome
 from app.modules.harness.delegation_models import DelegationExecution
-from app.modules.harness.models import ModelCall
+from app.modules.harness.models import ContentRun, ModelCall, StepRun
+from app.modules.harness.persistence import transition_run
 from app.modules.harness.repository_snapshot import RepositorySnapshotSpec
 from app.modules.system.settings_service import settings_hash
 
@@ -109,15 +112,60 @@ def _settings(*, antigravity: bool = False) -> dict[str, object]:
     }
 
 
-async def _request(session, fixture, source, *, antigravity: bool = False):
+async def _source_draft_with_settings(
+    session,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    locale: str,
+    unresolved: bool,
+    antigravity: bool = False,
+):
     settings = _settings(antigravity=antigravity)
-    snapshot = await session.get(
-        SettingsSnapshot, fixture.writer_input.writer_run.settings_snapshot_id
-    )
-    assert snapshot is not None
-    snapshot.resolved_settings_json = settings
-    snapshot.content_hash = settings_hash(settings)
-    await session.flush()
+
+    async def _run_and_step(session_, *, project, content_case):
+        variant = LocaleVariant(
+            content_case_id=content_case.id,
+            locale="en",
+            content_role="primary",
+            primary_question="How should a buyer evaluate an artwork price?",
+            primary_intent="evaluate",
+        )
+        snapshot = SettingsSnapshot(
+            project_id=project.id,
+            resolved_settings_json=copy.deepcopy(settings),
+            source_version_refs_json=["test:t05.22e"],
+            content_hash=settings_hash(settings),
+        )
+        session_.add_all([variant, snapshot])
+        await session_.flush()
+        run = ContentRun(
+            project_id=project.id,
+            content_case_id=content_case.id,
+            locale_variant_id=variant.id,
+            run_mode="create",
+            status="running",
+            current_step="journal_input_bundle",
+            settings_snapshot_id=snapshot.id,
+            started_at=datetime.now(UTC),
+        )
+        session_.add(run)
+        await session_.flush()
+        step = StepRun(
+            run_id=run.id,
+            step_key="journal_input_bundle",
+            attempt=1,
+            status="running",
+            started_at=datetime.now(UTC),
+        )
+        session_.add(step)
+        await session_.flush()
+        return run, step
+
+    monkeypatch.setattr(angle_fixture_module, "_run_and_step", _run_and_step)
+    return await _source_draft(session, locale=locale, unresolved=unresolved)
+
+
+def _request(fixture, source) -> ReviewReviseEnRequest:
     return ReviewReviseEnRequest(
         writer_run_id=fixture.writer_input.writer_run.id,
         source_draft_artifact_id=source.artifact.id,
@@ -140,11 +188,18 @@ def _registry(runner: OrchestrationRunner) -> AgentRunnerRegistry:
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_runs_through_coordinator_and_controlled_delegation() -> None:
+async def test_review_revise_en_runs_through_coordinator_and_controlled_delegation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
         revised = _draft_payload(fixture.writer_input, "en")
-        request = await _request(session, fixture, source)
+        request = _request(fixture, source)
         runner = OrchestrationRunner([revised])
 
         result = await run_review_revise_en_orchestration(
@@ -178,13 +233,20 @@ async def test_review_revise_en_runs_through_coordinator_and_controlled_delegati
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_retry_uses_new_attempt_and_dedupe_key() -> None:
+async def test_review_revise_en_retry_uses_new_attempt_and_dedupe_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
         invalid = _draft_payload(fixture.writer_input, "en")
         cast(list[str], invalid["unresolved_factual_claims"]).append("still unsupported")
         revised = _draft_payload(fixture.writer_input, "en")
-        request = await _request(session, fixture, source)
+        request = _request(fixture, source)
         runner = OrchestrationRunner([invalid, revised])
 
         result = await run_review_revise_en_orchestration(
@@ -214,12 +276,19 @@ async def test_review_revise_en_retry_uses_new_attempt_and_dedupe_key() -> None:
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_retry_budget_exhaustion_blocks() -> None:
+async def test_review_revise_en_retry_budget_exhaustion_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
         invalid = _draft_payload(fixture.writer_input, "en")
         cast(list[str], invalid["unresolved_factual_claims"]).append("still unsupported")
-        request = await _request(session, fixture, source)
+        request = _request(fixture, source)
         runner = OrchestrationRunner([invalid, copy.deepcopy(invalid)])
 
         result = await run_review_revise_en_orchestration(
@@ -234,11 +303,18 @@ async def test_review_revise_en_retry_budget_exhaustion_blocks() -> None:
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_completed_replay_has_zero_new_dispatch() -> None:
+async def test_review_revise_en_completed_replay_has_zero_new_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
         revised = _draft_payload(fixture.writer_input, "en")
-        request = await _request(session, fixture, source)
+        request = _request(fixture, source)
         runner = OrchestrationRunner([revised])
         registry = _registry(runner)
 
@@ -261,10 +337,17 @@ async def test_review_revise_en_completed_replay_has_zero_new_dispatch() -> None
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_wrong_plan_is_denied_before_worker_dispatch() -> None:
+async def test_review_revise_en_wrong_plan_is_denied_before_worker_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
-        request = await _request(session, fixture, source)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
+        request = _request(fixture, source)
         runner = OrchestrationRunner(
             [_draft_payload(fixture.writer_input, "en")],
             plan_task="review_revise_vi",
@@ -283,10 +366,17 @@ async def test_review_revise_en_wrong_plan_is_denied_before_worker_dispatch() ->
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_stale_state_is_denied_before_worker_dispatch() -> None:
+async def test_review_revise_en_stale_state_is_denied_before_worker_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
-        request = await _request(session, fixture, source)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
+        request = _request(fixture, source)
         runner = OrchestrationRunner([_draft_payload(fixture.writer_input, "en")])
         prepared = await prepare_review_revise_en_orchestration(session, request=request)
         adapter = ReviewReviseEnOrchestrationAdapter(
@@ -308,13 +398,23 @@ async def test_review_revise_en_stale_state_is_denied_before_worker_dispatch() -
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_human_gate_waits_without_dispatch() -> None:
+async def test_review_revise_en_human_gate_waits_without_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
         run = fixture.writer_input.writer_run
-        run.status = "waiting_approval"
+        assert run.status == "pending"
+        await transition_run(session, run_id=run.id, status="running")
         run.current_step = "outline"
-        request = await _request(session, fixture, source)
+        await session.flush()
+        await transition_run(session, run_id=run.id, status="waiting_approval")
+        request = _request(fixture, source)
         runner = OrchestrationRunner([_draft_payload(fixture.writer_input, "en")])
 
         result = await run_review_revise_en_orchestration(
@@ -329,10 +429,18 @@ async def test_review_revise_en_human_gate_waits_without_dispatch() -> None:
 
 
 @pytest.mark.asyncio
-async def test_review_revise_en_antigravity_route_remains_fail_closed() -> None:
+async def test_review_revise_en_antigravity_route_remains_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
-        request = await _request(session, fixture, source, antigravity=True)
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+            antigravity=True,
+        )
+        request = _request(fixture, source)
         runner = OrchestrationRunner([_draft_payload(fixture.writer_input, "en")])
 
         result = await run_review_revise_en_orchestration(
