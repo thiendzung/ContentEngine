@@ -249,9 +249,9 @@ async def test_operator_persisted_gate_decision_is_not_offered_twice(
         session.add(
             AngleApproval(
                 run_id=prepared.run.id,
-                angle_artifact_id=source.id,
-                angle_artifact_version=source.version,
-                angle_artifact_hash=source.content_hash,
+                angle_artifact_id=source.artifact.id,
+                angle_artifact_version=source.artifact.version,
+                angle_artifact_hash=source.artifact.content_hash,
                 selected_angle_id="angle-operator-test",
                 selected_candidate_hash="a" * 64,
                 approved_by="founder",
