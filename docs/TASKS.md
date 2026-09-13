@@ -13,7 +13,7 @@ Maximum WIP: one implementation plus related local verification; one executor on
 | LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
 | LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
 | LF-04 | MG + Agent Local + Founder | Independent VI/EN through final approval and canonical ContentVersions | Persisted OutlineApproval | DONE / REVIEWED - M1 real bilingual Journal lineage complete through approved ContentVersions, no publish. Closeout: `logs/2026-09-13-m1-journal-closeout.md` |
-| LF-05 | MG + Agent Local | Smallest useful operator path / Human Review Surface | M1 pass | ACTIVE - T05.20A read-only Review Console over persisted real state. Exact task `logs/2026-09-13-t05-20-review-console-readonly-task.md` |
+| LF-05 | MG + Agent Local | Smallest useful operator path / Human Review Surface + production board | M1 pass | DONE / REVIEWED - T05.20A/B and T05.21A/B proven on M1 runtime; read model, actions and production board available |
 | LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
 | LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
 | LF-08 | MG + Founder | Edit/failure feedback, Golden/Weak baseline, controlled changes | Real outputs/edits | BACKLOG for automation; capture evidence now |
@@ -87,17 +87,22 @@ Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
 - [x] Canonical ContentItem + approved ContentVersion per locale created through existing canonical path.
 - [x] M1 durable closeout verified on current local runtime with no publish side effect.
 
-### Current post-M1 slice
+### Current post-M1 slices
 
-- [ ] T05.20A Human Review Surface — read-only Review Console over existing persisted truth. ACTIVE. Exact task `logs/2026-09-13-t05-20-review-console-readonly-task.md`.
-- [ ] T05.20B Approval actions — Approve / Request revision / Reject using proven existing contracts; only after T05.20A read model/local proof.
+- [x] T05.20A Human Review Surface — read-only Review Console over persisted truth; proven end-to-end on M1 runtime.
+- [x] T05.20B Approval actions — Approve / Request revision / Reject with durable existing contracts; UI Vietnamese-first.
+- [x] T05.21A Production Board — ContentCase-centric board with five operating lanes and Codex coordinator projection.
+- [x] T05.21B Production Board UX — exact case deep-link, viewport fit, compact operator layout and meaningful execution labels; final local proof PASS.
+- [ ] T05.22A Operational Observability Baseline — ACTIVE. Safe structured logs, local DEBUG default, production-safe clamp, request correlation. Exact task `logs/2026-09-13-t05-22a-operational-observability-task.md`.
+- [ ] T05.22B Durable Delegation Telemetry — persist real `Codex -> subagent/application/tool` execution hierarchy and project it into the board. Depends on T05.22A.
+- [ ] T05.22C Controlled Codex Delegation Bridge — enable bounded delegation to approved workers/Antigravity only after T05.22B; do not simply enable free-form Codex multi-agent/apps/plugins.
 
-### Required post-M1 hardening, not blockers for T05.20A
+### Required post-M1 hardening, not blockers for T05.22A
 
 - [ ] T05.18 Critical Gate Regression - observed failures only: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.
-- [ ] T05.21 Metrics Baseline - edits, failures, calls, duration and known usage.
-- [ ] T05.22 CE05 Closeout - not inferred from M1 alone; follows post-M1 hardening/pilot evidence.
+- [ ] T05.23 Metrics Baseline - edits, failures, calls, duration and known usage. Renumbered from historical T05.21 after Production Board occupied T05.21A/B.
+- [ ] T05.24 CE05 Closeout - not inferred from M1 alone; follows post-M1 hardening/pilot evidence. Renumbered from historical T05.22.
 
 Do not turn M1 friction into a new provider/agent/framework or speculative workflow engine. Prefer small changes proven by real operator pain.
 

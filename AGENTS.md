@@ -8,7 +8,7 @@ Deliver useful, evidence-first MOTGU content on the Founder's local computer. Fi
 
 GitHub holds approved contracts, code, tasks and sanitized evidence. Read live GitHub refs/PRs/CI for dynamic state. The operational DB and private artifacts stay local; a committed runtime report is a dated observation, not a substitute for inspecting local state.
 
-Read `AI_context.MD` for the ONE current working window, `docs/PLAN.md` for delivery order, `docs/TASKS.md` for progress and `docs/CHECKLIST.md` for gates. Use exact task files under `docs/logs/`. Do not create another case-only spelling of `AI_context.MD` or treat chat memory as current repository truth.
+Read `AI_context.MD` for the ONE current working window, `docs/PLAN.md` for delivery order and `docs/TASKS.md` for progress and `docs/CHECKLIST.md` for gates. Use exact task files under `docs/logs/`. Do not create another case-only spelling of `AI_context.MD` or treat chat memory as current repository truth.
 
 ## Fixed roles
 
@@ -64,6 +64,18 @@ Bound retries, calls, cost and duration. Preserve idempotency and reconcile ambi
 Use separate operational and test databases. No destructive tests against normal data; no automatic recreation of vanished runtime UUIDs; no deleting volumes or overwriting `.env`. Explicit migration approval and verified recovery are required before changing real schema/data. Public-repo evidence excludes secrets, raw private data, DB dumps and session tokens.
 
 Do not move the active M1 runtime into a new checkout/compose project. Optional development worktrees come later only if they reduce a measured conflict, with isolated test data. Local operation still needs network for external research/model calls.
+
+## Operational observability
+
+Operational history is part of the product. Keep safe structured logging enabled for real operation so failures, latency, retries and state transitions can be reviewed later and converted into concrete hardening work.
+
+- Local/development defaults to `DEBUG`; production must retain INFO/AUDIT-style operational logging and only enable DEBUG through an explicit operator override.
+- Logs may contain correlation IDs, ContentCase/ContentRun/StepRun/execution IDs, task/worker keys, statuses, timings, counts and error classes.
+- Never log secrets, API/session tokens, request bodies, query strings, raw prompts, raw provider payloads, private source payloads or chain-of-thought. Hash/fingerprint sensitive payloads when identity is needed.
+- Framework/server access logs that expose raw request targets or query strings must be disabled or safely replaced when equivalent ContentEngine request telemetry exists; retain safe path/status/duration/correlation logging instead of duplicating unsafe access lines.
+- Durable DB telemetry such as ContentRun/StepRun/ModelCall/ToolCall and future delegation records is canonical execution history; console logs are diagnostic evidence, not a database backup.
+- New coordinator/subagent/tool execution paths must emit enough safe telemetry to reconstruct who did what, for which stage, when, with what outcome, without inventing unavailable runtime detail.
+- Repeated observed failures should become explicit regression/backlog items; do not add speculative metrics or abstractions merely because they are easy to log.
 
 ## Testing and review
 

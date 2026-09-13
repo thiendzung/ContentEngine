@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     test_database_url: str | None = None
     cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Operational observability is always available. Development defaults to DEBUG;
+    # production clamps DEBUG to INFO unless an operator explicitly opts in.
+    log_level: str = "DEBUG"
+    log_json: bool = True
+    allow_debug_in_production: bool = False
+
     serper_api_key: SecretStr | None = None
     tavily_api_key: SecretStr | None = None
     exa_api_key: SecretStr | None = None
@@ -61,6 +67,20 @@ class Settings(BaseSettings):
             if parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
                 raise ValueError("invalid_cors_origin")
         return origins
+
+    @property
+    def resolved_log_level(self) -> str:
+        """Return a validated level while preventing accidental production DEBUG logging."""
+        level = self.log_level.strip().upper()
+        if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+            raise ValueError("invalid_log_level")
+        if (
+            self.app_env.strip().lower() in {"prod", "production"}
+            and level == "DEBUG"
+            and not self.allow_debug_in_production
+        ):
+            return "INFO"
+        return level
 
     @staticmethod
     def _database_target(url: str) -> tuple[str, int, str]:
