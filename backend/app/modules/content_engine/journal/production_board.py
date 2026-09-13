@@ -215,6 +215,7 @@ def _execution_events(
         events.append(_delegation_event(delegation))
     events.sort(key=_event_sort_key)
 
+    current_worker: ProductionExecutionEvent | None
     active_delegations = [
         event for event in events if event.kind == "delegation" and event.status == "running"
     ]
