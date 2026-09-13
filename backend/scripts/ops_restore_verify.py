@@ -23,7 +23,9 @@ from app.modules.system.recovery import (
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Restore a backup into a disposable DB and verify it")
+    parser = argparse.ArgumentParser(
+        description="Restore a backup into a disposable DB and verify it"
+    )
     parser.add_argument("backup", type=Path)
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--restore-database")
