@@ -10,8 +10,8 @@ import pytest
 from app.modules.harness.agent_runner import (
     CODEX_CLI_APPROVED_VERSION,
     AgentCapability,
-    AgentRunRequest,
     AgentRunnerError,
+    AgentRunRequest,
 )
 from app.modules.harness.repo_aware_agent_runner import (
     CODEX_REPOSITORY_DISABLED_FEATURES,
@@ -138,7 +138,7 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
 
     argv = seen["argv"]
     assert isinstance(argv, tuple)
-    pairs = set(zip(argv, argv[1:]))
+    pairs = set(zip(argv, argv[1:], strict=False))
     assert "--sandbox" not in argv
     assert ("--disable", "shell_tool") not in pairs
     for feature in CODEX_REPOSITORY_DISABLED_FEATURES:
