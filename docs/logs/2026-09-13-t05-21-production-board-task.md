@@ -60,3 +60,26 @@ Repo hiện persist `StepRun`, `ModelCall`, `ToolCall` nhưng chưa có entity c
 - UI board bằng tiếng Việt;
 - article review/quality/provenance/approval vẫn nằm trong T05.20B case detail;
 - full CI xanh.
+
+## Local proof trên M1
+
+Agent Local xác minh tại head `372f139ab740d8aa30292683f96cc27a7a823129`:
+
+- backend/frontend khởi động bình thường; migration `20260912_0023 (head)`;
+- `GET /journal/production-board` trả đúng một M1 case;
+- đủ 5 nhóm vận hành;
+- M1 ở `Hoàn thành`, stage `Đã duyệt`;
+- coordinator `Codex`, worker `Chưa có tác nhân đang chạy`;
+- execution chain chỉ chứa 8 persisted ModelCall, không bịa ToolCall/subagent/Antigravity;
+- điều hướng `Sản xuất ↔ Duyệt bài` hoạt động;
+- UI chính bằng tiếng Việt;
+- row counts trước/sau không đổi: ContentRuns 11, StepRuns 20, Artifacts 33, Approvals 2, ContentItems 2, ContentVersions 2, QualityEvaluations 7, ModelCalls 14, ToolCalls 0;
+- backend chỉ có GET 200, không có mutation/publish side effect.
+
+Kết quả local proof: `PARTIAL FIT` vì ba UX gap không chặn core board:
+
+1. chọn row mới highlight, chưa deep-link sang đúng case trong Review Console;
+2. cột `Việc tiếp theo` cần tối ưu để không bị cắt ở viewport mặc định;
+3. execution chain còn là lịch sử phẳng, stage label chưa đủ giàu nghĩa.
+
+Ba gap này chuyển sang T05.21B; không làm thay đổi acceptance read-only của T05.21A.
