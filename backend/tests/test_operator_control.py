@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -7,6 +9,7 @@ from test_ce05_review_revise import isolated_session
 from test_review_revise_orchestration import _request, _source_draft_with_settings
 
 import app.modules.content_engine.journal.operator_control as operator_module
+from app.modules.content_engine.journal.models import AngleApproval
 from app.modules.content_engine.journal.operator_control import (
     OperatorControlError,
     get_operator_state,
@@ -224,3 +227,45 @@ async def test_operator_human_gate_exposes_no_continue_bypass(
         assert state.human_gate == "angle"
         assert state.primary_intent is None
         assert state.allowed_intents == []
+
+
+@pytest.mark.asyncio
+async def test_operator_persisted_gate_decision_is_not_offered_twice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
+        prepared = await prepare_review_revise_en_orchestration(
+            session,
+            request=_request(fixture, source),
+        )
+        prepared.run.status = "waiting_approval"
+        prepared.run.current_step = "angle"
+        session.add(
+            AngleApproval(
+                run_id=prepared.run.id,
+                angle_artifact_id=source.id,
+                angle_artifact_version=source.version,
+                angle_artifact_hash=source.content_hash,
+                selected_angle_id="angle-operator-test",
+                selected_candidate_hash="a" * 64,
+                approved_by="founder",
+                approval_reason="operator gate projection test",
+                approved_at=datetime.now(timezone.utc),
+            )
+        )
+        await session.flush()
+
+        state = await get_operator_state(
+            session,
+            content_case_id=prepared.run.content_case_id,
+        )
+        assert state.status == "BLOCKED"
+        assert state.human_gate is None
+        assert state.allowed_intents == []
+        assert state.blocker_code == "operator_gate_already_decided"
