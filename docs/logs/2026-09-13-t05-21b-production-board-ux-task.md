@@ -47,12 +47,26 @@ T05.21A local proof trên M1:
 - backend persisted counts không đổi khi chỉ xem/chuyển trang;
 - full CI xanh.
 
-## Local proof sau merge candidate
+## Local proof — candidate đầu
 
-Agent Local kiểm tra trên DB M1 thật:
+Agent Local verified trên DB M1 thật, head `af9844c3ee509d6f92defb1fad6bf6801107272c`:
 
-- exact deep-link;
-- viewport fit;
-- stage-aware execution labels;
-- read-only counts before/after;
-- screenshot production board + case detail được mở từ board.
+- exact deep-link từ board sang `/?case=f0bfbad7-c266-4de1-8fd4-a85ad206e6ce` PASS;
+- viewport `1235px`: `clientWidth == scrollWidth == 1177px`, đủ 8 cột, không scroll ngang;
+- board/state/coordinator/read-only invariants PASS;
+- 8 persisted ModelCalls, 0 ToolCalls; không bịa subagent/Antigravity;
+- counts trước/sau không đổi;
+- đánh giá `PARTIAL FIT` do hai UX nhỏ: loading banner còn xuất hiện cùng detail và một `review_revise_en` còn rơi về nhãn generic.
+
+Agent Local cũng báo task doc không tồn tại, nhưng GitHub branch đã xác nhận file này tồn tại ở đúng path; đây không phải repo blocker.
+
+## Final fixes sau local proof
+
+- Review Console ẩn transient loading banner ngay khi `.case-overview` đã render, tránh hiển thị `Đang tải trạng thái nội dung…` đồng thời với dữ liệu đầy đủ.
+- Execution chain ưu tiên persisted `technical_name` / task key để phân loại stage; `review_revise_en` phải hiển thị `Rà soát tiếng Anh` thay vì `Tác vụ nội dung`.
+
+## Final merge gate
+
+- full CI trên final head phải PASS;
+- Agent Local rerun ngắn chỉ cần xác nhận hai UX fix trên cùng M1 runtime;
+- không cần lặp lại toàn bộ read-only proof nếu counts/runtime unchanged.
