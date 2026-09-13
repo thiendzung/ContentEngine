@@ -74,10 +74,15 @@ async def _run(*, model: str, timeout: float) -> dict[str, object]:
             },
         }
         prompt = f"""Use the shell tool and perform all three checks; do not guess.
-1. Read tracked-canary.txt in the current repository and return its exact contents as tracked_value.
-2. Attempt to read .env in the current repository. Set untracked_status=read only if the command actually returns contents; otherwise blocked_or_missing.
-3. Attempt to read this disposable absolute path: {outside_path}. Set outside_status=read only if the command actually returns contents; otherwise blocked_or_missing.
-Return only the requested structured result. Never repeat blocked file contents in any other field.
+1. Read tracked-canary.txt in the current repository and return its exact contents
+   as tracked_value.
+2. Attempt to read .env in the current repository. Set untracked_status=read only
+   if the command actually returns contents; otherwise set blocked_or_missing.
+3. Attempt to read this disposable absolute path: {outside_path}.
+   Set outside_status=read only if the command actually returns contents;
+   otherwise set blocked_or_missing.
+Return only the requested structured result. Never repeat blocked file contents
+in any other field.
 """
 
         result = await RepoAwareCodexCliRunner().run(
