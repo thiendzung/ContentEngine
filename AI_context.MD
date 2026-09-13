@@ -8,7 +8,7 @@ Inspect local changes -> fetch origin -> synchronize the exact assigned ref with
 
 ## Objective
 
-M1 ONE REAL JOURNAL PASS is COMPLETE / CLOSED. The current objective is to make the proven content-production path operable, observable and safely delegatable under real use before broadening scope.
+M1 ONE REAL JOURNAL PASS is COMPLETE / CLOSED. The current objective is to make the proven content-production path operable, observable and safely orchestrated under real use before broadening scope.
 
 Founder dispatches tasks and owns product/editorial decisions and merges. MG owns architecture/coding/review. Agent Local executes exact local verification/runtime tasks and returns evidence.
 
@@ -22,53 +22,65 @@ Authoritative M1 closeout:
 
 Do not regenerate or mutate frozen M1 upstream merely to improve historical neatness. Accepted EN Source-copy warnings remain accepted; no publish/WordPress side effect has occurred.
 
-Post-M1 operator work already proven on the real M1 runtime:
+Post-M1 operator work already proven:
 
 - T05.20A read-only Review Console — DONE / VERIFIED.
 - T05.20B Founder actions (`Duyệt / Yêu cầu sửa / Từ chối`) — DONE in repository.
 - T05.21A ContentCase-centric Production Board — DONE / VERIFIED.
 - T05.21B exact deep-link, viewport fit, compact operator layout and meaningful execution labels — DONE / FINAL UX PASS.
-- T05.22A Operational Observability Baseline — DONE / VERIFIED. Local DEBUG + JSON logs, production clamp, request correlation, Uvicorn raw access-log suppression and total-log redaction were proven on real runtime.
-- T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED. Durable `DelegationExecution` hierarchy, idempotent lifecycle and Production Board projection were proven on isolated TEST DB while operational M1 stayed unchanged.
+- T05.22A Operational Observability Baseline — DONE / VERIFIED.
+- T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED.
+- T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED. Durable replay, policy mismatch, runner-version mismatch, worker failure and board dedupe were proven on isolated TEST DB. Operational M1 remained unchanged.
 
 The UI remains Vietnamese-first. ContentCase is the central operating object. Codex is the primary coordinator; subagent/Antigravity detail must only appear from persisted runtime truth, never UI inference.
 
-## Current exact task — T05.22C Controlled Codex Delegation Bridge
+## Current exact task — T05.22D Repo-aware orchestration harness
 
 Exact task:
 
-`docs/logs/2026-09-13-t05-22c-controlled-delegation-bridge-task.md`
+`docs/logs/2026-09-13-t05-22d-repo-aware-orchestration-harness-task.md`
 
-Purpose: create one bounded application-managed bridge where a completed Codex coordination decision may launch exactly one approved child agent worker under immutable settings policy and durable provenance.
+Current implementation is in PR #86. MG has wired exact repository snapshot input through the agent runner and controlled delegation, added a scoped repo-aware Codex runner, added bounded orchestration-loop contracts/tests, and prepared the exact Agent Local proof task. T05.22D is **not operationally closed** until CI and the Founder's-machine local proof are reviewed.
 
-Required control chain:
+Founder requirement: Codex and approved Antigravity/application workers may use the repository contract while producing content, under a clear harness and bounded loop.
 
-1. ContentRun / StepRun is fixed.
-2. Coordinator is an exact completed `ModelCall(provider=codex_cli, task=delegation_plan)`.
-3. That ModelCall must point to an immutable `delegation_plan` Artifact whose hash still matches its content.
-4. The plan may contain only structural route fields; no free-form rationale or chain-of-thought.
-5. The run's immutable SettingsSnapshot must explicitly enable the same task route and match worker kind/key/provider/model exactly.
-6. The settings route must pin the exact approved child runner version.
-7. Only `codex_cli` isolated subagent processes or `antigravity_cli` as `application/antigravity` are permitted in this slice.
-8. DelegationExecution binds coordinator ModelCall, decision Artifact and worker ModelCall.
-9. Exact replay must not re-run the worker; running/terminal conflicts fail closed.
-10. Worker preflight/version or execution failures remain durable safe telemetry.
-11. Production Board must not duplicate the linked worker ModelCall as a second event.
-12. No Journal workflow or operational settings route is automatically activated by this PR.
+The safe runtime interpretation is not unrestricted live-filesystem access. Worker repository access must be explicit and versioned:
 
-## Codex orchestration constraint
+- exact local repository root;
+- exact commit SHA;
+- Git-tracked files only;
+- materialized read-only snapshot;
+- no live `.env`, untracked private files, caches or runtime DB files merely because they sit beside the checkout;
+- repository revision retained in safe execution provenance;
+- repository contents never dumped into logs.
 
-The current `CodexCliRunner` intentionally disables `multi_agent`, apps/plugins and other unsafe tool surfaces and runs read-only/ephemeral. T05.22C does not remove those disables.
+Codex repo-aware execution uses a dedicated permission profile instead of relying on the legacy broad read-only sandbox: filesystem root denied, minimal runtime readable, ephemeral runner workdir writable, exact snapshot narrowed to read-only, network disabled and approval escalation disabled. Shell is enabled only so Codex can inspect the scoped snapshot; native multi-agent/apps/plugins/browser/computer/remote-plugin and other unsafe surfaces remain disabled.
 
-"Codex creates subagents and controls Antigravity" is implemented as an application-managed, settings-authorized delegation path, not by handing Codex unrestricted native agent/tool capability.
+Antigravity repo-aware execution remains fail-closed with `agent_repository_isolation_unproven` until the actual registered adapter/invocation and scoped isolation are proven locally. Do not bypass this because an interactive desktop app can open the repository.
 
-Safe sequence:
+Required orchestration cycle:
 
-- T05.22A: safe observability baseline — DONE / VERIFIED.
-- T05.22B: durable delegation telemetry contract — DONE / VERIFIED / MERGED.
-- T05.22C: controlled Codex delegation bridge — ACTIVE.
+`OBSERVE -> PLAN -> POLICY CHECK -> EXECUTE -> VALIDATE -> PERSIST -> RE-EVALUATE`.
 
-The board may display a worker only when runtime telemetry exists. Missing worker telemetry must remain explicit missing state.
+Codex proposes one bounded next action. Application policy, not the model, grants execution permission. One approved worker executes. Result validation/persistence completes before state is reloaded and the next cycle is considered.
+
+Loop outcomes are limited to:
+
+- `ADVANCE`;
+- `RETRY` within explicit attempt budget;
+- `WAIT_HUMAN` at Angle / Outline / final content approval;
+- `BLOCKED` for unsafe/stale/exhausted/capability failure;
+- `COMPLETE` at the task terminal state.
+
+Do not introduce a generic workflow engine merely to express this loop. Reuse existing ContentRun/StepRun, stage-specific bounded generators, controlled delegation and durable telemetry.
+
+## Agent Local proof gate
+
+Exact task:
+
+`docs/logs/2026-09-13-t05-22d-agent-local-proof-task.md`
+
+Agent Local must synchronize the exact PR #86 head, run focused safety/tests, execute at most one isolated synthetic Codex repo-access probe, verify operational M1 is unchanged, and report the real Antigravity adapter status. Agent Local has no code-edit scope in this proof task.
 
 ## Standing operating rules
 
@@ -80,13 +92,15 @@ The board may display a worker only when runtime telemetry exists. Missing worke
 - Safe structured operational logging remains enabled. Inspect the entire log stack, not only application-owned loggers.
 - Do not store chain-of-thought or raw sensitive debug payloads.
 - Delegation telemetry is not delegation permission. Execution requires exact immutable policy and provenance.
+- Repository readability is not write authority. Content-production agents do not mutate the live repo through the production harness.
 
-## Near-term backlog after T05.22C
+## Near-term backlog after T05.22D
 
-- one explicitly selected Journal-stage delegation integration only after T05.22C bridge proof;
+- T05.22E integrate exactly one real Journal stage through the orchestration harness; preferred first stage is `review_revise_en` because it already has bounded validation/retry behavior;
+- prove the actual Antigravity local adapter/invocation before enabling an Antigravity repo-aware route;
 - T05.18 targeted regressions for observed M1 failure modes;
 - T05.19 real resume/replay proof;
 - T05.23 metrics baseline;
 - T05.24 CE05 closeout.
 
-Do not start the next item until the current bounded slice is reviewed and merged/proven as required.
+Do not start a broad full-pipeline autonomous mode before the first single-stage integration is proven.

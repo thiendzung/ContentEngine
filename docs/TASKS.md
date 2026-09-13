@@ -95,9 +95,10 @@ Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
 - [x] T05.21B Production Board UX — exact case deep-link, viewport fit, compact operator layout and meaningful execution labels; final local proof PASS.
 - [x] T05.22A Operational Observability Baseline — DONE / VERIFIED. Safe structured logs, local DEBUG default, production-safe clamp, request correlation and total-log Uvicorn query redaction proven on runtime.
 - [x] T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED. Persisted `Codex -> subagent/application/tool` execution hierarchy, idempotent lifecycle and Production Board projection; isolated TEST DB proof passed without mutating M1.
-- [ ] T05.22C Controlled Codex Delegation Bridge — ACTIVE. Require exact completed Codex delegation-plan ModelCall + immutable plan Artifact + immutable SettingsSnapshot route + exact runner version before one approved child worker may execute. Exact task `logs/2026-09-13-t05-22c-controlled-delegation-bridge-task.md`.
+- [x] T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED in PR #85. Exact completed Codex delegation-plan ModelCall + immutable plan Artifact + immutable SettingsSnapshot route + exact runner version are required before one approved child worker may execute.
+- [ ] T05.22D Repo-aware Orchestration Harness — ACTIVE in PR #86. MG implementation includes exact tracked snapshot propagation, scoped repo-aware Codex runner, bounded orchestration loop, focused tests and Agent Local proof task. Closure requires CI + exact local capability/non-mutation proof. Exact task `logs/2026-09-13-t05-22d-repo-aware-orchestration-harness-task.md`; local proof `logs/2026-09-13-t05-22d-agent-local-proof-task.md`.
 
-### Required post-M1 hardening, not blockers for T05.22C
+### Required post-M1 hardening, not blockers for T05.22D local proof
 
 - [ ] T05.18 Critical Gate Regression - observed failures only: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.
