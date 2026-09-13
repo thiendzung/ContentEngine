@@ -5,7 +5,6 @@ import asyncio
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -15,6 +14,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
+from app.modules.system.postgres_tools import postgres_tool_capability, postgres_tool_command
 from app.modules.system.recovery import (
     RecoverySafetyError,
     database_fingerprint,
@@ -41,18 +41,18 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _pg_connection_args(url: URL) -> tuple[list[str], dict[str, str]]:
+def _pg_connection_args(url: URL, *, container_mode: bool) -> tuple[list[str], dict[str, str]]:
     args: list[str] = []
-    if url.host:
+    if not container_mode and url.host:
         args.extend(["--host", url.host])
-    if url.port:
+    if not container_mode and url.port:
         args.extend(["--port", str(url.port)])
     if url.username:
         args.extend(["--username", url.username])
     if url.database:
         args.extend(["--dbname", url.database])
     env = os.environ.copy()
-    if url.password:
+    if not container_mode and url.password:
         env["PGPASSWORD"] = url.password
     return args, env
 
@@ -115,8 +115,10 @@ async def _main() -> int:
     if not backup.is_file() or not manifest_path.is_file():
         print("RESTORE_TEST: BLOCKED (backup_or_manifest_missing)")
         return 2
-    if shutil.which("pg_restore") is None:
-        print("RESTORE_TEST: BLOCKED (pg_restore_missing)")
+
+    capability = postgres_tool_capability()
+    if capability is None:
+        print("RESTORE_TEST: BLOCKED (pg_restore_unavailable)")
         return 2
 
     try:
@@ -157,20 +159,24 @@ async def _main() -> int:
 
     try:
         await _recreate_database(target)
-        connection_args, env = _pg_connection_args(target)
-        result = subprocess.run(
-            [
-                "pg_restore",
-                "--no-owner",
-                "--no-privileges",
-                "--exit-on-error",
-                *connection_args,
-                str(backup),
-            ],
-            env=env,
-            capture_output=True,
-            check=False,
-        )
+        container_mode = capability.mode == "container"
+        connection_args, env = _pg_connection_args(target, container_mode=container_mode)
+        command = [
+            *postgres_tool_command("pg_restore"),
+            "--no-owner",
+            "--no-privileges",
+            "--exit-on-error",
+            *connection_args,
+        ]
+        with backup.open("rb") as backup_handle:
+            result = subprocess.run(
+                command,
+                env=env,
+                stdin=backup_handle,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
         if result.returncode != 0:
             print("RESTORE_TEST: BLOCKED (pg_restore_failed)")
             return 2
@@ -191,10 +197,11 @@ async def _main() -> int:
 
         print(
             "RESTORE_TEST: READY "
-            f"(database={target.database}; cases={restored.content_cases}; "
-            f"runs={restored.content_runs}; approvals={restored.approvals}; "
-            f"artifacts={restored.artifacts}; versions={restored.content_versions}; "
-            f"artifact_hash={restored.artifact_hash}; lineage_hash={restored.lineage_hash})"
+            f"(mode={capability.mode}; database={target.database}; "
+            f"cases={restored.content_cases}; runs={restored.content_runs}; "
+            f"approvals={restored.approvals}; artifacts={restored.artifacts}; "
+            f"versions={restored.content_versions}; artifact_hash={restored.artifact_hash}; "
+            f"lineage_hash={restored.lineage_hash})"
         )
         return 0
     finally:
