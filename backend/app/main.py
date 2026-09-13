@@ -12,7 +12,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.resolved_cors_allowed_origins),
     allow_credentials=False,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
 )
 app.include_router(system_router)
 app.include_router(journal_router)
