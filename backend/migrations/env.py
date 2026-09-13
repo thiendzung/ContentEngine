@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.core.database import Base
 from app.modules.content_engine.models import register_models
+from app.modules.harness import delegation_models as _delegation_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
