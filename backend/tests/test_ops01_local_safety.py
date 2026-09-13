@@ -9,6 +9,7 @@ from app.modules.system.test_database import (
     TestDatabasePreparationError as DatabasePreparationError,
 )
 from app.modules.system.test_database import validate_test_database_target
+from scripts.ops_backup import BackupSafetyError, _backup_dir
 
 ROOT = Path(__file__).resolve().parents[2]
 OPERATIONAL = "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
@@ -67,6 +68,14 @@ def test_restore_guard_rejects_unsafe_identifier() -> None:
                 'contentengine_restore_test";drop_database'
             ),
         )
+
+
+def test_backup_directory_inside_repository_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CONTENTENGINE_BACKUP_DIR", str(ROOT / "tmp" / "backups"))
+    with pytest.raises(BackupSafetyError, match="backup_directory_inside_repository"):
+        _backup_dir()
 
 
 def test_local_backend_and_postgres_bind_only_to_loopback() -> None:
