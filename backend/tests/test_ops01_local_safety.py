@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from app.modules.system.test_database import validate_test_database_target
 from scripts.ops_backup import BackupSafetyError, _backup_dir
 
 ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = ROOT / "backend"
 OPERATIONAL = "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
 TEST = "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_ops01_test"
 RESTORE = (
@@ -76,6 +79,26 @@ def test_backup_directory_inside_repository_is_rejected(
     monkeypatch.setenv("CONTENTENGINE_BACKUP_DIR", str(ROOT / "tmp" / "backups"))
     with pytest.raises(BackupSafetyError, match="backup_directory_inside_repository"):
         _backup_dir()
+
+
+def test_operational_cli_modules_import_without_cycle() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import scripts.prepare_test_database; "
+                "import scripts.ops_preflight; "
+                "import scripts.ops_backup; "
+                "import scripts.ops_restore_verify"
+            ),
+        ],
+        cwd=BACKEND_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_local_backend_and_postgres_bind_only_to_loopback() -> None:
