@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,15 +17,27 @@ def _compose_project_name() -> str:
     return os.environ.get("COMPOSE_PROJECT_NAME", "contentengine")
 
 
+def _compose_file() -> Path:
+    return Path(__file__).resolve().parents[4] / "compose.yaml"
+
+
+def _compose_prefix() -> list[str]:
+    return [
+        "docker",
+        "compose",
+        "-f",
+        str(_compose_file()),
+        "-p",
+        _compose_project_name(),
+    ]
+
+
 def _container_tools_ready() -> bool:
-    if shutil.which("docker") is None:
+    if shutil.which("docker") is None or not _compose_file().is_file():
         return False
     result = subprocess.run(
         [
-            "docker",
-            "compose",
-            "-p",
-            _compose_project_name(),
+            *_compose_prefix(),
             "exec",
             "-T",
             "postgres",
@@ -56,10 +69,7 @@ def postgres_tool_command(tool: str) -> list[str]:
     if capability.mode == "host":
         return [tool]
     return [
-        "docker",
-        "compose",
-        "-p",
-        _compose_project_name(),
+        *_compose_prefix(),
         "exec",
         "-T",
         "postgres",
