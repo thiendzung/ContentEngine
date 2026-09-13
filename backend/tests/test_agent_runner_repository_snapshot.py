@@ -138,10 +138,11 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
 
     argv = seen["argv"]
     assert isinstance(argv, tuple)
+    pairs = set(zip(argv, argv[1:]))
     assert "--sandbox" not in argv
-    assert ("--disable", "shell_tool") not in zip(argv, argv[1:], strict=True)
+    assert ("--disable", "shell_tool") not in pairs
     for feature in CODEX_REPOSITORY_DISABLED_FEATURES:
-        assert ("--disable", feature) in zip(argv, argv[1:], strict=True)
+        assert ("--disable", feature) in pairs
     overrides = [argv[index + 1] for index, part in enumerate(argv[:-1]) if part == "-c"]
     assert 'approval_policy="never"' in overrides
     assert 'default_permissions="content_engine_repository"' in overrides
