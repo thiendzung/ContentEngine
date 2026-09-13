@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.database import engine
+from app.modules.system import preflight
 
 router = APIRouter(tags=["system"])
 
@@ -26,3 +27,8 @@ async def database_health() -> dict[str, str]:
     except Exception as exc:  # pragma: no cover - exact driver error varies by environment
         raise HTTPException(status_code=503, detail="database_unavailable") from exc
     return {"status": "ok"}
+
+
+@router.get("/system/preflight")
+async def operational_preflight() -> dict[str, object]:
+    return await preflight.build_operational_preflight()
