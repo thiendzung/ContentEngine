@@ -42,7 +42,7 @@ _SAFE_EXTRA_FIELDS: Final[tuple[str, ...]] = (
 _LOGGER_NAMESPACE = "contentengine"
 
 
-class _ContentEngineHandler(logging.StreamHandler):
+class _ContentEngineHandler(logging.StreamHandler[str]):
     """Marker handler so repeated app/test initialization stays idempotent."""
 
 
