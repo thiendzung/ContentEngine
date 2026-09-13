@@ -514,9 +514,13 @@ export default function Home() {
     loadJson<CaseSummary[]>("/journal/review-cases")
       .then((loadedCases) => {
         setCases(loadedCases);
-        const firstCaseId = loadedCases[0]?.id ?? "";
-        if (firstCaseId) setDetailLoading(true);
-        setSelectedCaseId(firstCaseId);
+        const requestedCaseId = new URLSearchParams(window.location.search).get("case");
+        const selectedId =
+          requestedCaseId && loadedCases.some((item) => item.id === requestedCaseId)
+            ? requestedCaseId
+            : loadedCases[0]?.id ?? "";
+        if (selectedId) setDetailLoading(true);
+        setSelectedCaseId(selectedId);
         setError("");
       })
       .catch((requestError: Error) => setError(requestError.message))
@@ -552,6 +556,7 @@ export default function Home() {
     setDetail(null);
     setError("");
     setSelectedCaseId(caseId);
+    window.history.replaceState(null, "", `/?case=${encodeURIComponent(caseId)}`);
   }
 
   const loading = listLoading || detailLoading;
