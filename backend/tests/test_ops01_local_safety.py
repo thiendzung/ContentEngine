@@ -3,9 +3,11 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from app.modules.system import postgres_tools
 from app.modules.system.recovery import RecoverySafetyError, validate_restore_target
 from app.modules.system.test_database import (
     TestDatabasePreparationError as DatabasePreparationError,
@@ -81,6 +83,41 @@ def test_backup_directory_inside_repository_is_rejected(
         _backup_dir()
 
 
+def test_postgres_tools_prefer_host_clients(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(postgres_tools.shutil, "which", lambda name: f"/usr/bin/{name}")
+    capability = postgres_tools.postgres_tool_capability()
+    assert capability is not None
+    assert capability.mode == "host"
+    assert postgres_tools.postgres_tool_command("pg_dump") == ["pg_dump"]
+
+
+def test_postgres_tools_fall_back_to_running_container(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_which(name: str) -> str | None:
+        return "/usr/bin/docker" if name == "docker" else None
+
+    monkeypatch.setattr(postgres_tools.shutil, "which", fake_which)
+    monkeypatch.setattr(
+        postgres_tools.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0),
+    )
+    capability = postgres_tools.postgres_tool_capability()
+    assert capability is not None
+    assert capability.mode == "container"
+    assert postgres_tools.postgres_tool_command("pg_restore") == [
+        "docker",
+        "compose",
+        "-p",
+        "contentengine",
+        "exec",
+        "-T",
+        "postgres",
+        "pg_restore",
+    ]
+
+
 def test_operational_cli_modules_import_without_cycle() -> None:
     result = subprocess.run(
         [
@@ -113,14 +150,15 @@ def test_local_backend_and_postgres_bind_only_to_loopback() -> None:
     assert '"5432:5432"' not in compose.replace('"127.0.0.1:5432:5432"', "")
 
 
-def test_make_check_prepares_and_migrates_test_database_before_pytest() -> None:
+def test_make_check_resets_and_migrates_test_database_before_pytest() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     backend_check = makefile.split("backend-check:", maxsplit=1)[1].split(
         "frontend-check:", maxsplit=1
     )[0]
 
-    assert "$(MAKE) test-db-prepare" in backend_check
+    assert "$(MAKE) test-db-reset" in backend_check
+    assert "prepare_test_database --reset" in makefile
     assert "APP_ENV=test .venv/bin/pytest" in backend_check
-    assert backend_check.index("$(MAKE) test-db-prepare") < backend_check.index(
+    assert backend_check.index("$(MAKE) test-db-reset") < backend_check.index(
         "APP_ENV=test .venv/bin/pytest"
     )
