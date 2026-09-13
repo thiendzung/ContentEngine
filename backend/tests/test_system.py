@@ -26,7 +26,9 @@ async def test_version() -> None:
 
 
 @pytest.mark.asyncio
-async def test_operational_preflight_is_safe_and_structured(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_operational_preflight_is_safe_and_structured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def fake_preflight() -> dict[str, object]:
         return {
             "status": "READY",
