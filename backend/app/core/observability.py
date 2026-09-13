@@ -1,7 +1,9 @@
 """Safe operational logging and HTTP correlation for ContentEngine.
 
 This module intentionally logs identifiers, states, timings and error classes only.
-Request bodies, prompts, provider payloads, secrets and chain-of-thought are not log fields.
+Request bodies, query strings, prompts, provider payloads, secrets and chain-of-thought
+are not log fields. Uvicorn's default access logger is disabled because it emits the raw
+request target, including query strings; ContentEngine's own safe request log replaces it.
 """
 
 from __future__ import annotations
@@ -86,7 +88,7 @@ class SafeTextFormatter(logging.Formatter):
 
 
 def configure_logging(settings: Settings) -> None:
-    """Configure the ContentEngine logger without mutating third-party loggers."""
+    """Configure safe ContentEngine logging and suppress unsafe raw access logging."""
 
     logger = logging.getLogger(_LOGGER_NAMESPACE)
     level = getattr(logging, settings.resolved_log_level)
@@ -99,6 +101,11 @@ def configure_logging(settings: Settings) -> None:
     handler.setLevel(level)
     handler.setFormatter(SafeJsonFormatter() if settings.log_json else SafeTextFormatter())
     logger.addHandler(handler)
+
+    # Uvicorn's standard access line contains the raw request target and therefore
+    # includes query strings. ContentEngine already emits a safer request lifecycle
+    # record with path-only metadata, status, duration and correlation ID.
+    logging.getLogger("uvicorn.access").disabled = True
 
 
 def get_logger(name: str) -> logging.Logger:
