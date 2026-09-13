@@ -38,6 +38,17 @@ def test_test_database_guard_rejects_operational_target() -> None:
         validate_test_database_target(database_url=OPERATIONAL, test_database_url=OPERATIONAL)
 
 
+def test_test_database_guard_rejects_remote_target() -> None:
+    with pytest.raises(DatabasePreparationError, match="test_database_not_loopback"):
+        validate_test_database_target(
+            database_url=OPERATIONAL,
+            test_database_url=(
+                "postgresql+asyncpg://contentengine:contentengine@db.example.com:5432/"
+                "contentengine_test"
+            ),
+        )
+
+
 def test_test_database_guard_rejects_unsafe_identifier() -> None:
     with pytest.raises(DatabasePreparationError, match="unsafe_test_database_name"):
         validate_test_database_target(
