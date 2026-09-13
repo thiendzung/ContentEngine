@@ -45,6 +45,7 @@ COORDINATOR_KEY = "codex"
 COORDINATOR_PROVIDER = "codex_cli"
 COORDINATOR_TASK_KEY = "delegation_plan"
 DELEGATION_PLAN_ARTIFACT_TYPE = "delegation_plan"
+DELEGATION_RESULT_ARTIFACT_PREFIX = "delegation_output_"
 _ALLOWED_WORKER_PROVIDERS = {"codex_cli", "antigravity_cli"}
 _ALLOWED_PLAN_FIELDS = {
     "schema_version",
@@ -54,6 +55,13 @@ _ALLOWED_PLAN_FIELDS = {
     "worker_key",
     "provider",
     "model",
+}
+_ALLOWED_ROUTE_FIELDS = {
+    "worker_kind",
+    "worker_key",
+    "provider",
+    "model",
+    "runner_version",
 }
 
 DELEGATION_PLAN_SCHEMA: dict[str, object] = {
@@ -128,6 +136,7 @@ class ControlledDelegationRequest:
 class ControlledDelegationResult:
     execution_id: UUID
     worker_model_call_id: UUID | None
+    result_artifact_id: UUID | None
     status: str
     replayed: bool
     structured_output: object | None
@@ -148,6 +157,8 @@ class SettingsDelegationRouter:
             raise ControlledDelegationError("delegation_disabled")
         routes = _as_dict(root.get("routes"), "delegation.routes")
         config = _as_dict(routes.get(task_key), f"delegation.routes.{task_key}")
+        if set(config) != _ALLOWED_ROUTE_FIELDS:
+            raise ControlledDelegationError("delegation_route_contains_unapproved_fields")
         worker_kind = _required_string(config, "worker_kind")
         worker_key = _required_string(config, "worker_key")
         provider = _required_string(config, "provider")
@@ -206,14 +217,7 @@ class ControlledDelegationBridge:
             attempt=request.attempt,
         )
         if execution.status == "completed":
-            return ControlledDelegationResult(
-                execution_id=execution.id,
-                worker_model_call_id=execution.worker_model_call_id,
-                status=execution.status,
-                replayed=True,
-                structured_output=None,
-                raw_output_hash=None,
-            )
+            return await _replay_completed_execution(session, execution=execution)
         if execution.status == "running":
             raise ControlledDelegationError("delegation_already_running")
         if execution.status in {"failed", "cancelled"}:
@@ -305,27 +309,53 @@ class ControlledDelegationBridge:
             )
             raise ControlledDelegationError("delegation_result_route_mismatch")
 
+        try:
+            result_artifact, response_content = await _persist_worker_result(
+                session,
+                execution_id=execution.id,
+                run_id=run.id,
+                step_run_id=request.step_run_id,
+                task_key=plan.task_key,
+                structured_output=result.structured_output,
+            )
+        except (TypeError, ValueError) as exc:
+            await fail_model_call(
+                session,
+                call_id=call.id,
+                error_class="delegation_worker_output_not_json",
+                runtime_metadata={"delegation_execution_id": str(execution.id)},
+            )
+            await fail_delegation_execution(
+                session,
+                execution_id=execution.id,
+                error_class="delegation_worker_output_not_json",
+            )
+            raise ControlledDelegationError("delegation_worker_output_not_json") from exc
+
         await complete_model_call(
             session,
             call_id=call.id,
             response=ModelResponse(
-                content=json.dumps(result.structured_output, ensure_ascii=False, sort_keys=True),
+                content=response_content,
                 input_tokens=_integer_usage(result.usage, "input_tokens"),
                 output_tokens=_integer_usage(result.usage, "output_tokens"),
                 cost=_decimal_usage(result.usage, "cost"),
                 latency_ms=result.duration_ms,
                 finish_reason="stop",
             ),
+            result_artifact_id=result_artifact.id,
             runtime_metadata=_runtime_metadata(result, execution_id=execution.id),
         )
         completed = await complete_delegation_execution(
             session,
             execution_id=execution.id,
+            result_artifact_id=result_artifact.id,
             external_execution_id=result.session_id,
         )
         return ControlledDelegationResult(
             execution_id=completed.id,
             worker_model_call_id=call.id,
+            result_artifact_id=result_artifact.id,
             status=completed.status,
             replayed=False,
             structured_output=result.structured_output,
@@ -426,6 +456,86 @@ async def _resolve_controlled_plan(
     return run, coordinator, artifact, plan, route
 
 
+async def _persist_worker_result(
+    session: AsyncSession,
+    *,
+    execution_id: UUID,
+    run_id: UUID,
+    step_run_id: UUID | None,
+    task_key: str,
+    structured_output: object,
+) -> tuple[Artifact, str]:
+    payload: dict[str, object] = {
+        "schema_version": 1,
+        "delegation_execution_id": str(execution_id),
+        "task_key": task_key,
+        "structured_output": structured_output,
+    }
+    response_content = json.dumps(
+        structured_output,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    artifact = Artifact(
+        run_id=run_id,
+        step_run_id=step_run_id,
+        artifact_type=_result_artifact_type(execution_id),
+        locale=None,
+        version=1,
+        content_json=payload,
+        content_hash=_stable_hash(payload),
+    )
+    session.add(artifact)
+    await session.flush()
+    return artifact, response_content
+
+
+async def _replay_completed_execution(
+    session: AsyncSession,
+    *,
+    execution,
+) -> ControlledDelegationResult:
+    if execution.worker_model_call_id is None or execution.result_artifact_id is None:
+        raise ControlledDelegationError("delegation_completed_result_missing")
+    call = await session.get(ModelCall, execution.worker_model_call_id)
+    artifact = await session.get(Artifact, execution.result_artifact_id)
+    if (
+        call is None
+        or call.status != "completed"
+        or call.result_artifact_id != execution.result_artifact_id
+        or artifact is None
+        or artifact.run_id != execution.run_id
+        or artifact.step_run_id != execution.step_run_id
+        or artifact.artifact_type != _result_artifact_type(execution.id)
+        or artifact.content_json is None
+        or artifact.content_hash != _stable_hash(artifact.content_json)
+    ):
+        raise ControlledDelegationError("delegation_completed_result_invalid")
+    payload = artifact.content_json
+    if (
+        payload.get("schema_version") != 1
+        or payload.get("delegation_execution_id") != str(execution.id)
+        or payload.get("task_key") != execution.task_key
+        or "structured_output" not in payload
+    ):
+        raise ControlledDelegationError("delegation_completed_result_invalid")
+    raw_output_hash: str | None = None
+    metadata = call.runtime_metadata_json or {}
+    candidate_hash = metadata.get("raw_output_hash")
+    if isinstance(candidate_hash, str):
+        raw_output_hash = candidate_hash
+    return ControlledDelegationResult(
+        execution_id=execution.id,
+        worker_model_call_id=call.id,
+        result_artifact_id=artifact.id,
+        status=execution.status,
+        replayed=True,
+        structured_output=payload["structured_output"],
+        raw_output_hash=raw_output_hash,
+    )
+
+
 def _parse_plan(value: object) -> DelegationPlan:
     if not isinstance(value, dict):
         raise ControlledDelegationError("delegation_plan_invalid")
@@ -462,6 +572,10 @@ def _required_string(value: dict[str, object], key: str) -> str:
     if not isinstance(item, str) or not item.strip():
         raise ControlledDelegationError(f"delegation_{key}_invalid")
     return item.strip()
+
+
+def _result_artifact_type(execution_id: UUID) -> str:
+    return f"{DELEGATION_RESULT_ARTIFACT_PREFIX}{execution_id.hex}"
 
 
 def _stable_hash(value: object) -> str:
@@ -520,6 +634,7 @@ __all__ = [
     "COORDINATOR_TASK_KEY",
     "DELEGATION_PLAN_ARTIFACT_TYPE",
     "DELEGATION_PLAN_SCHEMA",
+    "DELEGATION_RESULT_ARTIFACT_PREFIX",
     "ControlledDelegationBridge",
     "ControlledDelegationError",
     "ControlledDelegationRequest",
