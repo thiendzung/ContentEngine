@@ -170,7 +170,10 @@ def _validate_request(request: AgentRunRequest, provider: str) -> None:
         or request.timeout <= 0
     ):
         raise AgentRunnerError("agent_timeout_invalid")
-    if request.repository is not None and not isinstance(request.repository, RepositorySnapshotSpec):
+    if request.repository is not None and not isinstance(
+        request.repository,
+        RepositorySnapshotSpec,
+    ):
         raise AgentRunnerError("agent_repository_spec_invalid")
     _validate_sanitized_context(request.working_context)
 
