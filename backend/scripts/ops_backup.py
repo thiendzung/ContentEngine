@@ -17,11 +17,29 @@ from app.core.config import get_settings
 from app.modules.system.recovery import database_fingerprint
 
 
+class BackupSafetyError(RuntimeError):
+    """Raised when the requested backup destination is unsafe."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
+def _repository_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
 def _backup_dir() -> Path:
     configured = os.environ.get("CONTENTENGINE_BACKUP_DIR")
     if configured:
-        return Path(configured).expanduser().resolve()
-    return (Path.home() / ".local" / "share" / "contentengine" / "backups").resolve()
+        candidate = Path(configured).expanduser().resolve()
+    else:
+        candidate = (Path.home() / ".local" / "share" / "contentengine" / "backups").resolve()
+
+    repository_root = _repository_root()
+    if candidate == repository_root or repository_root in candidate.parents:
+        raise BackupSafetyError("backup_directory_inside_repository")
+    return candidate
 
 
 def _pg_connection_args(url: URL) -> tuple[list[str], dict[str, str]]:
@@ -53,13 +71,18 @@ async def _main() -> int:
         print("BACKUP: BLOCKED (pg_dump_missing)")
         return 2
 
+    try:
+        backup_dir = _backup_dir()
+    except BackupSafetyError as exc:
+        print(f"BACKUP: BLOCKED ({exc.code})")
+        return 2
+
     settings = get_settings()
     source_url = make_url(settings.database_url)
     if source_url.get_backend_name() != "postgresql" or not source_url.database:
         print("BACKUP: BLOCKED (operational_database_unsupported)")
         return 2
 
-    backup_dir = _backup_dir()
     backup_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     stem = f"contentengine-{source_url.database}-{stamp}"
