@@ -18,10 +18,11 @@ This is not native Codex multi-agent. `CodexCliRunner` keeps `multi_agent`, apps
 → `DelegationExecution`
 → approved child runner preflight/version check
 → linked worker ModelCall
+→ immutable hashed delegated-worker result Artifact
 → completed/failed DelegationExecution
 → Production Board projection.
 
-All three sources — Codex plan, SettingsSnapshot route and actual runner identity — must agree. Any mismatch fails closed.
+All three control sources — Codex plan, SettingsSnapshot route and actual runner identity — must agree. Any mismatch fails closed.
 
 ## Bounded plan contract
 
@@ -49,7 +50,7 @@ No rationale, chain-of-thought, prompt, private context or raw provider payload 
 - exact `model`
 - exact approved `runner_version`
 
-No route means no delegation. No guessed fallback.
+The task route itself is strict: unapproved extra route fields are rejected. No route means no delegation. No guessed fallback.
 
 For this slice:
 
@@ -67,18 +68,22 @@ Migration `20260913_0025` adds nullable links to `delegation_executions`:
 
 Existing T05.22B telemetry without these fields remains valid historical telemetry. Controlled T05.22C execution requires the exact coordinator call + decision Artifact pair.
 
+A successful child worker result is persisted as a private hashed Artifact with an execution-specific artifact type. The worker ModelCall and DelegationExecution must point to the same result Artifact. Structured child output may live in this private Artifact; raw provider output does not.
+
 ## Execution semantics
 
 1. Validate run/step/coordinator call/decision Artifact/hash/settings route before dispatch.
 2. Ensure one deduped DelegationExecution.
 3. Completed exact replay must not execute the child worker again.
-4. Running exact replay fails with `delegation_already_running`; do not double-dispatch.
-5. Failed/cancelled execution requires a new explicit attempt/dedupe identity.
-6. Start delegation before worker preflight so a version/auth/provider preflight failure remains durable telemetry.
-7. Child ModelCall must be bound to the same run/step and exact DelegationExecution.
-8. Child runner provider/model/version must match immutable policy exactly.
-9. Worker failure closes both ModelCall and DelegationExecution with safe error classes.
-10. Production Board suppresses the linked child ModelCall as a duplicate event and enriches the delegation event with provider/model.
+4. Completed replay must restore the exact structured result from the hashed result Artifact; it must not return an empty in-memory-only result.
+5. Running exact replay fails with `delegation_already_running`; do not double-dispatch.
+6. Failed/cancelled execution requires a new explicit attempt/dedupe identity.
+7. Start delegation before worker preflight so a version/auth/provider preflight failure remains durable telemetry.
+8. Child ModelCall must be bound to the same run/step and exact DelegationExecution.
+9. Child runner provider/model/version must match immutable policy exactly.
+10. Worker failure closes both ModelCall and DelegationExecution with safe error classes.
+11. A successful worker output must be JSON-serializable before completion; invalid structured output fails closed.
+12. Production Board suppresses the linked child ModelCall as a duplicate event and enriches the delegation event with provider/model.
 
 ## Safety / observability
 
@@ -86,7 +91,8 @@ Keep T05.22A rules:
 
 - safe structured logs always available;
 - no secrets, prompt/body/query, raw provider/private payload or chain-of-thought;
-- persist only IDs, task/worker/provider/model identity, status, timings, hashes/usage and safe error classes;
+- persist only IDs, task/worker/provider/model identity, status, timings, hashes/usage and safe error classes in execution telemetry;
+- structured worker output belongs in the private result Artifact, not console/debug logs;
 - native Codex `multi_agent`, apps/plugins and unsafe tools remain disabled.
 
 ## Not in scope
@@ -105,7 +111,8 @@ A later bounded integration may wire a specific Journal stage to this bridge onl
 Focused tests must prove:
 
 - exact controlled execution persists coordinator → decision → delegation → worker ModelCall lineage;
-- exact replay does not re-run the worker;
+- successful worker output is persisted to one hashed Artifact linked from both ModelCall and DelegationExecution;
+- exact replay does not re-run the worker and restores the exact durable structured output/hash metadata;
 - plan/immutable-route mismatch fails before dispatch;
 - runner version mismatch is persisted as a failed delegation without worker ModelCall;
 - worker failure closes both records;
