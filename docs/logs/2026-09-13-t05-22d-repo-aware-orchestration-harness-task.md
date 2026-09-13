@@ -128,6 +128,21 @@ It must not:
 - silently treat the Antigravity desktop application's repo access as proof of the `antigravity_cli` adapter;
 - auto-cross a human gate.
 
+## Implemented in PR #86
+
+MG implementation now includes:
+
+- exact Git-tracked snapshot materialization at a pinned 40-character commit SHA;
+- `AgentRunRequest.repository` propagation through controlled delegation;
+- repository revision/tree hash in safe ModelCall runtime metadata only;
+- a repo-aware Codex runner using a dedicated permission profile rather than the legacy broad read-only sandbox: root denied, minimal runtime readable, ephemeral workdir writable, exact materialized repository narrowed to read-only, network disabled, approval escalation disabled;
+- native Codex `multi_agent`, apps/plugins, browser/computer/remote-plugin and other unsafe surfaces remain disabled; only shell capability is opened for repository inspection inside the scoped permission profile;
+- repo-aware Antigravity execution fails closed with `agent_repository_isolation_unproven` until the actual adapter/invocation and scoped isolation are proven locally;
+- a small bounded orchestration loop contract enforcing cycle budget, attempt budget, retry identity/dedupe, deterministic policy check, hard human stop, replay-no-dispatch and durable re-observation;
+- focused unit/integration tests plus a one-call disposable Codex isolation probe for Agent Local.
+
+No Journal stage is activated by T05.22D. T05.22E remains the first real stage integration.
+
 ## Acceptance
 
 1. Exact merged base is verified.
@@ -141,6 +156,12 @@ It must not:
 9. Human gates cannot be auto-crossed.
 10. Existing controlled-delegation and agent-runtime safety tests remain green.
 11. Operational M1 remains unchanged during local proof.
+
+Repository implementation/CI evidence is necessary but not sufficient for items 2–4 and 11 on the Founder's actual machine. Final T05.22D closure requires the exact `T05.22D.LOCAL-PROOF` task and MG review of its sanitized evidence.
+
+Local proof task:
+
+`docs/logs/2026-09-13-t05-22d-agent-local-proof-task.md`
 
 ## After T05.22D
 
