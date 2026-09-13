@@ -1,4 +1,4 @@
-"""Durable CE05 Journal approval records."""
+"""Durable CE05 Journal approval and operator-control records."""
 
 from __future__ import annotations
 
@@ -93,4 +93,58 @@ class OutlineApproval(TimestampMixin, Base):
     )
 
 
-__all__ = ["AngleApproval", "OutlineApproval"]
+class OperatorCommand(TimestampMixin, Base):
+    """Durable operator intent; executable work still belongs to the Job queue."""
+
+    __tablename__ = "operator_commands"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id"), nullable=False
+    )
+    run_id: Mapped[UUID | None] = mapped_column(ForeignKey("content_runs.id"))
+    step_run_id: Mapped[UUID | None] = mapped_column(ForeignKey("step_runs.id"))
+    job_id: Mapped[UUID | None] = mapped_column(ForeignKey("jobs.id"))
+    intent: Mapped[str] = mapped_column(String(32), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expected_state_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    resolved_action_key: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="accepted")
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    actor_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    state_before: Mapped[str] = mapped_column(String(64), nullable=False)
+    state_after: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_operator_command_idempotency"),
+        CheckConstraint(
+            "intent in ('start','continue','resume','retry','cancel')",
+            name="ck_operator_command_intent",
+        ),
+        CheckConstraint(
+            "status in ('accepted','queued','completed','rejected','failed','cancelled')",
+            name="ck_operator_command_status",
+        ),
+        CheckConstraint(
+            "request_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_operator_command_request_hash",
+        ),
+        CheckConstraint(
+            "expected_state_version ~ '^[0-9a-f]{64}$'",
+            name="ck_operator_command_expected_state",
+        ),
+        CheckConstraint(
+            "state_before ~ '^[0-9a-f]{64}$'",
+            name="ck_operator_command_state_before",
+        ),
+        CheckConstraint(
+            "state_after is null or state_after ~ '^[0-9a-f]{64}$'",
+            name="ck_operator_command_state_after",
+        ),
+        Index("ix_operator_commands_case_status", "content_case_id", "status"),
+        Index("ix_operator_commands_job", "job_id"),
+    )
+
+
+__all__ = ["AngleApproval", "OperatorCommand", "OutlineApproval"]
