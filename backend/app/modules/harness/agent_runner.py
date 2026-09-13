@@ -14,6 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from app.modules.harness.repository_snapshot import (
+    RepositorySnapshotError,
+    RepositorySnapshotSpec,
+    materialize_repository_snapshot,
+)
+
 
 class AgentRunnerError(RuntimeError):
     """Raised when a local agent cannot be used safely."""
@@ -57,6 +63,7 @@ class AgentRunRequest:
     structured_output_schema: dict[str, object]
     working_context: dict[str, object]
     timeout: float
+    repository: RepositorySnapshotSpec | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +77,8 @@ class AgentRunResult:
     usage: dict[str, object] | None
     duration_ms: int
     session_id: str | None = None
+    repository_revision: str | None = None
+    repository_tree_hash: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +170,8 @@ def _validate_request(request: AgentRunRequest, provider: str) -> None:
         or request.timeout <= 0
     ):
         raise AgentRunnerError("agent_timeout_invalid")
+    if request.repository is not None and not isinstance(request.repository, RepositorySnapshotSpec):
+        raise AgentRunnerError("agent_repository_spec_invalid")
     _validate_sanitized_context(request.working_context)
 
 
@@ -255,8 +266,7 @@ def _parse_final_output(raw: bytes) -> tuple[object, dict[str, object] | None, s
         candidates.extend(
             json.loads(line)
             for line in reversed(text.splitlines())
-            if line.strip()
-            and _is_json_line(line)
+            if line.strip() and _is_json_line(line)
         )
     for item in candidates:
         final = _nested_final_value(item)
@@ -370,6 +380,22 @@ class _CliRunner:
                 ),
                 encoding="utf-8",
             )
+
+            execution_root = workdir
+            repository_revision: str | None = None
+            repository_tree_hash: str | None = None
+            if request.repository is not None:
+                try:
+                    snapshot = await materialize_repository_snapshot(
+                        request.repository,
+                        destination=workdir / "repository",
+                    )
+                except RepositorySnapshotError as exc:
+                    raise AgentRunnerError(exc.code) from exc
+                execution_root = snapshot.root
+                repository_revision = snapshot.revision
+                repository_tree_hash = snapshot.tree_hash
+
             argv = argv_builder(schema_path, result_path)
             try:
                 process = await asyncio.create_subprocess_exec(
@@ -377,7 +403,7 @@ class _CliRunner:
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
-                    cwd=temp_dir,
+                    cwd=str(execution_root),
                     env=_safe_environment(),
                 )
                 if process.stdin is None:
@@ -412,6 +438,8 @@ class _CliRunner:
                 usage=usage,
                 duration_ms=duration_ms,
                 session_id=session_id,
+                repository_revision=repository_revision,
+                repository_tree_hash=repository_tree_hash,
             )
 
 
