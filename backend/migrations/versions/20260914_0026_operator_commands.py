@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.CheckConstraint(
-            "intent in ('start','continue','resume','retry','cancel','approve','request_changes','reject')",
+            "intent in ('create','start','continue','resume','retry','cancel','approve','request_changes','reject')",
             name="ck_operator_command_intent",
         ),
         sa.CheckConstraint(
