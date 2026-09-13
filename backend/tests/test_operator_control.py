@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -256,7 +256,7 @@ async def test_operator_persisted_gate_decision_is_not_offered_twice(
                 selected_candidate_hash="a" * 64,
                 approved_by="founder",
                 approval_reason="operator gate projection test",
-                approved_at=datetime.now(timezone.utc),
+                approved_at=datetime.now(UTC),
             )
         )
         await session.flush()
