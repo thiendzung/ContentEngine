@@ -41,10 +41,10 @@ def validate_test_database_target(*, database_url: str, test_database_url: str) 
         raise TestDatabasePreparationError("test_database_backend_unsupported")
     if not database_name or not _SAFE_IDENTIFIER.fullmatch(database_name):
         raise TestDatabasePreparationError("unsafe_test_database_name")
-    if "test" not in database_name.lower():
-        raise TestDatabasePreparationError("unsafe_test_database_name")
     if _target_identity(operational) == _target_identity(target):
         raise TestDatabasePreparationError("test_database_matches_operational_database")
+    if "test" not in database_name.lower():
+        raise TestDatabasePreparationError("unsafe_test_database_name")
     return target
 
 
