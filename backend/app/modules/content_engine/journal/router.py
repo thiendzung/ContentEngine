@@ -13,6 +13,10 @@ from app.modules.content_engine.journal.context import (
     JournalContextError,
     build_journal_context,
 )
+from app.modules.content_engine.journal.production_board import (
+    ProductionBoardCase,
+    list_production_board_cases,
+)
 from app.modules.content_engine.journal.review_action_view import (
     get_action_aware_review_case,
     list_action_aware_review_cases,
@@ -101,6 +105,13 @@ async def list_journal_cases(
             )
         )
     return list(grouped.values())
+
+
+@router.get("/production-board", response_model=list[ProductionBoardCase])
+async def list_journal_production_board(
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> list[ProductionBoardCase]:
+    return await list_production_board_cases(session)
 
 
 @router.get("/review-cases", response_model=list[ReviewCaseSummary])
