@@ -32,6 +32,8 @@ class DelegationExecution(TimestampMixin, Base):
     step_run_id: Mapped[UUID | None] = mapped_column(ForeignKey("step_runs.id"))
     parent_execution_id: Mapped[UUID | None] = mapped_column(ForeignKey("delegation_executions.id"))
     coordinator_key: Mapped[str] = mapped_column(String(100), nullable=False, default="codex")
+    coordinator_model_call_id: Mapped[UUID | None] = mapped_column(ForeignKey("model_calls.id"))
+    decision_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
     worker_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     worker_key: Mapped[str] = mapped_column(String(200), nullable=False)
     task_key: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -39,6 +41,7 @@ class DelegationExecution(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     dedupe_key: Mapped[str] = mapped_column(String(255), nullable=False)
     external_execution_id: Mapped[str | None] = mapped_column(String(255))
+    worker_model_call_id: Mapped[UUID | None] = mapped_column(ForeignKey("model_calls.id"))
     result_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -58,6 +61,16 @@ class DelegationExecution(TimestampMixin, Base):
         Index("ix_delegation_execution_run", "run_id"),
         Index("ix_delegation_execution_step", "step_run_id"),
         Index("ix_delegation_execution_parent", "parent_execution_id"),
+        Index(
+            "ix_delegation_execution_coordinator_model_call",
+            "coordinator_model_call_id",
+        ),
+        Index("ix_delegation_execution_decision_artifact", "decision_artifact_id"),
+        Index(
+            "ix_delegation_execution_worker_model_call",
+            "worker_model_call_id",
+            unique=True,
+        ),
     )
 
 
