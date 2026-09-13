@@ -42,7 +42,7 @@ _SAFE_EXTRA_FIELDS: Final[tuple[str, ...]] = (
 _LOGGER_NAMESPACE = "contentengine"
 
 
-class _ContentEngineHandler(logging.StreamHandler[str]):
+class _ContentEngineHandler(logging.StreamHandler):
     """Marker handler so repeated app/test initialization stays idempotent."""
 
 
@@ -89,13 +89,14 @@ def configure_logging(settings: Settings) -> None:
     """Configure the ContentEngine logger without mutating third-party loggers."""
 
     logger = logging.getLogger(_LOGGER_NAMESPACE)
-    logger.setLevel(getattr(logging, settings.resolved_log_level))
+    level = getattr(logging, settings.resolved_log_level)
+    logger.setLevel(level)
     logger.propagate = False
     for handler in list(logger.handlers):
         if isinstance(handler, _ContentEngineHandler):
             logger.removeHandler(handler)
     handler = _ContentEngineHandler()
-    handler.setLevel(getattr(logging, settings.resolved_log_level))
+    handler.setLevel(level)
     handler.setFormatter(SafeJsonFormatter() if settings.log_json else SafeTextFormatter())
     logger.addHandler(handler)
 
