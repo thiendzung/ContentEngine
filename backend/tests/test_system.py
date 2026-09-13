@@ -26,6 +26,32 @@ async def test_version() -> None:
 
 
 @pytest.mark.asyncio
+async def test_operational_preflight_is_safe_and_structured(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_preflight() -> dict[str, object]:
+        return {
+            "status": "READY",
+            "checks": [
+                {"key": "database", "status": "READY", "detail": "database=test"},
+                {"key": "antigravity_cli", "status": "OPTIONAL", "detail": "unproven"},
+            ],
+        }
+
+    monkeypatch.setattr(
+        "app.modules.system.preflight.build_operational_preflight",
+        fake_preflight,
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/system/preflight")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "READY"
+    assert payload["checks"][1]["status"] == "OPTIONAL"
+    assert "password" not in response.text.lower()
+    assert "contentengine:contentengine" not in response.text
+
+
+@pytest.mark.asyncio
 async def test_local_frontend_origin_can_read_backend() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get(
