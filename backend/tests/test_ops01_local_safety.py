@@ -109,6 +109,8 @@ def test_postgres_tools_fall_back_to_running_container(
     assert postgres_tools.postgres_tool_command("pg_restore") == [
         "docker",
         "compose",
+        "-f",
+        str(ROOT / "compose.yaml"),
         "-p",
         "contentengine",
         "exec",
