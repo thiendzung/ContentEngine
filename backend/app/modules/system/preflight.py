@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import shutil
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.database import engine
-from app.modules.harness.agent_runner import (
-    AgentRunnerError,
-    AntigravityCliRunner,
-    CodexCliRunner,
-)
+from app.modules.harness.agent_runner import AgentRunnerError, CodexCliRunner
 from app.modules.system.test_database import (
     TestDatabasePreparationError,
     validate_test_database_target,
@@ -36,17 +35,31 @@ async def _database_check() -> PreflightCheck:
     return PreflightCheck("database", "READY", f"database={database_name}")
 
 
+def _expected_migration_head() -> str | None:
+    backend_root = Path(__file__).resolve().parents[3]
+    config = Config(str(backend_root / "alembic.ini"))
+    script = ScriptDirectory.from_config(config)
+    return script.get_current_head()
+
+
 async def _migration_check() -> PreflightCheck:
     try:
+        expected = _expected_migration_head()
         async with engine.connect() as connection:
-            version = (
+            current = (
                 await connection.execute(text("select version_num from alembic_version"))
             ).scalar_one_or_none()
     except Exception:
         return PreflightCheck("migration", "BLOCKED", "migration_state_unavailable")
-    if not version:
+    if not current or not expected:
         return PreflightCheck("migration", "BLOCKED", "migration_version_missing")
-    return PreflightCheck("migration", "READY", f"revision={version}")
+    if str(current) != expected:
+        return PreflightCheck(
+            "migration",
+            "BLOCKED",
+            f"revision={current}; expected={expected}",
+        )
+    return PreflightCheck("migration", "READY", f"revision={current}")
 
 
 def _test_database_check() -> PreflightCheck:
@@ -63,21 +76,23 @@ def _test_database_check() -> PreflightCheck:
     return PreflightCheck("test_database", "READY", f"database={target.database}")
 
 
-async def _agent_check(*, provider: str) -> PreflightCheck:
-    if provider == "codex_cli":
-        runner = CodexCliRunner()
-        blocked_status = "BLOCKED"
-    else:
-        runner = AntigravityCliRunner()
-        blocked_status = "OPTIONAL"
+async def _codex_check() -> PreflightCheck:
     try:
-        capability = await runner.preflight()
+        capability = await CodexCliRunner().preflight()
     except AgentRunnerError as exc:
-        return PreflightCheck(provider, blocked_status, exc.code)
+        return PreflightCheck("codex_cli", "BLOCKED", exc.code)
     return PreflightCheck(
-        provider,
+        "codex_cli",
         "READY",
         f"version={capability.version}; auth={capability.auth_mode}",
+    )
+
+
+def _antigravity_check() -> PreflightCheck:
+    return PreflightCheck(
+        "antigravity_cli",
+        "OPTIONAL",
+        "agent_repository_isolation_unproven",
     )
 
 
@@ -97,8 +112,8 @@ async def build_operational_preflight() -> dict[str, object]:
         await _database_check(),
         await _migration_check(),
         _test_database_check(),
-        await _agent_check(provider="codex_cli"),
-        await _agent_check(provider="antigravity_cli"),
+        await _codex_check(),
+        _antigravity_check(),
         _postgres_tools_check(),
     ]
     required = [check for check in checks if check.status != "OPTIONAL"]
