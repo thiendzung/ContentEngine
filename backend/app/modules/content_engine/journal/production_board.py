@@ -112,15 +112,6 @@ def _stage_key(
     runs: list[ContentRun],
     steps: list[StepRun],
 ) -> str:
-    active_steps = [row for row in steps if row.status in {"running", "pending"}]
-    if active_steps:
-        latest = max(active_steps, key=lambda row: (row.updated_at, row.attempt, str(row.id)))
-        return latest.step_key
-    active_runs = [row for row in runs if row.status in {"running", "waiting_approval"}]
-    if active_runs:
-        latest_run = max(active_runs, key=lambda row: (row.updated_at, str(row.id)))
-        if latest_run.current_step:
-            return latest_run.current_step
     fallback = {
         "AWAITING_FOUNDER_APPROVAL": "final_review",
         "REVIEW_REQUIRED": "final_review",
@@ -133,6 +124,15 @@ def _stage_key(
     }
     if next_action in fallback:
         return fallback[next_action]
+    active_steps = [row for row in steps if row.status in {"running", "pending"}]
+    if active_steps:
+        latest = max(active_steps, key=lambda row: (row.updated_at, row.attempt, str(row.id)))
+        return latest.step_key
+    active_runs = [row for row in runs if row.status in {"running", "waiting_approval"}]
+    if active_runs:
+        latest_run = max(active_runs, key=lambda row: (row.updated_at, str(row.id)))
+        if latest_run.current_step:
+            return latest_run.current_step
     completed_steps = [row for row in steps if row.status == "completed"]
     if completed_steps:
         latest = max(completed_steps, key=lambda row: (row.updated_at, row.attempt, str(row.id)))
