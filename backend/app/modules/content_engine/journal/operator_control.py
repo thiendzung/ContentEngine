@@ -256,30 +256,39 @@ async def _latest_step(session: AsyncSession, run: ContentRun | None) -> StepRun
     if run is None:
         return None
     if run.current_step:
-        exact = await session.scalar(
-            select(StepRun)
-            .where(StepRun.run_id == run.id, StepRun.step_key == run.current_step)
-            .order_by(StepRun.attempt.desc())
-            .limit(1)
+        exact = cast(
+            StepRun | None,
+            await session.scalar(
+                select(StepRun)
+                .where(StepRun.run_id == run.id, StepRun.step_key == run.current_step)
+                .order_by(StepRun.attempt.desc())
+                .limit(1)
+            ),
         )
         if exact is not None:
             return exact
-    return await session.scalar(
-        select(StepRun)
-        .where(StepRun.run_id == run.id)
-        .order_by(StepRun.updated_at.desc(), StepRun.id.desc())
-        .limit(1)
+    return cast(
+        StepRun | None,
+        await session.scalar(
+            select(StepRun)
+            .where(StepRun.run_id == run.id)
+            .order_by(StepRun.updated_at.desc(), StepRun.id.desc())
+            .limit(1)
+        ),
     )
 
 
 async def _latest_job(session: AsyncSession, step: StepRun | None) -> Job | None:
     if step is None:
         return None
-    return await session.scalar(
-        select(Job)
-        .where(Job.step_run_id == step.id)
-        .order_by(Job.updated_at.desc(), Job.id.desc())
-        .limit(1)
+    return cast(
+        Job | None,
+        await session.scalar(
+            select(Job)
+            .where(Job.step_run_id == step.id)
+            .order_by(Job.updated_at.desc(), Job.id.desc())
+            .limit(1)
+        ),
     )
 
 
