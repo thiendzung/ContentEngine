@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from test_controlled_delegation import _fixture, _request, isolated_session
 
 from app.modules.harness.agent_runner import (
     AgentCapability,
@@ -14,7 +15,6 @@ from app.modules.harness.agent_runner import (
 from app.modules.harness.controlled_delegation import ControlledDelegationBridge
 from app.modules.harness.models import ModelCall
 from app.modules.harness.repository_snapshot import RepositorySnapshotSpec
-from test_controlled_delegation import _fixture, _request, isolated_session
 
 
 class RepoAwareFakeRunner:
