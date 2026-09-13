@@ -29,7 +29,7 @@ Keyword Plan là công cụ con trong Research. Seed của Founder là giả thu
 
 ## Local quickstart - môi trường mới
 
-Không dùng quickstart để khởi tạo lại runtime M1 đang có. Với runtime hiện hữu, đọc `AI_context.MD` và task chính xác trước; không ghi đè `.env`, không xóa volume, không tự migrate.
+Không dùng quickstart để khởi tạo lại runtime M1 đang có. Với runtime hiện hữu, đọc `AI_context.MD` và task chính xác trước; không ghi đè `.env`, không xóa volume, không tự migrate DB vận hành.
 
 Chỉ với môi trường mới và được phép thiết lập:
 
@@ -41,7 +41,7 @@ make db-up
 make migrate
 ```
 
-Backend và frontend ở hai terminal riêng:
+Backend và frontend ở hai terminal riêng. Backend và PostgreSQL mặc định chỉ bind loopback:
 
 ```sh
 # Terminal 1
@@ -53,16 +53,45 @@ make backend-dev
 make frontend-dev
 ```
 
-Địa chỉ local: frontend `http://localhost:3000`, backend health `http://localhost:8000/health`, DB health `/health/db`, version `/version`.
+Địa chỉ local: frontend `http://localhost:3000`, backend health `http://localhost:8000/health`, DB health `/health/db`, version `/version`, operational preflight `/system/preflight`.
 
-Trước khi kiểm thử, xác nhận `TEST_DATABASE_URL` khác DB vận hành `DATABASE_URL`; test có thể sửa dữ liệu DB kiểm thử. Chỉ chạy khi môi trường đã được xác nhận an toàn:
+### Kiểm thử an toàn
+
+`make check` yêu cầu `TEST_DATABASE_URL` riêng, fail-closed nếu target thiếu/không an toàn, tự tạo database test khi cần và migrate database test trước pytest. Không trỏ `TEST_DATABASE_URL` vào DB vận hành.
 
 ```sh
-make types
 make check
 ```
 
-Thiết lập development không thay thế kiểm tra bảo mật: xác minh địa chỉ lắng nghe, không mở cổng ra internet, không đưa `.env`, API key, phiên đăng nhập hay DB dump lên GitHub. Status/preflight/resume/export gọn hơn là yêu cầu trong kế hoạch, chưa được README này tuyên bố đã có lệnh chạy.
+Có thể chạy riêng bước chuẩn bị test DB:
+
+```sh
+make test-db-prepare
+```
+
+### Preflight, backup và restore-test
+
+Preflight không in secret/connection string:
+
+```sh
+make ops-preflight
+```
+
+Backup mặc định ghi ngoài repository tại `~/.local/share/contentengine/backups`. Có thể đổi bằng `CONTENTENGINE_BACKUP_DIR`. Không commit dump/manifest vào Git:
+
+```sh
+make backup
+```
+
+Mỗi backup có custom-format PostgreSQL dump và manifest SHA-256 + fingerprint lineage. Kiểm chứng restore luôn dùng database disposable có tên chứa `restore_test`, so khớp ContentCase/ContentRun/Approval/Artifact/ContentVersion + artifact hash/lineage hash, đồng thời kiểm tra DB nguồn không đổi:
+
+```sh
+make restore-test BACKUP=/absolute/path/contentengine-...dump
+```
+
+Restore DB mặc định bị xóa sau khi kiểm tra thành công/thất bại; script hỗ trợ `--keep` khi cần điều tra thủ công.
+
+Thiết lập development không thay thế kiểm tra bảo mật: xác minh địa chỉ lắng nghe, không mở cổng ra internet, không đưa `.env`, API key, phiên đăng nhập hay DB dump lên GitHub.
 
 ## Phạm vi V1
 
