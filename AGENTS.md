@@ -65,6 +65,17 @@ Use separate operational and test databases. No destructive tests against normal
 
 Do not move the active M1 runtime into a new checkout/compose project. Optional development worktrees come later only if they reduce a measured conflict, with isolated test data. Local operation still needs network for external research/model calls.
 
+## Operational observability
+
+Operational history is part of the product. Keep safe structured logging enabled for real operation so failures, latency, retries and state transitions can be reviewed later and converted into concrete hardening work.
+
+- Local/development defaults to `DEBUG`; production must retain INFO/AUDIT-style operational logging and only enable DEBUG through an explicit operator override.
+- Logs may contain correlation IDs, ContentCase/ContentRun/StepRun/execution IDs, task/worker keys, statuses, timings, counts and error classes.
+- Never log secrets, API/session tokens, request bodies, raw prompts, raw provider payloads, private source payloads or chain-of-thought. Hash/fingerprint sensitive payloads when identity is needed.
+- Durable DB telemetry such as ContentRun/StepRun/ModelCall/ToolCall and future delegation records is canonical execution history; console logs are diagnostic evidence, not a database backup.
+- New coordinator/subagent/tool execution paths must emit enough safe telemetry to reconstruct who did what, for which stage, when, with what outcome, without inventing unavailable runtime detail.
+- Repeated observed failures should become explicit regression/backlog items; do not add speculative metrics or abstractions merely because they are easy to log.
+
 ## Testing and review
 
 Use deterministic checks, model judgement where needed and final human review. Model self-rating is not quality proof. Add the smallest failure-regression test, then run the relevant broader suite; use `docs/CHECKLIST.md`. Docs-only changes need consistency/link/diff review, not fictitious runtime test claims. Existing required CI is not bypassed.
