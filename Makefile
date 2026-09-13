@@ -25,7 +25,7 @@ migrate:
 	cd backend && .venv/bin/alembic upgrade head
 
 backend-dev:
-	cd backend && .venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && .venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --no-access-log
 
 frontend-dev:
 	cd frontend && npm run dev
