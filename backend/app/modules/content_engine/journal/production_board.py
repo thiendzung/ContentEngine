@@ -161,12 +161,12 @@ def _execution_events(
     tools: list[ToolCall],
 ) -> tuple[ProductionExecutionEvent | None, list[ProductionExecutionEvent]]:
     events: list[ProductionExecutionEvent] = []
-    for row in models:
-        if row.started_at is not None or row.completed_at is not None:
-            events.append(_model_event(row))
-    for row in tools:
-        if row.started_at is not None or row.completed_at is not None:
-            events.append(_tool_event(row))
+    for model_call in models:
+        if model_call.started_at is not None or model_call.completed_at is not None:
+            events.append(_model_event(model_call))
+    for tool_call in tools:
+        if tool_call.started_at is not None or tool_call.completed_at is not None:
+            events.append(_tool_event(tool_call))
     events.sort(key=_event_sort_key)
     active = [event for event in events if event.status == "running"]
     current_worker = active[-1] if active else None
