@@ -73,9 +73,22 @@ Operational history is part of the product. Keep safe structured logging enabled
 - Logs may contain correlation IDs, ContentCase/ContentRun/StepRun/execution IDs, task/worker keys, statuses, timings, counts and error classes.
 - Never log secrets, API/session tokens, request bodies, query strings, raw prompts, raw provider payloads, private source payloads or chain-of-thought. Hash/fingerprint sensitive payloads when identity is needed.
 - Framework/server access logs that expose raw request targets or query strings must be disabled or safely replaced when equivalent ContentEngine request telemetry exists; retain safe path/status/duration/correlation logging instead of duplicating unsafe access lines.
-- Durable DB telemetry such as ContentRun/StepRun/ModelCall/ToolCall and future delegation records is canonical execution history; console logs are diagnostic evidence, not a database backup.
+- Durable DB telemetry such as ContentRun/StepRun/ModelCall/ToolCall and delegation records is canonical execution history; console logs are diagnostic evidence, not a database backup.
 - New coordinator/subagent/tool execution paths must emit enough safe telemetry to reconstruct who did what, for which stage, when, with what outcome, without inventing unavailable runtime detail.
 - Repeated observed failures should become explicit regression/backlog items; do not add speculative metrics or abstractions merely because they are easy to log.
+
+## Controlled delegation
+
+Codex remains the coordinator, but delegation permission is deterministic application policy, not a free-form model capability.
+
+- Keep native Codex `multi_agent`, apps/plugins and unsafe tool surfaces disabled unless a separately reviewed task changes that policy.
+- A controlled child worker requires an exact completed Codex `delegation_plan` ModelCall, its immutable hashed plan Artifact and an immutable SettingsSnapshot route that all agree on task/worker/provider/model.
+- Settings must pin the approved worker runner version. Missing, disabled, ambiguous or mismatched policy fails closed.
+- Persist only structural plan fields; never persist free-form model reasoning or chain-of-thought as delegation justification.
+- Bind controlled DelegationExecution records to the exact coordinator ModelCall, decision Artifact and worker ModelCall when present.
+- Exact replay must not re-dispatch an already completed worker. Running duplicates stop; failed/cancelled work needs a new explicit attempt/dedupe identity.
+- A telemetry record alone never grants permission to execute a worker, tool, model or external side effect.
+- Real stage integration, operational settings activation, schema migration and paid/model execution each require the permissions stated by the exact task.
 
 ## Testing and review
 

@@ -29,40 +29,44 @@ Post-M1 operator work already proven on the real M1 runtime:
 - T05.21A ContentCase-centric Production Board — DONE / VERIFIED.
 - T05.21B exact deep-link, viewport fit, compact operator layout and meaningful execution labels — DONE / FINAL UX PASS.
 - T05.22A Operational Observability Baseline — DONE / VERIFIED. Local DEBUG + JSON logs, production clamp, request correlation, Uvicorn raw access-log suppression and total-log redaction were proven on real runtime.
+- T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED. Durable `DelegationExecution` hierarchy, idempotent lifecycle and Production Board projection were proven on isolated TEST DB while operational M1 stayed unchanged.
 
 The UI remains Vietnamese-first. ContentCase is the central operating object. Codex is the primary coordinator; subagent/Antigravity detail must only appear from persisted runtime truth, never UI inference.
 
-## Current exact task — T05.22B Durable Delegation Telemetry
+## Current exact task — T05.22C Controlled Codex Delegation Bridge
 
 Exact task:
 
-`docs/logs/2026-09-13-t05-22b-durable-delegation-telemetry-task.md`
+`docs/logs/2026-09-13-t05-22c-controlled-delegation-bridge-task.md`
 
-Purpose: create a durable, safe and idempotent execution hierarchy for real `Codex -> subagent/application/tool` work before any delegation capability is enabled.
+Purpose: create one bounded application-managed bridge where a completed Codex coordination decision may launch exactly one approved child agent worker under immutable settings policy and durable provenance.
 
-Required contract:
+Required control chain:
 
-1. Persist `DelegationExecution` bound to ContentRun and optional StepRun.
-2. Root delegation keeps `coordinator_key=codex`; nested delegation uses `parent_execution_id`.
-3. Worker kinds are only `subagent`, `application`, `tool`.
-4. Persist stable worker/task identity, attempt, status, timestamps, dedupe key, optional opaque external execution ID, optional result Artifact and safe error class.
-5. Do not persist prompts, request bodies, raw provider payloads, private source text, chain-of-thought or arbitrary debug payloads.
-6. Lifecycle ensure/start/complete/fail/cancel must be idempotent or fail closed on conflicting reuse.
-7. Production Board reads real delegation records and prefers a running delegation as current worker.
-8. Historical M1 has no delegation records and must remain unchanged; the UI must not invent subagents or Antigravity.
-9. T05.22B is telemetry only. It grants no execution permission.
+1. ContentRun / StepRun is fixed.
+2. Coordinator is an exact completed `ModelCall(provider=codex_cli, task=delegation_plan)`.
+3. That ModelCall must point to an immutable `delegation_plan` Artifact whose hash still matches its content.
+4. The plan may contain only structural route fields; no free-form rationale or chain-of-thought.
+5. The run's immutable SettingsSnapshot must explicitly enable the same task route and match worker kind/key/provider/model exactly.
+6. The settings route must pin the exact approved child runner version.
+7. Only `codex_cli` isolated subagent processes or `antigravity_cli` as `application/antigravity` are permitted in this slice.
+8. DelegationExecution binds coordinator ModelCall, decision Artifact and worker ModelCall.
+9. Exact replay must not re-run the worker; running/terminal conflicts fail closed.
+10. Worker preflight/version or execution failures remain durable safe telemetry.
+11. Production Board must not duplicate the linked worker ModelCall as a second event.
+12. No Journal workflow or operational settings route is automatically activated by this PR.
 
 ## Codex orchestration constraint
 
-The current `CodexCliRunner` intentionally disables `multi_agent`, apps/plugins and other unsafe tool surfaces and runs read-only/ephemeral. This directly conflicts with the desired future behavior "Codex creates subagents and controls Antigravity" if interpreted as simply toggling those features on.
+The current `CodexCliRunner` intentionally disables `multi_agent`, apps/plugins and other unsafe tool surfaces and runs read-only/ephemeral. T05.22C does not remove those disables.
 
-Do NOT remove those safety disables merely to satisfy the desired UI/model.
+"Codex creates subagents and controls Antigravity" is implemented as an application-managed, settings-authorized delegation path, not by handing Codex unrestricted native agent/tool capability.
 
 Safe sequence:
 
 - T05.22A: safe observability baseline — DONE / VERIFIED.
-- T05.22B: durable delegation telemetry contract — ACTIVE.
-- T05.22C: controlled Codex delegation bridge to approved workers/Antigravity after T05.22B, with bounded permissions and idempotency.
+- T05.22B: durable delegation telemetry contract — DONE / VERIFIED / MERGED.
+- T05.22C: controlled Codex delegation bridge — ACTIVE.
 
 The board may display a worker only when runtime telemetry exists. Missing worker telemetry must remain explicit missing state.
 
@@ -75,13 +79,14 @@ The board may display a worker only when runtime telemetry exists. Missing worke
 - Capture observed failures, timings, retries and execution lineage safely; use repeated evidence to decide hardening.
 - Safe structured operational logging remains enabled. Inspect the entire log stack, not only application-owned loggers.
 - Do not store chain-of-thought or raw sensitive debug payloads.
+- Delegation telemetry is not delegation permission. Execution requires exact immutable policy and provenance.
 
-## Near-term backlog after T05.22B
+## Near-term backlog after T05.22C
 
-- T05.22C controlled Codex delegation bridge.
-- T05.18 targeted regressions for observed M1 failure modes.
-- T05.19 real resume/replay proof.
-- T05.23 metrics baseline.
+- one explicitly selected Journal-stage delegation integration only after T05.22C bridge proof;
+- T05.18 targeted regressions for observed M1 failure modes;
+- T05.19 real resume/replay proof;
+- T05.23 metrics baseline;
 - T05.24 CE05 closeout.
 
 Do not start the next item until the current bounded slice is reviewed and merged/proven as required.

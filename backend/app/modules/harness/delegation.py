@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.observability import get_logger
 from app.modules.harness.delegation_models import DelegationExecution
-from app.modules.harness.models import Artifact, ContentRun, StepRun, utc_now
+from app.modules.harness.models import Artifact, ContentRun, ModelCall, StepRun, utc_now
 
 logger = get_logger("delegation")
 
@@ -34,6 +34,8 @@ async def ensure_delegation_execution(
     task_key: str,
     dedupe_key: str,
     coordinator_key: str = "codex",
+    coordinator_model_call_id: UUID | None = None,
+    decision_artifact_id: UUID | None = None,
     attempt: int = 1,
     external_execution_id: str | None = None,
 ) -> DelegationExecution:
@@ -58,12 +60,21 @@ async def ensure_delegation_execution(
         step_run_id=step_run_id,
         parent_execution_id=parent_execution_id,
     )
+    await _validate_control_provenance(
+        session,
+        run_id=run_id,
+        step_run_id=step_run_id,
+        coordinator_model_call_id=coordinator_model_call_id,
+        decision_artifact_id=decision_artifact_id,
+    )
 
     values = {
         "run_id": run_id,
         "step_run_id": step_run_id,
         "parent_execution_id": parent_execution_id,
         "coordinator_key": coordinator_key,
+        "coordinator_model_call_id": coordinator_model_call_id,
+        "decision_artifact_id": decision_artifact_id,
         "worker_kind": worker_kind,
         "worker_key": worker_key,
         "task_key": task_key,
@@ -95,6 +106,8 @@ async def ensure_delegation_execution(
         step_run_id=step_run_id,
         parent_execution_id=parent_execution_id,
         coordinator_key=coordinator_key,
+        coordinator_model_call_id=coordinator_model_call_id,
+        decision_artifact_id=decision_artifact_id,
         worker_kind=worker_kind,
         worker_key=worker_key,
         task_key=task_key,
@@ -103,6 +116,30 @@ async def ensure_delegation_execution(
     )
     logger.debug("delegation_reused", extra=_log_fields(existing))
     return existing
+
+
+async def bind_delegation_model_call(
+    session: AsyncSession,
+    *,
+    execution_id: UUID,
+    model_call_id: UUID,
+) -> DelegationExecution:
+    """Bind one exact worker ModelCall to a delegation without permitting rebinding."""
+
+    execution = await _locked_execution(session, execution_id)
+    call = await session.get(ModelCall, model_call_id)
+    if call is None:
+        raise DelegationStateError("worker ModelCall not found")
+    if call.run_id != execution.run_id or call.step_run_id != execution.step_run_id:
+        raise DelegationStateError("worker ModelCall does not belong to delegation")
+    if execution.worker_model_call_id is not None:
+        if execution.worker_model_call_id != model_call_id:
+            raise DelegationConflictError("delegation worker ModelCall mismatch")
+        return execution
+    execution.worker_model_call_id = model_call_id
+    await session.flush()
+    logger.debug("delegation_model_call_bound", extra=_log_fields(execution))
+    return execution
 
 
 async def start_delegation_execution(
@@ -246,6 +283,28 @@ async def _validate_parent(
         raise DelegationStateError("parent delegation belongs to another StepRun")
 
 
+async def _validate_control_provenance(
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+    step_run_id: UUID | None,
+    coordinator_model_call_id: UUID | None,
+    decision_artifact_id: UUID | None,
+) -> None:
+    if coordinator_model_call_id is None and decision_artifact_id is None:
+        return
+    if coordinator_model_call_id is None or decision_artifact_id is None:
+        raise DelegationStateError("controlled delegation provenance is incomplete")
+    call = await session.get(ModelCall, coordinator_model_call_id)
+    if call is None or call.run_id != run_id or call.step_run_id != step_run_id:
+        raise DelegationStateError("coordinator ModelCall does not belong to delegation")
+    if call.status != "completed" or call.result_artifact_id != decision_artifact_id:
+        raise DelegationStateError("coordinator ModelCall has no completed decision artifact")
+    artifact = await session.get(Artifact, decision_artifact_id)
+    if artifact is None or artifact.run_id != run_id or artifact.step_run_id != step_run_id:
+        raise DelegationStateError("decision Artifact does not belong to delegation")
+
+
 async def _validate_result_artifact(
     session: AsyncSession,
     *,
@@ -266,6 +325,8 @@ def _assert_same_identity(
     step_run_id: UUID | None,
     parent_execution_id: UUID | None,
     coordinator_key: str,
+    coordinator_model_call_id: UUID | None,
+    decision_artifact_id: UUID | None,
     worker_kind: str,
     worker_key: str,
     task_key: str,
@@ -277,6 +338,8 @@ def _assert_same_identity(
         execution.step_run_id,
         execution.parent_execution_id,
         execution.coordinator_key,
+        execution.coordinator_model_call_id,
+        execution.decision_artifact_id,
         execution.worker_kind,
         execution.worker_key,
         execution.task_key,
@@ -287,6 +350,8 @@ def _assert_same_identity(
         step_run_id,
         parent_execution_id,
         coordinator_key,
+        coordinator_model_call_id,
+        decision_artifact_id,
         worker_kind,
         worker_key,
         task_key,
@@ -313,6 +378,10 @@ def _log_fields(execution: DelegationExecution) -> dict[str, object]:
     }
     if execution.step_run_id is not None:
         fields["step_run_id"] = str(execution.step_run_id)
+    if execution.coordinator_model_call_id is not None:
+        fields["coordinator_model_call_id"] = str(execution.coordinator_model_call_id)
+    if execution.worker_model_call_id is not None:
+        fields["worker_model_call_id"] = str(execution.worker_model_call_id)
     if execution.error_class is not None:
         fields["error_class"] = execution.error_class
     return fields
@@ -326,6 +395,7 @@ def _require_nonempty(field: str, value: str) -> None:
 __all__ = [
     "DelegationConflictError",
     "DelegationStateError",
+    "bind_delegation_model_call",
     "cancel_delegation_execution",
     "complete_delegation_execution",
     "ensure_delegation_execution",
