@@ -6,9 +6,9 @@ import pytest
 
 from app.modules.system.recovery import RecoverySafetyError, validate_restore_target
 from app.modules.system.test_database import (
-    TestDatabasePreparationError,
-    validate_test_database_target,
+    TestDatabasePreparationError as DatabasePreparationError,
 )
+from app.modules.system.test_database import validate_test_database_target
 
 ROOT = Path(__file__).resolve().parents[2]
 OPERATIONAL = "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
@@ -26,14 +26,14 @@ def test_test_database_guard_accepts_dedicated_test_target() -> None:
 
 def test_test_database_guard_rejects_operational_target() -> None:
     with pytest.raises(
-        TestDatabasePreparationError,
+        DatabasePreparationError,
         match="test_database_matches_operational_database",
     ):
         validate_test_database_target(database_url=OPERATIONAL, test_database_url=OPERATIONAL)
 
 
 def test_test_database_guard_rejects_unsafe_identifier() -> None:
-    with pytest.raises(TestDatabasePreparationError, match="unsafe_test_database_name"):
+    with pytest.raises(DatabasePreparationError, match="unsafe_test_database_name"):
         validate_test_database_target(
             database_url=OPERATIONAL,
             test_database_url=(
