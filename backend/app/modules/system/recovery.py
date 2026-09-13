@@ -46,7 +46,8 @@ def validate_restore_target(*, source_url: str, restore_url: str) -> URL:
     database_name = target.database or ""
     if target.get_backend_name() != "postgresql":
         raise RecoverySafetyError("restore_database_backend_unsupported")
-    if not _SAFE_IDENTIFIER.fullmatch(database_name) or "restore_test" not in database_name.lower():
+    safe_name = _SAFE_IDENTIFIER.fullmatch(database_name)
+    if not safe_name or "restore_test" not in database_name.lower():
         raise RecoverySafetyError("unsafe_restore_database_name")
     if _identity(source) == _identity(target):
         raise RecoverySafetyError("restore_database_matches_source")
@@ -60,7 +61,8 @@ def _digest(values: list[str]) -> str:
 
 async def database_fingerprint(engine: AsyncEngine) -> DatabaseFingerprint:
     async with engine.connect() as connection:
-        case_ids = [str(value) for value in (await connection.execute(select(ContentCase.id))).scalars()]
+        case_result = await connection.execute(select(ContentCase.id))
+        case_ids = [str(value) for value in case_result.scalars()]
         run_rows = list(
             (
                 await connection.execute(
