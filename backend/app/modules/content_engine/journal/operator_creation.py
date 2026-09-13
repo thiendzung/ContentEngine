@@ -1,4 +1,4 @@
-"""Idempotent operator receipt for Journal case creation."""
+"""Idempotent operator receipt for Journal case/run creation."""
 
 from __future__ import annotations
 
@@ -11,18 +11,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.models import OperatorCommand
+from app.modules.content_engine.journal.operator_bootstrap import (
+    OperatorBootstrapError,
+    ensure_operator_bootstrap_run,
+)
 from app.modules.content_engine.journal.operator_control import (
     OperatorControlError,
     OperatorState,
     create_or_reuse_journal_case,
     get_operator_state,
 )
-from app.modules.content_engine.models import LocaleVariant
+from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
 
 
 class OperatorCreateResult(BaseModel):
     command_id: UUID
     content_case_id: UUID
+    bootstrap_run_id: UUID
     source_locale_variant_id: UUID
     reused_case: bool
     replayed: bool
@@ -36,6 +41,31 @@ def _request_hash(*, opportunity_id: UUID, version: int) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+async def _source_variant_for_case(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+) -> LocaleVariant:
+    content_case = await session.get(ContentCase, content_case_id)
+    if content_case is None:
+        raise OperatorControlError("operator_create_receipt_case_missing")
+    opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
+    if opportunity is None:
+        raise OperatorControlError("operator_create_receipt_opportunity_missing")
+    variant = await session.scalar(
+        select(LocaleVariant)
+        .where(
+            LocaleVariant.content_case_id == content_case.id,
+            LocaleVariant.locale == opportunity.locale,
+        )
+        .order_by(LocaleVariant.created_at, LocaleVariant.id)
+        .limit(1)
+    )
+    if variant is None:
+        raise OperatorControlError("operator_create_receipt_variant_missing")
+    return variant
 
 
 async def create_journal_case_with_receipt(
@@ -59,18 +89,17 @@ async def create_journal_case_with_receipt(
     if existing is not None:
         if existing.intent != "create" or existing.request_hash != request_hash:
             raise OperatorControlError("operator_idempotency_conflict")
-        variant = await session.scalar(
-            select(LocaleVariant)
-            .where(LocaleVariant.content_case_id == existing.content_case_id)
-            .order_by(LocaleVariant.created_at, LocaleVariant.id)
-            .limit(1)
+        if existing.run_id is None:
+            raise OperatorControlError("operator_create_receipt_run_missing")
+        variant = await _source_variant_for_case(
+            session,
+            content_case_id=existing.content_case_id,
         )
-        if variant is None:
-            raise OperatorControlError("operator_create_receipt_variant_missing")
         state = await get_operator_state(session, content_case_id=existing.content_case_id)
         return OperatorCreateResult(
             command_id=existing.id,
             content_case_id=existing.content_case_id,
+            bootstrap_run_id=existing.run_id,
             source_locale_variant_id=variant.id,
             reused_case=True,
             replayed=True,
@@ -82,17 +111,26 @@ async def create_journal_case_with_receipt(
         content_opportunity_id=content_opportunity_id,
         expected_opportunity_version=expected_opportunity_version,
     )
-    state = created.state
+    try:
+        bootstrap_run, reused_run = await ensure_operator_bootstrap_run(
+            session,
+            content_case_id=created.content_case_id,
+            locale_variant_id=created.source_locale_variant_id,
+        )
+    except OperatorBootstrapError as exc:
+        raise OperatorControlError(exc.code) from exc
+
+    state = await get_operator_state(session, content_case_id=created.content_case_id)
     command = OperatorCommand(
         content_case_id=created.content_case_id,
-        run_id=None,
+        run_id=bootstrap_run.id,
         step_run_id=None,
         job_id=None,
         intent="create",
         idempotency_key=key,
         request_hash=request_hash,
         expected_state_version=state.state_version,
-        resolved_action_key="create_journal_case",
+        resolved_action_key="create_journal_case_run",
         status="completed",
         error_code=None,
         actor_id=actor_id,
@@ -104,8 +142,9 @@ async def create_journal_case_with_receipt(
     return OperatorCreateResult(
         command_id=command.id,
         content_case_id=created.content_case_id,
+        bootstrap_run_id=bootstrap_run.id,
         source_locale_variant_id=created.source_locale_variant_id,
-        reused_case=created.reused,
+        reused_case=created.reused or reused_run,
         replayed=False,
         state=state,
     )
