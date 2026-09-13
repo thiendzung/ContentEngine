@@ -1,22 +1,27 @@
 """Fail-closed operator control plane for Journal production.
 
 The service exposes operator intent, never arbitrary internal stage execution. Long-running
-work is represented by the existing durable Job queue only after a real ContentRun and
-StepRun have been resolved from persisted state.
+work is represented by the durable Job queue only after a real ContentRun and StepRun have
+been resolved from persisted state.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Literal
+from datetime import datetime
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.models import AngleApproval, OperatorCommand, OutlineApproval
+from app.modules.content_engine.journal.models import (
+    AngleApproval,
+    OperatorCommand,
+    OutlineApproval,
+)
 from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
@@ -66,7 +71,9 @@ _BLOCKER_MESSAGES = {
     "operator_unknown_human_gate": "Workflow đang chờ duyệt ở một cổng chưa được ánh xạ.",
     "operator_run_failed": "Lần chạy gần nhất đã thất bại và chưa có đường phục hồi an toàn.",
     "operator_step_failed": "Bước gần nhất đã thất bại và chưa thể thử lại an toàn.",
-    "operator_job_failed": "Tác vụ nền gần nhất thất bại; có thể thử lại nếu trạng thái còn hợp lệ.",
+    "operator_job_failed": (
+        "Tác vụ nền gần nhất thất bại; có thể thử lại nếu trạng thái còn hợp lệ."
+    ),
     "operator_preflight_blocked": "Hệ thống chưa sẵn sàng để nhận tác vụ thực thi.",
     "operator_state_stale": "Trạng thái đã thay đổi. Hãy tải lại trước khi thao tác.",
     "operator_intent_not_allowed": "Thao tác này không hợp lệ ở trạng thái hiện tại.",
@@ -131,8 +138,8 @@ def _stable_hash(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _timestamp(value: object) -> str | None:
-    return value.isoformat() if hasattr(value, "isoformat") else None
+def _timestamp(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
 
 
 def _message(code: str | None) -> str | None:
@@ -218,7 +225,8 @@ async def create_or_reuse_journal_case(
 
 
 async def _case_rows(
-    session: AsyncSession, content_case_id: UUID
+    session: AsyncSession,
+    content_case_id: UUID,
 ) -> tuple[ContentCase, list[LocaleVariant], list[ContentRun]]:
     content_case = await session.get(ContentCase, content_case_id)
     if content_case is None or content_case.content_type != "journal":
@@ -276,7 +284,8 @@ async def _latest_job(session: AsyncSession, step: StepRun | None) -> Job | None
 
 
 async def _quality_summary(
-    session: AsyncSession, run: ContentRun | None
+    session: AsyncSession,
+    run: ContentRun | None,
 ) -> OperatorQualitySummary | None:
     if run is None:
         return None
@@ -309,7 +318,46 @@ async def _approved_version_count(session: AsyncSession, content_case_id: UUID) 
     return int(value or 0)
 
 
-async def _state_snapshot(session: AsyncSession, content_case_id: UUID) -> tuple[
+async def _approval_ids(
+    session: AsyncSession,
+    run_ids: list[UUID],
+) -> tuple[list[AngleApproval], list[OutlineApproval], list[Approval]]:
+    if not run_ids:
+        return [], [], []
+    angles = list(
+        (
+            await session.scalars(
+                select(AngleApproval)
+                .where(AngleApproval.run_id.in_(run_ids))
+                .order_by(AngleApproval.created_at, AngleApproval.id)
+            )
+        ).all()
+    )
+    outlines = list(
+        (
+            await session.scalars(
+                select(OutlineApproval)
+                .where(OutlineApproval.run_id.in_(run_ids))
+                .order_by(OutlineApproval.created_at, OutlineApproval.id)
+            )
+        ).all()
+    )
+    finals = list(
+        (
+            await session.scalars(
+                select(Approval)
+                .where(Approval.run_id.in_(run_ids), Approval.step_key == "final_review")
+                .order_by(Approval.created_at, Approval.id)
+            )
+        ).all()
+    )
+    return angles, outlines, finals
+
+
+async def _state_snapshot(
+    session: AsyncSession,
+    content_case_id: UUID,
+) -> tuple[
     ContentCase,
     list[LocaleVariant],
     list[ContentRun],
@@ -322,37 +370,7 @@ async def _state_snapshot(session: AsyncSession, content_case_id: UUID) -> tuple
     latest_run = runs[-1] if runs else None
     step = await _latest_step(session, latest_run)
     job = await _latest_job(session, step)
-
-    angle_approvals = list(
-        (
-            await session.scalars(
-                select(AngleApproval)
-                .where(AngleApproval.run_id.in_([row.id for row in runs]) if runs else False)
-                .order_by(AngleApproval.created_at, AngleApproval.id)
-            )
-        ).all()
-    ) if runs else []
-    outline_approvals = list(
-        (
-            await session.scalars(
-                select(OutlineApproval)
-                .where(OutlineApproval.run_id.in_([row.id for row in runs]) if runs else False)
-                .order_by(OutlineApproval.created_at, OutlineApproval.id)
-            )
-        ).all()
-    ) if runs else []
-    final_approvals = list(
-        (
-            await session.scalars(
-                select(Approval)
-                .where(
-                    Approval.run_id.in_([row.id for row in runs]) if runs else False,
-                    Approval.step_key == "final_review",
-                )
-                .order_by(Approval.created_at, Approval.id)
-            )
-        ).all()
-    ) if runs else []
+    angles, outlines, finals = await _approval_ids(session, [row.id for row in runs])
 
     payload = {
         "case": {
@@ -399,27 +417,24 @@ async def _state_snapshot(session: AsyncSession, content_case_id: UUID) -> tuple
             "lease_expires_at": _timestamp(job.lease_expires_at),
             "updated_at": _timestamp(job.updated_at),
         },
-        "angle_approvals": [str(row.id) for row in angle_approvals],
-        "outline_approvals": [str(row.id) for row in outline_approvals],
+        "angle_approvals": [str(row.id) for row in angles],
+        "outline_approvals": [str(row.id) for row in outlines],
         "final_approvals": [
-            {"id": str(row.id), "decision": row.decision} for row in final_approvals
+            {"id": str(row.id), "decision": row.decision} for row in finals
         ],
     }
     return content_case, variants, runs, latest_run, step, job, _stable_hash(payload)
 
 
 async def get_operator_state(
-    session: AsyncSession, *, content_case_id: UUID
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
 ) -> OperatorState:
-    (
-        _,
-        variants,
-        _,
-        run,
-        step,
-        job,
-        version,
-    ) = await _state_snapshot(session, content_case_id)
+    _, variants, _, run, step, job, version = await _state_snapshot(
+        session,
+        content_case_id,
+    )
     quality = await _quality_summary(session, run)
     approved_versions = await _approved_version_count(session, content_case_id)
 
@@ -432,7 +447,6 @@ async def get_operator_state(
             quality_summary=quality,
             last_checkpoint="Đã có ContentVersion được duyệt cho mọi locale hiện có.",
         )
-
     if run is None:
         code = "operator_pipeline_start_not_wired"
         return OperatorState(
@@ -472,7 +486,8 @@ async def get_operator_state(
             blocker_message=_message(code),
         )
 
-    phase = _PHASE_LABELS.get(step.step_key if step else (run.current_step or ""), "Đang xử lý")
+    phase_key = step.step_key if step else (run.current_step or "")
+    phase = _PHASE_LABELS.get(phase_key, "Đang xử lý")
     if job is not None and job.status == "queued":
         return OperatorState(
             content_case_id=content_case_id,
@@ -574,7 +589,12 @@ async def get_operator_state(
     )
 
 
-def _request_hash(*, content_case_id: UUID, intent: OperatorIntent, state_version: str) -> str:
+def _request_hash(
+    *,
+    content_case_id: UUID,
+    intent: OperatorIntent,
+    state_version: str,
+) -> str:
     return _stable_hash(
         {
             "content_case_id": str(content_case_id),
@@ -612,7 +632,7 @@ async def submit_operator_command(
         return OperatorCommandResult(
             command_id=existing.id,
             content_case_id=existing.content_case_id,
-            intent=existing.intent,  # type: ignore[arg-type]
+            intent=cast(OperatorIntent, existing.intent),
             status=existing.status,
             state_before=existing.state_before,
             state_after=existing.state_after,
