@@ -4,7 +4,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,19 @@ from app.core.database import get_db
 from app.modules.content_engine.journal.context import (
     JournalContextError,
     build_journal_context,
+)
+from app.modules.content_engine.journal.operator_control import (
+    CreatedJournalCase,
+    OperatorCommandResult,
+    OperatorControlError,
+    OperatorState,
+    create_or_reuse_journal_case,
+    get_operator_state,
+    submit_operator_command,
+)
+from app.modules.content_engine.journal.operator_decisions import (
+    OperatorDecisionResult,
+    submit_operator_decision,
 )
 from app.modules.content_engine.journal.production_board import (
     ProductionBoardCase,
@@ -32,6 +45,7 @@ from app.modules.content_engine.journal.review_console import (
     ReviewConsoleError,
 )
 from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
+from app.modules.system.preflight import build_operational_preflight
 
 router = APIRouter(prefix="/journal", tags=["journal"])
 
@@ -61,6 +75,59 @@ class JournalCaseResponse(BaseModel):
 class ReviewDecisionRequest(BaseModel):
     decision: Literal["approved", "changes_requested", "rejected"]
     comment: str | None = None
+
+
+class OperatorCreateCaseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content_opportunity_id: UUID
+    expected_opportunity_version: int = Field(gt=0)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class OperatorCommandRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    intent: Literal["start", "continue", "resume", "retry", "cancel"]
+    expected_state_version: str = Field(min_length=64, max_length=64)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class OperatorDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    scope: Literal["angle", "outline", "final"]
+    decision: Literal["approved", "changes_requested", "rejected"]
+    expected_state_version: str = Field(min_length=64, max_length=64)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+    artifact_id: UUID | None = None
+    artifact_version: int | None = Field(default=None, gt=0)
+    artifact_hash: str | None = Field(default=None, min_length=64, max_length=64)
+    selected_angle_id: str | None = None
+    selected_candidate_hash: str | None = Field(default=None, min_length=64, max_length=64)
+    locale_variant_id: UUID | None = None
+    comment: str | None = None
+
+
+def _operator_http_error(exc: OperatorControlError) -> HTTPException:
+    not_found = {"operator_case_not_found", "operator_opportunity_not_found"}
+    invalid = {
+        "operator_idempotency_key_invalid",
+        "operator_state_version_invalid",
+        "operator_angle_binding_required",
+        "operator_outline_binding_required",
+        "operator_final_locale_required",
+    }
+    if exc.code in not_found:
+        status_code = 404
+    elif exc.code in invalid:
+        status_code = 422
+    else:
+        status_code = 409
+    return HTTPException(
+        status_code=status_code,
+        detail={"code": exc.code, "message": exc.detail},
+    )
 
 
 @router.get("/content-cases", response_model=list[JournalCaseResponse])
@@ -112,6 +179,96 @@ async def list_journal_production_board(
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> list[ProductionBoardCase]:
     return await list_production_board_cases(session)
+
+
+@router.get("/operator/preflight", response_model=dict[str, object])
+async def get_journal_operator_preflight() -> dict[str, object]:
+    """Project the canonical OPS-01 preflight into the Journal operator surface."""
+    return await build_operational_preflight()
+
+
+@router.post("/operator/cases", response_model=CreatedJournalCase)
+async def create_journal_operator_case(
+    payload: OperatorCreateCaseRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CreatedJournalCase:
+    # Creation is naturally idempotent through the selected opportunity binding. The key is
+    # accepted at the API boundary so PR5 can use one uniform mutation envelope.
+    del payload.idempotency_key
+    try:
+        async with session.begin():
+            return await create_or_reuse_journal_case(
+                session,
+                content_opportunity_id=payload.content_opportunity_id,
+                expected_opportunity_version=payload.expected_opportunity_version,
+            )
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
+
+
+@router.get("/operator/cases/{content_case_id}", response_model=OperatorState)
+async def get_journal_operator_case(
+    content_case_id: UUID,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OperatorState:
+    try:
+        return await get_operator_state(session, content_case_id=content_case_id)
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
+
+
+@router.post(
+    "/operator/cases/{content_case_id}/commands",
+    response_model=OperatorCommandResult,
+)
+async def command_journal_operator_case(
+    content_case_id: UUID,
+    payload: OperatorCommandRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OperatorCommandResult:
+    try:
+        async with session.begin():
+            return await submit_operator_command(
+                session,
+                content_case_id=content_case_id,
+                intent=payload.intent,
+                expected_state_version=payload.expected_state_version,
+                idempotency_key=payload.idempotency_key,
+                actor_id="founder",
+            )
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
+
+
+@router.post(
+    "/operator/cases/{content_case_id}/decisions",
+    response_model=OperatorDecisionResult,
+)
+async def decide_journal_operator_case(
+    content_case_id: UUID,
+    payload: OperatorDecisionRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OperatorDecisionResult:
+    try:
+        async with session.begin():
+            return await submit_operator_decision(
+                session,
+                content_case_id=content_case_id,
+                scope=payload.scope,
+                decision=payload.decision,
+                expected_state_version=payload.expected_state_version,
+                idempotency_key=payload.idempotency_key,
+                artifact_id=payload.artifact_id,
+                artifact_version=payload.artifact_version,
+                artifact_hash=payload.artifact_hash,
+                selected_angle_id=payload.selected_angle_id,
+                selected_candidate_hash=payload.selected_candidate_hash,
+                locale_variant_id=payload.locale_variant_id,
+                comment=payload.comment,
+                actor_id="founder",
+            )
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
 
 
 @router.get("/review-cases", response_model=list[ReviewCaseSummary])
