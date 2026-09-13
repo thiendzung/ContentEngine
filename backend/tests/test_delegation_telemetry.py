@@ -17,7 +17,7 @@ from app.modules.harness.delegation import (
     start_delegation_execution,
 )
 from app.modules.harness.delegation_models import DelegationExecution
-from app.modules.harness.models import Artifact, ContentRun, StepRun
+from app.modules.harness.models import ContentRun, StepRun
 
 
 async def _active_run(session, fixture, locale: str = "en") -> tuple[ContentRun, StepRun]:
