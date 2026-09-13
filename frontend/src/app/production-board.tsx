@@ -52,6 +52,7 @@ function groupLabel(value: string): string {
 }
 
 function stageLabel(value: string): string {
+  const normalized = value.toLowerCase();
   const labels: Record<string, string> = {
     intake: "Tiếp nhận",
     angle: "Chọn góc tiếp cận",
@@ -73,7 +74,32 @@ function stageLabel(value: string): string {
     published: "Đã xuất bản",
     data_conflict: "Xử lý dữ liệu không nhất quán",
   };
-  return labels[value] ?? "Đang xử lý nội dung";
+  if (labels[normalized]) return labels[normalized];
+
+  if (normalized.includes("angle")) return "Tạo góc tiếp cận";
+  if (normalized.includes("outline")) return "Lập dàn ý";
+  if (normalized.includes("review_revise")) {
+    if (normalized.includes("_vi")) return "Rà soát tiếng Việt";
+    if (normalized.includes("_en")) return "Rà soát tiếng Anh";
+    return "Rà soát & chỉnh sửa";
+  }
+  if (normalized.includes("writer")) {
+    if (normalized.includes("_vi")) return "Viết tiếng Việt";
+    if (normalized.includes("_en")) return "Viết tiếng Anh";
+    return "Viết nội dung";
+  }
+  if (normalized.includes("assertion") || normalized.includes("audit")) {
+    return "Kiểm tra khẳng định";
+  }
+  if (normalized.includes("source_copy") || normalized.includes("source-copy")) {
+    return "Kiểm tra trùng nguồn";
+  }
+  if (normalized.includes("cleanup")) return "Dọn lỗi sau kiểm tra";
+  if (normalized.includes("package")) return "Đóng gói vận hành";
+  if (normalized.includes("approval") || normalized.includes("final_review")) {
+    return "Duyệt nội dung cuối";
+  }
+  return "Tác vụ nội dung";
 }
 
 function actionLabel(value: string): string {
@@ -104,15 +130,15 @@ function workerLabel(worker: ExecutionEvent | null): string {
       ? "Antigravity"
       : "Công cụ chuyên trách";
   }
-  if (worker.provider === "codex_cli") return "Codex · tác vụ chuyên trách";
-  return "Tác vụ mô hình";
+  if (worker.provider === "codex_cli") return `Codex · ${stageLabel(worker.role)}`;
+  return `Tác vụ mô hình · ${stageLabel(worker.role)}`;
 }
 
 function eventLabel(event: ExecutionEvent): string {
   if (event.kind === "tool") {
     return event.technical_name?.toLowerCase().includes("antigravity")
-      ? "Antigravity · công cụ thực thi"
-      : "Công cụ thực thi";
+      ? `Antigravity · ${stageLabel(event.role)}`
+      : `Công cụ · ${stageLabel(event.role)}`;
   }
   if (event.provider === "codex_cli") return `Codex · ${stageLabel(event.role)}`;
   return `Tác vụ mô hình · ${stageLabel(event.role)}`;
@@ -209,6 +235,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                     key={item.id}
                   >
                     <button
+                      aria-label={`Mở bài ${item.title}`}
                       className="production-row-main"
                       onClick={() => onSelect(item.id)}
                       type="button"
