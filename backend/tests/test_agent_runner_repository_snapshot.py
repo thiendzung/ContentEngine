@@ -12,7 +12,11 @@ from app.modules.harness.agent_runner import (
     AgentCapability,
     AgentRunRequest,
     AgentRunnerError,
-    CodexCliRunner,
+)
+from app.modules.harness.repo_aware_agent_runner import (
+    CODEX_REPOSITORY_DISABLED_FEATURES,
+    RepoAwareAntigravityCliRunner,
+    RepoAwareCodexCliRunner,
 )
 from app.modules.harness.repository_snapshot import RepositorySnapshotSpec
 
@@ -69,7 +73,7 @@ class FakeProcess:
 
 
 @pytest.mark.asyncio
-async def test_codex_runner_executes_inside_exact_read_only_tracked_snapshot(
+async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -78,7 +82,7 @@ async def test_codex_runner_executes_inside_exact_read_only_tracked_snapshot(
     (root / "private-local.txt").write_text("private\n", encoding="utf-8")
     (root / "AGENTS.md").write_text("dirty working tree\n", encoding="utf-8")
 
-    runner = CodexCliRunner()
+    runner = RepoAwareCodexCliRunner()
 
     async def fake_preflight() -> AgentCapability:
         return AgentCapability(
@@ -94,6 +98,7 @@ async def test_codex_runner_executes_inside_exact_read_only_tracked_snapshot(
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
         cwd = Path(kwargs["cwd"])
         seen["cwd"] = cwd
+        seen["argv"] = argv
         seen["tracked"] = (cwd / "AGENTS.md").read_text(encoding="utf-8")
         seen["backend"] = (cwd / "backend" / "README.md").read_text(encoding="utf-8")
         seen["env_exists"] = (cwd / ".env").exists()
@@ -130,7 +135,30 @@ async def test_codex_runner_executes_inside_exact_read_only_tracked_snapshot(
     assert seen["private_exists"] is False
     assert seen["git_exists"] is False
     assert seen["cwd"] != root
-    assert _git(root, "status", "--porcelain") == " M AGENTS.md\n?? .env\n?? private-local.txt"
+
+    argv = seen["argv"]
+    assert isinstance(argv, tuple)
+    assert "--sandbox" not in argv
+    assert ("--disable", "shell_tool") not in zip(argv, argv[1:], strict=True)
+    for feature in CODEX_REPOSITORY_DISABLED_FEATURES:
+        assert ("--disable", feature) in zip(argv, argv[1:], strict=True)
+    overrides = [argv[index + 1] for index, part in enumerate(argv[:-1]) if part == "-c"]
+    assert 'approval_policy="never"' in overrides
+    assert 'default_permissions="content_engine_repository"' in overrides
+    filesystem = next(
+        value
+        for value in overrides
+        if value.startswith("permissions.content_engine_repository.filesystem=")
+    )
+    assert '":root"="deny"' in filesystem
+    assert '":minimal"="read"' in filesystem
+    assert f'{json.dumps(str(seen["cwd"]))}="read"' in filesystem
+    assert "permissions.content_engine_repository.network.enabled=false" in overrides
+    assert set(_git(root, "status", "--porcelain").splitlines()) == {
+        " M AGENTS.md",
+        "?? .env",
+        "?? private-local.txt",
+    }
 
 
 @pytest.mark.asyncio
@@ -139,7 +167,7 @@ async def test_invalid_repository_revision_fails_before_model_process(
     tmp_path: Path,
 ) -> None:
     root, _revision = _repo(tmp_path)
-    runner = CodexCliRunner()
+    runner = RepoAwareCodexCliRunner()
 
     async def fake_preflight() -> AgentCapability:
         return AgentCapability(
@@ -178,3 +206,27 @@ async def test_invalid_repository_revision_fails_before_model_process(
         )
 
     assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_antigravity_repository_access_fails_closed_until_isolation_is_proven(
+    tmp_path: Path,
+) -> None:
+    root, revision = _repo(tmp_path)
+    runner = RepoAwareAntigravityCliRunner()
+
+    with pytest.raises(AgentRunnerError, match="agent_repository_isolation_unproven"):
+        await runner.run(
+            AgentRunRequest(
+                provider="antigravity_cli",
+                model="test-model",
+                prompt="Return JSON.",
+                structured_output_schema={"type": "object"},
+                working_context={"safe_ref": "fixture"},
+                timeout=1.0,
+                repository=RepositorySnapshotSpec(
+                    repository_root=str(root),
+                    revision=revision,
+                ),
+            )
+        )
