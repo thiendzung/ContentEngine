@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import "./globals.css";
 
@@ -12,8 +13,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="vi">
       <body>
         <nav className="global-nav" aria-label="Điều hướng ContentEngine">
-          <a href="/production">Sản xuất</a>
-          <a href="/">Duyệt bài</a>
+          <Link href="/production">Sản xuất</Link>
+          <Link href="/">Duyệt bài</Link>
         </nav>
         {children}
       </body>
