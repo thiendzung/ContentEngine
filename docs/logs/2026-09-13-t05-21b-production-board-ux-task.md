@@ -67,9 +67,9 @@ Agent Local cũng báo task doc không tồn tại, nhưng GitHub branch đã x�
 
 ## Final CI
 
-Final head: `7b617015d35e866ddbbae7150d47f62615c8cd5f`.
+Code + docs final head trước verification rerun: `165d085b711f180284297f5eb7f9be4b918feda0`.
 
-CI #648 PASS toàn bộ: backend lint/types/migration/tests, OpenAPI, frontend type generation/lint/typecheck/build.
+CI PASS toàn bộ: backend lint/types/migration/tests, OpenAPI, frontend type generation/lint/typecheck/build.
 
 ## Final merge gate
 
