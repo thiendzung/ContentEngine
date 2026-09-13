@@ -92,7 +92,29 @@ def human_gate(run: ContentRun) -> str | None:
     return None
 
 
-def state_version(prepared: PreparedStage) -> str:
+def retry_marker(step: StepRun) -> tuple[int, str] | None:
+    error_json = step.error_json
+    if not isinstance(error_json, dict):
+        return None
+    raw = error_json.get("orchestration")
+    if not isinstance(raw, dict) or raw.get("status") != "retry_pending":
+        return None
+    attempt = raw.get("last_attempt")
+    dedupe_key = raw.get("last_dedupe_key")
+    if (
+        not isinstance(attempt, int)
+        or isinstance(attempt, bool)
+        or attempt < 1
+        or not isinstance(dedupe_key, str)
+        or not dedupe_key
+    ):
+        raise ReviewReviseOrchestrationError("review_revise_retry_marker_invalid")
+    return attempt, dedupe_key
+
+
+def coordinator_state_version(prepared: PreparedStage) -> str:
+    """Hash stable stage authority used by the structural coordinator decision."""
+
     review_input = prepared.review_input
     run = prepared.run
     step = prepared.step
@@ -120,24 +142,25 @@ def state_version(prepared: PreparedStage) -> str:
     )
 
 
-def retry_marker(step: StepRun) -> tuple[int, str] | None:
-    error_json = step.error_json
-    if not isinstance(error_json, dict):
-        return None
-    raw = error_json.get("orchestration")
-    if not isinstance(raw, dict) or raw.get("status") != "retry_pending":
-        return None
-    attempt = raw.get("last_attempt")
-    dedupe_key = raw.get("last_dedupe_key")
-    if (
-        not isinstance(attempt, int)
-        or isinstance(attempt, bool)
-        or attempt < 1
-        or not isinstance(dedupe_key, str)
-        or not dedupe_key
-    ):
-        raise ReviewReviseOrchestrationError("review_revise_retry_marker_invalid")
-    return attempt, dedupe_key
+def state_version(prepared: PreparedStage) -> str:
+    """Hash current durable orchestration state, including retry identity."""
+
+    marker = retry_marker(prepared.step)
+    retry_state: dict[str, object] | None = None
+    if marker is not None:
+        last_attempt, last_dedupe_key = marker
+        retry_state = {
+            "status": "retry_pending",
+            "last_attempt": last_attempt,
+            "last_dedupe_key": last_dedupe_key,
+            "next_attempt": last_attempt + 1,
+        }
+    return stable_hash(
+        {
+            "coordinator_state_version": coordinator_state_version(prepared),
+            "retry_state": retry_state,
+        }
+    )
 
 
 async def delegation_attempts(

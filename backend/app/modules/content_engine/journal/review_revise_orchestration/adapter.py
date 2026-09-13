@@ -76,6 +76,7 @@ from .state import (
     ReviewReviseEnResult,
     ReviewReviseOrchestrationError,
     completed_output_artifact_id,
+    coordinator_state_version,
     expected_attempt,
     find_manifest,
     human_gate,
@@ -134,13 +135,19 @@ def _decimal_usage(usage: dict[str, object] | None, key: str) -> Decimal | None:
         return None
 
 
-def _runner_metadata(result: AgentRunResult, *, observed_state: str) -> dict[str, object]:
+def _runner_metadata(
+    result: AgentRunResult,
+    *,
+    observed_state: str,
+    coordinator_state: str,
+) -> dict[str, object]:
     metadata: dict[str, object] = {
         "runner_version": result.runner_version,
         "raw_output_hash": result.raw_output_hash,
         "duration_ms": result.duration_ms,
         "orchestration_action_key": REVIEW_REVISE_EN_TASK_KEY,
         "orchestration_state_version": observed_state,
+        "orchestration_coordinator_state_version": coordinator_state,
     }
     if result.session_id is not None:
         metadata["session_id"] = result.session_id
@@ -233,7 +240,7 @@ class ReviewReviseEnOrchestrationAdapter:
         self,
         prepared: PreparedStage,
         *,
-        observed_state: str,
+        coordinator_state: str,
     ) -> ModelCall | None:
         calls = list(
             (
@@ -263,7 +270,10 @@ class ReviewReviseEnOrchestrationAdapter:
             return None
         call = completed[0]
         metadata = call.runtime_metadata_json or {}
-        if metadata.get("orchestration_state_version") != observed_state:
+        bound_state = metadata.get("orchestration_coordinator_state_version")
+        if bound_state is None:
+            bound_state = metadata.get("orchestration_state_version")
+        if bound_state != coordinator_state:
             raise ReviewReviseOrchestrationError("review_revise_coordinator_state_stale")
         return call
 
@@ -272,6 +282,7 @@ class ReviewReviseEnOrchestrationAdapter:
         prepared: PreparedStage,
         *,
         observed_state: str,
+        coordinator_state: str,
     ) -> ModelCall:
         route = self._authorized_route(prepared)
         try:
@@ -314,6 +325,7 @@ class ReviewReviseEnOrchestrationAdapter:
             working_context={
                 "orchestration": {
                     "state_version": observed_state,
+                    "coordinator_state_version": coordinator_state,
                     "content_case_id": str(prepared.run.content_case_id),
                     "content_run_id": str(prepared.run.id),
                     "locale_variant_id": str(prepared.run.locale_variant_id),
@@ -340,6 +352,7 @@ class ReviewReviseEnOrchestrationAdapter:
                 runtime_metadata={
                     "orchestration_action_key": REVIEW_REVISE_EN_TASK_KEY,
                     "orchestration_state_version": observed_state,
+                    "orchestration_coordinator_state_version": coordinator_state,
                     "runner_error": exc.code,
                 },
             )
@@ -372,7 +385,11 @@ class ReviewReviseEnOrchestrationAdapter:
                 self._session,
                 call_id=call.id,
                 error_class=exc.code,
-                runtime_metadata=_runner_metadata(result, observed_state=observed_state),
+                runtime_metadata=_runner_metadata(
+                    result,
+                    observed_state=observed_state,
+                    coordinator_state=coordinator_state,
+                ),
             )
             raise ReviewReviseOrchestrationError(exc.code) from exc
         await complete_model_call(
@@ -392,7 +409,11 @@ class ReviewReviseEnOrchestrationAdapter:
                 finish_reason="stop",
             ),
             result_artifact_id=artifact.id,
-            runtime_metadata=_runner_metadata(result, observed_state=observed_state),
+            runtime_metadata=_runner_metadata(
+                result,
+                observed_state=observed_state,
+                coordinator_state=coordinator_state,
+            ),
         )
         return call
 
@@ -401,21 +422,30 @@ class ReviewReviseEnOrchestrationAdapter:
         prepared: PreparedStage,
         *,
         observed_state: str,
+        coordinator_state: str,
     ) -> ModelCall:
         existing = await self._completed_coordinator_call(
             prepared,
-            observed_state=observed_state,
+            coordinator_state=coordinator_state,
         )
         if existing is not None:
             return existing
-        return await self._create_coordinator_call(prepared, observed_state=observed_state)
+        return await self._create_coordinator_call(
+            prepared,
+            observed_state=observed_state,
+            coordinator_state=coordinator_state,
+        )
 
     async def plan(self, observation: OrchestrationObservation) -> OrchestrationPlan:
         prepared = await self._reload()
         current = state_version(prepared)
         if current != observation.state_version:
             raise ReviewReviseOrchestrationError("review_revise_observation_stale")
-        coordinator = await self._coordinator_call(prepared, observed_state=current)
+        coordinator = await self._coordinator_call(
+            prepared,
+            observed_state=current,
+            coordinator_state=coordinator_state_version(prepared),
+        )
         if coordinator.result_artifact_id is None:
             raise ReviewReviseOrchestrationError("review_revise_coordinator_plan_missing")
         artifact = await self._session.get(Artifact, coordinator.result_artifact_id)
@@ -481,7 +511,7 @@ class ReviewReviseEnOrchestrationAdapter:
             )
         coordinator = await self._completed_coordinator_call(
             prepared,
-            observed_state=observation.state_version,
+            coordinator_state=coordinator_state_version(prepared),
         )
         if coordinator is None or coordinator.result_artifact_id is None:
             return OrchestrationPolicyDecision(
@@ -527,10 +557,9 @@ class ReviewReviseEnOrchestrationAdapter:
 
     async def execute(self, plan: OrchestrationPlan) -> _ExecutionResult:
         prepared = await self._reload()
-        current = state_version(prepared)
         coordinator = await self._completed_coordinator_call(
             prepared,
-            observed_state=current,
+            coordinator_state=coordinator_state_version(prepared),
         )
         if coordinator is None:
             return _ExecutionResult(None, "review_revise_coordinator_plan_missing")

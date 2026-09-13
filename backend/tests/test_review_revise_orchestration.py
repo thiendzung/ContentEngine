@@ -257,10 +257,10 @@ async def test_review_revise_en_retry_uses_new_attempt_and_dedupe_key(
 
         assert result.orchestration.final_outcome == OrchestrationOutcome.COMPLETE
         assert [cycle.attempt for cycle in result.orchestration.cycles] == [1, 2]
-        assert (
-            result.orchestration.cycles[0].dedupe_key
-            != result.orchestration.cycles[1].dedupe_key
-        )
+        first_dedupe = result.orchestration.cycles[0].dedupe_key
+        second_dedupe = result.orchestration.cycles[1].dedupe_key
+        assert first_dedupe != second_dedupe
+        assert first_dedupe.split(":")[3] != second_dedupe.split(":")[3]
         assert runner.coordinator_calls == 1
         assert runner.worker_calls == 2
         executions = list(
