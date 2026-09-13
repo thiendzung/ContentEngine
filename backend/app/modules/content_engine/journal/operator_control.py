@@ -68,6 +68,9 @@ _BLOCKER_MESSAGES = {
         "Case đã được tạo nhưng chưa có bước thực thi bền vững đã được backend chuẩn bị."
     ),
     "operator_action_not_wired": "Bước hiện tại chưa có adapter vận hành được phê duyệt.",
+    "operator_gate_already_decided": (
+        "Cổng duyệt đã được ghi nhận; bước tiếp theo chưa được backend chuẩn bị."
+    ),
     "operator_unknown_human_gate": "Workflow đang chờ duyệt ở một cổng chưa được ánh xạ.",
     "operator_run_failed": "Lần chạy gần nhất đã thất bại và chưa có đường phục hồi an toàn.",
     "operator_step_failed": "Bước gần nhất đã thất bại và chưa thể thử lại an toàn.",
@@ -292,6 +295,51 @@ async def _latest_job(session: AsyncSession, step: StepRun | None) -> Job | None
     )
 
 
+async def _operator_focus(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    runs: list[ContentRun],
+) -> tuple[ContentRun | None, StepRun | None, Job | None]:
+    """Choose the currently actionable persisted run/step, not an arbitrary latest run."""
+    if not runs:
+        return None, None, None
+
+    executable = (
+        await session.execute(
+            select(ContentRun, StepRun)
+            .join(StepRun, StepRun.run_id == ContentRun.id)
+            .where(
+                ContentRun.content_case_id == content_case_id,
+                StepRun.step_key == _EXECUTABLE_STAGE,
+                StepRun.status.in_(("pending", "running", "failed")),
+                ContentRun.status.in_(("pending", "running", "failed")),
+            )
+            .order_by(StepRun.updated_at.desc(), StepRun.attempt.desc(), StepRun.id.desc())
+            .limit(1)
+        )
+    ).first()
+    if executable is not None:
+        run, step = executable
+        return run, step, await _latest_job(session, step)
+
+    waiting = [row for row in runs if row.status == "waiting_approval"]
+    if waiting:
+        run = max(waiting, key=lambda row: (row.updated_at, str(row.id)))
+        step = await _latest_step(session, run)
+        return run, step, await _latest_job(session, step)
+
+    active = [row for row in runs if row.status in {"pending", "running", "failed"}]
+    if active:
+        run = max(active, key=lambda row: (row.updated_at, str(row.id)))
+        step = await _latest_step(session, run)
+        return run, step, await _latest_job(session, step)
+
+    run = max(runs, key=lambda row: (row.updated_at, str(row.id)))
+    step = await _latest_step(session, run)
+    return run, step, await _latest_job(session, step)
+
+
 async def _quality_summary(
     session: AsyncSession,
     run: ContentRun | None,
@@ -363,6 +411,30 @@ async def _approval_ids(
     return angles, outlines, finals
 
 
+async def _gate_decided(
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+    gate: HumanGate,
+) -> bool:
+    if gate == "angle":
+        row = await session.scalar(
+            select(AngleApproval.id).where(AngleApproval.run_id == run_id).limit(1)
+        )
+        return row is not None
+    if gate == "outline":
+        row = await session.scalar(
+            select(OutlineApproval.id).where(OutlineApproval.run_id == run_id).limit(1)
+        )
+        return row is not None
+    row = await session.scalar(
+        select(Approval.id)
+        .where(Approval.run_id == run_id, Approval.step_key == "final_review")
+        .limit(1)
+    )
+    return row is not None
+
+
 async def _state_snapshot(
     session: AsyncSession,
     content_case_id: UUID,
@@ -376,9 +448,11 @@ async def _state_snapshot(
     str,
 ]:
     content_case, variants, runs = await _case_rows(session, content_case_id)
-    latest_run = runs[-1] if runs else None
-    step = await _latest_step(session, latest_run)
-    job = await _latest_job(session, step)
+    run, step, job = await _operator_focus(
+        session,
+        content_case_id=content_case_id,
+        runs=runs,
+    )
     angles, outlines, finals = await _approval_ids(session, [row.id for row in runs])
 
     payload = {
@@ -406,6 +480,11 @@ async def _state_snapshot(
             }
             for row in runs
         ],
+        "focus": {
+            "run_id": str(run.id) if run else None,
+            "step_run_id": str(step.id) if step else None,
+            "job_id": str(job.id) if job else None,
+        },
         "step": None
         if step is None
         else {
@@ -432,7 +511,7 @@ async def _state_snapshot(
             {"id": str(row.id), "decision": row.decision} for row in finals
         ],
     }
-    return content_case, variants, runs, latest_run, step, job, _stable_hash(payload)
+    return content_case, variants, runs, run, step, job, _stable_hash(payload)
 
 
 async def get_operator_state(
@@ -470,16 +549,30 @@ async def get_operator_state(
 
     gate = _GATE_STEPS.get(run.current_step or "") if run.status == "waiting_approval" else None
     if gate is not None:
+        if not await _gate_decided(session, run_id=run.id, gate=gate):
+            return OperatorState(
+                content_case_id=content_case_id,
+                state_version=version,
+                status="AWAITING_APPROVAL",
+                phase=_PHASE_LABELS.get(run.current_step or "", "Chờ duyệt"),
+                human_gate=gate,
+                current_run_id=run.id,
+                current_step_run_id=step.id if step else None,
+                quality_summary=quality,
+                last_checkpoint="Đã dừng tại cổng duyệt bắt buộc.",
+            )
+        code = "operator_gate_already_decided"
         return OperatorState(
             content_case_id=content_case_id,
             state_version=version,
-            status="AWAITING_APPROVAL",
-            phase=_PHASE_LABELS.get(run.current_step or "", "Chờ duyệt"),
-            human_gate=gate,
+            status="BLOCKED",
+            phase=_PHASE_LABELS.get(run.current_step or "", "Đã duyệt"),
             current_run_id=run.id,
             current_step_run_id=step.id if step else None,
             quality_summary=quality,
-            last_checkpoint="Đã dừng tại cổng duyệt bắt buộc.",
+            blocker_code=code,
+            blocker_message=_message(code),
+            last_checkpoint="Approval đã persist; đang chờ bước tiếp theo được chuẩn bị.",
         )
     if run.status == "waiting_approval":
         code = "operator_unknown_human_gate"
