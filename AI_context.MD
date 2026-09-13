@@ -30,21 +30,39 @@ Post-M1 operator work already proven:
 - T05.21B exact deep-link, viewport fit, compact operator layout and meaningful execution labels — DONE / FINAL UX PASS.
 - T05.22A Operational Observability Baseline — DONE / VERIFIED.
 - T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED.
-- T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED. Durable replay, policy mismatch, runner-version mismatch, worker failure and board dedupe were proven on isolated TEST DB. Operational M1 remained unchanged.
+- T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED.
+- T05.22D Repo-aware Orchestration Harness — DONE / VERIFIED / MERGED in PR #86. Exact reviewed head `0600646360015b1bfd0da224dbad4a75f4c82831`; merge commit `bbca36ae82d3d58803ece9581018c0d832d63897`; GitHub CI #703 PASS; Agent Local focused proof PASS; operational M1 unchanged; Antigravity remains UNPROVEN and fail-closed.
 
 The UI remains Vietnamese-first. ContentCase is the central operating object. Codex is the primary coordinator; subagent/Antigravity detail must only appear from persisted runtime truth, never UI inference.
 
-## Current exact task — T05.22D Repo-aware orchestration harness
+## Next exact implementation slice — OPS-01 Local Production Safety & Recovery
 
-Exact task:
+Purpose: make the local production environment safe and repeatable before activating a real Journal stage through the orchestration harness.
 
-`docs/logs/2026-09-13-t05-22d-repo-aware-orchestration-harness-task.md`
+Required scope:
 
-Current implementation is in PR #86. MG has wired exact repository snapshot input through the agent runner and controlled delegation, added a scoped repo-aware Codex runner, added bounded orchestration-loop contracts/tests, and prepared the exact Agent Local proof task. T05.22D is **not operationally closed** until CI and the Founder's-machine local proof are reviewed.
+1. Make application and database local-only by default; no broad LAN/public bind in normal Founder operation.
+2. Add an operational preflight that reports capability/readiness without exposing secrets.
+3. Fix the local `make check` tooling gap so a dedicated `TEST_DATABASE_URL` is explicitly preflighted and migrated before the full backend test suite; never allow the command to silently target the operational database.
+4. Add a documented backup path for the operational database and prove restore into a separate disposable destination.
+5. Verify restored ContentCase/ContentRun/Approval/Artifact/ContentVersion lineage and hashes sufficiently to prove the backup is usable.
+6. Preserve operational M1 unchanged during verification.
+7. Keep Antigravity optional/unproven; do not bypass the registered adapter or weaken repo isolation.
 
-Founder requirement: Codex and approved Antigravity/application workers may use the repository contract while producing content, under a clear harness and bounded loop.
+Acceptance intent:
 
-The safe runtime interpretation is not unrestricted live-filesystem access. Worker repository access must be explicit and versioned:
+- backend and database are loopback-only under the supported local operating path;
+- preflight clearly distinguishes READY / BLOCKED / OPTIONAL capabilities;
+- `make check` fails closed on missing/unsafe test DB setup and can prepare the dedicated test database path safely;
+- backup -> disposable restore -> lineage verification passes;
+- no secrets or database dumps enter Git;
+- no Journal stage is activated by OPS-01.
+
+After OPS-01, T05.22E may integrate exactly one real Journal stage through the orchestration harness; preferred first stage remains `review_revise_en`.
+
+## Orchestration contract retained from T05.22D
+
+Repository access for Codex/approved workers remains explicit and versioned:
 
 - exact local repository root;
 - exact commit SHA;
@@ -54,17 +72,11 @@ The safe runtime interpretation is not unrestricted live-filesystem access. Work
 - repository revision retained in safe execution provenance;
 - repository contents never dumped into logs.
 
-Codex repo-aware execution uses a dedicated permission profile instead of relying on the legacy broad read-only sandbox: filesystem root denied, minimal runtime readable, ephemeral runner workdir writable, exact snapshot narrowed to read-only, network disabled and approval escalation disabled. Shell is enabled only so Codex can inspect the scoped snapshot; native multi-agent/apps/plugins/browser/computer/remote-plugin and other unsafe surfaces remain disabled.
-
-Antigravity repo-aware execution remains fail-closed with `agent_repository_isolation_unproven` until the actual registered adapter/invocation and scoped isolation are proven locally. Do not bypass this because an interactive desktop app can open the repository.
-
 Required orchestration cycle:
 
 `OBSERVE -> PLAN -> POLICY CHECK -> EXECUTE -> VALIDATE -> PERSIST -> RE-EVALUATE`.
 
-Codex proposes one bounded next action. Application policy, not the model, grants execution permission. One approved worker executes. Result validation/persistence completes before state is reloaded and the next cycle is considered.
-
-Loop outcomes are limited to:
+Loop outcomes remain limited to:
 
 - `ADVANCE`;
 - `RETRY` within explicit attempt budget;
@@ -73,14 +85,6 @@ Loop outcomes are limited to:
 - `COMPLETE` at the task terminal state.
 
 Do not introduce a generic workflow engine merely to express this loop. Reuse existing ContentRun/StepRun, stage-specific bounded generators, controlled delegation and durable telemetry.
-
-## Agent Local proof gate
-
-Exact task:
-
-`docs/logs/2026-09-13-t05-22d-agent-local-proof-task.md`
-
-Agent Local must synchronize the exact PR #86 head, run focused safety/tests, execute at most one isolated synthetic Codex repo-access probe, verify operational M1 is unchanged, and report the real Antigravity adapter status. Agent Local has no code-edit scope in this proof task.
 
 ## Standing operating rules
 
@@ -94,13 +98,15 @@ Agent Local must synchronize the exact PR #86 head, run focused safety/tests, ex
 - Delegation telemetry is not delegation permission. Execution requires exact immutable policy and provenance.
 - Repository readability is not write authority. Content-production agents do not mutate the live repo through the production harness.
 
-## Near-term backlog after T05.22D
+## Near-term roadmap after OPS-01
 
 - T05.22E integrate exactly one real Journal stage through the orchestration harness; preferred first stage is `review_revise_en` because it already has bounded validation/retry behavior;
-- prove the actual Antigravity local adapter/invocation before enabling an Antigravity repo-aware route;
+- Operator Control API: create case, enqueue/advance safe next action, retry/resume and approval gates without arbitrary stage execution;
+- Operator UI: New Journal + Preflight + Case Workspace + three human gates + recovery surface;
 - T05.18 targeted regressions for observed M1 failure modes;
 - T05.19 real resume/replay proof;
 - T05.23 metrics baseline;
+- LF-06 / M2: two additional real bilingual Journal cases on the same stable runtime;
 - T05.24 CE05 closeout.
 
 Do not start a broad full-pipeline autonomous mode before the first single-stage integration is proven.
