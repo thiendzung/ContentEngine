@@ -2,6 +2,7 @@ PYTHON ?= python3
 BACKEND_VENV := backend/.venv
 BACKEND_PY := $(BACKEND_VENV)/bin/python
 BACKEND_PIP := $(BACKEND_VENV)/bin/pip
+COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
 
 .PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev openapi types test-db-prepare ops-preflight backup restore-test backend-check frontend-check check
@@ -17,10 +18,10 @@ frontend-install:
 	cd frontend && npm install --no-audit --no-fund
 
 db-up:
-	docker compose up -d postgres
+	docker compose -p $(COMPOSE_PROJECT_NAME) up -d postgres
 
 db-down:
-	docker compose down
+	docker compose -p $(COMPOSE_PROJECT_NAME) down
 
 migrate:
 	cd backend && .venv/bin/alembic upgrade head
