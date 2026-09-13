@@ -1,8 +1,9 @@
 """Read-only production board for Journal ContentCases.
 
 The board is intentionally case-centric. Codex is the configured coordinator;
-workers shown here are derived only from persisted StepRun/ModelCall/ToolCall
-telemetry. Missing worker telemetry is rendered as missing rather than guessed.
+workers shown here are derived only from persisted delegation/StepRun/ModelCall/
+ToolCall telemetry. Missing worker telemetry is rendered as missing rather than
+guessed.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from app.modules.content_engine.journal.review_action_view import (
     list_action_aware_review_cases,
 )
 from app.modules.content_engine.models import ContentCase
+from app.modules.harness.delegation_models import DelegationExecution
 from app.modules.harness.models import ContentRun, ModelCall, StepRun, ToolCall
 
 
@@ -28,6 +30,10 @@ class ProductionExecutionEvent(BaseModel):
     technical_name: str | None = None
     provider: str | None = None
     model: str | None = None
+    execution_id: UUID | None = None
+    parent_execution_id: UUID | None = None
+    worker_kind: str | None = None
+    worker_key: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
@@ -74,7 +80,24 @@ def _tool_event(row: ToolCall) -> ProductionExecutionEvent:
         status=row.status,
         role=row.tool_key,
         technical_name=row.tool_key,
+        worker_kind="tool",
+        worker_key=row.tool_key,
         started_at=row.started_at,
+        completed_at=row.completed_at,
+    )
+
+
+def _delegation_event(row: DelegationExecution) -> ProductionExecutionEvent:
+    return ProductionExecutionEvent(
+        kind="delegation",
+        status=row.status,
+        role=row.task_key,
+        technical_name=row.task_key,
+        execution_id=row.id,
+        parent_execution_id=row.parent_execution_id,
+        worker_kind=row.worker_kind,
+        worker_key=row.worker_key,
+        started_at=row.started_at or row.created_at,
         completed_at=row.completed_at,
     )
 
@@ -88,11 +111,16 @@ def _status_group(
     steps: list[StepRun],
     models: list[ModelCall],
     tools: list[ToolCall],
+    delegations: list[DelegationExecution],
 ) -> str:
     if consistency_state == "INCONSISTENT" or quality_state == "FAIL":
         return "BLOCKED"
+    if any(row.status == "failed" for row in delegations):
+        return "BLOCKED"
     if next_action in {"AWAITING_FOUNDER_APPROVAL", "REVIEW_REQUIRED"}:
         return "AWAITING_APPROVAL"
+    if any(row.status == "running" for row in delegations):
+        return "RUNNING"
     if any(row.status == "running" for row in runs):
         return "RUNNING"
     if any(row.status == "running" for row in steps):
@@ -101,6 +129,8 @@ def _status_group(
         return "RUNNING"
     if any(row.status == "running" for row in tools):
         return "RUNNING"
+    if any(row.status == "queued" for row in delegations):
+        return "QUEUED"
     if next_action in {"APPROVED_NOT_PUBLISHED", "PUBLISHED", "REJECTED"}:
         return "COMPLETED"
     return "QUEUED"
@@ -111,7 +141,18 @@ def _stage_key(
     next_action: str,
     runs: list[ContentRun],
     steps: list[StepRun],
+    delegations: list[DelegationExecution],
 ) -> str:
+    active_delegations = [
+        row for row in delegations if row.status in {"queued", "running", "failed"}
+    ]
+    if active_delegations:
+        latest_delegation = max(
+            active_delegations,
+            key=lambda row: (row.updated_at, row.attempt, str(row.id)),
+        )
+        return latest_delegation.task_key
+
     fallback = {
         "AWAITING_FOUNDER_APPROVAL": "final_review",
         "REVIEW_REQUIRED": "final_review",
@@ -147,18 +188,21 @@ def _updated_at(
     steps: list[StepRun],
     models: list[ModelCall],
     tools: list[ToolCall],
+    delegations: list[DelegationExecution],
 ) -> datetime:
     values = [content_case.updated_at]
     values.extend(row.updated_at for row in runs)
     values.extend(row.updated_at for row in steps)
     values.extend(row.updated_at for row in models)
     values.extend(row.updated_at for row in tools)
+    values.extend(row.updated_at for row in delegations)
     return max(values)
 
 
 def _execution_events(
     models: list[ModelCall],
     tools: list[ToolCall],
+    delegations: list[DelegationExecution],
 ) -> tuple[ProductionExecutionEvent | None, list[ProductionExecutionEvent]]:
     events: list[ProductionExecutionEvent] = []
     for model_call in models:
@@ -167,10 +211,19 @@ def _execution_events(
     for tool_call in tools:
         if tool_call.started_at is not None or tool_call.completed_at is not None:
             events.append(_tool_event(tool_call))
+    for delegation in delegations:
+        events.append(_delegation_event(delegation))
     events.sort(key=_event_sort_key)
-    active = [event for event in events if event.status == "running"]
-    current_worker = active[-1] if active else None
-    return current_worker, events[-8:]
+
+    active_delegations = [
+        event for event in events if event.kind == "delegation" and event.status == "running"
+    ]
+    if active_delegations:
+        current_worker = active_delegations[-1]
+    else:
+        active = [event for event in events if event.status == "running"]
+        current_worker = active[-1] if active else None
+    return current_worker, events[-12:]
 
 
 async def list_production_board_cases(
@@ -241,6 +294,19 @@ async def list_production_board_cases(
         if run_ids
         else []
     )
+    delegations = (
+        list(
+            (
+                await session.scalars(
+                    select(DelegationExecution)
+                    .where(DelegationExecution.run_id.in_(run_ids))
+                    .order_by(DelegationExecution.created_at, DelegationExecution.id)
+                )
+            ).all()
+        )
+        if run_ids
+        else []
+    )
 
     run_case = {row.id: row.content_case_id for row in runs}
     output: list[ProductionBoardCase] = []
@@ -253,7 +319,12 @@ async def list_production_board_cases(
         case_steps = [row for row in steps if row.run_id in case_run_ids]
         case_models = [row for row in models if run_case.get(row.run_id) == summary.id]
         case_tools = [row for row in tools if run_case.get(row.run_id) == summary.id]
-        current_worker, chain = _execution_events(case_models, case_tools)
+        case_delegations = [row for row in delegations if run_case.get(row.run_id) == summary.id]
+        current_worker, chain = _execution_events(
+            case_models,
+            case_tools,
+            case_delegations,
+        )
         output.append(
             ProductionBoardCase(
                 id=summary.id,
@@ -266,11 +337,13 @@ async def list_production_board_cases(
                     steps=case_steps,
                     models=case_models,
                     tools=case_tools,
+                    delegations=case_delegations,
                 ),
                 stage_key=_stage_key(
                     next_action=summary.next_action,
                     runs=case_runs,
                     steps=case_steps,
+                    delegations=case_delegations,
                 ),
                 locales=[row.locale for row in summary.locales],
                 quality_state=summary.quality_state,
@@ -284,6 +357,7 @@ async def list_production_board_cases(
                     steps=case_steps,
                     models=case_models,
                     tools=case_tools,
+                    delegations=case_delegations,
                 ),
                 current_worker=current_worker,
                 execution_chain=chain,
