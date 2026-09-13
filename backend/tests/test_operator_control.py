@@ -43,7 +43,10 @@ async def test_operator_create_receipt_is_exactly_replay_safe(
             locale="en",
             unresolved=True,
         )
-        source_case = await session.get(ContentCase, fixture.writer_input.writer_run.content_case_id)
+        source_case = await session.get(
+            ContentCase,
+            fixture.writer_input.writer_run.content_case_id,
+        )
         assert source_case is not None
         opportunity = await session.get(ContentOpportunity, source_case.content_opportunity_id)
         assert opportunity is not None
