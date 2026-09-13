@@ -119,7 +119,7 @@ class OperatorCommand(TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("idempotency_key", name="uq_operator_command_idempotency"),
         CheckConstraint(
-            "intent in ('start','continue','resume','retry','cancel','approve','request_changes','reject')",
+            "intent in ('create','start','continue','resume','retry','cancel','approve','request_changes','reject')",
             name="ck_operator_command_intent",
         ),
         CheckConstraint(
