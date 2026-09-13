@@ -9,7 +9,7 @@ from fastapi import Request, Response
 from starlette.types import Scope
 
 from app.core.config import Settings
-from app.core.observability import SafeJsonFormatter, observe_http_request
+from app.core.observability import SafeJsonFormatter, configure_logging, observe_http_request
 
 
 def test_development_defaults_to_debug_logging() -> None:
@@ -44,6 +44,17 @@ def test_invalid_log_level_fails_closed() -> None:
 
     with pytest.raises(ValueError, match="invalid_log_level"):
         _ = settings.resolved_log_level
+
+
+def test_configure_logging_disables_raw_uvicorn_access_log() -> None:
+    access_logger = logging.getLogger("uvicorn.access")
+    previous_disabled = access_logger.disabled
+    try:
+        access_logger.disabled = False
+        configure_logging(Settings(app_env="development"))
+        assert access_logger.disabled is True
+    finally:
+        access_logger.disabled = previous_disabled
 
 
 def test_json_formatter_keeps_allowlisted_fields_and_drops_secret_extras() -> None:
