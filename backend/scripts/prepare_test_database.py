@@ -7,7 +7,12 @@ from app.modules.system.test_database import TestDatabasePreparationError, prepa
 
 
 async def _main() -> int:
-    settings = get_settings()
+    try:
+        settings = get_settings()
+    except Exception:
+        print("TEST_DATABASE: BLOCKED (test_database_configuration_invalid)")
+        return 2
+
     try:
         prepared = await prepare_test_database(settings)
     except TestDatabasePreparationError as exc:
