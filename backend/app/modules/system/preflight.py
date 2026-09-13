@@ -7,6 +7,7 @@ from pathlib import Path
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 
 from app.core.config import get_settings
 from app.core.database import engine
@@ -16,12 +17,23 @@ from app.modules.system.test_database import (
     validate_test_database_target,
 )
 
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
 
 @dataclass(frozen=True, slots=True)
 class PreflightCheck:
     key: str
     status: str
     detail: str
+
+
+def _local_database_target_check() -> PreflightCheck:
+    settings = get_settings()
+    target = make_url(settings.database_url)
+    host = (target.host or "").lower()
+    if host not in _LOCAL_HOSTS:
+        return PreflightCheck("database_binding", "BLOCKED", "database_not_loopback")
+    return PreflightCheck("database_binding", "READY", f"host={host}")
 
 
 async def _database_check() -> PreflightCheck:
@@ -109,6 +121,7 @@ def _postgres_tools_check() -> PreflightCheck:
 
 async def build_operational_preflight() -> dict[str, object]:
     checks = [
+        _local_database_target_check(),
         await _database_check(),
         await _migration_check(),
         _test_database_check(),
