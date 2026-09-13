@@ -11,6 +11,7 @@ from sqlalchemy.pool import NullPool
 from app.core.config import Settings
 
 _SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 class TestDatabasePreparationError(RuntimeError):
@@ -37,9 +38,12 @@ def validate_test_database_target(*, database_url: str, test_database_url: str) 
     operational = make_url(database_url)
     target = make_url(test_database_url)
     database_name = target.database
+    host = (target.host or "").lower()
 
     if target.get_backend_name() != "postgresql":
         raise TestDatabasePreparationError("test_database_backend_unsupported")
+    if host not in _LOCAL_HOSTS:
+        raise TestDatabasePreparationError("test_database_not_loopback")
     if not database_name or not _SAFE_IDENTIFIER.fullmatch(database_name):
         raise TestDatabasePreparationError("unsafe_test_database_name")
     if _target_identity(operational) == _target_identity(target):
