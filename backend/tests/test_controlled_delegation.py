@@ -12,10 +12,10 @@ from app.modules.content_engine.journal.production_board import list_production_
 from app.modules.harness.agent_runner import (
     CODEX_CLI_APPROVED_VERSION,
     AgentCapability,
-    AgentRunRequest,
-    AgentRunResult,
     AgentRunnerError,
     AgentRunnerRegistry,
+    AgentRunRequest,
+    AgentRunResult,
 )
 from app.modules.harness.controlled_delegation import (
     COORDINATOR_TASK_KEY,
