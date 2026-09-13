@@ -56,9 +56,13 @@ def test_json_formatter_keeps_allowlisted_fields_and_drops_secret_extras() -> No
         args=(),
         exc_info=None,
     )
-    setattr(record, "path", "/journal/production-board")
-    setattr(record, "status_code", 200)
-    setattr(record, "api_key", "do-not-log-me")
+    record.__dict__.update(
+        {
+            "path": "/journal/production-board",
+            "status_code": 200,
+            "api_key": "do-not-log-me",
+        }
+    )
     payload = cast(dict[str, object], json.loads(SafeJsonFormatter().format(record)))
 
     assert payload["message"] == "safe_event"
