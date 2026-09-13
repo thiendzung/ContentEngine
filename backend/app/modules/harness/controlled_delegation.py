@@ -31,6 +31,7 @@ from app.modules.harness.delegation import (
     fail_delegation_execution,
     start_delegation_execution,
 )
+from app.modules.harness.delegation_models import DelegationExecution
 from app.modules.harness.models import Artifact, ContentRun, ModelCall
 from app.modules.harness.runtime import (
     ModelCandidate,
@@ -494,7 +495,7 @@ async def _persist_worker_result(
 async def _replay_completed_execution(
     session: AsyncSession,
     *,
-    execution,
+    execution: DelegationExecution,
 ) -> ControlledDelegationResult:
     if execution.worker_model_call_id is None or execution.result_artifact_id is None:
         raise ControlledDelegationError("delegation_completed_result_missing")
