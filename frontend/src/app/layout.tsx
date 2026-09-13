@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import "./globals.css";
 import "./navigation.css";
+import "./review-ux.css";
 
 export const metadata: Metadata = {
   title: "MOTGU ContentEngine",
