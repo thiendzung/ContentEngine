@@ -93,11 +93,11 @@ Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
 - [x] T05.20B Approval actions — Approve / Request revision / Reject with durable existing contracts; UI Vietnamese-first.
 - [x] T05.21A Production Board — ContentCase-centric board with five operating lanes and Codex coordinator projection.
 - [x] T05.21B Production Board UX — exact case deep-link, viewport fit, compact operator layout and meaningful execution labels; final local proof PASS.
-- [ ] T05.22A Operational Observability Baseline — ACTIVE. Safe structured logs, local DEBUG default, production-safe clamp, request correlation. Exact task `logs/2026-09-13-t05-22a-operational-observability-task.md`.
-- [ ] T05.22B Durable Delegation Telemetry — persist real `Codex -> subagent/application/tool` execution hierarchy and project it into the board. Depends on T05.22A.
+- [x] T05.22A Operational Observability Baseline — DONE / VERIFIED. Safe structured logs, local DEBUG default, production-safe clamp, request correlation and total-log Uvicorn query redaction proven on runtime.
+- [ ] T05.22B Durable Delegation Telemetry — ACTIVE. Persist real `Codex -> subagent/application/tool` execution hierarchy and project it into the board. Exact task `logs/2026-09-13-t05-22b-durable-delegation-telemetry-task.md`.
 - [ ] T05.22C Controlled Codex Delegation Bridge — enable bounded delegation to approved workers/Antigravity only after T05.22B; do not simply enable free-form Codex multi-agent/apps/plugins.
 
-### Required post-M1 hardening, not blockers for T05.22A
+### Required post-M1 hardening, not blockers for T05.22B
 
 - [ ] T05.18 Critical Gate Regression - observed failures only: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
 - [ ] T05.19 Resume / Replay Gate - prove on real local flow.

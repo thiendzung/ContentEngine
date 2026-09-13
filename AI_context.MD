@@ -8,7 +8,7 @@ Inspect local changes -> fetch origin -> synchronize the exact assigned ref with
 
 ## Objective
 
-M1 ONE REAL JOURNAL PASS is COMPLETE / CLOSED. The current objective is to make the proven content-production path operable and diagnosable under real use before broadening scope.
+M1 ONE REAL JOURNAL PASS is COMPLETE / CLOSED. The current objective is to make the proven content-production path operable, observable and safely delegatable under real use before broadening scope.
 
 Founder dispatches tasks and owns product/editorial decisions and merges. MG owns architecture/coding/review. Agent Local executes exact local verification/runtime tasks and returns evidence.
 
@@ -28,26 +28,29 @@ Post-M1 operator work already proven on the real M1 runtime:
 - T05.20B Founder actions (`Duyệt / Yêu cầu sửa / Từ chối`) — DONE in repository.
 - T05.21A ContentCase-centric Production Board — DONE / VERIFIED.
 - T05.21B exact deep-link, viewport fit, compact operator layout and meaningful execution labels — DONE / FINAL UX PASS.
+- T05.22A Operational Observability Baseline — DONE / VERIFIED. Local DEBUG + JSON logs, production clamp, request correlation, Uvicorn raw access-log suppression and total-log redaction were proven on real runtime.
 
 The UI remains Vietnamese-first. ContentCase is the central operating object. Codex is the primary coordinator; subagent/Antigravity detail must only appear from persisted runtime truth, never UI inference.
 
-## Current exact task — T05.22A Operational Observability Baseline
+## Current exact task — T05.22B Durable Delegation Telemetry
 
 Exact task:
 
-`docs/logs/2026-09-13-t05-22a-operational-observability-task.md`
+`docs/logs/2026-09-13-t05-22b-durable-delegation-telemetry-task.md`
 
-Purpose: keep real operation diagnosable so repeated failures can be turned into concrete regressions and maintenance work.
+Purpose: create a durable, safe and idempotent execution hierarchy for real `Codex -> subagent/application/tool` work before any delegation capability is enabled.
 
 Required contract:
 
-1. ContentEngine-owned structured logging is always available.
-2. Local/development defaults to DEBUG.
-3. Production keeps operational logging but clamps accidental DEBUG to INFO unless an operator explicitly overrides it.
-4. HTTP requests receive correlation IDs; log safe method/path/status/duration only.
-5. Never log request/query bodies, raw prompts, raw provider payloads, secrets, tokens, private source payloads or chain-of-thought.
-6. Durable ContentRun/StepRun/ModelCall/ToolCall records remain canonical execution history; console logs are diagnostic evidence, not a backup.
-7. No DB migration or orchestration capability change in T05.22A.
+1. Persist `DelegationExecution` bound to ContentRun and optional StepRun.
+2. Root delegation keeps `coordinator_key=codex`; nested delegation uses `parent_execution_id`.
+3. Worker kinds are only `subagent`, `application`, `tool`.
+4. Persist stable worker/task identity, attempt, status, timestamps, dedupe key, optional opaque external execution ID, optional result Artifact and safe error class.
+5. Do not persist prompts, request bodies, raw provider payloads, private source text, chain-of-thought or arbitrary debug payloads.
+6. Lifecycle ensure/start/complete/fail/cancel must be idempotent or fail closed on conflicting reuse.
+7. Production Board reads real delegation records and prefers a running delegation as current worker.
+8. Historical M1 has no delegation records and must remain unchanged; the UI must not invent subagents or Antigravity.
+9. T05.22B is telemetry only. It grants no execution permission.
 
 ## Codex orchestration constraint
 
@@ -55,10 +58,10 @@ The current `CodexCliRunner` intentionally disables `multi_agent`, apps/plugins 
 
 Do NOT remove those safety disables merely to satisfy the desired UI/model.
 
-Planned safe sequence:
+Safe sequence:
 
-- T05.22A: safe observability baseline.
-- T05.22B: durable delegation telemetry contract for real `Codex -> subagent/application/tool` execution hierarchy and board projection.
+- T05.22A: safe observability baseline — DONE / VERIFIED.
+- T05.22B: durable delegation telemetry contract — ACTIVE.
 - T05.22C: controlled Codex delegation bridge to approved workers/Antigravity after T05.22B, with bounded permissions and idempotency.
 
 The board may display a worker only when runtime telemetry exists. Missing worker telemetry must remain explicit missing state.
@@ -70,15 +73,15 @@ The board may display a worker only when runtime telemetry exists. Missing worke
 - No new provider/framework/workflow engine merely because the first Journal had friction.
 - Preserve fail-closed quality/provenance/idempotency behavior.
 - Capture observed failures, timings, retries and execution lineage safely; use repeated evidence to decide hardening.
+- Safe structured operational logging remains enabled. Inspect the entire log stack, not only application-owned loggers.
 - Do not store chain-of-thought or raw sensitive debug payloads.
 
-## Near-term backlog after T05.22A
+## Near-term backlog after T05.22B
 
-- T05.22B durable delegation telemetry.
 - T05.22C controlled Codex delegation bridge.
 - T05.18 targeted regressions for observed M1 failure modes.
 - T05.19 real resume/replay proof.
-- T05.23 metrics baseline (renumbered from historical T05.21 after Production Board occupied T05.21A/B).
-- T05.24 CE05 closeout (renumbered from historical T05.22).
+- T05.23 metrics baseline.
+- T05.24 CE05 closeout.
 
 Do not start the next item until the current bounded slice is reviewed and merged/proven as required.

@@ -11,6 +11,10 @@ type ExecutionEvent = {
   technical_name: string | null;
   provider: string | null;
   model: string | null;
+  execution_id: string | null;
+  parent_execution_id: string | null;
+  worker_kind: string | null;
+  worker_key: string | null;
   started_at: string | null;
   completed_at: string | null;
 };
@@ -127,9 +131,21 @@ function eventStageKey(event: ExecutionEvent): string {
   return event.technical_name ?? event.role;
 }
 
+function workerIdentity(worker: ExecutionEvent): string {
+  const key = worker.worker_key ? ` [${worker.worker_key}]` : "";
+  if (worker.worker_kind === "subagent") return `Tác nhân phụ${key}`;
+  if (worker.worker_kind === "application") {
+    if (worker.worker_key?.toLowerCase().includes("antigravity")) return "Antigravity";
+    return `Ứng dụng${key}`;
+  }
+  if (worker.worker_kind === "tool") return `Công cụ${key}`;
+  return "Tác nhân";
+}
+
 function workerLabel(worker: ExecutionEvent | null): string {
   if (!worker) return "Chưa có tác nhân đang chạy";
   const stage = stageLabel(eventStageKey(worker));
+  if (worker.kind === "delegation") return `${workerIdentity(worker)} · ${stage}`;
   if (worker.kind === "tool") {
     return worker.technical_name?.toLowerCase().includes("antigravity")
       ? `Antigravity · ${stage}`
@@ -141,6 +157,7 @@ function workerLabel(worker: ExecutionEvent | null): string {
 
 function eventLabel(event: ExecutionEvent): string {
   const stage = stageLabel(eventStageKey(event));
+  if (event.kind === "delegation") return `${workerIdentity(event)} · ${stage}`;
   if (event.kind === "tool") {
     return event.technical_name?.toLowerCase().includes("antigravity")
       ? `Antigravity · ${stage}`
@@ -267,7 +284,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                         ) : (
                           <ol>
                             {item.execution_chain.map((event, index) => (
-                              <li key={`${item.id}-${event.kind}-${index}`}>
+                              <li key={`${item.id}-${event.kind}-${event.execution_id ?? index}`}>
                                 <span>{eventLabel(event)}</span>
                                 <small>{timeLabel(event.completed_at ?? event.started_at ?? item.updated_at)}</small>
                               </li>
