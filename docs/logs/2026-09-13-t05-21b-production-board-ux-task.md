@@ -65,8 +65,12 @@ Agent Local cũng báo task doc không tồn tại, nhưng GitHub branch đã x�
 - Review Console ẩn transient loading banner ngay khi `.case-overview` đã render, tránh hiển thị `Đang tải trạng thái nội dung…` đồng thời với dữ liệu đầy đủ.
 - Execution chain ưu tiên persisted `technical_name` / task key để phân loại stage; `review_revise_en` phải hiển thị `Rà soát tiếng Anh` thay vì `Tác vụ nội dung`.
 
+## Final CI
+
+Final head: `7b617015d35e866ddbbae7150d47f62615c8cd5f`.
+
+CI #648 PASS toàn bộ: backend lint/types/migration/tests, OpenAPI, frontend type generation/lint/typecheck/build.
+
 ## Final merge gate
 
-- full CI trên final head phải PASS;
-- Agent Local rerun ngắn chỉ cần xác nhận hai UX fix trên cùng M1 runtime;
-- không cần lặp lại toàn bộ read-only proof nếu counts/runtime unchanged.
+Agent Local rerun ngắn chỉ cần xác nhận hai UX fix trên cùng M1 runtime. Không cần lặp lại toàn bộ read-only proof nếu counts/runtime unchanged.
