@@ -25,6 +25,7 @@ class TestDatabasePreparationError(RuntimeError):
 class PreparedTestDatabase:
     database_name: str
     created: bool
+    reset: bool
 
 
 def _target_identity(url: URL) -> tuple[str, int | None, str]:
@@ -48,7 +49,11 @@ def validate_test_database_target(*, database_url: str, test_database_url: str) 
     return target
 
 
-async def prepare_test_database(settings: Settings) -> PreparedTestDatabase:
+async def prepare_test_database(
+    settings: Settings,
+    *,
+    reset: bool = False,
+) -> PreparedTestDatabase:
     if not settings.test_database_url:
         raise TestDatabasePreparationError("test_database_url_required")
 
@@ -67,6 +72,7 @@ async def prepare_test_database(settings: Settings) -> PreparedTestDatabase:
         isolation_level="AUTOCOMMIT",
     )
     created = False
+    did_reset = False
     try:
         async with admin_engine.connect() as connection:
             exists = (
@@ -75,6 +81,19 @@ async def prepare_test_database(settings: Settings) -> PreparedTestDatabase:
                     {"database_name": database_name},
                 )
             ).scalar_one_or_none()
+
+            if reset and exists is not None:
+                await connection.execute(
+                    text(
+                        "select pg_terminate_backend(pid) from pg_stat_activity "
+                        "where datname = :database_name and pid <> pg_backend_pid()"
+                    ),
+                    {"database_name": database_name},
+                )
+                await connection.exec_driver_sql(f'DROP DATABASE "{database_name}"')
+                exists = None
+                did_reset = True
+
             if exists is None:
                 # The identifier is restricted above; CREATE DATABASE cannot bind its name.
                 await connection.exec_driver_sql(f'CREATE DATABASE "{database_name}"')
@@ -98,4 +117,8 @@ async def prepare_test_database(settings: Settings) -> PreparedTestDatabase:
     if str(current_database) != database_name:
         raise TestDatabasePreparationError("test_database_identity_mismatch")
 
-    return PreparedTestDatabase(database_name=database_name, created=created)
+    return PreparedTestDatabase(
+        database_name=database_name,
+        created=created,
+        reset=did_reset,
+    )
