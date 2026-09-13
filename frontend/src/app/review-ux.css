@@ -1,0 +1,3 @@
+main:has(.case-overview) > .loading {
+  display: none;
+}
