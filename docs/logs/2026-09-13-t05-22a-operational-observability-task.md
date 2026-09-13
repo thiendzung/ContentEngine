@@ -10,6 +10,8 @@ The Founder explicitly wants runtime history preserved so later maintenance and 
 
 The current `CodexCliRunner` also deliberately disables `multi_agent`, apps/plugins and other unsafe surfaces. T05.22A MUST NOT simply turn those features on. Controlled Codex delegation is a later slice after observability and durable delegation contracts exist.
 
+Local proof on initial PR #83 head found one real blocker: Uvicorn's default access logger emitted the raw request target including query strings. T05.22A therefore replaces that unsafe access line with ContentEngine's own path-only request lifecycle logging and disables `uvicorn.access` at application configuration time. The standard `make backend-dev` command also uses `--no-access-log` as defense in depth.
+
 ## Scope
 
 1. Add ContentEngine-owned structured logging.
@@ -22,10 +24,11 @@ The current `CodexCliRunner` also deliberately disables `multi_agent`, apps/plug
    - duration;
    - correlation/run/step/execution IDs when available;
    - task/worker/status/error class.
-7. Never log request/query bodies, prompts, raw provider payloads, secrets, tokens, private source payloads or chain-of-thought.
-8. Keep existing durable ContentRun/StepRun/ModelCall/ToolCall records unchanged.
-9. Add regression tests for safe defaults, production clamp, redaction allowlist and request correlation.
-10. Record the rule in `AGENTS.md`, `.env.example`, `AI_context.MD` and `docs/TASKS.md`.
+7. Never log request/query bodies or query strings, prompts, raw provider payloads, secrets, tokens, private source payloads or chain-of-thought.
+8. Suppress third-party access logging that exposes raw query strings when equivalent safe ContentEngine request telemetry exists.
+9. Keep existing durable ContentRun/StepRun/ModelCall/ToolCall records unchanged.
+10. Add regression tests for safe defaults, production clamp, redaction allowlist, request correlation and Uvicorn access-log suppression.
+11. Record the rule in `AGENTS.md`, `.env.example`, `AI_context.MD` and `docs/TASKS.md`.
 
 ## Not in this slice
 
@@ -45,7 +48,9 @@ The current `CodexCliRunner` also deliberately disables `multi_agent`, apps/plug
 - production DEBUG is fail-safe clamped unless explicitly overridden;
 - `X-Request-ID` is returned and logged;
 - formatter does not serialize arbitrary secret extras;
-- no request query/body content is intentionally captured;
+- ContentEngine request logs use path only and do not capture query values/body;
+- Uvicorn access logging cannot emit the raw query string during the standard runtime path;
+- runtime proof with a query marker confirms the marker is absent from total backend logs;
 - existing runtime/data contracts remain unchanged.
 
 ## Next
