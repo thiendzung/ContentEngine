@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 from pathlib import Path
@@ -94,8 +95,11 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
         )
 
     seen: dict[str, object] = {}
+    original_exec = asyncio.create_subprocess_exec
 
-    async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+    async def fake_exec(*argv: str, **kwargs: Any) -> Any:
+        if argv and argv[0] == "git":
+            return await original_exec(*argv, **kwargs)
         cwd = Path(kwargs["cwd"])
         seen["cwd"] = cwd
         seen["argv"] = argv
@@ -109,7 +113,7 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
         return FakeProcess()
 
     monkeypatch.setattr(runner, "preflight", fake_preflight)
-    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
 
     result = await runner.run(
         AgentRunRequest(
@@ -188,7 +192,7 @@ async def test_invalid_repository_revision_fails_before_model_process(
         return FakeProcess()
 
     monkeypatch.setattr(runner, "preflight", fake_preflight)
-    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
 
     with pytest.raises(AgentRunnerError, match="repository_revision_invalid"):
         await runner.run(
