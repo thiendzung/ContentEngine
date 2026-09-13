@@ -97,9 +97,11 @@ Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
 - [x] T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED. Persisted `Codex -> subagent/application/tool` execution hierarchy, idempotent lifecycle and Production Board projection; isolated TEST DB proof passed without mutating M1.
 - [x] T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED in PR #85. Exact completed Codex delegation-plan ModelCall + immutable plan Artifact + immutable SettingsSnapshot route + exact runner version are required before one approved child worker may execute.
 - [x] T05.22D Repo-aware Orchestration Harness — DONE / VERIFIED / MERGED in PR #86. Exact reviewed head `0600646360015b1bfd0da224dbad4a75f4c82831`; merge commit `bbca36ae82d3d58803ece9581018c0d832d63897`; GitHub CI #703 PASS; Agent Local focused proof PASS; operational M1 unchanged; Antigravity UNPROVEN and repo-aware execution remains fail-closed.
-- [x] OPS-01 Local Production Safety & Recovery — DONE / VERIFIED in PR #88 pending Founder merge. Exact implementation head before semantic closeout `9de5b331c7af1a151885e9200b68dac223758319`; GitHub CI #732 PASS; Round 3 real backup/restore proof PASS; Founder-approved operational migration `20260912_0023 -> 20260913_0025` PASS; post-migration preflight READY; frozen M1 unchanged. Closeout: `logs/2026-09-13-ops-01-closeout.md`.
+- [x] OPS-01 Local Production Safety & Recovery — DONE / VERIFIED / MERGED in PR #88. Final reviewed head `165e4bcf197f7f0cff15d3b6abefce2678ab998b`; merge commit `eeab9bdec5cecf1ebe8da87b4d6e6309e094f280`; GitHub CI #735 PASS; Round 3 real backup/restore proof PASS; Founder-approved operational migration `20260912_0023 -> 20260913_0025` PASS; post-migration preflight READY; frozen M1 unchanged. Closeout: `logs/2026-09-13-ops-01-closeout.md`.
 
 ### Current exact implementation slice — T05.22E One Real Journal Stage Orchestration
+
+Exact task: `logs/2026-09-13-t05-22e-one-real-journal-stage-orchestration-task.md`.
 
 - [ ] integrate exactly one real Journal stage through the existing repo-aware orchestration harness;
 - [ ] preferred first stage: `review_revise_en`;
