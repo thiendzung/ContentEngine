@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from sqlalchemy.engine import make_url
 from app.core.config import get_settings
 from app.core.database import engine
 from app.modules.harness.agent_runner import AgentRunnerError, CodexCliRunner
+from app.modules.system.postgres_tools import postgres_tool_capability
 from app.modules.system.test_database import (
     TestDatabasePreparationError,
     validate_test_database_target,
@@ -109,14 +109,14 @@ def _antigravity_check() -> PreflightCheck:
 
 
 def _postgres_tools_check() -> PreflightCheck:
-    missing = [name for name in ("pg_dump", "pg_restore") if shutil.which(name) is None]
-    if missing:
-        return PreflightCheck(
-            "postgres_tools",
-            "BLOCKED",
-            "missing=" + ",".join(missing),
-        )
-    return PreflightCheck("postgres_tools", "READY", "pg_dump+pg_restore")
+    capability = postgres_tool_capability()
+    if capability is None:
+        return PreflightCheck("postgres_tools", "BLOCKED", "pg_dump+pg_restore_unavailable")
+    return PreflightCheck(
+        "postgres_tools",
+        "READY",
+        f"mode={capability.mode}; {capability.detail}",
+    )
 
 
 async def build_operational_preflight() -> dict[str, object]:
