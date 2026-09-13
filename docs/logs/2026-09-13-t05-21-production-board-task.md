@@ -83,3 +83,7 @@ Kết quả local proof: `PARTIAL FIT` vì ba UX gap không chặn core board:
 3. execution chain còn là lịch sử phẳng, stage label chưa đủ giàu nghĩa.
 
 Ba gap này chuyển sang T05.21B; không làm thay đổi acceptance read-only của T05.21A.
+
+## Merge decision
+
+T05.21A đủ điều kiện merge theo nguyên tắc finish-first: persisted projection đúng, fail-closed, read-only và đã được local runtime proof. T05.21B sẽ chỉ là UX refinement trên nền board đã được chứng minh, không phải sửa contract dữ liệu.
