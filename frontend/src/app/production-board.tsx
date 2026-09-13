@@ -98,7 +98,7 @@ function localeLabel(value: string): string {
 }
 
 function workerLabel(worker: ExecutionEvent | null): string {
-  if (!worker) return "Chưa có worker đang chạy";
+  if (!worker) return "Chưa có tác nhân đang chạy";
   if (worker.kind === "tool") {
     return worker.technical_name?.toLowerCase().includes("antigravity")
       ? "Antigravity"
@@ -170,7 +170,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
           <h2>Bảng sản xuất nội dung</h2>
         </div>
         <p>
-          Mỗi hàng là một bài nội dung. Codex điều phối; worker và công cụ chỉ hiển thị khi có telemetry đã lưu.
+          Mỗi hàng là một bài nội dung. Codex điều phối; tác nhân và công cụ chỉ hiển thị khi có dữ liệu thực thi đã lưu.
         </p>
       </div>
 
@@ -189,7 +189,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
             <span>Giai đoạn</span>
             <span>Ngôn ngữ</span>
             <span>Điều phối</span>
-            <span>Worker</span>
+            <span>Tác nhân</span>
             <span>Cập nhật</span>
             <span>Việc tiếp theo</span>
           </div>
@@ -230,7 +230,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                       <div className="execution-chain-body">
                         <p><strong>Điều phối:</strong> Codex</p>
                         {item.execution_chain.length === 0 ? (
-                          <p>Chưa có telemetry worker/subagent được lưu cho bài này.</p>
+                          <p>Chưa có dữ liệu thực thi của tác nhân phụ hoặc công cụ cho bài này.</p>
                         ) : (
                           <ol>
                             {item.execution_chain.map((event, index) => (
@@ -242,7 +242,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                           </ol>
                         )}
                         <p className="execution-note">
-                          Subagent/Antigravity chỉ xuất hiện khi runtime đã ghi nhận; giao diện không suy đoán dữ liệu chưa tồn tại.
+                          Tác nhân phụ hoặc Antigravity chỉ xuất hiện khi runtime đã ghi nhận; giao diện không suy đoán dữ liệu chưa tồn tại.
                         </p>
                       </div>
                     </details>
