@@ -32,33 +32,36 @@ Post-M1 operator work already proven:
 - T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED.
 - T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED.
 - T05.22D Repo-aware Orchestration Harness — DONE / VERIFIED / MERGED in PR #86. Exact reviewed head `0600646360015b1bfd0da224dbad4a75f4c82831`; merge commit `bbca36ae82d3d58803ece9581018c0d832d63897`; GitHub CI #703 PASS; Agent Local focused proof PASS; operational M1 unchanged; Antigravity remains UNPROVEN and fail-closed.
+- OPS-01 Local Production Safety & Recovery — DONE / VERIFIED in PR #88 pending Founder merge. Exact implementation head before closeout `9de5b331c7af1a151885e9200b68dac223758319`; GitHub CI #732 PASS; Round 3 backup/restore proof PASS; Founder-approved operational migration `20260912_0023 -> 20260913_0025` PASS; post-migration preflight READY; frozen M1 unchanged. Closeout: `docs/logs/2026-09-13-ops-01-closeout.md`.
 
 The UI remains Vietnamese-first. ContentCase is the central operating object. Codex is the primary coordinator; subagent/Antigravity detail must only appear from persisted runtime truth, never UI inference.
 
-## Next exact implementation slice — OPS-01 Local Production Safety & Recovery
+## Next exact implementation slice — T05.22E One Real Journal Stage Orchestration
 
-Purpose: make the local production environment safe and repeatable before activating a real Journal stage through the orchestration harness.
+Purpose: prove exactly one real Journal stage can execute through the existing repo-aware orchestration harness on durable production state without broad autonomous pipeline behavior.
+
+Preferred first stage: `review_revise_en` because it already has bounded validation/retry behavior and real M1 recovery evidence.
 
 Required scope:
 
-1. Make application and database local-only by default; no broad LAN/public bind in normal Founder operation.
-2. Add an operational preflight that reports capability/readiness without exposing secrets.
-3. Fix the local `make check` tooling gap so a dedicated `TEST_DATABASE_URL` is explicitly preflighted and migrated before the full backend test suite; never allow the command to silently target the operational database.
-4. Add a documented backup path for the operational database and prove restore into a separate disposable destination.
-5. Verify restored ContentCase/ContentRun/Approval/Artifact/ContentVersion lineage and hashes sufficiently to prove the backup is usable.
-6. Preserve operational M1 unchanged during verification.
-7. Keep Antigravity optional/unproven; do not bypass the registered adapter or weaken repo isolation.
+1. Route exactly one approved Journal stage through the existing orchestration cycle:
+   `OBSERVE -> PLAN -> POLICY CHECK -> EXECUTE -> VALIDATE -> PERSIST -> RE-EVALUATE`.
+2. Reuse durable ContentRun/StepRun state, existing stage-specific generator/evaluator behavior, controlled delegation, exact repository provenance and persisted telemetry.
+3. Make retries bounded, idempotent and dedupe-safe; do not create arbitrary stage execution endpoints.
+4. Preserve mandatory human gates and stop at `WAIT_HUMAN` when policy requires it.
+5. Keep backend durable state authoritative; UI must not infer workflow state.
+6. Keep Antigravity optional/unproven unless a real repo-isolated adapter is independently proven.
+7. Do not publish and do not mutate frozen M1 merely to prove the integration.
 
 Acceptance intent:
 
-- backend and database are loopback-only under the supported local operating path;
-- preflight clearly distinguishes READY / BLOCKED / OPTIONAL capabilities;
-- `make check` fails closed on missing/unsafe test DB setup and can prepare the dedicated test database path safely;
-- backup -> disposable restore -> lineage verification passes;
-- no secrets or database dumps enter Git;
-- no Journal stage is activated by OPS-01.
-
-After OPS-01, T05.22E may integrate exactly one real Journal stage through the orchestration harness; preferred first stage remains `review_revise_en`.
+- one real stage is invoked through the harness, not by a parallel ad-hoc path;
+- repository revision/tree provenance is retained through execution;
+- persisted orchestration/delegation telemetry explains the execution outcome;
+- retry/replay behavior is bounded and safe;
+- hard human gates remain hard stops;
+- failure is fail-closed;
+- no broad full-pipeline autonomous mode is introduced.
 
 ## Orchestration contract retained from T05.22D
 
@@ -98,9 +101,8 @@ Do not introduce a generic workflow engine merely to express this loop. Reuse ex
 - Delegation telemetry is not delegation permission. Execution requires exact immutable policy and provenance.
 - Repository readability is not write authority. Content-production agents do not mutate the live repo through the production harness.
 
-## Near-term roadmap after OPS-01
+## Near-term roadmap after T05.22E
 
-- T05.22E integrate exactly one real Journal stage through the orchestration harness; preferred first stage is `review_revise_en` because it already has bounded validation/retry behavior;
 - Operator Control API: create case, enqueue/advance safe next action, retry/resume and approval gates without arbitrary stage execution;
 - Operator UI: New Journal + Preflight + Case Workspace + three human gates + recovery surface;
 - T05.18 targeted regressions for observed M1 failure modes;
