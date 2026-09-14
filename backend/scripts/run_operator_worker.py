@@ -21,9 +21,9 @@ from pydantic import SecretStr
 
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
+from app.modules.content_engine.journal.operator_recovery import claim_or_reclaim_operator_job
 from app.modules.content_engine.journal.operator_worker import (
     OperatorWorkerError,
-    claim_next_operator_job,
     execute_start_to_angle_job,
     fail_start_to_angle_job,
     heartbeat_operator_job,
@@ -135,7 +135,7 @@ async def _run() -> None:
     worker_id = _worker_id()
     async with SessionLocal() as session:
         async with session.begin():
-            job = await claim_next_operator_job(
+            job = await claim_or_reclaim_operator_job(
                 session,
                 worker_id=worker_id,
                 lease_seconds=_LEASE_SECONDS,
