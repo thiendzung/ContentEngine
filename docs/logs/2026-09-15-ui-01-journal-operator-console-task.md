@@ -4,7 +4,7 @@ Base main: `62e2910c7c327837995114cdb5f4783949304ba0`
 
 ## Goal
 
-Make the proven PR4.5 Journal vertical slice usable by Founder from the browser without terminal, Postman, or direct DB access:
+Make the proven PR4.5 Journal vertical slice usable by Founder from the browser without terminal, Postman, or direct DB access during the per-case workflow:
 
 `preflight -> manual intake -> READY -> Start -> polling -> AWAITING_APPROVAL(angle) -> inspect/select exact Angle candidate -> approve exact immutable snapshot`.
 
@@ -17,11 +17,17 @@ Make the proven PR4.5 Journal vertical slice usable by Founder from the browser 
 5. Poll authoritative case state during queued/running work; stop at human/block/complete states.
 6. Render Angle candidates and submit exact Angle approval bindings through the existing operator decision endpoint.
 7. Adjust production-board navigation/labels only enough to route Journal work into the operator console.
+8. Add a persistent local operator-worker loop that repeatedly invokes the already proven allow-listed one-shot executor, so a queued Start does not require a manual `make operator-worker` for each case.
+
+## Runtime finding
+
+PR4.5 proved `make operator-worker` as a safe one-shot consumer, but a browser workflow would otherwise stop at `QUEUED` until someone manually ran that command. UI-01 therefore adds `make operator-worker-loop` as a separate long-running runtime process. This does **not** move model/research execution into HTTP and does not broaden the worker allow-list. Each iteration still uses the proven PR4.5 executor, lease/heartbeat, failure receipt, and manual-retry semantics.
 
 ## Non-goals
 
 - No frontend orchestration/state machine.
 - No provider/model/prompt/recipe/worker selection from UI.
+- No model/research work inside HTTP.
 - No WebSocket/SSE; polling only.
 - No Outline/Writer vertical-slice expansion.
 - No Angle changes-requested/rejected control until backend supports a safe domain path.
@@ -40,6 +46,7 @@ Make the proven PR4.5 Journal vertical slice usable by Founder from the browser 
 - Stale-state conflicts cause refetch, never blind mutation retry.
 - Angle approval is bound to exact artifact id/version/hash + selected angle id/candidate hash.
 - Browser refresh must recover fully from persisted backend state.
+- Persistent worker runtime remains a separate process and only consumes allow-listed operator stages.
 
 ## Implementation layers
 
@@ -49,6 +56,7 @@ Make the proven PR4.5 Journal vertical slice usable by Founder from the browser 
 - return canonical `OperatorState`
 - return case question/intake/required locales
 - if `human_gate=angle`, return exact persisted Angle artifact plus normalized candidates and candidate hashes
+- revalidate persisted Angle artifact against its immutable Journal input bundle before projecting it
 - fail closed on corrupt/stale Angle payload
 - tests for READY and Angle-gate projections
 
@@ -69,6 +77,7 @@ Make the proven PR4.5 Journal vertical slice usable by Founder from the browser 
 - polling every ~2.5s while QUEUED/RUNNING
 - polling stops at terminal/human states
 - stale mutation -> refetch
+- persistent `operator-worker-loop` consumes queued allow-listed work without per-case terminal action
 
 ### UI-01D — Angle review
 
@@ -89,16 +98,17 @@ Make the proven PR4.5 Journal vertical slice usable by Founder from the browser 
 
 ## Definition of Done
 
-Founder can, using only the browser:
+Founder can, using only the browser after normal local runtime services are started:
 
 1. see genuine preflight readiness;
 2. create one Journal intake;
 3. start it once;
-4. observe QUEUED/RUNNING through polling;
-5. refresh without losing workflow state;
-6. inspect persisted Angle candidates;
-7. select and approve exactly one Angle;
-8. verify the backend persisted the exact approval receipt.
+4. have the persistent worker consume the queued Job without a per-case terminal command;
+5. observe QUEUED/RUNNING through polling;
+6. refresh without losing workflow state;
+7. inspect persisted Angle candidates;
+8. select and approve exactly one Angle;
+9. verify the backend persisted the exact approval receipt.
 
 Required proof:
 
@@ -106,5 +116,5 @@ Required proof:
 - OpenAPI export + generated frontend types PASS;
 - frontend lint/typecheck/build PASS;
 - exact-head GitHub CI PASS;
-- local real browser acceptance on dedicated test DB;
+- local real browser acceptance on dedicated test DB with the persistent worker loop running;
 - no operational production mutation beyond explicitly approved acceptance scope.
