@@ -24,7 +24,9 @@ from app.modules.content_engine.journal.operator_control import (
     OperatorState,
     create_or_reuse_journal_case,
 )
-from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
+from app.modules.content_engine.journal.operator_locking import (
+    lock_operator_idempotency,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import (
     ensure_required_locales,
     ensure_start_to_angle_step,
@@ -79,14 +81,20 @@ def _normalized_locales(values: list[str]) -> list[str]:
 
 
 def _request_hash(**payload: object) -> str:
-    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    raw = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
 async def _source_variant(
-    session: AsyncSession, *, content_case_id: UUID, locale: str
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    locale: str,
 ) -> LocaleVariant:
     variant = await session.scalar(
         select(LocaleVariant)
@@ -102,7 +110,9 @@ async def _source_variant(
 
 
 async def _approved_originality_pack(
-    session: AsyncSession, *, content_case_id: UUID
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
 ) -> OriginalityPack:
     pack = await session.scalar(
         select(OriginalityPack)
@@ -119,22 +129,34 @@ async def _approved_originality_pack(
 
 
 async def _replay_result(
-    session: AsyncSession, *, command: OperatorCommand
+    session: AsyncSession,
+    *,
+    command: OperatorCommand,
 ) -> FounderJournalIntakeResult:
     content_case = await session.get(ContentCase, command.content_case_id)
     if content_case is None or command.run_id is None:
         raise OperatorControlError("operator_manual_intake_receipt_missing")
-    opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
+    opportunity = await session.get(
+        ContentOpportunity,
+        content_case.content_opportunity_id,
+    )
     need = await session.get(NeedHypothesis, content_case.need_hypothesis_id)
     spec = await session.scalar(
-        select(JournalIntakeSpec).where(JournalIntakeSpec.content_case_id == content_case.id)
+        select(JournalIntakeSpec).where(
+            JournalIntakeSpec.content_case_id == content_case.id
+        )
     )
     if opportunity is None or need is None or spec is None:
         raise OperatorControlError("operator_manual_intake_receipt_missing")
     variant = await _source_variant(
-        session, content_case_id=content_case.id, locale=opportunity.locale
+        session,
+        content_case_id=content_case.id,
+        locale=opportunity.locale,
     )
-    pack = await _approved_originality_pack(session, content_case_id=content_case.id)
+    pack = await _approved_originality_pack(
+        session,
+        content_case_id=content_case.id,
+    )
     required = list(
         (
             await session.scalars(
@@ -144,7 +166,10 @@ async def _replay_result(
             )
         ).all()
     )
-    state = await get_operator_state_v45(session, content_case_id=content_case.id)
+    state = await get_operator_state_v45(
+        session,
+        content_case_id=content_case.id,
+    )
     return FounderJournalIntakeResult(
         command_id=command.id,
         need_hypothesis_id=need.id,
@@ -192,7 +217,10 @@ async def create_founder_journal_intake(
     actor = _text(actor_id, "operator_actor_required")
     project_key = _text(project_slug, "operator_project_required")
     source = _text(source_locale, "operator_source_locale_required").lower()
-    country = _text(research_country, "operator_research_country_required").lower()
+    country = _text(
+        research_country,
+        "operator_research_country_required",
+    ).lower()
     if len(country) > 8:
         raise OperatorControlError("operator_research_country_invalid")
     locales = _normalized_locales(required_locales)
@@ -205,13 +233,21 @@ async def create_founder_journal_intake(
     question_text = _text(question, "operator_manual_question_required")
     intent_text = _text(intent, "operator_manual_intent_required")
     promise_text = _text(promise, "operator_manual_promise_required")
-    reason_text = _text(selection_reason, "operator_manual_selection_reason_required")
-    material_text = _text(originality_material, "operator_manual_originality_material_required")
+    reason_text = _text(
+        selection_reason,
+        "operator_manual_selection_reason_required",
+    )
+    material_text = _text(
+        originality_material,
+        "operator_manual_originality_material_required",
+    )
     writer_use_text = _text(
-        originality_writer_use, "operator_manual_originality_writer_use_required"
+        originality_writer_use,
+        "operator_manual_originality_writer_use_required",
     )
     guardrails_text = _text(
-        originality_guardrails, "operator_manual_originality_guardrails_required"
+        originality_guardrails,
+        "operator_manual_originality_guardrails_required",
     )
     request_hash = _request_hash(
         project_slug=project_key,
@@ -243,7 +279,9 @@ async def create_founder_journal_intake(
             raise OperatorControlError("operator_idempotency_conflict")
         return await _replay_result(session, command=existing)
 
-    project = await session.scalar(select(Project).where(Project.slug == project_key).limit(1))
+    project = await session.scalar(
+        select(Project).where(Project.slug == project_key).limit(1)
+    )
     if project is None:
         raise OperatorControlError("operator_project_not_found")
 
@@ -277,12 +315,17 @@ async def create_founder_journal_intake(
         intent=intent_text,
         promise=promise_text,
         motgu_material_refs_json=[],
-        material_gaps_json=["Factual evidence must be researched and read before Angle generation."],
+        material_gaps_json=[
+            "Factual evidence must be researched and read before Angle generation."
+        ],
         existing_content_refs_json=[],
         what_is_actually_new=(
-            "Founder-authored editorial framing. This record does not assert observed customer demand."
+            "Founder-authored editorial framing. This record does not assert observed "
+            "customer demand."
         ),
-        next_discovery_step="Run bounded evidence research before Angle generation.",
+        next_discovery_step=(
+            "Run bounded evidence research before Angle generation."
+        ),
         decision="CREATE",
         priority="NOW",
         reasons_json=["Explicit Founder manual selection for Journal production."],
@@ -340,8 +383,9 @@ async def create_founder_journal_intake(
             }
         ],
         summary=(
-            "Founder-submitted MOTGU-owned editorial material. It is first-party originality "
-            "input and must not be presented as external customer or market evidence."
+            "Founder-submitted MOTGU-owned editorial material. It is first-party "
+            "originality input and must not be presented as external customer or "
+            "market evidence."
         ),
         status="draft",
     )
@@ -353,7 +397,9 @@ async def create_founder_journal_intake(
             originality_pack_id=pack.id,
             expected_snapshot_hash=originality_pack_snapshot_hash(pack),
             approved_by=actor,
-            approval_reason="Founder submitted and authorized this exact material at manual intake.",
+            approval_reason=(
+                "Founder submitted and authorized this exact material at manual intake."
+            ),
         )
     except OriginalityPackApprovalError as exc:
         raise OperatorControlError(str(exc)) from exc
@@ -367,7 +413,10 @@ async def create_founder_journal_intake(
     except OperatorBootstrapError as exc:
         raise OperatorControlError(exc.code) from exc
     await ensure_start_to_angle_step(session, run_id=bootstrap_run.id)
-    state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
+    state = await get_operator_state_v45(
+        session,
+        content_case_id=created.content_case_id,
+    )
     if state.status != "READY" or state.primary_intent != "start":
         raise OperatorControlError("operator_manual_intake_not_startable")
 
