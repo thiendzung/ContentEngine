@@ -52,6 +52,7 @@ from app.modules.harness.runtime import (
     SettingsModelRouter,
     build_context_manifest,
 )
+from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import (
     Evidence,
     EvidenceSet,
@@ -62,6 +63,7 @@ from app.modules.knowledge.originality_pack import originality_pack_snapshot_has
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import ProductionResearchRequest, ResearchDepth
 from app.modules.research.evidence import EvidenceResearchRequest, EvidenceResearchWorkflow
+from app.modules.research.evidence.persistence import lock_evidence_set
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
 
@@ -220,15 +222,16 @@ async def _policy_lock_evidence_set(
     *,
     evidence_set_id: UUID,
 ) -> EvidenceSet:
-    """Lock strict read-source evidence without fabricating a human approval."""
+    """Attest and lock strict read-source evidence without adding a human gate."""
 
+    policy_actor = "policy:strict_read_source_v1"
     evidence_set = await session.scalar(
         select(EvidenceSet).where(EvidenceSet.id == evidence_set_id).with_for_update()
     )
     if evidence_set is None:
         raise OperatorWorkerError("operator_worker_evidence_set_missing")
     if evidence_set.status == "locked":
-        if not (evidence_set.locked_by or "").startswith("policy:"):
+        if evidence_set.locked_by != policy_actor:
             raise OperatorWorkerError("operator_worker_evidence_lock_owner_invalid")
         return evidence_set
     if evidence_set.status != "draft" or not evidence_set.evidence_ids_json:
@@ -277,11 +280,24 @@ async def _policy_lock_evidence_set(
             or provenance.get("source_document_hash") != document.content_hash
         ):
             raise OperatorWorkerError("operator_worker_evidence_policy_rejected")
-    evidence_set.status = "locked"
-    evidence_set.locked_at = datetime.now(UTC)
-    evidence_set.locked_by = "policy:strict_read_source_v1"
-    await session.flush()
-    return evidence_set
+
+    approval = await approve_evidence_set(
+        session,
+        evidence_set_id=evidence_set.id,
+        expected_version=evidence_set.version,
+        expected_content_hash=evidence_set.content_hash,
+        approved_by=policy_actor,
+        approval_reason=(
+            "Machine policy attestation: every Evidence member is verified and bound "
+            "to the exact read SourceDocument snapshot before Journal handoff."
+        ),
+    )
+    return await lock_evidence_set(
+        session,
+        evidence_set_id=evidence_set.id,
+        locked_by=policy_actor,
+        approval_id=approval.id,
+    )
 
 
 async def execute_start_to_angle_job(
