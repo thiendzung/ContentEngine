@@ -105,6 +105,7 @@ class OperatorCommand(TimestampMixin, Base):
     run_id: Mapped[UUID | None] = mapped_column(ForeignKey("content_runs.id"))
     step_run_id: Mapped[UUID | None] = mapped_column(ForeignKey("step_runs.id"))
     job_id: Mapped[UUID | None] = mapped_column(ForeignKey("jobs.id"))
+    result_ref_id: Mapped[UUID | None] = mapped_column()
     intent: Mapped[str] = mapped_column(String(32), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
