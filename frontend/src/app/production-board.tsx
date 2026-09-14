@@ -25,6 +25,7 @@ export type ProductionBoardCase = {
   status_group: string;
   stage_key: string;
   coordinator: string;
+  operator_managed: boolean;
   locales: string[];
   quality_state: string;
   publication_state: string;
