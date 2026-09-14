@@ -2,11 +2,18 @@
 
 import { useRouter } from "next/navigation";
 
-import { ProductionBoard } from "../production-board";
+import { ProductionBoard, type ProductionBoardCase } from "../production-board";
 import "./production.css";
 
 export default function ProductionPage() {
   const router = useRouter();
+
+  function openCase(item: ProductionBoardCase) {
+    const path = item.operator_managed
+      ? `/operator/journal/${encodeURIComponent(item.id)}`
+      : `/?case=${encodeURIComponent(item.id)}`;
+    router.push(path);
+  }
 
   return (
     <main className="production-page">
@@ -21,7 +28,7 @@ export default function ProductionPage() {
       </header>
 
       <ProductionBoard
-        onSelect={(caseId) => router.push(`/operator/journal/${encodeURIComponent(caseId)}`)}
+        onSelect={openCase}
         refreshToken={0}
         selectedCaseId=""
       />
