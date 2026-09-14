@@ -39,6 +39,11 @@ async def _blocked_preflight() -> dict[str, object]:
     }
 
 
+async def _one_approved_version(*args: object, **kwargs: object) -> int:
+    del args, kwargs
+    return 1
+
+
 @pytest.mark.asyncio
 async def test_operator_create_receipt_is_exactly_replay_safe(
     monkeypatch: pytest.MonkeyPatch,
@@ -251,6 +256,33 @@ async def test_operator_human_gate_exposes_no_continue_bypass(
 
 
 @pytest.mark.asyncio
+async def test_operator_completion_is_fail_closed_until_required_locales_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(operator_module, "_approved_version_count", _one_approved_version)
+    async with isolated_session() as session:
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
+        prepared = await prepare_review_revise_en_orchestration(
+            session,
+            request=_request(fixture, source),
+        )
+
+        state = await get_operator_state(
+            session,
+            content_case_id=prepared.run.content_case_id,
+        )
+
+        assert state.status == "BLOCKED"
+        assert state.blocker_code == "operator_completion_requirements_not_wired"
+        assert state.allowed_intents == []
+
+
+@pytest.mark.asyncio
 async def test_operator_final_scope_maps_to_final_review_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -280,7 +312,11 @@ async def test_operator_final_scope_maps_to_final_review_gate(
         approval_id = uuid4()
         called: dict[str, object] = {}
 
-        async def fake_submit_review_decision(**kwargs: object) -> SimpleNamespace:
+        async def fake_submit_review_decision(
+            session_arg: object,
+            **kwargs: object,
+        ) -> SimpleNamespace:
+            assert session_arg is session
             called.update(kwargs)
             return SimpleNamespace(
                 approval_id=approval_id,
