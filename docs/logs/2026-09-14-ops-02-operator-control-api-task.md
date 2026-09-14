@@ -1,4 +1,4 @@
-# OPS-02 — Operator Control API
+# OPS-02 — Journal Operator Control-Plane Foundation
 
 Date: 2026-09-14
 Owner: MG architecture/implementation/review; Agent Local exact local proof; Founder merge/operational approval.
@@ -17,7 +17,7 @@ Canonical base:
 
 ## Goal
 
-Introduce the smallest safe operator-facing control plane between the Founder UI and persisted ContentEngine workflow state.
+Introduce the smallest safe operator-facing control-plane foundation between the Founder UI and persisted ContentEngine workflow state.
 
 The frontend may express operator intent. It must not select internal stages, providers, models, prompts, workers or arbitrary transitions.
 
@@ -27,15 +27,19 @@ Control rule:
 
 HTTP requests must not execute a long model/content step inline.
 
+This PR does **not** claim that a newly created Journal can run from intake to Angle. That vertical slice is PR4.5.
+
 ## Public operator concepts
 
-Supported execution intents:
+Accepted execution intent vocabulary:
 
 - `start`
 - `continue`
 - `resume`
 - `retry`
 - `cancel`
+
+`resume` is part of the public vocabulary but remains fail-closed until a real resumable checkpoint path is proven. A queued Job is not a resume condition.
 
 Supported editorial decisions:
 
@@ -50,17 +54,21 @@ Every mutating operator request carries:
 - `expected_state_version` for optimistic concurrency;
 - `idempotency_key` for exact replay safety.
 
-Stale state fails with conflict before mutation.
+Mutating command/decision paths serialize on the Journal ContentCase row before validating the expected state so concurrent distinct requests cannot both act on the same stale projection.
 
-## Create Journal contract
+## Create Journal foundation contract
 
 V1 creates/reuses a Journal ContentCase from an existing Founder-selected `ContentOpportunity`.
 
 It must not manufacture a `NeedHypothesis` or `ContentOpportunity` from free text merely to make the UI convenient. That would bypass Discovery and the existing human-selection boundary.
 
-The API may create/reuse the VI/EN `LocaleVariant` records deterministically for the selected case. It must not create fake ContentRuns solely to satisfy a queue schema.
+The API creates/reuses the source-locale `LocaleVariant` only. It does not fabricate translated-locale semantics.
 
-If required upstream production inputs do not yet exist, the created case is valid but its operator state is explicitly BLOCKED/NOT_READY with a human-readable reason.
+The API may create/reuse one real bootstrap `ContentRun` with immutable SettingsSnapshot so operator state has a durable workflow anchor. It must not invent a fake executable `StepRun` or `Job` merely to make the case look runnable.
+
+If upstream production inputs are not wired, the case remains valid and operator state is explicitly BLOCKED/NOT_READY.
+
+Founder-manual intake, canonical required locales and the true Start-to-Angle execution path belong to PR4.5.
 
 ## Operator state
 
@@ -69,69 +77,69 @@ Backend owns one projection containing at minimum:
 - case ID;
 - state version;
 - operator status;
-- operator phase/stage label;
-- one primary intent;
+- operator phase label;
+- one primary intent when a real action exists;
 - allowed intents;
 - human gate when present;
 - current run / step / worker when present;
-- last durable checkpoint when present;
+- last durable checkpoint/status note when present;
 - quality summary where available;
-- stable blocker/error code plus Vietnamese operator message;
-- whether a command/job is currently queued/running.
+- stable blocker/error code plus safe human-readable message;
+- queued/running state when a durable Job exists.
 
-The state is derived from persisted database truth. The UI does not reconstruct workflow rules.
+The UI does not reconstruct workflow rules.
+
+`COMPLETE` in this foundation is based only on the currently materialized locale set. The stricter bilingual `required_locales` invariant is deliberately deferred to PR4.5 and must replace this provisional completion rule before UI-01 relies on it for a newly created bilingual Journal.
 
 ## Durable command ledger
 
-Do not overload content Artifacts or invent a fake ContentRun to store operator intent.
-
-Add a small Journal-owned `OperatorCommand` ledger with:
+Add a Journal-owned `OperatorCommand` ledger with:
 
 - case ID;
 - optional resolved run/step/job IDs;
 - operator intent;
 - idempotency key;
-- expected state version;
+- request hash / expected state version;
 - backend-resolved internal action key;
 - status;
 - safe error code;
 - actor ID;
-- state before / after where applicable;
+- state before / after;
 - created/updated timestamps.
 
-The command ledger is not a replacement for the Job queue. Executable work still uses the existing durable `Job` lease/retry mechanism once an exact run and StepRun have been resolved.
+The command ledger is not a replacement for the Job queue. Executable work still uses the existing durable Job lease mechanism once an exact run and StepRun are resolved.
 
 ## Execution command rules
 
-- `start`: allowed only when backend can resolve the first safe runnable action from persisted state. If no reviewed runtime adapter exists yet, return an explicit blocker; do not guess.
+- `start`: allowed only when backend can resolve a reviewed runnable action. No current bootstrap intake adapter is invented in this PR.
 - `continue`: queue only the exact next action derived by backend policy.
-- `resume`: allowed only from a resumable durable checkpoint/state.
-- `retry`: allowed only after a retryable failed executable attempt and only within bounded policy.
-- `cancel`: records a bounded operator cancellation against the currently active command/run where existing state transitions allow it.
+- `resume`: fail closed until a real checkpoint/resume path exists; a merely queued/leased Job is not resume.
+- `retry`: allowed only after a failed/cancelled Job for the already-approved executable `review_revise_en` stage.
+- `cancel`: bounded to a currently queued Job.
 
-Command replay with the same idempotency key and identical semantic request returns the same durable command/result. Reuse with different case/intent/state fails closed.
+T05.22E prepares `review_revise_en` by moving the real run/step to `running` before worker dispatch. Therefore OPS-02 accepts `pending` or this exact prepared `running` state as queueable for `review_revise_en` only. This must not generalize to arbitrary stages.
+
+Command replay with the same idempotency key and identical semantic request returns the same durable command/result. Reuse with different semantics fails closed.
 
 ## Approval rules
 
-Editorial decisions reuse existing domain approval functions and exact artifact snapshot bindings.
+Editorial decisions reuse existing domain approval functions and exact artifact bindings.
 
-Angle approval additionally requires the selected candidate ID/hash supplied by the review surface. Outline approval binds the exact Outline artifact/version/hash. Final approval/change-request/rejection reuses the existing final-review decision service.
+- Angle: exact artifact ID/version/hash + candidate ID/hash; only approve is supported in this foundation.
+- Outline: exact artifact ID/version/hash; only approve is supported in this foundation.
+- Final: public scope `final` maps to persisted human gate `final_review` and delegates approve/change-request/reject to the existing final-review service.
 
 No model or worker can create an operator approval.
 
 ## Preflight
 
-Do not duplicate OPS-01 logic. The operator API projects/reuses `build_operational_preflight()` and preserves READY / BLOCKED / OPTIONAL semantics without exposing secrets.
-
-A BLOCKED required preflight prevents executable operator commands from being accepted for queueing.
+Reuse `build_operational_preflight()` from OPS-01. A BLOCKED required preflight prevents executable commands from being queued.
 
 ## Error surface
 
-Responses expose stable safe codes plus concise Vietnamese messages. Never return raw tracebacks, prompt bodies, provider payloads, repository contents, secrets or chain-of-thought.
+Responses expose stable safe codes and concise safe messages. Never expose raw tracebacks, prompts, provider payloads, secrets, repository contents or chain-of-thought.
 
 ## Required endpoints
-
-Minimum public surface:
 
 - `GET /journal/operator/preflight`
 - `POST /journal/operator/cases`
@@ -139,65 +147,76 @@ Minimum public surface:
 - `POST /journal/operator/cases/{content_case_id}/commands`
 - `POST /journal/operator/cases/{content_case_id}/decisions`
 
-Existing read/review endpoints remain compatible.
+Existing Journal read/review endpoints remain compatible.
 
 ## Required tests
 
 At minimum prove:
 
-1. create rejects unselected/non-Journal opportunities and reuses an existing case idempotently;
-2. VI/EN locale creation is deterministic and duplicate-safe;
-3. operator state is derived from persisted truth and has a stable state version;
-4. request schemas contain no `stage_key`/provider/model/worker fields;
-5. stale `expected_state_version` fails before mutation;
-6. command idempotency replay does not duplicate ledger rows or Jobs;
-7. execution command cannot queue while required preflight is BLOCKED;
-8. backend refuses an intent when no safe runnable persisted step exists;
-9. runnable command resolves a real run/step and enqueues at most one durable Job;
-10. retry/resume are allowed only when persisted state makes them safe;
-11. human-gate state does not expose `continue` as an executable bypass;
-12. Angle/Outline/final decisions call the existing exact approval contracts;
-13. final review non-approve still requires a comment;
-14. human-readable blockers never expose secrets/raw provider payloads;
-15. existing Journal APIs and T05.22E tests remain green.
+1. create/reuse receipt is exactly idempotent for an eligible selected Journal opportunity;
+2. source-locale variant/bootstrap run are reused rather than duplicated;
+3. request schemas reject internal `stage_key` selection;
+4. prepared `review_revise_en` resolves to READY/continue;
+5. one command creates at most one Job and exact replay creates no second Job;
+6. stale state fails before a second mutation;
+7. mutating commands serialize on the case row so concurrent distinct stale requests cannot both pass;
+8. required preflight BLOCKED prevents Job creation;
+9. retry is exposed only after the persisted executable Job failed/cancelled;
+10. queued state exposes cancel only and does not pretend queued work is resumable;
+11. human gates expose no execution bypass;
+12. persisted gate decisions are not offered twice;
+13. public final scope maps correctly to the `final_review` human gate and delegates to the existing final-review contract;
+14. existing Journal APIs, T05.22E tests, migration round-trip and generated frontend types remain green.
 
 ## Boundaries
 
-OPS-02 does not:
+OPS-02 foundation does not:
 
+- implement Founder free-text/manual intake;
+- create canonical `required_locales` for bilingual production;
+- wire intake/research/context/Angle execution;
 - activate a broad autonomous Journal pipeline;
 - make the frontend choose internal stages;
 - execute model calls inside HTTP requests;
+- implement generic resume/checkpoint recovery;
 - replace durable Jobs with HTTP/background tasks;
 - add Redis/Celery/generic workflow engine;
 - enable Antigravity repo execution;
 - publish to WordPress;
 - mutate frozen M1 as implementation proof.
 
+## Next vertical slice
+
+PR4.5 must establish:
+
+`Founder manual intake -> canonical NeedHypothesis/Opportunity -> selected Journal case -> required locales -> Start -> research/context -> Angle -> WAIT_HUMAN`
+
+Only after that path is proven should UI-01 expose a genuinely useful:
+
+`Tạo Journal -> Preflight -> Start -> duyệt Angle`
+
 ## Branch protection P0
 
-GitHub currently reports `main` as unprotected. This is a governance risk but not a reason to broaden OPS-02 runtime scope.
-
-Target repository rule after/alongside this PR:
+GitHub currently reports `main` as unprotected. Target repository rule:
 
 - changes to `main` through pull requests;
-- require the repository CI quality check before merge;
+- require repository CI before merge;
 - block force-push and branch deletion;
-- optionally require one approving review if that does not conflict with Founder-only operation.
+- optionally require one approving review if compatible with Founder-only operation.
 
-If the installed GitHub connection lacks repository administration permission, Founder must apply this rule in GitHub settings; record the limitation rather than pretending it was configured.
+The managed GitHub connection cannot mutate repository-admin branch protection; Founder must configure it manually if desired.
 
 ## Acceptance
 
-OPS-02 is complete when:
+OPS-02 foundation is complete when:
 
-- the operator can create/reuse an eligible Journal case from a selected opportunity;
-- frontend-facing state exposes only safe operator concepts;
-- intents are state-versioned and idempotent;
-- executable commands are durable and use Job only with a real run/step;
+- eligible selected opportunities can create/reuse a canonical Journal case + source locale + bootstrap run safely;
+- frontend-facing state exposes only real operator capabilities;
+- commands/decisions are state-versioned, idempotent and serialized against concurrent stale mutation;
+- the already-proven `review_revise_en` stage can be queued/retried through durable Jobs without arbitrary stage selection;
 - human gates remain hard stops;
-- approvals reuse exact existing domain contracts;
+- Angle/Outline/final decisions reuse exact existing approval contracts, including correct `final -> final_review` mapping;
 - preflight blocks unsafe execution;
-- API never exposes arbitrary `stage_key` execution;
-- GitHub CI and focused local proof pass;
+- GitHub CI passes on the reviewed head;
+- Agent Local focused proof passes on the same head using a dedicated test/disposable DB;
 - frozen M1 remains unchanged.
