@@ -38,7 +38,7 @@ export type ProductionBoardCase = {
 
 type Props = {
   selectedCaseId: string;
-  onSelect: (caseId: string) => void;
+  onSelect: (item: ProductionBoardCase) => void;
   refreshToken: number;
 };
 
@@ -261,7 +261,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                     <button
                       aria-label={`Mở bài ${item.title}`}
                       className="production-row-main"
-                      onClick={() => onSelect(item.id)}
+                      onClick={() => onSelect(item)}
                       type="button"
                     >
                       <span className="production-id">{shortId(item.id)}</span>
