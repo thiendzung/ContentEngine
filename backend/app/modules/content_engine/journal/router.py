@@ -31,6 +31,10 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
     get_operator_state_v45,
     submit_operator_command_v45,
 )
+from app.modules.content_engine.journal.operator_view import (
+    OperatorCaseView,
+    get_operator_case_view,
+)
 from app.modules.content_engine.journal.production_board import (
     ProductionBoardCase,
     list_production_board_cases,
@@ -285,6 +289,17 @@ async def get_journal_operator_case(
 ) -> OperatorState:
     try:
         return await get_operator_state_v45(session, content_case_id=content_case_id)
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
+
+
+@router.get("/operator/cases/{content_case_id}/view", response_model=OperatorCaseView)
+async def get_journal_operator_case_view(
+    content_case_id: UUID,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OperatorCaseView:
+    try:
+        return await get_operator_case_view(session, content_case_id=content_case_id)
     except OperatorControlError as exc:
         raise _operator_http_error(exc) from exc
 
