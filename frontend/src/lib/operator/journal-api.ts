@@ -152,12 +152,11 @@ type ErrorPayload = {
 };
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body) headers.set("Content-Type", "application/json");
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
+    headers,
     cache: "no-store",
   });
   if (!response.ok) {
