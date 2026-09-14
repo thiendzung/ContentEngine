@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { createFounderJournalIntake } from "../../lib/operator/journal-api";
@@ -15,8 +15,10 @@ type Props = {
   preflightReady: boolean;
 };
 
+type SourceLocale = "" | "vi" | "en";
+
 type FormState = {
-  source_locale: "vi" | "en";
+  source_locale: SourceLocale;
   research_country: string;
   required_vi: boolean;
   required_en: boolean;
@@ -33,7 +35,7 @@ type FormState = {
 };
 
 const initialState: FormState = {
-  source_locale: "vi",
+  source_locale: "",
   research_country: "vn",
   required_vi: true,
   required_en: true,
@@ -82,6 +84,10 @@ export function JournalIntakeForm({ preflightReady }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!preflightReady || submitting) return;
+    if (!form.source_locale) {
+      setError("Cần chọn ngôn ngữ nguồn trước khi tạo Journal.");
+      return;
+    }
     if (!requiredLocales.includes(form.source_locale)) {
       setError("Ngôn ngữ nguồn phải nằm trong các ngôn ngữ bắt buộc.");
       return;
@@ -136,8 +142,10 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             <span>Ngôn ngữ nguồn</span>
             <select
               onChange={(event) => setSourceLocale(event.target.value as "vi" | "en")}
+              required
               value={form.source_locale}
             >
+              <option disabled value="">Chọn ngôn ngữ nguồn</option>
               <option value="vi">Tiếng Việt</option>
               <option value="en">Tiếng Anh</option>
             </select>
