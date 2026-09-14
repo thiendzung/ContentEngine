@@ -17,6 +17,7 @@ from app.modules.content_engine.journal.operator_control import (
     OperatorControlError,
     get_operator_state,
 )
+from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.journal.outline_approval import (
     OutlineApprovalError,
     approve_outline_artifact,
@@ -103,6 +104,8 @@ async def submit_operator_decision(
         "comment": comment.strip() if isinstance(comment, str) else None,
     }
     request_hash = _stable_hash(request_payload)
+
+    await lock_operator_idempotency(session, key=key)
     existing = await session.scalar(
         select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
     )
