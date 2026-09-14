@@ -25,9 +25,16 @@ from app.modules.content_engine.journal.review_actions import (
     ReviewActionError,
     submit_review_decision,
 )
+from app.modules.content_engine.models import ContentCase
 
 DecisionScope = Literal["angle", "outline", "final"]
 DecisionAction = Literal["approved", "changes_requested", "rejected"]
+
+_SCOPE_GATE = {
+    "angle": "angle",
+    "outline": "outline",
+    "final": "final_review",
+}
 
 
 class OperatorDecisionResult(BaseModel):
@@ -112,10 +119,18 @@ async def submit_operator_decision(
             replayed=True,
         )
 
+    locked_case = await session.scalar(
+        select(ContentCase)
+        .where(ContentCase.id == content_case_id, ContentCase.content_type == "journal")
+        .with_for_update()
+    )
+    if locked_case is None:
+        raise OperatorControlError("operator_case_not_found")
+
     before = await get_operator_state(session, content_case_id=content_case_id)
     if before.state_version != expected_state_version:
         raise OperatorControlError("operator_state_stale")
-    if before.status != "AWAITING_APPROVAL" or before.human_gate != scope:
+    if before.status != "AWAITING_APPROVAL" or before.human_gate != _SCOPE_GATE[scope]:
         raise OperatorControlError("operator_decision_not_awaiting_scope")
 
     approval_id: UUID | None = None
