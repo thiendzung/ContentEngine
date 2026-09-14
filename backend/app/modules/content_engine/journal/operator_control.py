@@ -596,8 +596,7 @@ async def get_operator_state(
             state_version=version,
             status="QUEUED",
             phase=phase,
-            primary_intent="resume",
-            allowed_intents=["resume", "cancel"],
+            allowed_intents=["cancel"],
             current_run_id=run.id,
             current_step_run_id=step.id if step else None,
             quality_summary=quality,
@@ -746,6 +745,14 @@ async def submit_operator_command(
             replayed=True,
         )
 
+    locked_case = await session.scalar(
+        select(ContentCase)
+        .where(ContentCase.id == content_case_id, ContentCase.content_type == "journal")
+        .with_for_update()
+    )
+    if locked_case is None:
+        raise OperatorControlError("operator_case_not_found")
+
     state = await get_operator_state(session, content_case_id=content_case_id)
     if state.state_version != expected_state_version:
         raise OperatorControlError("operator_state_stale")
@@ -789,10 +796,7 @@ async def submit_operator_command(
         command.job_id = job.id
         command.status = "cancelled"
     elif intent == "resume":
-        if job is None or job.status not in {"queued", "leased"}:
-            raise OperatorControlError("operator_resume_requires_active_job")
-        command.job_id = job.id
-        command.status = "queued" if job.status == "queued" else "accepted"
+        raise OperatorControlError("operator_resume_not_wired")
     else:
         if step.status not in {"pending", "running"}:
             raise OperatorControlError("operator_step_not_queueable")
