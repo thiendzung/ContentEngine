@@ -19,6 +19,7 @@ def upgrade() -> None:
         sa.Column("run_id", sa.Uuid(), nullable=True),
         sa.Column("step_run_id", sa.Uuid(), nullable=True),
         sa.Column("job_id", sa.Uuid(), nullable=True),
+        sa.Column("result_ref_id", sa.Uuid(), nullable=True),
         sa.Column("intent", sa.String(length=32), nullable=False),
         sa.Column("idempotency_key", sa.String(length=200), nullable=False),
         sa.Column("request_hash", sa.String(length=64), nullable=False),
