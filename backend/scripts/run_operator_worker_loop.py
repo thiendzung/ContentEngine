@@ -14,7 +14,7 @@ _FAILURE_SECONDS = 5.0
 async def _loop() -> None:
     while True:
         try:
-            await _run()
+            await _run(emit_idle=False)
         except (KeyboardInterrupt, asyncio.CancelledError):
             raise
         except Exception as exc:
