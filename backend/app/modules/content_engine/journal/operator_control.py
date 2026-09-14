@@ -618,7 +618,7 @@ async def get_operator_state(
     if (
         step is not None
         and step.step_key == _EXECUTABLE_STAGE
-        and step.status == "pending"
+        and step.status in {"pending", "running"}
         and job is not None
         and job.status in {"failed", "cancelled"}
     ):
@@ -662,7 +662,11 @@ async def get_operator_state(
             blocker_code=code,
             blocker_message=_message(code),
         )
-    if step is not None and step.step_key == _EXECUTABLE_STAGE and step.status == "pending":
+    if (
+        step is not None
+        and step.step_key == _EXECUTABLE_STAGE
+        and step.status in {"pending", "running"}
+    ):
         intent: OperatorIntent = "start" if run.status == "pending" else "continue"
         return OperatorState(
             content_case_id=content_case_id,
@@ -790,7 +794,7 @@ async def submit_operator_command(
         command.job_id = job.id
         command.status = "queued" if job.status == "queued" else "accepted"
     else:
-        if step.status != "pending":
+        if step.status not in {"pending", "running"}:
             raise OperatorControlError("operator_step_not_queueable")
         if intent == "retry" and (job is None or job.status not in {"failed", "cancelled"}):
             raise OperatorControlError("operator_retry_requires_failed_job")
