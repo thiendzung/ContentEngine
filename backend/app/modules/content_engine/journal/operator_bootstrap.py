@@ -24,7 +24,7 @@ async def ensure_operator_bootstrap_run(
     content_case_id: UUID,
     locale_variant_id: UUID,
 ) -> tuple[ContentRun, bool]:
-    """Create/reuse a real pending ContentRun without inventing an executable stage."""
+    """Create/reuse the source-locale create run without inventing an executable stage."""
     content_case = await session.scalar(
         select(ContentCase)
         .where(ContentCase.id == content_case_id)
@@ -36,17 +36,18 @@ async def ensure_operator_bootstrap_run(
     if variant is None or variant.content_case_id != content_case.id:
         raise OperatorBootstrapError("operator_bootstrap_locale_mismatch")
 
-    existing = list(
-        (
-            await session.scalars(
-                select(ContentRun)
-                .where(ContentRun.content_case_id == content_case.id)
-                .order_by(ContentRun.updated_at.desc(), ContentRun.id.desc())
-            )
-        ).all()
+    existing = await session.scalar(
+        select(ContentRun)
+        .where(
+            ContentRun.content_case_id == content_case.id,
+            ContentRun.locale_variant_id == variant.id,
+            ContentRun.run_mode == "create",
+        )
+        .order_by(ContentRun.created_at.asc(), ContentRun.id.asc())
+        .limit(1)
     )
-    if existing:
-        return existing[0], True
+    if existing is not None:
+        return existing, True
 
     opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
     if opportunity is None:
