@@ -36,8 +36,28 @@ export function PreflightStatus({ onReadyChange }: Props) {
   }, [onReadyChange]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    loadOperatorPreflight()
+      .then((result) => {
+        if (cancelled) return;
+        setPreflight(result);
+        setError("");
+        setLoading(false);
+        onReadyChange?.(result.status === "READY");
+      })
+      .catch((requestError: unknown) => {
+        if (cancelled) return;
+        setPreflight(null);
+        setError(
+          requestError instanceof Error ? requestError.message : "Không tải được preflight.",
+        );
+        setLoading(false);
+        onReadyChange?.(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [onReadyChange]);
 
   return (
     <section className="operator-panel operator-preflight" aria-live="polite">
