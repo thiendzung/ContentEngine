@@ -26,6 +26,7 @@ from app.modules.content_engine.journal.operator_worker import (
     execute_start_to_angle_job,
 )
 from app.modules.harness.agent_runner import AgentRunnerRegistry
+from app.modules.harness.models import Artifact
 
 
 @pytest.mark.asyncio
@@ -91,6 +92,20 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
             evidence_workflow=ControlledEvidenceWorkflow(),  # type: ignore[arg-type]
             runner_registry=registry,
         )
+        exact_artifact = await session.get(Artifact, result.angle_artifact_id)
+        assert exact_artifact is not None and exact_artifact.content_json is not None
+        stray = Artifact(
+            run_id=exact_artifact.run_id,
+            step_run_id=exact_artifact.step_run_id,
+            artifact_type="angle_candidates",
+            locale=exact_artifact.locale,
+            version=exact_artifact.version + 100,
+            content_json=exact_artifact.content_json,
+            content_hash=exact_artifact.content_hash,
+        )
+        session.add(stray)
+        await session.flush()
+
         view = await get_operator_case_view(
             session,
             content_case_id=created.content_case_id,
@@ -100,6 +115,7 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
         assert view.pending_gate is not None
         assert view.pending_gate.type == "angle"
         assert view.pending_gate.artifact.id == result.angle_artifact_id
+        assert view.pending_gate.artifact.id != stray.id
         assert view.pending_gate.artifact.content_hash == result.angle_artifact_hash
         assert len(view.pending_gate.candidates) == 3
         for item in view.pending_gate.candidates:
