@@ -54,7 +54,7 @@ Every mutating operator request carries:
 - `expected_state_version` for optimistic concurrency;
 - `idempotency_key` for exact replay safety.
 
-Mutating command/decision paths serialize on the Journal ContentCase row before validating the expected state so concurrent distinct requests cannot both act on the same stale projection.
+Mutating command/decision paths first serialize identical idempotency keys, then serialize the Journal ContentCase row before validating expected state. This prevents both duplicate-receipt races and concurrent distinct requests from acting on the same stale projection.
 
 ## Create Journal foundation contract
 
@@ -64,7 +64,7 @@ It must not manufacture a `NeedHypothesis` or `ContentOpportunity` from free tex
 
 The API creates/reuses the source-locale `LocaleVariant` only. It does not fabricate translated-locale semantics.
 
-The API may create/reuse one real bootstrap `ContentRun` with immutable SettingsSnapshot so operator state has a durable workflow anchor. It must not invent a fake executable `StepRun` or `Job` merely to make the case look runnable.
+The API may create/reuse one real bootstrap `ContentRun` with immutable SettingsSnapshot so operator state has a durable workflow anchor. Reuse is restricted to a `run_mode=create` run bound to the exact source-locale variant; an eval/update/localize run must never become the bootstrap merely because it is newer. The API must not invent a fake executable `StepRun` or `Job` merely to make the case look runnable.
 
 If upstream production inputs are not wired, the case remains valid and operator state is explicitly BLOCKED/NOT_READY.
 
@@ -89,7 +89,7 @@ Backend owns one projection containing at minimum:
 
 The UI does not reconstruct workflow rules.
 
-`COMPLETE` in this foundation is based only on the currently materialized locale set. The stricter bilingual `required_locales` invariant is deliberately deferred to PR4.5 and must replace this provisional completion rule before UI-01 relies on it for a newly created bilingual Journal.
+This foundation does **not** emit `COMPLETE` from the currently materialized locale set. If all currently materialized locales happen to be approved while canonical `required_locales` is still absent, the projection fails closed as BLOCKED. PR4.5 must persist the bilingual completion invariant before a Journal can be declared COMPLETE.
 
 ## Durable command ledger
 
@@ -97,6 +97,7 @@ Add a Journal-owned `OperatorCommand` ledger with:
 
 - case ID;
 - optional resolved run/step/job IDs;
+- optional durable result reference for decision replay;
 - operator intent;
 - idempotency key;
 - request hash / expected state version;
@@ -119,7 +120,7 @@ The command ledger is not a replacement for the Job queue. Executable work still
 
 T05.22E prepares `review_revise_en` by moving the real run/step to `running` before worker dispatch. Therefore OPS-02 accepts `pending` or this exact prepared `running` state as queueable for `review_revise_en` only. This must not generalize to arbitrary stages.
 
-Command replay with the same idempotency key and identical semantic request returns the same durable command/result. Reuse with different semantics fails closed.
+Command replay with the same idempotency key and identical semantic request returns the same durable command/result. Decision replay includes the same persisted approval/result reference. Reuse with different semantics fails closed.
 
 ## Approval rules
 
@@ -154,19 +155,22 @@ Existing Journal read/review endpoints remain compatible.
 At minimum prove:
 
 1. create/reuse receipt is exactly idempotent for an eligible selected Journal opportunity;
-2. source-locale variant/bootstrap run are reused rather than duplicated;
+2. source-locale variant/bootstrap run are reused rather than duplicated, and bootstrap reuse cannot select a newer non-create run;
 3. request schemas reject internal `stage_key` selection;
 4. prepared `review_revise_en` resolves to READY/continue;
 5. one command creates at most one Job and exact replay creates no second Job;
 6. stale state fails before a second mutation;
 7. mutating commands serialize on the case row so concurrent distinct stale requests cannot both pass;
-8. required preflight BLOCKED prevents Job creation;
-9. retry is exposed only after the persisted executable Job failed/cancelled;
-10. queued state exposes cancel only and does not pretend queued work is resumable;
-11. human gates expose no execution bypass;
-12. persisted gate decisions are not offered twice;
-13. public final scope maps correctly to the `final_review` human gate and delegates to the existing final-review contract;
-14. existing Journal APIs, T05.22E tests, migration round-trip and generated frontend types remain green.
+8. identical idempotency keys serialize before receipt lookup so concurrent duplicate requests replay rather than unique-fail;
+9. required preflight BLOCKED prevents Job creation;
+10. retry is exposed only after the persisted executable Job failed/cancelled;
+11. queued state exposes cancel only and does not pretend queued work is resumable;
+12. human gates expose no execution bypass;
+13. persisted gate decisions are not offered twice;
+14. public final scope maps correctly to the `final_review` human gate and delegates to the existing final-review contract;
+15. decision replay returns the same persisted approval/result reference and produces no second domain side effect;
+16. completion fails closed until canonical required locales exist;
+17. existing Journal APIs, T05.22E tests, migration round-trip and generated frontend types remain green.
 
 ## Boundaries
 
@@ -210,12 +214,13 @@ The managed GitHub connection cannot mutate repository-admin branch protection; 
 
 OPS-02 foundation is complete when:
 
-- eligible selected opportunities can create/reuse a canonical Journal case + source locale + bootstrap run safely;
+- eligible selected opportunities can create/reuse a canonical Journal case + source locale + matching create bootstrap run safely;
 - frontend-facing state exposes only real operator capabilities;
-- commands/decisions are state-versioned, idempotent and serialized against concurrent stale mutation;
+- commands/decisions are state-versioned, exactly replayable and serialized against duplicate/stale concurrent mutation;
 - the already-proven `review_revise_en` stage can be queued/retried through durable Jobs without arbitrary stage selection;
 - human gates remain hard stops;
 - Angle/Outline/final decisions reuse exact existing approval contracts, including correct `final -> final_review` mapping;
+- completion remains fail-closed until required locales are persisted in PR4.5;
 - preflight blocks unsafe execution;
 - GitHub CI passes on the reviewed head;
 - Agent Local focused proof passes on the same head using a dedicated test/disposable DB;
