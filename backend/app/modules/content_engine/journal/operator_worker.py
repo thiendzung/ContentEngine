@@ -41,13 +41,23 @@ from app.modules.content_engine.models import (
 )
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import ContentRun, Job, StepRun
-from app.modules.harness.persistence import complete_job, create_checkpoint, transition_run
+from app.modules.harness.persistence import (
+    complete_job,
+    create_checkpoint,
+    heartbeat_job,
+    transition_run,
+)
 from app.modules.harness.runtime import (
     ContextInputs,
     SettingsModelRouter,
     build_context_manifest,
 )
-from app.modules.knowledge.models import Evidence, EvidenceSet, OriginalityPack
+from app.modules.knowledge.models import (
+    Evidence,
+    EvidenceSet,
+    OriginalityPack,
+    SourceDocument,
+)
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import ProductionResearchRequest, ResearchDepth
@@ -89,6 +99,7 @@ async def claim_next_operator_job(
             Job.status == "queued",
             Job.available_at <= now,
             StepRun.step_key == START_TO_ANGLE_STAGE,
+            StepRun.status.in_(("pending", "running")),
         )
         .order_by(Job.available_at, Job.created_at, Job.id)
         .limit(1)
@@ -117,6 +128,90 @@ async def claim_next_operator_job(
     return job
 
 
+async def heartbeat_operator_job(
+    session: AsyncSession,
+    *,
+    job_id: UUID,
+    worker_id: str,
+    lease_seconds: int = 900,
+) -> Job:
+    """Extend an owned operator lease using the canonical harness primitive."""
+
+    if not worker_id.strip() or lease_seconds <= 0:
+        raise OperatorWorkerError("operator_worker_lease_invalid")
+    return await heartbeat_job(
+        session,
+        job_id=job_id,
+        worker_id=worker_id,
+        extend_by=timedelta(seconds=lease_seconds),
+    )
+
+
+async def fail_start_to_angle_job(
+    session: AsyncSession,
+    *,
+    job_id: UUID,
+    worker_id: str,
+    failure_class: str,
+    message: str,
+) -> Job:
+    """Persist a failed attempt while keeping the exact stage explicitly retryable.
+
+    The generic harness failure helper terminally fails the StepRun/ContentRun when no
+    automatic retry is configured. PR4.5 deliberately has no autonomous retry: the
+    operator must decide whether to retry. Therefore the durable failed Job is the
+    attempt receipt, while the bounded StepRun and ContentRun remain active.
+    """
+
+    now = datetime.now(UTC)
+    job = await session.scalar(select(Job).where(Job.id == job_id).with_for_update())
+    if (
+        job is None
+        or job.status != "leased"
+        or job.lease_owner != worker_id
+        or job.lease_expires_at is None
+        or job.lease_expires_at <= now
+    ):
+        raise OperatorWorkerError("operator_worker_lease_not_owned")
+    step = await session.scalar(
+        select(StepRun).where(StepRun.id == job.step_run_id).with_for_update()
+    )
+    run = await session.scalar(
+        select(ContentRun).where(ContentRun.id == job.run_id).with_for_update()
+    )
+    if step is None or run is None or step.run_id != run.id:
+        raise OperatorWorkerError("operator_worker_binding_invalid")
+    if step.step_key != START_TO_ANGLE_STAGE or step.status != "running":
+        raise OperatorWorkerError("operator_worker_stage_not_allowed")
+    if run.current_step != START_TO_ANGLE_STAGE or run.status not in {"pending", "running"}:
+        raise OperatorWorkerError("operator_worker_run_state_invalid")
+
+    safe_class = failure_class.strip()[:100] or "internal_error"
+    safe_message = message.strip()[:2000] or safe_class
+    job.status = "failed"
+    job.lease_owner = None
+    job.lease_expires_at = None
+    job.updated_at = now
+    step.error_json = {"class": safe_class, "message": safe_message}
+    run.failure_code = safe_class
+    run.failure_message = safe_message
+    receipts = list(
+        (
+            await session.scalars(
+                select(OperatorCommand).where(
+                    OperatorCommand.job_id == job.id,
+                    OperatorCommand.status == "queued",
+                )
+            )
+        ).all()
+    )
+    for command in receipts:
+        command.status = "failed"
+        command.error_code = safe_class
+    await session.flush()
+    return job
+
+
 async def _policy_lock_evidence_set(
     session: AsyncSession,
     *,
@@ -141,19 +236,42 @@ async def _policy_lock_evidence_set(
         evidence_ids = [UUID(value) for value in evidence_set.evidence_ids_json]
     except (TypeError, ValueError) as exc:
         raise OperatorWorkerError("operator_worker_evidence_snapshot_invalid") from exc
+    if len(set(evidence_ids)) != len(evidence_ids):
+        raise OperatorWorkerError("operator_worker_evidence_snapshot_invalid")
     evidence_rows = list(
         (await session.scalars(select(Evidence).where(Evidence.id.in_(evidence_ids)))).all()
     )
     if len(evidence_rows) != len(evidence_ids):
         raise OperatorWorkerError("operator_worker_evidence_member_missing")
+    document_ids = {
+        evidence.source_document_id
+        for evidence in evidence_rows
+        if evidence.source_document_id is not None
+    }
+    documents = list(
+        (
+            await session.scalars(
+                select(SourceDocument).where(SourceDocument.id.in_(document_ids))
+            )
+        ).all()
+    )
+    documents_by_id = {document.id: document for document in documents}
+    if len(documents_by_id) != len(document_ids):
+        raise OperatorWorkerError("operator_worker_evidence_document_missing")
     for evidence in evidence_rows:
         provenance = evidence.provenance_json
+        document = (
+            documents_by_id.get(evidence.source_document_id)
+            if evidence.source_document_id is not None
+            else None
+        )
         if (
-            evidence.source_document_id is None
+            document is None
             or evidence.verified_at is None
             or not isinstance(provenance, dict)
             or provenance.get("method") != "read_excerpt_link"
-            or not isinstance(provenance.get("source_document_hash"), str)
+            or provenance.get("source_document_id") != str(document.id)
+            or provenance.get("source_document_hash") != document.content_hash
         ):
             raise OperatorWorkerError("operator_worker_evidence_policy_rejected")
     evidence_set.status = "locked"
@@ -173,7 +291,7 @@ async def execute_start_to_angle_job(
 ) -> WorkerExecutionResult:
     """Execute the exact leased Start-to-Angle job and stop at the Angle gate."""
 
-    job = await session.scalar(select(Job).where(Job.id == job_id).with_for_update())
+    job = await session.get(Job, job_id)
     if (
         job is None
         or job.status != "leased"
@@ -303,8 +421,8 @@ async def execute_start_to_angle_job(
         raise OperatorWorkerError("operator_worker_unproven_angle_provider")
     runner = runner_registry.get(route.primary.provider)
     capability = await runner.preflight()
-    if capability.provider != route.primary.provider:
-        raise OperatorWorkerError("operator_worker_runner_provider_mismatch")
+    if capability.provider != route.primary.provider or not capability.authenticated:
+        raise OperatorWorkerError("operator_worker_runner_preflight_invalid")
 
     manifest = await build_context_manifest(
         session,
@@ -363,6 +481,8 @@ async def execute_start_to_angle_job(
 
     await complete_job(session, job_id=job.id, worker_id=worker_id)
     run.current_step = "angle"
+    run.failure_code = None
+    run.failure_message = None
     await create_checkpoint(
         session,
         run_id=run.id,
@@ -382,6 +502,7 @@ async def execute_start_to_angle_job(
     )
     for command in receipts:
         command.status = "completed"
+        command.error_code = None
         command.state_after = state.state_version
     await session.flush()
     return WorkerExecutionResult(
@@ -399,4 +520,6 @@ __all__ = [
     "WorkerExecutionResult",
     "claim_next_operator_job",
     "execute_start_to_angle_job",
+    "fail_start_to_angle_job",
+    "heartbeat_operator_job",
 ]
