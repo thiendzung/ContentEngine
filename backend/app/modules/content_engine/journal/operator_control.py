@@ -22,6 +22,7 @@ from app.modules.content_engine.journal.models import (
     OperatorCommand,
     OutlineApproval,
 )
+from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
@@ -68,6 +69,9 @@ _BLOCKER_MESSAGES = {
         "Case đã được tạo nhưng chưa có bước thực thi bền vững đã được backend chuẩn bị."
     ),
     "operator_action_not_wired": "Bước hiện tại chưa có adapter vận hành được phê duyệt.",
+    "operator_completion_requirements_not_wired": (
+        "Đã có nội dung được duyệt nhưng điều kiện hoàn tất song ngữ chưa được backend khóa."
+    ),
     "operator_gate_already_decided": (
         "Cổng duyệt đã được ghi nhận; bước tiếp theo chưa được backend chuẩn bị."
     ),
@@ -527,13 +531,21 @@ async def get_operator_state(
     approved_versions = await _approved_version_count(session, content_case_id)
 
     if variants and approved_versions >= len(variants):
+        code = "operator_completion_requirements_not_wired"
         return OperatorState(
             content_case_id=content_case_id,
             state_version=version,
-            status="COMPLETE",
-            phase="Hoàn tất",
+            status="BLOCKED",
+            phase="Chờ điều kiện hoàn tất",
+            current_run_id=run.id if run else None,
+            current_step_run_id=step.id if step else None,
             quality_summary=quality,
-            last_checkpoint="Đã có ContentVersion được duyệt cho mọi locale hiện có.",
+            blocker_code=code,
+            blocker_message=_message(code),
+            last_checkpoint=(
+                "Đã có ContentVersion được duyệt cho mọi locale hiện có, nhưng required_locales "
+                "chưa được persist nên backend không được kết luận COMPLETE."
+            ),
         )
     if run is None:
         code = "operator_pipeline_start_not_wired"
@@ -728,6 +740,8 @@ async def submit_operator_command(
         intent=intent,
         state_version=expected_state_version,
     )
+
+    await lock_operator_idempotency(session, key=key)
     existing = await session.scalar(
         select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
     )
