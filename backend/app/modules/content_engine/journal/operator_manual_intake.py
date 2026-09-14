@@ -35,6 +35,13 @@ from app.modules.content_engine.models import (
     Project,
     utc_now,
 )
+from app.modules.knowledge.models import OriginalityPack
+from app.modules.knowledge.originality_pack import (
+    OriginalityPackApprovalError,
+    approve_originality_pack,
+    originality_pack_snapshot_hash,
+)
+from app.modules.research.evidence.contracts import ORIGINALITY_MATERIAL_TYPE
 
 
 class FounderJournalIntakeResult(BaseModel):
@@ -44,6 +51,7 @@ class FounderJournalIntakeResult(BaseModel):
     content_case_id: UUID
     bootstrap_run_id: UUID
     source_locale_variant_id: UUID
+    originality_pack_id: UUID
     required_locales: list[str]
     replayed: bool
     state: OperatorState
@@ -77,6 +85,9 @@ def _request_hash(
     intent: str,
     promise: str,
     selection_reason: str,
+    originality_material: str,
+    originality_writer_use: str,
+    originality_guardrails: str,
 ) -> str:
     payload = {
         "project_slug": project_slug.strip(),
@@ -89,6 +100,9 @@ def _request_hash(
         "intent": intent.strip(),
         "promise": promise.strip(),
         "selection_reason": selection_reason.strip(),
+        "originality_material": originality_material.strip(),
+        "originality_writer_use": originality_writer_use.strip(),
+        "originality_guardrails": originality_guardrails.strip(),
     }
     raw = json.dumps(
         payload,
@@ -118,6 +132,25 @@ async def _source_variant(
     return variant
 
 
+async def _approved_originality_pack(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+) -> OriginalityPack:
+    pack = await session.scalar(
+        select(OriginalityPack)
+        .where(
+            OriginalityPack.content_case_id == content_case_id,
+            OriginalityPack.status == "approved",
+        )
+        .order_by(OriginalityPack.created_at.asc(), OriginalityPack.id.asc())
+        .limit(1)
+    )
+    if pack is None:
+        raise OperatorControlError("operator_manual_intake_originality_missing")
+    return pack
+
+
 async def _replay_result(
     session: AsyncSession,
     *,
@@ -137,6 +170,10 @@ async def _replay_result(
         content_case_id=content_case.id,
         locale=opportunity.locale,
     )
+    pack = await _approved_originality_pack(
+        session,
+        content_case_id=content_case.id,
+    )
     required = list(
         (
             await session.scalars(
@@ -154,6 +191,7 @@ async def _replay_result(
         content_case_id=content_case.id,
         bootstrap_run_id=command.run_id,
         source_locale_variant_id=variant.id,
+        originality_pack_id=pack.id,
         required_locales=required,
         replayed=True,
         state=state,
@@ -173,10 +211,18 @@ async def create_founder_journal_intake(
     intent: str,
     promise: str,
     selection_reason: str,
+    originality_material: str,
+    originality_writer_use: str,
+    originality_guardrails: str,
     idempotency_key: str,
     actor_id: str = "founder",
 ) -> FounderJournalIntakeResult:
-    """Persist Founder intent without pretending it was discovered market/customer truth."""
+    """Persist Founder intent without pretending it was discovered market/customer truth.
+
+    The three originality fields are explicit MOTGU-owned material submitted by the Founder.
+    Submitting this request authorizes the exact resulting OriginalityPack snapshot; it is not
+    customer evidence and is never inserted into factual Evidence.
+    """
 
     key = idempotency_key.strip()
     if not key or len(key) > 200:
@@ -195,6 +241,18 @@ async def create_founder_journal_intake(
     normalized_intent = _text(intent, "operator_manual_intent_required")
     normalized_promise = _text(promise, "operator_manual_promise_required")
     normalized_reason = _text(selection_reason, "operator_manual_selection_reason_required")
+    normalized_material = _text(
+        originality_material,
+        "operator_manual_originality_material_required",
+    )
+    normalized_writer_use = _text(
+        originality_writer_use,
+        "operator_manual_originality_writer_use_required",
+    )
+    normalized_guardrails = _text(
+        originality_guardrails,
+        "operator_manual_originality_guardrails_required",
+    )
 
     request_hash = _request_hash(
         project_slug=project_key,
@@ -207,6 +265,9 @@ async def create_founder_journal_intake(
         intent=normalized_intent,
         promise=normalized_promise,
         selection_reason=normalized_reason,
+        originality_material=normalized_material,
+        originality_writer_use=normalized_writer_use,
+        originality_guardrails=normalized_guardrails,
     )
 
     await lock_operator_idempotency(session, key=key)
@@ -261,13 +322,12 @@ async def create_founder_journal_intake(
         motgu_material_refs_json=[],
         material_gaps_json=[
             "Factual evidence must be researched and read before Angle generation.",
-            "MOTGU-owned originality material must remain separately provenance-bound.",
         ],
         existing_content_refs_json=[],
         what_is_actually_new=(
             "Founder-authored editorial framing. This record does not assert observed customer demand."
         ),
-        next_discovery_step="Run bounded evidence research and validate MOTGU-owned originality input.",
+        next_discovery_step="Run bounded evidence research before Angle generation.",
         decision="CREATE",
         priority="NOW",
         reasons_json=["Explicit Founder manual selection for Journal production."],
@@ -302,6 +362,38 @@ async def create_founder_journal_intake(
         required_locales=locales,
         declared_by=actor,
     )
+
+    pack = OriginalityPack(
+        content_case_id=created.content_case_id,
+        item_refs_json=[
+            {
+                "type": ORIGINALITY_MATERIAL_TYPE,
+                "source_ref": f"founder_manual_intake:{request_hash}",
+                "material": normalized_material,
+                "writer_use": normalized_writer_use,
+                "guardrails": normalized_guardrails,
+                "approval_ref": f"founder:{actor}:manual_intake:{request_hash}",
+            }
+        ],
+        summary=(
+            "Founder-submitted MOTGU-owned editorial material. This is first-party originality "
+            "input and must not be presented as external customer or market evidence."
+        ),
+        status="draft",
+    )
+    session.add(pack)
+    await session.flush()
+    try:
+        pack = await approve_originality_pack(
+            session,
+            originality_pack_id=pack.id,
+            expected_snapshot_hash=originality_pack_snapshot_hash(pack),
+            approved_by=actor,
+            approval_reason="Founder submitted and authorized this exact material at manual intake.",
+        )
+    except OriginalityPackApprovalError as exc:
+        raise OperatorControlError(str(exc)) from exc
+
     try:
         bootstrap_run, _ = await ensure_operator_bootstrap_run(
             session,
@@ -343,6 +435,7 @@ async def create_founder_journal_intake(
         content_case_id=created.content_case_id,
         bootstrap_run_id=bootstrap_run.id,
         source_locale_variant_id=created.source_locale_variant_id,
+        originality_pack_id=pack.id,
         required_locales=locales,
         replayed=False,
         state=state,
