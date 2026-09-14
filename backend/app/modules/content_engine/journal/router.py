@@ -28,6 +28,7 @@ from app.modules.content_engine.journal.operator_decisions import (
     OperatorDecisionResult,
     submit_operator_decision,
 )
+from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.journal.production_board import (
     ProductionBoardCase,
     list_production_board_cases,
@@ -230,6 +231,7 @@ async def command_journal_operator_case(
 ) -> OperatorCommandResult:
     try:
         async with session.begin():
+            await lock_operator_idempotency(session, key=payload.idempotency_key.strip())
             return await submit_operator_command(
                 session,
                 content_case_id=content_case_id,
