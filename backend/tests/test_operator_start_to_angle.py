@@ -61,7 +61,8 @@ def _intake_kwargs(*, key: str) -> dict[str, object]:
             "Use this as a first-party MOTGU perspective after factual claims are grounded."
         ),
         "originality_guardrails": (
-            "Do not present this first-party perspective as independent market or customer evidence."
+            "Do not present this first-party perspective as independent market or customer "
+            "evidence."
         ),
         "idempotency_key": key,
         "actor_id": "founder",
