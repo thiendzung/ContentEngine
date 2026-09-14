@@ -14,7 +14,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.models import JournalRequiredLocale, OperatorCommand
+from app.modules.content_engine.journal.models import (
+    JournalRequiredLocale,
+    OperatorCommand,
+)
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
     OperatorControlError,
@@ -23,8 +26,15 @@ from app.modules.content_engine.journal.operator_control import (
     get_operator_state,
     submit_operator_command,
 )
-from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
-from app.modules.content_engine.models import ContentCase, ContentItem, ContentVersion, LocaleVariant
+from app.modules.content_engine.journal.operator_locking import (
+    lock_operator_idempotency,
+)
+from app.modules.content_engine.models import (
+    ContentCase,
+    ContentItem,
+    ContentVersion,
+    LocaleVariant,
+)
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import enqueue_job
 from app.modules.system.preflight import build_operational_preflight
@@ -149,7 +159,11 @@ async def _start_focus(
                 ContentRun.content_case_id == content_case_id,
                 StepRun.step_key == START_TO_ANGLE_STAGE,
             )
-            .order_by(StepRun.attempt.desc(), StepRun.updated_at.desc(), StepRun.id.desc())
+            .order_by(
+                StepRun.attempt.desc(),
+                StepRun.updated_at.desc(),
+                StepRun.id.desc(),
+            )
             .limit(1)
         )
     ).first()
@@ -210,7 +224,9 @@ async def _completion_state(
         return base.model_copy(
             update={
                 "blocker_code": "operator_required_locales_incomplete",
-                "blocker_message": "Chưa có bản nội dung được duyệt cho mọi locale bắt buộc.",
+                "blocker_message": (
+                    "Chưa có bản nội dung được duyệt cho mọi locale bắt buộc."
+                ),
                 "last_checkpoint": f"Locale còn thiếu: {', '.join(missing)}",
             }
         )
@@ -234,7 +250,9 @@ async def _completion_state(
             "human_gate": None,
             "blocker_code": None,
             "blocker_message": None,
-            "last_checkpoint": "Mọi locale bắt buộc đã có ContentVersion được duyệt.",
+            "last_checkpoint": (
+                "Mọi locale bắt buộc đã có ContentVersion được duyệt."
+            ),
         }
     )
 
@@ -247,11 +265,19 @@ async def get_operator_state_v45(
     base = await get_operator_state(session, content_case_id=content_case_id)
     focus = await _start_focus(session, content_case_id=content_case_id)
     if focus is None:
-        return await _completion_state(session, content_case_id=content_case_id, base=base)
+        return await _completion_state(
+            session,
+            content_case_id=content_case_id,
+            base=base,
+        )
 
     run, step, job = focus
     if run.status == "waiting_approval" or run.current_step != START_TO_ANGLE_STAGE:
-        return await _completion_state(session, content_case_id=content_case_id, base=base)
+        return await _completion_state(
+            session,
+            content_case_id=content_case_id,
+            base=base,
+        )
     if job is not None and job.status in {"queued", "leased"}:
         return base
     if job is not None and job.status in {"failed", "cancelled"} and step.status in {
@@ -267,7 +293,9 @@ async def get_operator_state_v45(
                 "current_run_id": run.id,
                 "current_step_run_id": step.id,
                 "blocker_code": "operator_job_failed",
-                "blocker_message": "Tác vụ nền thất bại; có thể thử lại nếu trạng thái còn hợp lệ.",
+                "blocker_message": (
+                    "Tác vụ nền thất bại; có thể thử lại nếu trạng thái còn hợp lệ."
+                ),
             }
         )
     if step.status in {"pending", "running"} and job is None:
@@ -282,10 +310,16 @@ async def get_operator_state_v45(
                 "current_step_run_id": step.id,
                 "blocker_code": None,
                 "blocker_message": None,
-                "last_checkpoint": "Stage Start-to-Angle đã được chuẩn bị và chưa có Job.",
+                "last_checkpoint": (
+                    "Stage Start-to-Angle đã được chuẩn bị và chưa có Job."
+                ),
             }
         )
-    return await _completion_state(session, content_case_id=content_case_id, base=base)
+    return await _completion_state(
+        session,
+        content_case_id=content_case_id,
+        base=base,
+    )
 
 
 def _request_hash(
@@ -327,7 +361,9 @@ async def submit_operator_command_v45(
 
     run, step, job = focus
     if run.current_step != START_TO_ANGLE_STAGE and not (
-        job is not None and job.step_run_id == step.id and job.status in {"queued", "leased"}
+        job is not None
+        and job.step_run_id == step.id
+        and job.status in {"queued", "leased"}
     ):
         return await submit_operator_command(
             session,
@@ -354,7 +390,10 @@ async def submit_operator_command_v45(
         select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
     )
     if existing is not None:
-        if existing.request_hash != request_hash or existing.content_case_id != content_case_id:
+        if (
+            existing.request_hash != request_hash
+            or existing.content_case_id != content_case_id
+        ):
             raise OperatorControlError("operator_idempotency_conflict")
         return OperatorCommandResult(
             command_id=existing.id,
@@ -369,7 +408,10 @@ async def submit_operator_command_v45(
 
     locked_case = await session.scalar(
         select(ContentCase)
-        .where(ContentCase.id == content_case_id, ContentCase.content_type == "journal")
+        .where(
+            ContentCase.id == content_case_id,
+            ContentCase.content_type == "journal",
+        )
         .with_for_update()
     )
     if locked_case is None:
@@ -422,7 +464,9 @@ async def submit_operator_command_v45(
     else:
         if step.status not in {"pending", "running"}:
             raise OperatorControlError("operator_step_not_queueable")
-        if intent == "retry" and (job is None or job.status not in {"failed", "cancelled"}):
+        if intent == "retry" and (
+            job is None or job.status not in {"failed", "cancelled"}
+        ):
             raise OperatorControlError("operator_retry_requires_failed_job")
         dedupe = f"operator:{_stable_hash({'command_id': str(command.id), 'key': key})}"
         queued = await enqueue_job(
