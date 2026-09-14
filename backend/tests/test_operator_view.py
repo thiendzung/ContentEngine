@@ -11,7 +11,6 @@ from test_operator_start_to_angle import (
 )
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
-from app.modules.content_engine.journal.angle import angle_candidate_hash
 from app.modules.content_engine.journal.operator_manual_intake import (
     create_founder_journal_intake,
 )
@@ -104,7 +103,6 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
         for item in view.pending_gate.candidates:
             assert len(item.candidate_hash) == 64
             assert item.locale == "en"
-        raw_candidates = runner.received_context
-        assert raw_candidates is not None
+        assert runner.received_context is not None
         # Candidate hashes are backend-owned exact bindings, not frontend-derived values.
         assert len({item.candidate_hash for item in view.pending_gate.candidates}) == 3
