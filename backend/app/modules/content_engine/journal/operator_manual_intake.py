@@ -10,7 +10,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.models import JournalRequiredLocale, OperatorCommand
+from app.modules.content_engine.journal.models import (
+    JournalIntakeSpec,
+    JournalRequiredLocale,
+    OperatorCommand,
+)
 from app.modules.content_engine.journal.operator_bootstrap import (
     OperatorBootstrapError,
     ensure_operator_bootstrap_run,
@@ -53,6 +57,7 @@ class FounderJournalIntakeResult(BaseModel):
     source_locale_variant_id: UUID
     originality_pack_id: UUID
     required_locales: list[str]
+    research_country: str
     replayed: bool
     state: OperatorState
 
@@ -73,51 +78,15 @@ def _normalized_locales(values: list[str]) -> list[str]:
     return normalized
 
 
-def _request_hash(
-    *,
-    project_slug: str,
-    source_locale: str,
-    required_locales: list[str],
-    reader: str,
-    situation: str,
-    need: str,
-    question: str,
-    intent: str,
-    promise: str,
-    selection_reason: str,
-    originality_material: str,
-    originality_writer_use: str,
-    originality_guardrails: str,
-) -> str:
-    payload = {
-        "project_slug": project_slug.strip(),
-        "source_locale": source_locale.strip().lower(),
-        "required_locales": _normalized_locales(required_locales),
-        "reader": reader.strip(),
-        "situation": situation.strip(),
-        "need": need.strip(),
-        "question": question.strip(),
-        "intent": intent.strip(),
-        "promise": promise.strip(),
-        "selection_reason": selection_reason.strip(),
-        "originality_material": originality_material.strip(),
-        "originality_writer_use": originality_writer_use.strip(),
-        "originality_guardrails": originality_guardrails.strip(),
-    }
-    raw = json.dumps(
-        payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+def _request_hash(**payload: object) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return hashlib.sha256(raw).hexdigest()
 
 
 async def _source_variant(
-    session: AsyncSession,
-    *,
-    content_case_id: UUID,
-    locale: str,
+    session: AsyncSession, *, content_case_id: UUID, locale: str
 ) -> LocaleVariant:
     variant = await session.scalar(
         select(LocaleVariant)
@@ -133,9 +102,7 @@ async def _source_variant(
 
 
 async def _approved_originality_pack(
-    session: AsyncSession,
-    *,
-    content_case_id: UUID,
+    session: AsyncSession, *, content_case_id: UUID
 ) -> OriginalityPack:
     pack = await session.scalar(
         select(OriginalityPack)
@@ -152,28 +119,22 @@ async def _approved_originality_pack(
 
 
 async def _replay_result(
-    session: AsyncSession,
-    *,
-    command: OperatorCommand,
+    session: AsyncSession, *, command: OperatorCommand
 ) -> FounderJournalIntakeResult:
     content_case = await session.get(ContentCase, command.content_case_id)
     if content_case is None or command.run_id is None:
         raise OperatorControlError("operator_manual_intake_receipt_missing")
     opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
-    if opportunity is None:
-        raise OperatorControlError("operator_create_receipt_opportunity_missing")
     need = await session.get(NeedHypothesis, content_case.need_hypothesis_id)
-    if need is None:
-        raise OperatorControlError("operator_manual_intake_need_missing")
+    spec = await session.scalar(
+        select(JournalIntakeSpec).where(JournalIntakeSpec.content_case_id == content_case.id)
+    )
+    if opportunity is None or need is None or spec is None:
+        raise OperatorControlError("operator_manual_intake_receipt_missing")
     variant = await _source_variant(
-        session,
-        content_case_id=content_case.id,
-        locale=opportunity.locale,
+        session, content_case_id=content_case.id, locale=opportunity.locale
     )
-    pack = await _approved_originality_pack(
-        session,
-        content_case_id=content_case.id,
-    )
+    pack = await _approved_originality_pack(session, content_case_id=content_case.id)
     required = list(
         (
             await session.scalars(
@@ -193,6 +154,7 @@ async def _replay_result(
         source_locale_variant_id=variant.id,
         originality_pack_id=pack.id,
         required_locales=required,
+        research_country=spec.research_country,
         replayed=True,
         state=state,
     )
@@ -203,6 +165,7 @@ async def create_founder_journal_intake(
     *,
     project_slug: str,
     source_locale: str,
+    research_country: str,
     required_locales: list[str],
     reader: str,
     situation: str,
@@ -219,9 +182,8 @@ async def create_founder_journal_intake(
 ) -> FounderJournalIntakeResult:
     """Persist Founder intent without pretending it was discovered market/customer truth.
 
-    The three originality fields are explicit MOTGU-owned material submitted by the Founder.
-    Submitting this request authorizes the exact resulting OriginalityPack snapshot; it is not
-    customer evidence and is never inserted into factual Evidence.
+    The originality fields are explicit MOTGU-owned material submitted by the Founder.
+    Submitting this exact request authorizes the exact resulting OriginalityPack snapshot.
     """
 
     key = idempotency_key.strip()
@@ -230,44 +192,42 @@ async def create_founder_journal_intake(
     actor = _text(actor_id, "operator_actor_required")
     project_key = _text(project_slug, "operator_project_required")
     source = _text(source_locale, "operator_source_locale_required").lower()
+    country = _text(research_country, "operator_research_country_required").lower()
+    if len(country) > 8:
+        raise OperatorControlError("operator_research_country_invalid")
     locales = _normalized_locales(required_locales)
     if source not in locales:
         raise OperatorControlError("operator_source_locale_not_required")
 
-    normalized_reader = _text(reader, "operator_manual_reader_required")
-    normalized_situation = _text(situation, "operator_manual_situation_required")
-    normalized_need = _text(need, "operator_manual_need_required")
-    normalized_question = _text(question, "operator_manual_question_required")
-    normalized_intent = _text(intent, "operator_manual_intent_required")
-    normalized_promise = _text(promise, "operator_manual_promise_required")
-    normalized_reason = _text(selection_reason, "operator_manual_selection_reason_required")
-    normalized_material = _text(
-        originality_material,
-        "operator_manual_originality_material_required",
+    reader_text = _text(reader, "operator_manual_reader_required")
+    situation_text = _text(situation, "operator_manual_situation_required")
+    need_text = _text(need, "operator_manual_need_required")
+    question_text = _text(question, "operator_manual_question_required")
+    intent_text = _text(intent, "operator_manual_intent_required")
+    promise_text = _text(promise, "operator_manual_promise_required")
+    reason_text = _text(selection_reason, "operator_manual_selection_reason_required")
+    material_text = _text(originality_material, "operator_manual_originality_material_required")
+    writer_use_text = _text(
+        originality_writer_use, "operator_manual_originality_writer_use_required"
     )
-    normalized_writer_use = _text(
-        originality_writer_use,
-        "operator_manual_originality_writer_use_required",
+    guardrails_text = _text(
+        originality_guardrails, "operator_manual_originality_guardrails_required"
     )
-    normalized_guardrails = _text(
-        originality_guardrails,
-        "operator_manual_originality_guardrails_required",
-    )
-
     request_hash = _request_hash(
         project_slug=project_key,
         source_locale=source,
+        research_country=country,
         required_locales=locales,
-        reader=normalized_reader,
-        situation=normalized_situation,
-        need=normalized_need,
-        question=normalized_question,
-        intent=normalized_intent,
-        promise=normalized_promise,
-        selection_reason=normalized_reason,
-        originality_material=normalized_material,
-        originality_writer_use=normalized_writer_use,
-        originality_guardrails=normalized_guardrails,
+        reader=reader_text,
+        situation=situation_text,
+        need=need_text,
+        question=question_text,
+        intent=intent_text,
+        promise=promise_text,
+        selection_reason=reason_text,
+        originality_material=material_text,
+        originality_writer_use=writer_use_text,
+        originality_guardrails=guardrails_text,
     )
 
     await lock_operator_idempotency(session, key=key)
@@ -291,9 +251,9 @@ async def create_founder_journal_intake(
         project_id=project.id,
         audience_hypothesis_id=None,
         type="question",
-        statement=normalized_need,
-        audience_scope=normalized_reader,
-        situation=normalized_situation,
+        statement=need_text,
+        audience_scope=reader_text,
+        situation=situation_text,
         origin="founder_manual",
         status="PROPOSED",
         alternative_explanations_json=[],
@@ -302,9 +262,6 @@ async def create_founder_journal_intake(
             "Factual support must pass the bounded research/read-source evidence gate.",
         ],
         version=1,
-        reviewed_by=None,
-        reviewed_at=None,
-        review_reason=None,
     )
     session.add(hypothesis)
     await session.flush()
@@ -313,16 +270,14 @@ async def create_founder_journal_intake(
         project_id=project.id,
         need_hypothesis_id=hypothesis.id,
         locale=source,
-        reader=normalized_reader,
-        situation=normalized_situation,
-        need=normalized_need,
-        question=normalized_question,
-        intent=normalized_intent,
-        promise=normalized_promise,
+        reader=reader_text,
+        situation=situation_text,
+        need=need_text,
+        question=question_text,
+        intent=intent_text,
+        promise=promise_text,
         motgu_material_refs_json=[],
-        material_gaps_json=[
-            "Factual evidence must be researched and read before Angle generation.",
-        ],
+        material_gaps_json=["Factual evidence must be researched and read before Angle generation."],
         existing_content_refs_json=[],
         what_is_actually_new=(
             "Founder-authored editorial framing. This record does not assert observed customer demand."
@@ -336,7 +291,7 @@ async def create_founder_journal_intake(
         version=1,
         selected_by=actor,
         selected_at=utc_now(),
-        selection_reason=normalized_reason,
+        selection_reason=reason_text,
     )
     session.add(opportunity)
     await session.flush()
@@ -344,7 +299,7 @@ async def create_founder_journal_intake(
         HumanSelection(
             content_opportunity_id=opportunity.id,
             selected_by=actor,
-            reason=normalized_reason,
+            reason=reason_text,
             selected_at=opportunity.selected_at,
         )
     )
@@ -354,6 +309,15 @@ async def create_founder_journal_intake(
         session,
         content_opportunity_id=opportunity.id,
         expected_opportunity_version=opportunity.version,
+    )
+    session.add(
+        JournalIntakeSpec(
+            content_case_id=created.content_case_id,
+            source_locale=source,
+            research_country=country,
+            intake_hash=request_hash,
+            submitted_by=actor,
+        )
     )
     await ensure_required_locales(
         session,
@@ -369,14 +333,14 @@ async def create_founder_journal_intake(
             {
                 "type": ORIGINALITY_MATERIAL_TYPE,
                 "source_ref": f"founder_manual_intake:{request_hash}",
-                "material": normalized_material,
-                "writer_use": normalized_writer_use,
-                "guardrails": normalized_guardrails,
+                "material": material_text,
+                "writer_use": writer_use_text,
+                "guardrails": guardrails_text,
                 "approval_ref": f"founder:{actor}:manual_intake:{request_hash}",
             }
         ],
         summary=(
-            "Founder-submitted MOTGU-owned editorial material. This is first-party originality "
+            "Founder-submitted MOTGU-owned editorial material. It is first-party originality "
             "input and must not be presented as external customer or market evidence."
         ),
         status="draft",
@@ -403,7 +367,6 @@ async def create_founder_journal_intake(
     except OperatorBootstrapError as exc:
         raise OperatorControlError(exc.code) from exc
     await ensure_start_to_angle_step(session, run_id=bootstrap_run.id)
-
     state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
     if state.status != "READY" or state.primary_intent != "start":
         raise OperatorControlError("operator_manual_intake_not_startable")
@@ -427,7 +390,6 @@ async def create_founder_journal_intake(
     )
     session.add(command)
     await session.flush()
-
     return FounderJournalIntakeResult(
         command_id=command.id,
         need_hypothesis_id=hypothesis.id,
@@ -437,6 +399,7 @@ async def create_founder_journal_intake(
         source_locale_variant_id=created.source_locale_variant_id,
         originality_pack_id=pack.id,
         required_locales=locales,
+        research_country=country,
         replayed=False,
         state=state,
     )
