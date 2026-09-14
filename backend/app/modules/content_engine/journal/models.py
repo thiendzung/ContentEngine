@@ -93,6 +93,38 @@ class OutlineApproval(TimestampMixin, Base):
     )
 
 
+class JournalRequiredLocale(TimestampMixin, Base):
+    """Canonical locale requirement for one Journal case, independent of materialization."""
+
+    __tablename__ = "journal_required_locales"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id", ondelete="CASCADE"), nullable=False
+    )
+    locale: Mapped[str] = mapped_column(String(32), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    declared_by: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_case_id",
+            "locale",
+            name="uq_journal_required_locale_case_locale",
+        ),
+        CheckConstraint(
+            "role in ('source','translation')",
+            name="ck_journal_required_locale_role",
+        ),
+        CheckConstraint("btrim(locale) <> ''", name="ck_journal_required_locale_value"),
+        CheckConstraint(
+            "btrim(declared_by) <> ''",
+            name="ck_journal_required_locale_declared_by",
+        ),
+        Index("ix_journal_required_locales_case", "content_case_id"),
+    )
+
+
 class OperatorCommand(TimestampMixin, Base):
     """Durable operator intent; executable work still belongs to the Job queue."""
 
@@ -149,4 +181,9 @@ class OperatorCommand(TimestampMixin, Base):
     )
 
 
-__all__ = ["AngleApproval", "OperatorCommand", "OutlineApproval"]
+__all__ = [
+    "AngleApproval",
+    "JournalRequiredLocale",
+    "OperatorCommand",
+    "OutlineApproval",
+]
