@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -17,8 +17,14 @@ from app.modules.content_engine.journal.agent_bridge import (
     create_cli_angle_model_port,
 )
 from app.modules.content_engine.journal.angle import AngleGenerator
-from app.modules.content_engine.journal.context import build_journal_context, persist_journal_context
+from app.modules.content_engine.journal.context import (
+    build_journal_context,
+    persist_journal_context,
+)
 from app.modules.content_engine.journal.models import JournalIntakeSpec, OperatorCommand
+from app.modules.content_engine.journal.operator_angle_bundle import (
+    bind_bundle_context_manifest,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import (
     START_TO_ANGLE_STAGE,
     get_operator_state_v45,
@@ -27,16 +33,20 @@ from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
     ResearchDecision,
 )
-from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant, SettingsSnapshot
+from app.modules.content_engine.models import (
+    ContentCase,
+    ContentOpportunity,
+    LocaleVariant,
+    SettingsSnapshot,
+)
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import ContentRun, Job, StepRun
-from app.modules.harness.persistence import (
-    claim_next_job,
-    complete_job,
-    create_checkpoint,
-    transition_run,
+from app.modules.harness.persistence import complete_job, create_checkpoint, transition_run
+from app.modules.harness.runtime import (
+    ContextInputs,
+    SettingsModelRouter,
+    build_context_manifest,
 )
-from app.modules.harness.runtime import ContextInputs, SettingsModelRouter, build_context_manifest
 from app.modules.knowledge.models import Evidence, EvidenceSet, OriginalityPack
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
@@ -67,18 +77,43 @@ async def claim_next_operator_job(
     worker_id: str,
     lease_seconds: int = 900,
 ) -> Job | None:
-    """Claim one durable job, rejecting any stage outside the explicit allow-list."""
+    """Claim only the allow-listed PR4.5 stage, skipping unrelated queued work."""
 
-    job = await claim_next_job(
-        session,
-        worker_id=worker_id,
-        lease_duration=timedelta(seconds=lease_seconds),
+    if not worker_id.strip() or lease_seconds <= 0:
+        raise OperatorWorkerError("operator_worker_lease_invalid")
+    now = datetime.now(UTC)
+    candidate = (
+        select(Job.id)
+        .join(StepRun, StepRun.id == Job.step_run_id)
+        .where(
+            Job.status == "queued",
+            Job.available_at <= now,
+            StepRun.step_key == START_TO_ANGLE_STAGE,
+        )
+        .order_by(Job.available_at, Job.created_at, Job.id)
+        .limit(1)
+        .with_for_update(skip_locked=True)
+        .cte("next_operator_job")
     )
+    statement = (
+        update(Job)
+        .where(Job.id == candidate.c.id)
+        .values(
+            status="leased",
+            lease_owner=worker_id,
+            lease_expires_at=now + timedelta(seconds=lease_seconds),
+            updated_at=now,
+        )
+        .returning(Job)
+    )
+    job = (await session.execute(statement)).scalar_one_or_none()
     if job is None:
         return None
-    step = await session.get(StepRun, job.step_run_id)
-    if step is None or step.step_key != START_TO_ANGLE_STAGE:
-        raise OperatorWorkerError("operator_worker_stage_not_allowed")
+    await session.execute(
+        update(StepRun)
+        .where(StepRun.id == job.step_run_id, StepRun.status == "pending")
+        .values(status="running", started_at=now, updated_at=now)
+    )
     return job
 
 
@@ -87,7 +122,7 @@ async def _policy_lock_evidence_set(
     *,
     evidence_set_id: UUID,
 ) -> EvidenceSet:
-    """Lock strict read-source evidence without fabricating a human EvidenceSetApproval."""
+    """Lock strict read-source evidence without fabricating a human approval."""
 
     evidence_set = await session.scalar(
         select(EvidenceSet).where(EvidenceSet.id == evidence_set_id).with_for_update()
@@ -136,7 +171,7 @@ async def execute_start_to_angle_job(
     evidence_workflow: EvidenceResearchWorkflow,
     runner_registry: AgentRunnerRegistry,
 ) -> WorkerExecutionResult:
-    """Execute the exact leased Start-to-Angle job and stop at the Angle human gate."""
+    """Execute the exact leased Start-to-Angle job and stop at the Angle gate."""
 
     job = await session.scalar(select(Job).where(Job.id == job_id).with_for_update())
     if (
@@ -178,7 +213,10 @@ async def execute_start_to_angle_job(
         .order_by(OriginalityPack.created_at.asc(), OriginalityPack.id.asc())
         .limit(1)
     )
-    if originality is None or originality.snapshot_hash != originality_pack_snapshot_hash(originality):
+    if (
+        originality is None
+        or originality.snapshot_hash != originality_pack_snapshot_hash(originality)
+    ):
         raise OperatorWorkerError("operator_worker_originality_invalid")
 
     if run.status == "pending":
@@ -243,17 +281,6 @@ async def execute_start_to_angle_job(
         originality_pack_id=originality.id,
         expected_snapshot_hash=originality.snapshot_hash,
     )
-    bundle_artifact = await handoff.persist_journal_input_bundle(
-        session,
-        run_id=run.id,
-        step_run_id=step.id,
-        research_decision=ResearchDecision.REUSE_EXISTING,
-        opportunity_id=opportunity.id,
-        evidence_set=evidence_handoff,
-        originality_pack=originality_handoff,
-        provider_calls=0,
-        model_calls=0,
-    )
 
     settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
     if settings_snapshot is None:
@@ -268,7 +295,10 @@ async def execute_start_to_angle_job(
     )
     prompt_version = f"{prompt.prompt_key}:v{prompt.version}"
     recipe_version = f"{recipe.recipe_key}:v{recipe.version}"
-    route = SettingsModelRouter().resolve(task_key=ANGLE_TASK_KEY, settings_snapshot=settings_snapshot)
+    route = SettingsModelRouter().resolve(
+        task_key=ANGLE_TASK_KEY,
+        settings_snapshot=settings_snapshot,
+    )
     if route.primary.provider != "codex_cli":
         raise OperatorWorkerError("operator_worker_unproven_angle_provider")
     runner = runner_registry.get(route.primary.provider)
@@ -288,6 +318,30 @@ async def execute_start_to_angle_job(
             context_artifact_id=persisted_context.journal_context_artifact.id,
             approved_knowledge_refs=context.approved_knowledge_refs,
         ),
+    )
+    base_bundle = await handoff.persist_journal_input_bundle(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        research_decision=ResearchDecision.REUSE_EXISTING,
+        opportunity_id=opportunity.id,
+        evidence_set=evidence_handoff,
+        originality_pack=originality_handoff,
+        provider_calls=0,
+        model_calls=0,
+    )
+    bundle_artifact = await bind_bundle_context_manifest(
+        session,
+        base_bundle_artifact_id=base_bundle.id,
+        context_manifest_id=manifest.id,
+        research_execution={
+            "executed_in_stage": START_TO_ANGLE_STAGE,
+            "external_provider_calls": research_result.research.external_provider_calls,
+            "pages_read": len(research_result.research.documents),
+            "stop_reason": research_result.research.stop_reason,
+            "sufficient": research_result.research.sufficient,
+            "evidence_count": len(research_result.evidence_ids),
+        },
     )
     port = await create_cli_angle_model_port(
         session,
