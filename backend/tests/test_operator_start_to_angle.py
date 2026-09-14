@@ -42,7 +42,14 @@ from app.modules.harness.agent_runner import (
     AgentRunRequest,
     AgentRunResult,
 )
-from app.modules.harness.models import Artifact, ContentRun, ContextManifest, Job, ModelCall, StepRun
+from app.modules.harness.models import (
+    Artifact,
+    ContentRun,
+    ContextManifest,
+    Job,
+    ModelCall,
+    StepRun,
+)
 from app.modules.harness.persistence import enqueue_job
 from app.modules.knowledge.models import (
     Claim,
@@ -75,9 +82,15 @@ def _intake_kwargs(*, key: str) -> dict[str, object]:
         "intent": "learn",
         "promise": "Give a practical, evidence-backed evaluation framework.",
         "selection_reason": "Founder selected this Journal as an acquisition entry point.",
-        "originality_material": "MOTGU evaluates relief work by material honesty and craft decisions.",
-        "originality_writer_use": "Use as first-party MOTGU perspective after factual grounding.",
-        "originality_guardrails": "Do not present first-party perspective as market evidence.",
+        "originality_material": (
+            "MOTGU evaluates relief work by material honesty and craft decisions."
+        ),
+        "originality_writer_use": (
+            "Use as first-party MOTGU perspective after factual grounding."
+        ),
+        "originality_guardrails": (
+            "Do not present first-party perspective as market evidence."
+        ),
         "idempotency_key": key,
         "actor_id": "founder",
     }
@@ -248,11 +261,15 @@ class ControlledCodexRunner:
                 "reader_problem": "The visitor needs a grounded evaluation method.",
                 "central_question": "What can the visitor inspect before deciding?",
                 "core_promise": "Use inspectable evidence and MOTGU context.",
-                "point_of_view": "Separate external facts from MOTGU editorial judgment.",
+                "point_of_view": (
+                    "Separate external facts from MOTGU editorial judgment."
+                ),
                 "why_now": "The visitor is preparing to evaluate artwork in person.",
                 "evidence_refs": [evidence_item["evidence_id"]],
                 "originality_refs": [originality_item["source_ref"]],
-                "excluded_claims": ["Do not infer customer demand from Founder input."],
+                "excluded_claims": [
+                    "Do not infer customer demand from Founder input."
+                ],
                 "risks": ["Do not generalize one source into a universal rule."],
                 "confidence": 0.8,
                 "locale": opportunity["locale"],
@@ -275,8 +292,12 @@ class ControlledCodexRunner:
 async def test_founder_intake_preserves_provenance_requirements_and_replay() -> None:
     async with isolated_session() as session:
         signals_before = int(await session.scalar(select(func.count(Signal.id))) or 0)
-        first = await create_founder_journal_intake(session, **_intake_kwargs(key="pr45-intake"))
-        replay = await create_founder_journal_intake(session, **_intake_kwargs(key="pr45-intake"))
+        first = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-intake")
+        )
+        replay = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-intake")
+        )
         assert replay.replayed and replay.command_id == first.command_id
         assert first.required_locales == ["en", "vi"]
         assert first.state.status == "READY" and first.state.primary_intent == "start"
@@ -296,25 +317,39 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
             )
         ) == 1
         requirements = list(
-            (await session.scalars(select(JournalRequiredLocale).where(
-                JournalRequiredLocale.content_case_id == first.content_case_id
-            ).order_by(JournalRequiredLocale.locale))).all()
+            (
+                await session.scalars(
+                    select(JournalRequiredLocale)
+                    .where(JournalRequiredLocale.content_case_id == first.content_case_id)
+                    .order_by(JournalRequiredLocale.locale)
+                )
+            ).all()
         )
         assert [(row.locale, row.role) for row in requirements] == [
-            ("en", "source"), ("vi", "translation")
+            ("en", "source"),
+            ("vi", "translation"),
         ]
-        variants = list((await session.scalars(select(LocaleVariant).where(
-            LocaleVariant.content_case_id == first.content_case_id
-        ))).all())
+        variants = list(
+            (
+                await session.scalars(
+                    select(LocaleVariant).where(
+                        LocaleVariant.content_case_id == first.content_case_id
+                    )
+                )
+            ).all()
+        )
         assert [row.locale for row in variants] == ["en"]
         pack = await session.get(OriginalityPack, first.originality_pack_id)
-        assert pack is not None and pack.status == "approved" and pack.approved_by == "founder"
+        assert pack is not None and pack.status == "approved"
+        assert pack.approved_by == "founder"
 
 
 @pytest.mark.asyncio
 async def test_intake_conflict_and_http_internal_selection_fail_closed() -> None:
     async with isolated_session() as session:
-        await create_founder_journal_intake(session, **_intake_kwargs(key="pr45-conflict"))
+        await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-conflict")
+        )
         changed = _intake_kwargs(key="pr45-conflict")
         changed["need"] = "Changed brief"
         with pytest.raises(OperatorControlError, match="operator_idempotency_conflict"):
@@ -330,7 +365,9 @@ async def test_intake_conflict_and_http_internal_selection_fail_closed() -> None
 async def test_worker_claim_is_stage_scoped(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
     async with isolated_session() as session:
-        created = await create_founder_journal_intake(session, **_intake_kwargs(key="pr45-scope"))
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-scope")
+        )
         unrelated_step = StepRun(
             run_id=created.bootstrap_run_id,
             step_key="review_revise_en",
@@ -347,7 +384,9 @@ async def test_worker_claim_is_stage_scoped(monkeypatch: pytest.MonkeyPatch) -> 
             step_run_id=unrelated_step.id,
             dedupe_key=f"unrelated:{uuid4()}",
         )
-        state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
+        state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
         queued = await submit_operator_command_v45(
             session,
             content_case_id=created.content_case_id,
@@ -356,18 +395,25 @@ async def test_worker_claim_is_stage_scoped(monkeypatch: pytest.MonkeyPatch) -> 
             idempotency_key="pr45-scope-start",
         )
         leased = await claim_next_operator_job(session, worker_id="worker-pr45")
-        assert queued.job_id is not None and leased is not None and leased.id == queued.job_id
-        assert leased.id != unrelated_job.id
-        assert (await session.get(Job, unrelated_job.id)).status == "queued"  # type: ignore[union-attr]
+        assert queued.job_id is not None and leased is not None
+        assert leased.id == queued.job_id and leased.id != unrelated_job.id
+        untouched = await session.get(Job, unrelated_job.id)
+        assert untouched is not None and untouched.status == "queued"
 
 
 @pytest.mark.asyncio
-async def test_start_to_angle_worker_e2e_stops_at_angle_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
-        created = await create_founder_journal_intake(session, **_intake_kwargs(key="pr45-e2e"))
-        state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-e2e")
+        )
+        state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
         queued = await submit_operator_command_v45(
             session,
             content_case_id=created.content_case_id,
@@ -376,11 +422,18 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(monkeypatch: pytest
             idempotency_key="pr45-e2e-start",
         )
         assert queued.job_id is not None
-        leased = await claim_next_operator_job(session, worker_id="worker-pr45-e2e", lease_seconds=900)
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-pr45-e2e",
+            lease_seconds=900,
+        )
         assert leased is not None
         expiry = leased.lease_expires_at
         heartbeat = await heartbeat_operator_job(
-            session, job_id=leased.id, worker_id="worker-pr45-e2e", lease_seconds=1200
+            session,
+            job_id=leased.id,
+            worker_id="worker-pr45-e2e",
+            lease_seconds=1200,
         )
         assert expiry is not None and heartbeat.lease_expires_at is not None
         assert heartbeat.lease_expires_at > expiry
@@ -401,40 +454,61 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(monkeypatch: pytest
         run = await session.get(ContentRun, created.bootstrap_run_id)
         assert job is not None and job.status == "completed" and job.lease_owner is None
         assert step is not None and step.status == "completed"
-        assert run is not None and run.status == "waiting_approval" and run.current_step == "angle"
-        final_state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
-        assert final_state.status == "AWAITING_APPROVAL" and final_state.human_gate == "angle"
+        assert run is not None and run.status == "waiting_approval"
+        assert run.current_step == "angle"
+        final_state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
+        assert final_state.status == "AWAITING_APPROVAL"
+        assert final_state.human_gate == "angle"
         angle = await session.get(Artifact, result.angle_artifact_id)
         assert angle is not None and angle.artifact_type == "angle_candidates"
-        bundle = await session.scalar(select(Artifact).where(
-            Artifact.run_id == run.id, Artifact.artifact_type == "journal_input_bundle"
-        ).order_by(Artifact.version.desc()).limit(1))
+        bundle = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "journal_input_bundle",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
         assert bundle is not None and bundle.content_json is not None
         manifest_ref = bundle.content_json["context_manifest"]
         assert isinstance(manifest_ref, dict)
         manifest = await session.get(ContextManifest, manifest_ref["id"])
-        assert manifest is not None and manifest_ref["content_hash"] == manifest.content_hash
-        assert manifest.evidence_set_id is not None and manifest.originality_pack_id is not None
+        assert manifest is not None
+        assert manifest_ref["content_hash"] == manifest.content_hash
+        assert manifest.evidence_set_id is not None
+        assert manifest.originality_pack_id is not None
         assert runner.received_context is not None
         model_input = runner.received_context["angle_model_input"]
         assert isinstance(model_input, dict)
         context_input = model_input["context"]
-        assert isinstance(context_input, dict) and context_input["manifest_id"] == str(manifest.id)
+        assert isinstance(context_input, dict)
+        assert context_input["manifest_id"] == str(manifest.id)
         research_audit = bundle.content_json["research_execution"]
-        assert isinstance(research_audit, dict) and research_audit["evidence_count"] == 1
-        evidence_set = await session.scalar(select(EvidenceSet).where(
-            EvidenceSet.content_case_id == created.content_case_id
-        ))
+        assert isinstance(research_audit, dict)
+        assert research_audit["evidence_count"] == 1
+        evidence_set = await session.scalar(
+            select(EvidenceSet).where(
+                EvidenceSet.content_case_id == created.content_case_id
+            )
+        )
         assert evidence_set is not None and evidence_set.status == "locked"
         assert evidence_set.locked_by == "policy:strict_read_source_v1"
-        approval = await session.scalar(select(EvidenceSetApproval).where(
-            EvidenceSetApproval.evidence_set_id == evidence_set.id
-        ))
-        assert approval is not None and approval.evidence_set_version == evidence_set.version
+        approval = await session.scalar(
+            select(EvidenceSetApproval).where(
+                EvidenceSetApproval.evidence_set_id == evidence_set.id
+            )
+        )
+        assert approval is not None
+        assert approval.evidence_set_version == evidence_set.version
         assert approval.evidence_set_content_hash == evidence_set.content_hash
         assert approval.approved_by == "policy:strict_read_source_v1"
         assert "Machine policy attestation" in approval.approval_reason
-        model_call = await session.scalar(select(ModelCall).where(ModelCall.run_id == run.id))
+        model_call = await session.scalar(
+            select(ModelCall).where(ModelCall.run_id == run.id)
+        )
         receipt = await session.get(OperatorCommand, queued.command_id)
         assert model_call is not None and model_call.status == "completed"
         assert receipt is not None and receipt.status == "completed"
@@ -442,11 +516,17 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(monkeypatch: pytest
 
 
 @pytest.mark.asyncio
-async def test_failed_attempt_remains_explicitly_retryable(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_failed_attempt_remains_explicitly_retryable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
     async with isolated_session() as session:
-        created = await create_founder_journal_intake(session, **_intake_kwargs(key="pr45-retry"))
-        state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-retry")
+        )
+        state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
         first = await submit_operator_command_v45(
             session,
             content_case_id=created.content_case_id,
@@ -454,7 +534,9 @@ async def test_failed_attempt_remains_explicitly_retryable(monkeypatch: pytest.M
             expected_state_version=state.state_version,
             idempotency_key="pr45-retry-start",
         )
-        leased = await claim_next_operator_job(session, worker_id="worker-pr45-retry")
+        leased = await claim_next_operator_job(
+            session, worker_id="worker-pr45-retry"
+        )
         assert first.job_id is not None and leased is not None
         await fail_start_to_angle_job(
             session,
@@ -467,7 +549,9 @@ async def test_failed_attempt_remains_explicitly_retryable(monkeypatch: pytest.M
         step = await session.get(StepRun, leased.step_run_id)
         assert failed is not None and failed.status == "failed"
         assert step is not None and step.status == "running"
-        retry_state = await get_operator_state_v45(session, content_case_id=created.content_case_id)
+        retry_state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
         assert retry_state.allowed_intents == ["retry"]
         retry = await submit_operator_command_v45(
             session,
@@ -478,6 +562,7 @@ async def test_failed_attempt_remains_explicitly_retryable(monkeypatch: pytest.M
         )
         retry_job = await session.get(Job, retry.job_id)
         first_receipt = await session.get(OperatorCommand, first.command_id)
-        assert retry_job is not None and retry_job.attempt == 2 and retry_job.step_run_id == step.id
+        assert retry_job is not None
+        assert retry_job.attempt == 2 and retry_job.step_run_id == step.id
         assert first_receipt is not None and first_receipt.status == "failed"
         assert first_receipt.error_code == "insufficient_evidence"
