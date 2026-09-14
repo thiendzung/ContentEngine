@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.harness.models import Artifact, ContextManifest, ContentRun, StepRun
+from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
 
 
 class OperatorAngleBundleError(ValueError):
