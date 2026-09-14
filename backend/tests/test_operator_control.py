@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -9,6 +11,7 @@ from test_ce05_review_revise import isolated_session
 from test_review_revise_orchestration import _request, _source_draft_with_settings
 
 import app.modules.content_engine.journal.operator_control as operator_module
+import app.modules.content_engine.journal.operator_decisions as operator_decision_module
 from app.modules.content_engine.journal.models import AngleApproval
 from app.modules.content_engine.journal.operator_control import (
     OperatorControlError,
@@ -16,6 +19,7 @@ from app.modules.content_engine.journal.operator_control import (
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_creation import create_journal_case_with_receipt
+from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
 from app.modules.content_engine.journal.review_revise_orchestration import (
     prepare_review_revise_en_orchestration,
 )
@@ -131,6 +135,23 @@ async def test_operator_queue_replay_stale_and_retry_are_fail_closed(
         assert replay.replayed is True
         assert await session.scalar(select(func.count(Job.id))) == 1
 
+        queued_state = await get_operator_state(
+            session,
+            content_case_id=prepared.run.content_case_id,
+        )
+        assert queued_state.status == "QUEUED"
+        assert queued_state.primary_intent is None
+        assert queued_state.allowed_intents == ["cancel"]
+        with pytest.raises(OperatorControlError) as resume_blocked:
+            await submit_operator_command(
+                session,
+                content_case_id=prepared.run.content_case_id,
+                intent="resume",
+                expected_state_version=queued_state.state_version,
+                idempotency_key="operator-resume-not-wired",
+            )
+        assert resume_blocked.value.code == "operator_intent_not_allowed"
+
         with pytest.raises(OperatorControlError) as stale:
             await submit_operator_command(
                 session,
@@ -227,6 +248,64 @@ async def test_operator_human_gate_exposes_no_continue_bypass(
         assert state.human_gate == "angle"
         assert state.primary_intent is None
         assert state.allowed_intents == []
+
+
+@pytest.mark.asyncio
+async def test_operator_final_scope_maps_to_final_review_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source = await _source_draft_with_settings(
+            session,
+            monkeypatch,
+            locale="en",
+            unresolved=True,
+        )
+        prepared = await prepare_review_revise_en_orchestration(
+            session,
+            request=_request(fixture, source),
+        )
+        prepared.run.status = "waiting_approval"
+        prepared.run.current_step = "final_review"
+        await session.flush()
+
+        state = await get_operator_state(
+            session,
+            content_case_id=prepared.run.content_case_id,
+        )
+        assert state.status == "AWAITING_APPROVAL"
+        assert state.human_gate == "final_review"
+        assert prepared.run.locale_variant_id is not None
+
+        approval_id = uuid4()
+        called: dict[str, object] = {}
+
+        async def fake_submit_review_decision(**kwargs: object) -> SimpleNamespace:
+            called.update(kwargs)
+            return SimpleNamespace(
+                approval_id=approval_id,
+                writer_run_id=prepared.run.id,
+            )
+
+        monkeypatch.setattr(
+            operator_decision_module,
+            "submit_review_decision",
+            fake_submit_review_decision,
+        )
+        result = await submit_operator_decision(
+            session,
+            content_case_id=prepared.run.content_case_id,
+            scope="final",
+            decision="approved",
+            expected_state_version=state.state_version,
+            idempotency_key="operator-final-scope",
+            locale_variant_id=prepared.run.locale_variant_id,
+        )
+
+        assert result.approval_id == approval_id
+        assert called["content_case_id"] == prepared.run.content_case_id
+        assert called["locale_variant_id"] == prepared.run.locale_variant_id
+        assert called["decision"] == "approved"
 
 
 @pytest.mark.asyncio
