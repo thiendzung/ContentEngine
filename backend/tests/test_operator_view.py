@@ -25,6 +25,7 @@ from app.modules.content_engine.journal.operator_worker import (
     claim_next_operator_job,
     execute_start_to_angle_job,
 )
+from app.modules.content_engine.journal.production_board import list_production_board_cases
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Artifact
 
@@ -52,6 +53,9 @@ async def test_operator_view_projects_ready_intake_without_inventing_gate(
             ("en", "source"),
             ("vi", "translation"),
         ]
+        board = await list_production_board_cases(session)
+        board_row = next(item for item in board if item.id == created.content_case_id)
+        assert board_row.operator_managed is True
 
 
 @pytest.mark.asyncio
