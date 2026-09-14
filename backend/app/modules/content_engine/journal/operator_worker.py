@@ -205,9 +205,12 @@ async def fail_start_to_angle_job(
             )
         ).all()
     )
+    await session.flush()
+    state = await get_operator_state_v45(session, content_case_id=run.content_case_id)
     for command in receipts:
         command.status = "failed"
         command.error_code = safe_class
+        command.state_after = state.state_version
     await session.flush()
     return job
 
