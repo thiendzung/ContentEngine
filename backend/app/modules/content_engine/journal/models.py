@@ -5,7 +5,15 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -93,6 +101,79 @@ class OutlineApproval(TimestampMixin, Base):
     )
 
 
+class JournalIntakeSpec(TimestampMixin, Base):
+    """Immutable operational scope attached to one Founder-manual Journal case."""
+
+    __tablename__ = "journal_intake_specs"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    source_locale: Mapped[str] = mapped_column(String(32), nullable=False)
+    research_country: Mapped[str] = mapped_column(String(8), nullable=False)
+    intake_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    submitted_by: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "btrim(source_locale) <> ''",
+            name="ck_journal_intake_source_locale",
+        ),
+        CheckConstraint(
+            "btrim(research_country) <> ''",
+            name="ck_journal_intake_research_country",
+        ),
+        CheckConstraint(
+            "intake_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_journal_intake_hash",
+        ),
+        CheckConstraint(
+            "btrim(submitted_by) <> ''",
+            name="ck_journal_intake_submitted_by",
+        ),
+        Index("ix_journal_intake_specs_case", "content_case_id"),
+    )
+
+
+class JournalRequiredLocale(TimestampMixin, Base):
+    """Canonical locale requirement for one Journal case, independent of materialization."""
+
+    __tablename__ = "journal_required_locales"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    locale: Mapped[str] = mapped_column(String(32), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    declared_by: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_case_id",
+            "locale",
+            name="uq_journal_required_locale_case_locale",
+        ),
+        CheckConstraint(
+            "role in ('source','translation')",
+            name="ck_journal_required_locale_role",
+        ),
+        CheckConstraint(
+            "btrim(locale) <> ''",
+            name="ck_journal_required_locale_value",
+        ),
+        CheckConstraint(
+            "btrim(declared_by) <> ''",
+            name="ck_journal_required_locale_declared_by",
+        ),
+        Index("ix_journal_required_locales_case", "content_case_id"),
+    )
+
+
 class OperatorCommand(TimestampMixin, Base):
     """Durable operator intent; executable work still belongs to the Job queue."""
 
@@ -149,4 +230,10 @@ class OperatorCommand(TimestampMixin, Base):
     )
 
 
-__all__ = ["AngleApproval", "OperatorCommand", "OutlineApproval"]
+__all__ = [
+    "AngleApproval",
+    "JournalIntakeSpec",
+    "JournalRequiredLocale",
+    "OperatorCommand",
+    "OutlineApproval",
+]
