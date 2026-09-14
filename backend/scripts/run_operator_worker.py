@@ -10,6 +10,7 @@ import os
 import socket
 import sys
 from pathlib import Path
+from uuid import UUID
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(_BACKEND_ROOT) not in sys.path:
@@ -24,17 +25,22 @@ from app.modules.content_engine.journal.operator_worker import (
     OperatorWorkerError,
     claim_next_operator_job,
     execute_start_to_angle_job,
+    fail_start_to_angle_job,
+    heartbeat_operator_job,
 )
 from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun
-from app.modules.harness.persistence import fail_job_and_maybe_retry, transition_run
-from app.modules.harness.policy import BudgetLimits, RetryPolicy
+from app.modules.harness.persistence import transition_run
+from app.modules.harness.policy import BudgetLimits
 from app.modules.research.evidence import EvidenceResearchWorkflow
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.exa import ExaProvider
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.providers.serper import SerperProvider
 from app.modules.research.providers.tavily import TavilyProvider
+
+_LEASE_SECONDS = 900
+_HEARTBEAT_SECONDS = 240
 
 
 def _secret_value(secret: SecretStr | None) -> str | None:
@@ -95,12 +101,45 @@ def _research_router(
     )
 
 
+async def _heartbeat_loop(
+    *,
+    job_id: UUID,
+    worker_id: str,
+    stop: asyncio.Event,
+) -> None:
+    """Keep one durable lease alive while research/model work is in progress."""
+
+    while True:
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=_HEARTBEAT_SECONDS)
+            return
+        except TimeoutError:
+            pass
+        async with SessionLocal() as session:
+            async with session.begin():
+                await heartbeat_operator_job(
+                    session,
+                    job_id=job_id,
+                    worker_id=worker_id,
+                    lease_seconds=_LEASE_SECONDS,
+                )
+
+
+async def _stop_heartbeat(task: asyncio.Task[None], stop: asyncio.Event) -> None:
+    stop.set()
+    await task
+
+
 async def _run() -> None:
     settings = get_settings()
     worker_id = _worker_id()
     async with SessionLocal() as session:
         async with session.begin():
-            job = await claim_next_operator_job(session, worker_id=worker_id)
+            job = await claim_next_operator_job(
+                session,
+                worker_id=worker_id,
+                lease_seconds=_LEASE_SECONDS,
+            )
             if job is None:
                 print(
                     json.dumps(
@@ -119,6 +158,10 @@ async def _run() -> None:
     timeout = httpx.Timeout(settings.research_request_timeout_seconds)
     registry = AgentRunnerRegistry()
     registry.register("codex_cli", CodexCliRunner())
+    stop = asyncio.Event()
+    heartbeat = asyncio.create_task(
+        _heartbeat_loop(job_id=job_id, worker_id=worker_id, stop=stop)
+    )
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             workflow = EvidenceResearchWorkflow(
@@ -134,6 +177,10 @@ async def _run() -> None:
                         runner_registry=registry,
                     )
     except Exception as exc:
+        try:
+            await _stop_heartbeat(heartbeat, stop)
+        except Exception:
+            pass
         failure_class = (
             "insufficient_evidence"
             if isinstance(exc, OperatorWorkerError) and "evidence" in exc.code
@@ -141,15 +188,16 @@ async def _run() -> None:
         )
         async with SessionLocal() as session:
             async with session.begin():
-                await fail_job_and_maybe_retry(
+                await fail_start_to_angle_job(
                     session,
                     job_id=job_id,
                     worker_id=worker_id,
                     failure_class=failure_class,
                     message=str(exc)[:2000],
-                    retry_policy=RetryPolicy(max_step_attempts=1),
                 )
         raise
+    else:
+        await _stop_heartbeat(heartbeat, stop)
 
     print(
         json.dumps(
