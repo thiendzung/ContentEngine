@@ -59,6 +59,7 @@ function stageLabel(value: string): string {
   const normalized = value.toLowerCase();
   const labels: Record<string, string> = {
     intake: "Tiếp nhận",
+    start_to_angle: "Nghiên cứu & tạo góc tiếp cận",
     angle: "Chọn góc tiếp cận",
     angle_generation: "Tạo góc tiếp cận",
     outline: "Lập dàn ý",
@@ -219,7 +220,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
           <h2>Bảng sản xuất nội dung</h2>
         </div>
         <p>
-          Mỗi hàng là một bài nội dung. Codex điều phối; tác nhân và công cụ chỉ hiển thị khi có dữ liệu thực thi đã lưu.
+          Mỗi hàng là một bài nội dung. Trạng thái, giai đoạn và việc tiếp theo là thông tin chính; dữ liệu worker chỉ phản ánh telemetry đã lưu.
         </p>
       </div>
 
