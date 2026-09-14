@@ -126,9 +126,10 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         status_code = 422
     else:
         status_code = 409
+    message = exc.detail or "Thao tác không hợp lệ hoặc trạng thái đã thay đổi."
     return HTTPException(
         status_code=status_code,
-        detail={"code": exc.code, "message": exc.detail},
+        detail={"code": exc.code, "message": message},
     )
 
 
