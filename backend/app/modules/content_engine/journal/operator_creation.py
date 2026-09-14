@@ -21,6 +21,7 @@ from app.modules.content_engine.journal.operator_control import (
     create_or_reuse_journal_case,
     get_operator_state,
 )
+from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
 
 
@@ -83,6 +84,8 @@ async def create_journal_case_with_receipt(
         opportunity_id=content_opportunity_id,
         version=expected_opportunity_version,
     )
+
+    await lock_operator_idempotency(session, key=key)
     existing = await session.scalar(
         select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
     )
