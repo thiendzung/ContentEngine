@@ -9,10 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.modules.content_engine.journal.context import (
-    JournalContextError,
-    build_journal_context,
-)
+from app.modules.content_engine.journal.context import JournalContextError, build_journal_context
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
     OperatorControlError,
@@ -90,6 +87,7 @@ class FounderJournalIntakeRequest(BaseModel):
 
     project_slug: str = Field(default="motgu", min_length=1, max_length=100)
     source_locale: str = Field(min_length=1, max_length=32)
+    research_country: str = Field(min_length=1, max_length=8)
     required_locales: list[str] = Field(default_factory=lambda: ["vi", "en"], min_length=1)
     reader: str = Field(min_length=1)
     situation: str = Field(min_length=1)
@@ -98,6 +96,9 @@ class FounderJournalIntakeRequest(BaseModel):
     intent: str = Field(min_length=1, max_length=64)
     promise: str = Field(min_length=1)
     selection_reason: str = Field(min_length=1)
+    originality_material: str = Field(min_length=1)
+    originality_writer_use: str = Field(min_length=1)
+    originality_guardrails: str = Field(min_length=1)
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
@@ -150,6 +151,8 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_source_locale_not_required",
         "operator_source_locale_required",
         "operator_project_required",
+        "operator_research_country_required",
+        "operator_research_country_invalid",
         "operator_manual_reader_required",
         "operator_manual_situation_required",
         "operator_manual_need_required",
@@ -157,6 +160,9 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_manual_intent_required",
         "operator_manual_promise_required",
         "operator_manual_selection_reason_required",
+        "operator_manual_originality_material_required",
+        "operator_manual_originality_writer_use_required",
+        "operator_manual_originality_guardrails_required",
     }
     if exc.code in not_found:
         status_code = 404
@@ -178,10 +184,7 @@ async def list_journal_cases(
     rows = (
         await session.execute(
             select(ContentCase, ContentOpportunity, LocaleVariant)
-            .join(
-                ContentOpportunity,
-                ContentOpportunity.id == ContentCase.content_opportunity_id,
-            )
+            .join(ContentOpportunity, ContentOpportunity.id == ContentCase.content_opportunity_id)
             .join(LocaleVariant, LocaleVariant.content_case_id == ContentCase.id)
             .where(ContentCase.content_type == "journal")
             .order_by(ContentCase.created_at, ContentCase.id, LocaleVariant.locale)
@@ -238,6 +241,7 @@ async def create_journal_founder_intake(
                 session,
                 project_slug=payload.project_slug,
                 source_locale=payload.source_locale,
+                research_country=payload.research_country,
                 required_locales=payload.required_locales,
                 reader=payload.reader,
                 situation=payload.situation,
@@ -246,6 +250,9 @@ async def create_journal_founder_intake(
                 intent=payload.intent,
                 promise=payload.promise,
                 selection_reason=payload.selection_reason,
+                originality_material=payload.originality_material,
+                originality_writer_use=payload.originality_writer_use,
+                originality_guardrails=payload.originality_guardrails,
                 idempotency_key=payload.idempotency_key,
                 actor_id="founder",
             )
@@ -349,10 +356,7 @@ async def get_journal_review_case(
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ReviewCaseDetail:
     try:
-        return await get_action_aware_review_case(
-            session,
-            content_case_id=content_case_id,
-        )
+        return await get_action_aware_review_case(session, content_case_id=content_case_id)
     except ReviewConsoleError as exc:
         status_code = 404 if exc.code.endswith("not_found") else 422
         raise HTTPException(status_code=status_code, detail=exc.code) from exc
@@ -385,10 +389,7 @@ async def decide_journal_review_locale(
         raise HTTPException(status_code=status_code, detail=exc.code) from exc
 
 
-@router.get(
-    "/content-cases/{content_case_id}/context",
-    response_model=dict[str, Any],
-)
+@router.get("/content-cases/{content_case_id}/context", response_model=dict[str, Any])
 async def get_journal_context(
     content_case_id: UUID,
     locale_variant_id: UUID = Query(...),  # noqa: B008
