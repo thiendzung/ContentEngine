@@ -24,6 +24,7 @@ from app.modules.content_engine.journal.operator_control import OperatorControlE
 from app.modules.content_engine.journal.operator_vertical_slice import get_operator_state_v45
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact
+from app.modules.harness.persistence import get_latest_checkpoint
 
 LocaleRole = Literal["source", "translation"]
 
@@ -110,25 +111,43 @@ def _locale_role(value: str) -> LocaleRole:
     return cast(LocaleRole, value)
 
 
+async def _pending_angle_artifact(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+) -> Artifact:
+    if state.current_run_id is None or state.current_step_run_id is None:
+        raise OperatorControlError("operator_angle_projection_missing")
+    checkpoint = await get_latest_checkpoint(session, run_id=state.current_run_id)
+    if checkpoint is None or not isinstance(checkpoint.content_json, dict):
+        raise OperatorControlError("operator_angle_projection_missing")
+    pending = checkpoint.content_json.get("pending_approval")
+    if not isinstance(pending, dict) or pending.get("step_key") != "angle":
+        raise OperatorControlError("operator_angle_projection_stale")
+    raw_artifact_id = pending.get("artifact_id")
+    if not isinstance(raw_artifact_id, str):
+        raise OperatorControlError("operator_angle_projection_invalid")
+    try:
+        artifact_id = UUID(raw_artifact_id)
+    except ValueError as exc:
+        raise OperatorControlError("operator_angle_projection_invalid") from exc
+    artifact = await session.get(Artifact, artifact_id)
+    if (
+        artifact is None
+        or artifact.run_id != state.current_run_id
+        or artifact.step_run_id != state.current_step_run_id
+        or artifact.artifact_type != "angle_candidates"
+    ):
+        raise OperatorControlError("operator_angle_projection_stale")
+    return artifact
+
+
 async def _angle_gate(
     session: AsyncSession,
     *,
     state: OperatorState,
 ) -> OperatorAngleGateView:
-    if state.current_run_id is None or state.current_step_run_id is None:
-        raise OperatorControlError("operator_angle_projection_missing")
-    artifact = await session.scalar(
-        select(Artifact)
-        .where(
-            Artifact.run_id == state.current_run_id,
-            Artifact.step_run_id == state.current_step_run_id,
-            Artifact.artifact_type == "angle_candidates",
-        )
-        .order_by(Artifact.version.desc(), Artifact.created_at.desc(), Artifact.id.desc())
-        .limit(1)
-    )
-    if artifact is None:
-        raise OperatorControlError("operator_angle_projection_missing")
+    artifact = await _pending_angle_artifact(session, state=state)
     bundle_id, bundle_version, bundle_hash = _bundle_ref(artifact)
     try:
         bundle = await load_journal_input_bundle(
