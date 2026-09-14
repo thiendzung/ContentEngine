@@ -527,14 +527,25 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
         assert evidence_set is not None
         assert evidence_set.status == "locked"
         assert evidence_set.locked_by == "policy:strict_read_source_v1"
+        approval = await session.scalar(
+            select(EvidenceSetApproval).where(
+                EvidenceSetApproval.evidence_set_id == evidence_set.id
+            )
+        )
+        assert approval is not None
+        assert approval.evidence_set_version == evidence_set.version
+        assert approval.evidence_set_content_hash == evidence_set.content_hash
+        assert approval.approved_by == "policy:strict_read_source_v1"
+        assert "Machine policy attestation" in approval.approval_reason
         assert (
             await session.scalar(
                 select(func.count(EvidenceSetApproval.id)).where(
                     EvidenceSetApproval.evidence_set_id == evidence_set.id
                 )
             )
-            == 0
+            == 1
         )
+
         model_call = await session.scalar(select(ModelCall).where(ModelCall.run_id == run.id))
         assert model_call is not None and model_call.status == "completed"
         receipt = await session.get(OperatorCommand, queued.command_id)
