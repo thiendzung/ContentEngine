@@ -33,12 +33,14 @@ async def bind_bundle_context_manifest(
     *,
     base_bundle_artifact_id: UUID,
     context_manifest_id: UUID,
+    research_execution: dict[str, object] | None = None,
 ) -> Artifact:
-    """Create/reuse an immutable bundle snapshot carrying the exact context manifest.
+    """Create/reuse an immutable bundle snapshot carrying exact context and research audit.
 
     ``load_journal_input_bundle`` already validates the optional ``context_manifest``
-    field. Keeping this helper local to PR4.5 avoids changing the older CE05 handoff
-    signature while making context semantically present in the sanitized Angle input.
+    field. The extra ``research_execution`` object is audit metadata: the inherited
+    ``REUSE_EXISTING`` decision still describes the handoff action, while this snapshot
+    records whether the evidence was produced immediately before that handoff.
     """
 
     base = await session.get(Artifact, base_bundle_artifact_id)
@@ -74,6 +76,12 @@ async def bind_bundle_context_manifest(
         "id": str(manifest.id),
         "content_hash": manifest.content_hash,
     }
+    if research_execution is not None:
+        cloned = json.loads(json.dumps(research_execution, ensure_ascii=False))
+        if not isinstance(cloned, dict):
+            raise OperatorAngleBundleError("operator_angle_bundle_research_audit_invalid")
+        payload["research_execution"] = cloned
+
     content_hash = _canonical_hash(payload)
     existing = await session.scalar(
         select(Artifact)
@@ -105,7 +113,10 @@ async def bind_bundle_context_manifest(
     session.add(artifact)
     await session.flush()
     if str(artifact.id) not in step.output_artifact_refs_json:
-        step.output_artifact_refs_json = [*step.output_artifact_refs_json, str(artifact.id)]
+        step.output_artifact_refs_json = [
+            *step.output_artifact_refs_json,
+            str(artifact.id),
+        ]
         await session.flush()
     return artifact
 
