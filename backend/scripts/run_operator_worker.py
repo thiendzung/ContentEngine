@@ -28,14 +28,13 @@ from app.modules.content_engine.journal.operator_worker import (
 from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun
 from app.modules.harness.persistence import fail_job_and_maybe_retry, transition_run
-from app.modules.harness.policy import RetryPolicy
+from app.modules.harness.policy import BudgetLimits, RetryPolicy
 from app.modules.research.evidence import EvidenceResearchWorkflow
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.exa import ExaProvider
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.providers.serper import SerperProvider
 from app.modules.research.providers.tavily import TavilyProvider
-from app.modules.harness.policy import BudgetLimits
 
 
 def _secret_value(secret: SecretStr | None) -> str | None:
@@ -46,7 +45,10 @@ def _worker_id() -> str:
     return f"operator:{socket.gethostname()}:{os.getpid()}"
 
 
-def _research_router(settings: Settings, client: httpx.AsyncClient) -> ResearchRouter:
+def _research_router(
+    settings: Settings,
+    client: httpx.AsyncClient,
+) -> ResearchRouter:
     serper_key = _secret_value(settings.serper_api_key)
     if not serper_key:
         raise OperatorWorkerError("operator_worker_serper_required")
@@ -55,14 +57,26 @@ def _research_router(settings: Settings, client: httpx.AsyncClient) -> ResearchR
     jina_key = _secret_value(settings.jina_api_key)
     raw_excerpt_chars = settings.research_max_raw_excerpt_chars
     return ResearchRouter(
-        serper=SerperProvider(serper_key, client, raw_excerpt_chars=raw_excerpt_chars),
+        serper=SerperProvider(
+            serper_key,
+            client,
+            raw_excerpt_chars=raw_excerpt_chars,
+        ),
         tavily=(
-            TavilyProvider(tavily_key, client, raw_excerpt_chars=raw_excerpt_chars)
+            TavilyProvider(
+                tavily_key,
+                client,
+                raw_excerpt_chars=raw_excerpt_chars,
+            )
             if tavily_key
             else None
         ),
         exa=(
-            ExaProvider(exa_key, client, raw_excerpt_chars=raw_excerpt_chars)
+            ExaProvider(
+                exa_key,
+                client,
+                raw_excerpt_chars=raw_excerpt_chars,
+            )
             if exa_key
             else None
         ),
@@ -88,7 +102,12 @@ async def _run() -> None:
         async with session.begin():
             job = await claim_next_operator_job(session, worker_id=worker_id)
             if job is None:
-                print(json.dumps({"status": "idle", "worker_id": worker_id}, sort_keys=True))
+                print(
+                    json.dumps(
+                        {"status": "idle", "worker_id": worker_id},
+                        sort_keys=True,
+                    )
+                )
                 return
             run = await session.get(ContentRun, job.run_id)
             if run is None:
@@ -102,7 +121,9 @@ async def _run() -> None:
     registry.register("codex_cli", CodexCliRunner())
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            workflow = EvidenceResearchWorkflow(router=_research_router(settings, client))
+            workflow = EvidenceResearchWorkflow(
+                router=_research_router(settings, client)
+            )
             async with SessionLocal() as session:
                 async with session.begin():
                     result = await execute_start_to_angle_job(
