@@ -7,7 +7,7 @@ control plane.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -25,10 +25,12 @@ from app.modules.content_engine.journal.operator_vertical_slice import get_opera
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact
 
+LocaleRole = Literal["source", "translation"]
+
 
 class OperatorRequiredLocaleView(BaseModel):
     locale: str
-    role: Literal["source", "translation"]
+    role: LocaleRole
 
 
 class OperatorIntakeView(BaseModel):
@@ -100,6 +102,12 @@ def _bundle_ref(artifact: Artifact) -> tuple[UUID, int, str]:
     if not isinstance(content_hash, str) or len(content_hash) != 64:
         raise OperatorControlError("operator_angle_projection_invalid")
     return bundle_id, version, content_hash
+
+
+def _locale_role(value: str) -> LocaleRole:
+    if value not in {"source", "translation"}:
+        raise OperatorControlError("operator_required_locales_invalid")
+    return cast(LocaleRole, value)
 
 
 async def _angle_gate(
@@ -186,7 +194,7 @@ async def get_operator_case_view(
             await session.scalars(
                 select(JournalRequiredLocale)
                 .where(JournalRequiredLocale.content_case_id == content_case.id)
-                .order_by(JournalRequiredLocale.role.desc(), JournalRequiredLocale.locale)
+                .order_by(JournalRequiredLocale.role, JournalRequiredLocale.locale)
             )
         ).all()
     )
@@ -209,7 +217,8 @@ async def get_operator_case_view(
             source_locale=spec.source_locale,
             research_country=spec.research_country,
             required_locales=[
-                OperatorRequiredLocaleView(locale=row.locale, role=row.role) for row in requirements
+                OperatorRequiredLocaleView(locale=row.locale, role=_locale_role(row.role))
+                for row in requirements
             ],
         ),
         pending_gate=pending_gate,
