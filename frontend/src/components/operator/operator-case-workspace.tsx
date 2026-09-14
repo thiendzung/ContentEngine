@@ -109,22 +109,31 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       const result = await loadOperatorCaseView(caseId);
       setView(result);
       setError("");
-      if (
-        result.pending_gate?.type === "angle" &&
-        !result.pending_gate.candidates.some((item) => item.angle_id === selectedAngleId)
-      ) {
-        setSelectedAngleId("");
-      }
     } catch (requestError) {
       setError(technicalError(requestError));
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [caseId, selectedAngleId]);
+  }, [caseId]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    loadOperatorCaseView(caseId)
+      .then((result) => {
+        if (cancelled) return;
+        setView(result);
+        setError("");
+        setLoading(false);
+      })
+      .catch((requestError: unknown) => {
+        if (cancelled) return;
+        setError(technicalError(requestError));
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
 
   useEffect(() => {
     if (!view || !["QUEUED", "RUNNING"].includes(view.state.status)) return;
