@@ -51,6 +51,7 @@ async def test_recovery_reclaims_only_expired_start_to_angle_lease(
             lease_seconds=900,
         )
         assert claimed is not None
+        previous_attempt = claimed.attempt
         claimed.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
 
         unrelated_step = StepRun(
@@ -82,7 +83,7 @@ async def test_recovery_reclaims_only_expired_start_to_angle_lease(
         )
         assert recovered is not None
         assert recovered.id == claimed.id
-        assert recovered.attempt == claimed.attempt + 1
+        assert recovered.attempt == previous_attempt + 1
         assert recovered.lease_owner == "replacement-worker"
         assert recovered.lease_expires_at is not None
         assert recovered.lease_expires_at > datetime.now(UTC)
