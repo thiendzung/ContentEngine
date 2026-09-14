@@ -5,7 +5,7 @@ BACKEND_PIP := $(BACKEND_VENV)/bin/pip
 COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check
 
 setup: backend-install frontend-install
 
@@ -31,6 +31,9 @@ backend-dev:
 
 frontend-dev:
 	cd frontend && npm run dev
+
+operator-worker:
+	cd backend && .venv/bin/python -m scripts.run_operator_worker
 
 openapi:
 	cd backend && .venv/bin/python -m scripts.dump_openapi
