@@ -268,20 +268,20 @@ async def _target_project_id(
     target_id: UUID,
 ) -> UUID:
     if target_type == "claim":
-        target = await session.get(Claim, target_id)
-        if target is None:
+        claim = await session.get(Claim, target_id)
+        if claim is None:
             raise TopicGraphError("topic_link_claim_not_found")
-        return target.project_id
+        return claim.project_id
     if target_type == "knowledge_candidate":
-        target = await session.get(KnowledgeCandidate, target_id)
-        if target is None:
+        candidate = await session.get(KnowledgeCandidate, target_id)
+        if candidate is None:
             raise TopicGraphError("topic_link_candidate_not_found")
-        return target.project_id
+        return candidate.project_id
     if target_type == "entity":
-        target = await session.get(Entity, target_id)
-        if target is None:
+        entity = await session.get(Entity, target_id)
+        if entity is None:
             raise TopicGraphError("topic_link_entity_not_found")
-        return target.project_id
+        return entity.project_id
     if target_type == "chunk":
         project_id = await session.scalar(
             select(Source.project_id)
