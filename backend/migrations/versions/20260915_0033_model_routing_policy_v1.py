@@ -117,6 +117,55 @@ def _create_route_decision_guard() -> None:
     )
 
 
+def _create_routed_model_call_guard() -> None:
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION protect_routed_model_call_identity() RETURNS trigger AS $$
+            DECLARE
+                has_route_decision boolean;
+            BEGIN
+                SELECT EXISTS(
+                    SELECT 1 FROM model_route_decisions WHERE model_call_id = OLD.id
+                ) INTO has_route_decision;
+
+                IF NOT has_route_decision THEN
+                    IF TG_OP = 'DELETE' THEN
+                        RETURN OLD;
+                    END IF;
+                    RETURN NEW;
+                END IF;
+
+                IF TG_OP = 'DELETE' THEN
+                    RAISE EXCEPTION 'routed_model_call_delete_forbidden';
+                END IF;
+
+                IF OLD.run_id IS DISTINCT FROM NEW.run_id
+                   OR OLD.step_run_id IS DISTINCT FROM NEW.step_run_id
+                   OR OLD.context_manifest_id IS DISTINCT FROM NEW.context_manifest_id
+                   OR OLD.task_key IS DISTINCT FROM NEW.task_key
+                   OR OLD.provider IS DISTINCT FROM NEW.provider
+                   OR OLD.model IS DISTINCT FROM NEW.model THEN
+                    RAISE EXCEPTION 'routed_model_call_identity_is_immutable';
+                END IF;
+
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER routed_model_calls_guard
+            BEFORE UPDATE OR DELETE ON model_calls
+            FOR EACH ROW EXECUTE FUNCTION protect_routed_model_call_identity()
+            """
+        )
+    )
+
+
 def upgrade() -> None:
     op.create_table(
         "model_route_decisions",
@@ -207,9 +256,12 @@ def upgrade() -> None:
         unique=False,
     )
     _create_route_decision_guard()
+    _create_routed_model_call_guard()
 
 
 def downgrade() -> None:
+    op.execute(sa.text("DROP TRIGGER IF EXISTS routed_model_calls_guard ON model_calls"))
+    op.execute(sa.text("DROP FUNCTION IF EXISTS protect_routed_model_call_identity()"))
     op.execute(
         sa.text(
             "DROP TRIGGER IF EXISTS model_route_decisions_guard "
