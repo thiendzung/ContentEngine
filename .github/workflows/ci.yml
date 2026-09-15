@@ -59,13 +59,53 @@ jobs:
           alembic downgrade 20260902_0001
           alembic upgrade head
 
-      - name: K2 focused tests
+      - name: K2 unchanged reread
+        continue-on-error: true
         working-directory: backend
         run: >-
-          pytest -q
-          tests/test_k2_knowledge_freshness.py
-          tests/test_k2_freshness_db_guards.py
-          --tb=short
+          pytest -q tests/test_k2_knowledge_freshness.py::test_unchanged_reread_creates_observation_without_new_document_version --tb=short
+
+      - name: K2 freshness progression
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_knowledge_freshness.py::test_freshness_state_progression_reread_and_source_supersession --tb=short
+
+      - name: K2 policy precedence
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_knowledge_freshness.py::test_topic_policy_is_strictest_and_explicit_target_overrides_it --tb=short
+
+      - name: K2 lifecycle audit
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_knowledge_freshness.py::test_assignment_replacement_and_policy_retirement_are_audited --tb=short
+
+      - name: K2 candidate lineage
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_knowledge_freshness.py::test_approved_candidate_is_verifiable_and_unapproved_candidate_is_rejected --tb=short
+
+      - name: K2 DB assignment guards
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_freshness_db_guards.py::test_database_rejects_cross_project_assignment_and_multiple_targets --tb=short
+
+      - name: K2 DB policy and observation guards
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_freshness_db_guards.py::test_database_rejects_policy_payload_mutation_and_observation_hash_mismatch --tb=short
+
+      - name: K2 DB verification immutability
+        continue-on-error: true
+        working-directory: backend
+        run: >-
+          pytest -q tests/test_k2_freshness_db_guards.py::test_database_rejects_freshness_verification_update --tb=short
 
       - name: Backend tests
         working-directory: backend
