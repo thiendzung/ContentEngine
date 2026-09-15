@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+from uuid import UUID
 
 from sqlalchemy import select, text
 from sqlalchemy.engine import URL
@@ -44,10 +45,10 @@ class TestAngleRuntimeActivationError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class TestAngleRuntimeActivation:
-    project_id: str
-    settings_id: str
-    prompt_id: str
-    recipe_id: str
+    project_id: UUID
+    settings_id: UUID
+    prompt_id: UUID
+    recipe_id: UUID
     provider: str
     model: str
     approved_by: str
@@ -125,12 +126,13 @@ async def activate_test_journal_angle_runtime(
     target = validate_test_angle_activation_target(settings)
     requested_model = _require_text(model, "test_angle_model_required")
     approver = _require_text(approved_by, "test_angle_approver_required")
-    if requested_model.casefold() in _PENDING_MODELS or requested_model.casefold().startswith(
-        "pending_"
-    ):
+    normalized_model = requested_model.casefold()
+    if normalized_model in _PENDING_MODELS or normalized_model.startswith("pending_"):
         raise TestAngleRuntimeActivationError("test_angle_model_unresolved")
 
-    current_database = str((await session.execute(text("select current_database()"))).scalar_one())
+    current_database = str(
+        (await session.execute(text("select current_database()"))).scalar_one()
+    )
     if current_database != target.database:
         raise TestAngleRuntimeActivationError("test_angle_session_database_mismatch")
 
@@ -175,10 +177,10 @@ async def activate_test_journal_angle_runtime(
         if approvals != {approver}:
             raise TestAngleRuntimeActivationError("test_angle_active_approver_mismatch")
         return TestAngleRuntimeActivation(
-            project_id=str(project.id),
-            settings_id=str(settings_row.id),
-            prompt_id=str(prompt.id),
-            recipe_id=str(recipe.id),
+            project_id=project.id,
+            settings_id=settings_row.id,
+            prompt_id=prompt.id,
+            recipe_id=recipe.id,
             provider=provider,
             model=persisted_model,
             approved_by=approver,
@@ -209,10 +211,10 @@ async def activate_test_journal_angle_runtime(
     await session.flush()
 
     return TestAngleRuntimeActivation(
-        project_id=str(project.id),
-        settings_id=str(settings_row.id),
-        prompt_id=str(prompt.id),
-        recipe_id=str(recipe.id),
+        project_id=project.id,
+        settings_id=settings_row.id,
+        prompt_id=prompt.id,
+        recipe_id=recipe.id,
         provider=ANGLE_PROVIDER,
         model=requested_model,
         approved_by=approver,
