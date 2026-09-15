@@ -65,7 +65,8 @@ def _text(value: object, code: str) -> str:
 def _positive_int(value: object, code: str, *, allow_zero: bool = False) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ModelPolicyError(code)
-    if value < 0 if allow_zero else value <= 0:
+    invalid = value < 0 if allow_zero else value <= 0
+    if invalid:
         raise ModelPolicyError(code)
     return value
 
@@ -76,7 +77,12 @@ def _exact_keys(value: dict[str, object], allowed: set[str], code: str) -> None:
         raise ModelPolicyError(code, ",".join(extras))
 
 
-def _unique_text_list(value: object, code: str, *, allow_empty: bool = False) -> tuple[str, ...]:
+def _unique_text_list(
+    value: object,
+    code: str,
+    *,
+    allow_empty: bool = False,
+) -> tuple[str, ...]:
     if not isinstance(value, list):
         raise ModelPolicyError(code)
     result = tuple(_text(item, code) for item in value)
@@ -93,14 +99,12 @@ def _hash(value: object) -> str:
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
-    ).encode("utf-8")
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
 def _advisory_lock_key(step_run_id: UUID, policy_key: str, capability: str) -> int:
-    digest = hashlib.sha256(
-        f"{step_run_id}:{policy_key}:{capability}".encode("utf-8")
-    ).digest()
+    digest = hashlib.sha256(f"{step_run_id}:{policy_key}:{capability}".encode()).digest()
     return int.from_bytes(digest[:8], byteorder="big", signed=True)
 
 
@@ -137,7 +141,11 @@ def resolve_policy_route(
 ) -> PolicyRouteSelection | None:
     """Resolve one exact provider/model from an immutable capability policy."""
 
-    if isinstance(attempt_index, bool) or not isinstance(attempt_index, int) or attempt_index < 0:
+    if (
+        isinstance(attempt_index, bool)
+        or not isinstance(attempt_index, int)
+        or attempt_index < 0
+    ):
         raise ModelPolicyError("model_policy_attempt_index_invalid")
 
     resolved = _policy_task_config(
@@ -177,7 +185,10 @@ def resolve_policy_route(
     for raw_candidate in raw_candidates:
         candidate = _dict(raw_candidate, "model_policy_candidate_invalid")
         _exact_keys(candidate, _CANDIDATE_KEYS, "model_policy_candidate_unknown_key")
-        provider = _text(candidate.get("provider"), "model_policy_candidate_provider_required")
+        provider = _text(
+            candidate.get("provider"),
+            "model_policy_candidate_provider_required",
+        )
         model = _text(candidate.get("model"), "model_policy_candidate_model_required")
         if provider not in allowed_providers:
             raise ModelPolicyError("model_policy_provider_not_allowed", provider)
