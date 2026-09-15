@@ -34,7 +34,11 @@ from app.modules.harness.models import Artifact
 async def test_operator_view_projects_ready_intake_without_inventing_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         created = await create_founder_journal_intake(
             session,
@@ -62,7 +66,11 @@ async def test_operator_view_projects_ready_intake_without_inventing_gate(
 async def test_operator_view_returns_revalidated_exact_angle_bindings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
         created = await create_founder_journal_intake(
@@ -134,7 +142,11 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
 async def test_operator_projection_exact_binding_approves_angle_and_replays(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
         created = await create_founder_journal_intake(
