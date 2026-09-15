@@ -1,4 +1,4 @@
-"""Knowledge storage, provenance, topic graph, freshness, and harvest boundary."""
+"""Knowledge storage, provenance, graph, freshness, harvest, and coverage boundary."""
 
 from app.modules.knowledge.admission import (
     KnowledgeCandidateAdmissionError,
@@ -12,6 +12,15 @@ from app.modules.knowledge.candidates import (
     rebuild_candidate_snapshot,
     stable_knowledge_candidate_id,
 )
+from app.modules.knowledge.coverage import (
+    PLANNER_METHOD,
+    KnowledgeCoveragePlanError,
+    derive_knowledge_coverage,
+    plan_knowledge_coverage,
+    rebuild_knowledge_coverage_plan_snapshot,
+    verify_knowledge_coverage_plan,
+)
+from app.modules.knowledge.coverage_models import KnowledgeCoveragePlan
 from app.modules.knowledge.freshness import (
     EffectiveFreshnessPolicy,
     FreshnessAssignmentTargetType,
@@ -66,6 +75,7 @@ from app.modules.knowledge.topic_models import KnowledgeTopicLink, TopicEdge, To
 __all__ = [
     "EXTRACTION_METHOD",
     "HARVEST_METHOD",
+    "PLANNER_METHOD",
     "EffectiveFreshnessPolicy",
     "FreshnessAssignment",
     "FreshnessAssignmentTargetType",
@@ -77,6 +87,8 @@ __all__ = [
     "FreshnessTargetType",
     "FreshnessVerification",
     "KnowledgeCandidateAdmissionError",
+    "KnowledgeCoveragePlan",
+    "KnowledgeCoveragePlanError",
     "KnowledgeHarvest",
     "KnowledgeHarvestError",
     "KnowledgeTargetType",
@@ -91,6 +103,7 @@ __all__ = [
     "TopicRelationType",
     "admit_knowledge_candidate",
     "approve_originality_pack",
+    "derive_knowledge_coverage",
     "descendant_topic_ids",
     "deterministic_candidate_summary",
     "ensure_freshness_assignment",
@@ -105,7 +118,9 @@ __all__ = [
     "normalize_freshness_policy_key",
     "normalize_topic_key",
     "originality_pack_snapshot_hash",
+    "plan_knowledge_coverage",
     "rebuild_candidate_snapshot",
+    "rebuild_knowledge_coverage_plan_snapshot",
     "rebuild_knowledge_harvest_snapshot",
     "record_lineage_verification",
     "replace_freshness_assignment",
@@ -113,5 +128,6 @@ __all__ = [
     "retire_freshness_policy",
     "stable_knowledge_candidate_id",
     "verify_candidate_snapshot_lineage",
+    "verify_knowledge_coverage_plan",
     "verify_knowledge_harvest_snapshot",
 ]
