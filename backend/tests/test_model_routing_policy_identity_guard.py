@@ -46,9 +46,9 @@ async def test_routed_model_call_identity_is_immutable_but_telemetry_remains_mut
     async with isolated_session() as session:
         call = await _routed_call(session)
         call_id = call.id
-        call.model = "tampered-model"
         with pytest.raises(DBAPIError, match="routed_model_call_identity_is_immutable"):
             async with session.begin_nested():
+                call.model = "tampered-model"
                 await session.flush()
 
         call = await session.get(ModelCall, call_id)
