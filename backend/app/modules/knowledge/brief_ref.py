@@ -3,12 +3,13 @@ from __future__ import annotations
 import copy
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.knowledge.brief import KnowledgeBriefError, verify_knowledge_brief
-from app.modules.knowledge.brief_models import KnowledgeBrief
+if TYPE_CHECKING:
+    from app.modules.knowledge.brief_models import KnowledgeBrief
 
 KNOWLEDGE_BRIEF_REF_PREFIX = "knowledge_brief"
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -71,6 +72,11 @@ async def load_bound_knowledge_brief(
     locale: str,
     expected_snapshot_hash: str | None = None,
 ) -> KnowledgeBrief:
+    # Lazy imports keep the lightweight typed-ref boundary usable while the
+    # knowledge admission/content-engine modules are still being initialized.
+    from app.modules.knowledge.brief import KnowledgeBriefError, verify_knowledge_brief
+    from app.modules.knowledge.brief_models import KnowledgeBrief
+
     brief = await session.get(KnowledgeBrief, brief_id)
     if brief is None:
         raise KnowledgeBriefRefError("knowledge_brief_ref_not_found")
