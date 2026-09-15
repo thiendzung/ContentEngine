@@ -46,8 +46,16 @@ class ModelRouteDecision(TimestampMixin, Base):
         CheckConstraint("candidate_index >= 0", name="ck_model_route_candidate_index_nonnegative"),
         CheckConstraint("max_escalations >= 0", name="ck_model_route_max_escalations_nonnegative"),
         CheckConstraint(
+            "candidate_index <= max_escalations",
+            name="ck_model_route_candidate_within_escalation_limit",
+        ),
+        CheckConstraint(
             "max_model_calls_per_step > 0",
             name="ck_model_route_max_calls_positive",
+        ),
+        CheckConstraint(
+            "max_model_calls_per_step >= max_escalations + 1",
+            name="ck_model_route_max_calls_cover_escalations",
         ),
         CheckConstraint(
             "route_snapshot_hash ~ '^[0-9a-f]{64}$'",
