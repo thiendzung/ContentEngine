@@ -28,7 +28,7 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
             await transaction.rollback()
 
 
-def test_settings() -> Settings:
+def _test_settings() -> Settings:
     return Settings(
         app_env="test",
         database_url=(
@@ -45,7 +45,7 @@ async def test_activation_is_explicit_idempotent_and_updates_exact_seeded_rows()
     async with isolated_session() as session:
         result = await activate_test_journal_angle_runtime(
             session,
-            settings=test_settings(),
+            settings=_test_settings(),
             model="gpt-5.6-luna",
             approved_by="founder:test-acceptance",
         )
@@ -87,9 +87,9 @@ async def test_activation_is_explicit_idempotent_and_updates_exact_seeded_rows()
 
         replay = await activate_test_journal_angle_runtime(
             session,
-            settings=test_settings(),
+            settings=_test_settings(),
             model="gpt-5.6-luna",
-            approved_by="someone-else",
+            approved_by="founder:test-acceptance",
         )
         assert replay.replayed is True
         assert replay.settings_id == result.settings_id
@@ -99,11 +99,22 @@ async def test_activation_is_explicit_idempotent_and_updates_exact_seeded_rows()
 
         with pytest.raises(
             TestAngleRuntimeActivationError,
+            match="test_angle_active_approver_mismatch",
+        ):
+            await activate_test_journal_angle_runtime(
+                session,
+                settings=_test_settings(),
+                model="gpt-5.6-luna",
+                approved_by="someone-else",
+            )
+
+        with pytest.raises(
+            TestAngleRuntimeActivationError,
             match="test_angle_active_model_mismatch",
         ):
             await activate_test_journal_angle_runtime(
                 session,
-                settings=test_settings(),
+                settings=_test_settings(),
                 model="gpt-5.6-sol",
                 approved_by="founder:test-acceptance",
             )
@@ -118,7 +129,7 @@ async def test_activation_rejects_unresolved_model_before_mutation() -> None:
         ):
             await activate_test_journal_angle_runtime(
                 session,
-                settings=test_settings(),
+                settings=_test_settings(),
                 model="pending_human_selection",
                 approved_by="founder:test-acceptance",
             )
