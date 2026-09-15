@@ -60,6 +60,10 @@ class TopicEdge(TimestampMixin, Base):
             "parent_topic_id <> child_topic_id",
             name="ck_topic_edges_not_self",
         ),
+        CheckConstraint(
+            "relation_type <> 'related' OR parent_topic_id < child_topic_id",
+            name="ck_topic_edges_related_canonical_order",
+        ),
         Index(
             "uq_topic_edges_exact",
             "project_id",
