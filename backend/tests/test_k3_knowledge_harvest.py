@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from evidence_set_helpers import create_locked_evidence_set
@@ -32,6 +32,7 @@ from app.modules.knowledge.harvest import (
 from app.modules.knowledge.ingest import ingest_source_document, register_source
 from app.modules.knowledge.models import Claim, Evidence, KnowledgeCandidate, Source
 from app.modules.knowledge.topic_graph import (
+    TopicNodeType,
     ensure_knowledge_topic_link,
     ensure_topic_edge,
     ensure_topic_node,
@@ -54,7 +55,7 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
 
 
 @dataclass(frozen=True)
-class ApprovedCandidateFixture:
+class CandidateFixture:
     candidate: KnowledgeCandidate
     content_case: ContentCase
     source: Source
@@ -133,7 +134,7 @@ async def create_candidate(
     locale: str,
     label: str,
     approve: bool = True,
-) -> ApprovedCandidateFixture:
+) -> CandidateFixture:
     content_case = await create_content_case(session, project=project, locale=locale)
     source_url = f"https://example.test/k3/{label}/{uuid4()}"
     source = (
@@ -214,7 +215,7 @@ async def create_candidate(
                 candidate.provenance_json["candidate_content_hash"]
             ),
         )
-    return ApprovedCandidateFixture(
+    return CandidateFixture(
         candidate=candidate,
         content_case=content_case,
         source=source,
@@ -227,14 +228,14 @@ async def create_topic(
     *,
     project: Project,
     key: str,
-    node_type: str,
+    node_type: TopicNodeType,
 ) -> TopicNode:
     return await ensure_topic_node(
         session,
         project_id=project.id,
         canonical_key=f"{key}-{uuid4().hex}",
         name=f"K3 {key}",
-        node_type=node_type,  # type: ignore[arg-type]
+        node_type=node_type,
         metadata_json={"fixture": "k3"},
     )
 
@@ -294,7 +295,7 @@ async def test_harvest_expands_contains_only_and_deduplicates_candidate() -> Non
             locale="en",
             label="related-only",
         )
-        await create_candidate(
+        unapproved = await create_candidate(
             session,
             project=project,
             locale="en",
@@ -328,19 +329,12 @@ async def test_harvest_expands_contains_only_and_deduplicates_candidate() -> Non
             link_method="manual",
             linked_by="founder",
         )
-        unapproved = await session.scalar(
-            select(KnowledgeCandidate).where(
-                KnowledgeCandidate.status == "CANDIDATE",
-                KnowledgeCandidate.project_id == project.id,
-            )
-        )
-        assert unapproved is not None
         await ensure_knowledge_topic_link(
             session,
             project_id=project.id,
             topic_id=child.id,
             target_type="knowledge_candidate",
-            target_id=unapproved.id,
+            target_id=unapproved.candidate.id,
             link_method="manual",
             linked_by="founder",
         )
@@ -373,13 +367,16 @@ async def test_harvest_expands_contains_only_and_deduplicates_candidate() -> Non
         item = harvest.items_json[0]
         assert isinstance(item, dict)
         assert item["candidate_id"] == str(reusable.candidate.id)
-        assert item["freshness"]["state"] == "UNCLASSIFIED"  # type: ignore[index]
+        freshness = item["freshness"]
+        assert isinstance(freshness, dict)
+        assert freshness["state"] == "UNCLASSIFIED"
         scoped_links = item["scoped_topic_links"]
         assert isinstance(scoped_links, list)
-        assert {link["topic_id"] for link in scoped_links} == {  # type: ignore[index]
-            str(child.id),
-            str(subtopic.id),
-        }
+        assert {
+            link["topic_id"]
+            for link in scoped_links
+            if isinstance(link, dict)
+        } == {str(child.id), str(subtopic.id)}
         verify_knowledge_harvest_snapshot(harvest)
 
         replay = await harvest_knowledge(
