@@ -12,6 +12,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.harness.model_policy import (
+    ModelPolicyError,
+    PolicyRouteSelection,
+    enforce_policy_call_budget,
+    persist_route_decision,
+    resolve_policy_route,
+)
 from app.modules.harness.models import (
     Artifact,
     ContentRun,
@@ -36,6 +43,7 @@ class RuntimeStateError(ValueError):
 class ModelCandidate:
     provider: str
     model: str
+    policy_selection: PolicyRouteSelection | None = None
 
 
 @dataclass(frozen=True)
@@ -68,16 +76,55 @@ class ModelClient(Protocol):
 
 
 class ModelRouter(Protocol):
-    def resolve(self, *, task_key: str, settings_snapshot: SettingsSnapshot) -> ModelRoute: ...
+    def resolve(
+        self,
+        *,
+        task_key: str,
+        settings_snapshot: SettingsSnapshot,
+        attempt_index: int = 0,
+        escalation_reason: str | None = None,
+    ) -> ModelRoute: ...
 
 
 class SettingsModelRouter:
-    """Resolve task routes from the immutable SettingsSnapshot only."""
+    """Resolve exact task routes from one immutable SettingsSnapshot."""
 
-    def resolve(self, *, task_key: str, settings_snapshot: SettingsSnapshot) -> ModelRoute:
+    def resolve(
+        self,
+        *,
+        task_key: str,
+        settings_snapshot: SettingsSnapshot,
+        attempt_index: int = 0,
+        escalation_reason: str | None = None,
+    ) -> ModelRoute:
         settings = settings_snapshot.resolved_settings_json
         task_map = _as_dict(settings.get("models"), "models")
         task_config = _as_dict(task_map.get(task_key), f"models.{task_key}")
+
+        policy_mode = "policy" in task_config or "capability" in task_config
+        if policy_mode:
+            try:
+                selection = resolve_policy_route(
+                    task_key=task_key,
+                    settings_snapshot=settings_snapshot,
+                    attempt_index=attempt_index,
+                    escalation_reason=escalation_reason,
+                )
+            except ModelPolicyError as exc:
+                raise RuntimeConfigurationError(exc.code) from exc
+            if selection is None:
+                raise RuntimeConfigurationError("model_policy_resolution_failed")
+            return ModelRoute(
+                route_key=selection.route_key,
+                primary=ModelCandidate(
+                    provider=selection.provider,
+                    model=selection.model,
+                    policy_selection=selection,
+                ),
+            )
+
+        if attempt_index != 0 or escalation_reason is not None:
+            raise RuntimeConfigurationError("legacy_model_route_escalation_not_supported")
 
         if "provider" in task_config or "model" in task_config:
             primary = _candidate(task_config, f"models.{task_key}")
@@ -242,7 +289,7 @@ async def start_model_call(
     purpose: str,
     prompt_version: str,
 ) -> ModelCall:
-    """Start a model telemetry record bound to one exact ContextManifest."""
+    """Start model telemetry and persist any policy route before external execution."""
 
     manifest = await session.get(ContextManifest, context_manifest_id)
     if manifest is None or manifest.run_id != run_id:
@@ -251,6 +298,21 @@ async def start_model_call(
         raise RuntimeStateError("ContextManifest does not belong to StepRun")
     if manifest.prompt_version != prompt_version:
         raise RuntimeStateError("ModelCall prompt version does not match ContextManifest")
+
+    selection = route.policy_selection
+    if selection is not None:
+        if selection.settings_snapshot_id != manifest.settings_snapshot_id:
+            raise RuntimeStateError("Model route policy does not match ContextManifest settings")
+        if selection.route_snapshot.get("task_key") != task_key:
+            raise RuntimeStateError("Model route policy does not match task")
+        try:
+            await enforce_policy_call_budget(
+                session,
+                step_run_id=step_run_id,
+                selection=selection,
+            )
+        except ModelPolicyError as exc:
+            raise RuntimeConfigurationError(exc.code) from exc
 
     call = ModelCall(
         run_id=run_id,
@@ -266,6 +328,16 @@ async def start_model_call(
     )
     session.add(call)
     await session.flush()
+
+    if selection is not None:
+        try:
+            await persist_route_decision(
+                session,
+                call=call,
+                selection=selection,
+            )
+        except ModelPolicyError as exc:
+            raise RuntimeConfigurationError(exc.code) from exc
     return call
 
 
