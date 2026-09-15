@@ -12,7 +12,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.knowledge.freshness import ensure_source_document_observation
 from app.modules.knowledge.models import KnowledgeChunk, Source, SourceDocument
 from app.modules.knowledge.persistence import (
     content_hash,
@@ -236,6 +235,10 @@ async def ingest_source_document(
     a fresh observation timestamp even when the content hash dedupes to an older
     SourceDocument row.
     """
+
+    # Import here so the low-level ingest module does not create an import cycle
+    # through freshness -> candidate admission -> research evidence -> ingest.
+    from app.modules.knowledge.freshness import ensure_source_document_observation
 
     source = (
         await session.execute(select(Source).where(Source.id == source_id).with_for_update())
