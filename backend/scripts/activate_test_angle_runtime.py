@@ -6,6 +6,9 @@ import json
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
+from app.modules.content_engine.journal.operator_preflight import (
+    build_journal_operator_preflight,
+)
 from app.modules.system.test_angle_runtime import (
     TestAngleRuntimeActivationError,
     activate_test_journal_angle_runtime,
@@ -33,6 +36,19 @@ async def _main() -> int:
                     model=args.model,
                     approved_by=args.approved_by,
                 )
+                preflight = await build_journal_operator_preflight(session)
+                if preflight.get("status") != "READY":
+                    blockers = [
+                        {
+                            "key": item.get("key"),
+                            "detail": item.get("detail"),
+                        }
+                        for item in preflight.get("checks", [])
+                        if isinstance(item, dict) and item.get("status") == "BLOCKED"
+                    ]
+                    raise TestAngleRuntimeActivationError(
+                        "test_angle_activation_preflight_blocked:" + json.dumps(blockers)
+                    )
     except TestAngleRuntimeActivationError as exc:
         print(f"TEST_ANGLE_RUNTIME: BLOCKED ({exc.code})")
         return 2
