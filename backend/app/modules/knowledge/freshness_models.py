@@ -3,7 +3,17 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -23,6 +33,9 @@ class FreshnessPolicy(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     created_by: Mapped[str] = mapped_column(String(200), nullable=False)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retired_by: Mapped[str | None] = mapped_column(String(200))
+    retirement_reason: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         CheckConstraint(
@@ -42,6 +55,14 @@ class FreshnessPolicy(TimestampMixin, Base):
             name="ck_freshness_policies_status",
         ),
         CheckConstraint("version > 0", name="ck_freshness_policies_version"),
+        CheckConstraint(
+            "(status = 'active' AND retired_at IS NULL AND retired_by IS NULL "
+            "AND retirement_reason IS NULL) OR "
+            "(status = 'retired' AND retired_at IS NOT NULL "
+            "AND retired_by IS NOT NULL AND btrim(retired_by) <> '' "
+            "AND retirement_reason IS NOT NULL AND btrim(retirement_reason) <> '')",
+            name="ck_freshness_policies_retirement_audit",
+        ),
         Index(
             "uq_freshness_policy_version",
             "project_id",
@@ -68,6 +89,9 @@ class FreshnessAssignment(TimestampMixin, Base):
     assigned_by: Mapped[str] = mapped_column(String(200), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     supersedes_id: Mapped[UUID | None] = mapped_column(ForeignKey("freshness_assignments.id"))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retired_by: Mapped[str | None] = mapped_column(String(200))
+    retirement_reason: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         CheckConstraint(
@@ -79,6 +103,14 @@ class FreshnessAssignment(TimestampMixin, Base):
         CheckConstraint(
             "status in ('active','retired')",
             name="ck_freshness_assignments_status",
+        ),
+        CheckConstraint(
+            "(status = 'active' AND retired_at IS NULL AND retired_by IS NULL "
+            "AND retirement_reason IS NULL) OR "
+            "(status = 'retired' AND retired_at IS NOT NULL "
+            "AND retired_by IS NOT NULL AND btrim(retired_by) <> '' "
+            "AND retirement_reason IS NOT NULL AND btrim(retirement_reason) <> '')",
+            name="ck_freshness_assignments_retirement_audit",
         ),
         Index(
             "uq_freshness_assignment_active_topic",
