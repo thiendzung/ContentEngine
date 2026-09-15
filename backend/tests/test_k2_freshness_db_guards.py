@@ -149,8 +149,9 @@ async def test_database_rejects_policy_payload_mutation_and_observation_hash_mis
         with pytest.raises(DBAPIError, match="freshness_policy_is_immutable"):
             async with session.begin_nested():
                 await session.flush()
-        await session.refresh(policy)
 
+    async with isolated_session() as session:
+        project = await motgu_project(session)
         source_url = f"https://example.test/k2-db/{uuid4()}"
         source = (
             await register_source(
