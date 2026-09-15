@@ -582,8 +582,6 @@ async def harvest_knowledge(
     )
     if existing is not None:
         verify_knowledge_harvest_snapshot(existing)
-        if existing.created_by != actor:
-            raise KnowledgeHarvestError("knowledge_harvest_replay_actor_conflict")
         return existing
 
     harvest = KnowledgeHarvest(
