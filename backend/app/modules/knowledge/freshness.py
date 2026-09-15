@@ -618,7 +618,7 @@ async def _explicit_assignment(
             target_column == target_id,
         )
     )
-    return cast(FreshnessAssignment | None, result)
+    return result
 
 
 async def resolve_effective_freshness_policy(
@@ -728,7 +728,7 @@ async def _latest_verification(
         .order_by(FreshnessVerification.verified_at.desc(), FreshnessVerification.id.desc())
         .limit(1)
     )
-    return cast(FreshnessVerification | None, result)
+    return result
 
 
 async def _basis_source_superseded(
