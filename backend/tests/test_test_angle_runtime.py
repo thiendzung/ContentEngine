@@ -4,7 +4,11 @@ import pytest
 from sqlalchemy import select
 
 from app.core.config import Settings, get_settings
-from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsVersion
+from app.modules.content_engine.models import (
+    PromptDefinition,
+    RecipeDefinition,
+    SettingsVersion,
+)
 from app.modules.system.test_angle_runtime import (
     TestAngleRuntimeActivationError,
     activate_test_journal_angle_runtime,
@@ -16,9 +20,12 @@ from test_ce05_review_revise import isolated_session
 def test_test_angle_activation_rejects_non_test_environment() -> None:
     settings = Settings(
         app_env="development",
-        database_url="postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine",
+        database_url=(
+            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
+        ),
         test_database_url=(
-            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_test"
+            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/"
+            "contentengine_test"
         ),
     )
     with pytest.raises(TestAngleRuntimeActivationError) as raised:
