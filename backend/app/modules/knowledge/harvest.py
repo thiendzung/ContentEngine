@@ -75,16 +75,28 @@ def _snapshot_payload(
     }
 
 
+def _uuid_tuple(value: object, *, code: str) -> tuple[UUID, ...]:
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        raise KnowledgeHarvestError(code)
+    try:
+        return tuple(UUID(item) for item in value)
+    except ValueError as exc:
+        raise KnowledgeHarvestError(code) from exc
+
+
 def rebuild_knowledge_harvest_snapshot(
     harvest: KnowledgeHarvest,
 ) -> tuple[dict[str, object], str]:
     """Rebuild a persisted harvest's canonical immutable snapshot."""
 
-    try:
-        requested_topic_ids = tuple(UUID(value) for value in harvest.requested_topic_ids_json)
-        expanded_topic_ids = tuple(UUID(value) for value in harvest.expanded_topic_ids_json)
-    except ValueError as exc:
-        raise KnowledgeHarvestError("knowledge_harvest_topic_id_invalid") from exc
+    requested_topic_ids = _uuid_tuple(
+        harvest.requested_topic_ids_json,
+        code="knowledge_harvest_topic_id_invalid",
+    )
+    expanded_topic_ids = _uuid_tuple(
+        harvest.expanded_topic_ids_json,
+        code="knowledge_harvest_topic_id_invalid",
+    )
     if any(not isinstance(item, dict) for item in harvest.items_json):
         raise KnowledgeHarvestError("knowledge_harvest_item_invalid")
     items = [dict(item) for item in harvest.items_json if isinstance(item, dict)]
@@ -112,7 +124,7 @@ def verify_knowledge_harvest_snapshot(harvest: KnowledgeHarvest) -> dict[str, ob
 
 
 def _advisory_lock_key(project_id: UUID, snapshot_hash: str) -> int:
-    digest = hashlib.sha256(f"{project_id}:{snapshot_hash}".encode("utf-8")).digest()
+    digest = hashlib.sha256(f"{project_id}:{snapshot_hash}".encode()).digest()
     return int.from_bytes(digest[:8], byteorder="big", signed=True)
 
 
