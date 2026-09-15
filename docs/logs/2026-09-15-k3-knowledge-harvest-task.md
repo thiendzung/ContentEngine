@@ -123,21 +123,21 @@ Automated proof covers:
 
 ## Final GitHub proof
 
-Exact implementation head before this closeout-only documentation commit: `cea148ea8e0b49ca6af0457c8764615804e64025`.
+Exact final candidate head before this evidence-only documentation commit: `8aa068b89ee433c0d9421f0704b1ce921bc2dc8f`.
 
-CI #900 / run `34940970766`: PASS.
+CI #901 / run `34941264187`: PASS.
 
 - Ruff: PASS
 - mypy: PASS — 125 source files
 - migration round-trip through `20260915_0030`: PASS
-- backend tests: 630 passed
+- backend tests: 630 passed, 4 expected negative-test transaction warnings
 - OpenAPI export: PASS
 - frontend API type generation: PASS
 - frontend lint: PASS
 - frontend typecheck: PASS
 - frontend production build: PASS
 
-The closeout documentation commit must itself pass the same repository CI before it becomes the final exact K3 candidate head.
+This evidence-only documentation commit does not change K3 runtime/schema semantics and must itself pass repository CI before being used as the exact stacked base for K4.
 
 ## Safety
 
