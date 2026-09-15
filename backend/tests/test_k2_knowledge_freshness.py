@@ -209,7 +209,9 @@ async def test_unchanged_reread_creates_observation_without_new_document_version
         project, claim, source_id, document_text = await _claim_fixture(session)
         del project, claim
         before_documents = await session.scalar(
-            select(func.count()).select_from(SourceDocument).where(SourceDocument.source_id == source_id)
+            select(func.count())
+            .select_from(SourceDocument)
+            .where(SourceDocument.source_id == source_id)
         )
         first_observations = await session.scalar(
             select(func.count())
@@ -228,7 +230,9 @@ async def test_unchanged_reread_creates_observation_without_new_document_version
         )
 
         after_documents = await session.scalar(
-            select(func.count()).select_from(SourceDocument).where(SourceDocument.source_id == source_id)
+            select(func.count())
+            .select_from(SourceDocument)
+            .where(SourceDocument.source_id == source_id)
         )
         after_observations = await session.scalar(
             select(func.count())
