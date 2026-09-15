@@ -2,7 +2,7 @@
 
 Date: 2026-09-15
 Status: IMPLEMENTED / STACKED DRAFT
-Base: K6 exact head `3ee2086a32e0ff59b0c1d2c16b64d1dd98bab539`
+Base: K6 exact head `c929354697bd8f2259fdbf9f5d04426be66030d2`
 
 ## Goal
 
