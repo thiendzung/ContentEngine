@@ -397,6 +397,43 @@ async def test_policy_call_persists_audit_and_budget_blocks_third_call_before_in
 
 
 @pytest.mark.asyncio
+async def test_policy_task_rejects_plain_candidate_bypass_before_model_call_insert() -> None:
+    async with isolated_session() as session:
+        run, step, _settings_snapshot = await create_policy_runtime(session)
+        manifest = await build_context_manifest(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            inputs=ContextInputs(
+                prompt_version="angle:v1",
+                recipe_version="journal_angle:v1",
+            ),
+        )
+        before_calls = await session.scalar(
+            select(func.count(ModelCall.id)).where(ModelCall.step_run_id == step.id)
+        )
+        assert before_calls == 0
+        with pytest.raises(
+            RuntimeConfigurationError,
+            match="model_policy_route_decision_required",
+        ):
+            await start_model_call(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                context_manifest_id=manifest.id,
+                task_key="angle",
+                route=ModelCandidate(provider="codex_cli", model="balanced-v1"),
+                purpose="attempted policy bypass",
+                prompt_version="angle:v1",
+            )
+        after_calls = await session.scalar(
+            select(func.count(ModelCall.id)).where(ModelCall.step_run_id == step.id)
+        )
+        assert after_calls == 0
+
+
+@pytest.mark.asyncio
 async def test_route_decision_database_row_is_immutable() -> None:
     async with isolated_session() as session:
         run, step, settings_snapshot = await create_policy_runtime(session)
