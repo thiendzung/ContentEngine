@@ -11,6 +11,121 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _create_topic_scope_triggers() -> None:
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION validate_topic_edge_scope() RETURNS trigger AS $$
+            DECLARE
+                parent_project uuid;
+                child_project uuid;
+                parent_status text;
+                child_status text;
+                parent_rank integer;
+                child_rank integer;
+            BEGIN
+                SELECT project_id, status,
+                    CASE node_type
+                        WHEN 'pillar' THEN 0
+                        WHEN 'cluster' THEN 1
+                        WHEN 'topic' THEN 2
+                        WHEN 'subtopic' THEN 3
+                    END
+                INTO parent_project, parent_status, parent_rank
+                FROM topic_nodes WHERE id = NEW.parent_topic_id;
+
+                SELECT project_id, status,
+                    CASE node_type
+                        WHEN 'pillar' THEN 0
+                        WHEN 'cluster' THEN 1
+                        WHEN 'topic' THEN 2
+                        WHEN 'subtopic' THEN 3
+                    END
+                INTO child_project, child_status, child_rank
+                FROM topic_nodes WHERE id = NEW.child_topic_id;
+
+                IF parent_project IS DISTINCT FROM NEW.project_id
+                    OR child_project IS DISTINCT FROM NEW.project_id THEN
+                    RAISE EXCEPTION 'topic_edge_project_mismatch';
+                END IF;
+                IF parent_status <> 'active' OR child_status <> 'active' THEN
+                    RAISE EXCEPTION 'topic_edge_requires_active_topics';
+                END IF;
+                IF NEW.relation_type = 'contains' AND parent_rank >= child_rank THEN
+                    RAISE EXCEPTION 'topic_contains_hierarchy_invalid';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER topic_edges_scope_guard
+            BEFORE INSERT OR UPDATE ON topic_edges
+            FOR EACH ROW EXECUTE FUNCTION validate_topic_edge_scope()
+            """
+        )
+    )
+
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION validate_knowledge_topic_link_scope() RETURNS trigger AS $$
+            DECLARE
+                topic_project uuid;
+                topic_status text;
+                target_project uuid;
+            BEGIN
+                SELECT project_id, status INTO topic_project, topic_status
+                FROM topic_nodes WHERE id = NEW.topic_id;
+
+                IF topic_project IS DISTINCT FROM NEW.project_id THEN
+                    RAISE EXCEPTION 'topic_link_project_mismatch';
+                END IF;
+                IF topic_status <> 'active' THEN
+                    RAISE EXCEPTION 'topic_link_requires_active_topic';
+                END IF;
+
+                IF NEW.claim_id IS NOT NULL THEN
+                    SELECT project_id INTO target_project
+                    FROM claims WHERE id = NEW.claim_id;
+                ELSIF NEW.knowledge_candidate_id IS NOT NULL THEN
+                    SELECT project_id INTO target_project
+                    FROM knowledge_candidates WHERE id = NEW.knowledge_candidate_id;
+                ELSIF NEW.entity_id IS NOT NULL THEN
+                    SELECT project_id INTO target_project
+                    FROM entities WHERE id = NEW.entity_id;
+                ELSIF NEW.chunk_id IS NOT NULL THEN
+                    SELECT s.project_id INTO target_project
+                    FROM knowledge_chunks kc
+                    JOIN source_documents sd ON sd.id = kc.source_document_id
+                    JOIN sources s ON s.id = sd.source_id
+                    WHERE kc.id = NEW.chunk_id;
+                END IF;
+
+                IF target_project IS DISTINCT FROM NEW.project_id THEN
+                    RAISE EXCEPTION 'topic_link_target_project_mismatch';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER knowledge_topic_links_scope_guard
+            BEFORE INSERT OR UPDATE ON knowledge_topic_links
+            FOR EACH ROW EXECUTE FUNCTION validate_knowledge_topic_link_scope()
+            """
+        )
+    )
+
+
 def upgrade() -> None:
     op.create_table(
         "topic_nodes",
@@ -66,6 +181,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "parent_topic_id <> child_topic_id",
             name="ck_topic_edges_not_self",
+        ),
+        sa.CheckConstraint(
+            "relation_type <> 'related' OR parent_topic_id < child_topic_id",
+            name="ck_topic_edges_related_canonical_order",
         ),
         sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
         sa.ForeignKeyConstraint(["parent_topic_id"], ["topic_nodes.id"]),
@@ -166,9 +285,15 @@ def upgrade() -> None:
         ["project_id", "topic_id"],
         unique=False,
     )
+    _create_topic_scope_triggers()
 
 
 def downgrade() -> None:
+    op.execute(sa.text("DROP TRIGGER IF EXISTS knowledge_topic_links_scope_guard ON knowledge_topic_links"))
+    op.execute(sa.text("DROP FUNCTION IF EXISTS validate_knowledge_topic_link_scope()"))
+    op.execute(sa.text("DROP TRIGGER IF EXISTS topic_edges_scope_guard ON topic_edges"))
+    op.execute(sa.text("DROP FUNCTION IF EXISTS validate_topic_edge_scope()"))
+
     op.drop_index(
         "ix_knowledge_topic_links_project_topic",
         table_name="knowledge_topic_links",
