@@ -169,8 +169,11 @@ async def activate_test_journal_angle_runtime(
     if statuses == {"active"}:
         if persisted_model != requested_model:
             raise TestAngleRuntimeActivationError("test_angle_active_model_mismatch")
-        if not settings_row.approved_by or not prompt.approved_by or not recipe.approved_by:
+        approvals = {settings_row.approved_by, prompt.approved_by, recipe.approved_by}
+        if None in approvals or "" in approvals:
             raise TestAngleRuntimeActivationError("test_angle_active_approval_missing")
+        if approvals != {approver}:
+            raise TestAngleRuntimeActivationError("test_angle_active_approver_mismatch")
         return TestAngleRuntimeActivation(
             project_id=str(project.id),
             settings_id=str(settings_row.id),
@@ -178,7 +181,7 @@ async def activate_test_journal_angle_runtime(
             recipe_id=str(recipe.id),
             provider=provider,
             model=persisted_model,
-            approved_by=settings_row.approved_by,
+            approved_by=approver,
             replayed=True,
         )
 
