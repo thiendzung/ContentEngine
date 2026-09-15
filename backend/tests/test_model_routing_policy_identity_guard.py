@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.exc import DBAPIError
 from test_model_routing_policy_v1 import create_policy_runtime, isolated_session
 
+from app.modules.harness.models import ModelCall
 from app.modules.harness.runtime import (
     ContextInputs,
     SettingsModelRouter,
@@ -44,12 +45,14 @@ async def _routed_call(session):
 async def test_routed_model_call_identity_is_immutable_but_telemetry_remains_mutable() -> None:
     async with isolated_session() as session:
         call = await _routed_call(session)
+        call_id = call.id
         call.model = "tampered-model"
         with pytest.raises(DBAPIError, match="routed_model_call_identity_is_immutable"):
             async with session.begin_nested():
                 await session.flush()
 
-        await session.refresh(call)
+        call = await session.get(ModelCall, call_id)
+        assert call is not None
         call.status = "completed"
         call.input_tokens = 120
         call.output_tokens = 40
