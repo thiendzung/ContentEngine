@@ -122,6 +122,7 @@ class OperatorCommandRequest(BaseModel):
     intent: Literal["start", "continue", "resume", "retry", "cancel"]
     expected_state_version: str = Field(min_length=64, max_length=64)
     idempotency_key: str = Field(min_length=1, max_length=200)
+    knowledge_brief_id: UUID | None = None
 
 
 class OperatorDecisionRequest(BaseModel):
@@ -145,6 +146,7 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_case_not_found",
         "operator_opportunity_not_found",
         "operator_project_not_found",
+        "knowledge_brief_ref_not_found",
     }
     invalid = {
         "operator_idempotency_key_invalid",
@@ -169,6 +171,8 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_manual_originality_material_required",
         "operator_manual_originality_writer_use_required",
         "operator_manual_originality_guardrails_required",
+        "operator_knowledge_brief_binding_start_only",
+        "operator_knowledge_brief_binding_stage_required",
     }
     if exc.code in not_found:
         status_code = 404
@@ -325,6 +329,7 @@ async def command_journal_operator_case(
                 intent=payload.intent,
                 expected_state_version=payload.expected_state_version,
                 idempotency_key=payload.idempotency_key,
+                knowledge_brief_id=payload.knowledge_brief_id,
                 actor_id="founder",
             )
     except OperatorControlError as exc:
