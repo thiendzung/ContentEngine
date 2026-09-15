@@ -4,8 +4,12 @@ import pytest
 from sqlalchemy.exc import DBAPIError
 from test_model_routing_policy_v1 import create_policy_runtime, isolated_session
 
-from app.modules.harness.runtime import ContextInputs, SettingsModelRouter, build_context_manifest
-from app.modules.harness.runtime import start_model_call
+from app.modules.harness.runtime import (
+    ContextInputs,
+    SettingsModelRouter,
+    build_context_manifest,
+    start_model_call,
+)
 
 
 async def _routed_call(session):
