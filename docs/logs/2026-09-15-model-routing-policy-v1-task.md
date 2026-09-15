@@ -1,16 +1,18 @@
 # Model Routing Policy v1
 
 Date: 2026-09-15
-Status: ACTIVE / STACKED DRAFT
+Status: IMPLEMENTED / STACKED DRAFT
 Base: K5 exact head `fb08ac2cc58c276b695f2dcd8234a423fd2c18d7`
 
 ## Goal
 
-Replace task -> exact-model-only routing with a backward-compatible capability policy that resolves one exact provider/model deterministically for every model call, while bounding escalation and preserving the existing isolated Codex runner safety contract.
+Replace task -> exact-model-only routing with a backward-compatible capability policy that resolves one exact provider/model deterministically for every policy-aware model call, while bounding escalation and preserving the existing isolated Codex runner safety contract.
 
 ## Architectural rule
 
 ContentEngine owns policy, limits and audit identity. A runner never chooses an arbitrary model outside the immutable SettingsSnapshot. Codex internal `multi_agent` remains disabled by the existing runner; this PR does not turn Codex into an uncontrolled orchestrator.
+
+The model-call boundary is authoritative: `start_model_call()` reloads the exact SettingsSnapshot bound through ContextManifest and re-resolves any policy-aware route before creating ModelCall telemetry. A caller cannot bypass a configured policy by supplying a plain provider/model candidate.
 
 ## Settings contract
 
@@ -54,41 +56,43 @@ No model names are seeded by this PR. Founder activation/config remains a separa
 
 ## Deterministic resolution
 
-`SettingsModelRouter.resolve()` gains optional `attempt_index` and `escalation_reason` inputs.
+`SettingsModelRouter.resolve()` accepts optional `attempt_index` and `escalation_reason` inputs.
 
 - attempt 0 selects candidate 0;
 - attempt > 0 requires an allowed escalation reason;
 - attempt cannot exceed both candidate list and `max_escalations`;
-- provider must be in policy `allowed_providers` when supplied;
-- `max_model_calls_per_step` must be positive and is persisted into the route decision;
+- provider must be in policy `allowed_providers`;
+- `max_model_calls_per_step` must be positive and large enough to permit the configured escalation path;
 - no silent downgrade, fallback or arbitrary runner-side selection;
-- exact legacy behavior remains unchanged when no policy is used.
+- exact legacy behavior remains unchanged when no policy is configured.
 
 ## Durable route audit
 
-Migration `20260915_0033` adds nullable immutable-at-start route audit columns to `model_calls`:
+Migration `20260915_0033` adds a separate immutable `model_route_decisions` table with a one-to-one binding to policy-aware `model_calls`.
 
-- `route_snapshot_json`;
-- `route_snapshot_hash`.
+Each decision persists before external execution and binds:
 
-New policy-aware calls persist a canonical snapshot before external execution containing:
-
-- settings snapshot ID/hash;
+- ModelCall ID;
+- ContentRun / StepRun;
+- exact SettingsSnapshot ID/hash through ContextManifest;
 - task key;
 - route key;
 - policy key/version;
 - capability;
 - selected candidate index;
-- provider/model;
+- provider/model inside the canonical route snapshot;
 - escalation reason;
 - max escalations;
-- max model calls per step.
+- max model calls per step;
+- canonical route snapshot + SHA-256 hash.
 
-Legacy calls may remain null for backward compatibility. New route snapshots are hash-bound and cannot be changed after insert.
+The database trigger rejects route decisions whose run/step/task/settings/provider/model snapshot does not match the bound ModelCall and ContextManifest, and rejects later mutation/deletion. `verify_route_decision()` recomputes the canonical SHA-256 and fails closed on hash/snapshot drift.
+
+Legacy ModelCalls intentionally have no `ModelRouteDecision` until their SettingsVersion opts into policy routing.
 
 ## Call-count budget
 
-Before starting a policy-aware call, `start_model_call()` counts existing policy-aware ModelCalls for the same `StepRun` and policy/capability route. If the configured `max_model_calls_per_step` would be exceeded, it fails closed before external execution.
+Before inserting a policy-aware ModelCall, `start_model_call()` acquires a transaction advisory lock scoped to `StepRun + policy + capability` and counts existing durable `ModelRouteDecision` rows for that scope. If `max_model_calls_per_step` would be exceeded, execution fails before a new ModelCall is inserted and before any external model execution.
 
 This is an enforceable spend bound. Token limits are not claimed as hard limits because the current Codex CLI request contract does not expose a portable output-token cap.
 
@@ -104,12 +108,14 @@ Out of scope for v1 execution. The existing Codex CLI runner keeps `multi_agent`
 4. Missing/disallowed escalation reason fails closed.
 5. Candidate/provider outside policy fails closed.
 6. max escalation and max call count fail closed.
-7. route snapshot/hash persisted before call execution.
-8. route snapshot binds exact SettingsSnapshot.
-9. DB rejects route snapshot/hash partial state and mutation.
-10. existing Angle/Outline/Writer/review bridges remain compatible without behavior change until their settings opt into policy routing.
-11. migration round-trip and full CI pass.
-12. no operational migration or active settings mutation.
+7. a caller cannot bypass policy-mode settings with a plain ModelCandidate; zero ModelCall is inserted.
+8. route decision snapshot/hash is persisted before external call execution.
+9. route decision binds exact SettingsSnapshot / ContextManifest / ModelCall provider+model.
+10. database rejects route decision mutation and binding mismatch; service recomputes and verifies canonical snapshot hash.
+11. call-count budget is advisory-lock protected and blocks over-budget calls before ModelCall insertion.
+12. existing Angle/Outline/Writer/review bridges remain compatible without behavior change until their settings opt into policy routing.
+13. migration round-trip and full repository CI pass.
+14. no operational migration or active SettingsVersion mutation.
 
 ## Non-goals
 
