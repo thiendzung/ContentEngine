@@ -11,6 +11,7 @@ from app.modules.harness.models import ContentRun
 from app.modules.knowledge.brief_models import JournalKnowledgeBriefBinding
 from app.modules.knowledge.brief_ref import (
     KnowledgeBriefRefError,
+    format_knowledge_brief_ref,
     load_bound_knowledge_brief,
 )
 
@@ -26,6 +27,7 @@ class BoundKnowledgeBrief:
     binding: JournalKnowledgeBriefBinding
     brief_id: UUID
     snapshot_hash: str
+    ref: str
 
 
 def _actor(value: str) -> str:
@@ -136,6 +138,7 @@ async def load_run_knowledge_brief_binding(
         binding=binding,
         brief_id=brief.id,
         snapshot_hash=brief.snapshot_hash,
+        ref=format_knowledge_brief_ref(brief),
     )
 
 
