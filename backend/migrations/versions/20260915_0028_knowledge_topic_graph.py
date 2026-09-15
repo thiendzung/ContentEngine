@@ -289,7 +289,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(sa.text("DROP TRIGGER IF EXISTS knowledge_topic_links_scope_guard ON knowledge_topic_links"))
+    op.execute(
+        sa.text(
+            "DROP TRIGGER IF EXISTS knowledge_topic_links_scope_guard "
+            "ON knowledge_topic_links"
+        )
+    )
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_knowledge_topic_link_scope()"))
     op.execute(sa.text("DROP TRIGGER IF EXISTS topic_edges_scope_guard ON topic_edges"))
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_topic_edge_scope()"))
