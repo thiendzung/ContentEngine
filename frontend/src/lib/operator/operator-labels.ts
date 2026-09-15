@@ -46,6 +46,10 @@ export function preflightLabel(key: string): string {
     codex_cli: "Codex CLI",
     antigravity_cli: "Antigravity",
     postgres_tools: "Công cụ sao lưu PostgreSQL",
+    journal_research_serper: "Serper · tìm nguồn",
+    journal_angle_settings: "Cấu hình mô hình Angle",
+    journal_angle_prompt: "Prompt Angle",
+    journal_angle_recipe: "Recipe Angle",
   };
   return labels[key] ?? key;
 }
@@ -60,8 +64,26 @@ export function preflightDetail(check: PreflightCheck): string {
     migration_version_missing: "Thiếu thông tin phiên bản migration.",
     test_database_url_required: "Chưa cấu hình cơ sở dữ liệu kiểm thử.",
     "pg_dump+pg_restore_unavailable": "Thiếu công cụ sao lưu/khôi phục PostgreSQL.",
+    operator_worker_serper_required: "Chưa cấu hình Serper cho worker nghiên cứu.",
+    journal_angle_active_settings_missing: "Chưa có cấu hình Angle đang active.",
+    journal_angle_active_settings_duplicate: "Có nhiều cấu hình Angle active cùng lúc.",
+    journal_angle_model_route_invalid: "Cấu hình route của mô hình Angle không hợp lệ.",
+    journal_angle_provider_not_allowed: "Angle hiện không được route qua Codex CLI.",
+    journal_angle_model_unresolved: "Mô hình Angle chưa được chọn chính thức.",
+    active_prompt_missing: "Chưa có Prompt Angle đang active.",
+    active_prompt_duplicate: "Có nhiều Prompt Angle active cùng lúc.",
   };
-  return details[check.detail] ?? check.detail;
+  if (details[check.detail]) return details[check.detail];
+  if (check.detail.includes("active_recipe_missing")) {
+    return "Chưa có Recipe Angle active cho ngôn ngữ nguồn được hỗ trợ.";
+  }
+  if (check.detail.includes("active_recipe_duplicate")) {
+    return "Có nhiều Recipe Angle active cùng lúc.";
+  }
+  if (check.detail.includes("recipe_selector_mismatch")) {
+    return "Recipe Angle không khớp ngôn ngữ nguồn được hỗ trợ.";
+  }
+  return check.detail;
 }
 
 export function blockerAction(state: OperatorState): string {
