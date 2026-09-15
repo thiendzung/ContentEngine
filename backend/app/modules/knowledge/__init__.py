@@ -1,4 +1,4 @@
-"""Knowledge storage, ingest, provenance, retrieval, admission, and topic graph boundary."""
+"""Knowledge storage, provenance, topic graph, and freshness boundary."""
 
 from app.modules.knowledge.admission import (
     KnowledgeCandidateAdmissionError,
@@ -11,6 +11,30 @@ from app.modules.knowledge.candidates import (
     extract_knowledge_candidates,
     rebuild_candidate_snapshot,
     stable_knowledge_candidate_id,
+)
+from app.modules.knowledge.freshness import (
+    EffectiveFreshnessPolicy,
+    FreshnessAssignmentTargetType,
+    FreshnessClass,
+    FreshnessError,
+    FreshnessEvaluation,
+    FreshnessState,
+    FreshnessTargetType,
+    ensure_freshness_assignment,
+    ensure_freshness_policy,
+    ensure_source_document_observation,
+    evaluate_freshness,
+    normalize_freshness_policy_key,
+    record_lineage_verification,
+    replace_freshness_assignment,
+    resolve_effective_freshness_policy,
+    retire_freshness_policy,
+)
+from app.modules.knowledge.freshness_models import (
+    FreshnessAssignment,
+    FreshnessPolicy,
+    FreshnessVerification,
+    SourceDocumentObservation,
 )
 from app.modules.knowledge.originality_pack import (
     OriginalityPackApprovalError,
@@ -33,10 +57,21 @@ from app.modules.knowledge.topic_models import KnowledgeTopicLink, TopicEdge, To
 
 __all__ = [
     "EXTRACTION_METHOD",
+    "EffectiveFreshnessPolicy",
+    "FreshnessAssignment",
+    "FreshnessAssignmentTargetType",
+    "FreshnessClass",
+    "FreshnessError",
+    "FreshnessEvaluation",
+    "FreshnessPolicy",
+    "FreshnessState",
+    "FreshnessTargetType",
+    "FreshnessVerification",
     "KnowledgeCandidateAdmissionError",
     "KnowledgeTargetType",
     "KnowledgeTopicLink",
     "OriginalityPackApprovalError",
+    "SourceDocumentObservation",
     "TopicEdge",
     "TopicGraphError",
     "TopicLinkMethod",
@@ -47,13 +82,22 @@ __all__ = [
     "approve_originality_pack",
     "descendant_topic_ids",
     "deterministic_candidate_summary",
+    "ensure_freshness_assignment",
+    "ensure_freshness_policy",
     "ensure_knowledge_topic_link",
+    "ensure_source_document_observation",
     "ensure_topic_edge",
     "ensure_topic_node",
+    "evaluate_freshness",
     "extract_knowledge_candidates",
+    "normalize_freshness_policy_key",
     "normalize_topic_key",
     "originality_pack_snapshot_hash",
     "rebuild_candidate_snapshot",
+    "record_lineage_verification",
+    "replace_freshness_assignment",
+    "resolve_effective_freshness_policy",
+    "retire_freshness_policy",
     "stable_knowledge_candidate_id",
     "verify_candidate_snapshot_lineage",
 ]
