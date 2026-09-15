@@ -20,6 +20,7 @@ class KnowledgeHarvest(TimestampMixin, Base):
     as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     requested_topic_ids_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     expanded_topic_ids_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    scope_graph_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     items_json: Mapped[list[object]] = mapped_column(JSON, nullable=False)
     harvest_method: Mapped[str] = mapped_column(String(64), nullable=False)
     snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -49,6 +50,10 @@ class KnowledgeHarvest(TimestampMixin, Base):
         CheckConstraint(
             "json_array_length(expanded_topic_ids_json) > 0",
             name="ck_knowledge_harvests_expanded_topics",
+        ),
+        CheckConstraint(
+            "json_typeof(scope_graph_json) = 'object'",
+            name="ck_knowledge_harvests_scope_graph_object",
         ),
         Index(
             "uq_knowledge_harvests_project_hash",
