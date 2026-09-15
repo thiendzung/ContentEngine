@@ -6,7 +6,10 @@ from uuid import UUID
 
 import pytest
 
-from app.modules.knowledge.harvest import verify_knowledge_harvest_snapshot
+from app.modules.knowledge.harvest import (
+    rebuild_knowledge_harvest_snapshot,
+    verify_knowledge_harvest_snapshot,
+)
 from app.modules.knowledge.harvest_models import KnowledgeHarvest
 
 T0 = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
@@ -21,6 +24,23 @@ CLAIM = UUID("60000000-0000-0000-0000-000000000001")
 EVIDENCE = UUID("70000000-0000-0000-0000-000000000001")
 DOCUMENT = UUID("80000000-0000-0000-0000-000000000001")
 SOURCE = UUID("90000000-0000-0000-0000-000000000001")
+
+
+def valid_scope_graph() -> dict[str, object]:
+    return {
+        "topics": [
+            {
+                "topic_id": str(TOPIC_A),
+                "canonical_key": "synthetic-topic-a",
+                "name": "Synthetic Topic A",
+                "node_type": "topic",
+                "description": "Synthetic K3 scope topic.",
+                "status": "active",
+                "metadata": {"fixture": "k3"},
+            }
+        ],
+        "contains_edges": [],
+    }
 
 
 def valid_item(*, candidate_id: UUID, topic_id: UUID = TOPIC_A) -> dict[str, object]:
@@ -84,6 +104,7 @@ def valid_harvest() -> KnowledgeHarvest:
         as_of=T0,
         requested_topic_ids_json=[str(TOPIC_A)],
         expanded_topic_ids_json=[str(TOPIC_A)],
+        scope_graph_json=valid_scope_graph(),
         items_json=[valid_item(candidate_id=CANDIDATE_A)],
         harvest_method="approved_candidate_topic_scope_v1",
         snapshot_hash="f" * 64,
@@ -95,6 +116,30 @@ def test_verifier_rejects_requested_topic_outside_expanded_scope() -> None:
     harvest = valid_harvest()
     harvest.requested_topic_ids_json = [str(TOPIC_B)]
     with pytest.raises(ValueError, match="knowledge_harvest_requested_not_in_expanded"):
+        verify_knowledge_harvest_snapshot(harvest)
+
+
+def test_verifier_rejects_scope_graph_missing_expanded_topic() -> None:
+    harvest = valid_harvest()
+    harvest.scope_graph_json = {"topics": [], "contains_edges": []}
+    with pytest.raises(ValueError, match="knowledge_harvest_scope_topics_required"):
+        verify_knowledge_harvest_snapshot(harvest)
+
+
+def test_scope_graph_semantics_are_bound_into_snapshot_hash() -> None:
+    harvest = valid_harvest()
+    _, snapshot_hash = rebuild_knowledge_harvest_snapshot(harvest)
+    harvest.snapshot_hash = snapshot_hash
+    verify_knowledge_harvest_snapshot(harvest)
+
+    graph = deepcopy(harvest.scope_graph_json)
+    topics = graph["topics"]
+    assert isinstance(topics, list)
+    topic = topics[0]
+    assert isinstance(topic, dict)
+    topic["name"] = "Changed Topic Meaning"
+    harvest.scope_graph_json = graph
+    with pytest.raises(ValueError, match="knowledge_harvest_snapshot_hash_mismatch"):
         verify_knowledge_harvest_snapshot(harvest)
 
 
