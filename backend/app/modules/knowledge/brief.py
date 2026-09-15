@@ -259,7 +259,9 @@ def derive_knowledge_brief(
             policy_required_targets.append(action)
 
     reusable_ids = sorted(reusable_candidate_ids)
-    reusable_knowledge = [copy.deepcopy(item_by_id[candidate_id]) for candidate_id in reusable_ids]
+    reusable_knowledge = [
+        copy.deepcopy(item_by_id[candidate_id]) for candidate_id in reusable_ids
+    ]
     if any(
         _candidate_state(item) not in _REUSABLE_STATES
         for item in reusable_knowledge
@@ -346,7 +348,10 @@ def rebuild_knowledge_brief_snapshot(
         raise KnowledgeBriefError("knowledge_brief_harvest_mismatch")
     if plan.knowledge_harvest_id != harvest.id:
         raise KnowledgeBriefError("knowledge_brief_plan_harvest_mismatch")
-    if brief.content_case_id != plan.content_case_id or brief.content_case_id != harvest.content_case_id:
+    if (
+        brief.content_case_id != plan.content_case_id
+        or brief.content_case_id != harvest.content_case_id
+    ):
         raise KnowledgeBriefError("knowledge_brief_case_mismatch")
     if brief.locale != plan.locale or brief.locale != harvest.locale:
         raise KnowledgeBriefError("knowledge_brief_locale_mismatch")
