@@ -1,6 +1,8 @@
 # K2 — Knowledge Freshness
 
-Base K1 head: `70bfdc991be27f3753bc3fab47847bf929799002`.
+Original K1 implementation head: `70bfdc991be27f3753bc3fab47847bf929799002`.
+
+Integration state: PR #94 / K1 merged into `main` as `a9b285c81f84d9d9d303fe23b7e39ec3cbdf42dc`. PR #95 is retargeted to `main`; this docs-only sync intentionally triggers a fresh exact-head CI against the integrated base before Ready.
 
 ## Goal
 
