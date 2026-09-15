@@ -22,6 +22,23 @@ def _create_harvest_guard() -> None:
                 topic_uuid uuid;
                 topic_project uuid;
                 topic_status text;
+                topic_snapshot json;
+                snapshot_topic_uuid uuid;
+                snapshot_topic_project uuid;
+                snapshot_topic_key text;
+                snapshot_topic_name text;
+                snapshot_topic_type text;
+                snapshot_topic_description text;
+                snapshot_topic_status text;
+                snapshot_topic_metadata json;
+                edge_snapshot json;
+                snapshot_edge_uuid uuid;
+                snapshot_edge_parent uuid;
+                snapshot_edge_child uuid;
+                snapshot_edge_project uuid;
+                snapshot_edge_relation text;
+                snapshot_edge_actor text;
+                snapshot_edge_metadata json;
                 item json;
                 candidate_uuid uuid;
                 candidate_project uuid;
@@ -146,6 +163,261 @@ def _create_harvest_guard() -> None:
                     END IF;
                     IF topic_status <> 'active' THEN
                         RAISE EXCEPTION 'knowledge_harvest_topic_not_active';
+                    END IF;
+                END LOOP;
+
+                IF json_typeof(NEW.scope_graph_json) IS DISTINCT FROM 'object' THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_graph_invalid';
+                END IF;
+                IF (
+                    SELECT array_agg(key ORDER BY key)
+                    FROM json_object_keys(NEW.scope_graph_json) AS keys(key)
+                ) IS DISTINCT FROM ARRAY['contains_edges', 'topics']::text[] THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_graph_shape_invalid';
+                END IF;
+                IF json_typeof(NEW.scope_graph_json->'topics') IS DISTINCT FROM 'array'
+                   OR json_typeof(NEW.scope_graph_json->'contains_edges')
+                       IS DISTINCT FROM 'array' THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_graph_shape_invalid';
+                END IF;
+
+                IF json_array_length(NEW.scope_graph_json->'topics') < 1 THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_topics_required';
+                END IF;
+                IF json_array_length(NEW.scope_graph_json->'topics') IS DISTINCT FROM
+                    json_array_length(NEW.expanded_topic_ids_json) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_topic_set_mismatch';
+                END IF;
+                IF (
+                    SELECT count(*)
+                    FROM json_array_elements(NEW.scope_graph_json->'topics')
+                ) <> (
+                    SELECT count(DISTINCT value->>'topic_id')
+                    FROM json_array_elements(NEW.scope_graph_json->'topics')
+                ) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_topic_duplicate';
+                END IF;
+                IF (NEW.scope_graph_json->'topics')::jsonb IS DISTINCT FROM (
+                    SELECT jsonb_agg(value ORDER BY value->>'topic_id')
+                    FROM jsonb_array_elements(
+                        (NEW.scope_graph_json->'topics')::jsonb
+                    )
+                ) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_topics_not_canonical';
+                END IF;
+
+                FOR topic_snapshot IN
+                    SELECT value FROM json_array_elements(NEW.scope_graph_json->'topics')
+                LOOP
+                    IF json_typeof(topic_snapshot) IS DISTINCT FROM 'object' THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_invalid';
+                    END IF;
+                    IF (
+                        SELECT array_agg(key ORDER BY key)
+                        FROM json_object_keys(topic_snapshot) AS keys(key)
+                    ) IS DISTINCT FROM ARRAY[
+                        'canonical_key',
+                        'description',
+                        'metadata',
+                        'name',
+                        'node_type',
+                        'status',
+                        'topic_id'
+                    ]::text[] THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_shape_invalid';
+                    END IF;
+                    BEGIN
+                        snapshot_topic_uuid := (topic_snapshot->>'topic_id')::uuid;
+                    EXCEPTION WHEN invalid_text_representation THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_id_invalid';
+                    END;
+                    IF topic_snapshot->>'topic_id'
+                       IS DISTINCT FROM snapshot_topic_uuid::text THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_id_invalid';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                            AS expanded(value)
+                        WHERE expanded.value = topic_snapshot->>'topic_id'
+                    ) THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_outside_scope';
+                    END IF;
+
+                    SELECT
+                        tn.project_id,
+                        tn.canonical_key,
+                        tn.name,
+                        tn.node_type,
+                        tn.description,
+                        tn.status,
+                        tn.metadata_json
+                    INTO
+                        snapshot_topic_project,
+                        snapshot_topic_key,
+                        snapshot_topic_name,
+                        snapshot_topic_type,
+                        snapshot_topic_description,
+                        snapshot_topic_status,
+                        snapshot_topic_metadata
+                    FROM topic_nodes AS tn
+                    WHERE tn.id = snapshot_topic_uuid;
+
+                    IF snapshot_topic_project IS DISTINCT FROM NEW.project_id
+                       OR snapshot_topic_status IS DISTINCT FROM 'active' THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_mismatch';
+                    END IF;
+                    IF topic_snapshot->>'canonical_key'
+                           IS DISTINCT FROM snapshot_topic_key
+                       OR topic_snapshot->>'name' IS DISTINCT FROM snapshot_topic_name
+                       OR topic_snapshot->>'node_type' IS DISTINCT FROM snapshot_topic_type
+                       OR topic_snapshot->>'description'
+                           IS DISTINCT FROM snapshot_topic_description
+                       OR topic_snapshot->>'status' IS DISTINCT FROM snapshot_topic_status
+                       OR topic_snapshot->'metadata' IS NULL
+                       OR (topic_snapshot->'metadata')::jsonb IS DISTINCT FROM
+                           snapshot_topic_metadata::jsonb THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_topic_snapshot_mismatch';
+                    END IF;
+                END LOOP;
+
+                IF (
+                    SELECT count(*)
+                    FROM json_array_elements(NEW.scope_graph_json->'contains_edges')
+                ) <> (
+                    SELECT count(*)
+                    FROM topic_edges AS te
+                    WHERE te.project_id = NEW.project_id
+                      AND te.relation_type = 'contains'
+                      AND te.parent_topic_id IN (
+                          SELECT value::uuid
+                          FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                      )
+                      AND te.child_topic_id IN (
+                          SELECT value::uuid
+                          FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                      )
+                ) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_edge_set_mismatch';
+                END IF;
+                IF (
+                    SELECT count(*)
+                    FROM json_array_elements(NEW.scope_graph_json->'contains_edges')
+                ) <> (
+                    SELECT count(DISTINCT value->>'edge_id')
+                    FROM json_array_elements(NEW.scope_graph_json->'contains_edges')
+                ) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_edge_duplicate';
+                END IF;
+                IF (
+                    SELECT count(*)
+                    FROM json_array_elements(NEW.scope_graph_json->'contains_edges')
+                ) <> (
+                    SELECT count(
+                        DISTINCT (value->>'parent_topic_id', value->>'child_topic_id')
+                    )
+                    FROM json_array_elements(NEW.scope_graph_json->'contains_edges')
+                ) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_edge_duplicate';
+                END IF;
+                IF json_array_length(NEW.scope_graph_json->'contains_edges') > 0
+                   AND (NEW.scope_graph_json->'contains_edges')::jsonb
+                       IS DISTINCT FROM (
+                           SELECT jsonb_agg(
+                               value ORDER BY
+                                   value->>'parent_topic_id',
+                                   value->>'child_topic_id',
+                                   value->>'edge_id'
+                           )
+                           FROM jsonb_array_elements(
+                               (NEW.scope_graph_json->'contains_edges')::jsonb
+                           )
+                       ) THEN
+                    RAISE EXCEPTION 'knowledge_harvest_scope_edges_not_canonical';
+                END IF;
+
+                FOR edge_snapshot IN
+                    SELECT value
+                    FROM json_array_elements(NEW.scope_graph_json->'contains_edges')
+                LOOP
+                    IF json_typeof(edge_snapshot) IS DISTINCT FROM 'object' THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_invalid';
+                    END IF;
+                    IF (
+                        SELECT array_agg(key ORDER BY key)
+                        FROM json_object_keys(edge_snapshot) AS keys(key)
+                    ) IS DISTINCT FROM ARRAY[
+                        'child_topic_id',
+                        'created_by',
+                        'edge_id',
+                        'metadata',
+                        'parent_topic_id',
+                        'relation_type'
+                    ]::text[] THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_shape_invalid';
+                    END IF;
+                    BEGIN
+                        snapshot_edge_uuid := (edge_snapshot->>'edge_id')::uuid;
+                        snapshot_edge_parent := (edge_snapshot->>'parent_topic_id')::uuid;
+                        snapshot_edge_child := (edge_snapshot->>'child_topic_id')::uuid;
+                    EXCEPTION WHEN invalid_text_representation THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_id_invalid';
+                    END;
+                    IF edge_snapshot->>'edge_id'
+                           IS DISTINCT FROM snapshot_edge_uuid::text
+                       OR edge_snapshot->>'parent_topic_id'
+                           IS DISTINCT FROM snapshot_edge_parent::text
+                       OR edge_snapshot->>'child_topic_id'
+                           IS DISTINCT FROM snapshot_edge_child::text THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_id_invalid';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                            AS expanded(value)
+                        WHERE expanded.value = edge_snapshot->>'parent_topic_id'
+                    ) OR NOT EXISTS (
+                        SELECT 1
+                        FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                            AS expanded(value)
+                        WHERE expanded.value = edge_snapshot->>'child_topic_id'
+                    ) THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_outside_scope';
+                    END IF;
+
+                    SELECT
+                        te.project_id,
+                        te.parent_topic_id,
+                        te.child_topic_id,
+                        te.relation_type,
+                        te.created_by,
+                        te.metadata_json
+                    INTO
+                        snapshot_edge_project,
+                        snapshot_edge_parent,
+                        snapshot_edge_child,
+                        snapshot_edge_relation,
+                        snapshot_edge_actor,
+                        snapshot_edge_metadata
+                    FROM topic_edges AS te
+                    WHERE te.id = snapshot_edge_uuid;
+
+                    IF snapshot_edge_project IS DISTINCT FROM NEW.project_id
+                       OR snapshot_edge_relation IS DISTINCT FROM 'contains' THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_mismatch';
+                    END IF;
+                    IF edge_snapshot->>'parent_topic_id'
+                           IS DISTINCT FROM snapshot_edge_parent::text
+                       OR edge_snapshot->>'child_topic_id'
+                           IS DISTINCT FROM snapshot_edge_child::text
+                       OR edge_snapshot->>'relation_type'
+                           IS DISTINCT FROM snapshot_edge_relation
+                       OR edge_snapshot->>'created_by'
+                           IS DISTINCT FROM snapshot_edge_actor
+                       OR edge_snapshot->'metadata' IS NULL
+                       OR (edge_snapshot->'metadata')::jsonb IS DISTINCT FROM
+                           snapshot_edge_metadata::jsonb THEN
+                        RAISE EXCEPTION 'knowledge_harvest_scope_edge_snapshot_mismatch';
                     END IF;
                 END LOOP;
 
@@ -355,6 +627,7 @@ def upgrade() -> None:
         sa.Column("as_of", sa.DateTime(timezone=True), nullable=False),
         sa.Column("requested_topic_ids_json", sa.JSON(), nullable=False),
         sa.Column("expanded_topic_ids_json", sa.JSON(), nullable=False),
+        sa.Column("scope_graph_json", sa.JSON(), nullable=False),
         sa.Column("items_json", sa.JSON(), nullable=False),
         sa.Column("harvest_method", sa.String(length=64), nullable=False),
         sa.Column("snapshot_hash", sa.String(length=64), nullable=False),
@@ -384,6 +657,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "json_array_length(expanded_topic_ids_json) > 0",
             name="ck_knowledge_harvests_expanded_topics",
+        ),
+        sa.CheckConstraint(
+            "json_typeof(scope_graph_json) = 'object'",
+            name="ck_knowledge_harvests_scope_graph_object",
         ),
         sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
         sa.ForeignKeyConstraint(["content_case_id"], ["content_cases.id"]),
