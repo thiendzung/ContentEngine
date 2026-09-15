@@ -207,7 +207,7 @@ def _create_harvest_guard() -> None:
                         RAISE EXCEPTION 'knowledge_harvest_candidate_hash_mismatch';
                     END IF;
                     IF item->'entity_refs' IS NULL
-                       OR item->'entity_refs'::jsonb IS DISTINCT FROM
+                       OR (item->'entity_refs')::jsonb IS DISTINCT FROM
                            candidate_entity_refs::jsonb THEN
                         RAISE EXCEPTION 'knowledge_harvest_candidate_entity_refs_mismatch';
                     END IF;
@@ -217,7 +217,7 @@ def _create_harvest_guard() -> None:
                            candidate_review_reason THEN
                         RAISE EXCEPTION 'knowledge_harvest_candidate_admission_mismatch';
                     END IF;
-                    IF item->'lineage' IS NULL OR item->'lineage'::jsonb IS DISTINCT FROM
+                    IF item->'lineage' IS NULL OR (item->'lineage')::jsonb IS DISTINCT FROM
                         jsonb_build_object(
                             'evidence_set', candidate_provenance::jsonb->'evidence_set',
                             'claim_id', candidate_provenance::jsonb->'claim_id',
@@ -302,7 +302,7 @@ def _create_harvest_guard() -> None:
                            OR scoped_link->>'link_method' IS DISTINCT FROM link_method
                            OR scoped_link->>'linked_by' IS DISTINCT FROM link_actor
                            OR scoped_link->'metadata' IS NULL
-                           OR scoped_link->'metadata'::jsonb IS DISTINCT FROM
+                           OR (scoped_link->'metadata')::jsonb IS DISTINCT FROM
                                link_metadata::jsonb THEN
                             RAISE EXCEPTION 'knowledge_harvest_scoped_topic_link_snapshot_mismatch';
                         END IF;
