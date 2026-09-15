@@ -23,6 +23,11 @@ from app.modules.content_engine.journal.research_handoff import (
 )
 from app.modules.content_engine.models import ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
+from app.modules.knowledge.brief_ref import (
+    KnowledgeBriefRefError,
+    knowledge_brief_snapshot,
+    resolve_bound_knowledge_brief_refs,
+)
 from app.modules.knowledge.models import Claim, Evidence, Source, SourceDocument
 from app.modules.research.evidence.contracts import is_usable_originality_item
 
@@ -411,6 +416,36 @@ async def _build_angle_model_input(
             "prompt_version": context_manifest.prompt_version,
             "recipe_version": context_manifest.recipe_version,
         }
+        try:
+            brief = await resolve_bound_knowledge_brief_refs(
+                session,
+                refs=context_manifest.knowledge_chunk_refs_json,
+                project_id=run.project_id,
+                content_case_id=run.content_case_id,
+                locale=_text(opportunity.get("locale"), "angle_locale_invalid"),
+            )
+        except KnowledgeBriefRefError as exc:
+            raise AngleGenerationError(exc.code) from exc
+        if brief is not None:
+            if context_manifest.context_artifact_id is None:
+                raise AngleGenerationError("angle_knowledge_brief_context_artifact_required")
+            context_artifact = await session.get(
+                Artifact,
+                context_manifest.context_artifact_id,
+            )
+            expected_snapshot = knowledge_brief_snapshot(brief)
+            if (
+                context_artifact is None
+                or context_artifact.run_id != run.id
+                or context_artifact.artifact_type != "journal_context"
+                or not isinstance(context_artifact.content_json, dict)
+                or context_artifact.content_json.get("schema_version") != 2
+                or context_artifact.content_json.get("approved_knowledge") != []
+                or context_artifact.content_json.get("approved_knowledge_refs") != []
+                or context_artifact.content_json.get("knowledge_brief") != expected_snapshot
+            ):
+                raise AngleGenerationError("angle_knowledge_brief_context_snapshot_mismatch")
+            model_input["knowledge_brief"] = expected_snapshot
     return model_input
 
 

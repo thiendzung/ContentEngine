@@ -133,11 +133,17 @@ async def make_valid_approved_candidate(
     session.add(evidence)
     await session.flush()
 
+    current_version = await session.scalar(
+        select(func.max(EvidenceSet.version)).where(
+            EvidenceSet.project_id == project_id,
+            EvidenceSet.content_case_id == content_case_id,
+        )
+    )
     evidence_set = await create_locked_evidence_set(
         session,
         project_id=project_id,
         content_case_id=content_case_id,
-        version=1,
+        version=int(current_version or 0) + 1,
         evidence_ids=[str(evidence.id)],
         locked_by="CE05 test reviewer",
     )

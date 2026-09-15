@@ -81,4 +81,39 @@ class KnowledgeBrief(TimestampMixin, Base):
     )
 
 
-__all__ = ["KnowledgeBrief"]
+class JournalKnowledgeBriefBinding(TimestampMixin, Base):
+    """Immutable selection of one exact K5 brief for one durable ContentRun."""
+
+    __tablename__ = "journal_knowledge_brief_bindings"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_runs.id"), nullable=False, unique=True
+    )
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id"), nullable=False
+    )
+    locale_variant_id: Mapped[UUID] = mapped_column(
+        ForeignKey("locale_variants.id"), nullable=False
+    )
+    knowledge_brief_id: Mapped[UUID] = mapped_column(
+        ForeignKey("knowledge_briefs.id"), nullable=False
+    )
+    knowledge_brief_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    bound_by: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "knowledge_brief_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_journal_knowledge_brief_binding_hash",
+        ),
+        CheckConstraint(
+            "btrim(bound_by) <> ''",
+            name="ck_journal_knowledge_brief_binding_actor",
+        ),
+        Index("ix_journal_knowledge_brief_binding_case", "content_case_id"),
+        Index("ix_journal_knowledge_brief_binding_brief", "knowledge_brief_id"),
+    )
+
+
+__all__ = ["JournalKnowledgeBriefBinding", "KnowledgeBrief"]
