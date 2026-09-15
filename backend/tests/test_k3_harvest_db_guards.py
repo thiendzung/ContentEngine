@@ -20,6 +20,7 @@ from app.modules.content_engine.models import (
 from app.modules.knowledge.harvest import harvest_knowledge
 from app.modules.knowledge.harvest_models import KnowledgeHarvest
 from app.modules.knowledge.topic_graph import ensure_topic_node
+from app.modules.knowledge.topic_models import TopicNode
 
 T0 = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
@@ -108,7 +109,12 @@ async def create_case(session: AsyncSession, *, project: Project) -> ContentCase
     return content_case
 
 
-async def create_topic(session: AsyncSession, *, project: Project, label: str):
+async def create_topic(
+    session: AsyncSession,
+    *,
+    project: Project,
+    label: str,
+) -> TopicNode:
     return await ensure_topic_node(
         session,
         project_id=project.id,
@@ -116,6 +122,23 @@ async def create_topic(session: AsyncSession, *, project: Project, label: str):
         name=f"K3 {label}",
         node_type="topic",
     )
+
+
+def scope_graph(topic: TopicNode) -> dict[str, object]:
+    return {
+        "topics": [
+            {
+                "topic_id": str(topic.id),
+                "canonical_key": topic.canonical_key,
+                "name": topic.name,
+                "node_type": topic.node_type,
+                "description": topic.description,
+                "status": topic.status,
+                "metadata": topic.metadata_json,
+            }
+        ],
+        "contains_edges": [],
+    }
 
 
 @pytest.mark.asyncio
@@ -136,6 +159,7 @@ async def test_database_rejects_cross_project_case_and_topic_scope() -> None:
                         as_of=T0,
                         requested_topic_ids_json=[str(topic.id)],
                         expanded_topic_ids_json=[str(topic.id)],
+                        scope_graph_json=scope_graph(topic),
                         items_json=[],
                         harvest_method="approved_candidate_topic_scope_v1",
                         snapshot_hash="a" * 64,
@@ -159,6 +183,7 @@ async def test_database_rejects_cross_project_case_and_topic_scope() -> None:
                         as_of=T0,
                         requested_topic_ids_json=[str(foreign_topic.id)],
                         expanded_topic_ids_json=[str(foreign_topic.id)],
+                        scope_graph_json=scope_graph(foreign_topic),
                         items_json=[],
                         harvest_method="approved_candidate_topic_scope_v1",
                         snapshot_hash="b" * 64,
