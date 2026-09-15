@@ -125,11 +125,16 @@ def upgrade() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $$ LANGUAGE plpgsql;
-
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
             CREATE TRIGGER journal_knowledge_brief_binding_guard
             BEFORE INSERT OR UPDATE OR DELETE ON journal_knowledge_brief_bindings
-            FOR EACH ROW EXECUTE FUNCTION validate_journal_knowledge_brief_binding();
+            FOR EACH ROW EXECUTE FUNCTION validate_journal_knowledge_brief_binding()
             """
         )
     )
