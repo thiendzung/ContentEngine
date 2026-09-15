@@ -11,7 +11,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
 from app.modules.harness.model_policy import (
     ModelPolicyError,
     PolicyRouteSelection,
@@ -27,6 +27,12 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
     utc_now,
+)
+from app.modules.knowledge.brief_ref import (
+    KNOWLEDGE_BRIEF_REF_PREFIX,
+    KnowledgeBriefRefError,
+    knowledge_brief_snapshot,
+    resolve_bound_knowledge_brief_refs,
 )
 from app.modules.knowledge.models import EvidenceSet, KnowledgeCandidate, OriginalityPack
 
@@ -517,6 +523,7 @@ async def _validate_context_sources(
     run: ContentRun,
     inputs: ContextInputs,
 ) -> None:
+    context_artifact: Artifact | None = None
     if inputs.context_artifact_id is not None:
         context_artifact = await session.get(Artifact, inputs.context_artifact_id)
         if context_artifact is None or context_artifact.run_id != run.id:
@@ -537,6 +544,40 @@ async def _validate_context_sources(
             raise RuntimeStateError("approved_knowledge_candidate_not_found")
         if candidate.status != "APPROVED":
             raise RuntimeStateError("approved_knowledge_candidate_required")
+
+    has_brief_ref = any(
+        isinstance(raw_ref, str) and raw_ref.startswith(KNOWLEDGE_BRIEF_REF_PREFIX)
+        for raw_ref in inputs.knowledge_chunk_refs
+    )
+    if has_brief_ref:
+        variant = await session.get(LocaleVariant, run.locale_variant_id)
+        if variant is None or variant.content_case_id != run.content_case_id:
+            raise RuntimeStateError("knowledge_brief_context_locale_variant_invalid")
+        try:
+            brief = await resolve_bound_knowledge_brief_refs(
+                session,
+                refs=inputs.knowledge_chunk_refs,
+                project_id=run.project_id,
+                content_case_id=run.content_case_id,
+                locale=variant.locale,
+            )
+        except KnowledgeBriefRefError as exc:
+            raise RuntimeStateError(exc.code) from exc
+        if brief is None:
+            raise RuntimeStateError("knowledge_brief_ref_required")
+        if context_artifact is None or not isinstance(context_artifact.content_json, dict):
+            raise RuntimeStateError("knowledge_brief_context_artifact_required")
+        context_payload = context_artifact.content_json
+        if context_payload.get("schema_version") != 2:
+            raise RuntimeStateError("knowledge_brief_context_schema_invalid")
+        if context_payload.get("approved_knowledge") != []:
+            raise RuntimeStateError("knowledge_brief_context_legacy_recall_forbidden")
+        if context_payload.get("approved_knowledge_refs") != []:
+            raise RuntimeStateError("knowledge_brief_context_legacy_recall_forbidden")
+        if inputs.approved_knowledge_refs:
+            raise RuntimeStateError("knowledge_brief_context_legacy_recall_forbidden")
+        if context_payload.get("knowledge_brief") != knowledge_brief_snapshot(brief):
+            raise RuntimeStateError("knowledge_brief_context_snapshot_mismatch")
 
     if inputs.evidence_set_id is not None:
         evidence_set = await session.get(EvidenceSet, inputs.evidence_set_id)
