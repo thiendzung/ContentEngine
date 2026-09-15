@@ -4,8 +4,10 @@ BACKEND_PY := $(BACKEND_VENV)/bin/python
 BACKEND_PIP := $(BACKEND_VENV)/bin/pip
 COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
+MODEL ?=
+APPROVED_BY ?=
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check
 
 setup: backend-install frontend-install
 
@@ -37,6 +39,11 @@ operator-worker:
 
 operator-worker-loop:
 	cd backend && .venv/bin/python -m scripts.run_operator_worker_loop
+
+activate-test-angle-runtime:
+	@test -n "$(MODEL)" || (echo "MODEL is required" && exit 2)
+	@test -n "$(APPROVED_BY)" || (echo "APPROVED_BY is required" && exit 2)
+	cd backend && APP_ENV=test .venv/bin/python -m scripts.activate_test_angle_runtime --model "$(MODEL)" --approved-by "$(APPROVED_BY)"
 
 openapi:
 	cd backend && .venv/bin/python -m scripts.dump_openapi
