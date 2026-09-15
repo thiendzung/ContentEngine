@@ -1,7 +1,7 @@
 # K3 — Deterministic Knowledge Harvest
 
 Date: 2026-09-15
-Status: ACTIVE / STACKED DRAFT
+Status: IMPLEMENTATION COMPLETE / STACKED DRAFT
 Base: K2 exact head `f1e316db901fe051e7f4521c65350b3351a4be94`
 
 ## Goal
@@ -105,7 +105,7 @@ Exact replay of the same semantic snapshot returns the existing harvest row even
 
 ## Acceptance
 
-Automated proof must cover at minimum:
+Automated proof covers:
 
 1. `contains` descendant candidate is harvested from a root scope.
 2. `related` edge does not expand scope or enter the scoped hierarchy snapshot.
@@ -117,8 +117,27 @@ Automated proof must cover at minimum:
 8. freshness state and lineage are snapshot-bound at exact `as_of`.
 9. exact semantic replay returns the same Harvest ID independent of the replay actor.
 10. source supersession changes the later harvest snapshot and exposes `STALE`.
-11. DB rejects mutation/deletion, blank audit actor, cross-project scope, malformed graph scope, graph snapshot mismatch and missing induced hierarchy.
-12. migration round-trip and full repository CI remain green.
+11. later Topic semantic changes create a new harvest while the historical harvest remains verifiable.
+12. DB rejects mutation/deletion, blank audit actor, cross-project scope, malformed graph scope, graph snapshot mismatch and missing induced hierarchy.
+13. migration round-trip and full repository CI remain green.
+
+## Final GitHub proof
+
+Exact implementation head before this closeout-only documentation commit: `cea148ea8e0b49ca6af0457c8764615804e64025`.
+
+CI #900 / run `34940970766`: PASS.
+
+- Ruff: PASS
+- mypy: PASS — 125 source files
+- migration round-trip through `20260915_0030`: PASS
+- backend tests: 630 passed
+- OpenAPI export: PASS
+- frontend API type generation: PASS
+- frontend lint: PASS
+- frontend typecheck: PASS
+- frontend production build: PASS
+
+The closeout documentation commit must itself pass the same repository CI before it becomes the final exact K3 candidate head.
 
 ## Safety
 
