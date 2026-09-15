@@ -21,6 +21,13 @@ from app.modules.content_engine.models import (
 )
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
+from app.modules.knowledge.brief_ref import (
+    KNOWLEDGE_BRIEF_REF_PREFIX,
+    KnowledgeBriefRefError,
+    knowledge_brief_snapshot,
+    load_bound_knowledge_brief,
+    parse_knowledge_brief_ref,
+)
 from app.modules.knowledge.models import KnowledgeCandidate
 
 MAX_APPROVED_KNOWLEDGE = 8
@@ -95,6 +102,7 @@ class JournalContext:
     need_hypothesis: dict[str, object]
     approved_knowledge: tuple[ApprovedKnowledge, ...]
     memory_overlap: MemoryOverlap
+    knowledge_brief: dict[str, object] | None = None
     provider_calls: int = 0
     schema_version: int = 1
 
@@ -102,8 +110,23 @@ class JournalContext:
     def approved_knowledge_refs(self) -> tuple[str, ...]:
         return tuple(f"knowledge_candidate:{item.id}" for item in self.approved_knowledge)
 
+    @property
+    def knowledge_brief_ref(self) -> str | None:
+        if self.knowledge_brief is None:
+            return None
+        raw_id = self.knowledge_brief.get("id")
+        raw_hash = self.knowledge_brief.get("snapshot_hash")
+        if not isinstance(raw_id, str) or not isinstance(raw_hash, str):
+            raise JournalContextError("journal_context_knowledge_brief_snapshot_invalid")
+        raw_ref = f"{KNOWLEDGE_BRIEF_REF_PREFIX}:{raw_id}:{raw_hash}"
+        try:
+            parse_knowledge_brief_ref(raw_ref)
+        except KnowledgeBriefRefError as exc:
+            raise JournalContextError(exc.code) from exc
+        return raw_ref
+
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "schema_version": self.schema_version,
             "content_case_id": str(self.content_case_id),
             "locale_variant_id": str(self.locale_variant_id),
@@ -119,6 +142,9 @@ class JournalContext:
             "memory_overlap": self.memory_overlap.to_dict(),
             "provider_calls": self.provider_calls,
         }
+        if self.knowledge_brief is not None:
+            payload["knowledge_brief"] = self.knowledge_brief
+        return payload
 
     @property
     def content_hash(self) -> str:
@@ -327,8 +353,9 @@ async def build_journal_context(
     locale_variant_id: UUID,
     refresh_before: datetime | None = None,
     knowledge_limit: int = MAX_APPROVED_KNOWLEDGE,
+    knowledge_brief_id: UUID | None = None,
 ) -> JournalContext:
-    """Build a bounded, provider-free Journal context from persisted records."""
+    """Build provider-free Journal context from legacy recall or one exact K5 brief."""
 
     if not 1 <= knowledge_limit <= MAX_APPROVED_KNOWLEDGE:
         raise JournalContextError("journal_context_knowledge_limit_invalid")
@@ -375,20 +402,40 @@ async def build_journal_context(
         if opportunity.decision in _UPSTREAM_DECISION_LOCKS
         else memory_report.recommendation
     )
-    query_terms = _tokens(
-        opportunity.question,
-        opportunity.need,
-        opportunity.reader,
-        need.statement,
-        variant.primary_question,
-    )
-    approved_knowledge = await _recall_approved_knowledge(
-        session,
-        project_id=content_case.project_id,
-        locale=variant.locale,
-        query_terms=query_terms,
-        limit=knowledge_limit,
-    )
+
+    approved_knowledge: tuple[ApprovedKnowledge, ...]
+    brief_snapshot: dict[str, object] | None = None
+    schema_version = 1
+    if knowledge_brief_id is None:
+        query_terms = _tokens(
+            opportunity.question,
+            opportunity.need,
+            opportunity.reader,
+            need.statement,
+            variant.primary_question,
+        )
+        approved_knowledge = await _recall_approved_knowledge(
+            session,
+            project_id=content_case.project_id,
+            locale=variant.locale,
+            query_terms=query_terms,
+            limit=knowledge_limit,
+        )
+    else:
+        try:
+            brief = await load_bound_knowledge_brief(
+                session,
+                brief_id=knowledge_brief_id,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+                locale=variant.locale,
+            )
+        except KnowledgeBriefRefError as exc:
+            raise JournalContextError(exc.code) from exc
+        approved_knowledge = ()
+        brief_snapshot = knowledge_brief_snapshot(brief)
+        schema_version = 2
+
     return JournalContext(
         content_case_id=content_case.id,
         locale_variant_id=variant.id,
@@ -401,6 +448,8 @@ async def build_journal_context(
         need_hypothesis=_need_payload(need),
         approved_knowledge=approved_knowledge,
         memory_overlap=MemoryOverlap(memory_report, effective_decision),
+        knowledge_brief=brief_snapshot,
+        schema_version=schema_version,
     )
 
 
@@ -457,7 +506,7 @@ async def persist_journal_context(
     step_run_id: UUID,
     context: JournalContext,
 ) -> PersistedJournalContext:
-    """Persist the PR-A artifacts and bind the exact context to a CE03 manifest."""
+    """Persist Journal context and bind its exact references to a CE03 manifest."""
 
     run = await session.get(ContentRun, run_id)
     step = await session.get(StepRun, step_run_id)
@@ -467,6 +516,14 @@ async def persist_journal_context(
         raise JournalContextError("journal_context_step_mismatch")
     if run.locale_variant_id != context.locale_variant_id:
         raise JournalContextError("journal_context_run_locale_mismatch")
+    if context.schema_version not in {1, 2}:
+        raise JournalContextError("journal_context_schema_invalid")
+    if context.schema_version == 1 and context.knowledge_brief is not None:
+        raise JournalContextError("journal_context_schema_invalid")
+    if context.schema_version == 2 and context.knowledge_brief is None:
+        raise JournalContextError("journal_context_knowledge_brief_required")
+    if context.knowledge_brief is not None and context.approved_knowledge:
+        raise JournalContextError("journal_context_legacy_recall_forbidden")
 
     memory_artifact = await _persist_artifact(
         session,
@@ -484,15 +541,18 @@ async def persist_journal_context(
         locale=context.locale,
         payload=context.to_dict(),
     )
+    brief_ref = context.knowledge_brief_ref
+    context_version = f"journal_context:{context.schema_version}"
     manifest = await build_context_manifest(
         session,
         run_id=run.id,
         step_run_id=step.id,
         inputs=ContextInputs(
-            prompt_version="journal_context:1",
-            recipe_version="journal_context:1",
+            prompt_version=context_version,
+            recipe_version=context_version,
             context_artifact_id=context_artifact.id,
             approved_knowledge_refs=context.approved_knowledge_refs,
+            knowledge_chunk_refs=(brief_ref,) if brief_ref is not None else (),
         ),
     )
     return PersistedJournalContext(
