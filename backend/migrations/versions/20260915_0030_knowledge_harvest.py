@@ -95,10 +95,12 @@ def _create_harvest_guard() -> None:
 
                 IF EXISTS (
                     SELECT 1
-                    FROM json_array_elements_text(NEW.requested_topic_ids_json) AS requested(value)
+                    FROM json_array_elements_text(NEW.requested_topic_ids_json)
+                        AS requested(value)
                     WHERE NOT EXISTS (
                         SELECT 1
-                        FROM json_array_elements_text(NEW.expanded_topic_ids_json) AS expanded(value)
+                        FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                            AS expanded(value)
                         WHERE expanded.value = requested.value
                     )
                 ) THEN
@@ -205,12 +207,14 @@ def _create_harvest_guard() -> None:
                         RAISE EXCEPTION 'knowledge_harvest_candidate_hash_mismatch';
                     END IF;
                     IF item->'entity_refs' IS NULL
-                       OR item->'entity_refs'::jsonb IS DISTINCT FROM candidate_entity_refs::jsonb THEN
+                       OR item->'entity_refs'::jsonb IS DISTINCT FROM
+                           candidate_entity_refs::jsonb THEN
                         RAISE EXCEPTION 'knowledge_harvest_candidate_entity_refs_mismatch';
                     END IF;
                     IF item#>>'{admission,status}' IS DISTINCT FROM 'APPROVED'
                        OR item#>>'{admission,reviewer}' IS DISTINCT FROM candidate_reviewer
-                       OR item#>>'{admission,review_reason}' IS DISTINCT FROM candidate_review_reason THEN
+                       OR item#>>'{admission,review_reason}' IS DISTINCT FROM
+                           candidate_review_reason THEN
                         RAISE EXCEPTION 'knowledge_harvest_candidate_admission_mismatch';
                     END IF;
                     IF item->'lineage' IS NULL OR item->'lineage'::jsonb IS DISTINCT FROM
@@ -218,7 +222,8 @@ def _create_harvest_guard() -> None:
                             'evidence_set', candidate_provenance::jsonb->'evidence_set',
                             'claim_id', candidate_provenance::jsonb->'claim_id',
                             'evidence_ids', candidate_provenance::jsonb->'evidence_ids',
-                            'source_document_ids', candidate_provenance::jsonb->'source_document_ids',
+                            'source_document_ids',
+                                candidate_provenance::jsonb->'source_document_ids',
                             'source_ids', candidate_provenance::jsonb->'source_ids',
                             'relation_counts', candidate_provenance::jsonb->'relation_counts',
                             'evidence_refs', candidate_provenance::jsonb->'evidence_refs'
@@ -262,7 +267,8 @@ def _create_harvest_guard() -> None:
                         END IF;
                         IF NOT EXISTS (
                             SELECT 1
-                            FROM json_array_elements_text(NEW.expanded_topic_ids_json) AS expanded(value)
+                            FROM json_array_elements_text(NEW.expanded_topic_ids_json)
+                                AS expanded(value)
                             WHERE expanded.value = raw_scoped_topic_id
                         ) THEN
                             RAISE EXCEPTION 'knowledge_harvest_scoped_topic_outside_scope';
@@ -291,11 +297,13 @@ def _create_harvest_guard() -> None:
                            OR link_candidate IS DISTINCT FROM candidate_uuid THEN
                             RAISE EXCEPTION 'knowledge_harvest_scoped_topic_link_mismatch';
                         END IF;
-                        IF (scoped_link->>'relevance_score')::integer IS DISTINCT FROM link_relevance
+                        IF (scoped_link->>'relevance_score')::integer IS DISTINCT FROM
+                               link_relevance
                            OR scoped_link->>'link_method' IS DISTINCT FROM link_method
                            OR scoped_link->>'linked_by' IS DISTINCT FROM link_actor
                            OR scoped_link->'metadata' IS NULL
-                           OR scoped_link->'metadata'::jsonb IS DISTINCT FROM link_metadata::jsonb THEN
+                           OR scoped_link->'metadata'::jsonb IS DISTINCT FROM
+                               link_metadata::jsonb THEN
                             RAISE EXCEPTION 'knowledge_harvest_scoped_topic_link_snapshot_mismatch';
                         END IF;
                     END LOOP;
