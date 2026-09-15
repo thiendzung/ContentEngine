@@ -12,12 +12,49 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 from app.modules.content_engine.models import TimestampMixin, new_id
+
+
+class SourceDocumentObservation(TimestampMixin, Base):
+    __tablename__ = "source_document_observations"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    source_document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("source_documents.id"), nullable=False
+    )
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(64))
+    reader: Mapped[str | None] = mapped_column(String(64))
+    observation_method: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "content_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_source_document_observations_hash",
+        ),
+        CheckConstraint(
+            "observation_method in ('document_ingest','migration_backfill')",
+            name="ck_source_document_observations_method",
+        ),
+        UniqueConstraint(
+            "source_document_id",
+            "observed_at",
+            "observation_method",
+            name="uq_source_document_observation_event",
+        ),
+        Index(
+            "ix_source_document_observations_document_time",
+            "source_document_id",
+            "observed_at",
+        ),
+    )
 
 
 class FreshnessPolicy(TimestampMixin, Base):
@@ -152,6 +189,7 @@ class FreshnessVerification(TimestampMixin, Base):
     verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     evidence_ids_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     source_documents_json: Mapped[list[object]] = mapped_column(JSON, nullable=False)
+    observation_ids_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     verification_method: Mapped[str] = mapped_column(String(32), nullable=False)
     recorded_by: Mapped[str] = mapped_column(String(200), nullable=False)
 
@@ -170,18 +208,20 @@ class FreshnessVerification(TimestampMixin, Base):
             name="ck_freshness_verifications_method",
         ),
         Index(
-            "uq_freshness_verification_claim_basis",
+            "uq_freshness_verification_claim_event",
             "project_id",
             "claim_id",
             "basis_hash",
+            "verified_at",
             unique=True,
             postgresql_where=text("claim_id IS NOT NULL"),
         ),
         Index(
-            "uq_freshness_verification_candidate_basis",
+            "uq_freshness_verification_candidate_event",
             "project_id",
             "knowledge_candidate_id",
             "basis_hash",
+            "verified_at",
             unique=True,
             postgresql_where=text("knowledge_candidate_id IS NOT NULL"),
         ),
