@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import select
+from test_ce05_review_revise import isolated_session
 
 from app.core.config import Settings, get_settings
 from app.modules.content_engine.models import (
@@ -14,7 +15,6 @@ from app.modules.system.test_angle_runtime import (
     activate_test_journal_angle_runtime,
     validate_test_angle_activation_target,
 )
-from test_ce05_review_revise import isolated_session
 
 
 def test_test_angle_activation_rejects_non_test_environment() -> None:
