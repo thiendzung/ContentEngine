@@ -33,11 +33,11 @@ _ALLOWED_ANGLE_PROVIDER = "codex_cli"
 _UNRESOLVED_MODELS = {"pending", "pending_human_selection", "todo", "tbd"}
 
 
-def _check(key: str, status: str, detail: str) -> dict[str, str]:
+def _check(key: str, status: str, detail: str) -> dict[str, object]:
     return {"key": key, "status": status, "detail": detail}
 
 
-def _serper_check() -> dict[str, str]:
+def _serper_check() -> dict[str, object]:
     secret = get_settings().serper_api_key
     if secret is None or not secret.get_secret_value().strip():
         return _check(
@@ -48,7 +48,7 @@ def _serper_check() -> dict[str, str]:
     return _check("journal_research_serper", "READY", "configured")
 
 
-async def _angle_settings_check(session: AsyncSession) -> dict[str, str]:
+async def _angle_settings_check(session: AsyncSession) -> dict[str, object]:
     project = await session.scalar(select(Project).where(Project.slug == _PROJECT_SLUG))
     if project is None:
         return _check("journal_angle_settings", "BLOCKED", "operator_project_not_found")
@@ -119,7 +119,7 @@ async def _angle_settings_check(session: AsyncSession) -> dict[str, str]:
     )
 
 
-async def _angle_prompt_check(session: AsyncSession) -> dict[str, str]:
+async def _angle_prompt_check(session: AsyncSession) -> dict[str, object]:
     try:
         prompt = await active_prompt_definition(session, prompt_key=ANGLE_PROMPT_KEY)
     except SettingsResolutionError as exc:
@@ -131,7 +131,7 @@ async def _angle_prompt_check(session: AsyncSession) -> dict[str, str]:
     )
 
 
-async def _angle_recipe_check(session: AsyncSession) -> dict[str, str]:
+async def _angle_recipe_check(session: AsyncSession) -> dict[str, object]:
     recipe = None
     for locale in _SUPPORTED_SOURCE_LOCALES:
         try:
