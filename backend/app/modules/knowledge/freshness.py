@@ -576,10 +576,13 @@ async def record_lineage_verification(
         if (
             existing.evidence_ids_json != evidence_ids
             or existing.source_documents_json != source_payload
-            or existing.observation_ids_json != normalized_observation_ids
             or existing.recorded_by != actor
         ):
             raise FreshnessError("freshness_verification_replay_conflict")
+        # A partial reread can change the latest observation IDs while the
+        # slowest source still keeps the effective verification frontier fixed.
+        # That observation remains independently audited, but it must not create
+        # a second freshness event or extend the freshness clock.
         return existing
 
     verification = FreshnessVerification(
