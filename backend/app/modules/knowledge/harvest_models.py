@@ -31,6 +31,10 @@ class KnowledgeHarvest(TimestampMixin, Base):
             name="ck_knowledge_harvests_locale_required",
         ),
         CheckConstraint(
+            "btrim(created_by) <> ''",
+            name="ck_knowledge_harvests_created_by_required",
+        ),
+        CheckConstraint(
             "harvest_method = 'approved_candidate_topic_scope_v1'",
             name="ck_knowledge_harvests_method",
         ),
