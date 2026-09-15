@@ -363,6 +363,41 @@ async def test_harvest_expands_contains_only_and_deduplicates_candidate() -> Non
             str(child.id),
             str(subtopic.id),
         }
+
+        graph = harvest.scope_graph_json
+        topics = graph["topics"]
+        assert isinstance(topics, list)
+        topic_ids = {
+            topic["topic_id"]
+            for topic in topics
+            if isinstance(topic, dict)
+        }
+        assert topic_ids == {str(root.id), str(child.id), str(subtopic.id)}
+        assert str(related.id) not in topic_ids
+        root_snapshot = next(
+            topic
+            for topic in topics
+            if isinstance(topic, dict) and topic.get("topic_id") == str(root.id)
+        )
+        assert root_snapshot["name"] == root.name
+        assert root_snapshot["node_type"] == "pillar"
+        assert root_snapshot["metadata"] == {"fixture": "k3"}
+
+        contains_edges = graph["contains_edges"]
+        assert isinstance(contains_edges, list)
+        assert {
+            (edge["parent_topic_id"], edge["child_topic_id"])
+            for edge in contains_edges
+            if isinstance(edge, dict)
+        } == {
+            (str(root.id), str(child.id)),
+            (str(child.id), str(subtopic.id)),
+        }
+        assert all(
+            isinstance(edge, dict) and edge.get("relation_type") == "contains"
+            for edge in contains_edges
+        )
+
         assert len(harvest.items_json) == 1
         item = harvest.items_json[0]
         assert isinstance(item, dict)
@@ -390,6 +425,7 @@ async def test_harvest_expands_contains_only_and_deduplicates_candidate() -> Non
         )
         assert replay.id == harvest.id
         assert replay.snapshot_hash == harvest.snapshot_hash
+        assert replay.scope_graph_json == harvest.scope_graph_json
 
 
 @pytest.mark.asyncio
@@ -539,6 +575,7 @@ async def test_retired_intermediate_topic_stops_harvest_scope_traversal() -> Non
         )
         assert harvest.expanded_topic_ids_json == [str(root.id)]
         assert harvest.items_json == []
+        assert harvest.scope_graph_json["contains_edges"] == []
 
 
 @pytest.mark.asyncio
