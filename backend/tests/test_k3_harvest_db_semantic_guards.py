@@ -59,6 +59,7 @@ def row(
         as_of=T0,
         requested_topic_ids_json=requested,
         expanded_topic_ids_json=expanded,
+        scope_graph_json={"topics": [], "contains_edges": []},
         items_json=[],
         harvest_method="approved_candidate_topic_scope_v1",
         snapshot_hash=snapshot_hash,
