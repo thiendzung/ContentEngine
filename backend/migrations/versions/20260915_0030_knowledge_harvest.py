@@ -43,7 +43,7 @@ def _create_harvest_guard() -> None:
                 link_topic uuid;
                 link_candidate uuid;
                 link_relevance integer;
-                link_method text;
+                link_method_value text;
                 link_actor text;
                 link_metadata json;
             BEGIN
@@ -275,22 +275,23 @@ def _create_harvest_guard() -> None:
                         END IF;
 
                         SELECT
-                            project_id,
-                            topic_id,
-                            knowledge_candidate_id,
-                            relevance_score,
-                            link_method,
-                            linked_by,
-                            metadata_json
+                            ktl.project_id,
+                            ktl.topic_id,
+                            ktl.knowledge_candidate_id,
+                            ktl.relevance_score,
+                            ktl.link_method,
+                            ktl.linked_by,
+                            ktl.metadata_json
                         INTO
                             link_project,
                             link_topic,
                             link_candidate,
                             link_relevance,
-                            link_method,
+                            link_method_value,
                             link_actor,
                             link_metadata
-                        FROM knowledge_topic_links WHERE id = link_uuid;
+                        FROM knowledge_topic_links AS ktl
+                        WHERE ktl.id = link_uuid;
 
                         IF link_project IS DISTINCT FROM NEW.project_id
                            OR link_topic IS DISTINCT FROM scoped_topic_uuid
@@ -299,7 +300,7 @@ def _create_harvest_guard() -> None:
                         END IF;
                         IF (scoped_link->>'relevance_score')::integer IS DISTINCT FROM
                                link_relevance
-                           OR scoped_link->>'link_method' IS DISTINCT FROM link_method
+                           OR scoped_link->>'link_method' IS DISTINCT FROM link_method_value
                            OR scoped_link->>'linked_by' IS DISTINCT FROM link_actor
                            OR scoped_link->'metadata' IS NULL
                            OR (scoped_link->'metadata')::jsonb IS DISTINCT FROM
@@ -363,6 +364,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "btrim(locale) <> ''",
             name="ck_knowledge_harvests_locale_required",
+        ),
+        sa.CheckConstraint(
+            "btrim(created_by) <> ''",
+            name="ck_knowledge_harvests_created_by_required",
         ),
         sa.CheckConstraint(
             "harvest_method = 'approved_candidate_topic_scope_v1'",
