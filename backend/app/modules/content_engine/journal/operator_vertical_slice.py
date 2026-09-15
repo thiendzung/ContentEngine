@@ -40,6 +40,10 @@ from app.modules.content_engine.models import (
 )
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import enqueue_job
+from app.modules.knowledge.brief_binding import (
+    KnowledgeBriefBindingError,
+    bind_knowledge_brief_to_run,
+)
 
 START_TO_ANGLE_STAGE = "start_to_angle"
 
@@ -350,14 +354,16 @@ def _request_hash(
     content_case_id: UUID,
     intent: OperatorIntent,
     state_version: str,
+    knowledge_brief_id: UUID | None = None,
 ) -> str:
-    return _stable_hash(
-        {
-            "content_case_id": str(content_case_id),
-            "intent": intent,
-            "expected_state_version": state_version,
-        }
-    )
+    payload: dict[str, object] = {
+        "content_case_id": str(content_case_id),
+        "intent": intent,
+        "expected_state_version": state_version,
+    }
+    if knowledge_brief_id is not None:
+        payload["knowledge_brief_id"] = str(knowledge_brief_id)
+    return _stable_hash(payload)
 
 
 async def submit_operator_command_v45(
@@ -367,12 +373,18 @@ async def submit_operator_command_v45(
     intent: OperatorIntent,
     expected_state_version: str,
     idempotency_key: str,
+    knowledge_brief_id: UUID | None = None,
     actor_id: str = "founder",
 ) -> OperatorCommandResult:
     """Dispatch OPS-02 commands unchanged unless the new bounded stage owns the case."""
 
+    if knowledge_brief_id is not None and intent != "start":
+        raise OperatorControlError("operator_knowledge_brief_binding_start_only")
+
     focus = await _start_focus(session, content_case_id=content_case_id)
     if focus is None:
+        if knowledge_brief_id is not None:
+            raise OperatorControlError("operator_knowledge_brief_binding_stage_required")
         return await submit_operator_command(
             session,
             content_case_id=content_case_id,
@@ -388,6 +400,8 @@ async def submit_operator_command_v45(
         and job.step_run_id == step.id
         and job.status in {"queued", "leased"}
     ):
+        if knowledge_brief_id is not None:
+            raise OperatorControlError("operator_knowledge_brief_binding_stage_required")
         return await submit_operator_command(
             session,
             content_case_id=content_case_id,
@@ -406,6 +420,7 @@ async def submit_operator_command_v45(
         content_case_id=content_case_id,
         intent=intent,
         state_version=expected_state_version,
+        knowledge_brief_id=knowledge_brief_id,
     )
 
     await lock_operator_idempotency(session, key=key)
@@ -460,6 +475,17 @@ async def submit_operator_command_v45(
     run, step, job = focus
     if step.step_key != START_TO_ANGLE_STAGE:
         raise OperatorControlError("operator_internal_action_not_approved")
+
+    if knowledge_brief_id is not None:
+        try:
+            await bind_knowledge_brief_to_run(
+                session,
+                run_id=run.id,
+                knowledge_brief_id=knowledge_brief_id,
+                bound_by=actor_id,
+            )
+        except KnowledgeBriefBindingError as exc:
+            raise OperatorControlError(exc.code) from exc
 
     command = OperatorCommand(
         content_case_id=content_case_id,
