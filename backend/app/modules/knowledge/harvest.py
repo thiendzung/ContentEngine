@@ -16,6 +16,8 @@ from app.modules.knowledge.models import KnowledgeCandidate
 from app.modules.knowledge.topic_models import KnowledgeTopicLink, TopicEdge, TopicNode
 
 HARVEST_METHOD = "approved_candidate_topic_scope_v1"
+_FRESHNESS_STATES = {"FRESH", "DUE", "STALE", "UNKNOWN", "UNCLASSIFIED"}
+_LINK_METHODS = {"manual", "deterministic", "model"}
 
 
 class KnowledgeHarvestError(ValueError):
@@ -75,31 +77,214 @@ def _snapshot_payload(
     }
 
 
-def _uuid_tuple(value: object, *, code: str) -> tuple[UUID, ...]:
-    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+def _mapping(value: object, code: str) -> dict[str, object]:
+    if not isinstance(value, dict) or any(not isinstance(key, str) for key in value):
+        raise KnowledgeHarvestError(code)
+    return value
+
+
+def _list(value: object, code: str) -> list[object]:
+    if not isinstance(value, list):
+        raise KnowledgeHarvestError(code)
+    return value
+
+
+def _canonical_uuid_text(value: object, code: str) -> str:
+    if not isinstance(value, str):
         raise KnowledgeHarvestError(code)
     try:
-        return tuple(UUID(item) for item in value)
+        parsed = UUID(value)
     except ValueError as exc:
         raise KnowledgeHarvestError(code) from exc
+    canonical = str(parsed)
+    if value != canonical:
+        raise KnowledgeHarvestError(code)
+    return canonical
+
+
+def _canonical_uuid_tuple(
+    value: object,
+    *,
+    invalid_code: str,
+    empty_code: str,
+    canonical_code: str,
+) -> tuple[UUID, ...]:
+    raw = _list(value, invalid_code)
+    if not raw:
+        raise KnowledgeHarvestError(empty_code)
+    parsed = tuple(UUID(_canonical_uuid_text(item, invalid_code)) for item in raw)
+    if len(set(parsed)) != len(parsed) or parsed != tuple(sorted(parsed, key=str)):
+        raise KnowledgeHarvestError(canonical_code)
+    return parsed
+
+
+def _validate_lineage(item: dict[str, object]) -> None:
+    lineage = _mapping(item.get("lineage"), "knowledge_harvest_lineage_invalid")
+    evidence_set = _mapping(
+        lineage.get("evidence_set"),
+        "knowledge_harvest_lineage_evidence_set_invalid",
+    )
+    _canonical_uuid_text(
+        evidence_set.get("id"),
+        "knowledge_harvest_lineage_evidence_set_invalid",
+    )
+    if not isinstance(evidence_set.get("version"), int) or evidence_set["version"] < 1:
+        raise KnowledgeHarvestError("knowledge_harvest_lineage_evidence_set_invalid")
+    content_hash = evidence_set.get("content_hash")
+    if not isinstance(content_hash, str) or len(content_hash) != 64:
+        raise KnowledgeHarvestError("knowledge_harvest_lineage_evidence_set_invalid")
+    _canonical_uuid_text(lineage.get("claim_id"), "knowledge_harvest_lineage_claim_invalid")
+    for key in ("evidence_ids", "source_document_ids", "source_ids"):
+        values = _list(lineage.get(key), f"knowledge_harvest_lineage_{key}_invalid")
+        if not values:
+            raise KnowledgeHarvestError(f"knowledge_harvest_lineage_{key}_invalid")
+        canonical = [
+            _canonical_uuid_text(value, f"knowledge_harvest_lineage_{key}_invalid")
+            for value in values
+        ]
+        if len(set(canonical)) != len(canonical):
+            raise KnowledgeHarvestError(f"knowledge_harvest_lineage_{key}_invalid")
+    _mapping(
+        lineage.get("relation_counts"),
+        "knowledge_harvest_lineage_relation_counts_invalid",
+    )
+    refs = _list(
+        lineage.get("evidence_refs"),
+        "knowledge_harvest_lineage_evidence_refs_invalid",
+    )
+    if not refs or any(not isinstance(value, dict) for value in refs):
+        raise KnowledgeHarvestError("knowledge_harvest_lineage_evidence_refs_invalid")
+
+
+def _validate_scoped_links(
+    item: dict[str, object],
+    *,
+    expanded_topic_ids: set[str],
+) -> None:
+    raw_links = _list(
+        item.get("scoped_topic_links"),
+        "knowledge_harvest_scoped_topic_links_invalid",
+    )
+    if not raw_links:
+        raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_links_required")
+
+    topic_ids: set[str] = set()
+    sort_keys: list[tuple[str, str]] = []
+    for raw_link in raw_links:
+        link = _mapping(raw_link, "knowledge_harvest_scoped_topic_link_invalid")
+        link_id = _canonical_uuid_text(
+            link.get("link_id"),
+            "knowledge_harvest_scoped_topic_link_invalid",
+        )
+        topic_id = _canonical_uuid_text(
+            link.get("topic_id"),
+            "knowledge_harvest_scoped_topic_link_invalid",
+        )
+        if topic_id not in expanded_topic_ids:
+            raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_outside_scope")
+        if topic_id in topic_ids:
+            raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_duplicate")
+        topic_ids.add(topic_id)
+        sort_keys.append((topic_id, link_id))
+
+        relevance = link.get("relevance_score")
+        if not isinstance(relevance, int) or not 0 <= relevance <= 1000:
+            raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_link_invalid")
+        if link.get("link_method") not in _LINK_METHODS:
+            raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_link_invalid")
+        linked_by = link.get("linked_by")
+        if not isinstance(linked_by, str) or not linked_by.strip():
+            raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_link_invalid")
+        _mapping(link.get("metadata"), "knowledge_harvest_scoped_topic_link_invalid")
+
+    if sort_keys != sorted(sort_keys):
+        raise KnowledgeHarvestError("knowledge_harvest_scoped_topic_links_not_canonical")
+
+
+def _validate_item(
+    item: dict[str, object],
+    *,
+    locale: str,
+    expanded_topic_ids: set[str],
+) -> str:
+    candidate_id = _canonical_uuid_text(
+        item.get("candidate_id"),
+        "knowledge_harvest_candidate_id_invalid",
+    )
+    candidate_hash = item.get("candidate_content_hash")
+    if (
+        not isinstance(candidate_hash, str)
+        or len(candidate_hash) != 64
+        or any(char not in "0123456789abcdef" for char in candidate_hash)
+    ):
+        raise KnowledgeHarvestError("knowledge_harvest_candidate_hash_invalid")
+    if item.get("locale") != locale:
+        raise KnowledgeHarvestError("knowledge_harvest_item_locale_mismatch")
+    if not isinstance(item.get("statement"), str) or not item["statement"].strip():
+        raise KnowledgeHarvestError("knowledge_harvest_candidate_text_invalid")
+    if not isinstance(item.get("summary"), str) or not item["summary"].strip():
+        raise KnowledgeHarvestError("knowledge_harvest_candidate_text_invalid")
+    _list(item.get("entity_refs"), "knowledge_harvest_candidate_entity_refs_invalid")
+
+    admission = _mapping(item.get("admission"), "knowledge_harvest_admission_invalid")
+    if admission.get("status") != "APPROVED":
+        raise KnowledgeHarvestError("knowledge_harvest_candidate_not_approved")
+    for field in ("reviewer", "review_reason"):
+        value = admission.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise KnowledgeHarvestError("knowledge_harvest_admission_invalid")
+
+    freshness = _mapping(item.get("freshness"), "knowledge_harvest_freshness_invalid")
+    if freshness.get("state") not in _FRESHNESS_STATES:
+        raise KnowledgeHarvestError("knowledge_harvest_freshness_state_invalid")
+    reasons = _list(freshness.get("reasons"), "knowledge_harvest_freshness_invalid")
+    if any(not isinstance(reason, str) or not reason for reason in reasons):
+        raise KnowledgeHarvestError("knowledge_harvest_freshness_invalid")
+
+    _validate_scoped_links(item, expanded_topic_ids=expanded_topic_ids)
+    _validate_lineage(item)
+    return candidate_id
 
 
 def rebuild_knowledge_harvest_snapshot(
     harvest: KnowledgeHarvest,
 ) -> tuple[dict[str, object], str]:
-    """Rebuild a persisted harvest's canonical immutable snapshot."""
+    """Rebuild and semantically validate a persisted immutable harvest snapshot."""
 
-    requested_topic_ids = _uuid_tuple(
+    requested_topic_ids = _canonical_uuid_tuple(
         harvest.requested_topic_ids_json,
-        code="knowledge_harvest_topic_id_invalid",
+        invalid_code="knowledge_harvest_topic_id_invalid",
+        empty_code="knowledge_harvest_requested_topic_required",
+        canonical_code="knowledge_harvest_requested_topics_not_canonical",
     )
-    expanded_topic_ids = _uuid_tuple(
+    expanded_topic_ids = _canonical_uuid_tuple(
         harvest.expanded_topic_ids_json,
-        code="knowledge_harvest_topic_id_invalid",
+        invalid_code="knowledge_harvest_topic_id_invalid",
+        empty_code="knowledge_harvest_expanded_topic_required",
+        canonical_code="knowledge_harvest_expanded_topics_not_canonical",
     )
-    if any(not isinstance(item, dict) for item in harvest.items_json):
-        raise KnowledgeHarvestError("knowledge_harvest_item_invalid")
-    items = [dict(item) for item in harvest.items_json if isinstance(item, dict)]
+    if not set(requested_topic_ids).issubset(expanded_topic_ids):
+        raise KnowledgeHarvestError("knowledge_harvest_requested_not_in_expanded")
+
+    raw_items = _list(harvest.items_json, "knowledge_harvest_items_invalid")
+    items = [
+        _mapping(item, "knowledge_harvest_item_invalid")
+        for item in raw_items
+    ]
+    expanded_text = {str(value) for value in expanded_topic_ids}
+    candidate_ids = [
+        _validate_item(
+            item,
+            locale=harvest.locale,
+            expanded_topic_ids=expanded_text,
+        )
+        for item in items
+    ]
+    if len(set(candidate_ids)) != len(candidate_ids):
+        raise KnowledgeHarvestError("knowledge_harvest_candidate_duplicate")
+    if candidate_ids != sorted(candidate_ids):
+        raise KnowledgeHarvestError("knowledge_harvest_items_not_canonical")
+
     payload = _snapshot_payload(
         project_id=harvest.project_id,
         content_case_id=harvest.content_case_id,
@@ -113,7 +298,7 @@ def rebuild_knowledge_harvest_snapshot(
 
 
 def verify_knowledge_harvest_snapshot(harvest: KnowledgeHarvest) -> dict[str, object]:
-    """Fail closed if a downstream consumer receives a corrupted harvest row."""
+    """Fail closed before any downstream K4/K5 consumer uses the snapshot."""
 
     if harvest.harvest_method != HARVEST_METHOD:
         raise KnowledgeHarvestError("knowledge_harvest_method_invalid")
@@ -413,6 +598,7 @@ async def harvest_knowledge(
         snapshot_hash=snapshot_hash,
         created_by=actor,
     )
+    verify_knowledge_harvest_snapshot(harvest)
     session.add(harvest)
     await session.flush()
     return harvest
