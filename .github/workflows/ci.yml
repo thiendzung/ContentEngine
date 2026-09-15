@@ -59,6 +59,14 @@ jobs:
           alembic downgrade 20260902_0001
           alembic upgrade head
 
+      - name: K2 focused tests
+        working-directory: backend
+        run: >-
+          pytest -q
+          tests/test_k2_knowledge_freshness.py
+          tests/test_k2_freshness_db_guards.py
+          --tb=short
+
       - name: Backend tests
         working-directory: backend
         run: pytest
