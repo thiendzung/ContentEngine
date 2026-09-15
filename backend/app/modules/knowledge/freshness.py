@@ -611,13 +611,14 @@ async def _explicit_assignment(
         if target_type == "claim"
         else FreshnessAssignment.knowledge_candidate_id
     )
-    return await session.scalar(
+    result = await session.scalar(
         select(FreshnessAssignment).where(
             FreshnessAssignment.project_id == project_id,
             FreshnessAssignment.status == "active",
             target_column == target_id,
         )
     )
+    return cast(FreshnessAssignment | None, result)
 
 
 async def resolve_effective_freshness_policy(
@@ -717,7 +718,7 @@ async def _latest_verification(
         if target_type == "claim"
         else FreshnessVerification.knowledge_candidate_id
     )
-    return await session.scalar(
+    result = await session.scalar(
         select(FreshnessVerification)
         .where(
             FreshnessVerification.project_id == project_id,
@@ -727,6 +728,7 @@ async def _latest_verification(
         .order_by(FreshnessVerification.verified_at.desc(), FreshnessVerification.id.desc())
         .limit(1)
     )
+    return cast(FreshnessVerification | None, result)
 
 
 async def _basis_source_superseded(
