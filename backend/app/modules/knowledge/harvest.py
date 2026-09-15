@@ -18,6 +18,25 @@ from app.modules.knowledge.topic_models import KnowledgeTopicLink, TopicEdge, To
 HARVEST_METHOD = "approved_candidate_topic_scope_v1"
 _FRESHNESS_STATES = {"FRESH", "DUE", "STALE", "UNKNOWN", "UNCLASSIFIED"}
 _LINK_METHODS = {"manual", "deterministic", "model"}
+_TOPIC_NODE_TYPES = {"pillar", "cluster", "topic", "subtopic"}
+_SCOPE_GRAPH_KEYS = {"topics", "contains_edges"}
+_TOPIC_SNAPSHOT_KEYS = {
+    "topic_id",
+    "canonical_key",
+    "name",
+    "node_type",
+    "description",
+    "status",
+    "metadata",
+}
+_EDGE_SNAPSHOT_KEYS = {
+    "edge_id",
+    "parent_topic_id",
+    "child_topic_id",
+    "relation_type",
+    "created_by",
+    "metadata",
+}
 
 
 class KnowledgeHarvestError(ValueError):
@@ -63,6 +82,7 @@ def _snapshot_payload(
     as_of: datetime,
     requested_topic_ids: tuple[UUID, ...],
     expanded_topic_ids: tuple[UUID, ...],
+    scope_graph: dict[str, object],
     items: list[dict[str, object]],
 ) -> dict[str, object]:
     return {
@@ -73,6 +93,7 @@ def _snapshot_payload(
         "as_of": _iso(as_of),
         "requested_topic_ids": [str(value) for value in requested_topic_ids],
         "expanded_topic_ids": [str(value) for value in expanded_topic_ids],
+        "scope_graph": scope_graph,
         "items": items,
     }
 
@@ -116,6 +137,102 @@ def _canonical_uuid_tuple(
     if len(set(parsed)) != len(parsed) or parsed != tuple(sorted(parsed, key=str)):
         raise KnowledgeHarvestError(canonical_code)
     return parsed
+
+
+def _validate_scope_graph(
+    value: object,
+    *,
+    expanded_topic_ids: set[str],
+) -> dict[str, object]:
+    graph = _mapping(value, "knowledge_harvest_scope_graph_invalid")
+    if set(graph) != _SCOPE_GRAPH_KEYS:
+        raise KnowledgeHarvestError("knowledge_harvest_scope_graph_shape_invalid")
+
+    raw_topics = _list(graph.get("topics"), "knowledge_harvest_scope_topics_invalid")
+    if not raw_topics:
+        raise KnowledgeHarvestError("knowledge_harvest_scope_topics_required")
+    topics: list[dict[str, object]] = []
+    topic_ids: list[str] = []
+    for raw_topic in raw_topics:
+        topic = _mapping(raw_topic, "knowledge_harvest_scope_topic_invalid")
+        if set(topic) != _TOPIC_SNAPSHOT_KEYS:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_shape_invalid")
+        topic_id = _canonical_uuid_text(
+            topic.get("topic_id"),
+            "knowledge_harvest_scope_topic_id_invalid",
+        )
+        if topic_id not in expanded_topic_ids:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_outside_scope")
+        canonical_key = topic.get("canonical_key")
+        name = topic.get("name")
+        node_type = topic.get("node_type")
+        description = topic.get("description")
+        if not isinstance(canonical_key, str) or not canonical_key.strip():
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_invalid")
+        if not isinstance(name, str) or not name.strip():
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_invalid")
+        if node_type not in _TOPIC_NODE_TYPES:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_invalid")
+        if description is not None and not isinstance(description, str):
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_invalid")
+        if topic.get("status") != "active":
+            raise KnowledgeHarvestError("knowledge_harvest_scope_topic_not_active")
+        _mapping(topic.get("metadata"), "knowledge_harvest_scope_topic_invalid")
+        topic_ids.append(topic_id)
+        topics.append(topic)
+
+    if len(set(topic_ids)) != len(topic_ids):
+        raise KnowledgeHarvestError("knowledge_harvest_scope_topic_duplicate")
+    if set(topic_ids) != expanded_topic_ids:
+        raise KnowledgeHarvestError("knowledge_harvest_scope_topic_set_mismatch")
+    if topic_ids != sorted(topic_ids):
+        raise KnowledgeHarvestError("knowledge_harvest_scope_topics_not_canonical")
+
+    raw_edges = _list(
+        graph.get("contains_edges"),
+        "knowledge_harvest_scope_edges_invalid",
+    )
+    edges: list[dict[str, object]] = []
+    edge_ids: set[str] = set()
+    edge_sort_keys: list[tuple[str, str, str]] = []
+    edge_pairs: set[tuple[str, str]] = set()
+    for raw_edge in raw_edges:
+        edge = _mapping(raw_edge, "knowledge_harvest_scope_edge_invalid")
+        if set(edge) != _EDGE_SNAPSHOT_KEYS:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_edge_shape_invalid")
+        edge_id = _canonical_uuid_text(
+            edge.get("edge_id"),
+            "knowledge_harvest_scope_edge_id_invalid",
+        )
+        parent_id = _canonical_uuid_text(
+            edge.get("parent_topic_id"),
+            "knowledge_harvest_scope_edge_topic_id_invalid",
+        )
+        child_id = _canonical_uuid_text(
+            edge.get("child_topic_id"),
+            "knowledge_harvest_scope_edge_topic_id_invalid",
+        )
+        if parent_id not in expanded_topic_ids or child_id not in expanded_topic_ids:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_edge_outside_scope")
+        if parent_id == child_id or edge.get("relation_type") != "contains":
+            raise KnowledgeHarvestError("knowledge_harvest_scope_edge_invalid")
+        created_by = edge.get("created_by")
+        if not isinstance(created_by, str) or not created_by.strip():
+            raise KnowledgeHarvestError("knowledge_harvest_scope_edge_invalid")
+        _mapping(edge.get("metadata"), "knowledge_harvest_scope_edge_invalid")
+        if edge_id in edge_ids:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_edge_duplicate")
+        pair = (parent_id, child_id)
+        if pair in edge_pairs:
+            raise KnowledgeHarvestError("knowledge_harvest_scope_edge_duplicate")
+        edge_ids.add(edge_id)
+        edge_pairs.add(pair)
+        edge_sort_keys.append((parent_id, child_id, edge_id))
+        edges.append(edge)
+
+    if edge_sort_keys != sorted(edge_sort_keys):
+        raise KnowledgeHarvestError("knowledge_harvest_scope_edges_not_canonical")
+    return {"topics": topics, "contains_edges": edges}
 
 
 def _validate_lineage(item: dict[str, object]) -> None:
@@ -269,9 +386,13 @@ def rebuild_knowledge_harvest_snapshot(
     if not set(requested_topic_ids).issubset(expanded_topic_ids):
         raise KnowledgeHarvestError("knowledge_harvest_requested_not_in_expanded")
 
+    expanded_text = {str(value) for value in expanded_topic_ids}
+    scope_graph = _validate_scope_graph(
+        harvest.scope_graph_json,
+        expanded_topic_ids=expanded_text,
+    )
     raw_items = _list(harvest.items_json, "knowledge_harvest_items_invalid")
     items = [_mapping(item, "knowledge_harvest_item_invalid") for item in raw_items]
-    expanded_text = {str(value) for value in expanded_topic_ids}
     candidate_ids = [
         _validate_item(
             item,
@@ -292,6 +413,7 @@ def rebuild_knowledge_harvest_snapshot(
         as_of=_as_utc(harvest.as_of, "knowledge_harvest_as_of_invalid"),
         requested_topic_ids=requested_topic_ids,
         expanded_topic_ids=expanded_topic_ids,
+        scope_graph=scope_graph,
         items=items,
     )
     return payload, _canonical_hash(payload)
@@ -383,6 +505,73 @@ async def _active_topic_scope(
         output.update(children)
         frontier = children
     return tuple(sorted(output, key=str))
+
+
+async def _snapshot_scope_graph(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    expanded_topic_ids: tuple[UUID, ...],
+) -> dict[str, object]:
+    topics = tuple(
+        (
+            await session.scalars(
+                select(TopicNode)
+                .where(
+                    TopicNode.project_id == project_id,
+                    TopicNode.id.in_(expanded_topic_ids),
+                    TopicNode.status == "active",
+                )
+                .order_by(TopicNode.id)
+            )
+        ).all()
+    )
+    if tuple(topic.id for topic in topics) != expanded_topic_ids:
+        raise KnowledgeHarvestError("knowledge_harvest_scope_topic_set_changed")
+
+    edges = tuple(
+        (
+            await session.scalars(
+                select(TopicEdge)
+                .where(
+                    TopicEdge.project_id == project_id,
+                    TopicEdge.relation_type == "contains",
+                    TopicEdge.parent_topic_id.in_(expanded_topic_ids),
+                    TopicEdge.child_topic_id.in_(expanded_topic_ids),
+                )
+                .order_by(
+                    TopicEdge.parent_topic_id,
+                    TopicEdge.child_topic_id,
+                    TopicEdge.id,
+                )
+            )
+        ).all()
+    )
+    return {
+        "topics": [
+            {
+                "topic_id": str(topic.id),
+                "canonical_key": topic.canonical_key,
+                "name": topic.name,
+                "node_type": topic.node_type,
+                "description": topic.description,
+                "status": topic.status,
+                "metadata": topic.metadata_json,
+            }
+            for topic in topics
+        ],
+        "contains_edges": [
+            {
+                "edge_id": str(edge.id),
+                "parent_topic_id": str(edge.parent_topic_id),
+                "child_topic_id": str(edge.child_topic_id),
+                "relation_type": edge.relation_type,
+                "created_by": edge.created_by,
+                "metadata": edge.metadata_json,
+            }
+            for edge in edges
+        ],
+    }
 
 
 def _freshness_payload(evaluation: FreshnessEvaluation) -> dict[str, object]:
@@ -551,6 +740,11 @@ async def harvest_knowledge(
         project_id=project_id,
         root_topic_ids=requested,
     )
+    scope_graph = await _snapshot_scope_graph(
+        session,
+        project_id=project_id,
+        expanded_topic_ids=expanded,
+    )
     items = await _harvest_items(
         session,
         project_id=project_id,
@@ -565,6 +759,7 @@ async def harvest_knowledge(
         as_of=cutoff,
         requested_topic_ids=requested,
         expanded_topic_ids=expanded,
+        scope_graph=scope_graph,
         items=items,
     )
     snapshot_hash = _canonical_hash(payload)
@@ -591,6 +786,7 @@ async def harvest_knowledge(
         as_of=cutoff,
         requested_topic_ids_json=[str(value) for value in requested],
         expanded_topic_ids_json=[str(value) for value in expanded],
+        scope_graph_json=scope_graph,
         items_json=items,
         harvest_method=HARVEST_METHOD,
         snapshot_hash=snapshot_hash,
