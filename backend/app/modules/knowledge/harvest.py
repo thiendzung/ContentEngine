@@ -128,7 +128,8 @@ def _validate_lineage(item: dict[str, object]) -> None:
         evidence_set.get("id"),
         "knowledge_harvest_lineage_evidence_set_invalid",
     )
-    if not isinstance(evidence_set.get("version"), int) or evidence_set["version"] < 1:
+    version = evidence_set.get("version")
+    if not isinstance(version, int) or version < 1:
         raise KnowledgeHarvestError("knowledge_harvest_lineage_evidence_set_invalid")
     content_hash = evidence_set.get("content_hash")
     if not isinstance(content_hash, str) or len(content_hash) != 64:
@@ -220,9 +221,11 @@ def _validate_item(
         raise KnowledgeHarvestError("knowledge_harvest_candidate_hash_invalid")
     if item.get("locale") != locale:
         raise KnowledgeHarvestError("knowledge_harvest_item_locale_mismatch")
-    if not isinstance(item.get("statement"), str) or not item["statement"].strip():
+    statement = item.get("statement")
+    if not isinstance(statement, str) or not statement.strip():
         raise KnowledgeHarvestError("knowledge_harvest_candidate_text_invalid")
-    if not isinstance(item.get("summary"), str) or not item["summary"].strip():
+    summary = item.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
         raise KnowledgeHarvestError("knowledge_harvest_candidate_text_invalid")
     _list(item.get("entity_refs"), "knowledge_harvest_candidate_entity_refs_invalid")
 
@@ -267,10 +270,7 @@ def rebuild_knowledge_harvest_snapshot(
         raise KnowledgeHarvestError("knowledge_harvest_requested_not_in_expanded")
 
     raw_items = _list(harvest.items_json, "knowledge_harvest_items_invalid")
-    items = [
-        _mapping(item, "knowledge_harvest_item_invalid")
-        for item in raw_items
-    ]
+    items = [_mapping(item, "knowledge_harvest_item_invalid") for item in raw_items]
     expanded_text = {str(value) for value in expanded_topic_ids}
     candidate_ids = [
         _validate_item(
