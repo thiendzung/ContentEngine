@@ -209,6 +209,7 @@ async def create_founder_journal_intake(
 
     The originality fields are explicit MOTGU-owned material submitted by the Founder.
     Submitting this exact request authorizes the exact resulting OriginalityPack snapshot.
+    Intake is durable planning data; execution preflight is enforced before Job enqueue.
     """
 
     key = idempotency_key.strip()
@@ -416,6 +417,7 @@ async def create_founder_journal_intake(
     state = await get_operator_state_v45(
         session,
         content_case_id=created.content_case_id,
+        preflight_checked=True,
     )
     if state.status != "READY" or state.primary_intent != "start":
         raise OperatorControlError("operator_manual_intake_not_startable")

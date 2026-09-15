@@ -63,6 +63,7 @@ async def test_production_board_projects_approved_case_without_writes() -> None:
         assert row.status_group == "COMPLETED"
         assert row.stage_key == "approved"
         assert row.coordinator == "Codex"
+        assert row.operator_managed is False
         assert row.current_worker is None
         assert row.execution_chain[-1].kind == "model"
         assert row.execution_chain[-1].provider == "codex_cli"
@@ -80,4 +81,5 @@ async def test_production_board_maps_pending_founder_review_to_review_lane() -> 
         assert row.status_group == "AWAITING_APPROVAL"
         assert row.stage_key == "final_review"
         assert row.coordinator == "Codex"
+        assert row.operator_managed is False
         assert row.next_action == "AWAITING_FOUNDER_APPROVAL"

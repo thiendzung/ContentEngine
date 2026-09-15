@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.models import JournalIntakeSpec
 from app.modules.content_engine.journal.review_action_view import (
     list_action_aware_review_cases,
 )
@@ -44,6 +45,7 @@ class ProductionBoardCase(BaseModel):
     status_group: str
     stage_key: str
     coordinator: str = "Codex"
+    operator_managed: bool = False
     locales: list[str] = Field(default_factory=list)
     quality_state: str
     publication_state: str
@@ -264,6 +266,15 @@ async def list_production_board_cases(
         ).all()
     )
     case_by_id = {row.id: row for row in cases}
+    operator_case_ids = set(
+        (
+            await session.scalars(
+                select(JournalIntakeSpec.content_case_id).where(
+                    JournalIntakeSpec.content_case_id.in_(case_ids)
+                )
+            )
+        ).all()
+    )
 
     runs = list(
         (
@@ -365,6 +376,7 @@ async def list_production_board_cases(
                     steps=case_steps,
                     delegations=case_delegations,
                 ),
+                operator_managed=summary.id in operator_case_ids,
                 locales=[row.locale for row in summary.locales],
                 quality_state=summary.quality_state,
                 publication_state=summary.publication_state,
