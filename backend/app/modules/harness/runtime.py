@@ -278,6 +278,49 @@ async def build_context_manifest(
     return manifest
 
 
+async def _validated_policy_selection(
+    session: AsyncSession,
+    *,
+    manifest: ContextManifest,
+    task_key: str,
+    route: ModelCandidate,
+) -> PolicyRouteSelection | None:
+    settings_snapshot = await session.get(SettingsSnapshot, manifest.settings_snapshot_id)
+    if settings_snapshot is None:
+        raise RuntimeStateError("SettingsSnapshot not found")
+
+    try:
+        policy_primary = resolve_policy_route(
+            task_key=task_key,
+            settings_snapshot=settings_snapshot,
+        )
+    except ModelPolicyError as exc:
+        raise RuntimeConfigurationError(exc.code) from exc
+
+    selection = route.policy_selection
+    if policy_primary is None:
+        if selection is not None:
+            raise RuntimeConfigurationError("model_policy_route_unexpected")
+        return None
+    if selection is None:
+        raise RuntimeConfigurationError("model_policy_route_decision_required")
+
+    try:
+        expected = resolve_policy_route(
+            task_key=task_key,
+            settings_snapshot=settings_snapshot,
+            attempt_index=selection.candidate_index,
+            escalation_reason=selection.escalation_reason,
+        )
+    except ModelPolicyError as exc:
+        raise RuntimeConfigurationError(exc.code) from exc
+    if expected is None or selection != expected:
+        raise RuntimeConfigurationError("model_policy_route_selection_mismatch")
+    if route.provider != expected.provider or route.model != expected.model:
+        raise RuntimeConfigurationError("model_policy_route_binding_mismatch")
+    return selection
+
+
 async def start_model_call(
     session: AsyncSession,
     *,
@@ -289,7 +332,7 @@ async def start_model_call(
     purpose: str,
     prompt_version: str,
 ) -> ModelCall:
-    """Start model telemetry and persist any policy route before external execution."""
+    """Start model telemetry only after authoritative route-policy validation."""
 
     manifest = await session.get(ContextManifest, context_manifest_id)
     if manifest is None or manifest.run_id != run_id:
@@ -299,12 +342,13 @@ async def start_model_call(
     if manifest.prompt_version != prompt_version:
         raise RuntimeStateError("ModelCall prompt version does not match ContextManifest")
 
-    selection = route.policy_selection
+    selection = await _validated_policy_selection(
+        session,
+        manifest=manifest,
+        task_key=task_key,
+        route=route,
+    )
     if selection is not None:
-        if selection.settings_snapshot_id != manifest.settings_snapshot_id:
-            raise RuntimeStateError("Model route policy does not match ContextManifest settings")
-        if selection.route_snapshot.get("task_key") != task_key:
-            raise RuntimeStateError("Model route policy does not match task")
         try:
             await enforce_policy_call_budget(
                 session,
