@@ -297,7 +297,7 @@ async def _validated_policy_selection(
     except ModelPolicyError as exc:
         raise RuntimeConfigurationError(exc.code) from exc
 
-    selection = route.policy_selection
+    selection = getattr(route, "policy_selection", None)
     if policy_primary is None:
         if selection is not None:
             raise RuntimeConfigurationError("model_policy_route_unexpected")
