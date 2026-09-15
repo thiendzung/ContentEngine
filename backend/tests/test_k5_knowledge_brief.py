@@ -276,7 +276,9 @@ def synthetic_plan(harvest: KnowledgeHarvest) -> KnowledgeCoveragePlan:
     return plan
 
 
-def one_leaf_fixture(state: str) -> tuple[KnowledgeHarvest, KnowledgeCoveragePlan, dict[str, object]]:
+def one_leaf_fixture(
+    state: str,
+) -> tuple[KnowledgeHarvest, KnowledgeCoveragePlan, dict[str, object]]:
     root = UUID(int=10)
     leaf = UUID(int=11)
     item = candidate_item(UUID(int=101), state=state, topic_ids=(leaf,))
@@ -389,7 +391,10 @@ def test_reusable_candidate_is_emitted_once_across_multiple_topics() -> None:
     contexts = payload["topic_contexts"]
     assert isinstance(contexts, list)
     target_contexts = [lane for lane in contexts if lane["coverage_role"] == "target"]
-    assert all(lane["reuse_candidate_ids"] == [candidate["candidate_id"]] for lane in target_contexts)
+    assert all(
+        lane["reuse_candidate_ids"] == [candidate["candidate_id"]]
+        for lane in target_contexts
+    )
 
 
 def test_corrupted_k3_or_k4_fails_closed_before_brief_derivation() -> None:
