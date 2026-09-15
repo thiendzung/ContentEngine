@@ -1,4 +1,4 @@
-"""Knowledge storage, provenance, topic graph, and freshness boundary."""
+"""Knowledge storage, provenance, topic graph, freshness, and harvest boundary."""
 
 from app.modules.knowledge.admission import (
     KnowledgeCandidateAdmissionError,
@@ -36,6 +36,14 @@ from app.modules.knowledge.freshness_models import (
     FreshnessVerification,
     SourceDocumentObservation,
 )
+from app.modules.knowledge.harvest import (
+    HARVEST_METHOD,
+    KnowledgeHarvestError,
+    harvest_knowledge,
+    rebuild_knowledge_harvest_snapshot,
+    verify_knowledge_harvest_snapshot,
+)
+from app.modules.knowledge.harvest_models import KnowledgeHarvest
 from app.modules.knowledge.originality_pack import (
     OriginalityPackApprovalError,
     approve_originality_pack,
@@ -57,6 +65,7 @@ from app.modules.knowledge.topic_models import KnowledgeTopicLink, TopicEdge, To
 
 __all__ = [
     "EXTRACTION_METHOD",
+    "HARVEST_METHOD",
     "EffectiveFreshnessPolicy",
     "FreshnessAssignment",
     "FreshnessAssignmentTargetType",
@@ -68,6 +77,8 @@ __all__ = [
     "FreshnessTargetType",
     "FreshnessVerification",
     "KnowledgeCandidateAdmissionError",
+    "KnowledgeHarvest",
+    "KnowledgeHarvestError",
     "KnowledgeTargetType",
     "KnowledgeTopicLink",
     "OriginalityPackApprovalError",
@@ -90,14 +101,17 @@ __all__ = [
     "ensure_topic_node",
     "evaluate_freshness",
     "extract_knowledge_candidates",
+    "harvest_knowledge",
     "normalize_freshness_policy_key",
     "normalize_topic_key",
     "originality_pack_snapshot_hash",
     "rebuild_candidate_snapshot",
+    "rebuild_knowledge_harvest_snapshot",
     "record_lineage_verification",
     "replace_freshness_assignment",
     "resolve_effective_freshness_policy",
     "retire_freshness_policy",
     "stable_knowledge_candidate_id",
     "verify_candidate_snapshot_lineage",
+    "verify_knowledge_harvest_snapshot",
 ]
