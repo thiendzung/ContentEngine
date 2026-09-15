@@ -29,6 +29,9 @@ from app.modules.content_engine.journal.operator_control import (
 from app.modules.content_engine.journal.operator_locking import (
     lock_operator_idempotency,
 )
+from app.modules.content_engine.journal.operator_preflight import (
+    build_journal_operator_preflight,
+)
 from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
@@ -37,7 +40,6 @@ from app.modules.content_engine.models import (
 )
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import enqueue_job
-from app.modules.system.preflight import build_operational_preflight
 
 START_TO_ANGLE_STAGE = "start_to_angle"
 
@@ -261,6 +263,7 @@ async def get_operator_state_v45(
     session: AsyncSession,
     *,
     content_case_id: UUID,
+    preflight_checked: bool = False,
 ) -> OperatorState:
     base = await get_operator_state(session, content_case_id=content_case_id)
     focus = await _start_focus(session, content_case_id=content_case_id)
@@ -299,6 +302,26 @@ async def get_operator_state_v45(
             }
         )
     if step.status in {"pending", "running"} and job is None:
+        if not preflight_checked:
+            preflight = await build_journal_operator_preflight(session)
+            if preflight.get("status") != "READY":
+                return base.model_copy(
+                    update={
+                        "status": "BLOCKED",
+                        "phase": "Khởi động đến Angle",
+                        "primary_intent": None,
+                        "allowed_intents": [],
+                        "current_run_id": run.id,
+                        "current_step_run_id": step.id,
+                        "blocker_code": "operator_preflight_blocked",
+                        "blocker_message": (
+                            "Điều kiện chạy Journal chưa sẵn sàng; kiểm tra preflight."
+                        ),
+                        "last_checkpoint": (
+                            "Start-to-Angle chưa được phép enqueue vì preflight đang BLOCKED."
+                        ),
+                    }
+                )
         intent: OperatorIntent = "start" if run.status == "pending" else "continue"
         return base.model_copy(
             update={
@@ -417,13 +440,17 @@ async def submit_operator_command_v45(
     if locked_case is None:
         raise OperatorControlError("operator_case_not_found")
 
-    state = await get_operator_state_v45(session, content_case_id=content_case_id)
+    state = await get_operator_state_v45(
+        session,
+        content_case_id=content_case_id,
+        preflight_checked=True,
+    )
     if state.state_version != expected_state_version:
         raise OperatorControlError("operator_state_stale")
     if intent not in state.allowed_intents:
         raise OperatorControlError("operator_intent_not_allowed")
     if intent in {"start", "continue", "retry"}:
-        preflight = await build_operational_preflight()
+        preflight = await build_journal_operator_preflight(session)
         if preflight.get("status") != "READY":
             raise OperatorControlError("operator_preflight_blocked")
 
@@ -481,7 +508,11 @@ async def submit_operator_command_v45(
         command.status = "queued"
 
     await session.flush()
-    after = await get_operator_state_v45(session, content_case_id=content_case_id)
+    after = await get_operator_state_v45(
+        session,
+        content_case_id=content_case_id,
+        preflight_checked=True,
+    )
     command.state_after = after.state_version
     await session.flush()
     return OperatorCommandResult(
