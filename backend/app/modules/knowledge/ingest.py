@@ -229,7 +229,16 @@ async def ingest_source_document(
     provider: str | None = None,
     max_chunk_chars: int = DEFAULT_MAX_CHUNK_CHARS,
 ) -> DocumentIngestResult:
-    """Canonicalize, version, dedupe and chunk one source document atomically."""
+    """Canonicalize, version, dedupe and chunk one source document atomically.
+
+    Every successful read also records a SourceDocumentObservation. This preserves
+    a fresh observation timestamp even when the content hash dedupes to an older
+    SourceDocument row.
+    """
+
+    # Import here so the low-level ingest module does not create an import cycle
+    # through freshness -> candidate admission -> research evidence -> ingest.
+    from app.modules.knowledge.freshness import ensure_source_document_observation
 
     source = (
         await session.execute(select(Source).where(Source.id == source_id).with_for_update())
@@ -246,6 +255,14 @@ async def ingest_source_document(
         )
     ).scalar_one_or_none()
     if existing is not None:
+        await ensure_source_document_observation(
+            session,
+            source_document_id=existing.id,
+            observed_at=fetched_at,
+            content_hash=existing.content_hash,
+            provider=provider,
+            reader=reader,
+        )
         chunks = await _ensure_chunks(
             session,
             document=existing,
@@ -288,6 +305,14 @@ async def ingest_source_document(
     )
     session.add(document)
     await session.flush()
+    await ensure_source_document_observation(
+        session,
+        source_document_id=document.id,
+        observed_at=fetched_at,
+        content_hash=document.content_hash,
+        provider=provider,
+        reader=reader,
+    )
     chunks = await _ensure_chunks(
         session,
         document=document,

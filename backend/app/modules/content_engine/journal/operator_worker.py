@@ -52,6 +52,10 @@ from app.modules.harness.runtime import (
     SettingsModelRouter,
     build_context_manifest,
 )
+from app.modules.knowledge.brief_binding import (
+    KnowledgeBriefBindingError,
+    load_run_knowledge_brief_binding,
+)
 from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import (
     Evidence,
@@ -359,10 +363,15 @@ async def execute_start_to_angle_job(
     if run.status == "pending":
         await transition_run(session, run_id=run.id, status="running")
 
+    try:
+        brief_binding = await load_run_knowledge_brief_binding(session, run_id=run.id)
+    except KnowledgeBriefBindingError as exc:
+        raise OperatorWorkerError(exc.code) from exc
     context = await build_journal_context(
         session,
         content_case_id=content_case.id,
         locale_variant_id=variant.id,
+        knowledge_brief_id=(brief_binding.brief_id if brief_binding is not None else None),
     )
     persisted_context = await persist_journal_context(
         session,
@@ -454,6 +463,9 @@ async def execute_start_to_angle_job(
             originality_pack_id=originality_handoff.originality_pack_id,
             context_artifact_id=persisted_context.journal_context_artifact.id,
             approved_knowledge_refs=context.approved_knowledge_refs,
+            knowledge_chunk_refs=(
+                (brief_binding.ref,) if brief_binding is not None else ()
+            ),
         ),
     )
     base_bundle = await handoff.persist_journal_input_bundle(

@@ -11,7 +11,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
+from app.modules.harness.model_policy import (
+    ModelPolicyError,
+    PolicyRouteSelection,
+    enforce_policy_call_budget,
+    persist_route_decision,
+    resolve_policy_route,
+)
 from app.modules.harness.models import (
     Artifact,
     ContentRun,
@@ -20,6 +27,12 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
     utc_now,
+)
+from app.modules.knowledge.brief_ref import (
+    KNOWLEDGE_BRIEF_REF_PREFIX,
+    KnowledgeBriefRefError,
+    knowledge_brief_snapshot,
+    resolve_bound_knowledge_brief_refs,
 )
 from app.modules.knowledge.models import EvidenceSet, KnowledgeCandidate, OriginalityPack
 
@@ -36,6 +49,7 @@ class RuntimeStateError(ValueError):
 class ModelCandidate:
     provider: str
     model: str
+    policy_selection: PolicyRouteSelection | None = None
 
 
 @dataclass(frozen=True)
@@ -68,16 +82,55 @@ class ModelClient(Protocol):
 
 
 class ModelRouter(Protocol):
-    def resolve(self, *, task_key: str, settings_snapshot: SettingsSnapshot) -> ModelRoute: ...
+    def resolve(
+        self,
+        *,
+        task_key: str,
+        settings_snapshot: SettingsSnapshot,
+        attempt_index: int = 0,
+        escalation_reason: str | None = None,
+    ) -> ModelRoute: ...
 
 
 class SettingsModelRouter:
-    """Resolve task routes from the immutable SettingsSnapshot only."""
+    """Resolve exact task routes from one immutable SettingsSnapshot."""
 
-    def resolve(self, *, task_key: str, settings_snapshot: SettingsSnapshot) -> ModelRoute:
+    def resolve(
+        self,
+        *,
+        task_key: str,
+        settings_snapshot: SettingsSnapshot,
+        attempt_index: int = 0,
+        escalation_reason: str | None = None,
+    ) -> ModelRoute:
         settings = settings_snapshot.resolved_settings_json
         task_map = _as_dict(settings.get("models"), "models")
         task_config = _as_dict(task_map.get(task_key), f"models.{task_key}")
+
+        policy_mode = "policy" in task_config or "capability" in task_config
+        if policy_mode:
+            try:
+                selection = resolve_policy_route(
+                    task_key=task_key,
+                    settings_snapshot=settings_snapshot,
+                    attempt_index=attempt_index,
+                    escalation_reason=escalation_reason,
+                )
+            except ModelPolicyError as exc:
+                raise RuntimeConfigurationError(exc.code) from exc
+            if selection is None:
+                raise RuntimeConfigurationError("model_policy_resolution_failed")
+            return ModelRoute(
+                route_key=selection.route_key,
+                primary=ModelCandidate(
+                    provider=selection.provider,
+                    model=selection.model,
+                    policy_selection=selection,
+                ),
+            )
+
+        if attempt_index != 0 or escalation_reason is not None:
+            raise RuntimeConfigurationError("legacy_model_route_escalation_not_supported")
 
         if "provider" in task_config or "model" in task_config:
             primary = _candidate(task_config, f"models.{task_key}")
@@ -231,6 +284,56 @@ async def build_context_manifest(
     return manifest
 
 
+async def _validated_policy_selection(
+    session: AsyncSession,
+    *,
+    manifest: ContextManifest,
+    task_key: str,
+    route: ModelCandidate,
+) -> PolicyRouteSelection | None:
+    settings_snapshot = await session.get(SettingsSnapshot, manifest.settings_snapshot_id)
+    if settings_snapshot is None:
+        raise RuntimeStateError("SettingsSnapshot not found")
+
+    try:
+        policy_primary = resolve_policy_route(
+            task_key=task_key,
+            settings_snapshot=settings_snapshot,
+        )
+    except ModelPolicyError as exc:
+        raise RuntimeConfigurationError(exc.code) from exc
+
+    raw_selection = getattr(route, "policy_selection", None)
+    if raw_selection is None:
+        selection: PolicyRouteSelection | None = None
+    elif isinstance(raw_selection, PolicyRouteSelection):
+        selection = raw_selection
+    else:
+        raise RuntimeConfigurationError("model_policy_route_selection_invalid")
+
+    if policy_primary is None:
+        if selection is not None:
+            raise RuntimeConfigurationError("model_policy_route_unexpected")
+        return None
+    if selection is None:
+        raise RuntimeConfigurationError("model_policy_route_decision_required")
+
+    try:
+        expected = resolve_policy_route(
+            task_key=task_key,
+            settings_snapshot=settings_snapshot,
+            attempt_index=selection.candidate_index,
+            escalation_reason=selection.escalation_reason,
+        )
+    except ModelPolicyError as exc:
+        raise RuntimeConfigurationError(exc.code) from exc
+    if expected is None or selection != expected:
+        raise RuntimeConfigurationError("model_policy_route_selection_mismatch")
+    if route.provider != expected.provider or route.model != expected.model:
+        raise RuntimeConfigurationError("model_policy_route_binding_mismatch")
+    return selection
+
+
 async def start_model_call(
     session: AsyncSession,
     *,
@@ -242,7 +345,7 @@ async def start_model_call(
     purpose: str,
     prompt_version: str,
 ) -> ModelCall:
-    """Start a model telemetry record bound to one exact ContextManifest."""
+    """Start model telemetry only after authoritative route-policy validation."""
 
     manifest = await session.get(ContextManifest, context_manifest_id)
     if manifest is None or manifest.run_id != run_id:
@@ -251,6 +354,22 @@ async def start_model_call(
         raise RuntimeStateError("ContextManifest does not belong to StepRun")
     if manifest.prompt_version != prompt_version:
         raise RuntimeStateError("ModelCall prompt version does not match ContextManifest")
+
+    selection = await _validated_policy_selection(
+        session,
+        manifest=manifest,
+        task_key=task_key,
+        route=route,
+    )
+    if selection is not None:
+        try:
+            await enforce_policy_call_budget(
+                session,
+                step_run_id=step_run_id,
+                selection=selection,
+            )
+        except ModelPolicyError as exc:
+            raise RuntimeConfigurationError(exc.code) from exc
 
     call = ModelCall(
         run_id=run_id,
@@ -266,6 +385,16 @@ async def start_model_call(
     )
     session.add(call)
     await session.flush()
+
+    if selection is not None:
+        try:
+            await persist_route_decision(
+                session,
+                call=call,
+                selection=selection,
+            )
+        except ModelPolicyError as exc:
+            raise RuntimeConfigurationError(exc.code) from exc
     return call
 
 
@@ -394,6 +523,7 @@ async def _validate_context_sources(
     run: ContentRun,
     inputs: ContextInputs,
 ) -> None:
+    context_artifact: Artifact | None = None
     if inputs.context_artifact_id is not None:
         context_artifact = await session.get(Artifact, inputs.context_artifact_id)
         if context_artifact is None or context_artifact.run_id != run.id:
@@ -414,6 +544,40 @@ async def _validate_context_sources(
             raise RuntimeStateError("approved_knowledge_candidate_not_found")
         if candidate.status != "APPROVED":
             raise RuntimeStateError("approved_knowledge_candidate_required")
+
+    has_brief_ref = any(
+        isinstance(raw_ref, str) and raw_ref.startswith(KNOWLEDGE_BRIEF_REF_PREFIX)
+        for raw_ref in inputs.knowledge_chunk_refs
+    )
+    if has_brief_ref:
+        variant = await session.get(LocaleVariant, run.locale_variant_id)
+        if variant is None or variant.content_case_id != run.content_case_id:
+            raise RuntimeStateError("knowledge_brief_context_locale_variant_invalid")
+        try:
+            brief = await resolve_bound_knowledge_brief_refs(
+                session,
+                refs=inputs.knowledge_chunk_refs,
+                project_id=run.project_id,
+                content_case_id=run.content_case_id,
+                locale=variant.locale,
+            )
+        except KnowledgeBriefRefError as exc:
+            raise RuntimeStateError(exc.code) from exc
+        if brief is None:
+            raise RuntimeStateError("knowledge_brief_ref_required")
+        if context_artifact is None or not isinstance(context_artifact.content_json, dict):
+            raise RuntimeStateError("knowledge_brief_context_artifact_required")
+        context_payload = context_artifact.content_json
+        if context_payload.get("schema_version") != 2:
+            raise RuntimeStateError("knowledge_brief_context_schema_invalid")
+        if context_payload.get("approved_knowledge") != []:
+            raise RuntimeStateError("knowledge_brief_context_legacy_recall_forbidden")
+        if context_payload.get("approved_knowledge_refs") != []:
+            raise RuntimeStateError("knowledge_brief_context_legacy_recall_forbidden")
+        if inputs.approved_knowledge_refs:
+            raise RuntimeStateError("knowledge_brief_context_legacy_recall_forbidden")
+        if context_payload.get("knowledge_brief") != knowledge_brief_snapshot(brief):
+            raise RuntimeStateError("knowledge_brief_context_snapshot_mismatch")
 
     if inputs.evidence_set_id is not None:
         evidence_set = await session.get(EvidenceSet, inputs.evidence_set_id)
