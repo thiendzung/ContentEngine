@@ -5,7 +5,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Any, Literal, cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -21,10 +21,8 @@ from app.modules.knowledge.freshness_models import (
 )
 from app.modules.knowledge.models import (
     Claim,
-    Entity,
     Evidence,
     KnowledgeCandidate,
-    KnowledgeChunk,
     Source,
     SourceDocument,
 )
@@ -274,7 +272,7 @@ async def _assignment_target_project_id(
     raise FreshnessError("freshness_assignment_target_type_invalid")
 
 
-def _assignment_column(target_type: FreshnessAssignmentTargetType):  # type: ignore[no-untyped-def]
+def _assignment_column(target_type: FreshnessAssignmentTargetType) -> Any:
     return {
         "topic": FreshnessAssignment.topic_id,
         "claim": FreshnessAssignment.claim_id,
@@ -376,9 +374,8 @@ async def replace_freshness_assignment(
     target = next((item for item in target_values if item[1] is not None), None)
     if target is None:
         raise FreshnessError("freshness_assignment_target_missing")
-    target_type = target[0]
+    target_type = cast(FreshnessAssignmentTargetType, target[0])
     target_id = target[1]
-    assert target_type in {"topic", "claim", "knowledge_candidate"}
     assert target_id is not None
 
     current.status = "retired"
@@ -391,7 +388,7 @@ async def replace_freshness_assignment(
         session,
         project_id=current.project_id,
         policy_id=new_policy_id,
-        target_type=target_type,  # type: ignore[arg-type]
+        target_type=target_type,
         target_id=target_id,
         assigned_by=actor,
         reason=replacement_reason,
@@ -539,7 +536,9 @@ async def record_lineage_verification(
             "content_hash": document.content_hash,
         }
         observation_ids.append(str(observation.id))
-        observation_times.append(_aware(observation.observed_at, "freshness_observation_time_invalid"))
+        observation_times.append(
+            _aware(observation.observed_at, "freshness_observation_time_invalid")
+        )
 
     source_payload = sorted(
         source_payload_by_id.values(),
