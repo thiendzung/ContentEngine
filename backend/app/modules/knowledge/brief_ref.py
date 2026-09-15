@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from app.modules.knowledge.brief_models import KnowledgeBrief
 
 KNOWLEDGE_BRIEF_REF_PREFIX = "knowledge_brief"
+KNOWLEDGE_BRIEF_MAX_MODEL_BYTES = 32 * 1024
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -29,14 +31,29 @@ class ParsedKnowledgeBriefRef:
     snapshot_hash: str
 
 
+def _bounded_payload(value: dict[str, object]) -> dict[str, object]:
+    try:
+        encoded = json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise KnowledgeBriefRefError("knowledge_brief_ref_payload_invalid") from exc
+    if len(encoded) > KNOWLEDGE_BRIEF_MAX_MODEL_BYTES:
+        raise KnowledgeBriefRefError("knowledge_brief_ref_payload_too_large")
+    return copy.deepcopy(value)
+
+
 def knowledge_brief_snapshot(brief: KnowledgeBrief) -> dict[str, object]:
-    """Return the exact K5 snapshot allowed into Journal context/model input."""
+    """Return the exact bounded K5 snapshot allowed into Journal model input."""
 
     return {
         "id": str(brief.id),
         "method": brief.brief_method,
         "snapshot_hash": brief.snapshot_hash,
-        "payload": copy.deepcopy(brief.brief_json),
+        "payload": _bounded_payload(brief.brief_json),
     }
 
 
@@ -92,6 +109,9 @@ async def load_bound_knowledge_brief(
         raise KnowledgeBriefRefError("knowledge_brief_ref_case_mismatch")
     if brief.locale != locale:
         raise KnowledgeBriefRefError("knowledge_brief_ref_locale_mismatch")
+    # Enforce the same provider-neutral model-input budget at load time so all
+    # bound consumers fail before constructing downstream artifacts or calls.
+    knowledge_brief_snapshot(brief)
     return brief
 
 
@@ -125,6 +145,7 @@ async def resolve_bound_knowledge_brief_refs(
 
 
 __all__ = [
+    "KNOWLEDGE_BRIEF_MAX_MODEL_BYTES",
     "KNOWLEDGE_BRIEF_REF_PREFIX",
     "KnowledgeBriefRefError",
     "ParsedKnowledgeBriefRef",
