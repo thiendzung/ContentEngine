@@ -550,6 +550,49 @@ async def _submit_angle_to_outline_command(
     )
 
 
+async def _existing_f2_replay(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    intent: OperatorIntent,
+    expected_state_version: str,
+    idempotency_key: str,
+    knowledge_brief_id: UUID | None,
+) -> OperatorCommandResult | None:
+    """Replay an F2 command before mutable case state can redirect dispatch."""
+
+    key = idempotency_key.strip()
+    if not key or len(key) > 200:
+        return None
+    existing = await session.scalar(
+        select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
+    )
+    if existing is None or existing.resolved_action_key != "angle_to_outline":
+        return None
+    if knowledge_brief_id is not None:
+        raise OperatorControlError("operator_knowledge_brief_binding_start_only")
+    if len(expected_state_version) != 64:
+        raise OperatorControlError("operator_state_version_invalid")
+    request_hash = _command_hash(
+        content_case_id=content_case_id,
+        intent=intent,
+        state_version=expected_state_version,
+        action_key="angle_to_outline",
+    )
+    if existing.content_case_id != content_case_id or existing.request_hash != request_hash:
+        raise OperatorControlError("operator_idempotency_conflict")
+    return OperatorCommandResult(
+        command_id=existing.id,
+        content_case_id=existing.content_case_id,
+        intent=cast(OperatorIntent, existing.intent),
+        status=existing.status,
+        state_before=existing.state_before,
+        state_after=existing.state_after,
+        job_id=existing.job_id,
+        replayed=True,
+    )
+
+
 async def submit_operator_command(
     session: AsyncSession,
     *,
@@ -561,6 +604,33 @@ async def submit_operator_command(
     actor_id: str = "founder",
 ) -> OperatorCommandResult:
     """Submit semantic operator intent without accepting an internal stage selector."""
+
+    replay = await _existing_f2_replay(
+        session,
+        content_case_id=content_case_id,
+        intent=intent,
+        expected_state_version=expected_state_version,
+        idempotency_key=idempotency_key,
+        knowledge_brief_id=knowledge_brief_id,
+    )
+    if replay is not None:
+        return replay
+
+    existing = await session.scalar(
+        select(OperatorCommand).where(
+            OperatorCommand.idempotency_key == idempotency_key.strip()
+        )
+    )
+    if existing is not None:
+        return await _submit_operator_command_impl(
+            session,
+            content_case_id=content_case_id,
+            intent=intent,
+            expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            knowledge_brief_id=knowledge_brief_id,
+            actor_id=actor_id,
+        )
 
     resolved = await resolve_next_operator_action(
         session,
