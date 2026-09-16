@@ -169,24 +169,53 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
     }
 
 
+def _contract_values(contract: dict[str, object], key: str) -> list[str]:
+    entry = contract.get(key)
+    if not isinstance(entry, dict):
+        raise AngleGenerationError("angle_output_schema_invalid")
+    values = entry.get("allowed_values")
+    if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+        raise AngleGenerationError("angle_output_schema_invalid")
+    return cast(list[str], values)
+
+
+def _bind_angle_output_schema(
+    base_schema: dict[str, object],
+    contract: dict[str, object],
+) -> dict[str, object]:
+    """Bind exact upstream refs into the runner JSON schema without mutating the registry."""
+
+    cloned = json.loads(json.dumps(base_schema, ensure_ascii=False))
+    if not isinstance(cloned, dict):
+        raise AngleGenerationError("angle_output_schema_invalid")
+    properties = cloned.get("properties")
+    candidates = properties.get("candidates") if isinstance(properties, dict) else None
+    candidate_items = candidates.get("items") if isinstance(candidates, dict) else None
+    candidate_properties = (
+        candidate_items.get("properties") if isinstance(candidate_items, dict) else None
+    )
+    if not isinstance(candidate_properties, dict):
+        raise AngleGenerationError("angle_output_schema_invalid")
+
+    for key in ("evidence_refs", "originality_refs"):
+        ref_schema = candidate_properties.get(key)
+        item_schema = ref_schema.get("items") if isinstance(ref_schema, dict) else None
+        if not isinstance(ref_schema, dict) or not isinstance(item_schema, dict):
+            raise AngleGenerationError("angle_output_schema_invalid")
+        allowed = _contract_values(contract, key)
+        if allowed:
+            item_schema["enum"] = allowed
+        else:
+            ref_schema["maxItems"] = 0
+    return cast(dict[str, object], cloned)
+
+
 def _reference_diagnostics_violate_contract(
     diagnostics: dict[str, object],
     contract: dict[str, object],
 ) -> bool:
-    evidence_contract = contract.get("evidence_refs")
-    originality_contract = contract.get("originality_refs")
-    if not isinstance(evidence_contract, dict) or not isinstance(originality_contract, dict):
-        return False
-    allowed_evidence = {
-        value
-        for value in evidence_contract.get("allowed_values", [])
-        if isinstance(value, str)
-    }
-    allowed_originality = {
-        value
-        for value in originality_contract.get("allowed_values", [])
-        if isinstance(value, str)
-    }
+    allowed_evidence = set(_contract_values(contract, "evidence_refs"))
+    allowed_originality = set(_contract_values(contract, "originality_refs"))
     candidates = diagnostics.get("candidates")
     if not isinstance(candidates, list):
         return False
@@ -340,6 +369,11 @@ class CliAngleModelPort(AngleModelPort):
         except AgentRunnerError as exc:
             raise AngleGenerationError(exc.code) from exc
 
+        reference_contract = _angle_reference_contract(sanitized_input)
+        structured_output_schema = _bind_angle_output_schema(
+            self._prompt.output_schema_json,
+            reference_contract,
+        )
         call = await start_model_call(
             self._session,
             run_id=self._run_id,
@@ -350,7 +384,6 @@ class CliAngleModelPort(AngleModelPort):
             purpose="Generate grounded Journal Angle candidates",
             prompt_version=self.prompt_version,
         )
-        reference_contract = _angle_reference_contract(sanitized_input)
         request = AgentRunRequest(
             provider=route.primary.provider,
             model=route.primary.model,
@@ -360,7 +393,7 @@ class CliAngleModelPort(AngleModelPort):
                 angle_model_input=sanitized_input,
                 attempt=attempt,
             ),
-            structured_output_schema=self._prompt.output_schema_json,
+            structured_output_schema=structured_output_schema,
             working_context={"angle_model_input": sanitized_input},
             timeout=self._timeout,
         )
