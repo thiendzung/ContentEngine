@@ -9,15 +9,13 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.operator_control import OperatorState
 from app.modules.content_engine.journal.operator_runtime import get_operator_state
 from app.modules.content_engine.journal.operator_writers import (
     WRITER_MAX_JOB_ATTEMPTS,
     WRITER_STEP_BY_LOCALE,
-    WriterLaneProgress,
     exact_outline_approval,
     get_writer_lane_progress,
-    pending_writer_commands,
+    settle_writer_commands,
 )
 from app.modules.content_engine.journal.writer import (
     WriterGenerationError,
@@ -65,41 +63,6 @@ class WriterWorkerExecutionResult:
     draft_artifact_id: UUID
     draft_artifact_hash: str
     state_version: str
-
-
-async def _settle_writer_commands(
-    session: AsyncSession,
-    *,
-    progress: WriterLaneProgress | None,
-    state: OperatorState,
-    content_case_id: UUID,
-) -> None:
-    """Settle queued fan-out commands from the aggregate lane state."""
-
-    if progress is None or progress.has_active_job:
-        return
-    if progress.all_complete:
-        for command in await pending_writer_commands(
-            session,
-            content_case_id=content_case_id,
-        ):
-            command.status = "completed"
-            command.state_after = state.state_version
-            command.error_code = None
-        return
-    if progress.has_failed_lane:
-        error_code = (
-            "operator_writer_retry_exhausted"
-            if progress.has_exhausted_lane
-            else "operator_writer_lane_failed"
-        )
-        for command in await pending_writer_commands(
-            session,
-            content_case_id=content_case_id,
-        ):
-            command.status = "failed"
-            command.error_code = error_code
-            command.state_after = state.state_version
 
 
 async def _claim_new_writer_job(
@@ -190,6 +153,20 @@ async def _reclaim_expired_writer_job(
             run.failure_code = "operator_writer_retry_exhausted"
             run.failure_message = "Expired Writer lease reached the bounded attempt limit."
         await session.flush()
+        if run is not None:
+            state = await get_operator_state(session, content_case_id=run.content_case_id)
+            progress = await get_writer_lane_progress(
+                session,
+                content_case_id=run.content_case_id,
+                source_run_id=state.current_run_id,
+            )
+            await settle_writer_commands(
+                session,
+                content_case_id=run.content_case_id,
+                progress=progress,
+                state_version=state.state_version,
+            )
+            await session.flush()
         return None
     job.attempt += 1
     job.lease_owner = worker_id
@@ -394,11 +371,11 @@ async def execute_writer_job(
         source_run_id=source_run_id,
     )
     state = await get_operator_state(session, content_case_id=run.content_case_id)
-    await _settle_writer_commands(
+    await settle_writer_commands(
         session,
         progress=progress,
-        state=state,
         content_case_id=run.content_case_id,
+        state_version=state.state_version,
     )
     await session.flush()
     return WriterWorkerExecutionResult(
@@ -456,11 +433,11 @@ async def fail_writer_job(
         content_case_id=run.content_case_id,
         source_run_id=state.current_run_id,
     )
-    await _settle_writer_commands(
+    await settle_writer_commands(
         session,
         progress=progress,
-        state=state,
         content_case_id=run.content_case_id,
+        state_version=state.state_version,
     )
     await session.flush()
     return job

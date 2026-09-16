@@ -28,7 +28,11 @@ from app.modules.content_engine.journal.operator_runtime import (
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_vertical_slice import normalize_journal_locale
-from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
+from app.modules.content_engine.journal.operator_writers import (
+    WriterLane,
+    WriterLaneProgress,
+    get_writer_lane_progress,
+)
 from app.modules.content_engine.journal.writer import (
     _canonical_hash,
     _writer_handoff_payload,
@@ -87,6 +91,60 @@ async def _f3_case(session: AsyncSession):  # type: ignore[no-untyped-def]
     )
     await session.flush()
     return fixture, outline_result
+
+
+async def _mark_writer_lane_completed(
+    session: AsyncSession,
+    *,
+    lane: WriterLane,
+    marker: str,
+) -> Artifact:
+    assert lane.run is not None
+    assert lane.step is not None
+    assert lane.latest_job is not None
+    payload = {"marker": marker}
+    draft = Artifact(
+        run_id=lane.run.id,
+        step_run_id=lane.step.id,
+        artifact_type="journal_draft",
+        locale=lane.required_locale,
+        version=1,
+        content_json=payload,
+        content_hash=_canonical_hash(payload),
+    )
+    session.add(draft)
+    lane.latest_job.status = "leased"
+    lane.latest_job.lease_owner = "fixture-completed"
+    lane.latest_job.lease_expires_at = datetime.now(UTC) + timedelta(minutes=5)
+    lane.step.status = "running"
+    await session.flush()
+    lane.latest_job.status = "completed"
+    lane.latest_job.lease_owner = None
+    lane.latest_job.lease_expires_at = None
+    lane.step.status = "completed"
+    lane.step.completed_at = datetime.now(UTC)
+    lane.run.status = "waiting_approval"
+    await session.flush()
+    return draft
+
+
+async def _writer_output_for_lane(
+    session: AsyncSession,
+    *,
+    progress: WriterLaneProgress,
+    lane: WriterLane,
+) -> dict[str, object]:
+    assert lane.run is not None
+    writer_input = await load_writer_input(
+        session,
+        writer_run_id=lane.run.id,
+        outline_artifact_id=progress.outline_artifact.id,
+        expected_outline_version=progress.outline_artifact.version,
+        expected_outline_hash=progress.outline_artifact.content_hash,
+        outline_approval_id=progress.outline_approval.id,
+        locale=lane.required_locale,
+    )
+    return _draft_payload(writer_input, lane.required_locale)
 
 
 def test_f3_locale_aliases_are_canonical_and_unsupported_locales_fail_closed() -> None:
@@ -721,3 +779,391 @@ async def test_f3_expired_writer_lease_reclaims_once_then_fails_closed_at_limit(
         assert exhausted is not None
         assert exhausted.status == "failed"
         assert exhausted.attempt == 2
+
+
+@pytest.mark.asyncio
+async def test_f3_expired_attempt_two_settles_parent_after_sibling_completed() -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-r2-lease-exhaustion-completed-sibling",
+        )
+        progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert progress is not None
+        for lane in progress.lanes:
+            assert lane.run is not None
+            lane.run.status = "running"
+        await session.flush()
+        target = next(lane for lane in progress.lanes if lane.required_locale == "en")
+        sibling = next(lane for lane in progress.lanes if lane.required_locale == "vi-VN")
+        assert target.latest_job is not None
+        sibling_draft = await _mark_writer_lane_completed(
+            session,
+            lane=sibling,
+            marker="completed-before-exhaustion",
+        )
+        target.latest_job.attempt = 2
+        await session.flush()
+
+        claimed = await operator_writer_worker.claim_or_reclaim_writer_job(
+            session,
+            worker_id="worker-r2-exhaustion-first",
+        )
+        assert claimed is not None and claimed.id == target.latest_job.id
+        claimed.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        await session.flush()
+        assert (
+            await operator_writer_worker.claim_or_reclaim_writer_job(
+                session,
+                worker_id="worker-r2-exhaustion-terminal",
+            )
+            is None
+        )
+
+        exhausted_job = await session.get(Job, claimed.id)
+        assert exhausted_job is not None
+        assert exhausted_job.status == "failed"
+        assert exhausted_job.attempt == 2
+        state = await get_operator_state(session, content_case_id=case_id)
+        assert state.status == "BLOCKED"
+        assert state.primary_intent is None
+        assert state.allowed_intents == []
+        assert state.blocker_code == "operator_writer_retry_exhausted"
+        action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action.intent is None
+        assert action.executable is False
+        assert action.blocker_code == "operator_writer_retry_exhausted"
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_retry_exhausted"
+        assert parent_row.state_after == state.state_version
+        await session.refresh(sibling_draft)
+        assert sibling_draft.content_json == {"marker": "completed-before-exhaustion"}
+        assert sibling_draft.content_hash == _canonical_hash(sibling_draft.content_json)
+
+
+@pytest.mark.asyncio
+async def test_f3_expired_attempt_two_waits_for_active_sibling_then_settles_parent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-r2-lease-exhaustion-active-sibling",
+        )
+        progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert progress is not None
+        for lane in progress.lanes:
+            assert lane.run is not None
+            lane.run.status = "running"
+        await session.flush()
+        first_claim = await operator_writer_worker.claim_or_reclaim_writer_job(
+            session,
+            worker_id="worker-r2-exhaustion-active-first",
+        )
+        assert first_claim is not None
+        target = next(
+            lane
+            for lane in progress.lanes
+            if lane.step is not None and lane.step.id == first_claim.step_run_id
+        )
+        sibling = next(lane for lane in progress.lanes if lane is not target)
+        assert target.latest_job is not None
+        assert sibling.latest_job is not None
+        target.latest_job.attempt = 2
+        target.latest_job.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        await session.flush()
+
+        sibling_claim = await operator_writer_worker.claim_or_reclaim_writer_job(
+            session,
+            worker_id="worker-r2-exhaustion-active-sibling",
+        )
+        assert sibling_claim is not None and sibling_claim.id == sibling.latest_job.id
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "queued"
+        while_active = await get_operator_state(session, content_case_id=case_id)
+        assert while_active.status == "RUNNING"
+
+        assert sibling.run is not None
+        writer_input = await load_writer_input(
+            session,
+            writer_run_id=sibling.run.id,
+            outline_artifact_id=progress.outline_artifact.id,
+            expected_outline_version=progress.outline_artifact.version,
+            expected_outline_hash=progress.outline_artifact.content_hash,
+            outline_approval_id=progress.outline_approval.id,
+            locale=sibling.required_locale,
+        )
+        output = _draft_payload(writer_input, sibling.required_locale)
+
+        async def fake_port(  # type: ignore[no-untyped-def]
+            _session, *, run_id, settings_snapshot, context_manifest_id, runner_registry, locale
+        ):
+            del _session, run_id, settings_snapshot, context_manifest_id, runner_registry, locale
+            return _FakeWriterPort(output)
+
+        monkeypatch.setattr(operator_writer_worker, "create_cli_writer_model_port", fake_port)
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", FakeWriterRunner({}))
+        await operator_writer_worker.execute_writer_job(
+            session,
+            job_id=sibling_claim.id,
+            worker_id="worker-r2-exhaustion-active-sibling",
+            runner_registry=registry,
+        )
+
+        final_state = await get_operator_state(session, content_case_id=case_id)
+        assert final_state.status == "BLOCKED"
+        assert final_state.blocker_code == "operator_writer_retry_exhausted"
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_retry_exhausted"
+        assert parent_row.state_after == final_state.state_version
+        target_job = await session.get(Job, target.latest_job.id)
+        assert target_job is not None and target_job.status == "failed"
+        assert target_job.attempt == 2
+        final_progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert final_progress is not None
+        sibling_lane = next(
+            lane for lane in final_progress.lanes if lane.required_locale == sibling.required_locale
+        )
+        assert sibling_lane.draft is not None
+
+
+@pytest.mark.asyncio
+async def test_f3_cancel_all_queued_writer_jobs_settles_parent_without_retry_job() -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-r2-cancel-all-queued-parent",
+        )
+        before_cancel = await get_operator_state(session, content_case_id=case_id)
+        cancel = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="cancel",
+            expected_state_version=before_cancel.state_version,
+            idempotency_key="f3-r2-cancel-all-queued-command",
+        )
+        jobs = list(
+            (
+                await session.scalars(
+                    select(Job).where(Job.run_id.in_(
+                        select(ContentRun.id).where(
+                            ContentRun.content_case_id == case_id,
+                            ContentRun.run_mode == "localize",
+                        )
+                    ))
+                )
+            ).all()
+        )
+        assert len(jobs) == 2
+        assert {job.status for job in jobs} == {"cancelled"}
+        assert cancel.status == "cancelled"
+        cancel_row = await session.get(OperatorCommand, cancel.command_id)
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert cancel_row is not None and cancel_row.status == "cancelled"
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_lane_failed"
+        state = await get_operator_state(session, content_case_id=case_id)
+        assert state.status == "BLOCKED"
+        assert state.primary_intent == "retry"
+        assert state.allowed_intents == ["retry"]
+        assert parent_row.state_after == state.state_version
+        assert cancel_row.state_after == state.state_version
+        assert cancel_row.error_code is None
+        assert len(jobs) == 2
+
+
+@pytest.mark.asyncio
+async def test_f3_cancel_queued_sibling_waits_for_running_lane_then_settles_parent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-r2-cancel-mixed-parent",
+        )
+        progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert progress is not None
+        for lane in progress.lanes:
+            assert lane.run is not None
+            lane.run.status = "running"
+        running_job = await operator_writer_worker.claim_or_reclaim_writer_job(
+            session,
+            worker_id="worker-r2-cancel-running",
+        )
+        assert running_job is not None
+        running_lane = next(
+            lane
+            for lane in progress.lanes
+            if lane.step is not None and lane.step.id == running_job.step_run_id
+        )
+        queued_lane = next(lane for lane in progress.lanes if lane is not running_lane)
+        assert running_lane.run is not None
+        output = await _writer_output_for_lane(
+            session,
+            progress=progress,
+            lane=running_lane,
+        )
+        before_cancel = await get_operator_state(session, content_case_id=case_id)
+        cancel = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="cancel",
+            expected_state_version=before_cancel.state_version,
+            idempotency_key="f3-r2-cancel-mixed-command",
+        )
+        assert cancel.status == "cancelled"
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None and parent_row.status == "queued"
+        assert queued_lane.latest_job is not None
+        assert queued_lane.latest_job.status == "cancelled"
+        assert running_job.status == "leased"
+        running_state = await get_operator_state(session, content_case_id=case_id)
+        assert running_state.status == "RUNNING"
+        assert cancel.state_after == running_state.state_version
+
+        async def fake_port(  # type: ignore[no-untyped-def]
+            _session, *, run_id, settings_snapshot, context_manifest_id, runner_registry, locale
+        ):
+            del _session, run_id, settings_snapshot, context_manifest_id, runner_registry, locale
+            return _FakeWriterPort(output)
+
+        monkeypatch.setattr(operator_writer_worker, "create_cli_writer_model_port", fake_port)
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", FakeWriterRunner({}))
+        await operator_writer_worker.execute_writer_job(
+            session,
+            job_id=running_job.id,
+            worker_id="worker-r2-cancel-running",
+            runner_registry=registry,
+        )
+
+        final_progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert final_progress is not None
+        completed_lane = next(
+            lane
+            for lane in final_progress.lanes
+            if lane.required_locale == running_lane.required_locale
+        )
+        assert completed_lane.status == "completed"
+        assert completed_lane.draft is not None
+        final_state = await get_operator_state(session, content_case_id=case_id)
+        assert final_state.status == "BLOCKED"
+        assert final_state.primary_intent == "retry"
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_lane_failed"
+        assert parent_row.state_after == final_state.state_version
+
+
+@pytest.mark.asyncio
+async def test_f3_writer_settlement_does_not_rewrite_historical_receipts() -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-r2-history-parent",
+        )
+        state_before_history = await get_operator_state(session, content_case_id=case_id)
+        old_state_after = "a" * 64
+        historical_specs = (
+            ("completed", None, "f3-r2-history-completed"),
+            ("failed", "old_failure", "f3-r2-history-failed"),
+            ("cancelled", "old_cancel", "f3-r2-history-cancelled"),
+        )
+        historical = []
+        for status, error_code, key in historical_specs:
+            row = OperatorCommand(
+                content_case_id=case_id,
+                run_id=fixture.run.id,
+                step_run_id=None,
+                job_id=None,
+                intent="continue",
+                idempotency_key=key,
+                request_hash=_canonical_hash({"history": key}),
+                expected_state_version=state_before_history.state_version,
+                resolved_action_key="outline_to_writers",
+                status=status,
+                error_code=error_code,
+                actor_id="fixture",
+                state_before=state_before_history.state_version,
+                state_after=old_state_after,
+            )
+            historical.append(row)
+        session.add_all(historical)
+        await session.flush()
+
+        cancel = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="cancel",
+            expected_state_version=state_before_history.state_version,
+            idempotency_key="f3-r2-history-cancel",
+        )
+        assert cancel.status == "cancelled"
+        for expected, original in zip(historical_specs, historical, strict=True):
+            await session.refresh(original)
+            status, error_code, _key = expected
+            assert original.status == status
+            assert original.error_code == error_code
+            assert original.state_after == old_state_after
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_lane_failed"

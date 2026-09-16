@@ -417,6 +417,41 @@ async def pending_writer_commands(
     )
 
 
+async def settle_writer_commands(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    progress: WriterLaneProgress | None,
+    state_version: str,
+) -> None:
+    """Settle queued Writer fan-out receipts from one canonical aggregate snapshot."""
+
+    if progress is None or progress.has_active_job:
+        return
+    if progress.all_complete:
+        for command in await pending_writer_commands(
+            session,
+            content_case_id=content_case_id,
+        ):
+            command.status = "completed"
+            command.error_code = None
+            command.state_after = state_version
+        return
+    if progress.has_failed_lane:
+        error_code = (
+            "operator_writer_retry_exhausted"
+            if progress.has_exhausted_lane
+            else "operator_writer_lane_failed"
+        )
+        for command in await pending_writer_commands(
+            session,
+            content_case_id=content_case_id,
+        ):
+            command.status = "failed"
+            command.error_code = error_code
+            command.state_after = state_version
+
+
 __all__ = [
     "WRITER_LOCALES",
     "WRITER_MAX_JOB_ATTEMPTS",
@@ -426,4 +461,5 @@ __all__ = [
     "exact_outline_approval",
     "get_writer_lane_progress",
     "pending_writer_commands",
+    "settle_writer_commands",
 ]

@@ -34,6 +34,7 @@ from app.modules.content_engine.journal.operator_writers import (
     WRITER_MAX_JOB_ATTEMPTS,
     WRITER_STEP_BY_LOCALE,
     get_writer_lane_progress,
+    settle_writer_commands,
 )
 from app.modules.content_engine.journal.outline import OutlineGenerationError, load_outline_input
 from app.modules.content_engine.journal.outline_agent_bridge import (
@@ -1043,11 +1044,25 @@ async def _submit_outline_to_writers_command(
         command.status = "queued"
 
     await session.flush()
+    settlement_progress = None
+    if intent == "cancel":
+        settlement_progress = await get_writer_lane_progress(
+            session,
+            content_case_id=content_case_id,
+            source_run_id=progress.source_run.id,
+        )
     after = await get_operator_state(
         session,
         content_case_id=content_case_id,
         preflight_checked=True,
     )
+    if settlement_progress is not None:
+        await settle_writer_commands(
+            session,
+            content_case_id=content_case_id,
+            progress=settlement_progress,
+            state_version=after.state_version,
+        )
     command.state_after = after.state_version
     await session.flush()
     return OperatorCommandResult(
