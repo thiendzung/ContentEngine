@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 from test_ce05_review_revise import isolated_session
 from test_operator_start_to_angle import (
     ControlledCodexRunner,
@@ -27,7 +28,12 @@ from app.modules.content_engine.journal.operator_worker import (
 )
 from app.modules.content_engine.journal.production_board import list_production_board_cases
 from app.modules.harness.agent_runner import AgentRunnerRegistry
-from app.modules.harness.models import Artifact
+from app.modules.harness.models import Artifact, ContentRun, StepRun
+from app.modules.harness.persistence import (
+    create_checkpoint,
+    transition_run,
+    transition_step_run,
+)
 
 
 @pytest.mark.asyncio
@@ -184,6 +190,7 @@ async def test_operator_projection_exact_binding_approves_angle_and_replays(
             content_case_id=created.content_case_id,
         )
         assert view.pending_gate is not None
+        assert view.pending_gate.type == "angle"
         selected = view.pending_gate.candidates[0]
         artifact = view.pending_gate.artifact
         decision_kwargs = {
@@ -216,3 +223,94 @@ async def test_operator_projection_exact_binding_approves_angle_and_replays(
             content_case_id=created.content_case_id,
         )
         assert after.pending_gate is None
+
+
+@pytest.mark.asyncio
+async def test_operator_view_exposes_exact_pending_outline_binding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="f2-outline-view"),
+        )
+        run = await session.get(ContentRun, created.bootstrap_run_id)
+        assert run is not None
+        start_step = await session.scalar(
+            select(StepRun).where(
+                StepRun.run_id == run.id,
+                StepRun.step_key == "start_to_angle",
+            )
+        )
+        assert start_step is not None
+        await transition_run(session, run_id=run.id, status="running")
+        await transition_step_run(session, step_run_id=start_step.id, status="running")
+        await transition_step_run(session, step_run_id=start_step.id, status="completed")
+        outline_step = StepRun(
+            run_id=run.id,
+            step_key="outline",
+            attempt=1,
+            status="pending",
+            input_artifact_refs_json=[],
+            output_artifact_refs_json=[],
+        )
+        session.add(outline_step)
+        await session.flush()
+        await transition_step_run(session, step_run_id=outline_step.id, status="running")
+        await transition_step_run(session, step_run_id=outline_step.id, status="completed")
+        payload = {
+            "artifact_type": "journal_outline",
+            "outline": {
+                "title": "Exact projected Outline",
+                "sections": [],
+            },
+        }
+        exact = Artifact(
+            run_id=run.id,
+            step_run_id=outline_step.id,
+            artifact_type="journal_outline",
+            locale="en",
+            version=1,
+            content_json=payload,
+            content_hash="b" * 64,
+        )
+        stray = Artifact(
+            run_id=run.id,
+            step_run_id=outline_step.id,
+            artifact_type="journal_outline",
+            locale="en",
+            version=2,
+            content_json=payload,
+            content_hash="c" * 64,
+        )
+        session.add_all([exact, stray])
+        await session.flush()
+        outline_step.output_artifact_refs_json = [str(exact.id), str(stray.id)]
+        run.current_step = "outline"
+        await transition_run(session, run_id=run.id, status="waiting_approval")
+        await create_checkpoint(
+            session,
+            run_id=run.id,
+            pending_approval={"step_key": "outline", "artifact_id": str(exact.id)},
+        )
+        await session.flush()
+
+        view = await get_operator_case_view(
+            session,
+            content_case_id=created.content_case_id,
+        )
+
+        assert view.state.status == "AWAITING_APPROVAL"
+        assert view.state.human_gate == "outline"
+        assert view.pending_gate is not None
+        assert view.pending_gate.type == "outline"
+        assert view.pending_gate.artifact.id == exact.id
+        assert view.pending_gate.artifact.id != stray.id
+        assert view.pending_gate.artifact.version == exact.version
+        assert view.pending_gate.artifact.content_hash == exact.content_hash
+        assert view.pending_gate.outline["title"] == "Exact projected Outline"

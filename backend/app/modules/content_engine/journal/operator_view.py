@@ -46,6 +46,12 @@ class OperatorAngleArtifactView(BaseModel):
     content_hash: str
 
 
+class OperatorOutlineArtifactView(BaseModel):
+    id: UUID
+    version: int
+    content_hash: str
+
+
 class OperatorAngleCandidateView(BaseModel):
     angle_id: str
     candidate_hash: str
@@ -69,6 +75,12 @@ class OperatorAngleGateView(BaseModel):
     candidates: list[OperatorAngleCandidateView]
 
 
+class OperatorOutlineGateView(BaseModel):
+    type: Literal["outline"] = "outline"
+    artifact: OperatorOutlineArtifactView
+    outline: dict[str, object]
+
+
 class OperatorCaseView(BaseModel):
     content_case_id: UUID
     question: str
@@ -79,7 +91,7 @@ class OperatorCaseView(BaseModel):
     promise: str
     state: OperatorState
     intake: OperatorIntakeView
-    pending_gate: OperatorAngleGateView | None = None
+    pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
 
 
 def _bundle_ref(artifact: Artifact) -> tuple[UUID, int, str]:
@@ -111,34 +123,37 @@ def _locale_role(value: str) -> LocaleRole:
     return cast(LocaleRole, value)
 
 
-async def _pending_angle_artifact(
+async def _pending_artifact(
     session: AsyncSession,
     *,
     state: OperatorState,
+    step_key: str,
+    artifact_type: str,
+    error_prefix: str,
 ) -> Artifact:
     if state.current_run_id is None or state.current_step_run_id is None:
-        raise OperatorControlError("operator_angle_projection_missing")
+        raise OperatorControlError(f"{error_prefix}_missing")
     checkpoint = await get_latest_checkpoint(session, run_id=state.current_run_id)
     if checkpoint is None or not isinstance(checkpoint.content_json, dict):
-        raise OperatorControlError("operator_angle_projection_missing")
+        raise OperatorControlError(f"{error_prefix}_missing")
     pending = checkpoint.content_json.get("pending_approval")
-    if not isinstance(pending, dict) or pending.get("step_key") != "angle":
-        raise OperatorControlError("operator_angle_projection_stale")
+    if not isinstance(pending, dict) or pending.get("step_key") != step_key:
+        raise OperatorControlError(f"{error_prefix}_stale")
     raw_artifact_id = pending.get("artifact_id")
     if not isinstance(raw_artifact_id, str):
-        raise OperatorControlError("operator_angle_projection_invalid")
+        raise OperatorControlError(f"{error_prefix}_invalid")
     try:
         artifact_id = UUID(raw_artifact_id)
     except ValueError as exc:
-        raise OperatorControlError("operator_angle_projection_invalid") from exc
+        raise OperatorControlError(f"{error_prefix}_invalid") from exc
     artifact = await session.get(Artifact, artifact_id)
     if (
         artifact is None
         or artifact.run_id != state.current_run_id
         or artifact.step_run_id != state.current_step_run_id
-        or artifact.artifact_type != "angle_candidates"
+        or artifact.artifact_type != artifact_type
     ):
-        raise OperatorControlError("operator_angle_projection_stale")
+        raise OperatorControlError(f"{error_prefix}_stale")
     return artifact
 
 
@@ -147,7 +162,13 @@ async def _angle_gate(
     *,
     state: OperatorState,
 ) -> OperatorAngleGateView:
-    artifact = await _pending_angle_artifact(session, state=state)
+    artifact = await _pending_artifact(
+        session,
+        state=state,
+        step_key="angle",
+        artifact_type="angle_candidates",
+        error_prefix="operator_angle_projection",
+    )
     bundle_id, bundle_version, bundle_hash = _bundle_ref(artifact)
     try:
         bundle = await load_journal_input_bundle(
@@ -192,6 +213,34 @@ async def _angle_gate(
     )
 
 
+async def _outline_gate(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+) -> OperatorOutlineGateView:
+    artifact = await _pending_artifact(
+        session,
+        state=state,
+        step_key="outline",
+        artifact_type="journal_outline",
+        error_prefix="operator_outline_projection",
+    )
+    payload = artifact.content_json
+    if not isinstance(payload, dict) or payload.get("artifact_type") != "journal_outline":
+        raise OperatorControlError("operator_outline_projection_invalid")
+    outline = payload.get("outline")
+    if not isinstance(outline, dict):
+        raise OperatorControlError("operator_outline_projection_invalid")
+    return OperatorOutlineGateView(
+        artifact=OperatorOutlineArtifactView(
+            id=artifact.id,
+            version=artifact.version,
+            content_hash=artifact.content_hash,
+        ),
+        outline=outline,
+    )
+
+
 async def get_operator_case_view(
     session: AsyncSession,
     *,
@@ -220,9 +269,12 @@ async def get_operator_case_view(
     if not requirements:
         raise OperatorControlError("operator_required_locales_missing")
     state = await operator_runtime.get_operator_state(session, content_case_id=content_case.id)
-    pending_gate = None
-    if state.status == "AWAITING_APPROVAL" and state.human_gate == "angle":
-        pending_gate = await _angle_gate(session, state=state)
+    pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
+    if state.status == "AWAITING_APPROVAL":
+        if state.human_gate == "angle":
+            pending_gate = await _angle_gate(session, state=state)
+        elif state.human_gate == "outline":
+            pending_gate = await _outline_gate(session, state=state)
     return OperatorCaseView(
         content_case_id=content_case.id,
         question=opportunity.question,
@@ -249,6 +301,8 @@ __all__ = [
     "OperatorAngleGateView",
     "OperatorCaseView",
     "OperatorIntakeView",
+    "OperatorOutlineArtifactView",
+    "OperatorOutlineGateView",
     "OperatorRequiredLocaleView",
     "get_operator_case_view",
 ]

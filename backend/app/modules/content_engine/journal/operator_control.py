@@ -48,6 +48,7 @@ OperatorStatus = Literal[
 HumanGate = Literal["angle", "outline", "final_review"]
 
 _EXECUTABLE_STAGE = "review_revise_en"
+_OPERATOR_FOCUS_STAGES = (_EXECUTABLE_STAGE, "outline")
 _GATE_STEPS: dict[str, HumanGate] = {
     "angle": "angle",
     "outline": "outline",
@@ -309,13 +310,14 @@ async def _operator_focus(
     if not runs:
         return None, None, None
 
-    executable = (
+    runtime_focus = (
         await session.execute(
             select(ContentRun, StepRun)
             .join(StepRun, StepRun.run_id == ContentRun.id)
             .where(
                 ContentRun.content_case_id == content_case_id,
-                StepRun.step_key == _EXECUTABLE_STAGE,
+                StepRun.step_key.in_(_OPERATOR_FOCUS_STAGES),
+                StepRun.step_key == ContentRun.current_step,
                 StepRun.status.in_(("pending", "running", "failed")),
                 ContentRun.status.in_(("pending", "running", "failed")),
             )
@@ -323,8 +325,8 @@ async def _operator_focus(
             .limit(1)
         )
     ).first()
-    if executable is not None:
-        run, step = executable
+    if runtime_focus is not None:
+        run, step = runtime_focus
         return run, step, await _latest_job(session, step)
 
     waiting = [row for row in runs if row.status == "waiting_approval"]
