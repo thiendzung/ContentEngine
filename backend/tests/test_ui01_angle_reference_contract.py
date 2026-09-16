@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-
 import pytest
+from sqlalchemy import select
 from test_ce05_agent_runtime import FakeAngleRunner, isolated_session
 from test_ce05_angle_approval import _bundle_fixture, _candidate_payload
 
