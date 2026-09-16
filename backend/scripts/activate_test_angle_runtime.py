@@ -10,6 +10,7 @@ from app.modules.content_engine.journal.operator_preflight import (
     build_journal_operator_preflight,
 )
 from app.modules.system.test_angle_runtime import (
+    TestAngleRuntimeActivation,
     TestAngleRuntimeActivationError,
     activate_test_journal_angle_runtime,
 )
@@ -22,6 +23,20 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--model", required=True)
     parser.add_argument("--approved-by", required=True)
     return parser.parse_args()
+
+
+def _activation_payload(result: TestAngleRuntimeActivation) -> dict[str, object]:
+    return {
+        "status": "READY",
+        "project_id": str(result.project_id),
+        "settings_id": str(result.settings_id),
+        "prompt_id": str(result.prompt_id),
+        "recipe_id": str(result.recipe_id),
+        "provider": result.provider,
+        "model": result.model,
+        "approved_by": result.approved_by,
+        "replayed": result.replayed,
+    }
 
 
 async def _main() -> int:
@@ -56,22 +71,7 @@ async def _main() -> int:
         print("TEST_ANGLE_RUNTIME: BLOCKED (test_angle_activation_failed)")
         return 2
 
-    print(
-        json.dumps(
-            {
-                "status": "READY",
-                "project_id": result.project_id,
-                "settings_id": result.settings_id,
-                "prompt_id": result.prompt_id,
-                "recipe_id": result.recipe_id,
-                "provider": result.provider,
-                "model": result.model,
-                "approved_by": result.approved_by,
-                "replayed": result.replayed,
-            },
-            sort_keys=True,
-        )
-    )
+    print(json.dumps(_activation_payload(result), sort_keys=True))
     return 0
 
 
