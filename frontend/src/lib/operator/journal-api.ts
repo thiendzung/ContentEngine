@@ -67,6 +67,12 @@ export type AngleGate = {
   candidates: AngleCandidate[];
 };
 
+export type OutlineGate = {
+  type: "outline";
+  artifact: { id: string; version: number; content_hash: string };
+  outline: Record<string, unknown>;
+};
+
 export type OperatorCaseView = {
   content_case_id: string;
   question: string;
@@ -81,7 +87,7 @@ export type OperatorCaseView = {
     research_country: string;
     required_locales: RequiredLocale[];
   };
-  pending_gate: AngleGate | null;
+  pending_gate: AngleGate | OutlineGate | null;
 };
 
 export type FounderJournalIntakeRequest = {
