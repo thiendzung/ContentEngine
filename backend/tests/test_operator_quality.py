@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from datetime import UTC, datetime, timedelta
 from typing import cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import func, select
@@ -32,7 +32,7 @@ from app.modules.content_engine.journal.operator_runtime import (
 from app.modules.content_engine.journal.operator_view import get_operator_case_view
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
-from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun
+from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun, utc_now
 
 
 class _CapturePort:
@@ -231,30 +231,46 @@ async def _complete_healthy_lane_from_audit(
     assert healthy_lane.revised_draft is not None
 
     if healthy_lane.audit.job is not None and healthy_lane.audit.job.status == "queued":
-        audit_input = await load_assertion_audit_input(
-            session,
-            writer_run_id=healthy_lane.writer.run.id,  # type: ignore[union-attr]
-            revised_draft_artifact_id=healthy_lane.revised_draft.id,
-            expected_revised_draft_version=healthy_lane.revised_draft.version,
-            expected_revised_draft_hash=healthy_lane.revised_draft.content_hash,
-            outline_artifact_id=outline_result.artifact.id,  # type: ignore[union-attr]
-            expected_outline_version=outline_result.artifact.version,  # type: ignore[union-attr]
-            expected_outline_hash=outline_result.artifact.content_hash,  # type: ignore[union-attr]
-            locale=healthy_lane.locale,
-        )
         async def _fake_audit_port(_s: AsyncSession, *, locale: str, **kw: object) -> _CapturePort:
-            del _s, locale, kw
-            return _CapturePort(_passing_output(audit_input))
+            del _s, kw
+            prog = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+            assert prog is not None
+            lane = next(cand for cand in prog.lanes if cand.locale == locale)
+            assert lane.revised_draft is not None
+            lane_audit_input = await load_assertion_audit_input(
+                session,
+                writer_run_id=lane.writer.run.id,  # type: ignore[union-attr]
+                revised_draft_artifact_id=lane.revised_draft.id,
+                expected_revised_draft_version=lane.revised_draft.version,
+                expected_revised_draft_hash=lane.revised_draft.content_hash,
+                outline_artifact_id=outline_result.artifact.id,  # type: ignore[union-attr]
+                expected_outline_version=outline_result.artifact.version,  # type: ignore[union-attr]
+                expected_outline_hash=outline_result.artifact.content_hash,  # type: ignore[union-attr]
+                locale=lane.locale,
+            )
+            return _CapturePort(_passing_output(lane_audit_input))
 
         monkeypatch.setattr(
             operator_quality_worker,
             "create_cli_assertion_audit_model_port",
             _fake_audit_port,
         )
-        audit_job = await operator_quality_worker.claim_or_reclaim_quality_job(
-            session, worker_id=f"{worker_prefix}-audit"
-        )
+        audit_job = await session.get(Job, healthy_lane.audit.job.id)
         assert audit_job is not None
+        step = await session.get(StepRun, audit_job.step_run_id)
+        assert step is not None
+        step.status = "running"
+        now = utc_now()
+        step.started_at = now
+        run = await session.get(ContentRun, audit_job.run_id)
+        assert run is not None
+        if run.status == "pending":
+            run.status = "running"
+        audit_job.status = "leased"
+        audit_job.lease_owner = f"{worker_prefix}-audit"
+        audit_job.lease_expires_at = now + timedelta(seconds=900)
+        audit_job.updated_at = now
+        await session.flush()
         await operator_quality_worker.execute_quality_job(
             session,
             job_id=audit_job.id,
@@ -269,10 +285,22 @@ async def _complete_healthy_lane_from_audit(
         refreshed_lane.source_copy.job is not None
         and refreshed_lane.source_copy.job.status == "queued"
     ):
-        source_job = await operator_quality_worker.claim_or_reclaim_quality_job(
-            session, worker_id=f"{worker_prefix}-source"
-        )
+        source_job = await session.get(Job, refreshed_lane.source_copy.job.id)
         assert source_job is not None
+        step = await session.get(StepRun, source_job.step_run_id)
+        assert step is not None
+        step.status = "running"
+        now = utc_now()
+        step.started_at = now
+        run = await session.get(ContentRun, source_job.run_id)
+        assert run is not None
+        if run.status == "pending":
+            run.status = "running"
+        source_job.status = "leased"
+        source_job.lease_owner = f"{worker_prefix}-source"
+        source_job.lease_expires_at = now + timedelta(seconds=900)
+        source_job.updated_at = now
+        await session.flush()
         await operator_quality_worker.execute_quality_job(
             session,
             job_id=source_job.id,
@@ -1402,4 +1430,667 @@ async def test_f4_review_bounded_two_attempts_exhausted(
             ).all()
         )
         assert len(all_target_jobs) == 2
+
+
+@pytest.mark.asyncio
+async def test_f4_r2_audit_exact_lineage_exhaustion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Requirement C.1: Audit exact lineage retry exhaustion after 2 attempts."""
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+        del parent_cmd, before_quality
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        registry = AgentRunnerRegistry()
+
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-aud-rev1"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-aud-rev2"
+        )
+        assert job1 is not None and job2 is not None
+        await operator_quality_worker.execute_quality_job(
+            session, job_id=job1.id, worker_id="worker-aud-rev1", runner_registry=registry
+        )
+        await operator_quality_worker.execute_quality_job(
+            session, job_id=job2.id, worker_id="worker-aud-rev2", runner_registry=registry
+        )
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=job2.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-aud-sib",
+            runner_registry=registry,
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        target_step_run_id = job1.step_run_id
+        target_lane = next(
+            lane
+            for lane in progress.lanes
+            if lane.review.step is not None and lane.review.step.id == target_step_run_id
+        )
+        assert target_lane.audit.job is not None
+        target_audit_job_id = target_lane.audit.job.id
+
+        audit_job_1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-audit-att1"
+        )
+        assert audit_job_1 is not None
+        assert audit_job_1.id == target_audit_job_id
+
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=audit_job_1.id,
+            worker_id="worker-audit-att1",
+            failure_class="network_timeout",
+            message="Audit attempt 1 worker crashed",
+        )
+
+        progress_1 = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_1 is not None
+        target_lane_1 = next(lane for lane in progress_1.lanes if lane.locale == target_lane.locale)
+        assert target_lane_1.status == "execution_failed_retryable"
+        assert target_lane_1.audit.attempt == 1
+
+        state_1 = await get_operator_state(session, content_case_id=case_id)
+        assert state_1.status == "BLOCKED"
+        assert state_1.primary_intent == "retry"
+        assert state_1.allowed_intents == ["retry"]
+
+        action_1 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_1.executable is True
+        assert action_1.intent == "retry"
+
+        retry_cmd = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=action_1.state_version,
+            idempotency_key="f4-r2-audit-retry-1",
+        )
+        assert retry_cmd.status == "queued"
+
+        audit_job_2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-audit-att2"
+        )
+        assert audit_job_2 is not None
+        assert audit_job_2.id != audit_job_1.id
+
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=audit_job_2.id,
+            worker_id="worker-audit-att2",
+            failure_class="database_connection_lost",
+            message="Audit attempt 2 DB lost",
+        )
+
+        progress_2 = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_2 is not None
+        target_lane_2 = next(lane for lane in progress_2.lanes if lane.locale == target_lane.locale)
+        assert target_lane_2.status == "execution_failed_exhausted"
+        assert target_lane_2.audit.attempt == 2
+        assert target_lane_2.audit.run is not None
+        assert target_lane_2.audit.run.failure_code == "operator_quality_retry_exhausted"
+
+        state_2 = await get_operator_state(session, content_case_id=case_id)
+        assert state_2.status == "BLOCKED"
+        assert state_2.primary_intent is None
+        assert state_2.allowed_intents == []
+        assert state_2.blocker_code == "operator_quality_retry_exhausted"
+
+        action_2 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_2.executable is False
+        assert action_2.intent is None
+
+        with pytest.raises(OperatorControlError) as exc_info:
+            await submit_operator_command(
+                session,
+                content_case_id=case_id,
+                intent="retry",
+                expected_state_version=state_2.state_version,
+                idempotency_key="f4-r2-audit-retry-3-forbidden",
+            )
+        assert exc_info.value.code in {
+            "operator_quality_retry_requires_failed_job",
+            "operator_quality_retry_exhausted",
+        }
+
+        audit_handoff = target_lane_2.audit.handoff
+        assert audit_handoff is not None
+        matching_runs = list(
+            (
+                await session.scalars(
+                    select(ContentRun.id)
+                    .join(Artifact, Artifact.run_id == ContentRun.id)
+                    .where(
+                        Artifact.artifact_type == "assertion_audit_handoff",
+                        Artifact.content_hash == audit_handoff.content_hash,
+                    )
+                )
+            ).all()
+        )
+        assert len(matching_runs) == 2
+
+
+@pytest.mark.asyncio
+async def test_f4_r2_unrelated_historical_audit_does_not_consume_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Requirement C.2: Historical audit for another draft does not consume budget."""
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+        del parent_cmd, before_quality
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.review.job is not None
+        assert en_lane.review.job is not None
+
+        registry = AgentRunnerRegistry()
+
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-hist-rev1"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-hist-rev2"
+        )
+        assert job1 is not None and job2 is not None
+        vi_job = job1 if job1.id == vi_lane.review.job.id else job2
+        en_job = job2 if job1.id == vi_lane.review.job.id else job1
+
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_job.id,
+            worker_id=cast(str, vi_job.lease_owner),
+            runner_registry=registry,
+        )
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=en_job.id,
+            worker_id=cast(str, en_job.lease_owner),
+            runner_registry=registry,
+        )
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=en_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-hist-sib",
+            runner_registry=registry,
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        target_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert target_lane.writer.run is not None
+        writer_run = target_lane.writer.run
+        assert target_lane.audit.job is not None
+
+        historical_run = ContentRun(
+            project_id=writer_run.project_id,
+            content_case_id=case_id,
+            locale_variant_id=target_lane.variant.id,
+            run_mode="eval",
+            current_step="audit_vi_draft",
+            status="failed",
+            failure_code="operator_quality_retry_exhausted",
+            settings_snapshot_id=writer_run.settings_snapshot_id,
+            started_at=utc_now() - timedelta(hours=2),
+            completed_at=utc_now() - timedelta(hours=2),
+        )
+        session.add(historical_run)
+        await session.flush()
+
+        historical_handoff = Artifact(
+            run_id=historical_run.id,
+            artifact_type="assertion_audit_handoff",
+            locale="vi-VN",
+            version=1,
+            content_json={
+                "task_key": "audit_vi_draft",
+                "source_writer_run": {"id": str(writer_run.id), "run_mode": "localize"},
+                "source_draft": {"id": str(uuid4()), "version": 1, "content_hash": "x" * 64},
+            },
+            content_hash="historical-handoff-hash-x",
+        )
+        session.add(historical_handoff)
+        await session.flush()
+
+        audit_job_1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-audit-y1"
+        )
+        assert audit_job_1 is not None
+        assert audit_job_1.id == target_lane.audit.job.id
+
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=audit_job_1.id,
+            worker_id="worker-audit-y1",
+            failure_class="network_timeout",
+            message="Draft Y Audit attempt 1 timeout",
+        )
+
+        progress_after = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_after is not None
+        lane_after = next(lane for lane in progress_after.lanes if lane.locale == "vi-VN")
+        assert lane_after.status == "execution_failed_retryable"
+        assert lane_after.audit.attempt == 1
+        assert lane_after.audit.run is not None
+        assert lane_after.audit.run.failure_code == "network_timeout"
+
+        state = await get_operator_state(session, content_case_id=case_id)
+        assert state.status == "BLOCKED"
+        assert state.primary_intent == "retry"
+        assert state.allowed_intents == ["retry"]
+
+        action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action.executable is True
+        assert action.intent == "retry"
+
+
+@pytest.mark.asyncio
+async def test_f4_r2_deterministic_terminal_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Requirement C.3: Deterministic terminal attempt selection independently of DB row order."""
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+        del parent_cmd, before_quality
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.review.job is not None
+        assert en_lane.review.job is not None
+
+        registry = AgentRunnerRegistry()
+
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-det-rev1"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-det-rev2"
+        )
+        assert job1 is not None and job2 is not None
+        vi_job = job1 if job1.id == vi_lane.review.job.id else job2
+        en_job = job2 if job1.id == vi_lane.review.job.id else job1
+
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_job.id,
+            worker_id=cast(str, vi_job.lease_owner),
+            runner_registry=registry,
+        )
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=en_job.id,
+            worker_id=cast(str, en_job.lease_owner),
+            runner_registry=registry,
+        )
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=en_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-det-sib",
+            runner_registry=registry,
+        )
+
+        audit_job_1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-det-a1"
+        )
+        assert audit_job_1 is not None
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=audit_job_1.id,
+            worker_id="worker-det-a1",
+            failure_class="network_timeout",
+            message="Attempt 1 timeout",
+        )
+
+        action_1 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_1.executable is True
+        await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=action_1.state_version,
+            idempotency_key="f4-r2-det-retry-1",
+        )
+
+        audit_job_2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-det-a2"
+        )
+        assert audit_job_2 is not None
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=audit_job_2.id,
+            worker_id="worker-det-a2",
+            failure_class="network_timeout",
+            message="Attempt 2 timeout",
+        )
+
+        real_scalars = session.scalars
+
+        async def inverted_scalars(
+            statement: object, *args: object, **kwargs: object
+        ) -> object:
+            result = await real_scalars(statement, *args, **kwargs)
+            stmt_str = str(statement)
+            if "assertion_audit_handoff" in stmt_str:
+                all_items = list(result.all())
+                all_items.reverse()
+
+                class _InvertedResult:
+                    def all(self) -> list[object]:
+                        return all_items
+
+                return _InvertedResult()
+            return result
+
+        monkeypatch.setattr(session, "scalars", inverted_scalars)
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.status == "execution_failed_exhausted"
+        assert vi_lane.audit.attempt == 2
+        assert vi_lane.audit.run is not None
+        assert vi_lane.audit.run.id == audit_job_2.run_id
+        assert vi_lane.audit.run.failure_code == "operator_quality_retry_exhausted"
+
+
+@pytest.mark.asyncio
+async def test_f4_r2_source_copy_exact_lineage_budget_and_historical_isolation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Requirement C.4: Source-copy exact lineage retry budget=2 and historical isolation."""
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+        del parent_cmd, before_quality
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.review.job is not None
+        assert en_lane.review.job is not None
+
+        registry = AgentRunnerRegistry()
+
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-sc-rev1"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-sc-rev2"
+        )
+        assert job1 is not None and job2 is not None
+        vi_job = job1 if job1.id == vi_lane.review.job.id else job2
+        en_job = job2 if job1.id == vi_lane.review.job.id else job1
+
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_job.id,
+            worker_id=cast(str, vi_job.lease_owner),
+            runner_registry=registry,
+        )
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=en_job.id,
+            worker_id=cast(str, en_job.lease_owner),
+            runner_registry=registry,
+        )
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=en_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-sc-sib",
+            runner_registry=registry,
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.revised_draft is not None
+        audit_input = await load_assertion_audit_input(
+            session,
+            writer_run_id=vi_lane.writer.run.id,  # type: ignore[union-attr]
+            revised_draft_artifact_id=vi_lane.revised_draft.id,
+            expected_revised_draft_version=vi_lane.revised_draft.version,
+            expected_revised_draft_hash=vi_lane.revised_draft.content_hash,
+            outline_artifact_id=outline_result.artifact.id,  # type: ignore[union-attr]
+            expected_outline_version=outline_result.artifact.version,  # type: ignore[union-attr]
+            expected_outline_hash=outline_result.artifact.content_hash,  # type: ignore[union-attr]
+            locale="vi-VN",
+        )
+
+        async def _fake_audit_port(_s: AsyncSession, *, locale: str, **kw: object) -> _CapturePort:
+            del _s, locale, kw
+            return _CapturePort(_passing_output(audit_input))
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_assertion_audit_model_port", _fake_audit_port
+        )
+
+        vi_audit_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-sc-audit"
+        )
+        assert vi_audit_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_audit_job.id,
+            worker_id="worker-sc-audit",
+            runner_registry=registry,
+        )
+
+        progress_after_audit = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_after_audit is not None
+        vi_lane_sc = next(lane for lane in progress_after_audit.lanes if lane.locale == "vi-VN")
+        assert vi_lane_sc.source_copy.job is not None
+        sc_job_1_id = vi_lane_sc.source_copy.job.id
+
+        historical_sc_run = ContentRun(
+            project_id=vi_lane_sc.writer.run.project_id,  # type: ignore[union-attr]
+            content_case_id=case_id,
+            locale_variant_id=vi_lane_sc.variant.id,
+            run_mode="eval",
+            current_step="source_copy_vi_draft",
+            status="failed",
+            failure_code="operator_quality_retry_exhausted",
+            settings_snapshot_id=vi_lane_sc.writer.run.settings_snapshot_id,  # type: ignore[union-attr]
+            started_at=utc_now() - timedelta(hours=3),
+            completed_at=utc_now() - timedelta(hours=3),
+        )
+        session.add(historical_sc_run)
+        await session.flush()
+
+        historical_sc_handoff = Artifact(
+            run_id=historical_sc_run.id,
+            artifact_type="source_copy_handoff",
+            locale="vi-VN",
+            version=1,
+            content_json={
+                "task_key": "source_copy_vi_draft",
+                "source_writer_run_id": str(vi_lane_sc.writer.run.id),  # type: ignore[union-attr]
+                "source_draft": {"id": str(uuid4()), "version": 1, "content_hash": "y" * 64},
+                "assertion_audit": {
+                    "artifact": {"id": str(uuid4()), "version": 1, "content_hash": "z" * 64},
+                    "quality_evaluation_id": str(uuid4()),
+                },
+            },
+            content_hash="historical-sc-handoff-hash",
+        )
+        session.add(historical_sc_handoff)
+        await session.flush()
+
+        sc_job_1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-sc-att1"
+        )
+        assert sc_job_1 is not None
+        assert sc_job_1.id == sc_job_1_id
+
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=sc_job_1.id,
+            worker_id="worker-sc-att1",
+            failure_class="process_timeout",
+            message="Source-copy attempt 1 timeout",
+        )
+
+        progress_sc_1 = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_sc_1 is not None
+        vi_lane_sc_1 = next(lane for lane in progress_sc_1.lanes if lane.locale == "vi-VN")
+        assert vi_lane_sc_1.status == "execution_failed_retryable"
+        assert vi_lane_sc_1.source_copy.attempt == 1
+
+        state_sc_1 = await get_operator_state(session, content_case_id=case_id)
+        assert state_sc_1.status == "BLOCKED"
+        assert state_sc_1.allowed_intents == ["retry"]
+
+        action_sc_1 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_sc_1.executable is True
+
+        await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=action_sc_1.state_version,
+            idempotency_key="f4-r2-sc-retry-1",
+        )
+
+        sc_job_2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-sc-att2"
+        )
+        assert sc_job_2 is not None
+        assert sc_job_2.id != sc_job_1.id
+
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=sc_job_2.id,
+            worker_id="worker-sc-att2",
+            failure_class="database_error",
+            message="Source-copy attempt 2 error",
+        )
+
+        progress_sc_2 = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_sc_2 is not None
+        vi_lane_sc_2 = next(lane for lane in progress_sc_2.lanes if lane.locale == "vi-VN")
+        assert vi_lane_sc_2.status == "execution_failed_exhausted"
+        assert vi_lane_sc_2.source_copy.attempt == 2
+        assert vi_lane_sc_2.source_copy.run is not None
+        assert vi_lane_sc_2.source_copy.run.failure_code == "operator_quality_retry_exhausted"
+
+        state_sc_2 = await get_operator_state(session, content_case_id=case_id)
+        assert state_sc_2.status == "BLOCKED"
+        assert state_sc_2.allowed_intents == []
+        assert state_sc_2.blocker_code == "operator_quality_retry_exhausted"
+
+        action_sc_2 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_sc_2.executable is False
+
+        with pytest.raises(OperatorControlError) as exc_info:
+            await submit_operator_command(
+                session,
+                content_case_id=case_id,
+                intent="retry",
+                expected_state_version=state_sc_2.state_version,
+                idempotency_key="f4-r2-sc-retry-3-forbidden",
+            )
+        assert exc_info.value.code in {
+            "operator_quality_retry_requires_failed_job",
+            "operator_quality_retry_exhausted",
+        }
+
 

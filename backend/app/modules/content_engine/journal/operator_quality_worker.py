@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import distinct, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.assertion_audit import (
@@ -673,17 +673,39 @@ async def fail_quality_job(
             if run.status == "running":
                 await transition_run(session, run_id=run.id, status="failed")
     else:
-        eval_run_count = (
-            await session.scalar(
-                select(func.count(ContentRun.id)).where(
-                    ContentRun.content_case_id == run.content_case_id,
-                    ContentRun.locale_variant_id == run.locale_variant_id,
-                    ContentRun.run_mode == "eval",
-                    ContentRun.current_step == step.step_key,
-                )
+        handoff = await session.scalar(
+            select(Artifact).where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type.in_(("assertion_audit_handoff", "source_copy_handoff")),
             )
-            or 1
         )
+        if handoff is not None:
+            eval_run_count = (
+                await session.scalar(
+                    select(func.count(distinct(ContentRun.id)))
+                    .join(Artifact, Artifact.run_id == ContentRun.id)
+                    .where(
+                        ContentRun.content_case_id == run.content_case_id,
+                        ContentRun.locale_variant_id == run.locale_variant_id,
+                        ContentRun.run_mode == "eval",
+                        Artifact.artifact_type == handoff.artifact_type,
+                        Artifact.content_hash == handoff.content_hash,
+                    )
+                )
+                or 1
+            )
+        else:
+            eval_run_count = (
+                await session.scalar(
+                    select(func.count(distinct(ContentRun.id))).where(
+                        ContentRun.content_case_id == run.content_case_id,
+                        ContentRun.locale_variant_id == run.locale_variant_id,
+                        ContentRun.run_mode == "eval",
+                        ContentRun.current_step == step.step_key,
+                    )
+                )
+                or 1
+            )
         if eval_run_count >= QUALITY_MAX_JOB_ATTEMPTS or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
             run.failure_code = "operator_quality_retry_exhausted"
         else:

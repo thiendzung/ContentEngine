@@ -130,6 +130,7 @@ class QualityStage:
     jobs: tuple[Job, ...] = ()
     artifact: Artifact | None = None
     evaluation: QualityEvaluation | None = None
+    attempt: int = 1
 
     @property
     def job(self) -> Job | None:
@@ -177,13 +178,27 @@ class QualityLane:
         source_job = self.source_copy.job
         if source_job is not None and source_job.status in {"queued", "leased"}:
             return "source_copy_running" if source_job.status == "leased" else "source_copy_queued"
-        if source_job is not None and source_job.status in {"failed", "cancelled"}:
+        if (
+            (source_job is not None and source_job.status in {"failed", "cancelled"})
+            or (
+                self.source_copy.run is not None
+                and self.source_copy.run.status in {"failed", "cancelled"}
+            )
+        ):
             if _stage_has_integrity_failure(self.source_copy):
                 return "quality_blocked"
+            is_exhausted = (
+                self.source_copy.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (source_job is not None and source_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
+                or (
+                    self.source_copy.run is not None
+                    and self.source_copy.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
             return (
-                "execution_failed_retryable"
-                if source_job.attempt < QUALITY_MAX_JOB_ATTEMPTS
-                else "execution_failed_exhausted"
+                "execution_failed_exhausted"
+                if is_exhausted
+                else "execution_failed_retryable"
             )
         audit_eval = self.audit.evaluation
         if audit_eval is not None:
@@ -196,13 +211,27 @@ class QualityLane:
         audit_job = self.audit.job
         if audit_job is not None and audit_job.status in {"queued", "leased"}:
             return "audit_running" if audit_job.status == "leased" else "audit_queued"
-        if audit_job is not None and audit_job.status in {"failed", "cancelled"}:
+        if (
+            (audit_job is not None and audit_job.status in {"failed", "cancelled"})
+            or (
+                self.audit.run is not None
+                and self.audit.run.status in {"failed", "cancelled"}
+            )
+        ):
             if _stage_has_integrity_failure(self.audit):
                 return "quality_blocked"
+            is_exhausted = (
+                self.audit.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (audit_job is not None and audit_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
+                or (
+                    self.audit.run is not None
+                    and self.audit.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
             return (
-                "execution_failed_retryable"
-                if audit_job.attempt < QUALITY_MAX_JOB_ATTEMPTS
-                else "execution_failed_exhausted"
+                "execution_failed_exhausted"
+                if is_exhausted
+                else "execution_failed_retryable"
             )
         if review_job is not None and review_job.status in {"queued", "leased"}:
             return "review_running" if review_job.status == "leased" else "review_queued"
@@ -210,7 +239,7 @@ class QualityLane:
             if _stage_has_integrity_failure(self.review):
                 return "quality_blocked"
             review_attempt = (
-                self.review.step.attempt
+                self.review.attempt
                 if self.review.step is not None
                 else review_job.attempt
             )
@@ -375,22 +404,30 @@ async def _stage_for_handoff(
     writer: WriterLane,
     source_draft: Artifact | None,
     task_key: str,
+    audit_artifact: Artifact | None = None,
+    audit_evaluation: QualityEvaluation | None = None,
 ) -> QualityStage:
-    if writer.run is None:
+    if writer.run is None or source_draft is None:
         return QualityStage()
     rows = list(
         (
             await session.scalars(
-                select(Artifact).where(
+                select(Artifact)
+                .where(
                     Artifact.artifact_type == handoff_type,
                     Artifact.locale == locale,
                 )
+                .order_by(Artifact.created_at, Artifact.id)
             )
         ).all()
     )
     matches: list[tuple[Artifact, ContentRun]] = []
     for handoff in rows:
         payload = handoff.content_json
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("task_key") != task_key:
+            continue
         if handoff_type == "assertion_audit_handoff":
             source_run_ref = _payload_ref(payload, "source_writer_run")
             source_ref = _payload_ref(payload, "source_draft")
@@ -398,18 +435,31 @@ async def _stage_for_handoff(
                 source_run_ref is not None
                 and source_run_ref.get("id") == str(writer.run.id)
                 and source_ref is not None
-                and source_draft is not None
                 and source_ref == _ref(source_draft)
             )
         else:
-            source_run_ref_text = _payload_id(payload, "source_writer_run_id")
-            source_ref = _payload_ref(payload, "source_draft")
-            matches_source = (
-                source_run_ref_text == str(writer.run.id)
-                and source_ref is not None
-                and source_draft is not None
-                and source_ref == _ref(source_draft)
-            )
+            if audit_artifact is None or audit_evaluation is None:
+                matches_source = False
+            else:
+                source_run_ref_text = _payload_id(payload, "source_writer_run_id")
+                source_ref = _payload_ref(payload, "source_draft")
+                audit_payload = payload.get("assertion_audit")
+                audit_ref = (
+                    audit_payload.get("artifact") if isinstance(audit_payload, dict) else None
+                )
+                audit_eval_id = (
+                    audit_payload.get("quality_evaluation_id")
+                    if isinstance(audit_payload, dict)
+                    else None
+                )
+                matches_source = (
+                    source_run_ref_text == str(writer.run.id)
+                    and source_ref is not None
+                    and source_ref == _ref(source_draft)
+                    and isinstance(audit_ref, dict)
+                    and audit_ref == _ref(audit_artifact)
+                    and audit_eval_id == str(audit_evaluation.id)
+                )
         if not matches_source:
             continue
         run = await session.get(ContentRun, handoff.run_id)
@@ -427,9 +477,15 @@ async def _stage_for_handoff(
         # Keep the latest terminal run visible so the resolver can distinguish a
         # retryable technical failure from an absent stage. A replacement
         # active run, when present, always wins above.
-        selected = matches[-1]
+        terminal_matches = sorted(
+            matches,
+            key=lambda item: (item[1].created_at, item[1].id),
+        )
+        selected = terminal_matches[-1]
     else:
         return QualityStage()
+    distinct_runs = {r.id for _h, r in matches}
+    attempt = max(len(distinct_runs), 1)
     handoff, run = selected
     steps = list(
         (
@@ -483,7 +539,13 @@ async def _stage_for_handoff(
                 raise OperatorControlError("operator_quality_evaluation_conflict", locale)
             evaluation = evaluations[0]
     return QualityStage(
-        run=run, handoff=handoff, step=step, jobs=jobs, artifact=artifact, evaluation=evaluation
+        run=run,
+        handoff=handoff,
+        step=step,
+        jobs=jobs,
+        artifact=artifact,
+        evaluation=evaluation,
+        attempt=attempt,
     )
 
 
@@ -539,7 +601,10 @@ async def _review_stage(
     if len(revised_candidates) > 1:
         raise OperatorControlError("operator_quality_revised_draft_conflict", locale)
     return QualityStage(
-        step=step, jobs=jobs, artifact=revised_candidates[0] if revised_candidates else None
+        step=step,
+        jobs=jobs,
+        artifact=revised_candidates[0] if revised_candidates else None,
+        attempt=step.attempt,
     )
 
 
@@ -595,6 +660,8 @@ async def get_quality_progress(
             writer=writer,
             source_draft=audit_input_draft,
             task_key=SOURCE_COPY_TASK_KEYS[writer.required_locale],
+            audit_artifact=audit.artifact,
+            audit_evaluation=audit.evaluation,
         )
         item = None
         final_content = None
@@ -863,9 +930,13 @@ async def _queue_quality_retry_lane(
     revised = lane.revised_draft
     if revised is None:
         raise OperatorControlError("operator_quality_retry_revised_missing")
-    if lane.audit.job is not None and lane.audit.job.status in {"failed", "cancelled"}:
+    if (
+        (lane.audit.job is not None and lane.audit.job.status in {"failed", "cancelled"})
+        or (lane.audit.run is not None and lane.audit.run.status in {"failed", "cancelled"})
+    ):
         if (
-            lane.audit.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            lane.audit.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or (lane.audit.job is not None and lane.audit.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
             or (
                 lane.audit.run is not None
                 and lane.audit.run.failure_code == "operator_quality_retry_exhausted"
@@ -912,9 +983,22 @@ async def _queue_quality_retry_lane(
             dedupe_key=f"operator:quality:audit-retry:{command.id}:{lane.locale}",
         )
         return
-    if lane.source_copy.job is not None and lane.source_copy.job.status in {"failed", "cancelled"}:
+    if (
+        (
+            lane.source_copy.job is not None
+            and lane.source_copy.job.status in {"failed", "cancelled"}
+        )
+        or (
+            lane.source_copy.run is not None
+            and lane.source_copy.run.status in {"failed", "cancelled"}
+        )
+    ):
         if (
-            lane.source_copy.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            lane.source_copy.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or (
+                lane.source_copy.job is not None
+                and lane.source_copy.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            )
             or (
                 lane.source_copy.run is not None
                 and lane.source_copy.run.failure_code == "operator_quality_retry_exhausted"
