@@ -94,6 +94,28 @@ class WriterLaneProgress:
         return any(lane.status == "failed" for lane in self.lanes)
 
     @property
+    def has_exhausted_lane(self) -> bool:
+        """Return whether a failed/cancelled lane reached its bounded job limit."""
+
+        return any(
+            lane.latest_job is not None
+            and lane.latest_job.status in {"failed", "cancelled"}
+            and lane.latest_job.attempt >= WRITER_MAX_JOB_ATTEMPTS
+            for lane in self.lanes
+        )
+
+    @property
+    def has_retryable_failed_lane(self) -> bool:
+        """Return whether at least one failed lane can receive one more job."""
+
+        return any(
+            lane.latest_job is not None
+            and lane.latest_job.status in {"failed", "cancelled"}
+            and lane.latest_job.attempt < WRITER_MAX_JOB_ATTEMPTS
+            for lane in self.lanes
+        )
+
+    @property
     def version_payload(self) -> dict[str, object]:
         return {
             "required_locales": list(self.required_locales),

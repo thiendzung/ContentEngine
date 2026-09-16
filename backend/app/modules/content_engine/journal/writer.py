@@ -353,9 +353,8 @@ def _writer_handoff_payload(
         },
         "settings_snapshot_id": str(source_run.settings_snapshot_id),
     }
-    payload["outline_approval"] = (
-        {"id": str(outline_approval_id)} if outline_approval_id is not None else None
-    )
+    if outline_approval_id is not None:
+        payload["outline_approval"] = {"id": str(outline_approval_id)}
     return payload
 
 
@@ -568,9 +567,6 @@ async def load_writer_input(
             "version": artifact.version,
             "content_hash": artifact.content_hash,
         },
-        "outline_approval_ref": (
-            {"id": str(outline_approval_id)} if outline_approval_id is not None else None
-        ),
         "content_case": _case_payload(content_case),
         "locale_variant": _variant_payload(variant),
         "outline": cast(dict[str, object], _clone_json(outline_payload)),
@@ -584,6 +580,8 @@ async def load_writer_input(
             "needed but unsupported by this input, declare it unresolved instead of writing it."
         ),
     }
+    if outline_approval_id is not None:
+        model_input["outline_approval_ref"] = {"id": str(outline_approval_id)}
     return WriterInput(
         writer_run=writer_run,
         locale_variant=variant,
@@ -840,19 +838,22 @@ async def persist_journal_draft(
         schema_version=schema_version,
     )
     bundle = writer_input.outline_input.bundle
+    writer_handoff_payload: dict[str, object] = {
+        "id": str(writer_input.handoff_artifact.id),
+        "content_hash": writer_input.handoff_artifact.content_hash,
+        "source_run_id": str(writer_input.outline_artifact.run_id),
+        "writer_run_id": str(writer_input.writer_run.id),
+        "locale_variant_id": str(writer_input.locale_variant.id),
+    }
+    outline_approval_ref = writer_input.model_input.get("outline_approval_ref")
+    if isinstance(outline_approval_ref, dict):
+        writer_handoff_payload["outline_approval"] = outline_approval_ref
     payload: dict[str, object] = {
         "schema_version": schema_version,
         "artifact_type": "journal_draft",
         "locale": writer_input.locale,
         "generation_fingerprint": fingerprint,
-        "writer_handoff": {
-            "id": str(writer_input.handoff_artifact.id),
-            "content_hash": writer_input.handoff_artifact.content_hash,
-            "source_run_id": str(writer_input.outline_artifact.run_id),
-            "writer_run_id": str(writer_input.writer_run.id),
-            "locale_variant_id": str(writer_input.locale_variant.id),
-            "outline_approval": writer_input.model_input.get("outline_approval_ref"),
-        },
+        "writer_handoff": writer_handoff_payload,
         "journal_outline": {
             "id": str(writer_input.outline_artifact.id),
             "version": writer_input.outline_artifact.version,

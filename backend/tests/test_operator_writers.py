@@ -12,10 +12,15 @@ from test_ce05_writer import (
     _draft_payload,
     _ensure_variant,
     _outline_result,
+    _writer_fixture,
 )
 
 from app.modules.content_engine.journal import operator_writer_worker
-from app.modules.content_engine.journal.models import JournalRequiredLocale, OutlineApproval
+from app.modules.content_engine.journal.models import (
+    JournalRequiredLocale,
+    OperatorCommand,
+    OutlineApproval,
+)
 from app.modules.content_engine.journal.operator_control import OperatorControlError
 from app.modules.content_engine.journal.operator_runtime import (
     get_operator_state,
@@ -24,7 +29,11 @@ from app.modules.content_engine.journal.operator_runtime import (
 )
 from app.modules.content_engine.journal.operator_vertical_slice import normalize_journal_locale
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
-from app.modules.content_engine.journal.writer import load_writer_input
+from app.modules.content_engine.journal.writer import (
+    _canonical_hash,
+    _writer_handoff_payload,
+    load_writer_input,
+)
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Artifact, ContentRun, Job, StepRun
@@ -224,7 +233,7 @@ async def test_f3_writer_failure_preserves_sibling_and_retries_only_failed_lane(
         fixture, _outline_result_value = await _f3_case(session)
         case_id = fixture.run.content_case_id
         initial = await resolve_next_operator_action(session, content_case_id=case_id)
-        await submit_operator_command(
+        parent = await submit_operator_command(
             session,
             content_case_id=case_id,
             intent="continue",
@@ -289,6 +298,9 @@ async def test_f3_writer_failure_preserves_sibling_and_retries_only_failed_lane(
             failure_class="fixture_en_failed",
             message="forced independent lane failure",
         )
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "queued"
         while_state = await get_operator_state(session, content_case_id=case_id)
         assert while_state.status == "RUNNING"
 
@@ -299,6 +311,9 @@ async def test_f3_writer_failure_preserves_sibling_and_retries_only_failed_lane(
             worker_id=vi_worker_id,
             runner_registry=registry,
         )
+        await session.refresh(parent_row)
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_lane_failed"
         blocked = await get_operator_state(session, content_case_id=case_id)
         assert blocked.status == "BLOCKED"
         assert blocked.primary_intent == "retry"
@@ -352,6 +367,238 @@ async def test_f3_writer_failure_preserves_sibling_and_retries_only_failed_lane(
         assert final_progress is not None and final_progress.all_complete
         assert all(lane.draft is not None for lane in final_progress.lanes)
         assert {lane.status for lane in final_progress.lanes} == {"completed"}
+        for lane in final_progress.lanes:
+            assert lane.draft is not None
+            draft_payload = cast(dict[str, object], lane.draft.content_json)
+            draft_handoff = cast(dict[str, object], draft_payload["writer_handoff"])
+            assert cast(dict[str, object], draft_handoff["outline_approval"])["id"] == str(
+                final_progress.outline_approval.id
+            )
+
+
+@pytest.mark.asyncio
+async def test_f3_exhausted_lane_blocks_retry_and_settles_fanout_closed() -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-writers-exhausted-continue",
+        )
+        progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert progress is not None
+        for lane in progress.lanes:
+            assert lane.run is not None
+            lane.run.status = "running"
+        target = next(lane for lane in progress.lanes if lane.required_locale == "en")
+        sibling = next(lane for lane in progress.lanes if lane.required_locale == "vi-VN")
+        assert target.latest_job is not None
+        assert sibling.latest_job is not None
+        target.latest_job.attempt = 2
+        sibling.latest_job.status = "cancelled"
+        await session.flush()
+
+        claimed = await operator_writer_worker.claim_or_reclaim_writer_job(
+            session,
+            worker_id="worker-exhausted",
+        )
+        assert claimed is not None and claimed.id == target.latest_job.id
+        await operator_writer_worker.fail_writer_job(
+            session,
+            job_id=claimed.id,
+            worker_id="worker-exhausted",
+            failure_class="fixture_en_failed_again",
+            message="bounded attempt exhausted",
+        )
+
+        blocked = await get_operator_state(session, content_case_id=case_id)
+        assert blocked.status == "BLOCKED"
+        assert blocked.primary_intent is None
+        assert blocked.allowed_intents == []
+        assert blocked.blocker_code == "operator_writer_retry_exhausted"
+        action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action.action_key == "outline_to_writers"
+        assert action.intent is None
+        assert action.executable is False
+        assert action.blocker_code == "operator_writer_retry_exhausted"
+        with pytest.raises(OperatorControlError, match="operator_writer_retry_exhausted"):
+            await submit_operator_command(
+                session,
+                content_case_id=case_id,
+                intent="retry",
+                expected_state_version=blocked.state_version,
+                idempotency_key="f3-writers-exhausted-retry",
+            )
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_retry_exhausted"
+
+
+@pytest.mark.asyncio
+async def test_f3_retry_exhaustion_preserves_completed_lane_and_settles_retry_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outline_result_value = await _f3_case(session)
+        case_id = fixture.run.content_case_id
+        initial = await resolve_next_operator_action(session, content_case_id=case_id)
+        parent = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=initial.state_version,
+            idempotency_key="f3-writers-retry-exhaustion-parent",
+        )
+        progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert progress is not None
+        for lane in progress.lanes:
+            assert lane.run is not None
+            lane.run.status = "running"
+        inputs = {
+            lane.required_locale: await load_writer_input(
+                session,
+                writer_run_id=lane.run.id,
+                outline_artifact_id=progress.outline_artifact.id,
+                expected_outline_version=progress.outline_artifact.version,
+                expected_outline_hash=progress.outline_artifact.content_hash,
+                outline_approval_id=progress.outline_approval.id,
+                locale=lane.required_locale,
+            )
+            for lane in progress.lanes
+            if lane.run is not None
+        }
+        outputs = {
+            locale: _draft_payload(writer_input, locale)
+            for locale, writer_input in inputs.items()
+        }
+
+        async def fake_port(  # type: ignore[no-untyped-def]
+            _session, *, run_id, settings_snapshot, context_manifest_id, runner_registry, locale
+        ):
+            del _session, run_id, settings_snapshot, context_manifest_id, runner_registry
+            return _FakeWriterPort(cast(dict[str, object], outputs[locale]))
+
+        monkeypatch.setattr(operator_writer_worker, "create_cli_writer_model_port", fake_port)
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", FakeWriterRunner({}))
+        claimed: dict[str, tuple[str, object]] = {}
+        for worker_id in ("worker-retry-vi", "worker-retry-en"):
+            job = await operator_writer_worker.claim_or_reclaim_writer_job(
+                session,
+                worker_id=worker_id,
+            )
+            assert job is not None
+            step = await session.get(StepRun, job.step_run_id)
+            assert step is not None
+            claimed[step.step_key] = (worker_id, job.id)
+
+        en_worker_id, en_job_id = claimed["writer_en"]
+        await operator_writer_worker.fail_writer_job(
+            session,
+            job_id=en_job_id,
+            worker_id=en_worker_id,
+            failure_class="fixture_en_first_failure",
+            message="first bounded failure",
+        )
+        vi_worker_id, vi_job_id = claimed["writer_vi"]
+        await operator_writer_worker.execute_writer_job(
+            session,
+            job_id=vi_job_id,
+            worker_id=vi_worker_id,
+            runner_registry=registry,
+        )
+        blocked = await get_operator_state(session, content_case_id=case_id)
+        retry = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=blocked.state_version,
+            idempotency_key="f3-writers-retry-exhaustion-retry",
+        )
+        retry_progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert retry_progress is not None
+        retry_lane = next(
+            lane for lane in retry_progress.lanes if lane.required_locale == "en"
+        )
+        assert retry_lane.run is not None and retry_lane.latest_job is not None
+        retry_lane.run.status = "running"
+        await session.flush()
+        retry_job = await operator_writer_worker.claim_or_reclaim_writer_job(
+            session,
+            worker_id="worker-retry-en-second",
+        )
+        assert retry_job is not None and retry_job.attempt == 2
+        await operator_writer_worker.fail_writer_job(
+            session,
+            job_id=retry_job.id,
+            worker_id="worker-retry-en-second",
+            failure_class="fixture_en_second_failure",
+            message="second bounded failure",
+        )
+        final_progress = await get_writer_lane_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=fixture.run.id,
+        )
+        assert final_progress is not None
+        vi_lane = next(lane for lane in final_progress.lanes if lane.required_locale == "vi-VN")
+        en_lane = next(lane for lane in final_progress.lanes if lane.required_locale == "en")
+        assert vi_lane.status == "completed"
+        assert vi_lane.draft is not None
+        assert en_lane.status == "failed"
+        assert en_lane.latest_job is not None and en_lane.latest_job.attempt == 2
+        exhausted = await get_operator_state(session, content_case_id=case_id)
+        assert exhausted.blocker_code == "operator_writer_retry_exhausted"
+        assert exhausted.primary_intent is None
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        retry_row = await session.get(OperatorCommand, retry.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert retry_row is not None
+        assert retry_row.status == "failed"
+        assert retry_row.error_code == "operator_writer_retry_exhausted"
+        vi_jobs = list(
+            (
+                await session.scalars(
+                    select(Job).where(Job.run_id == vi_lane.run.id)
+                )
+            ).all()
+        )
+        assert len(vi_jobs) == 1
+
+
+@pytest.mark.asyncio
+async def test_f3_legacy_writer_payload_keeps_pre_f3_shape_and_hash() -> None:
+    async with isolated_session() as session:
+        fixture = await _writer_fixture(session, locale="en")
+        handoff = fixture.writer_input.handoff_artifact
+        payload = cast(dict[str, object], handoff.content_json)
+        assert "outline_approval" not in payload
+        assert "outline_approval_ref" not in fixture.writer_input.model_input
+        expected = _writer_handoff_payload(
+            source_run=fixture.outline_fixture.run,
+            outline_artifact=fixture.outline_result.artifact,
+            locale_variant=fixture.writer_input.locale_variant,
+        )
+        assert payload == expected
+        assert handoff.content_hash == _canonical_hash(expected)
 
 
 @pytest.mark.asyncio
@@ -360,7 +607,7 @@ async def test_f3_symmetric_vi_failure_keeps_en_lane_and_blocks_without_retry() 
         fixture, _outline_result_value = await _f3_case(session)
         case_id = fixture.run.content_case_id
         initial = await resolve_next_operator_action(session, content_case_id=case_id)
-        await submit_operator_command(
+        parent = await submit_operator_command(
             session,
             content_case_id=case_id,
             intent="continue",
@@ -406,6 +653,10 @@ async def test_f3_symmetric_vi_failure_keeps_en_lane_and_blocks_without_retry() 
         blocked = await get_operator_state(session, content_case_id=case_id)
         assert blocked.status == "BLOCKED"
         assert blocked.primary_intent == "retry"
+        parent_row = await session.get(OperatorCommand, parent.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_writer_lane_failed"
         action = await resolve_next_operator_action(session, content_case_id=case_id)
         assert action.action_key == "outline_to_writers"
         assert action.intent == "retry"

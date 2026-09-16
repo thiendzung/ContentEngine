@@ -407,7 +407,23 @@ async def _writer_state_overlay(
                 ),
             }
         )
-    if progress.has_failed_lane:
+    if progress.has_exhausted_lane:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "BLOCKED",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "blocker_code": "operator_writer_retry_exhausted",
+                "blocker_message": (
+                    "Một hoặc nhiều lane Writer đã chạm giới hạn retry; cần xử lý thủ công."
+                ),
+                "last_checkpoint": (
+                    "Draft đã hoàn tất được giữ nguyên; lane Writer đã hết retry."
+                ),
+            }
+        )
+    if progress.has_retryable_failed_lane:
         return state.model_copy(
             update={
                 **common,
@@ -419,6 +435,18 @@ async def _writer_state_overlay(
                     "Một hoặc nhiều lane Writer thất bại; chỉ lane lỗi được phép thử lại."
                 ),
                 "last_checkpoint": "Draft đã hoàn tất được giữ nguyên; lane lỗi chưa được retry.",
+            }
+        )
+    if progress.has_failed_lane:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "BLOCKED",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "blocker_code": "operator_writer_lane_failed",
+                "blocker_message": "Lane Writer thất bại ở trạng thái không thể retry an toàn.",
+                "last_checkpoint": "Lane Writer thất bại; không có retry an toàn được quảng cáo.",
             }
         )
     return state.model_copy(update=common)
@@ -524,7 +552,12 @@ async def resolve_next_operator_action(
         )
 
     if writer_progress is not None and writer_progress.dispatched:
-        retryable = state.primary_intent == "retry"
+        exhausted = writer_progress.has_exhausted_lane
+        retryable = (
+            not exhausted
+            and writer_progress.has_retryable_failed_lane
+            and state.primary_intent == "retry"
+        )
         return ResolvedOperatorAction(
             content_case_id=content_case_id,
             state_version=state.state_version,
@@ -534,7 +567,11 @@ async def resolve_next_operator_action(
             executable=retryable,
             current_run_id=writer_progress.source_run.id,
             current_step_run_id=state.current_step_run_id,
-            blocker_code=state.blocker_code,
+            blocker_code=(
+                "operator_writer_retry_exhausted"
+                if exhausted
+                else state.blocker_code
+            ),
         )
 
     if (
@@ -887,6 +924,8 @@ async def _submit_outline_to_writers_command(
         raise OperatorControlError("operator_internal_action_not_approved")
     if intent == "continue" and not resolved.executable:
         raise OperatorControlError("operator_intent_not_allowed")
+    if intent == "retry" and resolved.blocker_code == "operator_writer_retry_exhausted":
+        raise OperatorControlError("operator_writer_retry_exhausted")
     if intent == "retry" and resolved.intent != "retry":
         raise OperatorControlError("operator_retry_requires_failed_writer_lane")
     progress = await get_writer_lane_progress(
@@ -930,7 +969,14 @@ async def _submit_outline_to_writers_command(
                 raise OperatorControlError("operator_writer_run_conflict")
             lanes = list(progress.lanes)
         else:
-            lanes = [lane for lane in progress.lanes if lane.status == "failed"]
+            lanes = [
+                lane
+                for lane in progress.lanes
+                if lane.status == "failed"
+                and lane.latest_job is not None
+                and lane.latest_job.status in {"failed", "cancelled"}
+                and lane.latest_job.attempt < WRITER_MAX_JOB_ATTEMPTS
+            ]
             if not lanes:
                 raise OperatorControlError("operator_writer_retry_lane_missing")
         for lane in lanes:

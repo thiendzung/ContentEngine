@@ -9,10 +9,12 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.operator_control import OperatorState
 from app.modules.content_engine.journal.operator_runtime import get_operator_state
 from app.modules.content_engine.journal.operator_writers import (
     WRITER_MAX_JOB_ATTEMPTS,
     WRITER_STEP_BY_LOCALE,
+    WriterLaneProgress,
     exact_outline_approval,
     get_writer_lane_progress,
     pending_writer_commands,
@@ -63,6 +65,41 @@ class WriterWorkerExecutionResult:
     draft_artifact_id: UUID
     draft_artifact_hash: str
     state_version: str
+
+
+async def _settle_writer_commands(
+    session: AsyncSession,
+    *,
+    progress: WriterLaneProgress | None,
+    state: OperatorState,
+    content_case_id: UUID,
+) -> None:
+    """Settle queued fan-out commands from the aggregate lane state."""
+
+    if progress is None or progress.has_active_job:
+        return
+    if progress.all_complete:
+        for command in await pending_writer_commands(
+            session,
+            content_case_id=content_case_id,
+        ):
+            command.status = "completed"
+            command.state_after = state.state_version
+            command.error_code = None
+        return
+    if progress.has_failed_lane:
+        error_code = (
+            "operator_writer_retry_exhausted"
+            if progress.has_exhausted_lane
+            else "operator_writer_lane_failed"
+        )
+        for command in await pending_writer_commands(
+            session,
+            content_case_id=content_case_id,
+        ):
+            command.status = "failed"
+            command.error_code = error_code
+            command.state_after = state.state_version
 
 
 async def _claim_new_writer_job(
@@ -357,14 +394,12 @@ async def execute_writer_job(
         source_run_id=source_run_id,
     )
     state = await get_operator_state(session, content_case_id=run.content_case_id)
-    if progress is not None and progress.all_complete:
-        for command in await pending_writer_commands(
-            session,
-            content_case_id=run.content_case_id,
-        ):
-            command.status = "completed"
-            command.state_after = state.state_version
-            command.error_code = None
+    await _settle_writer_commands(
+        session,
+        progress=progress,
+        state=state,
+        content_case_id=run.content_case_id,
+    )
     await session.flush()
     return WriterWorkerExecutionResult(
         job_id=job.id,
@@ -421,14 +456,12 @@ async def fail_writer_job(
         content_case_id=run.content_case_id,
         source_run_id=state.current_run_id,
     )
-    if progress is not None and progress.has_failed_lane and not progress.has_active_job:
-        for command in await pending_writer_commands(
-            session,
-            content_case_id=run.content_case_id,
-        ):
-            command.status = "failed"
-            command.error_code = safe_class
-            command.state_after = state.state_version
+    await _settle_writer_commands(
+        session,
+        progress=progress,
+        state=state,
+        content_case_id=run.content_case_id,
+    )
     await session.flush()
     return job
 
