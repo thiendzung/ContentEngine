@@ -1,8 +1,7 @@
 """Canonical Journal operator runtime authority.
 
-This module is the stable entrypoint for operator state, semantic commands and safe
-server-side continuation resolution. Older implementation modules remain compatibility
-layers only; production callers should import from here rather than versioned adapters.
+The UI submits semantic intent only. This module derives the one safe next action from
+persisted state and owns durable command creation for operator continuations.
 """
 
 from __future__ import annotations
@@ -79,7 +78,7 @@ _F2_EXECUTABLE_CONTINUATIONS = {"angle"}
 
 
 class ResolvedOperatorAction(BaseModel):
-    """The only backend-derived next action for the current durable case state."""
+    """The backend-derived next action for one durable Journal case state."""
 
     content_case_id: UUID
     state_version: str
@@ -100,7 +99,7 @@ def _command_hash(
     state_version: str,
     action_key: str,
 ) -> str:
-    payload = json.dumps(
+    raw = json.dumps(
         {
             "content_case_id": str(content_case_id),
             "intent": intent,
@@ -110,7 +109,7 @@ def _command_hash(
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    return hashlib.sha256(raw).hexdigest()
 
 
 async def _latest_job(session: AsyncSession, *, step_run_id: UUID) -> Job | None:
@@ -146,6 +145,8 @@ async def _validate_outline_runtime(
     run: ContentRun,
     approval: AngleApproval,
 ) -> None:
+    """Fail before enqueue when exact Outline inputs/config are not resolvable."""
+
     try:
         outline_input = await load_outline_input(
             session,
@@ -158,6 +159,7 @@ async def _validate_outline_runtime(
         )
     except OutlineGenerationError as exc:
         raise OperatorControlError("operator_outline_input_invalid", exc.code) from exc
+
     snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
     if snapshot is None:
         raise OperatorControlError("operator_outline_settings_missing")
@@ -170,6 +172,7 @@ async def _validate_outline_runtime(
         raise OperatorControlError("operator_outline_route_invalid") from exc
     if route.primary.provider != "codex_cli" or not route.primary.model.strip():
         raise OperatorControlError("operator_outline_route_not_allowed")
+
     try:
         await active_prompt_definition(session, prompt_key=OUTLINE_PROMPT_KEY)
         await active_recipe_definition(
@@ -188,11 +191,18 @@ async def _outline_state_overlay(
     *,
     state: OperatorState,
 ) -> OperatorState:
+    """Add bounded manual-retry semantics for the F2 Outline step."""
+
     if state.current_run_id is None or state.current_step_run_id is None:
         return state
-    step = await session.get(StepRun, state.current_step_run_id)
     run = await session.get(ContentRun, state.current_run_id)
-    if step is None or run is None or step.run_id != run.id or step.step_key != OUTLINE_TASK_KEY:
+    step = await session.get(StepRun, state.current_step_run_id)
+    if (
+        run is None
+        or step is None
+        or step.run_id != run.id
+        or step.step_key != OUTLINE_TASK_KEY
+    ):
         return state
     job = await _latest_job(session, step_run_id=step.id)
     if (
@@ -300,12 +310,12 @@ async def resolve_next_operator_action(
     if state.blocker_code == "operator_gate_already_decided":
         if run is None or run.current_step not in _GATE_CONTINUATIONS:
             raise OperatorControlError("operator_next_action_state_conflict")
-        action_key = _GATE_CONTINUATIONS[run.current_step]
+        gate_action: OperatorActionKey = _GATE_CONTINUATIONS[run.current_step]
         return ResolvedOperatorAction(
             content_case_id=content_case_id,
             state_version=state.state_version,
             status=state.status,
-            action_key=action_key,
+            action_key=gate_action,
             intent="continue",
             executable=run.current_step in _F2_EXECUTABLE_CONTINUATIONS,
             current_run_id=run.id,
@@ -316,14 +326,14 @@ async def resolve_next_operator_action(
     if state.primary_intent is not None:
         if state.primary_intent not in state.allowed_intents or step is None:
             raise OperatorControlError("operator_next_action_state_conflict")
-        action_key = _ACTION_BY_STAGE.get(step.step_key)
-        if action_key is None:
+        runnable_action = _ACTION_BY_STAGE.get(step.step_key)
+        if runnable_action is None:
             raise OperatorControlError("operator_next_action_not_allowlisted")
         return ResolvedOperatorAction(
             content_case_id=content_case_id,
             state_version=state.state_version,
             status=state.status,
-            action_key=action_key,
+            action_key=runnable_action,
             intent=state.primary_intent,
             executable=True,
             current_run_id=state.current_run_id,
@@ -334,14 +344,14 @@ async def resolve_next_operator_action(
     if state.status in {"QUEUED", "RUNNING"}:
         if step is None:
             raise OperatorControlError("operator_next_action_state_conflict")
-        action_key = _ACTION_BY_STAGE.get(step.step_key)
-        if action_key is None:
+        active_action = _ACTION_BY_STAGE.get(step.step_key)
+        if active_action is None:
             raise OperatorControlError("operator_next_action_state_conflict")
         return ResolvedOperatorAction(
             content_case_id=content_case_id,
             state_version=state.state_version,
             status=state.status,
-            action_key=action_key,
+            action_key=active_action,
             executable=False,
             current_run_id=state.current_run_id,
             current_step_run_id=step.id,
@@ -421,13 +431,13 @@ async def _submit_angle_to_outline_command(
         raise OperatorControlError("operator_retry_requires_failed_job")
     if resolved.current_run_id is None:
         raise OperatorControlError("operator_runnable_step_missing")
+
     run = await session.get(ContentRun, resolved.current_run_id)
     if run is None or run.content_case_id != content_case_id:
         raise OperatorControlError("operator_next_action_state_conflict")
     approval = await _angle_approval(session, run_id=run.id)
     await _validate_outline_runtime(session, run=run, approval=approval)
 
-    step: StepRun
     previous_job: Job | None = None
     if intent == "continue":
         if run.status != "waiting_approval" or run.current_step != "angle":
@@ -465,9 +475,14 @@ async def _submit_angle_to_outline_command(
     else:
         if resolved.current_step_run_id is None:
             raise OperatorControlError("operator_runnable_step_missing")
-        step = await session.get(StepRun, resolved.current_step_run_id)
-        if step is None or step.run_id != run.id or step.step_key != OUTLINE_TASK_KEY:
+        retry_step = await session.get(StepRun, resolved.current_step_run_id)
+        if (
+            retry_step is None
+            or retry_step.run_id != run.id
+            or retry_step.step_key != OUTLINE_TASK_KEY
+        ):
             raise OperatorControlError("operator_next_action_state_conflict")
+        step = retry_step
         previous_job = await _latest_job(session, step_run_id=step.id)
         if intent == "retry" and (
             previous_job is None or previous_job.status not in {"failed", "cancelled"}
@@ -503,12 +518,12 @@ async def _submit_angle_to_outline_command(
         command.job_id = previous_job.id
         command.status = "cancelled"
     else:
-        dedupe = f"operator:{hashlib.sha256(f'{command.id}:{key}'.encode()).hexdigest()}"
+        dedupe_payload = f"{command.id}:{key}".encode("utf-8")
         queued = await enqueue_job(
             session,
             run_id=run.id,
             step_run_id=step.id,
-            dedupe_key=dedupe,
+            dedupe_key=f"operator:{hashlib.sha256(dedupe_payload).hexdigest()}",
         )
         if intent == "retry" and previous_job is not None:
             queued.attempt = previous_job.attempt + 1
@@ -563,6 +578,7 @@ async def submit_operator_command(
             idempotency_key=idempotency_key,
             actor_id=actor_id,
         )
+
     return await _submit_operator_command_impl(
         session,
         content_case_id=content_case_id,
