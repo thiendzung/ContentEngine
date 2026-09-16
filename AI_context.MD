@@ -1,34 +1,39 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-15. Exact canonical filename: `AI_context.MD`.
+Updated: 2026-09-16. Exact canonical filename: `AI_context.MD`.
 
 ## Read and synchronize first
 
-Inspect local changes -> fetch origin -> synchronize the exact assigned ref without destructive reset -> require clean tree and matching SHA -> read local `AGENTS.md`, this file, `docs/TASKS.md`, `docs/CHECKLIST.md` and the exact task. GitHub live refs/PRs/CI are dynamic truth; do not reuse old chat status.
+Inspect local changes -> fetch origin -> synchronize the exact assigned ref without destructive reset -> require clean tree and matching SHA -> read local `AGENTS.md`, this file, `docs/TASKS.md`, `docs/CHECKLIST.md` and the exact task/log.
 
-Founder dispatches tasks and owns product/editorial decisions and merges. MG owns architecture/coding/review. Agent Local executes exact local verification/runtime tasks and returns evidence. The production UI is for content production, not coding-repo task management.
+GitHub live refs/PRs/CI are dynamic truth. Founder dispatches work and owns product/editorial decisions and merges. MG owns architecture/coding/review. Agent Local owns exact Founder-machine/local verification/runtime proof and returns evidence. Never treat a planned task or a docs branch as execution permission.
 
 ## V1 objective
 
-Finish a normal browser-driven MOTGU Journal path:
+Finish one normal browser-driven MOTGU Journal path:
 
-`manual intake -> preflight -> Start -> Angle approval -> Outline approval -> independent VI/EN Writer -> review/audit -> final approval -> canonical approved ContentVersions`
+`manual intake -> preflight -> Start -> Angle approval -> Outline approval -> independent VI/EN Writer -> bounded review/audit -> final approval -> canonical approved ContentVersions`
 
 with durable recovery, retry/idempotency, backup/restore and operational migration safety.
 
 Publishing/WordPress automation, Artwork Engine, full CE06 expansion, vector DB, Antigravity production execution and native Codex multi-agent are not V1 blockers.
 
-Current completion roadmap:
+Current completion plan and shared-state log:
 
-`docs/logs/2026-09-15-contentengine-v1-completion-roadmap.md`
+- `docs/logs/2026-09-16-shared-state-sync-and-v1-completion-plan.md`
+- `docs/logs/2026-09-15-contentengine-v1-completion-roadmap.md`
 
-## Main / merged foundation
+## Current GitHub truth
 
-Current `main` remains at PR #92 merge:
+### Main
 
-`62e2910c7c327837995114cdb5f4783949304ba0`
+Current `main`:
 
-Proven merged path already includes:
+`77ad5fe329fbae577c6598f59ef63742fa782c3f`
+
+This already contains the linear K1-K6 knowledge stack plus Model Routing Policy v1 through merged PR #100.
+
+Merged/proven foundation includes:
 
 - M1 one real bilingual Journal pass through approved ContentVersions, no publish;
 - Review Console + approval actions + Production Board;
@@ -36,140 +41,154 @@ Proven merged path already includes:
 - durable controlled delegation telemetry;
 - repo-aware bounded orchestration;
 - OPS-01 local safety, deterministic test DB, backup/restore;
-- OPS-02 operator-control foundation;
-- PR4.5 real Founder intake -> Start -> research/context/Angle -> WAIT_HUMAN vertical slice.
+- OPS-02 operator control;
+- PR4.5 Founder intake -> Start -> real research/context/Angle -> WAIT_HUMAN;
+- K1 Topic Graph, K2 Freshness, K3 Harvest, K4 Coverage Planner, K5 KnowledgeBrief, K6 exact Journal binding;
+- Model Routing Policy v1 implementation and audit/budget guards.
 
-Operational schema at the last approved merge is `20260914_0027` until Founder explicitly authorizes later migration.
+Operational DB remains at the last explicitly approved operational schema `20260914_0027`. Migrations `20260915_0028` through `20260915_0034` are on `main` but are not assumed to be operationally applied until Founder authorizes the guarded migration.
 
-## Open implementation status
+### UI-01 / PR #93
 
-### UI-01 — PR #93
+PR #93 `UI-01: Journal Operator Console` remains **DRAFT**.
 
-Status: GitHub implementation proof complete, Draft.
+Exact current head:
 
-- exact reviewed head `aaefcd303dba86697c288b4fbe9ff07fc59474be`;
-- CI #955 PASS;
-- browser flow covers preflight -> manual intake -> Start -> polling -> AWAITING_APPROVAL(angle) -> inspect/select/approve exact Angle;
-- one Founder-machine synthetic browser acceptance is authorized but unconsumed;
-- must be re-integrated onto final main after the knowledge/runtime stack lands before that local proof is consumed.
+`16d2d2ac101cb016566bc6d52ec923fab4560b97`
 
-### Knowledge stack — PR #94 -> #99
+GitHub CI #1001 / run `35049304268`: **PASS**.
 
-All are implementation-proven stacked Draft PRs:
+UI-01 currently exposes:
 
-- #94 K1 Topic Graph — migration `0028`;
-- #95 K2 Freshness — `0029`;
-- #96 K3 Knowledge Harvest — `0030`;
-- #97 K4 Coverage Planner — `0031`;
-- #98 K5 KnowledgeBrief — `0032`;
-- #99 K6 Journal KnowledgeBrief Binding — `0033`, exact head `c929354697bd8f2259fdbf9f5d04426be66030d2`, CI #973 PASS.
+`preflight -> manual intake -> Start -> polling/refresh -> AWAITING_APPROVAL(angle) -> inspect/select exact Angle -> exact Angle approval`
 
-K6 now proves the real path:
+and intentionally stops before Outline/Writer.
 
-`operator Start -> immutable ContentRun/KnowledgeBrief binding -> queued Job -> worker revalidation -> Journal context v2 -> typed ContextManifest ref -> actual Angle model input`.
+Browser acceptance #1 reached the real worker on head `fae1e8d6a1955d7a718236c7cd4dae0cbada522a` and failed with:
 
-KnowledgeBrief model-bound payload is capped at 32 KiB canonical UTF-8 JSON and fails closed if oversized. K6 never guesses a latest/current brief. Existing EvidenceSet and OriginalityPack factual authority remain mandatory.
+`angle_model_output_invalid: bounded retries exhausted (angle_originality_ref_outside_pack)`
 
-### Model Routing Policy v1 — PR #100
+That authorization is consumed. No AngleApproval, Outline/Writer, publish or operational DB mutation resulted.
 
-Status: implementation proof complete before current docs-only synchronization; Draft.
+Root cause was an ambiguous reference namespace at model generation time. The current head fixes it without weakening validation:
 
-Runtime reviewed head before docs sync:
+- rendered Angle contract exposes the exact evidence/originality ref allow-list;
+- exact refs are bound into the per-call JSON schema as enums;
+- deterministic downstream membership validation remains fail-closed;
+- bounded retry receives an explicit correction instruction;
+- rejected-reference diagnostics are bounded and do not persist raw model prose.
 
-`e88e0234e12f7772c6b63efa21a1089567add7df`
+Founder explicitly authorized **browser acceptance #2** on exact head `16d2d2ac...`. It is **UNCONSUMED** until the new browser-created Job is actually claimed by the persistent worker. Once claimed it is consumed regardless of PASS/FAIL. No second Start/retry is authorized after a terminal failure under that one-run authorization.
 
-CI #975 PASS.
+Agent Local has been asked to perform a fresh read-only state reconciliation before the next runtime action. Until a newer local report is returned, use only already-recorded Agent Local evidence plus live GitHub truth; do not invent local state.
 
-Migration chain is linear:
+## Architectural assessment
 
-`0027 -> K1 0028 -> K2 0029 -> K3 0030 -> K4 0031 -> K5 0032 -> K6 0033 -> Model Routing 0034`.
+The remaining V1 gap is integration, not a missing engine.
 
-Policy semantics:
+Existing backend already contains domain contracts for:
 
-- legacy direct/named routes remain valid;
-- new policy/capability routing is deterministic;
-- provider/model selection stays server-side;
-- escalation requires explicit allowed reason and bounded candidate index;
-- per-StepRun model-call count budget is enforced before external execution;
-- immutable `ModelRouteDecision` audit binds exact SettingsSnapshot/ContextManifest/ModelCall identity;
-- routed ModelCall identity cannot later be rewritten/deleted, while execution telemetry remains mutable;
-- Codex native `multi_agent` remains disabled;
-- no active model policy/model names are seeded or activated by this PR.
+- exact Angle approval;
+- exact Outline approval;
+- final review decisions;
+- VI/EN Writer paths;
+- bounded review/revise;
+- assertion/source-copy quality checks;
+- durable Jobs, StepRuns, approvals, idempotency, telemetry and recovery primitives.
 
-Current branch also carries the V1 completion roadmap docs. Any docs sync commit after CI #975 requires a fresh exact-head CI before merge disposition.
+Current operator execution is only partially wired into those existing contracts. `start_to_angle` is the active browser vertical slice; the older generic operator control only has one proven executable stage (`review_revise_en`). After a gate is approved the backend can still return `operator_gate_already_decided` / `operator_action_not_wired` because the safe next StepRun/Job is not yet materialized.
 
-## Current exact execution order
+The frontend gap mirrors this: UI-01 renders Angle only. The Production Board and older Review Console already exist, but the Founder still lacks one continuous case workspace for Outline, VI/EN progress, quality blockers, final review and recovery.
 
-### C1 — integrate knowledge/runtime stack
+Therefore do **not** add a new workflow engine, provider, agent framework, Redis/Celery, native Codex multi-agent or Antigravity merely to finish V1. Extend the existing bounded operator state machine and reuse proven domain services.
 
-Fixed merge order:
+## Current execution order
 
-`#94 -> #95 -> #96 -> #97 -> #98 -> #99 -> #100`
+### S0 - Agent Local state reconciliation
 
-For every PR: predecessor first, retarget/rebase as needed, exact-head CI PASS, no operational migration and no opportunistic feature changes.
+Read-only only. Confirm exact local refs/worktrees, isolated test DB, acceptance #1 evidence retention, exact-head backend ownership, test Angle activation/preflight state and docs drift. No browser Start/worker/model call.
 
-### C2 — re-integrate UI-01
+### S1 - UI-01 browser acceptance #2
 
-After #100 is on main, rebase/merge final main into #93, resolve only real operator/API conflicts with K6, preserve backend workflow authority, then rerun full CI.
+On exact PR #93 head only:
 
-### C3 — Agent Local browser acceptance
+- dedicated isolated `contentengine_test`;
+- migration `20260915_0034`;
+- guarded test Angle activation using the already-authorized exact model/approver;
+- Journal operator preflight overall `READY`;
+- synthetic intake;
+- browser Start exactly once;
+- persistent worker claims exactly one Job;
+- polling/refresh recovery;
+- real Angle candidates;
+- select one exact candidate and persist exact `AngleApproval`;
+- STOP before Outline/Writer.
 
-Only after the final #93 head is frozen:
+PASS is required before UI-01 is merge-ready.
 
-- dedicated `contentengine_test` only;
-- exact clean head;
-- migration head `0034`;
-- guarded test Angle runtime activation with explicit model + approver;
-- real browser Start once + persistent worker;
-- refresh/poll recovery;
-- exact Angle inspection/approval persisted;
-- stop before Outline/Writer;
-- no operational DB mutation.
+### S2 - Merge UI-01 + state/docs closeout
 
-### C4 — operational migration
+After acceptance PASS: update PR status/evidence, run exact-head CI if head changes, Founder review/merge, then sync main docs. Keep docs-only synchronization separate from the frozen acceptance head.
 
-Only with explicit Founder authorization:
+### S3 - Operational migration to `0034`
 
-- fresh backup;
-- disposable restore verification;
-- freeze M1 counts/hashes;
-- migrate `0027 -> 0034`;
-- post-migration preflight;
-- prove frozen M1 unchanged;
-- no worker/model/research/publish during migration proof.
+Founder-authorized only: fresh backup -> disposable restore verification -> freeze M1 counts/hashes -> guarded `0027 -> 0034` migration -> preflight -> prove M1 unchanged. No worker/model/research/publish during migration proof.
 
-### C5 — activate Model Routing Policy
+### S4 - Model Routing activation
 
-Separate explicit approved SettingsVersion change after test proof. Founder chooses exact model/provider allowlist. Do not mutate historical SettingsVersion and do not infer defaults.
+Separate immutable SettingsVersion change after test proof. Founder chooses exact provider/model policy. No historical SettingsVersion mutation and no automatic guessed defaults.
 
-### C6 — Angle -> Outline operator continuation
+### S5 - Backend continuation to Outline
 
-Wire only the safe next stage after exact Angle approval, execute existing Outline path through durable queue/orchestration and stop at mandatory Outline human gate.
+One bounded PR:
 
-### C7 — Outline -> bilingual final gate
+`approved Angle -> derive/materialize exact Outline step -> queue durable Job -> existing Outline generator -> WAIT_HUMAN(outline) -> exact Outline approval`
 
-Wire independent VI/EN Writer, bounded review/revise, audits and exact final human gate; final approval persists canonical ContentVersions. No publish.
+Prove refresh, restart, stale-state rejection, exact replay and bounded retry. Do not cross the human gate automatically.
 
-### C8 — UI-02 full case workspace
+### S6 - Backend continuation to bilingual final gate
 
-Expose persisted progress, three human gates and recovery actions without internal stage/provider/model selectors.
+One or two bounded PRs, reusing existing VI/EN Writer and quality contracts:
 
-### C9 — real M2 + M3 pilot
+`approved Outline -> independent VI + EN -> bounded review/revise -> assertion/source-copy checks -> final artifacts/package -> WAIT_HUMAN(final_review) -> final approval -> canonical approved ContentVersions`
 
-Run two more distinct bilingual Journal cases. Capture repeated failures, edit burden, model calls, latency and operator friction. Only repeated observed failures become hardening work.
+No publish.
 
-### C10 — CE05 V1 closeout
+### S7 - UI-02 unified case workspace
 
-Targeted critical regressions, real resume/replay proof, metrics baseline and final state/documentation sync.
+Extend the operator case workspace instead of creating another competing UI. One case page should show:
+
+- stage/status and semantic next action;
+- three human gates: Angle, Outline, final;
+- VI and EN lane progress independently;
+- quality pass/warn/fail summary and actionable blocker text;
+- retry/resume/cancel only when backend advertises them;
+- durable activity/worker history from persisted telemetry;
+- technical IDs/hashes hidden under details, not primary UX;
+- clear refresh/restart recovery.
+
+Production Board remains the portfolio/queue view and opens the unified operator workspace for operator-managed cases.
+
+### S8 - M2 + M3 pilot
+
+Run two additional distinct bilingual Journals through the stable browser path. Capture repeated failure classes, human edit burden, model calls, latency and operator friction. Only repeated observed failures become hardening work.
+
+### S9 - CE05 V1 closeout
+
+Targeted regressions from observed failures, real resume/replay proof, metrics baseline and final state/documentation synchronization.
+
+## V1 definition of done
+
+V1 is complete when Founder can operate a normal Journal from browser intake through approved VI/EN ContentVersions without CLI/DB intervention in the normal path; all three human gates are durable; refresh/restart/retry are safe; operational migration/recovery is proven; and M1/M2/M3 provide real evidence that the workflow is stable enough for routine use.
 
 ## Standing rules
 
 - exactly three mandatory human content gates: Angle, Outline, final content;
-- no publish/WordPress without separate Founder decision;
+- backend is workflow authority; frontend never chooses stage/provider/model/prompt/recipe/worker;
 - no automatic latest KnowledgeBrief selection;
-- no frontend provider/model/stage/prompt/recipe/worker selection;
+- no publish/WordPress without separate Founder decision;
 - no broad autonomous full-Journal mode before bounded continuation stages are proven;
-- no generic workflow engine merely to express current flow;
+- no generic workflow engine merely to express the current bounded flow;
 - no native Codex multi-agent or Antigravity production activation without separate proof;
 - preserve fail-closed evidence/provenance/idempotency/audit semantics;
 - do not mutate frozen M1 merely to improve historical neatness;
