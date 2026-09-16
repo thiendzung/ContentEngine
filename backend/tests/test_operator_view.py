@@ -61,7 +61,7 @@ async def test_operator_view_projects_ready_intake_without_inventing_gate(
         assert view.intake.research_country == "vn"
         assert [(item.locale, item.role) for item in view.intake.required_locales] == [
             ("en", "source"),
-            ("vi", "translation"),
+            ("vi-VN", "translation"),
         ]
         board = await list_production_board_cases(session)
         board_row = next(item for item in board if item.id == created.content_case_id)

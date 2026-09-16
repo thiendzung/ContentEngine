@@ -35,6 +35,13 @@ from app.modules.content_engine.journal.operator_worker import (
     fail_start_to_angle_job,
     heartbeat_operator_job,
 )
+from app.modules.content_engine.journal.operator_writer_worker import (
+    OperatorWriterWorkerError,
+    claim_or_reclaim_writer_job,
+    execute_writer_job,
+    fail_writer_job,
+)
+from app.modules.content_engine.journal.operator_writers import WRITER_STEP_BY_LOCALE
 from app.modules.content_engine.journal.outline_agent_bridge import OUTLINE_TASK_KEY
 from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun, StepRun
@@ -153,12 +160,22 @@ async def _claim_job(*, worker_id: str) -> tuple[UUID, str] | None:
                     lease_seconds=_LEASE_SECONDS,
                 )
             if job is None:
+                job = await claim_or_reclaim_writer_job(
+                    session,
+                    worker_id=worker_id,
+                    lease_seconds=_LEASE_SECONDS,
+                )
+            if job is None:
                 return None
             run = await session.get(ContentRun, job.run_id)
             step = await session.get(StepRun, job.step_run_id)
             if run is None or step is None or step.run_id != run.id:
                 raise OperatorWorkerError("operator_worker_binding_invalid")
-            if step.step_key not in {START_TO_ANGLE_STAGE, OUTLINE_TASK_KEY}:
+            if step.step_key not in {
+                START_TO_ANGLE_STAGE,
+                OUTLINE_TASK_KEY,
+                *WRITER_STEP_BY_LOCALE.values(),
+            }:
                 raise OperatorWorkerError("operator_worker_stage_not_allowed")
             if run.status == "pending":
                 await transition_run(session, run_id=run.id, status="running")
@@ -200,10 +217,19 @@ async def _run(*, emit_idle: bool = True) -> None:
                             evidence_workflow=workflow,
                             runner_registry=registry,
                         )
-        else:
+        elif step_key == OUTLINE_TASK_KEY:
             async with SessionLocal() as session:
                 async with session.begin():
                     result = await execute_outline_job(
+                        session,
+                        job_id=job_id,
+                        worker_id=worker_id,
+                        runner_registry=registry,
+                    )
+        else:
+            async with SessionLocal() as session:
+                async with session.begin():
+                    result = await execute_writer_job(
                         session,
                         job_id=job_id,
                         worker_id=worker_id,
@@ -229,7 +255,7 @@ async def _run(*, emit_idle: bool = True) -> None:
                         failure_class=failure_class,
                         message=str(exc)[:2000],
                     )
-        else:
+        elif step_key == START_TO_ANGLE_STAGE:
             failure_class = (
                 "insufficient_evidence"
                 if isinstance(exc, OperatorWorkerError) and "evidence" in exc.code
@@ -238,6 +264,21 @@ async def _run(*, emit_idle: bool = True) -> None:
             async with SessionLocal() as session:
                 async with session.begin():
                     await fail_start_to_angle_job(
+                        session,
+                        job_id=job_id,
+                        worker_id=worker_id,
+                        failure_class=failure_class,
+                        message=str(exc)[:2000],
+                    )
+        else:
+            failure_class = (
+                exc.code
+                if isinstance(exc, OperatorWriterWorkerError)
+                else "writer_generation_failed"
+            )
+            async with SessionLocal() as session:
+                async with session.begin():
+                    await fail_writer_job(
                         session,
                         job_id=job_id,
                         worker_id=worker_id,
@@ -263,11 +304,19 @@ async def _run(*, emit_idle: bool = True) -> None:
                 "outline_artifact_hash": result.outline_artifact_hash,
             }
         )
-    else:
+    elif step_key == START_TO_ANGLE_STAGE:
         payload.update(
             {
                 "angle_artifact_id": str(result.angle_artifact_id),
                 "angle_artifact_hash": result.angle_artifact_hash,
+            }
+        )
+    else:
+        payload.update(
+            {
+                "locale": result.locale,
+                "draft_artifact_id": str(result.draft_artifact_id),
+                "draft_artifact_hash": result.draft_artifact_hash,
             }
         )
     print(json.dumps(payload, sort_keys=True))

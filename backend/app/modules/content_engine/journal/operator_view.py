@@ -22,6 +22,7 @@ from app.modules.content_engine.journal.angle import (
 )
 from app.modules.content_engine.journal.models import JournalIntakeSpec, JournalRequiredLocale
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
+from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact
 from app.modules.harness.persistence import get_latest_checkpoint
@@ -81,6 +82,18 @@ class OperatorOutlineGateView(BaseModel):
     outline: dict[str, object]
 
 
+class OperatorWriterLaneView(BaseModel):
+    required_locale: str
+    status: Literal["pending", "queued", "running", "completed", "failed"]
+    run_id: UUID | None = None
+    step_run_id: UUID | None = None
+    job_id: UUID | None = None
+    attempt: int | None = None
+    draft_artifact_id: UUID | None = None
+    draft_version: int | None = None
+    draft_hash: str | None = None
+
+
 class OperatorCaseView(BaseModel):
     content_case_id: UUID
     question: str
@@ -92,6 +105,7 @@ class OperatorCaseView(BaseModel):
     state: OperatorState
     intake: OperatorIntakeView
     pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
+    writer_lanes: list[OperatorWriterLaneView] = Field(default_factory=list)
 
 
 def _bundle_ref(artifact: Artifact) -> tuple[UUID, int, str]:
@@ -275,6 +289,27 @@ async def get_operator_case_view(
             pending_gate = await _angle_gate(session, state=state)
         elif state.human_gate == "outline":
             pending_gate = await _outline_gate(session, state=state)
+    writer_progress = await get_writer_lane_progress(
+        session,
+        content_case_id=content_case.id,
+        source_run_id=state.current_run_id,
+    )
+    writer_lanes = []
+    if writer_progress is not None:
+        writer_lanes = [
+            OperatorWriterLaneView(
+                required_locale=lane.required_locale,
+                status=lane.status,  # type: ignore[arg-type]
+                run_id=lane.run.id if lane.run else None,
+                step_run_id=lane.step.id if lane.step else None,
+                job_id=lane.latest_job.id if lane.latest_job else None,
+                attempt=lane.latest_job.attempt if lane.latest_job else None,
+                draft_artifact_id=lane.draft.id if lane.draft else None,
+                draft_version=lane.draft.version if lane.draft else None,
+                draft_hash=lane.draft.content_hash if lane.draft else None,
+            )
+            for lane in writer_progress.lanes
+        ]
     return OperatorCaseView(
         content_case_id=content_case.id,
         question=opportunity.question,
@@ -293,6 +328,7 @@ async def get_operator_case_view(
             ],
         ),
         pending_gate=pending_gate,
+        writer_lanes=writer_lanes,
     )
 
 
@@ -304,5 +340,6 @@ __all__ = [
     "OperatorOutlineArtifactView",
     "OperatorOutlineGateView",
     "OperatorRequiredLocaleView",
+    "OperatorWriterLaneView",
     "get_operator_case_view",
 ]
