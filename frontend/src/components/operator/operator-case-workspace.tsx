@@ -141,9 +141,10 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     return () => window.clearInterval(timer);
   }, [refresh, view]);
 
+  const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
   const selectedAngle = useMemo(
-    () => view?.pending_gate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null,
-    [selectedAngleId, view],
+    () => angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null,
+    [angleGate, selectedAngleId],
   );
 
   async function submitIntent(intent: OperatorIntent) {
@@ -173,9 +174,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   async function submitAngleApproval() {
-    if (!view?.pending_gate || !selectedAngle || submitting) return;
+    if (!view || !angleGate || !selectedAngle || submitting) return;
     const state = view.state;
-    const artifact = view.pending_gate.artifact;
+    const artifact = angleGate.artifact;
     const keyScope = mutationKey(
       caseId,
       state.state_version,
@@ -320,7 +321,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         )}
       </section>
 
-      {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && view.pending_gate && (
+      {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
         <section className="operator-panel angle-review-panel">
           <div className="operator-panel-heading">
             <div>
@@ -330,7 +331,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             <span className="operator-note">Chọn một candidate đã được backend khóa hash.</span>
           </div>
           <div className="angle-grid">
-            {view.pending_gate.candidates.map((candidate) => (
+            {angleGate.candidates.map((candidate) => (
               <AngleCard
                 candidate={candidate}
                 key={candidate.angle_id}
@@ -361,9 +362,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <details className="operator-technical-details artifact-details">
             <summary>Snapshot Angle</summary>
             <dl>
-              <div><dt>Artifact</dt><dd>{view.pending_gate.artifact.id}</dd></div>
-              <div><dt>Version</dt><dd>{view.pending_gate.artifact.version}</dd></div>
-              <div><dt>Hash</dt><dd>{view.pending_gate.artifact.content_hash}</dd></div>
+              <div><dt>Artifact</dt><dd>{angleGate.artifact.id}</dd></div>
+              <div><dt>Version</dt><dd>{angleGate.artifact.version}</dd></div>
+              <div><dt>Hash</dt><dd>{angleGate.artifact.content_hash}</dd></div>
               <div><dt>State version</dt><dd>{state.state_version}</dd></div>
             </dl>
           </details>
