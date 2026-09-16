@@ -21,15 +21,23 @@ from pydantic import SecretStr
 
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
+from app.modules.content_engine.journal.operator_outline_worker import (
+    OperatorOutlineWorkerError,
+    claim_or_reclaim_outline_job,
+    execute_outline_job,
+    fail_outline_job,
+)
 from app.modules.content_engine.journal.operator_recovery import claim_or_reclaim_operator_job
+from app.modules.content_engine.journal.operator_runtime import START_TO_ANGLE_STAGE
 from app.modules.content_engine.journal.operator_worker import (
     OperatorWorkerError,
     execute_start_to_angle_job,
     fail_start_to_angle_job,
     heartbeat_operator_job,
 )
+from app.modules.content_engine.journal.outline_agent_bridge import OUTLINE_TASK_KEY
 from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
-from app.modules.harness.models import ContentRun
+from app.modules.harness.models import ContentRun, StepRun
 from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
 from app.modules.research.evidence import EvidenceResearchWorkflow
@@ -107,7 +115,7 @@ async def _heartbeat_loop(
     worker_id: str,
     stop: asyncio.Event,
 ) -> None:
-    """Keep one durable lease alive while research/model work is in progress."""
+    """Keep one durable lease alive while model/research work is in progress."""
 
     while True:
         try:
@@ -130,9 +138,7 @@ async def _stop_heartbeat(task: asyncio.Task[None], stop: asyncio.Event) -> None
     await task
 
 
-async def _run(*, emit_idle: bool = True) -> None:
-    settings = get_settings()
-    worker_id = _worker_id()
+async def _claim_job(*, worker_id: str) -> tuple[UUID, str] | None:
     async with SessionLocal() as session:
         async with session.begin():
             job = await claim_or_reclaim_operator_job(
@@ -141,22 +147,39 @@ async def _run(*, emit_idle: bool = True) -> None:
                 lease_seconds=_LEASE_SECONDS,
             )
             if job is None:
-                if emit_idle:
-                    print(
-                        json.dumps(
-                            {"status": "idle", "worker_id": worker_id},
-                            sort_keys=True,
-                        )
-                    )
-                return
+                job = await claim_or_reclaim_outline_job(
+                    session,
+                    worker_id=worker_id,
+                    lease_seconds=_LEASE_SECONDS,
+                )
+            if job is None:
+                return None
             run = await session.get(ContentRun, job.run_id)
-            if run is None:
-                raise OperatorWorkerError("operator_worker_run_missing")
+            step = await session.get(StepRun, job.step_run_id)
+            if run is None or step is None or step.run_id != run.id:
+                raise OperatorWorkerError("operator_worker_binding_invalid")
+            if step.step_key not in {START_TO_ANGLE_STAGE, OUTLINE_TASK_KEY}:
+                raise OperatorWorkerError("operator_worker_stage_not_allowed")
             if run.status == "pending":
                 await transition_run(session, run_id=run.id, status="running")
-            job_id = job.id
+            return job.id, step.step_key
 
-    timeout = httpx.Timeout(settings.research_request_timeout_seconds)
+
+async def _run(*, emit_idle: bool = True) -> None:
+    settings = get_settings()
+    worker_id = _worker_id()
+    claimed = await _claim_job(worker_id=worker_id)
+    if claimed is None:
+        if emit_idle:
+            print(
+                json.dumps(
+                    {"status": "idle", "worker_id": worker_id},
+                    sort_keys=True,
+                )
+            )
+        return
+    job_id, step_key = claimed
+
     registry = AgentRunnerRegistry()
     registry.register("codex_cli", CodexCliRunner())
     stop = asyncio.Event()
@@ -164,15 +187,26 @@ async def _run(*, emit_idle: bool = True) -> None:
         _heartbeat_loop(job_id=job_id, worker_id=worker_id, stop=stop)
     )
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            workflow = EvidenceResearchWorkflow(router=_research_router(settings, client))
+        if step_key == START_TO_ANGLE_STAGE:
+            timeout = httpx.Timeout(settings.research_request_timeout_seconds)
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+                workflow = EvidenceResearchWorkflow(router=_research_router(settings, client))
+                async with SessionLocal() as session:
+                    async with session.begin():
+                        result = await execute_start_to_angle_job(
+                            session,
+                            job_id=job_id,
+                            worker_id=worker_id,
+                            evidence_workflow=workflow,
+                            runner_registry=registry,
+                        )
+        else:
             async with SessionLocal() as session:
                 async with session.begin():
-                    result = await execute_start_to_angle_job(
+                    result = await execute_outline_job(
                         session,
                         job_id=job_id,
                         worker_id=worker_id,
-                        evidence_workflow=workflow,
                         runner_registry=registry,
                     )
     except Exception as exc:
@@ -180,39 +214,63 @@ async def _run(*, emit_idle: bool = True) -> None:
             await _stop_heartbeat(heartbeat, stop)
         except Exception:
             pass
-        failure_class = (
-            "insufficient_evidence"
-            if isinstance(exc, OperatorWorkerError) and "evidence" in exc.code
-            else "internal_error"
-        )
-        async with SessionLocal() as session:
-            async with session.begin():
-                await fail_start_to_angle_job(
-                    session,
-                    job_id=job_id,
-                    worker_id=worker_id,
-                    failure_class=failure_class,
-                    message=str(exc)[:2000],
-                )
+        if step_key == OUTLINE_TASK_KEY:
+            failure_class = (
+                exc.code
+                if isinstance(exc, OperatorOutlineWorkerError)
+                else "outline_generation_failed"
+            )
+            async with SessionLocal() as session:
+                async with session.begin():
+                    await fail_outline_job(
+                        session,
+                        job_id=job_id,
+                        worker_id=worker_id,
+                        failure_class=failure_class,
+                        message=str(exc)[:2000],
+                    )
+        else:
+            failure_class = (
+                "insufficient_evidence"
+                if isinstance(exc, OperatorWorkerError) and "evidence" in exc.code
+                else "internal_error"
+            )
+            async with SessionLocal() as session:
+                async with session.begin():
+                    await fail_start_to_angle_job(
+                        session,
+                        job_id=job_id,
+                        worker_id=worker_id,
+                        failure_class=failure_class,
+                        message=str(exc)[:2000],
+                    )
         raise
     else:
         await _stop_heartbeat(heartbeat, stop)
 
-    print(
-        json.dumps(
+    payload: dict[str, object] = {
+        "status": "completed",
+        "worker_id": worker_id,
+        "job_id": str(result.job_id),
+        "run_id": str(result.run_id),
+        "step_run_id": str(result.step_run_id),
+        "state_version": result.state_version,
+    }
+    if step_key == OUTLINE_TASK_KEY:
+        payload.update(
             {
-                "status": "completed",
-                "worker_id": worker_id,
-                "job_id": str(result.job_id),
-                "run_id": str(result.run_id),
-                "step_run_id": str(result.step_run_id),
+                "outline_artifact_id": str(result.outline_artifact_id),
+                "outline_artifact_hash": result.outline_artifact_hash,
+            }
+        )
+    else:
+        payload.update(
+            {
                 "angle_artifact_id": str(result.angle_artifact_id),
                 "angle_artifact_hash": result.angle_artifact_hash,
-                "state_version": result.state_version,
-            },
-            sort_keys=True,
+            }
         )
-    )
+    print(json.dumps(payload, sort_keys=True))
 
 
 def main() -> None:
