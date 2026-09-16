@@ -19,9 +19,11 @@ from app.modules.content_engine.journal.operator_control import (
     OperatorIntent,
     OperatorState,
 )
+from app.modules.content_engine.journal.operator_vertical_slice import START_TO_ANGLE_STAGE
 from app.modules.content_engine.journal.operator_vertical_slice import (
-    START_TO_ANGLE_STAGE,
     get_operator_state_v45 as _get_operator_state_impl,
+)
+from app.modules.content_engine.journal.operator_vertical_slice import (
     submit_operator_command_v45 as _submit_operator_command_impl,
 )
 from app.modules.harness.models import ContentRun, StepRun
