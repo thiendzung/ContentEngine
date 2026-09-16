@@ -2,21 +2,36 @@
 
 ## Mission
 
-Deliver useful, evidence-first MOTGU content on the Founder's local computer. Finish one real Journal before extending infrastructure. Follow `docs/20-LOCAL-FIRST-DELIVERY-SPEC.md`; retain foundational specs 00-12 and Journal spec 19. Artwork and later features need an explicitly opened task.
+Deliver useful, evidence-first MOTGU content on the Founder's local computer. Finish the normal Journal path before extending infrastructure or polishing secondary features. Follow `docs/20-LOCAL-FIRST-DELIVERY-SPEC.md`; retain foundational specs 00-12 and Journal spec 19. Artwork and later features need an explicitly opened task.
 
 ## Shared brain and authority
 
-GitHub holds approved contracts, code, tasks and sanitized evidence. Read live GitHub refs/PRs/CI for dynamic state. The operational DB and private artifacts stay local; a committed runtime report is a dated observation, not a substitute for inspecting local state.
+GitHub is the shared brain. It holds approved contracts, code, tasks, plans and sanitized evidence. Read live GitHub refs/PRs/CI for dynamic state. The operational DB and private artifacts stay local; a committed runtime report is a dated observation, not a substitute for inspecting local state.
 
-Read `AI_context.MD` for the ONE current working window, `docs/PLAN.md` for delivery order and `docs/TASKS.md` for progress and `docs/CHECKLIST.md` for gates. Use exact task files under `docs/logs/`. Do not create another case-only spelling of `AI_context.MD` or treat chat memory as current repository truth.
+Read `AI_context.MD` for the ONE current working window, `docs/PLAN.md` for delivery order, `docs/TASKS.md` for progress, `docs/CHECKLIST.md` for gates and the exact task/log under `docs/logs/`. Do not create another case-only spelling of `AI_context.MD` or treat chat memory as current repository truth.
 
 ## Fixed roles
 
-- Founder: product/brand decisions, editorial approval, task dispatch by copy, final PR approval and merge. No agent auto-merge.
-- MG Content Engine: architecture, bounded planning, primary coding/tests, PR ownership, adversarial review, inspection of local evidence and shared-state consistency. Disclose unavailable tests and self-review; never invent execution evidence.
-- Agent Local: local filesystem/services, real DB, local credentials, authenticated model/provider execution and local tests. Small code edits only when exact files/scope are delegated. No redesign, scope expansion, self-selected next task, invented editorial approval or merge. Recording an explicit human decision through the canonical path requires verifiable authorization; it is not an independent editorial decision.
+- **Founder:** owns product/brand decisions, editorial approval, execution authorization, task dispatch by copy, final PR approval and merge. Founder is the human relay between MG and Agent Local: copies MG's exact local task into the local-agent application and copies Agent Local's evidence/report back to MG. No agent auto-merge.
+- **MG / ChatGPT:** primary architect and GitHub-side engineering owner. Owns architecture, bounded planning, coding/tests within available environments, PR preparation, adversarial review, evidence review and shared-state consistency. After defining/reviewing work, MG writes the exact copy-paste task for Agent Local. MG does not claim to control or have spoken directly to the Founder-machine Agent Local unless Founder has relayed its report.
+- **Agent Local:** local executor on the Founder's machine. Owns exact-ref synchronization, local filesystem/services, real DB/test DB, local credentials, browser/runtime proof, authenticated model/provider execution and local tests. It may make small code edits only when MG/Founder delegates exact files/scope. It does not redesign architecture, self-select the next task, infer execution permission, invent editorial approval or merge PRs.
 
-MG cannot run the Founder's computer merely through GitHub. Founder dispatches a merged task; Agent Local executes it and returns evidence. Tool access is not permission to exceed the task.
+GitHub readability is not execution permission. Founder must explicitly copy/dispatch each local task. Tool access is not authority to exceed the assigned scope.
+
+## Handoff contract
+
+The canonical collaboration loop is:
+
+`Founder objective -> MG reads GitHub truth -> MG designs/codes/reviews/plans -> MG writes exact Agent Local task -> Founder copies task to Agent Local -> Agent Local executes exact local scope and returns evidence -> Founder copies evidence to MG -> MG reviews and updates GitHub truth/PR -> Founder reviews and merges -> next task`
+
+Rules:
+
+1. MG never assumes a local task was received merely because it was written to GitHub.
+2. Agent Local never treats roadmap text as runtime authorization; only the exact Founder-dispatched task is executable.
+3. Founder is the only merge authority and the transport bridge between MG and the separate Agent Local application.
+4. Runtime/local evidence is `REPORTED / UNVERIFIED` until MG reviews it against code/contracts and GitHub state.
+5. After review, sanitized durable conclusions go back to GitHub so the next agent starts from repository truth rather than chat history.
+6. Maximum WIP is one implementation plus one related local verification. Only one executor may mutate the active runtime lineage.
 
 ## Start sequence
 
@@ -29,17 +44,19 @@ Before implementation or local execution:
 
 For remote work, inspect equivalent GitHub state and pin the base commit. Never update main directly. Founder merges PRs.
 
-## Working loop
+## Delivery principle: finish first, polish later
 
-`Founder objective -> MG reads current truth -> bounded implementation/task -> Agent Local executes local-only work -> MG reviews code/tests/evidence -> Founder approves/merges -> verify merged code and local deployment -> next assigned task`
+V1 priority is one browser-operated end-to-end Journal, not a broader platform.
 
-One task covers a useful bounded outcome rather than a new approval per harmless command. Maximum WIP: one implementation plus one related local verification. Only one executor may mutate the active runtime lineage. Runtime execution stops at genuine editorial gates or conclusive blockers.
+Feature completion order:
 
-Use `docs/TASK-HARNESS.md` for permissions, exact files/actions, budgets, evidence and report format. Agent Local may not infer authorization for paid calls, migrations, content approvals or publication from a planning task.
+`UI-01 proof -> unified operator core -> Angle->Outline -> Outline->VI/EN Writers -> quality/final gate -> canonical ContentVersions/COMPLETE -> minimum end-to-end UI -> real M2/M3 pilot -> UX polish`
+
+Do not introduce a new workflow engine, Redis/Celery, provider/agent framework, native Codex multi-agent or Antigravity merely to connect capabilities that already exist. Do not redesign the whole UI before the end-to-end backend path is proven. Split large changes so failures remain attributable.
 
 ## State transitions without paperwork loops
 
-A code PR changing the gate includes its tests, evidence and semantic updates to `AI_context.MD` and `docs/TASKS.md`. Do not make routine follow-up context-sync PRs. Do not mark operational success from implementation readiness.
+A code PR changing a gate includes its tests, evidence and semantic updates to `AI_context.MD` and `docs/TASKS.md`. Do not make routine follow-up context-sync PRs. Do not mark operational success from implementation readiness.
 
 For runtime-only work, publish one sanitized evidence record at a meaningful gate; MG incorporates the verified next state and next bounded task into the next appropriate PR. No PR for each shell command. Until evidence is reviewed, label it reported/unverified; do not advance dependent work silently.
 
@@ -56,6 +73,8 @@ Keep business logic in its owning module and controllers thin. Use settings Mode
 Canonical lineage: `ContentCase -> LocaleVariant -> ContentItem -> ContentVersion`. VI and EN use shared factual foundations but independent writing, not default translation. Discovery/search rank is not factual evidence or source authority. Never fabricate MOTGU facts, artist intent, scarcity or support. Upstream MERGE/LINK_ONLY/DO_NOT_WRITE decisions remain binding.
 
 Angle, Outline and final editorial approvals remain required. A changed artifact invalidates its approval. A pre-approval operational package is not an approved ContentVersion. Every publishable item requires locked evidence, approved originality, applicable audit/source checks and final human approval.
+
+The backend is workflow authority. Frontend/operator clients send semantic intents such as `start`, `continue`, `retry`, `cancel`, `approve`, `request_changes` or `reject`; they do not select internal stage/provider/model/prompt/recipe/worker. The server derives the only safe next action from durable canonical state and fails closed on ambiguity.
 
 Bound retries, calls, cost and duration. Preserve idempotency and reconcile ambiguous external effects before retry. Do not weaken evaluators to rescue one output. No unapproved capabilities or safety bypass; stop on an outer execution-policy denial.
 
@@ -94,11 +113,11 @@ Codex remains the coordinator, but delegation permission is deterministic applic
 
 Use deterministic checks, model judgement where needed and final human review. Model self-rating is not quality proof. Add the smallest failure-regression test, then run the relevant broader suite; use `docs/CHECKLIST.md`. Docs-only changes need consistency/link/diff review, not fictitious runtime test claims. Existing required CI is not bypassed.
 
-Before M1, only the current real Journal path or a demonstrated security/data-integrity defect can justify new work. No new provider/agent, framework, generic abstraction, WordPress, large UI or speculative CI tuning.
+No new provider/agent, framework, generic abstraction, WordPress, large speculative UI or speculative CI tuning should be introduced merely to finish CE05 V1. Prefer small changes proven by real operator pain and M2/M3 evidence.
 
 ## Completion vocabulary
 
 Agent Local: `READY FOR REVIEW`, `BLOCKED`, `NEEDS CHANGES`.
 MG to Founder: `READY TO MERGE`, `BLOCKED`, `NEED HUMAN DECISION`.
 
-Every report states GOAL, FILES CHANGED, EXACT REF, EVIDENCE, CHECKS NOT RUN, RISKS/BLOCKERS, STATUS and NEXT. State approval scope: a docs PR can be merge-ready while M1 remains blocked. Stop after the assigned task; never claim completion without evidence.
+Every report states GOAL, FILES CHANGED, EXACT REF, EVIDENCE, CHECKS NOT RUN, RISKS/BLOCKERS, STATUS and NEXT. State approval scope explicitly. Stop after the assigned task; never claim completion without evidence.
