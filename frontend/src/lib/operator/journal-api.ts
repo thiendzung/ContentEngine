@@ -1,0 +1,234 @@
+import { API_BASE_URL } from "../api/core";
+
+export type OperatorStatus =
+  | "NOT_READY"
+  | "READY"
+  | "QUEUED"
+  | "RUNNING"
+  | "AWAITING_APPROVAL"
+  | "BLOCKED"
+  | "COMPLETE";
+
+export type OperatorIntent = "start" | "continue" | "resume" | "retry" | "cancel";
+
+export type OperatorState = {
+  content_case_id: string;
+  state_version: string;
+  status: OperatorStatus;
+  phase: string;
+  primary_intent: OperatorIntent | null;
+  allowed_intents: OperatorIntent[];
+  human_gate: "angle" | "outline" | "final_review" | null;
+  current_run_id: string | null;
+  current_step_run_id: string | null;
+  current_worker: string | null;
+  last_checkpoint: string | null;
+  quality_summary: { passed: number; warned: number; failed: number } | null;
+  blocker_code: string | null;
+  blocker_message: string | null;
+};
+
+export type PreflightCheck = {
+  key: string;
+  status: "READY" | "BLOCKED" | "OPTIONAL" | string;
+  detail: string;
+};
+
+export type OperatorPreflight = {
+  status: "READY" | "BLOCKED";
+  checks: PreflightCheck[];
+};
+
+export type RequiredLocale = {
+  locale: string;
+  role: "source" | "translation";
+};
+
+export type AngleCandidate = {
+  angle_id: string;
+  candidate_hash: string;
+  working_title: string;
+  reader_problem: string;
+  central_question: string;
+  core_promise: string;
+  point_of_view: string;
+  why_now: string;
+  evidence_refs: string[];
+  originality_refs: string[];
+  excluded_claims: string[];
+  risks: string[];
+  confidence: number;
+  locale: string;
+};
+
+export type AngleGate = {
+  type: "angle";
+  artifact: { id: string; version: number; content_hash: string };
+  candidates: AngleCandidate[];
+};
+
+export type OperatorCaseView = {
+  content_case_id: string;
+  question: string;
+  reader: string;
+  situation: string;
+  need: string;
+  intent: string;
+  promise: string;
+  state: OperatorState;
+  intake: {
+    source_locale: string;
+    research_country: string;
+    required_locales: RequiredLocale[];
+  };
+  pending_gate: AngleGate | null;
+};
+
+export type FounderJournalIntakeRequest = {
+  project_slug: string;
+  source_locale: string;
+  research_country: string;
+  required_locales: string[];
+  reader: string;
+  situation: string;
+  need: string;
+  question: string;
+  intent: string;
+  promise: string;
+  selection_reason: string;
+  originality_material: string;
+  originality_writer_use: string;
+  originality_guardrails: string;
+  idempotency_key: string;
+};
+
+export type FounderJournalIntakeResult = {
+  command_id: string;
+  content_case_id: string;
+  bootstrap_run_id: string;
+  source_locale_variant_id: string;
+  required_locales: string[];
+  research_country: string;
+  replayed: boolean;
+  state: OperatorState;
+};
+
+export type OperatorCommandResult = {
+  command_id: string;
+  content_case_id: string;
+  intent: OperatorIntent;
+  status: string;
+  state_before: string;
+  state_after: string | null;
+  job_id: string | null;
+  replayed: boolean;
+};
+
+export type OperatorDecisionResult = {
+  command_id: string;
+  content_case_id: string;
+  scope: "angle" | "outline" | "final";
+  decision: "approved" | "changes_requested" | "rejected";
+  approval_id: string | null;
+  state_before: string;
+  state_after: string | null;
+  replayed: boolean;
+};
+
+export class OperatorApiError extends Error {
+  status: number;
+  code: string | null;
+
+  constructor(status: number, code: string | null, message: string) {
+    super(message);
+    this.name = "OperatorApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+type ErrorPayload = {
+  detail?: string | { code?: string; message?: string };
+};
+
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body) headers.set("Content-Type", "application/json");
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
+    const detail = payload?.detail;
+    const code = typeof detail === "object" ? detail.code ?? null : null;
+    const message =
+      typeof detail === "object"
+        ? detail.message ?? code ?? `Yêu cầu thất bại (${response.status})`
+        : typeof detail === "string"
+          ? detail
+          : `Yêu cầu thất bại (${response.status})`;
+    throw new OperatorApiError(response.status, code, message);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function loadOperatorPreflight(): Promise<OperatorPreflight> {
+  return requestJson<OperatorPreflight>("/journal/operator/preflight");
+}
+
+export function createFounderJournalIntake(
+  payload: FounderJournalIntakeRequest,
+): Promise<FounderJournalIntakeResult> {
+  return requestJson<FounderJournalIntakeResult>("/journal/operator/intakes", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function loadOperatorCaseView(caseId: string): Promise<OperatorCaseView> {
+  return requestJson<OperatorCaseView>(
+    `/journal/operator/cases/${encodeURIComponent(caseId)}/view`,
+  );
+}
+
+export function submitOperatorIntent(
+  caseId: string,
+  payload: {
+    intent: OperatorIntent;
+    expected_state_version: string;
+    idempotency_key: string;
+  },
+): Promise<OperatorCommandResult> {
+  return requestJson<OperatorCommandResult>(
+    `/journal/operator/cases/${encodeURIComponent(caseId)}/commands`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export function approveAngle(
+  caseId: string,
+  payload: {
+    expected_state_version: string;
+    idempotency_key: string;
+    artifact_id: string;
+    artifact_version: number;
+    artifact_hash: string;
+    selected_angle_id: string;
+    selected_candidate_hash: string;
+    comment: string | null;
+  },
+): Promise<OperatorDecisionResult> {
+  return requestJson<OperatorDecisionResult>(
+    `/journal/operator/cases/${encodeURIComponent(caseId)}/decisions`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        scope: "angle",
+        decision: "approved",
+        ...payload,
+      }),
+    },
+  );
+}

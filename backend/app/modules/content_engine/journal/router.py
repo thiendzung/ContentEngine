@@ -27,9 +27,16 @@ from app.modules.content_engine.journal.operator_manual_intake import (
     FounderJournalIntakeResult,
     create_founder_journal_intake,
 )
+from app.modules.content_engine.journal.operator_preflight import (
+    build_journal_operator_preflight,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import (
     get_operator_state_v45,
     submit_operator_command_v45,
+)
+from app.modules.content_engine.journal.operator_view import (
+    OperatorCaseView,
+    get_operator_case_view,
 )
 from app.modules.content_engine.journal.production_board import (
     ProductionBoardCase,
@@ -50,7 +57,6 @@ from app.modules.content_engine.journal.review_console import (
     ReviewConsoleError,
 )
 from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
-from app.modules.system.preflight import build_operational_preflight
 
 router = APIRouter(prefix="/journal", tags=["journal"])
 
@@ -230,8 +236,10 @@ async def list_journal_production_board(
 
 
 @router.get("/operator/preflight", response_model=dict[str, object])
-async def get_journal_operator_preflight() -> dict[str, object]:
-    return await build_operational_preflight()
+async def get_journal_operator_preflight(
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, object]:
+    return await build_journal_operator_preflight(session)
 
 
 @router.post("/operator/intakes", response_model=FounderJournalIntakeResult)
@@ -289,6 +297,17 @@ async def get_journal_operator_case(
 ) -> OperatorState:
     try:
         return await get_operator_state_v45(session, content_case_id=content_case_id)
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
+
+
+@router.get("/operator/cases/{content_case_id}/view", response_model=OperatorCaseView)
+async def get_journal_operator_case_view(
+    content_case_id: UUID,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OperatorCaseView:
+    try:
+        return await get_operator_case_view(session, content_case_id=content_case_id)
     except OperatorControlError as exc:
         raise _operator_http_error(exc) from exc
 

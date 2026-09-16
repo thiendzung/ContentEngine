@@ -52,7 +52,7 @@ async def _brief_for_created_case(session, created):
 async def test_operator_start_binds_exact_brief_and_idempotency_includes_brief(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(vertical_slice, "build_journal_operator_preflight", _ready_preflight)
     async with isolated_session() as session:
         created = await create_founder_journal_intake(
             session, **_intake_kwargs(key="k6-start-binding")
@@ -130,7 +130,7 @@ async def test_operator_start_binds_exact_brief_and_idempotency_includes_brief(
 async def test_worker_consumes_brief_bound_by_operator_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(vertical_slice, "build_journal_operator_preflight", _ready_preflight)
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
         created = await create_founder_journal_intake(

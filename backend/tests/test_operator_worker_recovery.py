@@ -27,7 +27,11 @@ from app.modules.harness.persistence import enqueue_job
 async def test_recovery_reclaims_only_expired_start_to_angle_lease(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         created = await create_founder_journal_intake(
             session,

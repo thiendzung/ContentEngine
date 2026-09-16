@@ -130,7 +130,7 @@ async def _stop_heartbeat(task: asyncio.Task[None], stop: asyncio.Event) -> None
     await task
 
 
-async def _run() -> None:
+async def _run(*, emit_idle: bool = True) -> None:
     settings = get_settings()
     worker_id = _worker_id()
     async with SessionLocal() as session:
@@ -141,12 +141,13 @@ async def _run() -> None:
                 lease_seconds=_LEASE_SECONDS,
             )
             if job is None:
-                print(
-                    json.dumps(
-                        {"status": "idle", "worker_id": worker_id},
-                        sort_keys=True,
+                if emit_idle:
+                    print(
+                        json.dumps(
+                            {"status": "idle", "worker_id": worker_id},
+                            sort_keys=True,
+                        )
                     )
-                )
                 return
             run = await session.get(ContentRun, job.run_id)
             if run is None:
@@ -164,9 +165,7 @@ async def _run() -> None:
     )
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            workflow = EvidenceResearchWorkflow(
-                router=_research_router(settings, client)
-            )
+            workflow = EvidenceResearchWorkflow(router=_research_router(settings, client))
             async with SessionLocal() as session:
                 async with session.begin():
                     result = await execute_start_to_angle_job(

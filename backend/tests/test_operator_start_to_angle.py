@@ -65,8 +65,21 @@ from app.modules.research.contracts import ProductionResearchResult
 from app.modules.research.evidence.contracts import EvidenceResearchResult
 
 
-async def _ready_preflight() -> dict[str, object]:
+async def _ready_preflight(_session: AsyncSession | None = None) -> dict[str, object]:
     return {"status": "READY", "checks": []}
+
+
+async def _blocked_preflight(_session: AsyncSession | None = None) -> dict[str, object]:
+    return {
+        "status": "BLOCKED",
+        "checks": [
+            {
+                "key": "journal_angle_settings",
+                "status": "BLOCKED",
+                "detail": "journal_angle_model_unresolved",
+            }
+        ],
+    }
 
 
 def _intake_kwargs(*, key: str) -> dict[str, object]:
@@ -362,8 +375,54 @@ async def test_intake_conflict_and_http_internal_selection_fail_closed() -> None
 
 
 @pytest.mark.asyncio
+async def test_journal_preflight_blocks_public_start_and_enqueue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-preflight-block")
+        )
+        ready_state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
+        assert ready_state.status == "READY"
+        jobs_before = int(await session.scalar(select(func.count(Job.id))) or 0)
+
+        monkeypatch.setattr(
+            vertical_slice,
+            "build_journal_operator_preflight",
+            _blocked_preflight,
+        )
+        public_state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
+        assert public_state.status == "BLOCKED"
+        assert public_state.allowed_intents == []
+        assert public_state.blocker_code == "operator_preflight_blocked"
+
+        with pytest.raises(OperatorControlError, match="operator_preflight_blocked"):
+            await submit_operator_command_v45(
+                session,
+                content_case_id=created.content_case_id,
+                intent="start",
+                expected_state_version=ready_state.state_version,
+                idempotency_key="pr45-preflight-block-start",
+            )
+        assert int(await session.scalar(select(func.count(Job.id))) or 0) == jobs_before
+
+
+@pytest.mark.asyncio
 async def test_worker_claim_is_stage_scoped(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         created = await create_founder_journal_intake(
             session, **_intake_kwargs(key="pr45-scope")
@@ -405,7 +464,11 @@ async def test_worker_claim_is_stage_scoped(monkeypatch: pytest.MonkeyPatch) -> 
 async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
         created = await create_founder_journal_intake(
@@ -519,7 +582,11 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
 async def test_failed_attempt_remains_explicitly_retryable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(vertical_slice, "build_operational_preflight", _ready_preflight)
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
     async with isolated_session() as session:
         created = await create_founder_journal_intake(
             session, **_intake_kwargs(key="pr45-retry")
