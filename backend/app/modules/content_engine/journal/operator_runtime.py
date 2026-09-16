@@ -7,7 +7,7 @@ layers only; production callers should import from here rather than versioned ad
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -197,7 +197,7 @@ async def resolve_next_operator_action(
             content_case_id=content_case_id,
             state_version=state.state_version,
             status=state.status,
-            action_key=step.step_key,
+            action_key=cast(OperatorActionKey, step.step_key),
             intent=state.primary_intent,
             executable=True,
             current_run_id=state.current_run_id,
@@ -212,7 +212,7 @@ async def resolve_next_operator_action(
             content_case_id=content_case_id,
             state_version=state.state_version,
             status=state.status,
-            action_key=step.step_key,
+            action_key=cast(OperatorActionKey, step.step_key),
             executable=False,
             current_run_id=state.current_run_id,
             current_step_run_id=step.id,
