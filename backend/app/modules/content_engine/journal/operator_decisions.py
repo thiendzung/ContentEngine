@@ -11,11 +11,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.angle import AngleApprovalError, approve_angle_candidate
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     OperatorControlError,
-    get_operator_state,
 )
 from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.journal.outline_approval import (
@@ -131,7 +131,7 @@ async def submit_operator_decision(
     if locked_case is None:
         raise OperatorControlError("operator_case_not_found")
 
-    before = await get_operator_state(session, content_case_id=content_case_id)
+    before = await operator_runtime.get_operator_state(session, content_case_id=content_case_id)
     if before.state_version != expected_state_version:
         raise OperatorControlError("operator_state_stale")
     if before.status != "AWAITING_APPROVAL" or before.human_gate != _SCOPE_GATE[scope]:
@@ -215,7 +215,7 @@ async def submit_operator_decision(
     )
     session.add(command)
     await session.flush()
-    after = await get_operator_state(session, content_case_id=content_case_id)
+    after = await operator_runtime.get_operator_state(session, content_case_id=content_case_id)
     command.state_after = after.state_version
     await session.flush()
     return OperatorDecisionResult(

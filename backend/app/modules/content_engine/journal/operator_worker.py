@@ -25,9 +25,9 @@ from app.modules.content_engine.journal.models import JournalIntakeSpec, Operato
 from app.modules.content_engine.journal.operator_angle_bundle import (
     bind_bundle_context_manifest,
 )
-from app.modules.content_engine.journal.operator_vertical_slice import (
+from app.modules.content_engine.journal.operator_runtime import (
     START_TO_ANGLE_STAGE,
-    get_operator_state_v45,
+    get_operator_state,
 )
 from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
@@ -212,7 +212,7 @@ async def fail_start_to_angle_job(
         ).all()
     )
     await session.flush()
-    state = await get_operator_state_v45(session, content_case_id=run.content_case_id)
+    state = await get_operator_state(session, content_case_id=run.content_case_id)
     for command in receipts:
         command.status = "failed"
         command.error_code = safe_class
@@ -520,7 +520,7 @@ async def execute_start_to_angle_job(
         pending_approval={"step_key": "angle", "artifact_id": str(result.artifact.id)},
     )
     await transition_run(session, run_id=run.id, status="waiting_approval")
-    state = await get_operator_state_v45(session, content_case_id=content_case.id)
+    state = await get_operator_state(session, content_case_id=content_case.id)
     receipts = list(
         (
             await session.scalars(

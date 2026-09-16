@@ -30,9 +30,9 @@ from app.modules.content_engine.journal.operator_manual_intake import (
 from app.modules.content_engine.journal.operator_preflight import (
     build_journal_operator_preflight,
 )
-from app.modules.content_engine.journal.operator_vertical_slice import (
-    get_operator_state_v45,
-    submit_operator_command_v45,
+from app.modules.content_engine.journal.operator_runtime import (
+    get_operator_state,
+    submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_view import (
     OperatorCaseView,
@@ -296,7 +296,7 @@ async def get_journal_operator_case(
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> OperatorState:
     try:
-        return await get_operator_state_v45(session, content_case_id=content_case_id)
+        return await get_operator_state(session, content_case_id=content_case_id)
     except OperatorControlError as exc:
         raise _operator_http_error(exc) from exc
 
@@ -323,7 +323,7 @@ async def command_journal_operator_case(
 ) -> OperatorCommandResult:
     try:
         async with session.begin():
-            return await submit_operator_command_v45(
+            return await submit_operator_command(
                 session,
                 content_case_id=content_case_id,
                 intent=payload.intent,

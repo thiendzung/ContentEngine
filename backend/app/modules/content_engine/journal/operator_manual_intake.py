@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.models import (
     JournalIntakeSpec,
     JournalRequiredLocale,
@@ -30,7 +31,6 @@ from app.modules.content_engine.journal.operator_locking import (
 from app.modules.content_engine.journal.operator_vertical_slice import (
     ensure_required_locales,
     ensure_start_to_angle_step,
-    get_operator_state_v45,
 )
 from app.modules.content_engine.models import (
     ContentCase,
@@ -166,7 +166,7 @@ async def _replay_result(
             )
         ).all()
     )
-    state = await get_operator_state_v45(
+    state = await operator_runtime.get_operator_state(
         session,
         content_case_id=content_case.id,
     )
@@ -414,7 +414,7 @@ async def create_founder_journal_intake(
     except OperatorBootstrapError as exc:
         raise OperatorControlError(exc.code) from exc
     await ensure_start_to_angle_step(session, run_id=bootstrap_run.id)
-    state = await get_operator_state_v45(
+    state = await operator_runtime.get_operator_state(
         session,
         content_case_id=created.content_case_id,
         preflight_checked=True,
