@@ -29,7 +29,11 @@ from app.modules.content_engine.journal.operator_worker import (
 from app.modules.content_engine.journal.production_board import list_production_board_cases
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Artifact, ContentRun, StepRun
-from app.modules.harness.persistence import create_checkpoint
+from app.modules.harness.persistence import (
+    create_checkpoint,
+    transition_run,
+    transition_step_run,
+)
 
 
 @pytest.mark.asyncio
@@ -244,17 +248,21 @@ async def test_operator_view_exposes_exact_pending_outline_binding(
             )
         )
         assert start_step is not None
-        start_step.status = "completed"
+        await transition_run(session, run_id=run.id, status="running")
+        await transition_step_run(session, step_run_id=start_step.id, status="running")
+        await transition_step_run(session, step_run_id=start_step.id, status="completed")
         outline_step = StepRun(
             run_id=run.id,
             step_key="outline",
             attempt=1,
-            status="completed",
+            status="pending",
             input_artifact_refs_json=[],
             output_artifact_refs_json=[],
         )
         session.add(outline_step)
         await session.flush()
+        await transition_step_run(session, step_run_id=outline_step.id, status="running")
+        await transition_step_run(session, step_run_id=outline_step.id, status="completed")
         payload = {
             "artifact_type": "journal_outline",
             "outline": {
@@ -283,8 +291,8 @@ async def test_operator_view_exposes_exact_pending_outline_binding(
         session.add_all([exact, stray])
         await session.flush()
         outline_step.output_artifact_refs_json = [str(exact.id), str(stray.id)]
-        run.status = "waiting_approval"
         run.current_step = "outline"
+        await transition_run(session, run_id=run.id, status="waiting_approval")
         await create_checkpoint(
             session,
             run_id=run.id,
