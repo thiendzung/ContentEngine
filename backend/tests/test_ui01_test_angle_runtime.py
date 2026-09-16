@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from uuid import UUID
 
 import pytest
 from sqlalchemy import select
@@ -11,9 +13,11 @@ from app.core.config import Settings
 from app.core.database import engine
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsVersion
 from app.modules.system.test_angle_runtime import (
+    TestAngleRuntimeActivation,
     TestAngleRuntimeActivationError,
     activate_test_journal_angle_runtime,
 )
+from scripts.activate_test_angle_runtime import _activation_payload
 
 
 @asynccontextmanager
@@ -38,6 +42,29 @@ def _test_settings() -> Settings:
             "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_test"
         ),
     )
+
+
+def test_activation_cli_payload_is_json_serializable() -> None:
+    result = TestAngleRuntimeActivation(
+        project_id=UUID("00000000-0000-0000-0000-000000000001"),
+        settings_id=UUID("00000000-0000-0000-0000-000000000002"),
+        prompt_id=UUID("00000000-0000-0000-0000-000000000003"),
+        recipe_id=UUID("00000000-0000-0000-0000-000000000004"),
+        provider="codex_cli",
+        model="gpt-5.6-luna",
+        approved_by="founder:test-acceptance",
+        replayed=True,
+    )
+
+    payload = _activation_payload(result)
+    rendered = json.dumps(payload, sort_keys=True)
+
+    assert payload["project_id"] == "00000000-0000-0000-0000-000000000001"
+    assert payload["settings_id"] == "00000000-0000-0000-0000-000000000002"
+    assert payload["prompt_id"] == "00000000-0000-0000-0000-000000000003"
+    assert payload["recipe_id"] == "00000000-0000-0000-0000-000000000004"
+    assert '"status": "READY"' in rendered
+    assert '"replayed": true' in rendered
 
 
 @pytest.mark.asyncio
