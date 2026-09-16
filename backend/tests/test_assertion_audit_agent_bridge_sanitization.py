@@ -64,7 +64,7 @@ def test_assertion_audit_bridge_keeps_only_supportive_allowed_refs_for_supported
 
 
 @pytest.mark.asyncio
-async def test_context_only_supported_ref_becomes_quality_fail_instead_of_model_output_error() -> None:
+async def test_context_only_supported_ref_becomes_quality_failure() -> None:
     async with isolated_session() as session:
         _fixture, _source_artifact, audit_input = await _source(session)
         target = next(
