@@ -518,7 +518,7 @@ async def _submit_angle_to_outline_command(
         command.job_id = previous_job.id
         command.status = "cancelled"
     else:
-        dedupe_payload = f"{command.id}:{key}".encode("utf-8")
+        dedupe_payload = f"{command.id}:{key}".encode()
         queued = await enqueue_job(
             session,
             run_id=run.id,
