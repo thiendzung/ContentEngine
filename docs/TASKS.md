@@ -1,127 +1,58 @@
-# TASKS - ContentEngine delivery and progress
+# TASKS - agent-operated ContentEngine delivery
 
-Current window: `../AI_context.MD`. Canonical plan: `logs/2026-09-16-finish-first-delivery-plan.md`. Dated reconciliation: `logs/2026-09-16-post-f2-status-replan.md`.
+Specification: `21-AGENT-OPERATED-JOURNAL-SPEC.md`.
+Detailed implementation/local-proof checklists: `AGENT-OPERATED-DELIVERY-TASKS.md`.
+Acceptance cases: `AGENT-OPERATED-ACCEPTANCE.md`.
+Live working window: `../AI_context.MD`.
 
-One implementation plus related verification. MG designs/codes/reviews; Founder dispatches local tasks by copy and merges; Agent Local executes the exact local scope and returns evidence through Founder. A checkbox or plan is not runtime authorization.
+Each package below uses the detailed common handoff packet and STOP rules. This is a progress index, not an automatic local task queue or execution grant.
 
-## Current queue
+## Reconciled completed baseline
 
-| ID | State | Next exit |
+| Item | State | Evidence scope |
 |---|---|---|
-| F0 | DONE / acceptance PASS / PR #93 MERGED | Closed; do not rerun acceptance #2 under its consumed authorization. |
-| F1 | DONE within its bounded scope / PR #102 MERGED | Reuse canonical facade/resolver; future stages extend it. |
-| F2 | DONE / acceptance PASS / PR #103 MERGED | Backend reaches OutlineApproval; full Outline UI remains F6. |
-| F3 | CURRENT / PR #104 Draft, planning-only at reconciliation | Independent canonical Writer lanes; stop before Quality. |
-| F4 | PLANNED after F3 | Exact per-locale quality results and final human gate. |
-| F5 | PLANNED after F4 | Exact final decisions, required ContentVersions and COMPLETE. |
-| F6.1 | PLANNED, part of F6 | Minimal header/menu/status shell. |
-| F6.2 | PLANNED, part of F6 | One full case workspace for all three approval gates. |
-| F6.3 | PLANNED, part of F6 | Dense canonical Production Board. |
-| O1 | RELEASE GATE before operational pilot | Authorized deployment/migration and recovery proof. |
-| O2 | OPTIONAL, separately authorized | New Model Routing policy activation only when required. |
-| F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on the release candidate. |
-| F8 | PLANNED | Evidence-led polish and CE05 closeout. |
+| F0 / #93 | MERGED / browser acceptance PASS | Exact Angle gate; old one-run authorization consumed |
+| Planning / #101 | MERGED | Engineering roles and original finish-first planning |
+| F1 / #102 | MERGED | Canonical operator facade/resolver |
+| F2 / #103 | MERGED / real acceptance PASS | Exact Outline gate, not full Outline UI |
+| F3 / #104 | MERGED / real acceptance PASS | Independent canonical vi-VN/en Writer drafts; STOP before Quality |
 
-## F3 - OutlineApproval -> independent Writers
+Dated sources: `logs/2026-09-16-agent-operated-decision.md`. Current deployment and local resources remain unverified until a fresh report; a merged PR is not a runtime check.
 
-Exact contract: `logs/2026-09-16-f3-independent-writers-plan.md`.
+## Remaining work and owners
 
-- [ ] Normalize NEW intake/source/required locales to `vi-VN` and `en`; accept `vi` only as an input alias; do not rewrite historical rows.
-- [ ] Materialize/reuse canonical required LocaleVariants through existing contracts; reject missing/ambiguous worker bindings.
-- [ ] Require exact OutlineApproval, Outline id/version/hash, context and approved Writer configuration.
-- [ ] One Continue atomically creates/reuses required lane runs/steps/jobs; a failed dispatch does not leave half a fan-out.
-- [ ] Execute each lane durably and independently; sequential consumption is acceptable. Do not feed one locale draft into the other.
-- [ ] Aggregate state/version includes all required lanes and their current jobs/artifacts.
-- [ ] Retry only failed/cancelled lanes; preserve completed sibling work and reject stale or conflicting commands.
-- [ ] Tests prove replay/no duplicate canonical outputs, partial failure, missing approval, locale mismatch and unsupported next-stage rejection.
-- [ ] Exact-head CI, MG review and separately authorized real local bilingual acceptance PASS.
-- [ ] Both drafts -> `writers_to_quality`, `executable=false`; zero quality/final/ContentVersion/publish execution.
+| ID | Owner / reviewer | State | Exit |
+|---|---|---|---|
+| AO-D0 | Agent Local / MG | READY FOR FOUNDER READ-ONLY DISPATCH | Actual local/capability report; no mutation/calls |
+| F4 / #105 | MG / Agent Local proof | CURRENT IMPLEMENTATION LINE; inspect live diff | Qualified exact final artifacts at final human gate |
+| F5.1 | MG / Agent Local proof | PLANNED | Exact final decisions -> canonical ContentVersions / COMPLETE |
+| AO-1 | MG / Agent Local isolation proof | PLANNED | Enforced operator/reviewer identities, restricted interface and durable grant |
+| F5.2 | MG / Agent Local proof + Founder decisions | PLANNED | Versioned revision/rejection and renewed exact review |
+| AO-2 | MG / Agent Local service proof | PLANNED | Safe persistent agent loop; human approval resumes work without Continue |
+| F6.2 + minimum F6.1 | MG / Agent Local browser + Founder usability | PLANNED | Reviewer inbox/workspace for all three gates |
+| O1 | Agent Local / MG + Founder release decision | PLANNED / EXPLICIT PERMISSION | Pinned production release, isolation, backup/restore and grant activation |
+| O2 | MG / Agent Local + Founder policy decision | OPTIONAL | New routing activation only if required |
+| F7 | Production operator / Founder content + MG engineering review | PLANNED | Two additional real bilingual cases without per-stage technical relay |
+| Remaining F6.1/F6.3, F8 | MG / Agent Local + Founder | AFTER USEFUL PRODUCTION | Complete shell/Board, evidence-led optimization and closeout |
+| AO-3 | MG / Agent Local capability proof | OPTIONAL / NOT FIRST-RELEASE BLOCKER | Antigravity adapter passes same boundaries or stays UNSUPPORTED |
 
-## F4 - Quality -> final human gate
+F5.1/F5.2 remain parts of F5. F6 subparts keep their identities but useful review takes priority. AO tasks implement the new operating model; they do not rename previous CE phases.
 
-- [ ] Reuse Review/Revise, Assertion Audit and Source-copy for each required locale.
-- [ ] Keep work bounded; persist each completed stage and retain failed-attempt diagnostics without raw private payloads.
-- [ ] Bind results to the exact current artifact/version/hash, not unrelated historical evaluations.
-- [ ] Hard failures BLOCKED; warnings remain verbatim and visible for Founder review.
-- [ ] Retrying one failed lane/stage preserves accepted sibling results.
-- [ ] Prepare exact final artifacts/package and `WAIT_HUMAN(final_review)` only when all required locales qualify.
-- [ ] Read model exposes final snapshot, checks, warnings and safe next actions.
-- [ ] Exact-head tests/replay/restart/local acceptance PASS; no final approval or ContentVersion creation in this slice.
+## Release-blocking summary
 
-## F5 - Final decisions -> ContentVersions -> COMPLETE
+- [ ] F4/F5 canonical output/check/approval/version path accepted.
+- [ ] Actual operator profile cannot create a human approval or access reviewer secrets/live-code writes.
+- [ ] Active grant has explicit scope/limits and survives expiry/revocation/restart correctly.
+- [ ] Duplicate/missed approval wake-up and controller takeover cannot duplicate confirmed work.
+- [ ] Revision returns new checked content to its human gate; rejection is terminal.
+- [ ] Reviewer UI needs no copied Start/Continue or normal terminal intervention.
+- [ ] O1 deployment/recovery proof passes before real production.
+- [ ] Pilot records technical interventions honestly and never publishes without permission.
 
-- [ ] Review binds exact final bytes, applicable checks and package identity for each required locale.
-- [ ] Approve/request changes/reject have explicit durable outcomes; unsupported actions are not advertised.
-- [ ] A changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
-- [ ] Reuse canonical ContentItem/ContentVersion persistence; never silently overwrite approved history.
-- [ ] Finalization is atomic or durably recoverable; partial locale completion never reports COMPLETE.
-- [ ] Required locale membership AND exact approved lineage determine COMPLETE, not row count.
-- [ ] Replay/stale approval/partial failure/restart tests and exact-head local acceptance PASS.
-- [ ] Publication remains absent; UI reads Approved / Not published.
+None of these new boxes is pre-checked by the spec PR. Detailed criteria and failure branches belong to the linked work packages/matrix, not duplicated ever-growing status tables.
 
-Backend normal-path completion is an F5 acceptance outcome, not a claim that local production deployment or full UI is finished.
+## Fixed collaboration and evidence
 
-## F6 - Minimum full UI (three bounded tasks, not a new app)
+MG architects/codes/reviews/plans and writes exact engineering tasks. Founder copies them to Agent Local, returns reports and merges. Agent Local executes exact local scope; no independent architecture or automatic merge. Normal future production instead uses the restricted grant/agent loop; it does not require Founder to transport each operational step.
 
-### F6.1 - Shell and truthful system status
-
-- [ ] Header: MOTGU ContentEngine, actual environment and readiness.
-- [ ] Menu: Production / New Journal / System-Runtime.
-- [ ] Compact footer/status: app version, schema/version where available, last refresh and freshness.
-- [ ] Backend/DB/worker status comes from supported read endpoints; absent or stale data is UNKNOWN, not green.
-- [ ] Do not infer worker liveness from CLI installation or invent authentication/account data.
-
-### F6.2 - Continuous case workspace
-
-- [ ] Evolve `/operator/journal/[caseId]`; do not add separate Angle/Outline/Writer apps.
-- [ ] Current artifact plus one backend-approved primary action; three distinct human gates.
-- [ ] Exact Angle and Outline views/approvals; VI/EN progress; quality/warnings; exact final review.
-- [ ] Surface revision/rejection/retry/cancel/resume only when backend semantics are actually implemented.
-- [ ] Show uncertainty after a lost response; reconcile using durable state/receipt before sending a new execution.
-- [ ] Refresh, slow network, stale page and double-click do not lose user work or duplicate decisions.
-- [ ] Required labels, keyboard/focus, readable contrast, loading/empty/error/inconsistent states and usable narrow-screen layout before pilot.
-- [ ] Source/provenance and technical IDs/hashes/jobs stay in secondary details.
-
-### F6.3 - Production Board
-
-- [ ] Dense list inspired by the reference image: ID / Content / Stage / Locale / Quality / Updated / Next action.
-- [ ] Group by backend status (Ready, Queued/Running, Awaiting approval, Blocked, Approved/Not published); stage remains a separate column.
-- [ ] Click a row opens the exact case; preserve existing legacy-case routing where necessary.
-- [ ] Refresh behavior and last-update age are explicit; unknown/inconsistent rows never disappear silently.
-- [ ] Only canonical backend fields; no invented Due, comment count, progress percentage or custom Labels/Project semantics.
-- [ ] Browser proof can finish a Journal without CLI/DB intervention in the normal content-production path.
-
-## O1 - Controlled local operational release
-
-- [ ] Inspect actual deployed commit, DB identity/schema, runtime ownership and existing work before changes; do not assume old snapshots are live.
-- [ ] Founder authorizes exact release and any required migration; fresh backup + isolated restore proof precede schema mutation.
-- [ ] Baseline documented schema is operational `0027`, code/test `0034`; re-evaluate actual source/target rather than blindly rerunning migrations.
-- [ ] Frozen M1 counts/hashes remain unchanged; no operational reset or test-volume substitution.
-- [ ] Prove supported startup/shutdown, loopback bindings, worker recovery and post-release preflight.
-- [ ] Separate deployment proof from content/model execution; preserve recovery material.
-
-O2: new Model Routing activation requires an explicit policy/model/provider decision, test proof and a new approved immutable SettingsVersion. Existing approved legacy routing may suffice; O2 is not automatically a V1 blocker.
-
-## F7 - Real pilot
-
-- [ ] Two additional distinct real bilingual Journal cases beyond M1; synthetic F0/F2 acceptances do not count as these cases.
-- [ ] Use the same merged release candidate without case-specific code changes; fixes require regression/reproof.
-- [ ] Capture failures, retry/recovery, model calls, latency and human edit burden; unavailable usage/cost stays unknown.
-- [ ] Founder reviews output value and normal operator friction; no publication without separate authorization.
-
-## F8 - Polish and closeout
-
-- [ ] Fix any safety/data-integrity/approval blocker immediately, even if observed once.
-- [ ] Prioritize remaining repeated usability/content failures from F7; add targeted regressions.
-- [ ] Add useful search/filter/history and visual refinement without expanding the workflow scope.
-- [ ] Close recovery, metrics and documentation evidence; Founder decides CE05 closeout.
-
-## Required in every implementation PR
-
-- [ ] Canonical input/output contracts, bounded tests and human-gate STOP documented.
-- [ ] Code, tests and semantic AI_context/TASKS updates in the same PR; exact runtime evidence lives in a dated log/comment.
-- [ ] Code/CI/local proof/deployment states remain separate; self-review is not independent local execution evidence.
-- [ ] MG provides an exact local task; Founder copies it and returns the report; no direct-agent-channel assumption.
-- [ ] No automatic merge or runtime permission inherited from a roadmap.
-
-Retain completed CE00-CE04, M1, Review Console/Board, observability/delegation, OPS-01/02, K1-K6 and routing foundations. Defer WordPress/publish automation, Artwork expansion, broad evaluator platform, vector DB, new workflow engines/providers, native multi-agent and Antigravity activation.
+Retain CE00-CE04, M1, Review Console/Board, observability/delegation, OPS-01/02, K1-K6 and routing foundations. Deferred: generic workflow engine, new provider/agent platform, vector DB, native multi-agent, Artwork/WordPress/publish automation and speculative UI fields.

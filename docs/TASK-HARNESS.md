@@ -1,70 +1,69 @@
-# TASK HARNESS - one bounded outcome
+# TASK HARNESS - one bounded engineering outcome
 
-Fill under `docs/logs/YYYY-MM-DD-<task>-task.md`. A planned task is not execution permission. Founder dispatches the merged task; MG owns scope/review.
+Use `docs/logs/YYYY-MM-DD-<task>-task.md`. This template is for development, local proof and deployment. Normal production uses the implemented operating grant and restricted loop from `21-AGENT-OPERATED-JOURNAL-SPEC.md`, not a fresh Founder-copied task for every stage.
+
+A planned task is not execution permission. MG defines scope; Founder dispatches it to the separate Agent Local application. No direct MG-to-app delivery is assumed.
 
 ## Identity and outcome
 
 TASK ID / OWNER / REVIEWER:
-OBJECTIVE (one observable outcome):
-MILESTONE / DEPENDENCY:
-STATE (planned, dispatched, reported, verified):
+MODE: ENGINEERING_READ_ONLY / IMPLEMENTATION / LOCAL_ACCEPTANCE / DEPLOYMENT
+OBJECTIVE (one observable result):
+SPEC VERSION / DEPENDENCY EVIDENCE:
+STATE: planned / dispatched / reported / verified
 
-## Ref and synchronization
+## Ref and safe synchronization
 
-Repository / base-selection rule / assigned branch:
-Required merged task/contract:
-Expected SHA (resolve live at dispatch unless pinned):
+Repository / assigned branch / exact candidate SHA:
+SPEC_REF and current task location:
+Current deployed ref (do not change unless authorized):
+Writable files (exact list or NONE):
 
-Inspect changes first; stop on unexpected work. Fetch origin, synchronize assigned ref without destructive reset, require clean tree/matching SHA, then read checked-out AGENTS, AI_context.MD, TASKS, CHECKLIST, this task and affected specs. A moved base/changed gate requires revalidation, not guessing. No deployed-code switch while a runtime step is executing.
+Inspect status first. Preserve dirty files; no reset/stash/clean. Fetch metadata and verify the intended ref. Read checked-out AGENTS/context/spec/tasks/checklists. Record tested SHA/tree. Recheck a moved gate; never switch deployed code during an active step.
 
 ## Local target and inputs
 
-Operational vs disposable test DB identity:
-Compose project/volume/migration:
-Run/artifact/settings refs and expected versions/hashes:
-Canonical checkpoint/evidence pointer:
+Environment: TEST or OPERATIONAL (explicit permission required)
+Redacted target identity / expected migration / resource ownership:
+Retained evidence that must remain untouched:
+Exact input/approval/artifact/settings references and expected hashes:
+Canonical source of those refs:
 
-No private connection strings/secrets. Verify observations locally, not from a Markdown checkpoint alone.
+A past Markdown log is not proof current rows/resources still exist. Never print connection strings, secrets or private content in the report.
 
-## Permissions and budgets
+## Permission and budget table
 
-| Action | Allowed? | Exact boundary |
+| Action | Allowed? | Boundary |
 |---|---|---|
-| Read operational DB | | Read-only transaction; required queries only |
-| Write runtime/artifacts | | Exact entities/actions |
-| Model/research call | | Route, max calls/attempts/duration/cost |
-| Code change | | Exact file allowlist and smallest change |
-| Migration/install/service change | | Permission and recovery |
-| Record editorial approval | | Verifiable human decision/delegation only |
-| Git evidence branch/PR | | Exact paths; no main write |
-| Publish/merge | No by default | Founder approval/merge authority |
+| Read operational DB | NO unless stated | Read-only transaction, named necessity |
+| Write runtime/artifacts | NO unless stated | Exact cases/actions |
+| Model/research calls | ZERO unless stated | Approved route/destinations; per-step AND total calls/attempts/time; known cost limits only |
+| Code edit | NONE unless stated | Exact files, minimal patch |
+| Install/login/service changes | NO unless stated | Exact service, recovery plan |
+| Migration/release | NO unless stated | Exact source/target, backup/restore and safe checkpoint |
+| Record a real content decision | NO by agent identity | Human-authenticated exact decision; test fixtures clearly synthetic |
+| Git evidence branch/PR | NO unless stated | Sanitized paths, no main writes |
+| Merge/publish | NO | Founder merge, separate publication decision |
 
-Unknown budget/permission means stop. Do not generalize authorization to another model, action or artifact.
-
-## Scope / non-goals / files
-
-Only work needed for the outcome. Exact writable files or NONE. No redesign, provider/agent/framework expansion, secret logging, destructive data changes, safety bypass or self-selected next task.
+Unknown permission/required budget = STOP. A model/auth error does not permit a different provider. Approval of this task does not create a general production grant.
 
 ## Commands and branches
 
-Use documented entrypoints or code-verified read-only probes. Proposed commands must be marked NOT IMPLEMENTED, not presented as runnable.
+Only documented/code-verified entrypoints. Proposed commands must be marked NOT IMPLEMENTED. For each branch state: condition -> permitted action -> evidence -> STOP. Include stale input, permission/config error, ambiguous external result, budget exhaustion, hard quality failure and success. Several harmless checks already within scope do not need repeated authorization.
 
-For each branch: condition -> permitted action -> evidence -> stop. Cover changed input, outer denial, CLI/auth failure, ambiguous effect and success. No new approval for each command already covered.
+## Acceptance and evidence
 
-## Evidence and acceptance
+List acceptance IDs from `AGENT-OPERATED-ACCEPTANCE.md` plus applicable existing checklist tests. Supply expected terminal state, counters and zero-side-effect checks.
 
-Start/end SHA/tree; sanitized DB identity; verified refs/hashes; relevant counters/results; commands executed; rejecting layer/error/last completed step; checks not run.
+Evidence: start/end SHA/tree, safe environment identity, caller role/grant reference without credential, exact artifact/check/approval refs, commands/tests actually run, duration/counters, error layer/last completed step, checks not run and retained private evidence location.
 
-Evidence file / branch:
-Private artifacts retained locally:
-Objective acceptance checks:
+Do not conflate implementation, CI, local acceptance, deployment, content approval or publication. Test-fake decisions are not real editorial approval. Docs-only work requires link/scope/consistency review, not invented runtime claims.
 
-Runtime success, quality, code merge and publication are separate decisions. Never mark unobserved gates PASS.
+## STOP and report
 
-## Stop and report
+STOP on unexpected work, changed target/input, forbidden/unsafe action, unresolved result, secret risk, exhausted budget, actual content gate or the bounded result. No next task on your own. Normal production continuation is a separately activated product behavior, not an exception an engineering agent may infer.
 
-Stop on unexpected work, changed target/input, unauthorized/unsafe action, secret risk, scope expansion, exhausted budget, required human decision or conclusive outcome. No bypass and no next task.
+Return one packet:
+`TASK / START-END REF / TARGET / FILES CHANGED / COMMANDS-CHECKS / EVIDENCE / ACCEPTANCE / NOT RUN / BLOCKERS / READY FOR REVIEW or BLOCKED or NEEDS CHANGES / NEXT FOR MG`
 
-`TASK ID / START-END REF / LOCAL TARGET / FILES CHANGED / COMMANDS EXECUTED / EVIDENCE / ACCEPTANCE / CHECKS NOT RUN / RISKS-BLOCKERS / STATUS / NEXT FOR MG`
-
-Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. Send one sanitized packet at a meaningful gate; MG reviews and updates the next state. If GitHub evidence publication is unavailable, return sanitized evidence through Founder and state it is not yet in the repository.
+Founder relays it to MG. If evidence could not be posted on GitHub, state that explicitly; do not invent a link or claim synchronization.
