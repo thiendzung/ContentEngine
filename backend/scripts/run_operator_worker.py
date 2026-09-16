@@ -27,8 +27,8 @@ from app.modules.content_engine.journal.operator_outline_worker import (
     execute_outline_job,
     fail_outline_job,
 )
-from app.modules.content_engine.journal.operator_quality import QUALITY_STEP_KEYS
 from app.modules.content_engine.journal.operator_quality_worker import (
+    QUALITY_STEP_KEYS,
     OperatorQualityWorkerError,
     claim_or_reclaim_quality_job,
     execute_quality_job,
