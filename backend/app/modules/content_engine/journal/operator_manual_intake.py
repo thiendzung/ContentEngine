@@ -31,6 +31,7 @@ from app.modules.content_engine.journal.operator_locking import (
 from app.modules.content_engine.journal.operator_vertical_slice import (
     ensure_required_locales,
     ensure_start_to_angle_step,
+    normalize_journal_locale,
 )
 from app.modules.content_engine.models import (
     ContentCase,
@@ -72,7 +73,7 @@ def _text(value: str, code: str) -> str:
 
 
 def _normalized_locales(values: list[str]) -> list[str]:
-    normalized = sorted(value.strip().lower() for value in values)
+    normalized = sorted(normalize_journal_locale(value) for value in values)
     if not normalized or any(not value or len(value) > 32 for value in normalized):
         raise OperatorControlError("operator_required_locales_invalid")
     if len(set(normalized)) != len(normalized):
@@ -217,7 +218,9 @@ async def create_founder_journal_intake(
         raise OperatorControlError("operator_idempotency_key_invalid")
     actor = _text(actor_id, "operator_actor_required")
     project_key = _text(project_slug, "operator_project_required")
-    source = _text(source_locale, "operator_source_locale_required").lower()
+    source = normalize_journal_locale(
+        _text(source_locale, "operator_source_locale_required")
+    )
     country = _text(
         research_country,
         "operator_research_country_required",

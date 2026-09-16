@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.models import OutlineApproval
 from app.modules.content_engine.journal.outline import OutlineInput, load_outline_input
 from app.modules.content_engine.models import ContentCase, LocaleVariant
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun, utc_now
@@ -334,8 +335,9 @@ def _writer_handoff_payload(
     source_run: ContentRun,
     outline_artifact: Artifact,
     locale_variant: LocaleVariant,
+    outline_approval_id: UUID | None = None,
 ) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "schema_version": WRITER_HANDOFF_SCHEMA_VERSION,
         "artifact_type": "writer_handoff",
         "source_run_id": str(source_run.id),
@@ -351,6 +353,10 @@ def _writer_handoff_payload(
         },
         "settings_snapshot_id": str(source_run.settings_snapshot_id),
     }
+    payload["outline_approval"] = (
+        {"id": str(outline_approval_id)} if outline_approval_id is not None else None
+    )
+    return payload
 
 
 async def ensure_writer_run(
@@ -361,6 +367,7 @@ async def ensure_writer_run(
     expected_outline_version: int,
     expected_outline_hash: str,
     locale: str,
+    outline_approval_id: UUID | None = None,
 ) -> WriterRunHandoff:
     """Create/reuse one locale-specific Writer run without changing the shared upstream run."""
 
@@ -378,6 +385,16 @@ async def ensure_writer_run(
         raise WriterGenerationError("writer_source_run_not_found")
     if source_run.status not in {"waiting_approval", "completed"}:
         raise WriterGenerationError("writer_source_run_state_invalid", source_run.status)
+    if outline_approval_id is not None:
+        approval = await session.get(OutlineApproval, outline_approval_id)
+        if (
+            approval is None
+            or approval.run_id != source_run.id
+            or approval.outline_artifact_id != outline_artifact.id
+            or approval.outline_artifact_version != outline_artifact.version
+            or approval.outline_artifact_hash != outline_artifact.content_hash
+        ):
+            raise WriterGenerationError("writer_outline_approval_mismatch")
     content_case = await session.get(ContentCase, source_run.content_case_id)
     if content_case is None or content_case.project_id != source_run.project_id:
         raise WriterGenerationError("writer_content_case_invalid")
@@ -401,6 +418,7 @@ async def ensure_writer_run(
         source_run=source_run,
         outline_artifact=outline_artifact,
         locale_variant=variant,
+        outline_approval_id=outline_approval_id,
     )
     handoff_hash = _canonical_hash(handoff_payload)
     existing_handoffs = list(
@@ -477,6 +495,7 @@ async def load_writer_input(
     expected_outline_version: int,
     expected_outline_hash: str,
     locale: str,
+    outline_approval_id: UUID | None = None,
 ) -> WriterInput:
     """Reload one exact accepted Outline and exact locale-specific Writer-run contract."""
 
@@ -513,6 +532,7 @@ async def load_writer_input(
         source_run=source_run,
         outline_artifact=artifact,
         locale_variant=variant,
+        outline_approval_id=outline_approval_id,
     )
     expected_handoff_hash = _canonical_hash(expected_handoff_payload)
     handoff = await session.scalar(
@@ -548,6 +568,9 @@ async def load_writer_input(
             "version": artifact.version,
             "content_hash": artifact.content_hash,
         },
+        "outline_approval_ref": (
+            {"id": str(outline_approval_id)} if outline_approval_id is not None else None
+        ),
         "content_case": _case_payload(content_case),
         "locale_variant": _variant_payload(variant),
         "outline": cast(dict[str, object], _clone_json(outline_payload)),
@@ -828,6 +851,7 @@ async def persist_journal_draft(
             "source_run_id": str(writer_input.outline_artifact.run_id),
             "writer_run_id": str(writer_input.writer_run.id),
             "locale_variant_id": str(writer_input.locale_variant.id),
+            "outline_approval": writer_input.model_input.get("outline_approval_ref"),
         },
         "journal_outline": {
             "id": str(writer_input.outline_artifact.id),
@@ -918,6 +942,7 @@ class WriterGenerator:
         expected_outline_version: int,
         expected_outline_hash: str,
         locale: str,
+        outline_approval_id: UUID | None = None,
         model: WriterModelPort,
         provider: str,
         model_name: str,
@@ -934,6 +959,7 @@ class WriterGenerator:
             expected_outline_version=expected_outline_version,
             expected_outline_hash=expected_outline_hash,
             locale=locale,
+            outline_approval_id=outline_approval_id,
         )
         manifest = await _execution_manifest(
             session,

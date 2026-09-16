@@ -312,7 +312,7 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
             session, **_intake_kwargs(key="pr45-intake")
         )
         assert replay.replayed and replay.command_id == first.command_id
-        assert first.required_locales == ["en", "vi"]
+        assert first.required_locales == ["en", "vi-VN"]
         assert first.state.status == "READY" and first.state.primary_intent == "start"
         need = await session.get(NeedHypothesis, first.need_hypothesis_id)
         opportunity = await session.get(ContentOpportunity, first.content_opportunity_id)
@@ -340,7 +340,7 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         )
         assert [(row.locale, row.role) for row in requirements] == [
             ("en", "source"),
-            ("vi", "translation"),
+            ("vi-VN", "translation"),
         ]
         variants = list(
             (
@@ -351,7 +351,7 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
                 )
             ).all()
         )
-        assert [row.locale for row in variants] == ["en"]
+        assert [row.locale for row in variants] == ["en", "vi-VN"]
         pack = await session.get(OriginalityPack, first.originality_pack_id)
         assert pack is not None and pack.status == "approved"
         assert pack.approved_by == "founder"

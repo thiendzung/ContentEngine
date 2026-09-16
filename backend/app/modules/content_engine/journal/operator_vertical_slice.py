@@ -35,6 +35,7 @@ from app.modules.content_engine.journal.operator_preflight import (
 from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
+    ContentOpportunity,
     ContentVersion,
     LocaleVariant,
 )
@@ -46,6 +47,21 @@ from app.modules.knowledge.brief_binding import (
 )
 
 START_TO_ANGLE_STAGE = "start_to_angle"
+_JOURNAL_LOCALE_ALIASES = {
+    "vi": "vi-VN",
+    "vi-vn": "vi-VN",
+    "en": "en",
+}
+
+
+def normalize_journal_locale(value: str) -> str:
+    """Return one canonical Journal locale or fail closed."""
+
+    normalized = value.strip().lower()
+    locale = _JOURNAL_LOCALE_ALIASES.get(normalized)
+    if locale is None:
+        raise OperatorControlError("operator_locale_unsupported", value)
+    return locale
 
 
 def _stable_hash(value: object) -> str:
@@ -68,9 +84,9 @@ async def ensure_required_locales(
 ) -> list[JournalRequiredLocale]:
     """Persist immutable case requirements separately from materialized LocaleVariants."""
 
-    source = source_locale.strip().lower()
+    source = normalize_journal_locale(source_locale)
     actor = declared_by.strip()
-    normalized = [value.strip().lower() for value in required_locales]
+    normalized = [normalize_journal_locale(value) for value in required_locales]
     if not source or not actor:
         raise OperatorControlError("operator_required_locales_invalid")
     if not normalized or any(not value or len(value) > 32 for value in normalized):
@@ -93,24 +109,72 @@ async def ensure_required_locales(
         locale: ("source" if locale == source else "translation")
         for locale in normalized
     }
+    content_case = await session.get(ContentCase, content_case_id)
+    if content_case is None:
+        raise OperatorControlError("operator_case_not_found")
+    opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
+    if opportunity is None:
+        raise OperatorControlError("operator_opportunity_not_found")
+
     if existing:
         actual = {row.locale: row.role for row in existing}
         if actual != expected:
             raise OperatorControlError("operator_required_locales_conflict")
-        return existing
+    else:
+        rows = [
+            JournalRequiredLocale(
+                content_case_id=content_case_id,
+                locale=locale,
+                role=role,
+                declared_by=actor,
+            )
+            for locale, role in expected.items()
+        ]
+        session.add_all(rows)
+        await session.flush()
+        existing = rows
 
-    rows = [
-        JournalRequiredLocale(
-            content_case_id=content_case_id,
-            locale=locale,
-            role=role,
-            declared_by=actor,
+    variants = list(
+        (
+            await session.scalars(
+                select(LocaleVariant).where(
+                    LocaleVariant.content_case_id == content_case_id,
+                    LocaleVariant.locale.in_(normalized),
+                )
+            )
+        ).all()
+    )
+    by_locale: dict[str, list[LocaleVariant]] = {}
+    for variant in variants:
+        by_locale.setdefault(variant.locale, []).append(variant)
+    for locale in normalized:
+        if len(by_locale.get(locale, [])) > 1:
+            raise OperatorControlError("operator_locale_variant_ambiguous", locale)
+    source_variants = by_locale.get(source, [])
+    if len(source_variants) != 1:
+        raise OperatorControlError("operator_source_locale_variant_missing")
+    source_variant = source_variants[0]
+    for locale in normalized:
+        if by_locale.get(locale):
+            continue
+        session.add(
+            LocaleVariant(
+                content_case_id=content_case_id,
+                locale=locale,
+                content_role=source_variant.content_role,
+                primary_question=source_variant.primary_question,
+                primary_intent=source_variant.primary_intent,
+                secondary_intent=source_variant.secondary_intent,
+                primary_query=source_variant.primary_query,
+                keyword_notes_json=list(source_variant.keyword_notes_json),
+                emotion_arc_json=list(source_variant.emotion_arc_json),
+                must_include_json=list(source_variant.must_include_json),
+                must_not_claim_json=list(source_variant.must_not_claim_json),
+                status=source_variant.status,
+            )
         )
-        for locale, role in expected.items()
-    ]
-    session.add_all(rows)
     await session.flush()
-    return rows
+    return existing
 
 
 async def ensure_start_to_angle_step(

@@ -73,6 +73,18 @@ export type OutlineGate = {
   outline: Record<string, unknown>;
 };
 
+export type WriterLane = {
+  required_locale: string;
+  status: "pending" | "queued" | "running" | "completed" | "failed";
+  run_id: string | null;
+  step_run_id: string | null;
+  job_id: string | null;
+  attempt: number | null;
+  draft_artifact_id: string | null;
+  draft_version: number | null;
+  draft_hash: string | null;
+};
+
 export type OperatorCaseView = {
   content_case_id: string;
   question: string;
@@ -88,6 +100,7 @@ export type OperatorCaseView = {
     required_locales: RequiredLocale[];
   };
   pending_gate: AngleGate | OutlineGate | null;
+  writer_lanes: WriterLane[];
 };
 
 export type FounderJournalIntakeRequest = {

@@ -15,7 +15,7 @@ type Props = {
   preflightReady: boolean;
 };
 
-type SourceLocale = "" | "vi" | "en";
+type SourceLocale = "" | "vi-VN" | "en";
 
 type FormState = {
   source_locale: SourceLocale;
@@ -59,7 +59,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
 
   const requiredLocales = useMemo(() => {
     const values: string[] = [];
-    if (form.required_vi) values.push("vi");
+    if (form.required_vi) values.push("vi-VN");
     if (form.required_en) values.push("en");
     return values;
   }, [form.required_en, form.required_vi]);
@@ -70,12 +70,12 @@ export function JournalIntakeForm({ preflightReady }: Props) {
     setError("");
   }
 
-  function setSourceLocale(locale: "vi" | "en") {
+  function setSourceLocale(locale: "vi-VN" | "en") {
     clearIdempotencyKey(INTAKE_KEY);
     setForm((current) => ({
       ...current,
       source_locale: locale,
-      required_vi: locale === "vi" ? true : current.required_vi,
+      required_vi: locale === "vi-VN" ? true : current.required_vi,
       required_en: locale === "en" ? true : current.required_en,
     }));
     setError("");
@@ -141,12 +141,12 @@ export function JournalIntakeForm({ preflightReady }: Props) {
           <label>
             <span>Ngôn ngữ nguồn</span>
             <select
-              onChange={(event) => setSourceLocale(event.target.value as "vi" | "en")}
+              onChange={(event) => setSourceLocale(event.target.value as "vi-VN" | "en")}
               required
               value={form.source_locale}
             >
               <option disabled value="">Chọn ngôn ngữ nguồn</option>
-              <option value="vi">Tiếng Việt</option>
+              <option value="vi-VN">Tiếng Việt</option>
               <option value="en">Tiếng Anh</option>
             </select>
           </label>
@@ -164,7 +164,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             <label>
               <input
                 checked={form.required_vi}
-                disabled={form.source_locale === "vi"}
+                disabled={form.source_locale === "vi-VN"}
                 onChange={(event) => update("required_vi", event.target.checked)}
                 type="checkbox"
               />

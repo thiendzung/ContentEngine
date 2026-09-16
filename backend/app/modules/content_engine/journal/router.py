@@ -94,7 +94,10 @@ class FounderJournalIntakeRequest(BaseModel):
     project_slug: str = Field(default="motgu", min_length=1, max_length=100)
     source_locale: str = Field(min_length=1, max_length=32)
     research_country: str = Field(min_length=1, max_length=8)
-    required_locales: list[str] = Field(default_factory=lambda: ["vi", "en"], min_length=1)
+    required_locales: list[str] = Field(
+        default_factory=lambda: ["vi-VN", "en"],
+        min_length=1,
+    )
     reader: str = Field(min_length=1)
     situation: str = Field(min_length=1)
     need: str = Field(min_length=1)

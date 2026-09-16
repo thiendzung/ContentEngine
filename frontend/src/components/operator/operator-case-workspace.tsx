@@ -30,7 +30,7 @@ function shortId(value: string | null): string {
 }
 
 function localeLabel(value: string): string {
-  if (value === "vi") return "VI";
+  if (value === "vi" || value === "vi-VN") return "VI";
   if (value === "en") return "EN";
   return value.toUpperCase();
 }
@@ -44,6 +44,14 @@ function technicalError(error: unknown): string {
     return "Trạng thái đã thay đổi. Đã tải lại dữ liệu mới nhất.";
   }
   return error instanceof Error ? error.message : "Không thể hoàn tất thao tác.";
+}
+
+function writerLaneStatusLabel(status: string): string {
+  if (status === "pending") return "Chờ xếp hàng";
+  if (status === "queued") return "Đang chờ worker";
+  if (status === "running") return "Đang viết";
+  if (status === "completed") return "Đã có bản nháp";
+  return "Lỗi — chỉ lane này được retry";
 }
 
 function AngleCard({
@@ -255,6 +263,39 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <p>{view.intake.required_locales.map((item) => `${localeLabel(item.locale)} · ${item.role}`).join(" / ")}</p>
         </div>
       </section>
+
+      {view.writer_lanes.length > 0 && (
+        <section className="operator-panel writer-lanes-panel">
+          <div className="operator-panel-heading">
+            <div>
+              <p className="eyebrow">Writer lanes</p>
+              <h2>Soạn độc lập theo ngôn ngữ</h2>
+            </div>
+            <span className="operator-note">Mỗi lane dùng Outline đã duyệt và không đọc bản nháp của lane khác.</span>
+          </div>
+          <div className="writer-lanes-grid">
+            {view.writer_lanes.map((lane) => (
+              <article className="writer-lane-card" key={lane.required_locale}>
+                <div className="writer-lane-heading">
+                  <strong>{localeLabel(lane.required_locale)}</strong>
+                  <span className={`writer-lane-status ${lane.status}`}>{writerLaneStatusLabel(lane.status)}</span>
+                </div>
+                <p>Lượt chạy: {lane.attempt ?? "—"}</p>
+                {lane.draft_artifact_id && <p>Draft: {shortId(lane.draft_artifact_id)} · v{lane.draft_version}</p>}
+                <details className="operator-technical-details">
+                  <summary>Binding kỹ thuật</summary>
+                  <dl>
+                    <div><dt>Run</dt><dd>{lane.run_id ?? "—"}</dd></div>
+                    <div><dt>Step</dt><dd>{lane.step_run_id ?? "—"}</dd></div>
+                    <div><dt>Job</dt><dd>{lane.job_id ?? "—"}</dd></div>
+                    <div><dt>Draft hash</dt><dd>{lane.draft_hash ?? "—"}</dd></div>
+                  </dl>
+                </details>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {notice && <p className="operator-success">{notice}</p>}
       {error && <p className="error">{error}</p>}

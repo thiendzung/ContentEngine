@@ -30,6 +30,11 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 from app.modules.content_engine.journal.operator_vertical_slice import (
     submit_operator_command_v45 as _submit_operator_command_impl,
 )
+from app.modules.content_engine.journal.operator_writers import (
+    WRITER_MAX_JOB_ATTEMPTS,
+    WRITER_STEP_BY_LOCALE,
+    get_writer_lane_progress,
+)
 from app.modules.content_engine.journal.outline import OutlineGenerationError, load_outline_input
 from app.modules.content_engine.journal.outline_agent_bridge import (
     OUTLINE_PROMPT_KEY,
@@ -37,8 +42,9 @@ from app.modules.content_engine.journal.outline_agent_bridge import (
     OUTLINE_ROUTE_TASK_KEY,
     OUTLINE_TASK_KEY,
 )
+from app.modules.content_engine.journal.writer import WriterGenerationError, ensure_writer_run
 from app.modules.content_engine.models import ContentCase, SettingsSnapshot
-from app.modules.harness.models import ContentRun, Job, StepRun
+from app.modules.harness.models import Artifact, ContentRun, Job, StepRun
 from app.modules.harness.persistence import enqueue_job, transition_run
 from app.modules.harness.runtime import RuntimeConfigurationError, SettingsModelRouter
 from app.modules.system.settings_service import (
@@ -55,6 +61,7 @@ OperatorActionKey = Literal[
     "await_final_review_approval",
     "angle_to_outline",
     "outline_to_writers",
+    "writers_to_quality",
     "finalize_content",
     "complete",
 ]
@@ -288,6 +295,135 @@ async def _angle_continuation_state_overlay(
     )
 
 
+async def _writer_state_overlay(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+) -> OperatorState:
+    source_step_run_id = state.current_step_run_id
+    progress = await get_writer_lane_progress(
+        session,
+        content_case_id=state.content_case_id,
+        source_run_id=state.current_run_id,
+    )
+    if progress is None and state.current_run_id is not None:
+        focused_run = await session.get(ContentRun, state.current_run_id)
+        if focused_run is not None and focused_run.run_mode == "localize":
+            handoffs = list(
+                (
+                    await session.scalars(
+                        select(Artifact).where(
+                            Artifact.run_id == focused_run.id,
+                            Artifact.artifact_type == "writer_handoff",
+                        )
+                    )
+                ).all()
+            )
+            if len(handoffs) == 1 and isinstance(handoffs[0].content_json, dict):
+                raw_source_run_id = handoffs[0].content_json.get("source_run_id")
+                if isinstance(raw_source_run_id, str):
+                    try:
+                        source_run_id = UUID(raw_source_run_id)
+                    except ValueError:
+                        source_run_id = None
+                    if source_run_id is not None:
+                        progress = await get_writer_lane_progress(
+                            session,
+                            content_case_id=state.content_case_id,
+                            source_run_id=source_run_id,
+                        )
+                        if progress is not None:
+                            source_step = await session.scalar(
+                                select(StepRun)
+                                .where(
+                                    StepRun.run_id == progress.source_run.id,
+                                    StepRun.step_key == progress.source_run.current_step,
+                                )
+                                .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+                                .limit(1)
+                            )
+                            if source_step is not None:
+                                source_step_run_id = source_step.id
+    if progress is None:
+        return state
+
+    version_payload = {
+        "base": state.state_version,
+        "writers": progress.version_payload,
+    }
+    state_version = hashlib.sha256(
+        json.dumps(version_payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    common = {
+        "state_version": state_version,
+        "phase": "Soạn song ngữ",
+        "human_gate": None,
+        "current_worker": None,
+        "current_run_id": progress.source_run.id,
+        "current_step_run_id": source_step_run_id,
+    }
+    if not progress.dispatched:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "READY",
+                "primary_intent": "continue",
+                "allowed_intents": ["continue"],
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": (
+                    "Outline đã duyệt; sẵn sàng tạo độc lập một lane Writer cho từng locale."
+                ),
+            }
+        )
+    if progress.all_complete:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "READY",
+                "phase": "Chờ kiểm tra chất lượng",
+                "primary_intent": "continue",
+                "allowed_intents": ["continue"],
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": (
+                    "Mọi lane Writer đã có journal_draft; F3 dừng trước Quality."
+                ),
+            }
+        )
+    if progress.has_active_job:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "RUNNING" if any(
+                    lane.status == "running" for lane in progress.lanes
+                ) else "QUEUED",
+                "primary_intent": None,
+                "allowed_intents": ["cancel"] if progress.has_queued_job else [],
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": (
+                    "Các lane Writer đang chạy độc lập; trạng thái từng locale được giữ riêng."
+                ),
+            }
+        )
+    if progress.has_failed_lane:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "BLOCKED",
+                "primary_intent": "retry",
+                "allowed_intents": ["retry"],
+                "blocker_code": "operator_writer_lane_failed",
+                "blocker_message": (
+                    "Một hoặc nhiều lane Writer thất bại; chỉ lane lỗi được phép thử lại."
+                ),
+                "last_checkpoint": "Draft đã hoàn tất được giữ nguyên; lane lỗi chưa được retry.",
+            }
+        )
+    return state.model_copy(update=common)
+
+
 async def get_operator_state(
     session: AsyncSession,
     *,
@@ -302,7 +438,8 @@ async def get_operator_state(
         preflight_checked=preflight_checked,
     )
     state = await _outline_state_overlay(session, state=state)
-    return await _angle_continuation_state_overlay(session, state=state)
+    state = await _angle_continuation_state_overlay(session, state=state)
+    return await _writer_state_overlay(session, state=state)
 
 
 async def _bound_focus(
@@ -345,6 +482,11 @@ async def resolve_next_operator_action(
         preflight_checked=preflight_checked,
     )
     run, step = await _bound_focus(session, state=state)
+    writer_progress = await get_writer_lane_progress(
+        session,
+        content_case_id=content_case_id,
+        source_run_id=state.current_run_id,
+    )
 
     if state.status == "COMPLETE":
         return ResolvedOperatorAction(
@@ -369,10 +511,43 @@ async def resolve_next_operator_action(
             human_gate=state.human_gate,
         )
 
+    if writer_progress is not None and writer_progress.all_complete:
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            action_key="writers_to_quality",
+            intent="continue",
+            executable=False,
+            current_run_id=writer_progress.source_run.id,
+            current_step_run_id=state.current_step_run_id,
+        )
+
+    if writer_progress is not None and writer_progress.dispatched:
+        retryable = state.primary_intent == "retry"
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            action_key="outline_to_writers",
+            intent="retry" if retryable else None,
+            executable=retryable,
+            current_run_id=writer_progress.source_run.id,
+            current_step_run_id=state.current_step_run_id,
+            blocker_code=state.blocker_code,
+        )
+
     if (
         state.primary_intent == "continue"
         and run is not None
-        and run.current_step in _F2_EXECUTABLE_CONTINUATIONS
+        and (
+            run.current_step in _F2_EXECUTABLE_CONTINUATIONS
+            or (
+                writer_progress is not None
+                and not writer_progress.dispatched
+                and run.current_step == "outline"
+            )
+        )
     ):
         continuation_action: OperatorActionKey = _GATE_CONTINUATIONS[run.current_step]
         return ResolvedOperatorAction(
@@ -629,6 +804,218 @@ async def _submit_angle_to_outline_command(
     )
 
 
+def _writer_job_dedupe_key(
+    *,
+    command_id: UUID,
+    locale: str,
+    outline_artifact_id: UUID,
+    outline_version: int,
+    outline_hash: str,
+    outline_approval_id: UUID,
+    attempt: int,
+) -> str:
+    payload = {
+        "command_id": str(command_id),
+        "locale": locale,
+        "outline_artifact_id": str(outline_artifact_id),
+        "outline_version": outline_version,
+        "outline_hash": outline_hash,
+        "outline_approval_id": str(outline_approval_id),
+        "attempt": attempt,
+    }
+    digest = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    return f"operator:writer:{digest}"
+
+
+async def _submit_outline_to_writers_command(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    intent: OperatorIntent,
+    expected_state_version: str,
+    idempotency_key: str,
+    actor_id: str,
+) -> OperatorCommandResult:
+    if intent not in {"continue", "retry", "cancel"}:
+        raise OperatorControlError("operator_intent_not_allowed")
+    key = idempotency_key.strip()
+    if not key or len(key) > 200:
+        raise OperatorControlError("operator_idempotency_key_invalid")
+    if len(expected_state_version) != 64:
+        raise OperatorControlError("operator_state_version_invalid")
+    request_hash = _command_hash(
+        content_case_id=content_case_id,
+        intent=intent,
+        state_version=expected_state_version,
+        action_key="outline_to_writers",
+    )
+    await lock_operator_idempotency(session, key=key)
+    existing = await session.scalar(
+        select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
+    )
+    if existing is not None:
+        if existing.content_case_id != content_case_id or existing.request_hash != request_hash:
+            raise OperatorControlError("operator_idempotency_conflict")
+        return OperatorCommandResult(
+            command_id=existing.id,
+            content_case_id=existing.content_case_id,
+            intent=cast(OperatorIntent, existing.intent),
+            status=existing.status,
+            state_before=existing.state_before,
+            state_after=existing.state_after,
+            job_id=existing.job_id,
+            replayed=True,
+        )
+
+    locked_case = await session.scalar(
+        select(ContentCase)
+        .where(ContentCase.id == content_case_id, ContentCase.content_type == "journal")
+        .with_for_update()
+    )
+    if locked_case is None:
+        raise OperatorControlError("operator_case_not_found")
+    resolved = await resolve_next_operator_action(
+        session,
+        content_case_id=content_case_id,
+        preflight_checked=True,
+    )
+    if resolved.state_version != expected_state_version:
+        raise OperatorControlError("operator_state_stale")
+    if resolved.action_key != "outline_to_writers":
+        raise OperatorControlError("operator_internal_action_not_approved")
+    if intent == "continue" and not resolved.executable:
+        raise OperatorControlError("operator_intent_not_allowed")
+    if intent == "retry" and resolved.intent != "retry":
+        raise OperatorControlError("operator_retry_requires_failed_writer_lane")
+    progress = await get_writer_lane_progress(
+        session,
+        content_case_id=content_case_id,
+        source_run_id=resolved.current_run_id,
+    )
+    if progress is None:
+        raise OperatorControlError("operator_writer_lineage_missing")
+
+    command = OperatorCommand(
+        content_case_id=content_case_id,
+        run_id=progress.source_run.id,
+        step_run_id=resolved.current_step_run_id,
+        job_id=None,
+        intent=intent,
+        idempotency_key=key,
+        request_hash=request_hash,
+        expected_state_version=expected_state_version,
+        resolved_action_key="outline_to_writers",
+        status="accepted",
+        error_code=None,
+        actor_id=actor_id,
+        state_before=expected_state_version,
+        state_after=None,
+    )
+    session.add(command)
+    await session.flush()
+
+    if intent == "cancel":
+        if not progress.has_queued_job:
+            raise OperatorControlError("operator_cancel_requires_queued_writer_job")
+        for lane in progress.lanes:
+            job = lane.latest_job
+            if job is not None and job.status == "queued":
+                job.status = "cancelled"
+        command.status = "cancelled"
+    else:
+        if intent == "continue":
+            if progress.dispatched:
+                raise OperatorControlError("operator_writer_run_conflict")
+            lanes = list(progress.lanes)
+        else:
+            lanes = [lane for lane in progress.lanes if lane.status == "failed"]
+            if not lanes:
+                raise OperatorControlError("operator_writer_retry_lane_missing")
+        for lane in lanes:
+            if lane.required_locale not in WRITER_STEP_BY_LOCALE:
+                raise OperatorControlError(
+                    "operator_writer_locale_unsupported", lane.required_locale
+                )
+            try:
+                handoff = await ensure_writer_run(
+                    session,
+                    source_run_id=progress.source_run.id,
+                    outline_artifact_id=progress.outline_artifact.id,
+                    expected_outline_version=progress.outline_artifact.version,
+                    expected_outline_hash=progress.outline_artifact.content_hash,
+                    outline_approval_id=progress.outline_approval.id,
+                    locale=lane.required_locale,
+                )
+            except WriterGenerationError as exc:
+                raise OperatorControlError(exc.code) from exc
+            step = lane.step
+            if step is None:
+                step = StepRun(
+                    run_id=handoff.run.id,
+                    step_key=WRITER_STEP_BY_LOCALE[lane.required_locale],
+                    attempt=1,
+                    status="pending",
+                    input_artifact_refs_json=[
+                        str(handoff.artifact.id),
+                        str(progress.outline_artifact.id),
+                        f"outline_approval:{progress.outline_approval.id}",
+                    ],
+                    output_artifact_refs_json=[],
+                )
+                session.add(step)
+                await session.flush()
+            elif intent == "retry":
+                previous_job = lane.latest_job
+                if previous_job is None or previous_job.status not in {"failed", "cancelled"}:
+                    raise OperatorControlError("operator_writer_retry_lane_missing")
+                if previous_job.attempt >= WRITER_MAX_JOB_ATTEMPTS:
+                    raise OperatorControlError("operator_writer_retry_exhausted")
+                if step.status != "running":
+                    step.status = "running"
+                    step.error_json = None
+                if handoff.run.status != "running":
+                    handoff.run.status = "running"
+            previous_job = lane.latest_job
+            attempt = 1 if previous_job is None else previous_job.attempt + 1
+            queued = await enqueue_job(
+                session,
+                run_id=handoff.run.id,
+                step_run_id=step.id,
+                dedupe_key=_writer_job_dedupe_key(
+                    command_id=command.id,
+                    locale=lane.required_locale,
+                    outline_artifact_id=progress.outline_artifact.id,
+                    outline_version=progress.outline_artifact.version,
+                    outline_hash=progress.outline_artifact.content_hash,
+                    outline_approval_id=progress.outline_approval.id,
+                    attempt=attempt,
+                ),
+            )
+            queued.attempt = attempt
+        command.status = "queued"
+
+    await session.flush()
+    after = await get_operator_state(
+        session,
+        content_case_id=content_case_id,
+        preflight_checked=True,
+    )
+    command.state_after = after.state_version
+    await session.flush()
+    return OperatorCommandResult(
+        command_id=command.id,
+        content_case_id=content_case_id,
+        intent=intent,
+        status=command.status,
+        state_before=command.state_before,
+        state_after=command.state_after,
+        job_id=None,
+        replayed=False,
+    )
+
+
 async def _existing_f2_replay(
     session: AsyncSession,
     *,
@@ -701,6 +1088,15 @@ async def submit_operator_command(
         )
     )
     if existing is not None:
+        if existing.resolved_action_key == "outline_to_writers":
+            return await _submit_outline_to_writers_command(
+                session,
+                content_case_id=content_case_id,
+                intent=intent,
+                expected_state_version=expected_state_version,
+                idempotency_key=idempotency_key,
+                actor_id=actor_id,
+            )
         return await _submit_operator_command_impl(
             session,
             content_case_id=content_case_id,
@@ -720,6 +1116,17 @@ async def submit_operator_command(
         if knowledge_brief_id is not None:
             raise OperatorControlError("operator_knowledge_brief_binding_start_only")
         return await _submit_angle_to_outline_command(
+            session,
+            content_case_id=content_case_id,
+            intent=intent,
+            expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            actor_id=actor_id,
+        )
+    if resolved.action_key == "outline_to_writers":
+        if knowledge_brief_id is not None:
+            raise OperatorControlError("operator_knowledge_brief_binding_start_only")
+        return await _submit_outline_to_writers_command(
             session,
             content_case_id=content_case_id,
             intent=intent,
