@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -15,6 +17,34 @@ from app.modules.content_engine.journal.review_revise_orchestration import (
     prepare_review_revise_en_orchestration,
 )
 from app.modules.harness.models import ContentRun, utc_now
+
+_APP_ROOT = Path(__file__).parents[1] / "app"
+_V45_COMPATIBILITY_FILES = {"operator_vertical_slice.py", "operator_runtime.py"}
+
+
+def test_production_operator_entrypoint_imports_are_canonical() -> None:
+    v45_violations: list[str] = []
+    control_state_violations: list[str] = []
+
+    for path in sorted(_APP_ROOT.rglob("*.py")):
+        if path.name in _V45_COMPATIBILITY_FILES:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for line_number, line in enumerate(source.splitlines(), start=1):
+            if "get_operator_state_v45" in line or "submit_operator_command_v45" in line:
+                v45_violations.append(f"{path}:{line_number}")
+
+        tree = ast.parse(source, filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if node.module != "app.modules.content_engine.journal.operator_control":
+                continue
+            if any(alias.name == "get_operator_state" for alias in node.names):
+                control_state_violations.append(f"{path}:{node.lineno}")
+
+    assert v45_violations == []
+    assert control_state_violations == []
 
 
 @pytest.mark.asyncio

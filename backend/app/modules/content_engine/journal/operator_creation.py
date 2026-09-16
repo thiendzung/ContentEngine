@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_bootstrap import (
     OperatorBootstrapError,
@@ -19,7 +20,6 @@ from app.modules.content_engine.journal.operator_control import (
     OperatorControlError,
     OperatorState,
     create_or_reuse_journal_case,
-    get_operator_state,
 )
 from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.models import ContentCase, ContentOpportunity, LocaleVariant
@@ -98,7 +98,10 @@ async def create_journal_case_with_receipt(
             session,
             content_case_id=existing.content_case_id,
         )
-        state = await get_operator_state(session, content_case_id=existing.content_case_id)
+        state = await operator_runtime.get_operator_state(
+            session,
+            content_case_id=existing.content_case_id,
+        )
         return OperatorCreateResult(
             command_id=existing.id,
             content_case_id=existing.content_case_id,
@@ -123,7 +126,10 @@ async def create_journal_case_with_receipt(
     except OperatorBootstrapError as exc:
         raise OperatorControlError(exc.code) from exc
 
-    state = await get_operator_state(session, content_case_id=created.content_case_id)
+    state = await operator_runtime.get_operator_state(
+        session,
+        content_case_id=created.content_case_id,
+    )
     command = OperatorCommand(
         content_case_id=created.content_case_id,
         run_id=bootstrap_run.id,

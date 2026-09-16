@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.angle import (
     _artifact_candidates,
     angle_candidate_hash,
@@ -21,7 +22,6 @@ from app.modules.content_engine.journal.angle import (
 )
 from app.modules.content_engine.journal.models import JournalIntakeSpec, JournalRequiredLocale
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
-from app.modules.content_engine.journal.operator_vertical_slice import get_operator_state_v45
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact
 from app.modules.harness.persistence import get_latest_checkpoint
@@ -219,7 +219,7 @@ async def get_operator_case_view(
     )
     if not requirements:
         raise OperatorControlError("operator_required_locales_missing")
-    state = await get_operator_state_v45(session, content_case_id=content_case.id)
+    state = await operator_runtime.get_operator_state(session, content_case_id=content_case.id)
     pending_gate = None
     if state.status == "AWAITING_APPROVAL" and state.human_gate == "angle":
         pending_gate = await _angle_gate(session, state=state)
