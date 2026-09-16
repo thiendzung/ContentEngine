@@ -56,7 +56,7 @@ class WriterLane:
             and self.step is not None
             and self.step.status == "completed"
             and self.run is not None
-            and self.run.status == "waiting_approval"
+            and self.run.status in {"waiting_approval", "running", "failed"}
         ):
             return "completed"
         if self.step is not None and self.step.status == "running":
@@ -209,10 +209,7 @@ def _validate_handoff(
         or target.get("locale") != variant.locale
     ):
         raise OperatorControlError("operator_writer_handoff_stale")
-    if (
-        not isinstance(outline_approval, dict)
-        or outline_approval.get("id") != str(approval.id)
-    ):
+    if not isinstance(outline_approval, dict) or outline_approval.get("id") != str(approval.id):
         raise OperatorControlError("operator_writer_approval_binding_invalid")
 
 
@@ -253,9 +250,7 @@ async def get_writer_lane_progress(
     if source_variant is None or source_variant.locale not in required_locales:
         raise OperatorControlError("operator_writer_source_locale_conflict")
     for requirement in requirements:
-        expected_role = (
-            "source" if requirement.locale == source_variant.locale else "translation"
-        )
+        expected_role = "source" if requirement.locale == source_variant.locale else "translation"
         if requirement.role != expected_role:
             raise OperatorControlError("operator_writer_locale_role_conflict")
     approval_rows = list(
@@ -355,21 +350,19 @@ async def get_writer_lane_progress(
         step = steps[0]
         jobs = tuple(
             sorted(
-                list(
-                    (
-                        await session.scalars(
-                            select(Job).where(Job.step_run_id == step.id)
-                        )
-                    ).all()
-                ),
+                list((await session.scalars(select(Job).where(Job.step_run_id == step.id))).all()),
                 key=lambda job: (job.attempt, job.created_at, str(job.id)),
             )
         )
+        # F4 adds immutable revised ``journal_draft`` artifacts to the same Writer
+        # run.  The F3 entry draft is the artifact owned by the Writer StepRun;
+        # never pick a later quality artifact as the source draft.
         drafts = list(
             (
                 await session.scalars(
                     select(Artifact).where(
                         Artifact.run_id == run.id,
+                        Artifact.step_run_id == step.id,
                         Artifact.artifact_type == "journal_draft",
                         Artifact.locale == locale,
                     )

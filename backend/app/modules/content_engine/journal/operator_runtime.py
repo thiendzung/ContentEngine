@@ -23,6 +23,10 @@ from app.modules.content_engine.journal.operator_control import (
     OperatorState,
 )
 from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
+from app.modules.content_engine.journal.operator_quality import (
+    get_quality_progress,
+    submit_writers_to_quality_command,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import START_TO_ANGLE_STAGE
 from app.modules.content_engine.journal.operator_vertical_slice import (
     get_operator_state_v45 as _get_operator_state_impl,
@@ -71,6 +75,11 @@ _ACTION_BY_STAGE: dict[str, OperatorActionKey] = {
     START_TO_ANGLE_STAGE: "start_to_angle",
     "review_revise_en": "review_revise_en",
     OUTLINE_TASK_KEY: "angle_to_outline",
+    "review_revise_vi": "writers_to_quality",
+    "assertion_audit_vi": "writers_to_quality",
+    "assertion_audit_en": "writers_to_quality",
+    "source_copy_check_vi": "writers_to_quality",
+    "source_copy_check_en": "writers_to_quality",
 }
 _GATE_WAIT_ACTIONS: dict[str, OperatorActionKey] = {
     "angle": "await_angle_approval",
@@ -205,19 +214,10 @@ async def _outline_state_overlay(
         return state
     run = await session.get(ContentRun, state.current_run_id)
     step = await session.get(StepRun, state.current_step_run_id)
-    if (
-        run is None
-        or step is None
-        or step.run_id != run.id
-        or step.step_key != OUTLINE_TASK_KEY
-    ):
+    if run is None or step is None or step.run_id != run.id or step.step_key != OUTLINE_TASK_KEY:
         return state
     job = await _latest_job(session, step_run_id=step.id)
-    if (
-        run.status != "running"
-        or step.status not in {"pending", "running"}
-        or job is None
-    ):
+    if run.status != "running" or step.status not in {"pending", "running"} or job is None:
         return state
     if job.status == "queued":
         return state.model_copy(
@@ -273,10 +273,7 @@ async def _angle_continuation_state_overlay(
 ) -> OperatorState:
     """Expose the now-wired Angle continuation instead of a compatibility blocker."""
 
-    if (
-        state.blocker_code != "operator_gate_already_decided"
-        or state.current_run_id is None
-    ):
+    if state.blocker_code != "operator_gate_already_decided" or state.current_run_id is None:
         return state
     run = await session.get(ContentRun, state.current_run_id)
     if run is None or run.content_case_id != state.content_case_id or run.current_step != "angle":
@@ -387,18 +384,16 @@ async def _writer_state_overlay(
                 "allowed_intents": ["continue"],
                 "blocker_code": None,
                 "blocker_message": None,
-                "last_checkpoint": (
-                    "Mọi lane Writer đã có journal_draft; F3 dừng trước Quality."
-                ),
+                "last_checkpoint": ("Mọi lane Writer đã có journal_draft; F3 dừng trước Quality."),
             }
         )
     if progress.has_active_job:
         return state.model_copy(
             update={
                 **common,
-                "status": "RUNNING" if any(
-                    lane.status == "running" for lane in progress.lanes
-                ) else "QUEUED",
+                "status": "RUNNING"
+                if any(lane.status == "running" for lane in progress.lanes)
+                else "QUEUED",
                 "primary_intent": None,
                 "allowed_intents": ["cancel"] if progress.has_queued_job else [],
                 "blocker_code": None,
@@ -419,9 +414,7 @@ async def _writer_state_overlay(
                 "blocker_message": (
                     "Một hoặc nhiều lane Writer đã chạm giới hạn retry; cần xử lý thủ công."
                 ),
-                "last_checkpoint": (
-                    "Draft đã hoàn tất được giữ nguyên; lane Writer đã hết retry."
-                ),
+                "last_checkpoint": ("Draft đã hoàn tất được giữ nguyên; lane Writer đã hết retry."),
             }
         )
     if progress.has_retryable_failed_lane:
@@ -453,6 +446,136 @@ async def _writer_state_overlay(
     return state.model_copy(update=common)
 
 
+async def _quality_state_overlay(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+) -> OperatorState:
+    """Project the bilingual F4 quality fan-out over the legacy operator state."""
+
+    progress = await get_quality_progress(
+        session,
+        content_case_id=state.content_case_id,
+        source_run_id=None,
+    )
+    if progress is None:
+        return state
+    version_payload = {
+        "base": state.state_version,
+        "quality": progress.version_payload,
+    }
+    dumped = json.dumps(version_payload, sort_keys=True, separators=(",", ":"))
+    state_version = hashlib.sha256(dumped.encode()).hexdigest()
+    focused = next(
+        (lane for lane in progress.lanes if lane.status not in {"qualified", "final_gate_ready"}),
+        progress.lanes[0],
+    )
+    focused_run = focused.writer.run
+    focused_step = focused.review.step or focused.audit.step or focused.source_copy.step
+    common = {
+        "state_version": state_version,
+        "current_run_id": focused_run.id if focused_run is not None else state.current_run_id,
+        "current_step_run_id": focused_step.id if focused_step is not None else None,
+        "phase": "Kiểm tra chất lượng",
+        "human_gate": None,
+        "current_worker": None,
+    }
+    if progress.final_gate_ready:
+        final_lane = progress.lanes[0]
+        return state.model_copy(
+            update={
+                **common,
+                "status": "AWAITING_APPROVAL",
+                "phase": "Duyệt cuối",
+                "human_gate": "final_review",
+                "current_run_id": final_lane.writer.run.id if final_lane.writer.run else None,
+                "current_step_run_id": final_lane.final_review.id
+                if final_lane.final_review
+                else None,
+                "primary_intent": None,
+                "allowed_intents": [],
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": "Hai locale đã có final_content và checkpoint chờ duyệt cuối.",
+            }
+        )
+    if progress.has_active_job:
+        active_lane = next(
+            lane
+            for lane in progress.lanes
+            if any(
+                stage.job is not None and stage.job.status in {"queued", "leased"}
+                for stage in (lane.review, lane.audit, lane.source_copy)
+            )
+        )
+        active_stage = next(
+            stage
+            for stage in (active_lane.review, active_lane.audit, active_lane.source_copy)
+            if stage.job is not None and stage.job.status in {"queued", "leased"}
+        )
+        return state.model_copy(
+            update={
+                **common,
+                "status": "RUNNING"
+                if active_stage.job and active_stage.job.status == "leased"
+                else "QUEUED",
+                "current_run_id": active_lane.writer.run.id if active_lane.writer.run else None,
+                "current_step_run_id": active_stage.step.id if active_stage.step else None,
+                "current_worker": active_stage.job.lease_owner if active_stage.job else None,
+                "primary_intent": None,
+                "allowed_intents": ["cancel"]
+                if active_stage.job and active_stage.job.status == "queued"
+                else [],
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": (
+                    "Quality lanes đang chạy độc lập; mỗi locale giữ nguyên lineage riêng."
+                ),
+            }
+        )
+    if progress.has_content_block:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "BLOCKED",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "blocker_code": "operator_quality_blocked",
+                "blocker_message": (
+                    "Quality phát hiện lỗi nội dung; lane locale bị chặn và không tự retry."
+                ),
+                "last_checkpoint": (
+                    "Quality failure là content failure, không phải technical retry."
+                ),
+            }
+        )
+    if progress.has_exhausted_failure:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "BLOCKED",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "blocker_code": "operator_quality_retry_exhausted",
+                "blocker_message": "Quality job đã hết giới hạn retry; không quảng cáo retry tiếp.",
+                "last_checkpoint": "Các artifact locale đã hoàn tất vẫn được giữ nguyên.",
+            }
+        )
+    if progress.has_retryable_failure:
+        return state.model_copy(
+            update={
+                **common,
+                "status": "BLOCKED",
+                "primary_intent": "retry",
+                "allowed_intents": ["retry"],
+                "blocker_code": "operator_quality_job_failed",
+                "blocker_message": "Quality technical job thất bại; chỉ lane lỗi được retry.",
+                "last_checkpoint": "Lane quality đã hoàn tất được giữ nguyên khi xử lý lane lỗi.",
+            }
+        )
+    return state.model_copy(update=common)
+
+
 async def get_operator_state(
     session: AsyncSession,
     *,
@@ -468,7 +591,8 @@ async def get_operator_state(
     )
     state = await _outline_state_overlay(session, state=state)
     state = await _angle_continuation_state_overlay(session, state=state)
-    return await _writer_state_overlay(session, state=state)
+    state = await _writer_state_overlay(session, state=state)
+    return await _quality_state_overlay(session, state=state)
 
 
 async def _bound_focus(
@@ -516,6 +640,13 @@ async def resolve_next_operator_action(
         content_case_id=content_case_id,
         source_run_id=state.current_run_id,
     )
+    quality_progress = await get_quality_progress(
+        session,
+        content_case_id=content_case_id,
+        source_run_id=None,
+    )
+    if quality_progress is not None:
+        writer_progress = quality_progress.writer_progress
 
     if state.status == "COMPLETE":
         return ResolvedOperatorAction(
@@ -540,14 +671,50 @@ async def resolve_next_operator_action(
             human_gate=state.human_gate,
         )
 
-    if writer_progress is not None and writer_progress.all_complete:
+    if quality_progress is not None and quality_progress.has_retryable_failure:
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            action_key="writers_to_quality",
+            intent="retry",
+            executable=True,
+            current_run_id=state.current_run_id,
+            current_step_run_id=state.current_step_run_id,
+            blocker_code=state.blocker_code,
+        )
+
+    if quality_progress is not None and quality_progress.dispatched:
+        if state.status in {"QUEUED", "RUNNING"}:
+            return ResolvedOperatorAction(
+                content_case_id=content_case_id,
+                state_version=state.state_version,
+                status=state.status,
+                action_key="writers_to_quality",
+                executable=False,
+                current_run_id=state.current_run_id,
+                current_step_run_id=state.current_step_run_id,
+            )
+        if not quality_progress.final_gate_ready:
+            return ResolvedOperatorAction(
+                content_case_id=content_case_id,
+                state_version=state.state_version,
+                status=state.status,
+                action_key="writers_to_quality",
+                executable=False,
+                current_run_id=state.current_run_id,
+                current_step_run_id=state.current_step_run_id,
+                blocker_code=state.blocker_code,
+            )
+
+    if writer_progress is not None and writer_progress.all_complete and quality_progress is None:
         return ResolvedOperatorAction(
             content_case_id=content_case_id,
             state_version=state.state_version,
             status=state.status,
             action_key="writers_to_quality",
             intent="continue",
-            executable=False,
+            executable=True,
             current_run_id=writer_progress.source_run.id,
             current_step_run_id=state.current_step_run_id,
         )
@@ -568,11 +735,7 @@ async def resolve_next_operator_action(
             executable=retryable,
             current_run_id=writer_progress.source_run.id,
             current_step_run_id=state.current_step_run_id,
-            blocker_code=(
-                "operator_writer_retry_exhausted"
-                if exhausted
-                else state.blocker_code
-            ),
+            blocker_code=("operator_writer_retry_exhausted" if exhausted else state.blocker_code),
         )
 
     if (
@@ -780,9 +943,7 @@ async def _submit_angle_to_outline_command(
             previous_job is None or previous_job.status not in {"failed", "cancelled"}
         ):
             raise OperatorControlError("operator_retry_requires_failed_job")
-        if intent == "cancel" and (
-            previous_job is None or previous_job.status != "queued"
-        ):
+        if intent == "cancel" and (previous_job is None or previous_job.status != "queued"):
             raise OperatorControlError("operator_cancel_requires_queued_job")
 
     command = OperatorCommand(
@@ -1144,11 +1305,21 @@ async def submit_operator_command(
         return replay
 
     existing = await session.scalar(
-        select(OperatorCommand).where(
-            OperatorCommand.idempotency_key == idempotency_key.strip()
-        )
+        select(OperatorCommand).where(OperatorCommand.idempotency_key == idempotency_key.strip())
     )
     if existing is not None:
+        if existing.resolved_action_key == "writers_to_quality":
+            return await submit_writers_to_quality_command(
+                session,
+                content_case_id=content_case_id,
+                intent=intent,
+                expected_state_version=expected_state_version,
+                idempotency_key=idempotency_key,
+                actor_id=actor_id,
+                resolved_state=await resolve_next_operator_action(
+                    session, content_case_id=content_case_id, preflight_checked=True
+                ),
+            )
         if existing.resolved_action_key == "outline_to_writers":
             return await _submit_outline_to_writers_command(
                 session,
@@ -1194,6 +1365,18 @@ async def submit_operator_command(
             expected_state_version=expected_state_version,
             idempotency_key=idempotency_key,
             actor_id=actor_id,
+        )
+    if resolved.action_key == "writers_to_quality":
+        if knowledge_brief_id is not None:
+            raise OperatorControlError("operator_knowledge_brief_binding_start_only")
+        return await submit_writers_to_quality_command(
+            session,
+            content_case_id=content_case_id,
+            intent=intent,
+            expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            actor_id=actor_id,
+            resolved_state=resolved,
         )
 
     return await _submit_operator_command_impl(
