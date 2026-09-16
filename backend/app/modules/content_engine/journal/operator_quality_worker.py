@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.assertion_audit import (
@@ -307,15 +307,6 @@ async def _execute_review(
     # state.  The review step is still on the same Writer run and keeps its lineage.
     if run.status == "running":
         await transition_run(session, run_id=run.id, status="waiting_approval")
-    current_progress = await get_quality_progress(
-        session, content_case_id=run.content_case_id, source_run_id=None
-    )
-    if current_progress is not None and (
-        current_progress.has_exhausted_failure
-        or current_progress.has_content_block
-        or current_progress.has_retryable_failure
-    ):
-        return
     audit_input = await load_assertion_audit_input(
         session,
         writer_run_id=run.id,
@@ -479,15 +470,6 @@ async def _execute_audit(
         result.result == "fail"
         or result.critical_unsupported_count > 0
         or result.critical_contradicted_count > 0
-    ):
-        return
-    current_progress = await get_quality_progress(
-        session, content_case_id=run.content_case_id, source_run_id=None
-    )
-    if current_progress is not None and (
-        current_progress.has_exhausted_failure
-        or current_progress.has_content_block
-        or current_progress.has_retryable_failure
     ):
         return
     source_input = await load_source_copy_input(
@@ -684,8 +666,28 @@ async def fail_quality_job(
         step.error_json = {"class": failure_class[:100], "message": message[:2000]}
     elif step.error_json is None:
         step.error_json = {"class": failure_class[:100], "message": message[:2000]}
-    if job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
-        run.failure_code = "operator_quality_retry_exhausted"
+    if step.step_key in QUALITY_REVIEW_TASK_KEYS.values():
+        if step.attempt >= QUALITY_MAX_JOB_ATTEMPTS or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+            run.failure_code = "operator_quality_retry_exhausted"
+            run.failure_message = message[:2000]
+            if run.status == "running":
+                await transition_run(session, run_id=run.id, status="failed")
+    else:
+        eval_run_count = (
+            await session.scalar(
+                select(func.count(ContentRun.id)).where(
+                    ContentRun.content_case_id == run.content_case_id,
+                    ContentRun.locale_variant_id == run.locale_variant_id,
+                    ContentRun.run_mode == "eval",
+                    ContentRun.current_step == step.step_key,
+                )
+            )
+            or 1
+        )
+        if eval_run_count >= QUALITY_MAX_JOB_ATTEMPTS or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+            run.failure_code = "operator_quality_retry_exhausted"
+        else:
+            run.failure_code = failure_class[:100]
         run.failure_message = message[:2000]
         if run.status == "running":
             await transition_run(session, run_id=run.id, status="failed")

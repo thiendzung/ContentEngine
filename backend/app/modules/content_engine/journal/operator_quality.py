@@ -209,10 +209,23 @@ class QualityLane:
         if review_job is not None and review_job.status in {"failed", "cancelled"}:
             if _stage_has_integrity_failure(self.review):
                 return "quality_blocked"
+            review_attempt = (
+                self.review.step.attempt
+                if self.review.step is not None
+                else review_job.attempt
+            )
+            is_exhausted = (
+                review_attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or review_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (
+                    self.writer.run is not None
+                    and self.writer.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
             return (
-                "execution_failed_retryable"
-                if review_job.attempt < QUALITY_MAX_JOB_ATTEMPTS
-                else "execution_failed_exhausted"
+                "execution_failed_exhausted"
+                if is_exhausted
+                else "execution_failed_retryable"
             )
         return "not_dispatched"
 
@@ -410,11 +423,11 @@ async def _stage_for_handoff(
         raise OperatorControlError("operator_quality_active_run_conflict", locale)
     if active:
         selected = active[0]
-    elif len(matches) == 1:
-        # Keep a lone terminal run visible so the resolver can distinguish a
+    elif matches:
+        # Keep the latest terminal run visible so the resolver can distinguish a
         # retryable technical failure from an absent stage. A replacement
         # active run, when present, always wins above.
-        selected = matches[0]
+        selected = matches[-1]
     else:
         return QualityStage()
     handoff, run = selected
@@ -803,8 +816,23 @@ async def _queue_quality_retry_lane(
     if lane.writer.run is None:
         raise OperatorControlError("operator_quality_retry_writer_missing")
     if lane.review.job is not None and lane.review.job.status in {"failed", "cancelled"}:
-        if lane.review.step is None or lane.review.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+        review_attempt = (
+            lane.review.step.attempt
+            if lane.review.step is not None
+            else lane.review.job.attempt
+        )
+        if (
+            lane.review.step is None
+            or review_attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or lane.review.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or (
+                lane.writer.run is not None
+                and lane.writer.run.failure_code == "operator_quality_retry_exhausted"
+            )
+        ):
             raise OperatorControlError("operator_quality_retry_exhausted")
+        if lane.writer.run.status == "failed":
+            raise OperatorControlError("operator_quality_retry_writer_terminal")
         retry_step = StepRun(
             run_id=lane.writer.run.id,
             step_key=QUALITY_REVIEW_TASK_KEYS[lane.locale],
@@ -815,8 +843,6 @@ async def _queue_quality_retry_lane(
         )
         session.add(retry_step)
         await session.flush()
-        if lane.writer.run.status == "failed":
-            raise OperatorControlError("operator_quality_retry_writer_terminal")
         if lane.writer.run.status == "waiting_approval":
             await transition_run(session, run_id=lane.writer.run.id, status="running")
         lane.writer.run.current_step = QUALITY_REVIEW_TASK_KEYS[lane.locale]
@@ -838,7 +864,13 @@ async def _queue_quality_retry_lane(
     if revised is None:
         raise OperatorControlError("operator_quality_retry_revised_missing")
     if lane.audit.job is not None and lane.audit.job.status in {"failed", "cancelled"}:
-        if lane.audit.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+        if (
+            lane.audit.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or (
+                lane.audit.run is not None
+                and lane.audit.run.failure_code == "operator_quality_retry_exhausted"
+            )
+        ):
             raise OperatorControlError("operator_quality_retry_exhausted")
         audit_input = await load_assertion_audit_input(
             session,
@@ -881,7 +913,13 @@ async def _queue_quality_retry_lane(
         )
         return
     if lane.source_copy.job is not None and lane.source_copy.job.status in {"failed", "cancelled"}:
-        if lane.source_copy.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+        if (
+            lane.source_copy.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or (
+                lane.source_copy.run is not None
+                and lane.source_copy.run.failure_code == "operator_quality_retry_exhausted"
+            )
+        ):
             raise OperatorControlError("operator_quality_retry_exhausted")
         if lane.audit.artifact is None or lane.audit.evaluation is None:
             raise OperatorControlError("operator_quality_retry_audit_missing")

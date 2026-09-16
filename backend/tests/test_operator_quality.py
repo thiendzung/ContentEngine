@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 from datetime import UTC, datetime, timedelta
+from typing import cast
+from uuid import UUID
 
 import pytest
 from sqlalchemy import func, select
@@ -16,7 +18,9 @@ from test_operator_writers import (
 from app.modules.content_engine.journal import operator_quality_worker
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
 from app.modules.content_engine.journal.models import OperatorCommand
+from app.modules.content_engine.journal.operator_control import OperatorControlError
 from app.modules.content_engine.journal.operator_quality import (
+    QUALITY_AUDIT_TASK_KEYS,
     QUALITY_REVIEW_TASK_KEYS,
     get_quality_progress,
 )
@@ -204,6 +208,77 @@ async def _dispatch_quality(
     assert {step.step_key for step in review_steps} == set(QUALITY_REVIEW_TASK_KEYS.values())
     assert len(review_steps) == len(review_jobs) == 2
     return command, action
+
+
+async def _complete_healthy_lane_from_audit(
+    session: AsyncSession,
+    *,
+    case_id: UUID,
+    outline_result: object,
+    step_run_id: UUID,
+    monkeypatch: pytest.MonkeyPatch,
+    worker_prefix: str,
+    runner_registry: AgentRunnerRegistry,
+) -> None:
+    progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+    assert progress is not None
+    healthy_lane = next(
+        lane
+        for lane in progress.lanes
+        if (lane.review.step is not None and lane.review.step.id == step_run_id)
+        or (lane.audit.step is not None and lane.audit.step.id == step_run_id)
+    )
+    assert healthy_lane.revised_draft is not None
+
+    if healthy_lane.audit.job is not None and healthy_lane.audit.job.status == "queued":
+        audit_input = await load_assertion_audit_input(
+            session,
+            writer_run_id=healthy_lane.writer.run.id,  # type: ignore[union-attr]
+            revised_draft_artifact_id=healthy_lane.revised_draft.id,
+            expected_revised_draft_version=healthy_lane.revised_draft.version,
+            expected_revised_draft_hash=healthy_lane.revised_draft.content_hash,
+            outline_artifact_id=outline_result.artifact.id,  # type: ignore[union-attr]
+            expected_outline_version=outline_result.artifact.version,  # type: ignore[union-attr]
+            expected_outline_hash=outline_result.artifact.content_hash,  # type: ignore[union-attr]
+            locale=healthy_lane.locale,
+        )
+        async def _fake_audit_port(_s: AsyncSession, *, locale: str, **kw: object) -> _CapturePort:
+            del _s, locale, kw
+            return _CapturePort(_passing_output(audit_input))
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_assertion_audit_model_port",
+            _fake_audit_port,
+        )
+        audit_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id=f"{worker_prefix}-audit"
+        )
+        assert audit_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=audit_job.id,
+            worker_id=f"{worker_prefix}-audit",
+            runner_registry=runner_registry,
+        )
+
+    progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+    assert progress is not None
+    refreshed_lane = next(lane for lane in progress.lanes if lane.locale == healthy_lane.locale)
+    if (
+        refreshed_lane.source_copy.job is not None
+        and refreshed_lane.source_copy.job.status == "queued"
+    ):
+        source_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id=f"{worker_prefix}-source"
+        )
+        assert source_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=source_job.id,
+            worker_id=f"{worker_prefix}-source",
+            runner_registry=runner_registry,
+        )
 
 
 @pytest.mark.asyncio
@@ -515,6 +590,21 @@ async def test_f4_cancel_queued_sibling_waits_for_running_lane_then_settles_pare
 
         parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
         assert parent_row is not None
+        # Healthy lane enqueued Audit and continued; parent command remains queued
+        assert parent_row.status == "queued"
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=running_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-running",
+            runner_registry=registry,
+        )
+
+        parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
+        assert parent_row is not None
         assert parent_row.status == "failed"
         assert parent_row.error_code == "operator_quality_job_failed"
         state_after = await get_operator_state(session, content_case_id=case_id)
@@ -639,6 +729,21 @@ async def test_f4_expired_attempt_two_waits_for_active_sibling_then_settles_pare
 
         parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
         assert parent_row is not None
+        # Sibling lane enqueued Audit; parent command remains queued
+        assert parent_row.status == "queued"
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=sibling_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-sibling",
+            runner_registry=registry,
+        )
+
+        parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
+        assert parent_row is not None
         assert parent_row.status == "failed"
         assert parent_row.error_code == "operator_quality_retry_exhausted"
 
@@ -702,6 +807,21 @@ async def test_f4_technical_failure_attempt_one_waits_for_active_sibling_then_se
 
         parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
         assert parent_row is not None
+        # Sibling lane enqueued Audit; parent command remains queued
+        assert parent_row.status == "queued"
+
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=job2.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-2",
+            runner_registry=registry,
+        )
+
+        parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
+        assert parent_row is not None
         assert parent_row.status == "failed"
         assert parent_row.error_code == "operator_quality_job_failed"
 
@@ -710,4 +830,576 @@ async def test_f4_technical_failure_attempt_one_waits_for_active_sibling_then_se
         assert state_final.primary_intent == "retry"
         assert state_final.blocker_code == "operator_quality_job_failed"
         assert parent_row.state_after == state_final.state_version
+
+
+@pytest.mark.asyncio
+async def test_f4_review_vi_pass_en_fail_retry_converges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.review.job is not None
+        assert en_lane.review.job is not None
+
+        # 1. Claim both review jobs
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-vi"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-en"
+        )
+        assert job1 is not None and job2 is not None
+        vi_job = job1 if job1.id == vi_lane.review.job.id else job2
+        en_job = job2 if job1.id == vi_lane.review.job.id else job1
+
+        registry = AgentRunnerRegistry()
+
+        # 2. VI Review succeeds
+        assert vi_job.lease_owner is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_job.id,
+            worker_id=cast(str, vi_job.lease_owner),
+            runner_registry=registry,
+        )
+
+        # Verify VI Audit is enqueued
+        progress_after_vi = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_after_vi is not None
+        vi_lane_after = next(lane for lane in progress_after_vi.lanes if lane.locale == "vi-VN")
+        assert vi_lane_after.audit.step is not None
+        assert vi_lane_after.audit.job is not None
+        assert vi_lane_after.audit.job.status == "queued"
+
+        # 3. EN Review fails technically (attempt 1)
+        assert en_job.lease_owner is not None
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=en_job.id,
+            worker_id=cast(str, en_job.lease_owner),
+            failure_class="network_timeout",
+            message="EN Review timeout",
+        )
+
+        # 4. Healthy VI lane continues through Audit and Source-copy
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=vi_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-vi",
+            runner_registry=registry,
+        )
+
+        # After VI finishes, no active jobs remain, command settled failed
+        parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_quality_job_failed"
+
+        state_after_fail = await get_operator_state(session, content_case_id=case_id)
+        assert state_after_fail.status == "BLOCKED"
+        assert state_after_fail.primary_intent == "retry"
+        assert state_after_fail.allowed_intents == ["retry"]
+
+        # Verify VI Review did NOT rerun (only 1 StepRun for VI review)
+        vi_review_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.run_id == vi_lane.writer.run.id,
+                        StepRun.step_key == QUALITY_REVIEW_TASK_KEYS["vi-VN"],
+                    )
+                )
+            ).all()
+        )
+        assert len(vi_review_steps) == 1
+
+        # 5. Retry EN
+        retry_action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert retry_action.action_key == "writers_to_quality"
+        assert retry_action.intent == "retry"
+        assert retry_action.executable is True
+
+        retry_cmd = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=retry_action.state_version,
+            idempotency_key="f4-retry-en-review-case1",
+        )
+        assert retry_cmd.status == "queued"
+
+        # Verify EN Review attempt 2 was enqueued
+        en_review_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.run_id == en_lane.writer.run.id,
+                        StepRun.step_key == QUALITY_REVIEW_TASK_KEYS["en"],
+                    )
+                )
+            ).all()
+        )
+        assert len(en_review_steps) == 2
+        assert en_review_steps[-1].attempt == 2
+
+        # VI review steps still 1
+        vi_review_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.run_id == vi_lane.writer.run.id,
+                        StepRun.step_key == QUALITY_REVIEW_TASK_KEYS["vi-VN"],
+                    )
+                )
+            ).all()
+        )
+        assert len(vi_review_steps) == 1
+
+        # 6. Execute EN Review attempt 2 -> PASS
+        en_retry_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-en-retry"
+        )
+        assert en_retry_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=en_retry_job.id,
+            worker_id="worker-en-retry",
+            runner_registry=registry,
+        )
+
+        # 7. Complete EN through Audit and Source-copy
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=en_retry_job.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-en-audit-source",
+            runner_registry=registry,
+        )
+
+        # 8. Verify both converge to final_gate_ready without hanging
+        final_progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert final_progress is not None
+        assert final_progress.final_gate_ready is True
+        assert {lane.status for lane in final_progress.lanes} == {"final_gate_ready"}
+
+        retry_row = await session.get(OperatorCommand, retry_cmd.command_id)
+        assert retry_row is not None
+        assert retry_row.status == "completed"
+
+        final_state = await get_operator_state(session, content_case_id=case_id)
+        assert final_state.status == "AWAITING_APPROVAL"
+        assert final_state.human_gate == "final_review"
+
+
+@pytest.mark.asyncio
+async def test_f4_audit_vi_pass_en_fail_retry_converges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        registry = AgentRunnerRegistry()
+
+        # 1. Both reviews execute and succeed
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-rev-1"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-rev-2"
+        )
+        assert job1 is not None and job2 is not None
+        await operator_quality_worker.execute_quality_job(
+            session, job_id=job1.id, worker_id="worker-rev-1", runner_registry=registry
+        )
+        await operator_quality_worker.execute_quality_job(
+            session, job_id=job2.id, worker_id="worker-rev-2", runner_registry=registry
+        )
+
+        # Now both VI and EN Audit are queued
+        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.audit.job is not None
+        assert en_lane.audit.job is not None
+
+        # Setup audit port mock
+        async def fake_audit_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            prog = await get_quality_progress(
+                session, content_case_id=case_id, source_run_id=None
+            )
+            assert prog is not None
+            lane = next(candidate for candidate in prog.lanes if candidate.locale == locale)
+            assert lane.revised_draft is not None
+            audit_input = await load_assertion_audit_input(
+                session,
+                writer_run_id=lane.writer.run.id,
+                revised_draft_artifact_id=lane.revised_draft.id,
+                expected_revised_draft_version=lane.revised_draft.version,
+                expected_revised_draft_hash=lane.revised_draft.content_hash,
+                outline_artifact_id=outline_result.artifact.id,
+                expected_outline_version=outline_result.artifact.version,
+                expected_outline_hash=outline_result.artifact.content_hash,
+                locale=lane.locale,
+            )
+            return _CapturePort(_passing_output(audit_input))
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_assertion_audit_model_port", fake_audit_port
+        )
+
+        # Claim both audit jobs
+        ajob1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-aud-1"
+        )
+        ajob2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-aud-2"
+        )
+        assert ajob1 is not None and ajob2 is not None
+        vi_audit_job = ajob1 if ajob1.id == vi_lane.audit.job.id else ajob2
+        en_audit_job = ajob2 if ajob1.id == vi_lane.audit.job.id else ajob1
+
+        # 2. VI Audit PASS -> execute it
+        assert vi_audit_job.lease_owner is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_audit_job.id,
+            worker_id=cast(str, vi_audit_job.lease_owner),
+            runner_registry=registry,
+        )
+
+        # Verify VI Source-copy is enqueued
+        progress_after_vi_audit = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress_after_vi_audit is not None
+        vi_lane_after = next(
+            lane for lane in progress_after_vi_audit.lanes if lane.locale == "vi-VN"
+        )
+        assert vi_lane_after.source_copy.job is not None
+        assert vi_lane_after.source_copy.job.status == "queued"
+
+        # 3. EN Audit fails technically
+        assert en_audit_job.lease_owner is not None
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=en_audit_job.id,
+            worker_id=cast(str, en_audit_job.lease_owner),
+            failure_class="network_timeout",
+            message="EN Audit timeout",
+        )
+
+        # 4. VI Source-copy executes and passes
+        vi_source_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-sc-vi"
+        )
+        assert vi_source_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_source_job.id,
+            worker_id="worker-sc-vi",
+            runner_registry=registry,
+        )
+
+        # Now VI is qualified, EN Audit failed, no active jobs remain -> command failed
+        parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_quality_job_failed"
+
+        # Verify VI Audit was NOT rerun
+        vi_audit_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.step_key == QUALITY_AUDIT_TASK_KEYS["vi-VN"],
+                    )
+                )
+            ).all()
+        )
+        assert len(vi_audit_steps) == 1
+
+        # 5. Retry EN Audit
+        retry_action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert retry_action.intent == "retry"
+        assert retry_action.executable is True
+
+        retry_cmd = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=retry_action.state_version,
+            idempotency_key="f4-retry-en-audit-case2",
+        )
+        assert retry_cmd.status == "queued"
+
+        # 6. Execute EN Audit retry -> PASS
+        en_audit_retry_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-en-aud-retry"
+        )
+        assert en_audit_retry_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=en_audit_retry_job.id,
+            worker_id="worker-en-aud-retry",
+            runner_registry=registry,
+        )
+
+        # 7. Execute EN Source-copy -> PASS
+        en_source_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-en-sc"
+        )
+        assert en_source_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=en_source_job.id,
+            worker_id="worker-en-sc",
+            runner_registry=registry,
+        )
+
+        # 8. Verify both converge to final_gate_ready
+        final_progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert final_progress is not None
+        assert final_progress.final_gate_ready is True
+
+        retry_row = await session.get(OperatorCommand, retry_cmd.command_id)
+        assert retry_row is not None
+        assert retry_row.status == "completed"
+
+        final_state = await get_operator_state(session, content_case_id=case_id)
+        assert final_state.status == "AWAITING_APPROVAL"
+        assert final_state.human_gate == "final_review"
+
+
+@pytest.mark.asyncio
+async def test_f4_review_bounded_two_attempts_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        parent_cmd, before_quality = await _dispatch_quality(session, fixture=fixture)
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker, "create_cli_review_revise_model_port", fake_review_port
+        )
+
+        registry = AgentRunnerRegistry()
+
+        job1 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-b1"
+        )
+        job2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-b2"
+        )
+        assert job1 is not None and job2 is not None
+
+        # Sibling job (job2) completes to qualified so it has no active jobs
+        await operator_quality_worker.execute_quality_job(
+            session, job_id=job2.id, worker_id="worker-b2", runner_registry=registry
+        )
+        await _complete_healthy_lane_from_audit(
+            session,
+            case_id=case_id,
+            outline_result=outline_result,
+            step_run_id=job2.step_run_id,
+            monkeypatch=monkeypatch,
+            worker_prefix="worker-b2",
+            runner_registry=registry,
+        )
+
+        # Target job (job1) fails attempt 1
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=job1.id,
+            worker_id="worker-b1",
+            failure_class="network_timeout",
+            message="Review attempt 1 timeout",
+        )
+
+        # Command settled failed
+        parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
+        assert parent_row is not None
+        assert parent_row.status == "failed"
+        assert parent_row.error_code == "operator_quality_job_failed"
+
+        state_after_1 = await get_operator_state(session, content_case_id=case_id)
+        assert state_after_1.status == "BLOCKED"
+        assert state_after_1.primary_intent == "retry"
+        assert state_after_1.allowed_intents == ["retry"]
+
+        action_1 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_1.executable is True
+        assert action_1.intent == "retry"
+
+        # Submit retry attempt 1 (creates attempt 2)
+        retry_cmd = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="retry",
+            expected_state_version=action_1.state_version,
+            idempotency_key="f4-retry-attempt-2-case3",
+        )
+        assert retry_cmd.status == "queued"
+
+        # Target lane has StepRun with attempt=2
+        target_step_1 = await session.get(StepRun, job1.step_run_id)
+        assert target_step_1 is not None
+        target_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.run_id == target_step_1.run_id,
+                        StepRun.step_key == target_step_1.step_key,
+                    ).order_by(StepRun.attempt)
+                )
+            ).all()
+        )
+        assert len(target_steps) == 2
+        assert [s.attempt for s in target_steps] == [1, 2]
+
+        # Claim attempt 2 job
+        job_attempt_2 = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="worker-attempt-2"
+        )
+        assert job_attempt_2 is not None
+        assert job_attempt_2.step_run_id == target_steps[1].id
+
+        # Fail attempt 2
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=job_attempt_2.id,
+            worker_id="worker-attempt-2",
+            failure_class="network_timeout",
+            message="Review attempt 2 timeout",
+        )
+
+        # Settle state after attempt 2 failure: exhausted!
+        retry_row = await session.get(OperatorCommand, retry_cmd.command_id)
+        assert retry_row is not None
+        assert retry_row.status == "failed"
+        assert retry_row.error_code == "operator_quality_retry_exhausted"
+
+        state_after_2 = await get_operator_state(session, content_case_id=case_id)
+        assert state_after_2.status == "BLOCKED"
+        assert state_after_2.primary_intent is None
+        assert state_after_2.allowed_intents == []
+        assert state_after_2.blocker_code == "operator_quality_retry_exhausted"
+
+        action_2 = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action_2.executable is False
+        assert action_2.intent is None
+
+        # Verify exactly 2 StepRuns for review (no attempt 3)
+        target_steps_after = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.run_id == target_step_1.run_id,
+                        StepRun.step_key == target_step_1.step_key,
+                    ).order_by(StepRun.attempt)
+                )
+            ).all()
+        )
+        assert len(target_steps_after) == 2
+        assert [s.attempt for s in target_steps_after] == [1, 2]
+
+        # Try retry again -> fail closed
+        with pytest.raises(OperatorControlError) as exc_info:
+            await submit_operator_command(
+                session,
+                content_case_id=case_id,
+                intent="retry",
+                expected_state_version=state_after_2.state_version,
+                idempotency_key="f4-retry-attempt-3-forbidden",
+            )
+        assert exc_info.value.code in {
+            "operator_quality_retry_requires_failed_job",
+            "operator_quality_retry_exhausted",
+        }
+
+        # Assert StepRuns and Jobs did not increase
+        target_steps_final = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.run_id == target_step_1.run_id,
+                        StepRun.step_key == target_step_1.step_key,
+                    )
+                )
+            ).all()
+        )
+        assert len(target_steps_final) == 2
+
+        all_target_jobs = list(
+            (
+                await session.scalars(
+                    select(Job).where(
+                        Job.step_run_id.in_([s.id for s in target_steps_final])
+                    )
+                )
+            ).all()
+        )
+        assert len(all_target_jobs) == 2
 
