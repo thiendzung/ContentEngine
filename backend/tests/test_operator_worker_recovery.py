@@ -11,6 +11,7 @@ import app.modules.content_engine.journal.operator_vertical_slice as vertical_sl
 from app.modules.content_engine.journal.operator_manual_intake import (
     create_founder_journal_intake,
 )
+from app.modules.content_engine.journal.operator_quality_worker import QUALITY_STEP_KEYS
 from app.modules.content_engine.journal.operator_recovery import (
     claim_or_reclaim_operator_job,
 )
@@ -21,6 +22,11 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 from app.modules.content_engine.journal.operator_worker import claim_next_operator_job
 from app.modules.harness.models import Job, StepRun
 from app.modules.harness.persistence import enqueue_job
+from scripts import run_operator_worker as operator_worker_script
+
+
+def test_operator_worker_script_imports_quality_allowlist() -> None:
+    assert operator_worker_script.QUALITY_STEP_KEYS == QUALITY_STEP_KEYS
 
 
 @pytest.mark.asyncio
