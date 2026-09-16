@@ -38,7 +38,7 @@ async def test_operator_runtime_resolves_existing_executable_stage(
         assert action.intent == "continue"
         assert action.executable is True
         assert action.current_run_id == prepared.run.id
-        assert action.current_step_run_id == prepared.step_run.id
+        assert action.current_step_run_id == prepared.step.id
 
 
 @pytest.mark.asyncio
