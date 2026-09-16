@@ -1,210 +1,260 @@
 # TASKS - ContentEngine delivery and progress
 
-Delivery order: `PLAN.md`. Contract: `20-LOCAL-FIRST-DELIVERY-SPEC.md`. Current gate: `../AI_context.MD`. Detailed evidence belongs in `logs/`, not repeated UUID tables here. CE task IDs are retained; LF IDs organize delivery outcomes across them.
+Delivery order: `PLAN.md`. Current gate: `../AI_context.MD`. Canonical finish-first plan: `logs/2026-09-16-finish-first-delivery-plan.md`. Detailed evidence belongs in `logs/`.
 
-Maximum WIP: one implementation plus related local verification; one executor on the operational lineage. A planned task is not execution permission.
+Maximum WIP: one implementation plus one related local verification. One executor mutates the active runtime lineage. A planned task is not execution permission.
 
-## Active delivery work
+## Collaboration contract
 
-| ID | Owner | Scope | Dependency | State / acceptance |
-|---|---|---|---|---|
-| LF-00 | MG / Founder | Local-first spec, plan, task, checklist and roles | Founder decision | DONE - merged in main; no runtime completion implied |
-| LF-01 | Agent Local / MG review | Read-only input verification and Angle blocker classification | LF-00 merged + Founder dispatch | DONE / REVIEWED - inputs reusable; blocker classified OUTER_EXECUTION_POLICY |
-| LF-02 | MG + Founder + Agent Local verification | Safe Angle execution and first human gate on exact fresh lineage | LF-01 reviewed | DONE / REVIEWED - canonical Angle generated, `angle-01` selected, AngleApproval persisted |
-| LF-03 | Founder + Agent Local / MG review | Generate one grounded Outline and persist the second human gate | Valid approved Angle | DONE / REVIEWED - canonical Outline + exact OutlineApproval persisted |
-| LF-04 | MG + Agent Local + Founder | Independent VI/EN through final approval and canonical ContentVersions | Persisted OutlineApproval | DONE / REVIEWED - M1 real bilingual Journal lineage complete through approved ContentVersions, no publish. Closeout: `logs/2026-09-13-m1-journal-closeout.md` |
-| LF-05 | MG + Agent Local | Smallest useful operator path / Human Review Surface + production board | M1 pass | DONE / REVIEWED - T05.20A/B and T05.21A/B proven on M1 runtime; read model, actions and production board available |
-| LF-06 | Agent Local / MG + Founder | Three distinct bilingual Journal cases total, including M1 | M1 + required LF-05 work | BACKLOG |
-| LF-07 | MG + Founder | Manual placement + content/version/URL identity and observations | M1/M2 + explicit publishing decision | BACKLOG |
-| LF-08 | MG + Founder | Edit/failure feedback, Golden/Weak baseline, controlled changes | Real outputs/edits | BACKLOG for automation; capture evidence now |
+- Founder: product/editorial authority, execution authorization, human relay to/from Agent Local, final PR approval and merge.
+- MG / ChatGPT: architecture, coding/tests where available, PR preparation, review, planning, task decomposition, GitHub state; writes the exact copy-paste task for Agent Local.
+- Agent Local: exact-ref/local runtime executor and evidence producer; no self-selected architecture/next task/merge.
+- GitHub: shared brain for durable code/contracts/tasks/plans/sanitized evidence.
 
-## CE00-CE04 - retained completed foundation
+Canonical loop:
 
-CE00 Foundation Contracts, CE01 Repository/Research Spike/Walking Skeleton, CE02 Core Data/Settings, CE03 Durable Harness, CE04 Knowledge/Production Research: CLOSED / PASS per existing history. Do not rebuild.
+`Founder objective -> MG plan/code/review -> MG local task -> Founder copies -> Agent Local executes -> Founder returns report -> MG reviews/updates GitHub -> Founder merges`
 
-CE01's historical Golden Journal reached human review; that is not the M1 proof. M1 is now proven by the fresh real local lineage closed on 2026-09-13.
+## Current truth
 
-## CE05 - Journal Engine V1
+- `main`: `77ad5fe329fbae577c6598f59ef63742fa782c3f`.
+- K1-K6 + Model Routing Policy v1 are merged through PR #100.
+- Operational DB remains at last explicitly approved schema `20260914_0027`; migrations `0028 -> 0034` require separate Founder authorization before operational application.
+- PR #93 `UI-01: Journal Operator Console` remains current proof/merge focus.
+- PR #93 exact head: `16d2d2ac101cb016566bc6d52ec923fab4560b97`; CI #1001 PASS; Draft.
+- Acceptance #1 was consumed and failed at `angle_originality_ref_outside_pack`; remediation is code/CI proven on the current head.
+- Acceptance #2 is authorized and UNCONSUMED until the browser-created Job is actually claimed.
+- Latest relayed Agent Local input is a PARTIALLY_ALIGNED planning proposal, not fresh local execution evidence.
 
-Status: ACTIVE post-M1 hardening/operator usability. **M1 ONE REAL JOURNAL PASS: COMPLETE / CLOSED.**
+## Finish-first delivery sequence
 
-Implementation foundation retained:
+| ID | Owner | Scope | State / acceptance |
+|---|---|---|---|
+| F0 | Agent Local + Founder / MG review | PR #93 browser acceptance #2 through exact AngleApproval; then Founder merge | CURRENT / authorization unconsumed |
+| F1 | MG primary + Agent Local proof | Unified operator core: canonical state projection + server-side next-action resolver | NEXT after F0 merge |
+| F2 | MG primary + Agent Local proof | Exact AngleApproval -> durable Outline job -> WAIT_HUMAN(outline) -> exact OutlineApproval | PLANNED |
+| F3 | MG primary + Agent Local proof | Exact OutlineApproval -> independent VI/EN Writer lanes | PLANNED |
+| F4 | MG primary + Agent Local proof | Review/Revise -> Assertion Audit -> Source-copy -> WAIT_HUMAN(final_review) | PLANNED |
+| F5 | MG primary + Founder decision + Agent Local proof | Final exact VI/EN -> approval/revision -> canonical ContentVersions -> COMPLETE | PLANNED |
+| F6 | MG primary + Founder UX review + Agent Local proof | Minimum end-to-end Production Board + unified case workspace | PLANNED after backend contracts stabilize |
+| F7 | Founder + Agent Local / MG review | M2 + M3 real bilingual browser pilot | PLANNED |
+| F8 | MG + Founder + Agent Local proof | Observed hardening, UX polish, recovery proof, metrics, CE05 closeout | PLANNED after M2/M3 |
 
-- [x] T05.1 ContentCase/LocaleVariant Journal surface.
-- [x] T05.2 Approved internal knowledge recall.
-- [x] T05.3 Content Memory overlap foundation.
-- [x] T05.4 Discovery Research.
-- [x] T05.5 Opportunity selection handoff.
-- [x] T05.6 Evidence Research and EvidenceSet.
-- [x] T05.7 OriginalityPack.
-- [x] T05.8 Structured Angle generator.
-- [x] T05.9 Angle approval/runtime bridge.
-- [x] T05.10 Evidence-mapped Outline implementation and real M1 proof.
-- [x] T05.11 VI Writer implementation and real M1 proof.
-- [x] T05.12 EN Writer implementation and bilingual-independence proof.
-- [x] T05.13 Bounded Review/Revise implementation and real recovery evidence.
-- [x] Assertion Audit through generator/evaluator v5, schema 1; fail-closed hard types.
-- [x] Source-copy v2; canonical audit pairs v3/v3, v4/v4, v5/v5 only; mixed pairs reject.
-- [x] Focused retry/idempotency/recovery/provenance regression coverage.
-- [x] T05.16 Operational Package V0 JSON + Markdown + SHA-256.
-- [x] Mandatory human gate #3: Founder final approval bound to exact VI/EN + package hashes.
-- [x] Canonical ContentItem + approved ContentVersion per locale persisted through existing path.
+## F0 - Close UI-01 baseline
 
-### M1 closeout evidence
+Dedicated isolated `contentengine_test` only:
 
-- Merged/local finalization ref `8454e9fd3e2002901bea12c045826b1a5eac3b6d`.
-- ContentCase `f0bfbad7-c266-4de1-8fd4-a85ad206e6ce`.
-- VI approved ContentVersion `66ad367f-99af-4b37-8914-5b446fca50dd`, v1, final hash `f72c0c87b3e599d6d0f1d919d5158c3968281fee0b10bfda577944872a78ee06`.
-- EN approved ContentVersion `6dcc3b6a-a507-47fd-8461-e0f084427f2e`, v1, final hash `f22d6875d8fbed4745555971496b669588f24762c5f083f5dbdad82c5d1cb205`.
-- Both Writer runs completed after final approval persistence.
-- VI Assertion Audit hard-clean; VI Source-copy `fail_count=0`, `warn_count=0`.
-- EN Assertion Audit hard-clean; EN Source-copy `fail_count=0`, `warn_count=2`.
-- Accepted warning 1: `section:condition-and-context:1` — overlap `by the same artist, and the state of the`; source `evidence_excerpt`; overlap tokens `9`.
-- Accepted warning 2: `section:practical-costs:2` — overlap `oversize or special handling may require a quote`; source `originality_material`; overlap tokens `8`.
-- Operational Package JSON SHA-256 `9d804da5c8d0756930b577e8e4244408cf9a8236d7b9205a8135d215e61b429a`.
-- Operational Package Markdown SHA-256 `a3804dd7622b9182c581b95aa2f892df2ee82a4e83c5c9a65f55ca802fa67c9f`.
-- ModelCalls remained `14`; ToolCalls remained `0` through finalization.
-- published ContentVersions `0`; no PublishedContent, PublishEvent, URL mapping or WordPress/external publish action.
+- [ ] exact clean PR #93 head `16d2d2ac101cb016566bc6d52ec923fab4560b97`;
+- [ ] migration `20260915_0034`;
+- [ ] guarded test Angle activation using already-authorized exact model/approver;
+- [ ] `/journal/operator/preflight` overall READY;
+- [ ] synthetic browser intake;
+- [ ] browser Start exactly once;
+- [ ] persistent worker claims exactly one Job;
+- [ ] polling + hard refresh recover persisted state;
+- [ ] real research/Codex returns valid Angle candidates;
+- [ ] exact candidate approval persists exact AngleApproval;
+- [ ] STOP before Outline/Writer;
+- [ ] if terminal worker failure: no second Start/retry under the same authorization;
+- [ ] no operational DB mutation/publish/WordPress/Antigravity.
 
-Detailed evidence: `logs/2026-09-13-m1-journal-closeout.md`.
+Exit: PR #93 acceptance PASS -> MG review -> Founder merge.
 
-### M1 acceptance — COMPLETE
+## F1 - Unified operator core
 
-- [x] Verify current EvidenceSet ID/version/hash, approved/locked state, metadata and bundle binding.
-- [x] Verify current OriginalityPack ID/hash, approved state and bundle binding.
-- [x] Valid generated and approved Angle on fresh lineage.
-- [x] Valid generated and persisted-approved Outline on fresh lineage.
-- [x] Generate independent VI and EN Writer content on fresh lineage.
-- [x] VI bounded Review/Revise + authorized deterministic cleanup complete.
-- [x] EN bounded Review/Revise + authorized deterministic cleanup complete.
-- [x] Both final Assertion Audits hard-clean.
-- [x] Both final Source-copy checks `fail_count = 0`.
-- [x] Final independent VI/EN visible content reviewed and MG accepted.
-- [x] All surviving warnings preserved verbatim.
-- [x] T05.16 Operational Package V0 deterministic JSON + Markdown + SHA-256.
-- [x] Founder final approval bound to exact final content/package.
-- [x] Founder approvals persisted against exact final_content artifacts.
-- [x] Canonical ContentItem + approved ContentVersion per locale created through existing canonical path.
-- [x] M1 durable closeout verified on current local runtime with no publish side effect.
+Goal: stop accumulating versioned adapters and centralize safe continuation.
 
-### Current post-M1 slices
+Checklist:
 
-- [x] T05.20A Human Review Surface — read-only Review Console over persisted truth; proven end-to-end on M1 runtime.
-- [x] T05.20B Approval actions — Approve / Request revision / Reject with durable existing contracts; UI Vietnamese-first.
-- [x] T05.21A Production Board — ContentCase-centric board with five operating lanes and Codex coordinator projection.
-- [x] T05.21B Production Board UX — exact case deep-link, viewport fit, compact operator layout and meaningful execution labels; final local proof PASS.
-- [x] T05.22A Operational Observability Baseline — DONE / VERIFIED. Safe structured logs, local DEBUG default, production-safe clamp, request correlation and total-log Uvicorn query redaction proven on runtime.
-- [x] T05.22B Durable Delegation Telemetry — DONE / VERIFIED / MERGED. Persisted `Codex -> subagent/application/tool` execution hierarchy, idempotent lifecycle and Production Board projection; isolated TEST DB proof passed without mutating M1.
-- [x] T05.22C Controlled Codex Delegation Bridge — DONE / BRIDGE VERIFIED / MERGED in PR #85. Exact completed Codex delegation-plan ModelCall + immutable plan Artifact + immutable SettingsSnapshot route + exact runner version are required before one approved child worker may execute.
-- [x] T05.22D Repo-aware Orchestration Harness — DONE / VERIFIED / MERGED in PR #86. Exact reviewed head `0600646360015b1bfd0da224dbad4a75f4c82831`; merge commit `bbca36ae82d3d58803ece9581018c0d832d63897`; GitHub CI #703 PASS; Agent Local focused proof PASS; operational M1 unchanged; Antigravity UNPROVEN and repo-aware execution remains fail-closed.
-- [x] OPS-01 Local Production Safety & Recovery — DONE / VERIFIED / MERGED in PR #88. Final reviewed head `165e4bcf197f7f0cff15d3b6abefce2678ab998b`; merge commit `eeab9bdec5cecf1ebe8da87b4d6e6309e094f280`; GitHub CI #735 PASS; Round 3 real backup/restore proof PASS; Founder-approved operational migration `20260912_0023 -> 20260913_0025` PASS; post-migration preflight READY; frozen M1 unchanged. Closeout: `logs/2026-09-13-ops-01-closeout.md`.
+- [ ] one canonical operator-state projection;
+- [ ] one canonical server-side `resolve_next_operator_action(...)`-style authority;
+- [ ] frontend sends semantic intent, never internal stage;
+- [ ] fail closed on ambiguous/conflicting persisted state;
+- [ ] stale-state rejection;
+- [ ] command idempotency/exact replay;
+- [ ] existing Job/lease/reclaim/recovery semantics preserved;
+- [ ] transition regression tests cover Angle/Outline/Writers/Final boundaries;
+- [ ] no new generic workflow engine/provider framework.
 
-### Current exact implementation slice — T05.22E One Real Journal Stage Orchestration
+Exit: backend can determine the only safe `continue` action from durable truth.
 
-Exact task: `logs/2026-09-13-t05-22e-one-real-journal-stage-orchestration-task.md`.
+## F2 - Angle -> Outline
 
-- [ ] integrate exactly one real Journal stage through the existing repo-aware orchestration harness;
-- [ ] preferred first stage: `review_revise_en`;
-- [ ] reuse durable ContentRun/StepRun state, existing stage-specific bounded generator/evaluator behavior, controlled delegation and persisted telemetry;
-- [ ] retain exact repository revision/tree provenance through execution;
-- [ ] bounded retry/replay/idempotency and dedupe protection remain fail-closed;
-- [ ] mandatory human gates remain hard `WAIT_HUMAN` stops;
-- [ ] no arbitrary stage execution endpoint and no broad autonomous full-pipeline mode;
-- [ ] no publish side effect and no frozen M1 mutation merely to prove the integration.
+Target:
 
-### Required post-M1 hardening, not blockers for T05.22E
+`AngleApproval -> continue -> durable Job -> existing Outline generator -> WAIT_HUMAN(outline) -> exact OutlineApproval`
 
-- [ ] T05.18 Critical Gate Regression - observed failures only: foreign-script contamination, context-only factual support mismatch, late unsupported closing brand statements.
-- [ ] T05.19 Resume / Replay Gate - prove on real local flow.
-- [ ] T05.23 Metrics Baseline - edits, failures, calls, duration and known usage. Renumbered from historical T05.21 after Production Board occupied T05.21A/B.
-- [ ] T05.24 CE05 Closeout - not inferred from M1 alone; follows post-M1 hardening/pilot evidence. Renumbered from historical T05.22.
+Checklist:
 
-Do not turn M1 friction into a new provider/agent/framework or speculative workflow engine. Prefer small changes proven by real operator pain.
+- [ ] exact Angle binding is continuation authority;
+- [ ] one queueable Outline Job for one valid state;
+- [ ] immutable Outline artifact/checkpoint binding;
+- [ ] exact Outline snapshot exposed through operator read model;
+- [ ] approval binds exact artifact id/version/hash;
+- [ ] refresh/restart safe;
+- [ ] bounded retry/idempotent replay, no duplicate Job/artifact;
+- [ ] Writer cannot auto-cross the Outline human gate.
 
-## CE06 - Full Quality + Golden Regression
+Exit: browser path reaches and persists OutlineApproval.
 
-Status: NOT STARTED as full phase. Small failure regressions do not imply completion.
+## F3 - Outline -> independent VI/EN Writers
 
-- [ ] T06.1 Deterministic evidence/assertion evaluator.
-- [ ] T06.2 Reader value evaluator.
-- [ ] T06.3 Brand voice evaluator.
-- [ ] T06.4 Reader transformation evaluator.
-- [ ] T06.5 Originality evaluator.
-- [ ] T06.6 Structure/readability evaluator.
-- [ ] T06.7 Search/AI readability evaluator.
-- [ ] T06.8 Language naturalness evaluator per locale.
-- [ ] T06.9 Source-copy/phrase-overlap evaluator.
-- [ ] T06.10 Human review form/UI.
-- [ ] T06.11 Golden Set storage/versioning.
-- [ ] T06.12 Weak/Failure Set storage.
-- [ ] T06.13 Pairwise regression runner.
-- [ ] T06.14 Candidate vs baseline report.
-- [ ] T06.15 Regression promotion gate.
+Checklist:
 
-## CE07 - Artwork Engine V1
+- [ ] required locales come from persisted Journal requirements;
+- [ ] exact approved Outline/context binding;
+- [ ] VI and EN run independently, not as default translation;
+- [ ] bounded retry per locale;
+- [ ] one locale failure does not erase the other lane's durable progress;
+- [ ] immutable Writer artifacts persisted;
+- [ ] lane progress projected to operator UI;
+- [ ] no COMPLETE while any required locale is missing.
 
-Status: NOT STARTED; not opened by this plan.
+Exit: both required locale drafts exist on the browser-operated lineage.
 
-- [ ] T07.1 WordPress/WooCommerce canonical Artwork adapter.
-- [ ] T07.2 Artwork fact lock.
-- [ ] T07.3 MediaAsset ingest/ref mapping.
-- [ ] T07.4 MediaObservation workflow + approval status.
-- [ ] T07.5 Artist context retrieval.
-- [ ] T07.6 Artist-intent provenance rule.
-- [ ] T07.7 Artwork OriginalityPack.
-- [ ] T07.8 Artwork writer vi-VN.
-- [ ] T07.9 Artwork writer en.
-- [ ] T07.10 Artwork Assertion Audit.
-- [ ] T07.11 Related content linker.
-- [ ] T07.12 Artwork quality gates.
-- [ ] T07.13 One real MOTGU Artwork candidate.
+## F4 - Quality -> final gate
 
-## CE08 - WordPress Draft + Measurement Foundation
+Target:
 
-Status: NOT STARTED as full phase. LF-07 may take a small manual Journal handoff/identity slice before full CE06/CE07.
+`Writer -> bounded Review/Revise -> Assertion Audit -> Source-copy -> WAIT_HUMAN(final_review)`
 
-- [ ] T08.1 WordPress draft publish adapter.
-- [ ] T08.2 ContentItem to WordPress ID mapping.
-- [ ] T08.3 ContentVersion PublishEvent history.
-- [ ] T08.4 Idempotency/outbox/reconciliation.
-- [ ] T08.5 Search Console adapter.
-- [ ] T08.6 Analytics adapter.
-- [ ] T08.7 MOTGU conversion-event mapping.
-- [ ] T08.8 Normalize core PerformanceMetric values.
-- [ ] T08.9 Preserve raw provider PerformanceSnapshot privately.
-- [ ] T08.10 Rank Math signal feasibility spike.
-- [ ] T08.11 Content hypothesis to metrics traceability.
-- [ ] T08.12 Feed real Search Console queries into Discovery signals, not automatic strategy changes.
+Checklist:
 
-## CE09 - Content Memory + Learning
+- [ ] reuse existing review/revise orchestration and evaluator contracts;
+- [ ] persist pass/warn/fail truth;
+- [ ] preserve surviving warnings verbatim;
+- [ ] hard failure -> BLOCKED with actionable reason;
+- [ ] retry only when backend advertises retry;
+- [ ] exact final VI/EN artifacts available for review;
+- [ ] no publish side effect.
 
-Status: NOT STARTED as full phase. Collect useful run/edit records now; automate by evidence.
+Exit: both locales are quality-ready at the final human gate.
 
-- [ ] T09.1 Published ContentItem/Version memory index.
-- [ ] T09.2 Duplicate/intent overlap detector.
-- [ ] T09.3 Create/update/refresh/merge/do-not-write recommendation.
-- [ ] T09.4 Human edit delta classifier.
-- [ ] T09.5 Signal model/service.
-- [ ] T09.6 LearningCandidate lifecycle.
-- [ ] T09.7 Minimum-evidence/sufficiency rules.
-- [ ] T09.8 Approved learning change workflow.
-- [ ] T09.9 Regression-before-promotion enforcement.
-- [ ] T09.10 Month 1 review report.
-- [ ] T09.11 Month 3 review report.
-- [ ] T09.12 Month 6 audience narrowing report.
-- [ ] T09.13 Compare planned questions with real queries and update signal strength.
+## F5 - Final -> canonical COMPLETE
 
-## CE10 - Pilot
+Checklist:
 
-Status: NOT STARTED.
+- [ ] Founder can inspect exact final VI and EN;
+- [ ] approve/request changes/reject reuse existing decision contracts;
+- [ ] final approval binds exact final bytes/hash;
+- [ ] canonical approved ContentVersion persisted per required locale;
+- [ ] COMPLETE derives from all required locales, not incidental LocaleVariant count;
+- [ ] exact replay creates no duplicate approval/version;
+- [ ] no publish.
 
-- [ ] T10.1 Define 10-20 content hypotheses.
-- [ ] T10.2 Balance pillar/cluster and Journal/Artwork.
-- [ ] T10.3 Run production pilot.
-- [ ] T10.4 Review quality failures.
-- [ ] T10.5 Review human editing burden.
-- [ ] T10.6 Review provider cost/quality and redundant calls.
-- [ ] T10.7 Review cost/latency overall.
-- [ ] T10.8 Promote first stable Golden Set.
-- [ ] T10.9 Review audience signals and evidence strength.
-- [ ] T10.10 Decide next roadmap only from pilot evidence.
+Exit: Backend V1 is functionally complete for the normal Journal path.
+
+## F6 - Minimum end-to-end operator UI
+
+Keep only two primary surfaces:
+
+1. `/production` = portfolio/queue/triage;
+2. `/operator/journal/[caseId]` = continuous case workspace.
+
+### App shell
+
+- [ ] Header: MOTGU ContentEngine + environment + preflight/runtime health;
+- [ ] Menu: Production / New Journal / System-Runtime;
+- [ ] compact footer/status bar: backend, DB/migration, app version, last refresh;
+- [ ] no secrets and no provider/model selector in normal operator UI.
+
+### Production Board
+
+Use the task-board reference only for dense list/grouping style.
+
+- [ ] canonical columns such as `ID | Content | Stage | Locale | Quality | Updated | Next action`;
+- [ ] groups: Running / Awaiting approval / Blocked / Ready / Completed;
+- [ ] click row -> unified case workspace;
+- [ ] do not invent Due/Labels/Project fields without canonical backend data.
+
+### Case workspace
+
+- [ ] progress: Intake -> Angle -> Outline -> VI/EN -> Quality -> Final;
+- [ ] one semantic primary action from backend truth;
+- [ ] Angle review;
+- [ ] Outline review;
+- [ ] independent VI/EN lane progress;
+- [ ] quality pass/warn/fail + actionable blockers;
+- [ ] final side-by-side review;
+- [ ] retry/resume/cancel only when backend advertises them;
+- [ ] refresh/restart recovers persisted state;
+- [ ] technical IDs/hashes/jobs/worker hidden under secondary details;
+- [ ] Vietnamese-first operator wording.
+
+Exit: Founder can complete a normal Journal without CLI/DB intervention.
+
+## F7 - M2 + M3 real pilot
+
+- [ ] two additional distinct bilingual Journals;
+- [ ] capture failure/retry classes;
+- [ ] capture model calls and latency;
+- [ ] capture human edit burden;
+- [ ] capture operator friction;
+- [ ] convert only repeated observed failures into new hardening tasks.
+
+Exit: M1/M2/M3 provide real V1 evidence.
+
+## F8 - Polish and CE05 closeout
+
+After M2/M3 only:
+
+- [ ] targeted regressions from observed failures;
+- [ ] search/filter/richer Production Board where useful;
+- [ ] keyboard/focus/contrast/reduced-motion/responsive polish;
+- [ ] stronger empty/loading/error/inconsistent-state UX;
+- [ ] richer persisted activity/history view;
+- [ ] metrics baseline;
+- [ ] backup/restore + real resume/replay closeout proof;
+- [ ] final documentation/state synchronization;
+- [ ] CE05 closeout decision.
+
+## Operationalization lane
+
+These are controlled release tasks and can be scheduled when required by the next real operational proof.
+
+### O1 - Operational migration `0027 -> 0034`
+
+Founder authorization required:
+
+- [ ] fresh backup;
+- [ ] disposable restore verification;
+- [ ] freeze M1 counts/hashes;
+- [ ] guarded migration;
+- [ ] post-migration preflight;
+- [ ] prove M1 unchanged;
+- [ ] no worker/model/research/publish during migration proof.
+
+### O2 - Model Routing Policy activation
+
+- [ ] Founder chooses exact policy/provider/model allowlist;
+- [ ] prove on test DB first;
+- [ ] create new approved immutable SettingsVersion;
+- [ ] deterministic primary route + bounded escalation + immutable audit proof;
+- [ ] operational activation only with explicit Founder authorization.
+
+Legacy routing may remain valid during feature completion if current contracts are sufficient. Do not mutate historical settings or guess defaults.
+
+## Completed foundation retained
+
+- CE00-CE04 foundation: CLOSED / PASS. Do not rebuild.
+- M1 real bilingual Journal: COMPLETE / CLOSED; approved VI/EN ContentVersions; no publish.
+- Review Console + approval actions + Production Board: DONE / REVIEWED.
+- safe observability + durable delegation telemetry: DONE / VERIFIED.
+- controlled delegation bridge + repo-aware bounded orchestration: DONE / VERIFIED / MERGED.
+- T05.22E real `review_revise_en` orchestration: DONE / VERIFIED / MERGED.
+- OPS-01 local safety/recovery: DONE / VERIFIED / MERGED.
+- OPS-02 operator-control foundation: DONE / VERIFIED / MERGED.
+- Founder intake -> Start -> research/context/Angle -> WAIT_HUMAN: DONE / VERIFIED / MERGED.
+- K1 -> K6 Knowledge stack: MERGED.
+- Model Routing Policy v1 implementation/audit/budget guards: MERGED; activation remains separate.
+
+## Deferred until after pilot
+
+- WordPress/publish automation;
+- Artwork Engine;
+- broad CE06 evaluator expansion beyond observed failures;
+- vector DB/embeddings;
+- native Codex multi-agent;
+- Antigravity production execution;
+- generic workflow engine / Redis / Celery without measured need;
+- speculative UI fields copied from external references.
