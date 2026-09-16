@@ -14,6 +14,7 @@ from app.modules.content_engine.journal.operator_runtime import get_operator_sta
 from app.modules.content_engine.journal.outline import (
     OutlineGenerationError,
     OutlineGenerator,
+    OutlineInput,
     load_outline_input,
 )
 from app.modules.content_engine.journal.outline_agent_bridge import (
@@ -26,12 +27,7 @@ from app.modules.content_engine.journal.outline_agent_bridge import (
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import AgentRunnerError, AgentRunnerRegistry
 from app.modules.harness.models import ContentRun, ContextManifest, Job, StepRun
-from app.modules.harness.persistence import (
-    complete_job,
-    create_checkpoint,
-    transition_run,
-    transition_step_run,
-)
+from app.modules.harness.persistence import complete_job, create_checkpoint, transition_run
 from app.modules.harness.runtime import (
     ContextInputs,
     RuntimeConfigurationError,
@@ -190,7 +186,7 @@ async def _outline_manifest(
     step: StepRun,
     prompt_version: str,
     recipe_version: str,
-    outline_input: object,
+    outline_input: OutlineInput,
 ) -> ContextManifest:
     rows = list(
         (
@@ -212,9 +208,7 @@ async def _outline_manifest(
             raise OperatorOutlineWorkerError("operator_outline_registry_changed")
         return manifest
 
-    bundle = getattr(outline_input, "bundle", None)
-    if bundle is None:
-        raise OperatorOutlineWorkerError("operator_outline_input_invalid")
+    bundle = outline_input.bundle
     upstream = bundle.context_manifest
     return await build_context_manifest(
         session,
@@ -355,8 +349,9 @@ async def execute_outline_job(
     except OutlineGenerationError as exc:
         raise OperatorOutlineWorkerError(exc.code) from exc
 
+    # complete_job owns the durable StepRun -> completed transition.
     await complete_job(session, job_id=job.id, worker_id=worker_id)
-    await transition_step_run(session, step_run_id=step.id, status="completed")
+    step.error_json = None
     run.failure_code = None
     run.failure_message = None
     await create_checkpoint(
