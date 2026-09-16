@@ -117,15 +117,24 @@ async def test_operator_runtime_makes_only_angle_continuation_executable(
     async with isolated_session() as session:
         prepared, _source, _approval = await _approved_angle_stage(session, monkeypatch)
 
+        state = await get_operator_state(
+            session,
+            content_case_id=prepared.run.content_case_id,
+        )
         action = await resolve_next_operator_action(
             session,
             content_case_id=prepared.run.content_case_id,
         )
 
+        assert state.status == "READY"
+        assert state.phase == "Dàn ý"
+        assert state.primary_intent == "continue"
+        assert state.allowed_intents == ["continue"]
+        assert state.blocker_code is None
         assert action.action_key == "angle_to_outline"
         assert action.intent == "continue"
         assert action.executable is True
-        assert action.blocker_code == "operator_gate_already_decided"
+        assert action.blocker_code is None
         assert action.current_run_id == prepared.run.id
 
 
