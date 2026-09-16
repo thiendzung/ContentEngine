@@ -9,11 +9,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.angle import (
-    AngleGenerationError,
-    AngleModelPort,
-    angle_model_input_hash,
-)
+from app.modules.content_engine.journal.angle import AngleGenerationError, AngleModelPort
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentRunnerError,
@@ -106,7 +102,7 @@ def _safe_diagnostic_refs(value: object) -> list[str]:
 
 
 def _angle_output_reference_diagnostics(value: object) -> dict[str, object]:
-    """Persist only bounded ref diagnostics, never free-form model prose."""
+    """Capture only bounded refs, never free-form model prose."""
 
     candidates: object = value
     if isinstance(value, dict):
@@ -130,7 +126,7 @@ def _angle_output_reference_diagnostics(value: object) -> dict[str, object]:
 
 
 def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str, object]:
-    """Derive the exact runtime allow-list that the validator will enforce."""
+    """Derive the exact runtime allow-list enforced by Angle validation."""
 
     evidence_refs: list[str] = []
     evidence_set = angle_model_input.get("evidence_set")
@@ -138,7 +134,7 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
         evidence = evidence_set.get("evidence")
         if isinstance(evidence, list):
             evidence_refs = [
-                ref
+                ref.strip()
                 for item in evidence
                 if isinstance(item, dict)
                 and isinstance((ref := item.get("evidence_id")), str)
@@ -151,7 +147,7 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
         items = originality_pack.get("items")
         if isinstance(items, list):
             originality_refs = [
-                ref
+                ref.strip()
                 for item in items
                 if isinstance(item, dict)
                 and isinstance((ref := item.get("source_ref")), str)
@@ -173,6 +169,43 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
     }
 
 
+def _reference_diagnostics_violate_contract(
+    diagnostics: dict[str, object],
+    contract: dict[str, object],
+) -> bool:
+    evidence_contract = contract.get("evidence_refs")
+    originality_contract = contract.get("originality_refs")
+    if not isinstance(evidence_contract, dict) or not isinstance(originality_contract, dict):
+        return False
+    allowed_evidence = {
+        value
+        for value in evidence_contract.get("allowed_values", [])
+        if isinstance(value, str)
+    }
+    allowed_originality = {
+        value
+        for value in originality_contract.get("allowed_values", [])
+        if isinstance(value, str)
+    }
+    candidates = diagnostics.get("candidates")
+    if not isinstance(candidates, list):
+        return False
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        evidence_refs = candidate.get("evidence_refs")
+        originality_refs = candidate.get("originality_refs")
+        if isinstance(evidence_refs, list) and any(
+            isinstance(ref, str) and ref not in allowed_evidence for ref in evidence_refs
+        ):
+            return True
+        if isinstance(originality_refs, list) and any(
+            isinstance(ref, str) and ref not in allowed_originality for ref in originality_refs
+        ):
+            return True
+    return False
+
+
 def render_angle_prompt(
     prompt: PromptDefinition,
     recipe: RecipeDefinition,
@@ -180,7 +213,7 @@ def render_angle_prompt(
     angle_model_input: dict[str, object],
     attempt: int,
 ) -> str:
-    """Render active registry text plus one sanitized input and its exact ref allow-list."""
+    """Render active registry text plus sanitized input and exact ref allow-list."""
 
     recipe_json = json.dumps(
         recipe.recipe_json,
@@ -209,6 +242,7 @@ def render_angle_prompt(
         )
     return (
         f"{prompt.body.rstrip()}\n\n"
+        f"ANGLE_RENDER_PROTOCOL_VERSION:\n{ANGLE_RENDER_PROTOCOL_VERSION}\n\n"
         f"RECIPE_JSON:\n{recipe_json}\n\n"
         f"REFERENCE_CONTRACT_JSON:\n{reference_contract_json}\n\n"
         f"ANGLE_INPUT_JSON:\n{input_json}"
@@ -316,6 +350,7 @@ class CliAngleModelPort(AngleModelPort):
             purpose="Generate grounded Journal Angle candidates",
             prompt_version=self.prompt_version,
         )
+        reference_contract = _angle_reference_contract(sanitized_input)
         request = AgentRunRequest(
             provider=route.primary.provider,
             model=route.primary.model,
@@ -326,10 +361,7 @@ class CliAngleModelPort(AngleModelPort):
                 attempt=attempt,
             ),
             structured_output_schema=self._prompt.output_schema_json,
-            working_context={
-                "angle_model_input_hash": angle_model_input_hash(sanitized_input),
-                "angle_render_protocol_version": ANGLE_RENDER_PROTOCOL_VERSION,
-            },
+            working_context={"angle_model_input": sanitized_input},
             timeout=self._timeout,
         )
         try:
@@ -359,10 +391,9 @@ class CliAngleModelPort(AngleModelPort):
             finish_reason="stop",
         )
         runtime_metadata = _runtime_metadata(result)
-        runtime_metadata["angle_render_protocol_version"] = ANGLE_RENDER_PROTOCOL_VERSION
-        runtime_metadata["angle_output_reference_diagnostics"] = _angle_output_reference_diagnostics(
-            result.structured_output
-        )
+        diagnostics = _angle_output_reference_diagnostics(result.structured_output)
+        if _reference_diagnostics_violate_contract(diagnostics, reference_contract):
+            runtime_metadata["angle_output_reference_diagnostics"] = diagnostics
         await complete_model_call(
             self._session,
             call_id=call.id,
