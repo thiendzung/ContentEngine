@@ -227,6 +227,36 @@ async def _outline_state_overlay(
     return state
 
 
+async def _angle_continuation_state_overlay(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+) -> OperatorState:
+    """Expose the now-wired Angle continuation instead of a compatibility blocker."""
+
+    if (
+        state.blocker_code != "operator_gate_already_decided"
+        or state.current_run_id is None
+    ):
+        return state
+    run = await session.get(ContentRun, state.current_run_id)
+    if run is None or run.content_case_id != state.content_case_id or run.current_step != "angle":
+        return state
+    await _angle_approval(session, run_id=run.id)
+    return state.model_copy(
+        update={
+            "status": "READY",
+            "phase": "Dàn ý",
+            "primary_intent": "continue",
+            "allowed_intents": ["continue"],
+            "human_gate": None,
+            "blocker_code": None,
+            "blocker_message": None,
+            "last_checkpoint": "Angle đã duyệt; sẵn sàng tạo Outline.",
+        }
+    )
+
+
 async def get_operator_state(
     session: AsyncSession,
     *,
@@ -240,7 +270,8 @@ async def get_operator_state(
         content_case_id=content_case_id,
         preflight_checked=preflight_checked,
     )
-    return await _outline_state_overlay(session, state=state)
+    state = await _outline_state_overlay(session, state=state)
+    return await _angle_continuation_state_overlay(session, state=state)
 
 
 async def _bound_focus(
@@ -305,6 +336,23 @@ async def resolve_next_operator_action(
             current_run_id=state.current_run_id,
             current_step_run_id=state.current_step_run_id,
             human_gate=state.human_gate,
+        )
+
+    if (
+        state.primary_intent == "continue"
+        and run is not None
+        and run.current_step in _F2_EXECUTABLE_CONTINUATIONS
+    ):
+        continuation_action: OperatorActionKey = _GATE_CONTINUATIONS[run.current_step]
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            action_key=continuation_action,
+            intent="continue",
+            executable=True,
+            current_run_id=run.id,
+            current_step_run_id=state.current_step_run_id,
         )
 
     if state.blocker_code == "operator_gate_already_decided":
