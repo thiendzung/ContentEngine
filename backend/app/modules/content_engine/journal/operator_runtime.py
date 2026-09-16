@@ -191,7 +191,7 @@ async def _outline_state_overlay(
     *,
     state: OperatorState,
 ) -> OperatorState:
-    """Add bounded manual-retry semantics for the F2 Outline step."""
+    """Project the durable F2 Outline job ahead of legacy compatibility blockers."""
 
     if state.current_run_id is None or state.current_step_run_id is None:
         return state
@@ -206,17 +206,48 @@ async def _outline_state_overlay(
         return state
     job = await _latest_job(session, step_run_id=step.id)
     if (
-        run.status == "running"
-        and step.status in {"pending", "running"}
-        and job is not None
-        and job.status in {"failed", "cancelled"}
+        run.status != "running"
+        or step.status not in {"pending", "running"}
+        or job is None
     ):
+        return state
+    if job.status == "queued":
+        return state.model_copy(
+            update={
+                "status": "QUEUED",
+                "phase": "Dàn ý",
+                "primary_intent": None,
+                "allowed_intents": ["cancel"],
+                "human_gate": None,
+                "current_worker": None,
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": "Tác vụ Outline đã nằm trong hàng đợi bền vững.",
+            }
+        )
+    if job.status == "leased":
+        return state.model_copy(
+            update={
+                "status": "RUNNING",
+                "phase": "Dàn ý",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "human_gate": None,
+                "current_worker": job.lease_owner,
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": "Worker đang giữ lease của tác vụ Outline.",
+            }
+        )
+    if job.status in {"failed", "cancelled"}:
         return state.model_copy(
             update={
                 "status": "BLOCKED",
                 "phase": "Dàn ý",
                 "primary_intent": "retry",
                 "allowed_intents": ["retry"],
+                "human_gate": None,
+                "current_worker": None,
                 "blocker_code": "operator_job_failed",
                 "blocker_message": (
                     "Tác vụ Outline thất bại; có thể thử lại nếu lineage vẫn hợp lệ."
