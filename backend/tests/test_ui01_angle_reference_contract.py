@@ -143,6 +143,28 @@ async def test_approval_ref_is_rejected_and_bad_ref_diagnostics_are_durable() ->
         assert isinstance(exc_info.value.__cause__, AngleGenerationError)
         assert exc_info.value.__cause__.code == "angle_originality_ref_outside_pack"
 
+        assert len(fake.requests) == 1
+        schema = fake.requests[0].structured_output_schema
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
+        candidates_schema = properties["candidates"]
+        assert isinstance(candidates_schema, dict)
+        candidate_items = candidates_schema["items"]
+        assert isinstance(candidate_items, dict)
+        candidate_properties = candidate_items["properties"]
+        assert isinstance(candidate_properties, dict)
+        evidence_refs_schema = candidate_properties["evidence_refs"]
+        originality_refs_schema = candidate_properties["originality_refs"]
+        assert isinstance(evidence_refs_schema, dict)
+        assert isinstance(originality_refs_schema, dict)
+        evidence_item_schema = evidence_refs_schema["items"]
+        originality_item_schema = originality_refs_schema["items"]
+        assert isinstance(evidence_item_schema, dict)
+        assert isinstance(originality_item_schema, dict)
+        assert evidence_item_schema["enum"] == [str(bundle.evidence_ids[0])]
+        assert originality_item_schema["enum"] == [bundle.originality_refs[0]]
+        assert approval_ref not in originality_item_schema["enum"]
+
         call = await session.scalar(
             select(ModelCall).where(ModelCall.run_id == run.id, ModelCall.task_key == "angle")
         )
