@@ -416,7 +416,7 @@ async def test_f3_writer_failure_preserves_sibling_and_retries_only_failed_lane(
         final_action = await resolve_next_operator_action(session, content_case_id=case_id)
         assert final_action.action_key == "writers_to_quality"
         assert final_action.intent == "continue"
-        assert final_action.executable is False
+        assert final_action.executable is True
         final_progress = await get_writer_lane_progress(
             session,
             content_case_id=case_id,

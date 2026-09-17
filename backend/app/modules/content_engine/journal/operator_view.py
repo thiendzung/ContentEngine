@@ -22,12 +22,17 @@ from app.modules.content_engine.journal.angle import (
 )
 from app.modules.content_engine.journal.models import JournalIntakeSpec, JournalRequiredLocale
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
+from app.modules.content_engine.journal.operator_quality import get_quality_progress
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact
 from app.modules.harness.persistence import get_latest_checkpoint
 
 LocaleRole = Literal["source", "translation"]
+
+
+def _int_field(value: object) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 class OperatorRequiredLocaleView(BaseModel):
@@ -94,6 +99,51 @@ class OperatorWriterLaneView(BaseModel):
     draft_hash: str | None = None
 
 
+class OperatorQualityRefView(BaseModel):
+    id: UUID | None = None
+    version: int | None = None
+    content_hash: str | None = None
+
+
+class OperatorQualityLaneView(BaseModel):
+    locale: str
+    locale_variant_id: UUID
+    writer_run_id: UUID | None = None
+    current_quality_stage: str
+    status: str
+    source_writer_draft: OperatorQualityRefView | None = None
+    revised_draft: OperatorQualityRefView | None = None
+    review_step_run_id: UUID | None = None
+    review_job_id: UUID | None = None
+    review_attempt: int | None = None
+    review_status: str | None = None
+    assertion_audit_run_id: UUID | None = None
+    assertion_audit_step_run_id: UUID | None = None
+    assertion_audit_job_id: UUID | None = None
+    assertion_audit_artifact: OperatorQualityRefView | None = None
+    assertion_audit_quality_evaluation_id: UUID | None = None
+    assertion_audit_result: str | None = None
+    critical_unsupported_count: int = 0
+    critical_contradicted_count: int = 0
+    unsupported_count: int = 0
+    contradicted_count: int = 0
+    source_copy_run_id: UUID | None = None
+    source_copy_step_run_id: UUID | None = None
+    source_copy_job_id: UUID | None = None
+    source_copy_artifact: OperatorQualityRefView | None = None
+    source_copy_quality_evaluation_id: UUID | None = None
+    source_copy_result: str | None = None
+    finding_count: int = 0
+    warn_count: int = 0
+    fail_count: int = 0
+    max_overlap_tokens: int = 0
+    source_copy_findings: list[object] = Field(default_factory=list)
+    content_item_id: UUID | None = None
+    final_content: OperatorQualityRefView | None = None
+    final_review_step_run_id: UUID | None = None
+    pending_approval_ready: bool = False
+
+
 class OperatorCaseView(BaseModel):
     content_case_id: UUID
     question: str
@@ -106,6 +156,7 @@ class OperatorCaseView(BaseModel):
     intake: OperatorIntakeView
     pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
     writer_lanes: list[OperatorWriterLaneView] = Field(default_factory=list)
+    quality_lanes: list[OperatorQualityLaneView] = Field(default_factory=list)
 
 
 def _bundle_ref(artifact: Artifact) -> tuple[UUID, int, str]:
@@ -292,8 +343,15 @@ async def get_operator_case_view(
     writer_progress = await get_writer_lane_progress(
         session,
         content_case_id=content_case.id,
-        source_run_id=state.current_run_id,
+        source_run_id=None,
     )
+    quality_progress = await get_quality_progress(
+        session,
+        content_case_id=content_case.id,
+        source_run_id=None,
+    )
+    if writer_progress is None and quality_progress is not None:
+        writer_progress = quality_progress.writer_progress
     writer_lanes = []
     if writer_progress is not None:
         writer_lanes = [
@@ -310,6 +368,117 @@ async def get_operator_case_view(
             )
             for lane in writer_progress.lanes
         ]
+    quality_lanes: list[OperatorQualityLaneView] = []
+    if quality_progress is not None:
+        for lane in quality_progress.lanes:
+            audit_findings = (
+                lane.audit.evaluation.findings_json if lane.audit.evaluation is not None else {}
+            )
+            source_findings = (
+                lane.source_copy.evaluation.findings_json
+                if lane.source_copy.evaluation is not None
+                else {}
+            )
+            source_ref = (
+                OperatorQualityRefView(
+                    id=lane.source_draft.id,
+                    version=lane.source_draft.version,
+                    content_hash=lane.source_draft.content_hash,
+                )
+                if lane.source_draft is not None
+                else None
+            )
+            revised_ref = (
+                OperatorQualityRefView(
+                    id=lane.revised_draft.id,
+                    version=lane.revised_draft.version,
+                    content_hash=lane.revised_draft.content_hash,
+                )
+                if lane.revised_draft is not None
+                else None
+            )
+            quality_lanes.append(
+                OperatorQualityLaneView(
+                    locale=lane.locale,
+                    locale_variant_id=lane.variant.id,
+                    writer_run_id=lane.writer.run.id if lane.writer.run else None,
+                    current_quality_stage=lane.status,
+                    status=lane.status,
+                    source_writer_draft=source_ref,
+                    revised_draft=revised_ref,
+                    review_step_run_id=lane.review.step.id if lane.review.step else None,
+                    review_job_id=lane.review.job.id if lane.review.job else None,
+                    review_attempt=lane.review.job.attempt if lane.review.job else None,
+                    review_status=lane.review.job.status if lane.review.job else None,
+                    assertion_audit_run_id=lane.audit.run.id if lane.audit.run else None,
+                    assertion_audit_step_run_id=lane.audit.step.id if lane.audit.step else None,
+                    assertion_audit_job_id=lane.audit.job.id if lane.audit.job else None,
+                    assertion_audit_artifact=(
+                        OperatorQualityRefView(
+                            id=lane.audit.artifact.id,
+                            version=lane.audit.artifact.version,
+                            content_hash=lane.audit.artifact.content_hash,
+                        )
+                        if lane.audit.artifact is not None
+                        else None
+                    ),
+                    assertion_audit_quality_evaluation_id=(
+                        lane.audit.evaluation.id if lane.audit.evaluation else None
+                    ),
+                    assertion_audit_result=(
+                        lane.audit.evaluation.result if lane.audit.evaluation else None
+                    ),
+                    critical_unsupported_count=_int_field(
+                        audit_findings.get("critical_unsupported_count", 0)
+                    ),
+                    critical_contradicted_count=_int_field(
+                        audit_findings.get("critical_contradicted_count", 0)
+                    ),
+                    unsupported_count=_int_field(audit_findings.get("unsupported_count", 0)),
+                    contradicted_count=_int_field(audit_findings.get("contradicted_count", 0)),
+                    source_copy_run_id=lane.source_copy.run.id if lane.source_copy.run else None,
+                    source_copy_step_run_id=lane.source_copy.step.id
+                    if lane.source_copy.step
+                    else None,
+                    source_copy_job_id=lane.source_copy.job.id if lane.source_copy.job else None,
+                    source_copy_artifact=(
+                        OperatorQualityRefView(
+                            id=lane.source_copy.artifact.id,
+                            version=lane.source_copy.artifact.version,
+                            content_hash=lane.source_copy.artifact.content_hash,
+                        )
+                        if lane.source_copy.artifact is not None
+                        else None
+                    ),
+                    source_copy_quality_evaluation_id=(
+                        lane.source_copy.evaluation.id if lane.source_copy.evaluation else None
+                    ),
+                    source_copy_result=(
+                        lane.source_copy.evaluation.result if lane.source_copy.evaluation else None
+                    ),
+                    finding_count=_int_field(source_findings.get("finding_count", 0)),
+                    warn_count=_int_field(source_findings.get("warn_count", 0)),
+                    fail_count=_int_field(source_findings.get("fail_count", 0)),
+                    max_overlap_tokens=_int_field(source_findings.get("max_overlap_tokens", 0)),
+                    source_copy_findings=(
+                        cast(list[object], source_findings.get("findings", []))
+                        if isinstance(source_findings.get("findings", []), list)
+                        else []
+                    ),
+                    content_item_id=lane.final_item.id if lane.final_item else None,
+                    final_content=(
+                        OperatorQualityRefView(
+                            id=lane.final_content.id,
+                            version=lane.final_content.version,
+                            content_hash=lane.final_content.content_hash,
+                        )
+                        if lane.final_content is not None
+                        else None
+                    ),
+                    final_review_step_run_id=lane.final_review.id if lane.final_review else None,
+                    pending_approval_ready=lane.status == "final_gate_ready",
+                )
+            )
     return OperatorCaseView(
         content_case_id=content_case.id,
         question=opportunity.question,
@@ -329,6 +498,7 @@ async def get_operator_case_view(
         ),
         pending_gate=pending_gate,
         writer_lanes=writer_lanes,
+        quality_lanes=quality_lanes,
     )
 
 
@@ -341,5 +511,7 @@ __all__ = [
     "OperatorOutlineGateView",
     "OperatorRequiredLocaleView",
     "OperatorWriterLaneView",
+    "OperatorQualityLaneView",
+    "OperatorQualityRefView",
     "get_operator_case_view",
 ]

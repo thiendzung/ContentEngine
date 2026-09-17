@@ -164,6 +164,13 @@ async def test_review_revise_turns_declared_gaps_into_clean_v2_and_reuses_it() -
         assert len(unresolved_factual_claims(review_input.source_draft)) == 2
         assert "source_draft" in review_input.model_input
         assert "source_unresolved_factual_claims" in review_input.model_input
+        revision_policy = cast(dict[str, object], review_input.model_input["revision_policy"])
+        segment_policy = cast(dict[str, object], revision_policy["segment_support_policy"])
+        closing_policy = cast(dict[str, object], segment_policy["closing_markdown"])
+        assert closing_policy["allowed_evidence_refs"] == []
+        assert closing_policy["allowed_originality_refs"] == []
+        assert closing_policy["require_non_assertive"] is True
+        assert closing_policy["reason"] == "writer_schema_has_no_closing_support_ref_fields"
         serialized = json.dumps(review_input.model_input, ensure_ascii=False, sort_keys=True)
         assert "other_locale_draft" not in serialized
         assert "translation_source" not in serialized
@@ -340,6 +347,9 @@ async def test_review_revise_bridge_uses_locale_registry_and_review_task_key() -
         request = fake.requests[0]
         assert request.provider == "codex_cli"
         assert request.model == "test-model"
+        assert "CLOSING SUPPORT CONTRACT:" in request.prompt
+        assert "closing sentences zero allowed support refs" in request.prompt
+        assert "closing_markdown must not contain factual" in request.prompt
         assert set(request.working_context) == {"review_revise_model_input"}
         context = cast(
             dict[str, object],

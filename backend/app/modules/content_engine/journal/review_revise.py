@@ -27,8 +27,13 @@ from app.modules.content_engine.journal.writer import (
 )
 from app.modules.harness.models import Artifact
 
-REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v1"
+REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v3"
 REVIEW_REVISE_SCHEMA_VERSION = 1
+_SUPPORTIVE_EVIDENCE_RELATIONS = ("supports", "qualifies")
+_NON_SUPPORTIVE_EVIDENCE_RELATIONS = ("context_only", "contradicts")
+_ALLOWED_EVIDENCE_RELATIONS = set(
+    (*_SUPPORTIVE_EVIDENCE_RELATIONS, *_NON_SUPPORTIVE_EVIDENCE_RELATIONS)
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +72,66 @@ def _source_unresolved_payload(draft: JournalDraft) -> dict[str, object]:
             for section in draft.sections
             if section.unresolved_factual_claims
         ],
+    }
+
+
+def _evidence_relation_policy(writer_input: WriterInput) -> dict[str, object]:
+    """Expose exact locked Evidence relations so Review cannot treat context as support."""
+
+    evidence_set = _dict(
+        writer_input.model_input.get("evidence_set"),
+        "review_revise_evidence_set_invalid",
+    )
+    raw_items = evidence_set.get("evidence")
+    if not isinstance(raw_items, list):
+        raise WriterGenerationError("review_revise_evidence_set_invalid")
+
+    relations: dict[str, str] = {}
+    for raw_item in raw_items:
+        item = _dict(raw_item, "review_revise_evidence_item_invalid")
+        evidence_id = item.get("evidence_id")
+        relation = item.get("relation")
+        if (
+            not isinstance(evidence_id, str)
+            or not evidence_id.strip()
+            or not isinstance(relation, str)
+            or relation not in _ALLOWED_EVIDENCE_RELATIONS
+        ):
+            raise WriterGenerationError("review_revise_evidence_relation_invalid")
+        normalized_id = evidence_id.strip()
+        if normalized_id in relations:
+            raise WriterGenerationError("review_revise_evidence_relation_duplicate")
+        relations[normalized_id] = relation
+
+    return {
+        "supportive_relations": list(_SUPPORTIVE_EVIDENCE_RELATIONS),
+        "non_supportive_relations": list(_NON_SUPPORTIVE_EVIDENCE_RELATIONS),
+        "relations_by_evidence_id": relations,
+    }
+
+
+def _segment_support_policy(draft: JournalDraft) -> dict[str, object]:
+    """Describe where the Writer schema can bind support refs for visible copy."""
+
+    return {
+        "lead_markdown": {
+            "allowed_evidence_refs": list(draft.lead_evidence_refs),
+            "allowed_originality_refs": list(draft.lead_originality_refs),
+        },
+        "sections": [
+            {
+                "section_id": section.section_id,
+                "allowed_evidence_refs": list(section.evidence_refs),
+                "allowed_originality_refs": list(section.originality_refs),
+            }
+            for section in draft.sections
+        ],
+        "closing_markdown": {
+            "allowed_evidence_refs": [],
+            "allowed_originality_refs": [],
+            "require_non_assertive": True,
+            "reason": "writer_schema_has_no_closing_support_ref_fields",
+        },
     }
 
 
@@ -120,8 +185,18 @@ def _revision_model_input(
             "source_unresolved_factual_claims": _source_unresolved_payload(source_draft),
             "revision_policy": {
                 "mode": "bounded_review_revise",
+                "evidence_relation_policy": _evidence_relation_policy(writer_input),
+                "segment_support_policy": _segment_support_policy(source_draft),
                 "requirements": [
                     "preserve_exact_section_ids_order_and_support_refs",
+                    "review_every_factual_visual_and_live_claim_not_only_declared_unresolved_items",
+                    "only_supports_or_qualifies_evidence_relations_can_support_factual_visual_or_live_claims",
+                    "context_only_and_contradicts_relations_are_never_support_for_factual_visual_or_live_claims",
+                    "remove_unsupported_factual_claims_or_rewrite_them_as_bounded_reader_guidance",
+                    "rewrite_unsupported_broad_universal_or_epistemic_claims_as_bounded_reader_guidance",
+                    "prefer_direct_reader_actions_over_unproven_universal_claims",
+                    "closing_markdown_has_no_support_ref_fields_and_must_not_contain_factual_brand_visual_or_live_claims",
+                    "keep_supported_factual_closing_points_in_an_existing_ref_bound_section_and_rewrite_closing_as_non_assertive_reader_guidance",
                     "resolve_or_remove_every_unsupported_intended_factual_claim",
                     "do_not_treat_missing_data_as_a_claim_when_the_prose_does_not_assert_it",
                     "never_fabricate_missing_artwork_artist_commerce_or_market_facts",

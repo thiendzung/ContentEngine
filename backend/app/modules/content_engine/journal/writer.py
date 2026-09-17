@@ -527,6 +527,32 @@ async def load_writer_input(
     if content_case.project_id != writer_run.project_id:
         raise WriterGenerationError("writer_content_case_invalid")
 
+    if outline_approval_id is None:
+        existing_handoff = await session.scalar(
+            select(Artifact).where(
+                Artifact.run_id == writer_run.id,
+                Artifact.artifact_type == "writer_handoff",
+            )
+        )
+        if existing_handoff is not None and isinstance(existing_handoff.content_json, dict):
+            approval_entry = existing_handoff.content_json.get("outline_approval")
+            if isinstance(approval_entry, dict) and "id" in approval_entry:
+                try:
+                    outline_approval_id = UUID(str(approval_entry["id"]))
+                except (ValueError, TypeError):
+                    pass
+
+    if outline_approval_id is not None:
+        approval = await session.get(OutlineApproval, outline_approval_id)
+        if (
+            approval is None
+            or approval.run_id != source_run.id
+            or approval.outline_artifact_id != artifact.id
+            or approval.outline_artifact_version != artifact.version
+            or approval.outline_artifact_hash != artifact.content_hash
+        ):
+            raise WriterGenerationError("writer_outline_approval_mismatch")
+
     expected_handoff_payload = _writer_handoff_payload(
         source_run=source_run,
         outline_artifact=artifact,

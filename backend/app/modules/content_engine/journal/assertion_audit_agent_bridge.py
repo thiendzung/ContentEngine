@@ -38,6 +38,7 @@ from app.modules.system.settings_service import (
 
 ASSERTION_AUDIT_ROUTE_TASK_KEY = "angle"
 ASSERTION_AUDIT_TIMEOUT_SECONDS = 300.0
+_SUPPORTIVE_EVIDENCE_RELATIONS = frozenset({"supports", "qualifies"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +114,87 @@ def _runtime_metadata(result: AgentRunResult, *, locale: str) -> dict[str, objec
     if result.usage is not None:
         metadata["usage"] = result.usage
     return metadata
+
+
+def _sanitize_supported_evidence_refs(
+    raw_output: object,
+    *,
+    audit_model_input: dict[str, object],
+) -> tuple[object, int]:
+    """Drop evidence refs that cannot support a model-declared supported assertion.
+
+    This is a provider-boundary repair, not a quality relaxation. The canonical
+    assertion validator still owns support-status normalization and severity. In
+    particular, when all invalid evidence refs are removed it deterministically
+    turns an otherwise unsupported hard-gate claim into ``unsupported`` rather
+    than spending the technical retry budget on a relation-selection mistake.
+    """
+
+    if not isinstance(raw_output, dict):
+        return raw_output, 0
+    catalog = audit_model_input.get("evidence_catalog")
+    source_segments = audit_model_input.get("source_segments")
+    if not isinstance(catalog, list) or not isinstance(source_segments, list):
+        return raw_output, 0
+
+    relations: dict[str, str] = {}
+    for item in catalog:
+        if not isinstance(item, dict):
+            continue
+        evidence_id = item.get("evidence_id")
+        relation = item.get("evidence_relation")
+        if isinstance(evidence_id, str) and isinstance(relation, str):
+            relations[evidence_id] = relation
+
+    allowed_by_segment: dict[str, frozenset[str]] = {}
+    for item in source_segments:
+        if not isinstance(item, dict):
+            continue
+        segment_id = item.get("segment_id")
+        allowed = item.get("allowed_evidence_refs")
+        if not isinstance(segment_id, str) or not isinstance(allowed, list):
+            continue
+        if any(not isinstance(ref, str) for ref in allowed):
+            continue
+        allowed_by_segment[segment_id] = frozenset(cast(list[str], allowed))
+
+    cloned = json.loads(json.dumps(raw_output, ensure_ascii=False))
+    if not isinstance(cloned, dict):
+        return raw_output, 0
+    segments = cloned.get("segments")
+    if not isinstance(segments, list):
+        return cloned, 0
+
+    removed = 0
+    for raw_segment in segments:
+        if not isinstance(raw_segment, dict):
+            continue
+        segment_id = raw_segment.get("segment_id")
+        if not isinstance(segment_id, str):
+            continue
+        allowed = allowed_by_segment.get(segment_id)
+        if allowed is None:
+            continue
+        assertions = raw_segment.get("assertions")
+        if not isinstance(assertions, list):
+            continue
+        for assertion in assertions:
+            if not isinstance(assertion, dict) or assertion.get("support_status") != "supported":
+                continue
+            evidence_refs = assertion.get("evidence_refs")
+            if not isinstance(evidence_refs, list) or any(
+                not isinstance(ref, str) for ref in evidence_refs
+            ):
+                continue
+            typed_refs = cast(list[str], evidence_refs)
+            filtered = [
+                ref
+                for ref in typed_refs
+                if ref in allowed and relations.get(ref) in _SUPPORTIVE_EVIDENCE_RELATIONS
+            ]
+            removed += len(typed_refs) - len(filtered)
+            assertion["evidence_refs"] = filtered
+    return cloned, removed
 
 
 def render_assertion_audit_prompt(
@@ -293,6 +375,10 @@ class CliAssertionAuditModelPort(AssertionAuditModelPort):
             )
             raise AssertionAuditError("assertion_audit_agent_result_route_mismatch")
 
+        normalized_output, removed_ref_count = _sanitize_supported_evidence_refs(
+            result.structured_output,
+            audit_model_input=sanitized_input,
+        )
         response = ModelResponse(
             content=json.dumps(result.structured_output, ensure_ascii=False, sort_keys=True),
             input_tokens=_integer_usage(result.usage, "input_tokens"),
@@ -301,13 +387,16 @@ class CliAssertionAuditModelPort(AssertionAuditModelPort):
             latency_ms=result.duration_ms,
             finish_reason="stop",
         )
+        runtime_metadata = _runtime_metadata(result, locale=self._config.locale)
+        if removed_ref_count:
+            runtime_metadata["non_supportive_evidence_refs_removed"] = removed_ref_count
         await complete_model_call(
             self._session,
             call_id=call.id,
             response=response,
-            runtime_metadata=_runtime_metadata(result, locale=self._config.locale),
+            runtime_metadata=runtime_metadata,
         )
-        return result.structured_output
+        return normalized_output
 
 
 async def create_cli_assertion_audit_model_port(

@@ -27,6 +27,13 @@ from app.modules.content_engine.journal.operator_outline_worker import (
     execute_outline_job,
     fail_outline_job,
 )
+from app.modules.content_engine.journal.operator_quality_worker import (
+    QUALITY_STEP_KEYS,
+    OperatorQualityWorkerError,
+    claim_or_reclaim_quality_job,
+    execute_quality_job,
+    fail_quality_job,
+)
 from app.modules.content_engine.journal.operator_recovery import claim_or_reclaim_operator_job
 from app.modules.content_engine.journal.operator_runtime import START_TO_ANGLE_STAGE
 from app.modules.content_engine.journal.operator_worker import (
@@ -44,7 +51,7 @@ from app.modules.content_engine.journal.operator_writer_worker import (
 from app.modules.content_engine.journal.operator_writers import WRITER_STEP_BY_LOCALE
 from app.modules.content_engine.journal.outline_agent_bridge import OUTLINE_TASK_KEY
 from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
-from app.modules.harness.models import ContentRun, StepRun
+from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
 from app.modules.research.evidence import EvidenceResearchWorkflow
@@ -166,6 +173,12 @@ async def _claim_job(*, worker_id: str) -> tuple[UUID, str] | None:
                     lease_seconds=_LEASE_SECONDS,
                 )
             if job is None:
+                job = await claim_or_reclaim_quality_job(
+                    session,
+                    worker_id=worker_id,
+                    lease_seconds=_LEASE_SECONDS,
+                )
+            if job is None:
                 return None
             run = await session.get(ContentRun, job.run_id)
             step = await session.get(StepRun, job.step_run_id)
@@ -175,6 +188,7 @@ async def _claim_job(*, worker_id: str) -> tuple[UUID, str] | None:
                 START_TO_ANGLE_STAGE,
                 OUTLINE_TASK_KEY,
                 *WRITER_STEP_BY_LOCALE.values(),
+                *QUALITY_STEP_KEYS,
             }:
                 raise OperatorWorkerError("operator_worker_stage_not_allowed")
             if run.status == "pending":
@@ -200,9 +214,7 @@ async def _run(*, emit_idle: bool = True) -> None:
     registry = AgentRunnerRegistry()
     registry.register("codex_cli", CodexCliRunner())
     stop = asyncio.Event()
-    heartbeat = asyncio.create_task(
-        _heartbeat_loop(job_id=job_id, worker_id=worker_id, stop=stop)
-    )
+    heartbeat = asyncio.create_task(_heartbeat_loop(job_id=job_id, worker_id=worker_id, stop=stop))
     try:
         if step_key == START_TO_ANGLE_STAGE:
             timeout = httpx.Timeout(settings.research_request_timeout_seconds)
@@ -226,7 +238,7 @@ async def _run(*, emit_idle: bool = True) -> None:
                         worker_id=worker_id,
                         runner_registry=registry,
                     )
-        else:
+        elif step_key in WRITER_STEP_BY_LOCALE.values():
             async with SessionLocal() as session:
                 async with session.begin():
                     result = await execute_writer_job(
@@ -235,6 +247,32 @@ async def _run(*, emit_idle: bool = True) -> None:
                         worker_id=worker_id,
                         runner_registry=registry,
                     )
+        else:
+            async with SessionLocal() as session:
+                async with session.begin():
+                    await execute_quality_job(
+                        session,
+                        job_id=job_id,
+                        worker_id=worker_id,
+                        runner_registry=registry,
+                    )
+                    finished_job = await session.get(Job, job_id)
+                    if finished_job is None:
+                        raise OperatorQualityWorkerError("operator_quality_binding_invalid")
+                    run = await session.get(ContentRun, finished_job.run_id)
+                    step = await session.get(StepRun, finished_job.step_run_id)
+                    if run is None or step is None:
+                        raise OperatorQualityWorkerError("operator_quality_binding_invalid")
+                    result = type(
+                        "QualityResult",
+                        (),
+                        {
+                            "job_id": job_id,
+                            "run_id": run.id,
+                            "step_run_id": step.id,
+                            "state_version": "",
+                        },
+                    )()
     except Exception as exc:
         try:
             await _stop_heartbeat(heartbeat, stop)
@@ -270,7 +308,7 @@ async def _run(*, emit_idle: bool = True) -> None:
                         failure_class=failure_class,
                         message=str(exc)[:2000],
                     )
-        else:
+        elif step_key in WRITER_STEP_BY_LOCALE.values():
             failure_class = (
                 exc.code
                 if isinstance(exc, OperatorWriterWorkerError)
@@ -279,6 +317,21 @@ async def _run(*, emit_idle: bool = True) -> None:
             async with SessionLocal() as session:
                 async with session.begin():
                     await fail_writer_job(
+                        session,
+                        job_id=job_id,
+                        worker_id=worker_id,
+                        failure_class=failure_class,
+                        message=str(exc)[:2000],
+                    )
+        else:
+            failure_class = (
+                exc.code
+                if isinstance(exc, OperatorQualityWorkerError)
+                else "quality_execution_failed"
+            )
+            async with SessionLocal() as session:
+                async with session.begin():
+                    await fail_quality_job(
                         session,
                         job_id=job_id,
                         worker_id=worker_id,
@@ -311,12 +364,10 @@ async def _run(*, emit_idle: bool = True) -> None:
                 "angle_artifact_hash": result.angle_artifact_hash,
             }
         )
-    else:
+    elif step_key in QUALITY_STEP_KEYS:
         payload.update(
             {
-                "locale": result.locale,
-                "draft_artifact_id": str(result.draft_artifact_id),
-                "draft_artifact_hash": result.draft_artifact_hash,
+                "stage": step_key,
             }
         )
     print(json.dumps(payload, sort_keys=True))
