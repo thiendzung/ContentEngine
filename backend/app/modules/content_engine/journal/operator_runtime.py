@@ -92,6 +92,7 @@ _GATE_CONTINUATIONS: dict[str, OperatorActionKey] = {
     "final_review": "finalize_content",
 }
 _F2_EXECUTABLE_CONTINUATIONS = {"angle"}
+_AUTHORITATIVE_COMPLETION_BLOCKERS = {"operator_completion_binding_invalid"}
 
 
 class ResolvedOperatorAction(BaseModel):
@@ -127,6 +128,13 @@ def _command_hash(
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def _completion_projection_is_authoritative(state: OperatorState) -> bool:
+    return (
+        state.status == "COMPLETE"
+        or state.blocker_code in _AUTHORITATIVE_COMPLETION_BLOCKERS
+    )
 
 
 async def _latest_job(session: AsyncSession, *, step_run_id: UUID) -> Job | None:
@@ -589,6 +597,8 @@ async def get_operator_state(
         content_case_id=content_case_id,
         preflight_checked=preflight_checked,
     )
+    if _completion_projection_is_authoritative(state):
+        return state
     state = await _outline_state_overlay(session, state=state)
     state = await _angle_continuation_state_overlay(session, state=state)
     state = await _writer_state_overlay(session, state=state)
@@ -634,6 +644,25 @@ async def resolve_next_operator_action(
         content_case_id=content_case_id,
         preflight_checked=preflight_checked,
     )
+    if state.status == "COMPLETE":
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            action_key="complete",
+            current_run_id=state.current_run_id,
+            current_step_run_id=state.current_step_run_id,
+        )
+    if state.blocker_code in _AUTHORITATIVE_COMPLETION_BLOCKERS:
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            current_run_id=state.current_run_id,
+            current_step_run_id=state.current_step_run_id,
+            blocker_code=state.blocker_code,
+        )
+
     run, step = await _bound_focus(session, state=state)
     writer_progress = await get_writer_lane_progress(
         session,
@@ -647,16 +676,6 @@ async def resolve_next_operator_action(
     )
     if quality_progress is not None:
         writer_progress = quality_progress.writer_progress
-
-    if state.status == "COMPLETE":
-        return ResolvedOperatorAction(
-            content_case_id=content_case_id,
-            state_version=state.state_version,
-            status=state.status,
-            action_key="complete",
-            current_run_id=state.current_run_id,
-            current_step_run_id=state.current_step_run_id,
-        )
 
     if state.status == "AWAITING_APPROVAL":
         if state.human_gate is None or state.human_gate not in _GATE_WAIT_ACTIONS:
