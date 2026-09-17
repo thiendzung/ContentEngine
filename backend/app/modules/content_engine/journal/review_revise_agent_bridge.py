@@ -361,7 +361,7 @@ async def create_cli_review_revise_model_port(
         session,
         run_id=run_id,
         settings_snapshot=settings_snapshot,
-        context_manifest_id=manifest.id,
+        context_manifest_id=context_manifest_id,
         prompt=prompt,
         recipe=recipe,
         config=config,
