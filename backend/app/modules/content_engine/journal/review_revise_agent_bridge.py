@@ -135,13 +135,14 @@ def render_review_revise_prompt(
         "REVIEW SUPPORT RULES:\n"
         "Inspect every factual, visual-observation and live-information claim in the visible "
         "draft, not only claims already listed as unresolved. Only Evidence rows whose exact "
-        "relation is supports or qualifies count as support for those claims. relation=context_only "
-        "and relation=contradicts never count as supportive evidence. If a claim lacks exact "
-        "support, remove the factual claim or rewrite the passage as bounded reader guidance. "
-        "Do not replace an unsupported fact with a broad universal or epistemic claim that would "
-        "itself require external proof. Prefer direct reader actions such as check, confirm, verify, "
-        "compare or ask when the available material only supports guidance. Preserve the accepted "
-        "section IDs/order and exact evidence/originality ref arrays; do not add or substitute refs.\n\n"
+        "relation is supports or qualifies count as support for those claims. "
+        "relation=context_only and relation=contradicts never count as supportive evidence. "
+        "If a claim lacks exact support, remove the factual claim or rewrite the passage as "
+        "bounded reader guidance. Do not replace an unsupported fact with a broad universal "
+        "or epistemic claim that would itself require external proof. Prefer direct reader "
+        "actions such as check, confirm, verify, compare or ask when the available material "
+        "only supports guidance. Preserve the accepted section IDs/order and exact "
+        "evidence/originality ref arrays; do not add or substitute refs.\n\n"
         f"RECIPE_JSON:\n{recipe_json}\n\n"
         f"REVIEW_REVISE_INPUT_JSON:\n{input_json}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
@@ -360,7 +361,7 @@ async def create_cli_review_revise_model_port(
         session,
         run_id=run_id,
         settings_snapshot=settings_snapshot,
-        context_manifest_id=context_manifest_id,
+        context_manifest_id=manifest.id,
         prompt=prompt,
         recipe=recipe,
         config=config,
