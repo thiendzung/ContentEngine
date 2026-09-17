@@ -72,13 +72,19 @@ def test_review_revise_v2_exposes_exact_evidence_relation_policy() -> None:
 
 def test_review_revise_v2_rejects_unknown_or_duplicate_relation_rows() -> None:
     unknown = _writer_input_with_relations([("e-1", "maybe")])
-    with pytest.raises(WriterGenerationError, match="review_revise_evidence_relation_invalid"):
+    with pytest.raises(
+        WriterGenerationError,
+        match="review_revise_evidence_relation_invalid",
+    ):
         _evidence_relation_policy(unknown)
 
     duplicate = _writer_input_with_relations(
         [("e-1", "supports"), ("e-1", "context_only")]
     )
-    with pytest.raises(WriterGenerationError, match="review_revise_evidence_relation_duplicate"):
+    with pytest.raises(
+        WriterGenerationError,
+        match="review_revise_evidence_relation_duplicate",
+    ):
         _evidence_relation_policy(duplicate)
 
 
@@ -95,7 +101,11 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
         SimpleNamespace(
             unresolved_factual_claims=(),
             sections=(),
-            to_dict=lambda: {"locale": "en", "unresolved_factual_claims": [], "sections": []},
+            to_dict=lambda: {
+                "locale": "en",
+                "unresolved_factual_claims": [],
+                "sections": [],
+            },
         ),
     )
 
@@ -112,20 +122,31 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
         "e-support": "supports",
         "e-context": "context_only",
     }
-    assert "review_every_factual_visual_and_live_claim_not_only_declared_unresolved_items" in requirements
     assert (
-        "context_only_and_contradicts_relations_are_never_support_for_factual_visual_or_live_claims"
+        "review_every_factual_visual_and_live_claim_not_only_declared_unresolved_items"
         in requirements
     )
     assert (
-        "rewrite_unsupported_broad_universal_or_epistemic_claims_as_bounded_reader_guidance"
+        "context_only_and_contradicts_relations_are_never_support_for_"
+        "factual_visual_or_live_claims"
+        in requirements
+    )
+    assert (
+        "rewrite_unsupported_broad_universal_or_epistemic_claims_as_"
+        "bounded_reader_guidance"
         in requirements
     )
 
 
 def test_review_revise_prompt_states_fail_closed_support_boundary() -> None:
-    prompt = cast(PromptDefinition, SimpleNamespace(body="Base approved review prompt."))
-    recipe = cast(RecipeDefinition, SimpleNamespace(recipe_json={"strategy": "fixture"}))
+    prompt = cast(
+        PromptDefinition,
+        SimpleNamespace(body="Base approved review prompt."),
+    )
+    recipe = cast(
+        RecipeDefinition,
+        SimpleNamespace(recipe_json={"strategy": "fixture"}),
+    )
 
     rendered = render_review_revise_prompt(
         prompt,
@@ -134,9 +155,18 @@ def test_review_revise_prompt_states_fail_closed_support_boundary() -> None:
         attempt=1,
     )
 
-    assert "Only Evidence rows whose exact relation is supports or qualifies count as support" in rendered
+    assert (
+        "Only Evidence rows whose exact relation is supports or qualifies count as support"
+        in rendered
+    )
     assert "relation=context_only" in rendered
     assert "relation=contradicts never count as supportive evidence" in rendered
     assert "rewrite the passage as bounded reader guidance" in rendered
-    assert "Do not replace an unsupported fact with a broad universal or epistemic claim" in rendered
-    assert "Preserve the accepted section IDs/order and exact evidence/originality ref arrays" in rendered
+    assert (
+        "Do not replace an unsupported fact with a broad universal or epistemic claim"
+        in rendered
+    )
+    assert (
+        "Preserve the accepted section IDs/order and exact evidence/originality ref arrays"
+        in rendered
+    )
