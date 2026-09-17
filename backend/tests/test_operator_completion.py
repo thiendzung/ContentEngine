@@ -7,7 +7,7 @@ from sqlalchemy import select
 from test_ce05_review_console import _approved_fixture, isolated_session
 
 from app.modules.content_engine.journal.models import JournalRequiredLocale
-from app.modules.content_engine.journal.operator_vertical_slice import get_operator_state_v45
+from app.modules.content_engine.journal.operator_runtime import get_operator_state
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentVersion, LocaleVariant
 from app.modules.harness.models import ContentRun
@@ -52,11 +52,12 @@ async def _canonical_completed_fixture(session):
 async def test_exact_required_locale_final_chains_complete_case() -> None:
     async with isolated_session() as session:
         fixture = await _canonical_completed_fixture(session)
-        state = await get_operator_state_v45(
+        state = await get_operator_state(
             session,
             content_case_id=fixture.content_case.id,
         )
         assert state.status == "COMPLETE"
+        assert state.phase == "Hoàn tất"
         assert state.human_gate is None
         assert state.blocker_code is None
 
@@ -75,7 +76,7 @@ async def test_approved_version_without_exact_final_approval_fails_closed() -> N
         await session.delete(fixture.final_approvals["en"])
         await session.flush()
 
-        state = await get_operator_state_v45(
+        state = await get_operator_state(
             session,
             content_case_id=fixture.content_case.id,
         )
@@ -92,7 +93,7 @@ async def test_content_version_bound_to_wrong_final_artifact_and_run_fails_close
         en_version.created_by_run_id = fixture.writer_runs["vi-VN"].id
         await session.flush()
 
-        state = await get_operator_state_v45(
+        state = await get_operator_state(
             session,
             content_case_id=fixture.content_case.id,
         )
@@ -115,11 +116,12 @@ async def test_extra_non_required_locale_does_not_block_complete() -> None:
         )
         await session.flush()
 
-        state = await get_operator_state_v45(
+        state = await get_operator_state(
             session,
             content_case_id=fixture.content_case.id,
         )
         assert state.status == "COMPLETE"
+        assert state.phase == "Hoàn tất"
         assert state.blocker_code is None
 
 
@@ -130,7 +132,7 @@ async def test_missing_required_locale_active_version_never_completes() -> None:
         fixture.versions["en"].status = "superseded"
         await session.flush()
 
-        state = await get_operator_state_v45(
+        state = await get_operator_state(
             session,
             content_case_id=fixture.content_case.id,
         )
@@ -155,7 +157,7 @@ async def test_multiple_active_versions_for_required_locale_fail_closed() -> Non
         )
         await session.flush()
 
-        state = await get_operator_state_v45(
+        state = await get_operator_state(
             session,
             content_case_id=fixture.content_case.id,
         )
