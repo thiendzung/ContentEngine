@@ -7,7 +7,10 @@ from sqlalchemy import select
 from test_ce05_review_console import _approved_fixture, isolated_session
 
 from app.modules.content_engine.journal.models import JournalRequiredLocale
-from app.modules.content_engine.journal.operator_runtime import get_operator_state
+from app.modules.content_engine.journal.operator_runtime import (
+    get_operator_state,
+    resolve_next_operator_action,
+)
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentVersion, LocaleVariant
 from app.modules.harness.models import ContentRun
@@ -61,6 +64,15 @@ async def test_exact_required_locale_final_chains_complete_case() -> None:
         assert state.human_gate is None
         assert state.blocker_code is None
 
+        action = await resolve_next_operator_action(
+            session,
+            content_case_id=fixture.content_case.id,
+        )
+        assert action.status == "COMPLETE"
+        assert action.action_key == "complete"
+        assert action.executable is False
+        assert action.blocker_code is None
+
         detail = await get_action_aware_review_case(
             session,
             content_case_id=fixture.content_case.id,
@@ -82,6 +94,15 @@ async def test_approved_version_without_exact_final_approval_fails_closed() -> N
         )
         assert state.status == "BLOCKED"
         assert state.blocker_code == "operator_completion_binding_invalid"
+
+        action = await resolve_next_operator_action(
+            session,
+            content_case_id=fixture.content_case.id,
+        )
+        assert action.status == "BLOCKED"
+        assert action.action_key is None
+        assert action.executable is False
+        assert action.blocker_code == "operator_completion_binding_invalid"
 
 
 @pytest.mark.asyncio
