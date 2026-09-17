@@ -1,71 +1,65 @@
 # TASKS - agent-operated ContentEngine delivery
 
+Updated: 2026-09-17 on documentation PR #106; not a runtime grant.
 Specification: `21-AGENT-OPERATED-JOURNAL-SPEC.md`.
-Detailed implementation/local-proof checklists: `AGENT-OPERATED-DELIVERY-TASKS.md`.
-Acceptance cases: `AGENT-OPERATED-ACCEPTANCE.md`.
-Live working window: `../AI_context.MD`.
+Latest schedule/checklists: `logs/2026-09-17-fast-track-delivery-plan.md`.
+Detailed implementation contracts: `AGENT-OPERATED-DELIVERY-TASKS.md`.
+Acceptance matrix: `AGENT-OPERATED-ACCEPTANCE.md`.
+Working window: `../AI_context.MD`.
 
-Each package uses the detailed common handoff packet and STOP rules. This is a progress index, not an automatic local task queue or execution grant.
-
-## Reconciled completed baseline
+## Completed baseline
 
 | Item | State | Evidence scope |
 |---|---|---|
-| F0 / #93 | MERGED / browser acceptance PASS | Exact Angle gate; old one-run authorization consumed |
-| Planning / #101 | MERGED | Engineering roles and original finish-first planning |
+| F0 / #93 | MERGED / browser acceptance | Exact Angle gate, not the full later UI |
+| Planning / #101 | MERGED | Original finish-first delivery and relay roles |
 | F1 / #102 | MERGED | Canonical operator facade/resolver |
-| F2 / #103 | MERGED / real acceptance PASS | Exact Outline gate, not full Outline UI |
-| F3 / #104 | MERGED / real acceptance PASS | Independent canonical vi-VN/en Writer drafts; STOP before Quality |
-| AO-D0 | REPORT RECEIVED / MG REVIEWED, with qualifications | Read-only survey reported complete; not security/service/adapter acceptance |
+| F2 / #103 | MERGED / real acceptance | Durable Outline and exact approval |
+| F3 / #104 | MERGED / real acceptance | Independent vi-VN/en Writer drafts; no F4 completion |
+| AO-D0 | RECEIVED / REVIEWED with qualifications | Read-only baseline, not security/service/adapter proof |
 
-Dated sources: `logs/2026-09-16-agent-operated-decision.md` and `logs/2026-09-16-ao-d0-baseline-review.md`. A merged PR is not a runtime check. Local observations are attributed to the relayed report, not independently measured by MG.
+## Active and queued work
 
-## Remaining work and owners
-
-| ID | Owner / reviewer | State | Exit |
+| ID | Owner | State / next action | Exit |
 |---|---|---|---|
-| F4 / #105 | Existing assigned implementer; MG review; Agent Local proof | CURRENT; local uncommitted work reported; GitHub contract-only at inspection | Qualified exact final artifacts at final human gate |
-| F5.1 | MG / Agent Local proof | PLANNED | Exact final decisions -> canonical ContentVersions / COMPLETE |
-| AO-1 | MG / Agent Local isolation proof | PLANNED; design can use returned AO-D0 | Enforced operator/reviewer identities, restricted interface and durable grant |
-| F5.2 | MG / Agent Local proof + Founder decisions | PLANNED | Versioned revision/rejection and renewed exact review |
-| AO-2 | MG / Agent Local service proof | PLANNED | Persistent deterministic supervisor; human approval resumes work without Continue |
-| F6.2 + minimum F6.1 | MG / Agent Local browser + Founder usability | PLANNED | Reviewer inbox/workspace for all three gates |
-| O1 | Agent Local / MG + Founder release decision | PLANNED / EXPLICIT PERMISSION | Pinned production runtime, isolation, backup/restore and grant activation |
-| O2 | MG / Agent Local + Founder policy decision | OPTIONAL | New routing activation only if required |
-| F7 | Production operator / Founder content + MG engineering review | PLANNED | Two additional real bilingual cases without per-stage technical relay |
-| Remaining F6.1/F6.3, F8 | MG / Agent Local + Founder | AFTER USEFUL PRODUCTION | Complete shell/Board, evidence-led optimization and closeout |
-| AO-3 | MG / Agent Local capability proof | OPTIONAL / NOT FIRST-RELEASE BLOCKER | Antigravity conformance proof or locally unsupported/unproven disposition |
+| F4 / #105 | MG primary code/review; Local proof | Candidate 42980c6..., CI #1057 success last checked; real success still pending | Both qualified final artifacts at final_review, no final approval/version/publish |
+| F4-A5R-B0.3 | Agent Local; MG review | READY FOR FOUNDER RELAY; Outline decision recorded, local persistence not evidenced | Two Writer drafts, complete report + private pre-quality snapshot, STOP |
+| F4-A5R quality | Agent Local; MG review | WAITING Writer evidence and separate bounded authorization | Review v3/Audit/Source-copy -> exact final_review |
+| F5.1 | MG; Local proof | NEXT IMPLEMENTATION AFTER F4 | Exact final decisions -> canonical versions / COMPLETE |
+| AO-1 | MG; Local restricted-profile proof | After F5.1; design uses completed AO-D0 | Enforced reviewer/operator boundary and durable grant |
+| F5.2 | MG; Founder decisions / Local proof | After F5.1 + AO-1 | Versioned revisions/rejection without full restart |
+| AO-2 | MG; Local service proof | After AO-1 + F5.2 | Approval automatically resumes permitted work |
+| F6.2 + minimum F6.1 | MG; Local browser / Founder usability | Read-model design with backend; integrate after AO | Full reviewer flow with usable header/menu/body/footer |
+| O1 | Local maintenance; MG review / Founder release | Explicit release task after above | Pinned safe runtime, backup/restore, guarded deployment |
+| F7 | Restricted operator; Founder / MG review | After O1 + explicit grants | Two distinct useful bilingual cases beyond M1 |
+| Remaining F6.1/F6.3 + F8 | MG; Local proof / Founder | After useful production | Evidence-led Board/UX/content efficiency improvements |
+| AO-3 / O2 | MG; Local proof / Founder | OPTIONAL | Antigravity conformance / routing only if needed |
 
-No new implementation stream is opened. F5.1/F5.2 remain parts of F5; review-first F6 keeps its IDs. Design work does not authorize a second concurrent runtime writer or expand the existing F4 task.
+Immediate packet: `logs/2026-09-17-f4-a5r-b0-3-writer-task.md`. Documentation SHA and executable SHA are distinct; do not checkout #106 as F4 runtime. F4 remains the single active implementation. While Local verifies a frozen candidate, MG prepares next-package contracts/tests without changing it.
 
-## AO-D0 review follow-through (attach to the relevant existing task)
+## Common completion checklist
 
-- [ ] F4 proof records exact backend/frontend API destination/worker code and DB binding; old 8000/3000 services are not assumed current.
-- [ ] Tests use APP_ENV=test plus explicit TEST_DATABASE_URL with a distinct DATABASE_URL comparison identity and canonical guards; no blind .env override.
-- [ ] Preserve primary dirty files and uncommitted F4 work; no automatic fast-forward/reset/stash or duplicate implementation.
-- [ ] AO-1 checks server identity plus actual credential/filesystem/direct-path enforcement, including old APIs and privileged local interfaces (S06).
-- [ ] AO-2 does not require model-native daemon/resume/queue features or LLM polling; tested local service owns the loop.
-- [ ] O1 re-identifies and classifies retained runtimes/resources before authorized consolidation; preserve evidence and volumes (O03).
-- [ ] Adapter help/version and observed symlink failure are not global capability verdicts or production proof (A02).
+- [ ] One outcome, owner, dependency, exact code SHA and writable scope are explicit.
+- [ ] Relevant automated tests pass; exact candidate/integration CI is reviewed, not inferred from another SHA.
+- [ ] Local evidence proves applicable runtime/identity/browser behavior; unrun checks stay unrun.
+- [ ] Report contains complete snapshots, content/findings, actual calls, receipts and side effects; one packet per meaningful gate.
+- [ ] No unapproved model/research/deployment/publication actions; actual invocation budget includes failures and uncertainty.
+- [ ] Context/task status and dated sanitized evidence agree; code, CI, runtime and deployment are not conflated.
+- [ ] MG gives disposition; Founder alone merges/releases. Passing exits ends the package rather than opening polish.
 
-These are requirements, not work executed by AO-D0. No broad cleanup task or Antigravity repair is dispatched here.
+## Release blockers
 
-## Release-blocking summary
+- [ ] F4/F5 exact output/check/approval/version path accepted, including revisions/rejection.
+- [ ] Restricted operator cannot approve or access reviewer secrets/deployed code/direct DB/privileged bypass paths.
+- [ ] Grants, limits, expiry/revocation, duplicate/missed wake-ups and controller takeover tested.
+- [ ] Reviewer UI handles all three gates, refresh/stale/offline/double-submit, feedback preservation and basic accessibility.
+- [ ] O1 proves actual schema/runtime identity and private backup/restore before real operation.
+- [ ] Pilot records useful output and interventions honestly; critical defects stop the affected scope immediately.
 
-- [ ] F4/F5 canonical output/check/approval/version path accepted.
-- [ ] Actual operator profile cannot create a human approval or access reviewer secrets/live-code writes.
-- [ ] Direct paths cannot bypass the restricted API or reach operational DB/privileged control capabilities.
-- [ ] Active grant has explicit scope/limits and survives expiry/revocation/restart correctly.
-- [ ] Duplicate/missed approval wake-up and controller takeover cannot duplicate confirmed work.
-- [ ] Revision returns new checked content to its human gate; rejection is terminal.
-- [ ] Reviewer UI needs no copied Start/Continue or normal terminal intervention.
-- [ ] O1 runtime identity/deployment/recovery proof passes before real production.
-- [ ] Pilot records technical interventions honestly and never publishes without permission.
+## Retention and historical follow-through
 
-No production box is passed by a read-only inventory. Detailed criteria remain in the work packages and acceptance matrix.
+Retain CE00-CE04, M1, Review Console/Board, observability/delegation, OPS-01/02, K1-K6, routing foundations and every hard-blocked case. AO-D0's reported old services/dirty files are not permission for cleanup. Its denial/runtime requirements remain attached to AO-1/AO-2/O1; see `logs/2026-09-16-ao-d0-baseline-review.md`.
 
-## Fixed collaboration and evidence
+Use explicit TEST_DATABASE_URL, distinct comparison DATABASE_URL, and global eligible queue isolation. Do not copy .env or query operational data under a test grant. A privately retained pre-quality snapshot can avoid upstream regeneration only through an authorized new isolated restore and exact lineage proof; never erase failed history or reuse approvals for changed artifacts.
 
-MG architects/codes/reviews/plans and writes exact engineering tasks. Founder copies them to Agent Local, returns reports and merges. Agent Local executes only its assigned local scope and may edit code only within explicit delegation. A report of work in progress is not new write permission. Normal future production uses the restricted grant/agent loop rather than per-stage Founder relay.
-
-Retain CE00-CE04, M1, Review Console/Board, observability/delegation, OPS-01/02, K1-K6 and routing foundations. Deferred: generic workflow engine, new provider/agent platform, vector DB, native multi-agent, Artwork/WordPress/publish automation and speculative UI fields.
+Deferred: new workflow engine/provider/agent framework, Redis/Celery/Kubernetes, vector DB, broad multi-agent, complex Board/animation, Artwork/WordPress/publish automation. Security, recovery, revision correctness and useful review UI are not deferred polish.

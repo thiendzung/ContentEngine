@@ -1,57 +1,50 @@
 # AI_context.MD - current shared working window
 
-Updated: 2026-09-16, after Founder-relayed AO-D0 review.
+Updated: 2026-09-17, fast-track delivery reconciliation in documentation PR #106.
 
 ## Read first
 
-Read `AGENTS.md`, `docs/21-AGENT-OPERATED-JOURNAL-SPEC.md`, `docs/PLAN.md`, `docs/TASKS.md`, `docs/CHECKLIST.md` and the exact dispatched task. Live GitHub refs/CI plus dated local evidence override stale chat summaries. Do not reset/stash dirty work or infer deployment from a merge.
+Read `AGENTS.md`, `docs/21-AGENT-OPERATED-JOURNAL-SPEC.md`, `docs/PLAN.md`, `docs/TASKS.md`, `docs/CHECKLIST.md` and the exact dispatched task. Latest delivery detail: `docs/logs/2026-09-17-fast-track-delivery-plan.md`. Live refs and dated evidence override older status text, not safety contracts.
 
-## Product decision and roles
+## Product and roles
 
-**Agents operate content production; Founder reviews Angle, Outline and final content.** The production agent continues after persisted human decisions under a bounded operating grant; no per-stage Founder Continue click, terminal operation or copied prompt in the target experience.
+Agents operate permitted Journal production; Founder reviews Angle, Outline and final content. MG remains principal architect/coder/tester/reviewer/planner. Agent Local verifies the frozen candidate on the Founder machine and edits code only when explicitly delegated. Founder copies tasks/reports and retains merge/release authority. No direct MG-to-local-app channel is assumed.
 
-Engineering is different: MG architects/codes/reviews/plans; Founder copies local tasks/reports and merges; Agent Local executes scoped local proof. There is no assumed direct MG-to-local-app channel. Spec publication or report acceptance is not production activation.
+## Current dated state
 
-## Current dated baseline
+- F0-F3 merged; last observed main base `5eef4e72cb15bc6ea30488a15f18a5de091053d6`. Retain M1 and all earlier proofs.
+- F4/#105 open/Draft at `42980c6ec1591284051e0b956f9511be3722a068`. Review v3 closing-support change implemented; CI #1057 last verified successful. Real quality success to final_review is STILL UNPROVEN. Do not describe F4 as contract-only/uncommitted or complete.
+- Prior A5 case `f489a16e-e524-48e5-a72f-d1f97723c108` hard-blocked correctly on closing claims without segment refs; command settled, no active quality jobs reported. Preserve failed evidence; no hidden repair/retry.
+- Current Local report: A5R-B0.2 case `d5347dcb-802e-45b4-8e99-0ccfe6bec5dc`, run `358f96f5-8ac5-4c8a-a5d5-ac4559b30a44`, is waiting at Outline. Artifact `77c121a2-9509-4970-8948-7829bf48439d`, v1, hash `95444ea13cfd15adabfdfd90913ff7e8eb0b5f865c9bcc87f5fec6730364bd5f`; state `2b77d41ebd0cd80992f492779991407515bd1ef380c507d527737849ea2e3dfe`.
+- Founder Outline decision is recorded in #105 comment 5710896953. This is NOT evidence that Local has persisted it or run Writers.
+- #106 remains documentation pending Founder merge. Its delivery refinement preserves F4's current head/scope. A spec/doc commit is not the executable acceptance SHA.
 
-Original decision: `docs/logs/2026-09-16-agent-operated-decision.md`.
-Latest evidence/disposition: `docs/logs/2026-09-16-ao-d0-baseline-review.md`.
+## Immediate handoff
 
-- F0-F3 are merged; retain proofs, including independent vi-VN/en Writer acceptance. Main observed at `5eef4e72cb15bc6ea30488a15f18a5de091053d6`; current merged path stops before Quality.
-- F4/#105 remains the active separate implementation. GitHub last inspected head `ba9c3ed913cd1a24dce380035c16d0fe6cd472d1` contained its contract only; Agent Local now reports UNCOMMITTED F4 code in its dedicated worktree. Code is not yet reviewed merely because a file exists locally.
-- Spec 21/#106 was Draft/unmerged when AO-D0 ran. This review updates that spec branch only; no #105 ref or task scope change.
-- AO-D0 report received through Founder and reviewed: ACCEPTED read-only baseline with qualifications, not production capability PASS. Reported no file/service/DB changes and zero model calls; MG did not independently inspect the machine.
+`docs/logs/2026-09-17-f4-a5r-b0-3-writer-task.md` is READY FOR FOUNDER RELAY: canonical exact Outline approval -> independent VI/EN Writers (max 4 calls) -> private pre-quality snapshot -> STOP at writers_to_quality. Execute code from #105's frozen SHA, never the docs branch.
 
-## Local observations and required caution
+No new A5R quality authorization is implied. Old A5 unused budget does not transfer to this case/head. No final approval, ContentVersion, publication, migration or cleanup is authorized by this planning update.
 
-Agent Local reports a retained primary main `acf0de5`, two dirty frontend config files, F0 API/UI/worker on 8000/3000, another API on 8003 for F3 acceptance, and active uncommitted F4 work at `/private/tmp/contentengine-f4-i1-20260916` with an isolated PostgreSQL resource on 55442. Eleven test DB containers and the operational resource on 5432 were reported.
+## Remaining order
 
-These are dated observations, not a cleanup list or reusable PID instructions. Preserve dirty work, retained evidence and the existing F4 owner. Multiple isolated worktrees are valid; the risk is confusing old default ports with a new tested release. Effective frontend API destination and process DB bindings were not proved by AO-D0. Operational schema remains UNKNOWN; 0027 is only the last documented baseline, versus code/test 0034.
+F4 -> F5.1 finalization -> AO-1 enforced identity/grant -> F5.2 revisions/rejection -> AO-2 deterministic supervisor -> F6.2 + minimum F6.1 -> O1 -> F7 -> remaining F6/F8 polish. AO-D0 was received/reviewed with qualifications; do not repeat it. AO-3 Antigravity and O2 routing are optional.
 
-For authorized tests use the candidate's guarded `APP_ENV=test` + explicit `TEST_DATABASE_URL`; keep `DATABASE_URL` as a distinct comparison identity. Do not blindly override both or modify .env. Verify the resolved target before writes, not just its port/name.
+One active implementation owner plus scoped verification. While Local runs frozen-candidate acceptance, MG may prepare the next contracts/read-model/tests, not mutate the candidate or open competing F4 work. Finish published exits before adding refinement.
 
-Codex exec/help/version is reported available, but restricted credential access and controller persistence remain unproved. Antigravity's installed agy symlink is reported broken; other interfaces/daemon feasibility remain UNPROVEN rather than universally unavailable. No need to repair it for F4 or first production.
+## Local boundary - reports, not live machine inspection
 
-## Active engineering priorities
+Current reported acceptance worktree `/private/tmp/contentengine-f4-b0-r2-acceptance`; TEST `contentengine_f4_b0_r2_test` at `127.0.0.1:55448`. Primary checkout `acf0de56...` retains its two dirty frontend files. Older F0 services/default ports and retained test containers were reported by AO-D0; do not treat their old PIDs/destinations as current.
 
-1. Finish/review F4 within its existing #105 task and owner; STOP before human final decision/ContentVersion. This spec change does not authorize new tests/calls or interfere with uncommitted work.
-2. Use AO-D0 findings for AO-1 design; do not redispatch the completed survey or start a second F4 implementation. The next authorized runtime packet must bind exact backend/frontend/worker and TEST identities instead of reusing F0 defaults blindly.
-3. Follow `docs/AGENT-OPERATED-DELIVERY-TASKS.md`: F5.1 -> AO-1 -> F5.2 -> AO-2 -> F6.2/minimum shell -> O1 -> F7. Remaining dense Board/polish follows evidence.
+Operational schema remains UNKNOWN; 0027 is historical documentation, code/test baseline 0034. Use guarded APP_ENV=test + explicit TEST_DATABASE_URL and distinct DATABASE_URL comparison identity; prove resolved DB before writes. No .env copying, port 5432 access, reset/stash/prune, or destructive cleanup.
 
-AO-1 must enforce server-derived operator/reviewer identity across all decision/legacy routes. Current hardcoded `actor_id="founder"` is not authentication. A proxy alone cannot isolate filesystem secrets or direct backend/DB/Docker access. Prove actual denial using the restricted profile; no large account platform or unnecessary proxy is required.
+The production worker claims multiple stage types without a case filter at claim. Local tasks must prove global eligible queue isolation and no competing consumer; do not merely inspect the target case.
 
-AO-2 uses a deterministic supervisor and existing durable worker paths. No LLM polling and no dependence on an experimental model-native daemon. Case ownership/fencing and worker Job leases are separate; logical OperatingGrant storage is minimal and must be reviewed before any migration.
+## Production safety and completion
 
-## Non-negotiable acceptance
+AO-1 must enforce server-derived identity across decision/legacy routes and actual operator credential/filesystem/direct-path denial. Hardcoded founder, a proxy, CLI installation or sandbox claims are not security proof. AO-2 uses persistent deterministic wake/reconciliation and separate controller fencing/Job leases, not LLM polling or a model-native daemon. One proven restricted adapter is sufficient.
 
-`docs/AGENT-OPERATED-ACCEPTANCE.md` defines unexecuted production acceptance requirements, including AO-D0-derived S06/O03/A02. No matrix row is passed by the baseline report alone.
+Immutable approvals/checks bind exact bytes. New revisions require new checks/decisions; failed history stays intact. Current F4 does not gain a post-audit rewrite loop. Store pre-stage snapshots privately; restore only into an explicitly authorized new isolated TEST target.
 
-Human-only approvals; exact artifact/check/grant bindings; no duplicate accepted continuation; durable budgets/leases; missed-wake-up recovery; no uncontrolled repeat of uncertain external calls; independent VI/EN; warnings retained; no live-code/DB self-repair; no publication.
+Keep warnings verbatim, budgets durable, unknown external outcomes held, and no live-code self-repair or automatic publish. F4/F5 normal-path capability is not agent-operated readiness; AO-1/AO-2/F5.2/minimum UI/O1 must also pass. F7 measures useful real output, not synthetic fixture count.
 
-Before unattended activation, authorized maintenance must establish an unambiguous pinned runtime and contain alternate old processes without destroying retained data. Do not kill old PIDs, prune Docker, reset databases or switch an active checkout under this review.
-
-## Completion levels
-
-F4/F5 = backend normal-path capability. AO-1/AO-2 + usable F6.2 + O1 = controlled agent-operated production readiness. F7 repeatability and closure of critical issues = CE05 closeout evidence. One proven restricted adapter is enough; Antigravity is optional.
-
-A reviewed baseline is not fresh local enforcement proof. Keep code, CI, local acceptance, spec approval and deployment distinct. Founder remains merge/release authority; subsequent local work requires its actual dispatched scope.
+Historical decisions: `docs/logs/2026-09-16-agent-operated-decision.md`, `docs/logs/2026-09-16-ao-d0-baseline-review.md`. Exact package contracts/matrix remain in `docs/AGENT-OPERATED-DELIVERY-TASKS.md` and `docs/AGENT-OPERATED-ACCEPTANCE.md`. Code, CI, Local report, deployment and editorial approval are separate statuses.
