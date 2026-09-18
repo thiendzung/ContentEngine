@@ -22,12 +22,12 @@ from app.modules.system.recovery import (
     validate_operational_database_source,
 )
 from scripts.ops_migration_rehearsal import (
-    MigrationRehearsalError,
     _EXPECTED_FUNCTIONS,
     _EXPECTED_SOURCE_REVISION,
     _EXPECTED_TABLES,
     _EXPECTED_TARGET_REVISION,
     _EXPECTED_TRIGGERS,
+    MigrationRehearsalError,
     _alembic_script,
     _database_state,
     _expected_fingerprint,
