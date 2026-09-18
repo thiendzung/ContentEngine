@@ -588,8 +588,8 @@ async def _main() -> int:
         if source_fingerprint_before.to_dict() != expected_fingerprint:
             raise MigrationRehearsalError("source_fingerprint_drift")
 
-        await _recreate_database(target)
         target_created = True
+        await _recreate_database(target)
         restore_mode = _restore_backup(backup, target)
 
         target_engine = create_async_engine(target, poolclass=NullPool)
