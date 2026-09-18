@@ -54,6 +54,8 @@ Current entry conditions:
 - O1.1 recovery material is retained and isolated restore was proven;
 - operational migration PASS preserved core/source_documents/model_calls fingerprints;
 - backend/frontend/worker are stopped;
+- O1.3 startup/shutdown + restart/shutdown lifecycle behavior has been proven safe on the prior exact head with zero durable/model/publication delta; post-release preflight then exposed Codex binary drift;
+- Issue #138 read-only audit PASS verified bundled `codex-cli 0.155.0-alpha.9` (SHA-256 `2e0918e73319f9a57126a1bf04dcc778e1ff5c1804cac1cbff08ba0853f1c97b`) retains all 21 no-tool controls and cached ChatGPT auth; the O1.3 branch exact-repins this version pending fresh CI/OCR;
 - publication, WordPress and real content/model execution remain unauthorized.
 
 O1.3 implementation follows:
