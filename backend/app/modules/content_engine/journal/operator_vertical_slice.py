@@ -387,6 +387,7 @@ async def _required_locale_completion_binding(
                 .where(
                     Approval.run_id == writer_run.id,
                     Approval.step_key == "final_review",
+                    Approval.artifact_id == final_artifact.id,
                 )
                 .order_by(Approval.created_at, Approval.id)
             )
