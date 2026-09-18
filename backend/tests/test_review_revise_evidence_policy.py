@@ -45,7 +45,7 @@ def _writer_input_with_relations(relations: list[tuple[str, str]]) -> WriterInpu
     )
 
 
-def test_review_revise_v3_exposes_exact_evidence_relation_policy() -> None:
+def test_review_revise_v4_exposes_exact_evidence_relation_policy() -> None:
     writer_input = _writer_input_with_relations(
         [
             ("e-support", "supports"),
@@ -57,7 +57,7 @@ def test_review_revise_v3_exposes_exact_evidence_relation_policy() -> None:
 
     policy = _evidence_relation_policy(writer_input)
 
-    assert REVIEW_REVISE_GENERATOR_VERSION == "ce05.journal_review_revise.v3"
+    assert REVIEW_REVISE_GENERATOR_VERSION == "ce05.journal_review_revise.v4"
     assert policy == {
         "supportive_relations": ["supports", "qualifies"],
         "non_supportive_relations": ["context_only", "contradicts"],
@@ -70,7 +70,7 @@ def test_review_revise_v3_exposes_exact_evidence_relation_policy() -> None:
     }
 
 
-def test_review_revise_v3_rejects_unknown_or_duplicate_relation_rows() -> None:
+def test_review_revise_v4_rejects_unknown_or_duplicate_relation_rows() -> None:
     unknown = _writer_input_with_relations([("e-1", "maybe")])
     with pytest.raises(
         WriterGenerationError,
@@ -121,6 +121,8 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
     revision_policy = cast(dict[str, object], model_input["revision_policy"])
     relation_policy = cast(dict[str, object], revision_policy["evidence_relation_policy"])
     segment_policy = cast(dict[str, object], revision_policy["segment_support_policy"])
+    title_policy = cast(dict[str, object], segment_policy["title"])
+    standfirst_policy = cast(dict[str, object], segment_policy["standfirst"])
     lead_policy = cast(dict[str, object], segment_policy["lead_markdown"])
     closing_policy = cast(dict[str, object], segment_policy["closing_markdown"])
     requirements = cast(list[str], revision_policy["requirements"])
@@ -128,6 +130,16 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
     assert relation_policy["relations_by_evidence_id"] == {
         "e-support": "supports",
         "e-context": "context_only",
+    }
+    assert title_policy == {
+        "allowed_evidence_refs": [],
+        "allowed_originality_refs": [],
+        "require_non_assertive": True,
+        "reason": "writer_schema_has_no_title_support_ref_fields",
+    }
+    assert standfirst_policy == {
+        "allowed_evidence_refs": ["e-support"],
+        "allowed_originality_refs": [],
     }
     assert lead_policy == {
         "allowed_evidence_refs": ["e-support"],
@@ -151,6 +163,20 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
     assert (
         "rewrite_unsupported_broad_universal_or_epistemic_claims_as_"
         "bounded_reader_guidance"
+        in requirements
+    )
+    assert (
+        "title_has_no_support_ref_fields_and_must_not_contain_"
+        "unsupported_factual_brand_visual_or_live_claims"
+        in requirements
+    )
+    assert (
+        "rewrite_unsupported_title_as_non_assertive_reader_guidance_or_topic_label"
+        in requirements
+    )
+    assert (
+        "avoid_unsupported_geographic_origin_provenance_authorship_or_"
+        "local_making_propositions_in_title"
         in requirements
     )
     assert (
@@ -197,6 +223,11 @@ def test_review_revise_prompt_states_fail_closed_support_boundary() -> None:
         "Preserve the accepted section IDs/order and exact evidence/originality ref arrays"
         in rendered
     )
+    assert "TITLE SUPPORT CONTRACT:" in rendered
+    assert "title zero allowed support refs" in rendered
+    assert "do not state or imply geographic origin" in rendered
+    assert "rewrite it as reader guidance or a neutral topic label" in rendered
+    assert "Do not invent title support refs" in rendered
     assert "CLOSING SUPPORT CONTRACT:" in rendered
     assert "closing sentences zero allowed support refs" in rendered
     assert "closing_markdown must not contain factual" in rendered

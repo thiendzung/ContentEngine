@@ -27,7 +27,7 @@ from app.modules.content_engine.journal.writer import (
 )
 from app.modules.harness.models import Artifact
 
-REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v3"
+REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v4"
 REVIEW_REVISE_SCHEMA_VERSION = 1
 _SUPPORTIVE_EVIDENCE_RELATIONS = ("supports", "qualifies")
 _NON_SUPPORTIVE_EVIDENCE_RELATIONS = ("context_only", "contradicts")
@@ -114,6 +114,16 @@ def _segment_support_policy(draft: JournalDraft) -> dict[str, object]:
     """Describe where the Writer schema can bind support refs for visible copy."""
 
     return {
+        "title": {
+            "allowed_evidence_refs": [],
+            "allowed_originality_refs": [],
+            "require_non_assertive": True,
+            "reason": "writer_schema_has_no_title_support_ref_fields",
+        },
+        "standfirst": {
+            "allowed_evidence_refs": list(draft.lead_evidence_refs),
+            "allowed_originality_refs": list(draft.lead_originality_refs),
+        },
         "lead_markdown": {
             "allowed_evidence_refs": list(draft.lead_evidence_refs),
             "allowed_originality_refs": list(draft.lead_originality_refs),
@@ -195,6 +205,9 @@ def _revision_model_input(
                     "remove_unsupported_factual_claims_or_rewrite_them_as_bounded_reader_guidance",
                     "rewrite_unsupported_broad_universal_or_epistemic_claims_as_bounded_reader_guidance",
                     "prefer_direct_reader_actions_over_unproven_universal_claims",
+                    "title_has_no_support_ref_fields_and_must_not_contain_unsupported_factual_brand_visual_or_live_claims",
+                    "rewrite_unsupported_title_as_non_assertive_reader_guidance_or_topic_label",
+                    "avoid_unsupported_geographic_origin_provenance_authorship_or_local_making_propositions_in_title",
                     "closing_markdown_has_no_support_ref_fields_and_must_not_contain_factual_brand_visual_or_live_claims",
                     "keep_supported_factual_closing_points_in_an_existing_ref_bound_section_and_rewrite_closing_as_non_assertive_reader_guidance",
                     "resolve_or_remove_every_unsupported_intended_factual_claim",
