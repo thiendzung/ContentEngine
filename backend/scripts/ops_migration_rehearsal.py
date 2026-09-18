@@ -229,9 +229,10 @@ async def _source_documents_fingerprint(engine: AsyncEngine) -> dict[str, object
                 )
             ).all()
         )
-    payload = "\n".join(
-        ":".join(str(value) for value in row)
-        for row in rows
+    payload = json.dumps(
+        [[str(value) for value in row] for row in rows],
+        ensure_ascii=False,
+        separators=(",", ":"),
     ).encode("utf-8")
     return {
         "count": len(rows),
@@ -523,7 +524,16 @@ async def _main() -> int:
         print(json.dumps({"status": "BLOCKED", "blocker": exc.code}, indent=2))
         return 2
 
-    settings = get_settings()
+    try:
+        settings = get_settings()
+    except Exception:
+        print(
+            json.dumps(
+                {"status": "BLOCKED", "blocker": "operational_settings_unavailable"},
+                indent=2,
+            )
+        )
+        return 2
     if settings.app_env.strip().lower() == "test":
         print(
             json.dumps(
@@ -547,10 +557,19 @@ async def _main() -> int:
         code = exc.code
         print(json.dumps({"status": "BLOCKED", "blocker": code}, indent=2))
         return 2
+    except Exception:
+        print(
+            json.dumps(
+                {"status": "BLOCKED", "blocker": "migration_rehearsal_preflight_failed"},
+                indent=2,
+            )
+        )
+        return 2
 
     source_engine = create_async_engine(settings.database_url, poolclass=NullPool)
     target_created = False
     blocker: str | None = None
+    secondary_blockers: list[str] = []
     result_payload: dict[str, object] = {}
     source_revision_before: str | None = None
     source_fingerprint_before: DatabaseFingerprint | None = None
@@ -642,14 +661,25 @@ async def _main() -> int:
                     source_engine
                 )
                 source_documents_after = await _source_documents_fingerprint(source_engine)
+                post_source_blocker: str | None = None
                 if source_revision_after != source_revision_before:
-                    blocker = "source_revision_changed"
+                    post_source_blocker = "source_revision_changed"
                 elif source_fingerprint_after != source_fingerprint_before:
-                    blocker = "source_fingerprint_changed"
+                    post_source_blocker = "source_fingerprint_changed"
                 elif source_documents_after != source_documents_before:
-                    blocker = "source_documents_changed"
+                    post_source_blocker = "source_documents_changed"
+                if post_source_blocker is not None:
+                    if blocker is None:
+                        blocker = post_source_blocker
+                    elif post_source_blocker != blocker:
+                        secondary_blockers.append(post_source_blocker)
             except Exception:
-                blocker = "source_post_rehearsal_verification_failed"
+                if blocker is None:
+                    blocker = "source_post_rehearsal_verification_failed"
+                else:
+                    secondary_blockers.append(
+                        "source_post_rehearsal_verification_failed"
+                    )
         await source_engine.dispose()
         cleanup_error: str | None = None
         if target_created:
@@ -658,7 +688,10 @@ async def _main() -> int:
             except Exception:
                 cleanup_error = "rehearsal_database_cleanup_failed"
         if cleanup_error is not None:
-            blocker = cleanup_error
+            if blocker is None:
+                blocker = cleanup_error
+            else:
+                secondary_blockers.append(cleanup_error)
 
     if blocker is not None:
         print(
@@ -667,6 +700,7 @@ async def _main() -> int:
                     "status": "BLOCKED",
                     "mode": "isolated_migration_rehearsal",
                     "blocker": blocker,
+                    "secondary_blockers": secondary_blockers,
                     "rehearsal_database": target.database,
                 },
                 sort_keys=True,
