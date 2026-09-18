@@ -158,6 +158,27 @@ def _port_listening(port: int) -> bool:
     return False
 
 
+def _listener_evidence(port: int) -> list[str]:
+    lsof = shutil.which("lsof")
+    if lsof is None:
+        raise ReleaseLifecycleError("lsof_unavailable")
+    result = subprocess.run(
+        [lsof, "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ReleaseLifecycleError("runtime_listener_evidence_unavailable")
+    lines = [line.strip() for line in result.stdout.splitlines()[1:] if line.strip()]
+    if not lines:
+        raise ReleaseLifecycleError("runtime_listener_evidence_missing")
+    expected = f"127.0.0.1:{port}"
+    if any(expected not in line for line in lines):
+        raise ReleaseLifecycleError("runtime_listener_not_loopback_only")
+    return lines
+
+
 def _process_table() -> str:
     result = subprocess.run(
         ["ps", "-axo", "pid=,command="],
@@ -458,6 +479,11 @@ async def _prove_runtime_ready(
     if not _port_listening(3000):
         raise ReleaseLifecycleError("frontend_listener_missing")
 
+    listeners = {
+        "backend": _listener_evidence(8000),
+        "frontend": _listener_evidence(3000),
+    }
+
     return {
         "backend_health": health,
         "backend_db_health": db_health,
@@ -467,6 +493,7 @@ async def _prove_runtime_ready(
             "status": frontend["status"],
         },
         "worker": "RUNNING",
+        "listeners": listeners,
     }
 
 
