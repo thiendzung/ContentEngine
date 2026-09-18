@@ -47,6 +47,8 @@ def test_ocr_ref_validation_accepts_exact_full_commit_sha() -> None:
 @pytest.mark.parametrize(
     "ref_factory",
     [
+        lambda _sha: "main",
+        lambda _sha: "v1.0.0",
         lambda _sha: "HEAD",
         lambda _sha: "HEAD~0",
         lambda sha: sha[:12],
@@ -61,4 +63,4 @@ def test_ocr_ref_validation_rejects_non_exact_refs(
     result = _validate_refs(ref, sha)
 
     assert result.returncode != 0
-    assert "exact full commit SHA" in result.stdout + result.stderr
+    assert "exact full 40-character lowercase commit SHA" in result.stdout + result.stderr
