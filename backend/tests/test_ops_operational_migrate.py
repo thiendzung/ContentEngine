@@ -230,3 +230,20 @@ def test_make_target_requires_backup_and_authorized_head() -> None:
     assert "scripts.ops_operational_migrate" in target
     assert '--authorized-head "$(AUTHORIZED_HEAD)"' in target
     assert "make migrate" not in target
+
+
+def test_final_document_forces_blocked_status_over_payload() -> None:
+    document = migrate._final_document(
+        status="BLOCKED",
+        payload={"status": "READY", "mode": "operational_source_migration"},
+        blocker="backend_runtime_active",
+        secondary_blockers=["source_documents_changed_by_migration"],
+        migration_attempted=True,
+    )
+
+    assert document["status"] == "BLOCKED"
+    assert document["blocker"] == "backend_runtime_active"
+    assert document["secondary_blockers"] == [
+        "source_documents_changed_by_migration"
+    ]
+    assert document["migration_attempted"] is True
