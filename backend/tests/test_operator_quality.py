@@ -19,6 +19,7 @@ from app.modules.content_engine.journal import operator_quality_worker
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
+from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
 from app.modules.content_engine.journal.operator_quality import (
     QUALITY_AUDIT_TASK_KEYS,
     QUALITY_REVIEW_TASK_KEYS,
@@ -485,6 +486,71 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
                 OperatorCommand.resolved_action_key == "writers_to_quality"
             )
         ) == 1
+
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.writer.run is not None
+        assert en_lane.writer.run is not None
+
+        vi_result = await submit_operator_decision(
+            session,
+            content_case_id=case_id,
+            scope="final",
+            decision="approved",
+            expected_state_version=state.state_version,
+            idempotency_key="f6-partial-final-approve-vi",
+            locale_variant_id=vi_lane.variant.id,
+        )
+        assert vi_result.approval_id is not None
+
+        partial_progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert partial_progress is not None
+        partial_by_locale = {lane.locale: lane for lane in partial_progress.lanes}
+        assert partial_by_locale["vi-VN"].status == "qualified"
+        assert partial_by_locale["en"].status == "final_gate_ready"
+
+        partial_state = await get_operator_state(session, content_case_id=case_id)
+        assert partial_state.status == "AWAITING_APPROVAL"
+        assert partial_state.human_gate == "final_review"
+        assert partial_state.current_run_id == en_lane.writer.run.id
+        assert partial_state.blocker_code is None
+
+        partial_action = await resolve_next_operator_action(
+            session,
+            content_case_id=case_id,
+        )
+        assert partial_action.action_key == "await_final_review_approval"
+        assert partial_action.executable is False
+
+        partial_view = await get_operator_case_view(session, content_case_id=case_id)
+        pending_by_locale = {
+            lane.locale: lane.pending_approval_ready for lane in partial_view.quality_lanes
+        }
+        assert pending_by_locale == {"en": True, "vi-VN": False}
+        assert await session.scalar(select(func.count(Approval.id))) == 1
+        assert await session.scalar(select(func.count(ContentVersion.id))) == 1
+
+        en_result = await submit_operator_decision(
+            session,
+            content_case_id=case_id,
+            scope="final",
+            decision="approved",
+            expected_state_version=partial_state.state_version,
+            idempotency_key="f6-partial-final-approve-en",
+            locale_variant_id=en_lane.variant.id,
+        )
+        assert en_result.approval_id is not None
+
+        complete_state = await get_operator_state(session, content_case_id=case_id)
+        assert complete_state.status == "COMPLETE"
+        assert complete_state.human_gate is None
+        assert complete_state.blocker_code is None
+        assert await session.scalar(select(func.count(Approval.id))) == 2
+        assert await session.scalar(select(func.count(ContentVersion.id))) == 2
 
 
 @pytest.mark.asyncio

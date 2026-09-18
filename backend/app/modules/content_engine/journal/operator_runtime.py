@@ -488,8 +488,15 @@ async def _quality_state_overlay(
         "human_gate": None,
         "current_worker": None,
     }
-    if progress.final_gate_ready:
-        final_lane = progress.lanes[0]
+    pending_final_lanes = [
+        lane for lane in progress.lanes if lane.status == "final_gate_ready"
+    ]
+    final_materialized = all(
+        lane.final_content is not None and lane.final_review is not None
+        for lane in progress.lanes
+    )
+    if progress.all_qualified and final_materialized and pending_final_lanes:
+        final_lane = pending_final_lanes[0]
         return state.model_copy(
             update={
                 **common,
@@ -504,7 +511,9 @@ async def _quality_state_overlay(
                 "allowed_intents": [],
                 "blocker_code": None,
                 "blocker_message": None,
-                "last_checkpoint": "Hai locale đã có final_content và checkpoint chờ duyệt cuối.",
+                "last_checkpoint": (
+                    "Mọi locale đã qua Quality; vẫn còn locale chờ Founder duyệt cuối."
+                ),
             }
         )
     if progress.has_active_job:
