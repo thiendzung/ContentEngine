@@ -48,7 +48,7 @@ function mutationKey(caseId: string, stateVersion: string, action: string): stri
 
 function technicalError(error: unknown): string {
   if (error instanceof OperatorApiError && error.code === "operator_state_stale") {
-    return "Trạng thái đã thay đổi. Đã tải lại dữ liệu mới nhất.";
+    return "Trạng thái đã thay đổi. Cần đối soát lại dữ liệu chuẩn trước khi thao tác tiếp.";
   }
   return error instanceof Error ? error.message : "Không thể hoàn tất thao tác.";
 }
@@ -413,6 +413,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   const [outlineComment, setOutlineComment] = useState("");
   const [finalComments, setFinalComments] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
+  const [reconcileRequired, setReconcileRequired] = useState(false);
+  const [lastSuccessfulRefreshAt, setLastSuccessfulRefreshAt] = useState<string | null>(null);
 
   const loadSnapshot = useCallback(async () => {
     const operatorView = await loadOperatorCaseView(caseId);
@@ -432,13 +434,17 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     return operatorView;
   }, [caseId]);
 
-  const refresh = useCallback(async (quiet = false) => {
+  const refresh = useCallback(async (quiet = false): Promise<boolean> => {
     if (!quiet) setLoading(true);
     try {
       await loadSnapshot();
       setError("");
+      setReconcileRequired(false);
+      setLastSuccessfulRefreshAt(new Date().toISOString());
+      return true;
     } catch (requestError) {
       setError(technicalError(requestError));
+      return false;
     } finally {
       if (!quiet) setLoading(false);
     }
@@ -466,6 +472,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         setView(operatorView);
         setReview(reviewView);
         setError("");
+        setReconcileRequired(false);
+        setLastSuccessfulRefreshAt(new Date().toISOString());
         setLoading(false);
       })
       .catch((requestError: unknown) => {
@@ -492,19 +500,38 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   );
 
   async function reconcileMutationFailure(requestError: unknown, keyScope: string) {
-    if (requestError instanceof OperatorApiError && requestError.code === "operator_state_stale") {
+    const staleState = requestError instanceof OperatorApiError
+      && requestError.code === "operator_state_stale";
+    const ambiguousOutcome = !(requestError instanceof OperatorApiError);
+
+    if (staleState) {
       clearIdempotencyKey(keyScope);
-    } else if (!(requestError instanceof OperatorApiError)) {
+    }
+    if (staleState || ambiguousOutcome) {
+      setReconcileRequired(true);
       setNotice(
-        "Phản hồi bị gián đoạn. Hệ thống giữ nguyên idempotency key và đang đối soát trạng thái trước khi gửi lại.",
+        ambiguousOutcome
+          ? "Phản hồi bị gián đoạn. Chưa xác định lệnh đã được ghi hay chưa; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công."
+          : "Snapshot hiện tại đã cũ; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công.",
       );
     }
-    await refresh(true);
-    setError(technicalError(requestError));
+
+    const reconciled = await refresh(true);
+    if (!reconciled) {
+      setReconcileRequired(staleState || ambiguousOutcome);
+      setError(
+        staleState || ambiguousOutcome
+          ? "Chưa đối soát được trạng thái chuẩn. Không gửi lại hoặc thực hiện thao tác mới cho tới khi tải lại thành công."
+          : technicalError(requestError),
+      );
+      return;
+    }
+
+    setError(staleState ? "" : technicalError(requestError));
   }
 
   async function submitIntent(intent: OperatorIntent) {
-    if (!view || submitting || !view.state.allowed_intents.includes(intent)) return;
+    if (!view || submitting || reconcileRequired || !view.state.allowed_intents.includes(intent)) return;
     const keyScope = mutationKey(caseId, view.state.state_version, intent);
     setSubmitting(true);
     setError("");
@@ -531,7 +558,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   async function submitAngleApproval() {
-    if (!view || !angleGate || !selectedAngle || submitting) return;
+    if (!view || !angleGate || !selectedAngle || submitting || reconcileRequired) return;
     const state = view.state;
     const artifact = angleGate.artifact;
     const keyScope = mutationKey(
@@ -567,7 +594,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   async function submitOutlineApproval() {
-    if (!view || !outlineGate || submitting) return;
+    if (!view || !outlineGate || submitting || reconcileRequired) return;
     const state = view.state;
     const artifact = outlineGate.artifact;
     const keyScope = mutationKey(caseId, state.state_version, "approve-outline");
@@ -599,6 +626,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     if (
       !view
       || submitting
+      || reconcileRequired
       || view.state.human_gate !== "final_review"
       || panel.next_action !== "AWAITING_FOUNDER_APPROVAL"
     ) return;
@@ -650,9 +678,16 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   const state = view.state;
-  const canStart = state.status === "READY" && state.allowed_intents.includes("start");
-  const canContinue = state.status === "READY" && state.allowed_intents.includes("continue");
-  const canRetry = state.allowed_intents.includes("retry");
+  const canStart = !reconcileRequired && state.status === "READY" && state.allowed_intents.includes("start");
+  const canContinue = !reconcileRequired && state.status === "READY" && state.allowed_intents.includes("continue");
+  const canRetry = !reconcileRequired && state.allowed_intents.includes("retry");
+  const lastSuccessfulRefreshLabel = lastSuccessfulRefreshAt
+    ? new Date(lastSuccessfulRefreshAt).toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : "chưa có";
   const sections = outlineGate ? outlineSections(outlineGate) : [];
   const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
   const finalPanels = review
@@ -695,6 +730,25 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
       {notice && <p className="operator-success">{notice}</p>}
       {error && <p className="error">{error}</p>}
+      {reconcileRequired && (
+        <section className="operator-reconcile-alert" role="alert">
+          <div>
+            <strong>Trạng thái chưa được đối soát</strong>
+            <p>
+              Snapshot đang hiển thị có thể đã cũ. Các lệnh Start / Continue / Retry / Approve bị khóa
+              cho tới khi tải lại canonical state thành công.
+            </p>
+          </div>
+          <button
+            className="operator-button secondary"
+            disabled={loading || submitting}
+            onClick={() => void refresh()}
+            type="button"
+          >
+            {loading ? "Đang đối soát…" : "Đối soát lại"}
+          </button>
+        </section>
+      )}
 
       <section className="operator-panel state-panel">
         <div className="operator-panel-heading">
@@ -702,9 +756,17 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             <p className="eyebrow">Trạng thái chuẩn</p>
             <h2>{operatorStatusLabel(state.status)}</h2>
           </div>
-          <button className="operator-button secondary" onClick={() => void refresh()} type="button">
-            Tải lại
-          </button>
+          <div className="operator-refresh-control">
+            <small>Lần tải chuẩn gần nhất: {lastSuccessfulRefreshLabel}</small>
+            <button
+              className="operator-button secondary"
+              disabled={loading || submitting}
+              onClick={() => void refresh()}
+              type="button"
+            >
+              {loading ? "Đang tải…" : reconcileRequired ? "Đối soát lại" : "Tải lại"}
+            </button>
+          </div>
         </div>
         <div className="state-grid">
           <div><span>Giai đoạn</span><strong>{operatorPhaseLabel(state.phase)}</strong></div>
@@ -811,7 +873,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </label>
             <button
               className="operator-button primary"
-              disabled={!selectedAngle || submitting}
+              disabled={!selectedAngle || submitting || reconcileRequired}
               onClick={() => void submitAngleApproval()}
               type="button"
             >
@@ -876,7 +938,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </label>
             <button
               className="operator-button primary"
-              disabled={submitting}
+              disabled={submitting || reconcileRequired}
               onClick={() => void submitOutlineApproval()}
               type="button"
             >
@@ -971,12 +1033,13 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                 {finalPanels.map((panel) => (
                   <FinalLocaleCard
                     canApprove={
-                      review.consistency_state === "CONSISTENT"
+                      !reconcileRequired
+                      && review.consistency_state === "CONSISTENT"
                       && panel.next_action === "AWAITING_FOUNDER_APPROVAL"
                       && exactFinalBindingMatches(view, panel)
                     }
                     comment={finalComments[panel.locale_variant_id] ?? ""}
-                    disabled={submitting}
+                    disabled={submitting || reconcileRequired}
                     key={panel.locale_variant_id}
                     onApprove={() => void submitFinalApproval(panel)}
                     onCommentChange={(value) => setFinalComments((current) => ({
