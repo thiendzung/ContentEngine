@@ -4,6 +4,7 @@ BACKEND_PY := $(BACKEND_VENV)/bin/python
 BACKEND_PIP := $(BACKEND_VENV)/bin/pip
 COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
+AUTHORIZED_HEAD ?=
 MODEL ?=
 APPROVED_BY ?=
 OCR_BASE ?=
@@ -12,7 +13,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight backup restore-test migration-rehearsal backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight backup restore-test migration-rehearsal operational-migrate backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -80,6 +81,11 @@ restore-test:
 migration-rehearsal:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make migration-rehearsal BACKUP=/path/to/file.dump" && exit 2)
 	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_migration_rehearsal "$(BACKUP)"
+
+operational-migrate:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required: make operational-migrate BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	cd backend && .venv/bin/python -m scripts.ops_operational_migrate "$(BACKUP)" --authorized-head "$(AUTHORIZED_HEAD)"
 
 backend-check:
 	cd backend && .venv/bin/ruff check app tests scripts migrations
