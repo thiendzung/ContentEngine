@@ -762,6 +762,16 @@ async def _run_cycle(
     return cycle_evidence
 
 
+async def _require_release_preflight(*, blocker: str) -> dict[str, object]:
+    preflight = await build_release_preflight()
+    if preflight.get("status") != "READY":
+        raise ReleaseLifecycleError(
+            blocker,
+            evidence={"release_preflight": preflight},
+        )
+    return preflight
+
+
 async def _main() -> int:
     args = _parse_args()
     blocker: str | None = None
@@ -791,15 +801,6 @@ async def _main() -> int:
         if revision != _EXPECTED_REVISION:
             raise ReleaseLifecycleError("operational_revision_not_current")
 
-        idle_state = await _assert_idle_operational_state(engine)
-        baseline = await _durable_snapshot(engine)
-
-        log_root = Path(
-            tempfile.mkdtemp(prefix="contentengine-o1-3-lifecycle-")
-        )
-        (log_root / "startup").mkdir(parents=True, exist_ok=True)
-        (log_root / "restart").mkdir(parents=True, exist_ok=True)
-
         evidence = {
             "mode": "controlled_release_lifecycle",
             "checkout": checkout,
@@ -810,11 +811,26 @@ async def _main() -> int:
                 "revision": revision,
             },
             "runtime_before": runtime_before,
-            "idle_state_before": idle_state,
-            "baseline": baseline,
             "cycles": [],
-            "log_root": str(log_root),
         }
+
+        pre_release_preflight = await _require_release_preflight(
+            blocker="pre_release_preflight_blocked"
+        )
+        evidence["pre_release_preflight"] = pre_release_preflight
+
+        idle_state = await _assert_idle_operational_state(engine)
+        baseline = await _durable_snapshot(engine)
+
+        log_root = Path(
+            tempfile.mkdtemp(prefix="contentengine-o1-3-lifecycle-")
+        )
+        (log_root / "startup").mkdir(parents=True, exist_ok=True)
+        (log_root / "restart").mkdir(parents=True, exist_ok=True)
+
+        evidence["idle_state_before"] = idle_state
+        evidence["baseline"] = baseline
+        evidence["log_root"] = str(log_root)
 
         env = os.environ.copy()
         cycle_one = await _run_cycle(
@@ -843,10 +859,10 @@ async def _main() -> int:
         )
         cycles.append(cycle_two)
 
-        preflight = await build_release_preflight()
-        evidence["post_release_preflight"] = preflight
-        if preflight.get("status") != "READY":
-            raise ReleaseLifecycleError("post_release_preflight_blocked")
+        post_release_preflight = await _require_release_preflight(
+            blocker="post_release_preflight_blocked"
+        )
+        evidence["post_release_preflight"] = post_release_preflight
 
         final_snapshot = await _durable_snapshot(engine)
         _require_snapshot_equal(
