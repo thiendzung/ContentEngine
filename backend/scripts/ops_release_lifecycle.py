@@ -120,31 +120,55 @@ def _validate_checkout(authorized_head: str) -> dict[str, object]:
     clean = _run_git("status", "--porcelain") == ""
     if not clean:
         raise ReleaseLifecycleError("release_checkout_dirty")
-    expected_python = (_backend_root() / ".venv" / "bin" / "python").resolve()
-    actual_python = Path(sys.executable).resolve()
-    if actual_python != expected_python:
+
+    venv_root = (_backend_root() / ".venv").absolute()
+    expected_python = (venv_root / "bin" / "python").absolute()
+    actual_python = Path(sys.executable).absolute()
+    actual_prefix = Path(sys.prefix).absolute()
+    pyvenv_cfg = venv_root / "pyvenv.cfg"
+    venv_lib = venv_root / "lib"
+
+    if actual_python != expected_python or actual_prefix != venv_root:
         raise ReleaseLifecycleError("release_python_environment_mismatch")
+    if pyvenv_cfg.is_symlink() or venv_lib.is_symlink():
+        raise ReleaseLifecycleError("release_python_environment_symlinked")
+    if not pyvenv_cfg.is_file() or not venv_lib.is_dir():
+        raise ReleaseLifecycleError("release_python_environment_incomplete")
+
     return {
         "head": actual_head,
         "clean": clean,
         "python": str(actual_python),
+        "python_prefix": str(actual_prefix),
     }
 
 
 def _validate_frontend_build() -> dict[str, str]:
     frontend = _frontend_root()
-    build_id = frontend / ".next" / "BUILD_ID"
-    next_binary = frontend / "node_modules" / ".bin" / "next"
+    node_modules = frontend / "node_modules"
+    build_root = frontend / ".next"
+    build_id = build_root / "BUILD_ID"
+    next_binary = node_modules / ".bin" / "next"
+    package_lock = frontend / "package-lock.json"
+
+    if node_modules.is_symlink() or build_root.is_symlink():
+        raise ReleaseLifecycleError("frontend_environment_symlinked")
     if not next_binary.is_file():
         raise ReleaseLifecycleError("frontend_dependencies_missing")
     if not build_id.is_file():
         raise ReleaseLifecycleError("frontend_production_build_missing")
+    if not package_lock.is_file():
+        raise ReleaseLifecycleError("frontend_package_lock_missing")
+
     npm = shutil.which("npm")
     if npm is None:
         raise ReleaseLifecycleError("npm_unavailable")
+
+    package_lock_sha = hashlib.sha256(package_lock.read_bytes()).hexdigest()
     return {
         "npm": npm,
         "build_id": build_id.read_text(encoding="utf-8").strip(),
+        "package_lock_sha256": package_lock_sha,
     }
 
 
