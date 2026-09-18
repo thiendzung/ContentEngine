@@ -106,7 +106,6 @@ async def _database_snapshot(database_url: str) -> dict[str, object]:
             server_version = (
                 await connection.execute(text("show server_version"))
             ).scalar_one()
-        fingerprint = await database_fingerprint(engine)
     except Exception as exc:
         raise OperationalInspectionError("operational_database_inspection_failed") from exc
     finally:
@@ -119,8 +118,18 @@ async def _database_snapshot(database_url: str) -> dict[str, object]:
         "server_port": None if row[3] is None else int(row[3]),
         "server_version": str(server_version),
         "migration_revision": None if revision is None else str(revision),
-        "fingerprint": fingerprint.to_dict(),
     }
+
+
+async def _database_fingerprint_snapshot(database_url: str) -> dict[str, object]:
+    engine = create_async_engine(database_url, poolclass=NullPool)
+    try:
+        fingerprint = await database_fingerprint(engine)
+    except Exception as exc:
+        raise OperationalInspectionError("operational_database_fingerprint_failed") from exc
+    finally:
+        await engine.dispose()
+    return fingerprint.to_dict()
 
 
 async def build_operational_inspection() -> dict[str, object]:
@@ -145,6 +154,16 @@ async def build_operational_inspection() -> dict[str, object]:
         blockers.append("code_migration_head_missing")
     elif database["migration_revision"] != expected_revision:
         blockers.append("migration_revision_mismatch")
+
+    fingerprint: dict[str, object] | None = None
+    fingerprint_status = "READY"
+    try:
+        fingerprint = await _database_fingerprint_snapshot(settings.database_url)
+    except OperationalInspectionError as exc:
+        fingerprint_status = "BLOCKED"
+        blockers.append(exc.code)
+    database["fingerprint"] = fingerprint
+    database["fingerprint_status"] = fingerprint_status
 
     return {
         "status": "READY" if not blockers else "BLOCKED",
