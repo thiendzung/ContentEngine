@@ -32,6 +32,9 @@ set -a
 source /Users/thiendung/MOTGU-AI/ContentEngine/.env
 set +a
 export CONTENTENGINE_OPERATIONAL_REPO="/Users/thiendung/MOTGU-AI/ContentEngine"
+export PATH="$HOME/.local/bin:$PATH"
+command -v codex
+codex --version
 ```
 
 This must happen before `npm run build` so the public API base configuration embedded in the exact
@@ -222,10 +225,12 @@ Then independently run:
 
 ```sh
 make ops-inspect
-make ops-preflight
+make release-preflight
 ```
 
-Both must exit 0.
+Both must exit 0. The release preflight intentionally excludes the test-database-only check while
+keeping the operational database/migration, Codex CLI version+auth, and PostgreSQL-tool checks
+required.
 
 No model call may be created.
 
@@ -363,7 +368,7 @@ Same evidence as startup cycle.
 
 - lifecycle exit code;
 - ops-inspect exit;
-- ops-preflight exit;
+- release-preflight exit;
 - overall preflight status;
 - runtime final STOPPED;
 - durable final snapshot unchanged;
