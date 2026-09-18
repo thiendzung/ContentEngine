@@ -82,6 +82,24 @@ function qualityResultLabel(value: string | null): string {
   return value;
 }
 
+function exactFinalBindingMatches(
+  view: OperatorCaseView,
+  panel: ReviewLocalePanel,
+): boolean {
+  const lane = view.quality_lanes.find(
+    (item) => item.locale_variant_id === panel.locale_variant_id,
+  );
+  const operatorFinal = lane?.final_content;
+  const reviewFinal = panel.final_content;
+  return Boolean(
+    operatorFinal
+    && reviewFinal
+    && operatorFinal.id === reviewFinal.id
+    && operatorFinal.version === reviewFinal.version
+    && operatorFinal.content_hash === reviewFinal.content_hash,
+  );
+}
+
 function reviewStateLabel(value: string): string {
   const labels: Record<string, string> = {
     PASS: "Đạt",
@@ -579,6 +597,12 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       || view.state.human_gate !== "final_review"
       || panel.next_action !== "AWAITING_FOUNDER_APPROVAL"
     ) return;
+    if (!exactFinalBindingMatches(view, panel)) {
+      setError(
+        "Exact final binding giữa Operator và Review projection không khớp. Đã chặn duyệt; hãy tải lại trạng thái.",
+      );
+      return;
+    }
     const state = view.state;
     const keyScope = mutationKey(
       caseId,
@@ -930,12 +954,21 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               {review.consistency_state !== "CONSISTENT" && (
                 <p className="error">Review projection không nhất quán. Dừng và kiểm tra binding trước khi duyệt.</p>
               )}
+              {finalPanels.some((panel) => (
+                panel.next_action === "AWAITING_FOUNDER_APPROVAL"
+                && !exactFinalBindingMatches(view, panel)
+              )) && (
+                <p className="error">
+                  Exact final binding giữa Operator và Review projection không khớp. Không có quyết định duyệt nào được mở.
+                </p>
+              )}
               <div className="bilingual-grid">
                 {finalPanels.map((panel) => (
                   <FinalLocaleCard
                     canApprove={
                       review.consistency_state === "CONSISTENT"
                       && panel.next_action === "AWAITING_FOUNDER_APPROVAL"
+                      && exactFinalBindingMatches(view, panel)
                     }
                     comment={finalComments[panel.locale_variant_id] ?? ""}
                     disabled={submitting}
