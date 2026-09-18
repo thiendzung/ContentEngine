@@ -103,6 +103,9 @@ async def test_operational_inspection_ready_when_identity_and_schema_match(
     assert result["status"] == "READY"
     assert result["mode"] == "read_only"
     assert result["blockers"] == []
+    assert result["conditions"] == []
+    assert result["migration_status"] == "CURRENT"
+    assert result["operational_repository_status"] == "CLEAN"
     assert result["inspection_repository"] == {"head": "a" * 40, "clean": True}
     assert result["operational_repository"] == {"head": "b" * 40, "clean": True}
     assert result["operational_repository_matches_inspection"] is False
@@ -115,7 +118,7 @@ async def test_operational_inspection_ready_when_identity_and_schema_match(
 
 
 @pytest.mark.asyncio
-async def test_operational_inspection_blocks_dirty_operational_repo_or_schema_drift(
+async def test_operational_inspection_reports_dirty_repo_and_schema_drift_as_conditions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = SimpleNamespace(
@@ -159,11 +162,14 @@ async def test_operational_inspection_blocks_dirty_operational_repo_or_schema_dr
 
     result = await ops_inspect.build_operational_inspection()
 
-    assert result["status"] == "BLOCKED"
-    assert result["blockers"] == [
+    assert result["status"] == "READY"
+    assert result["blockers"] == []
+    assert result["conditions"] == [
         "operational_repository_worktree_dirty",
         "migration_revision_mismatch",
     ]
+    assert result["operational_repository_status"] == "DIRTY"
+    assert result["migration_status"] == "REQUIRED"
 
 
 @pytest.mark.asyncio
