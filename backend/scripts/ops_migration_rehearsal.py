@@ -28,6 +28,7 @@ from app.modules.system.recovery import (
 
 _EXPECTED_SOURCE_REVISION = "20260914_0027"
 _EXPECTED_TARGET_REVISION = "20260915_0034"
+_EXPECTED_DUMP_SHA256 = "488ce3bfdc8978f8343e2f2803dd79e17db269ab77221d87a46afb520a98a1d9"
 _EXPECTED_UPGRADE_CHAIN = (
     "20260915_0028",
     "20260915_0029",
@@ -121,8 +122,11 @@ def _load_manifest(backup: Path, manifest_path: Path) -> dict[str, object]:
         raise MigrationRehearsalError("manifest_invalid")
     if manifest.get("format_version") != 2:
         raise MigrationRehearsalError("manifest_format_v2_required")
-    if manifest.get("dump_sha256") != _sha256(backup):
+    actual_dump_sha256 = _sha256(backup)
+    if manifest.get("dump_sha256") != actual_dump_sha256:
         raise MigrationRehearsalError("backup_hash_mismatch")
+    if actual_dump_sha256 != _EXPECTED_DUMP_SHA256:
+        raise MigrationRehearsalError("unexpected_o1_1_backup_hash")
     fingerprint = manifest.get("fingerprint")
     if not isinstance(fingerprint, dict):
         raise MigrationRehearsalError("manifest_fingerprint_missing")
@@ -203,6 +207,36 @@ async def _database_state(
     revision = await _migration_revision(engine)
     fingerprint = await database_fingerprint(engine)
     return revision, fingerprint
+
+
+async def _source_documents_fingerprint(engine: AsyncEngine) -> dict[str, object]:
+    async with engine.connect() as connection:
+        rows = list(
+            (
+                await connection.execute(
+                    text(
+                        """
+                        select
+                            id::text,
+                            fetched_at::text,
+                            content_hash,
+                            coalesce(provider, ''),
+                            coalesce(reader, '')
+                        from source_documents
+                        order by id
+                        """
+                    )
+                )
+            ).all()
+        )
+    payload = "\n".join(
+        ":".join(str(value) for value in row)
+        for row in rows
+    ).encode("utf-8")
+    return {
+        "count": len(rows),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
 
 
 async def _recreate_database(target: URL) -> None:
@@ -518,11 +552,18 @@ async def _main() -> int:
     target_created = False
     blocker: str | None = None
     result_payload: dict[str, object] = {}
+    source_revision_before: str | None = None
+    source_fingerprint_before: DatabaseFingerprint | None = None
+    source_documents_before: dict[str, object] | None = None
+    source_revision_after: str | None = None
+    source_fingerprint_after: DatabaseFingerprint | None = None
+    source_documents_after: dict[str, object] | None = None
 
     try:
         source_revision_before, source_fingerprint_before = await _database_state(
             source_engine
         )
+        source_documents_before = await _source_documents_fingerprint(source_engine)
         if source_revision_before != _EXPECTED_SOURCE_REVISION:
             raise MigrationRehearsalError("source_revision_drift")
         if source_fingerprint_before.to_dict() != expected_fingerprint:
@@ -535,10 +576,13 @@ async def _main() -> int:
         target_engine = create_async_engine(target, poolclass=NullPool)
         try:
             restored_revision, restored_fingerprint = await _database_state(target_engine)
+            restored_source_documents = await _source_documents_fingerprint(target_engine)
             if restored_revision != _EXPECTED_SOURCE_REVISION:
                 raise MigrationRehearsalError("restored_source_revision_mismatch")
             if restored_fingerprint.to_dict() != expected_fingerprint:
                 raise MigrationRehearsalError("restored_source_fingerprint_mismatch")
+            if restored_source_documents != source_documents_before:
+                raise MigrationRehearsalError("source_documents_drift_from_backup")
 
             _run_alembic_upgrade(target)
 
@@ -554,10 +598,13 @@ async def _main() -> int:
             await target_engine.dispose()
 
         source_revision_after, source_fingerprint_after = await _database_state(source_engine)
+        source_documents_after = await _source_documents_fingerprint(source_engine)
         if source_revision_after != source_revision_before:
             raise MigrationRehearsalError("source_revision_changed")
         if source_fingerprint_after != source_fingerprint_before:
             raise MigrationRehearsalError("source_fingerprint_changed")
+        if source_documents_after != source_documents_before:
+            raise MigrationRehearsalError("source_documents_changed")
 
         result_payload = {
             "status": "READY",
@@ -566,12 +613,14 @@ async def _main() -> int:
             "source_revision_before": source_revision_before,
             "source_revision_after": source_revision_after,
             "source_fingerprint": source_fingerprint_after.to_dict(),
+            "source_documents_fingerprint": source_documents_after,
             "backup": str(backup),
             "manifest": str(manifest_path),
             "dump_sha256": manifest.get("dump_sha256"),
             "restore_mode": restore_mode,
             "rehearsal_database": target.database,
             "restored_revision": restored_revision,
+            "restored_source_documents_fingerprint": restored_source_documents,
             "target_revision": migrated_revision,
             "upgrade_chain": list(chain),
             "core_fingerprint_after_migration": migrated_fingerprint.to_dict(),
@@ -583,6 +632,20 @@ async def _main() -> int:
     except Exception:
         blocker = "migration_rehearsal_unexpected_failure"
     finally:
+        if source_revision_before is not None and source_fingerprint_before is not None:
+            try:
+                source_revision_after, source_fingerprint_after = await _database_state(
+                    source_engine
+                )
+                source_documents_after = await _source_documents_fingerprint(source_engine)
+                if source_revision_after != source_revision_before:
+                    blocker = "source_revision_changed"
+                elif source_fingerprint_after != source_fingerprint_before:
+                    blocker = "source_fingerprint_changed"
+                elif source_documents_after != source_documents_before:
+                    blocker = "source_documents_changed"
+            except Exception:
+                blocker = "source_post_rehearsal_verification_failed"
         await source_engine.dispose()
         cleanup_error: str | None = None
         if target_created:
