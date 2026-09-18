@@ -23,7 +23,7 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 )
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentItem, ContentVersion, LocaleVariant
-from app.modules.harness.models import Artifact, ContentRun
+from app.modules.harness.models import Approval, Artifact, ContentRun
 from app.modules.harness.persistence import transition_run
 
 
@@ -279,6 +279,45 @@ async def test_required_locale_without_active_version_reports_missing_binding() 
         )
         assert binding_state == "missing"
         assert payload["reason"] == "active_content_version_missing"
+
+
+@pytest.mark.asyncio
+async def test_stale_final_review_decision_for_other_artifact_does_not_block_complete() -> None:
+    async with isolated_session() as session:
+        fixture = await _canonical_completed_fixture(session)
+        writer_run = fixture.writer_runs["en"]
+        stale_payload = _draft("en")
+        stale_draft = stale_payload["draft"]
+        assert isinstance(stale_draft, dict)
+        stale_draft["title"] = "Superseded final candidate"
+        stale_artifact = Artifact(
+            run_id=writer_run.id,
+            artifact_type="final_content",
+            locale="en",
+            version=2,
+            content_json=stale_payload,
+            content_hash=_hash(stale_payload),
+        )
+        session.add(stale_artifact)
+        await session.flush()
+        session.add(
+            Approval(
+                run_id=writer_run.id,
+                step_key="final_review",
+                artifact_id=stale_artifact.id,
+                decision="rejected",
+                actor_id="founder",
+                comment="stale decision fixture",
+            )
+        )
+        await session.flush()
+
+        state = await get_operator_state(
+            session,
+            content_case_id=fixture.content_case.id,
+        )
+        assert state.status == "COMPLETE"
+        assert state.blocker_code is None
 
 
 @pytest.mark.asyncio
