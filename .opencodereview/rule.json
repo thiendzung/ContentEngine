@@ -34,6 +34,11 @@
       "rule": "System/runtime state must be truthful and fail closed. Unknown or stale health must not be reported as healthy. Do not infer worker liveness from installed software. Protect operational DB identity, environment boundaries, loopback-only assumptions, and secret-safe diagnostics."
     },
     {
+      "path": "backend/app/**/*.py",
+      "merge_system_rule": true,
+      "rule": "ContentEngine backend invariants: preserve explicit authority boundaries, immutable lineage/audit identity, deterministic exact-ref behavior, bounded execution, and fail-closed handling of stale, ambiguous, or inconsistent state. Flag silent latest-record guessing, hidden side effects, approval/authorization widening, unbounded retries, or changes that make code/CI/local-runtime/deployment states indistinguishable."
+    },
+    {
       "path": "backend/migrations/**/*.py",
       "merge_system_rule": true,
       "rule": "Migration review: protect historical data and immutable audit lineage, keep the migration chain linear, ensure upgrade/downgrade behavior is coherent, and flag destructive or backfilling assumptions that are not explicitly bounded. Never silently weaken DB constraints that enforce workflow identity, approvals, route decisions, or artifact lineage."
