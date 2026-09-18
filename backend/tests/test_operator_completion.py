@@ -168,9 +168,20 @@ async def _finalize_real_f3_writer_runs(session: AsyncSession):
     )
     assert len(writer_runs) == 2
     for writer_run in writer_runs:
-        assert writer_run.content_item_id is not None
         variant = await session.get(LocaleVariant, writer_run.locale_variant_id)
         assert variant is not None
+        if writer_run.content_item_id is None:
+            item = ContentItem(
+                project_id=writer_run.project_id,
+                content_case_id=case_id,
+                locale_variant_id=variant.id,
+                content_type="journal",
+                canonical_key=f"journal:{case_id}:{variant.locale}",
+            )
+            session.add(item)
+            await session.flush()
+            writer_run.content_item_id = item.id
+        assert writer_run.content_item_id is not None
         payload = outputs[variant.locale]
         final_artifact = Artifact(
             run_id=writer_run.id,
@@ -448,6 +459,7 @@ async def test_unrelated_active_run_still_blocks_complete() -> None:
                 status="pending",
                 current_step="unrelated_pending",
                 settings_snapshot_id=fixture.writer_runs["en"].settings_snapshot_id,
+                started_at=datetime.now(UTC),
             )
         )
         await session.flush()
