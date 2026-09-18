@@ -842,3 +842,43 @@
     border-bottom: 0;
   }
 }
+
+
+.operator-reconcile-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-left: 4px solid #a35e4e;
+  background: #f8e9e4;
+}
+
+.operator-reconcile-alert p {
+  margin: 4px 0 0;
+  color: #665f57;
+  font-size: .88rem;
+}
+
+.operator-refresh-control {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.operator-refresh-control small {
+  color: #716a60;
+  font: .72rem Arial, sans-serif;
+}
+
+@media (max-width: 720px) {
+  .operator-reconcile-alert {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .operator-refresh-control {
+    justify-items: stretch;
+  }
+}
