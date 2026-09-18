@@ -92,7 +92,11 @@ async def test_operational_inspection_ready_when_identity_and_schema_match(
             "fingerprint": {"content_cases": 1},
         }
 
+    async def fake_fingerprint(_database_url: str) -> dict[str, object]:
+        return {"content_cases": 1}
+
     monkeypatch.setattr(ops_inspect, "_database_snapshot", fake_snapshot)
+    monkeypatch.setattr(ops_inspect, "_database_fingerprint_snapshot", fake_fingerprint)
 
     result = await ops_inspect.build_operational_inspection()
 
@@ -147,7 +151,11 @@ async def test_operational_inspection_blocks_dirty_operational_repo_or_schema_dr
             "fingerprint": {"content_cases": 1},
         }
 
+    async def fake_fingerprint(_database_url: str) -> dict[str, object]:
+        return {"content_cases": 1}
+
     monkeypatch.setattr(ops_inspect, "_database_snapshot", fake_snapshot)
+    monkeypatch.setattr(ops_inspect, "_database_fingerprint_snapshot", fake_fingerprint)
 
     result = await ops_inspect.build_operational_inspection()
 
