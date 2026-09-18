@@ -29,7 +29,7 @@ class AgentRunnerError(RuntimeError):
         super().__init__(code)
 
 
-CODEX_CLI_APPROVED_VERSION = "codex-cli 0.155.0-alpha.2.6"
+CODEX_CLI_APPROVED_VERSION = "codex-cli 0.155.0-alpha.9"
 CODEX_NO_TOOL_FEATURES = (
     "shell_tool",
     "unified_exec",
