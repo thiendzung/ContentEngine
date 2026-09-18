@@ -200,3 +200,59 @@ def test_runtime_contract_is_exact() -> None:
         "tool_calls",
         "outbox_intents",
     }
+
+
+def test_listener_evidence_requires_loopback_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Result:
+        returncode = 0
+        stdout = (
+            "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"
+            "Python 123 user 10u IPv4 0x0 0t0 TCP 127.0.0.1:8000 (LISTEN)\n"
+        )
+
+    monkeypatch.setattr(lifecycle.shutil, "which", lambda name: "/usr/sbin/lsof")
+    monkeypatch.setattr(lifecycle.subprocess, "run", lambda *args, **kwargs: Result())
+
+    lines = lifecycle._listener_evidence(8000)
+
+    assert lines == [
+        "Python 123 user 10u IPv4 0x0 0t0 TCP 127.0.0.1:8000 (LISTEN)"
+    ]
+
+
+def test_listener_evidence_rejects_non_loopback_binding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Result:
+        returncode = 0
+        stdout = (
+            "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"
+            "Python 123 user 10u IPv4 0x0 0t0 TCP *:8000 (LISTEN)\n"
+        )
+
+    monkeypatch.setattr(lifecycle.shutil, "which", lambda name: "/usr/sbin/lsof")
+    monkeypatch.setattr(lifecycle.subprocess, "run", lambda *args, **kwargs: Result())
+
+    with pytest.raises(
+        lifecycle.ReleaseLifecycleError,
+        match="runtime_listener_not_loopback_only",
+    ):
+        lifecycle._listener_evidence(8000)
+
+
+def test_make_target_requires_exact_authorized_head() -> None:
+    makefile = (Path(__file__).resolve().parents[2] / "Makefile").read_text(
+        encoding="utf-8"
+    )
+    target = makefile.split("release-lifecycle:", maxsplit=1)[1].split(
+        "backend-check:", maxsplit=1
+    )[0]
+
+    assert 'test -n "$(AUTHORIZED_HEAD)"' in target
+    assert "scripts.ops_release_lifecycle" in target
+    assert '--authorized-head "$(AUTHORIZED_HEAD)"' in target
+    assert "backend-dev" not in target
+    assert "frontend-dev" not in target
+    assert "operator-worker-loop" not in target
