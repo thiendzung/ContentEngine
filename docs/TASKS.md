@@ -15,8 +15,10 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | F4 | DONE / acceptance PASS / PR #105 MERGED | Exact quality path reaches final_review. |
 | F5 | DONE / PASS_F5_FINALIZATION | #109 + #113 merged; #110 accepted COMPLETE / Approved / Not published. |
 | F5.2 | DEFERRED / not normal-path blocker | Implement bounded revision continuation after changes_requested; do not advertise it in F6-MINI. |
-| F6-MINI | CURRENT / Issue #116 / PR #117 Draft | One browser workspace reaches unpublished COMPLETE without CLI/SQL normal-path intervention. |
-| O1 | NEXT RELEASE GATE | Fresh backup/restore proof, actual DB/runtime inspection and supported local release. |
+| F6-MINI | IMPLEMENTED / PR #117 MERGED / Issue #116 open | Browser workspace code is merged; acceptance is not complete until F6.A1 passes. |
+| F6.A1 | CURRENT ACCEPTANCE / Issue #118 | Prior acceptance stopped fail-closed on Codex version drift. PR #122 exact repin is merged; #118 must be retargeted/reconfirmed to the exact current candidate before model execution resumes. |
+| OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
+| O1 | NEXT AFTER F6.A1 PASS | Fresh backup/restore proof, actual DB/runtime inspection and supported local release. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
 | F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on release candidate. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
@@ -66,6 +68,8 @@ Backend normal-path completion is an F5 acceptance outcome, not a claim that loc
 
 ### F6.1 - Shell and truthful system status
 
+Implementation note: the bounded F6-MINI browser workspace has merged via PR #117. The checklist below remains product-scope tracking; merged code is not equivalent to F6.A1 runtime acceptance.
+
 - [ ] Header: MOTGU ContentEngine, actual environment and readiness.
 - [ ] Menu: Production / New Journal / System-Runtime.
 - [ ] Compact footer/status: app version, schema/version where available, last refresh and freshness.
@@ -91,6 +95,23 @@ Backend normal-path completion is an F5 acceptance outcome, not a claim that loc
 - [ ] Refresh behavior and last-update age are explicit; unknown/inconsistent rows never disappear silently.
 - [ ] Only canonical backend fields; no invented Due, comment count, progress percentage or custom Labels/Project semantics.
 - [ ] Browser proof can finish a Journal without CLI/DB intervention in the normal content-production path.
+
+## F6.A1 - Browser acceptance on an exact current candidate
+
+- [ ] Update/reconfirm Issue #118 against one exact current acceptance candidate; do not silently replace its recorded old ref.
+- [ ] Use a fresh disposable clean checkout, isolated TEST DB, loopback-only runtime and protected Founder checkout untouched.
+- [ ] Prove canonical browser path from New Journal through `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` without normal-path SQL/CLI intervention.
+- [ ] Prove refresh/double-click/per-locale final approval/terminal refresh idempotency checks without extra model work.
+- [ ] Record exact bindings, ContentVersions, ModelCalls/ToolCalls, publication delta and operational-DB non-interference.
+- [ ] Close #116 only after bounded F6.A1 acceptance PASS.
+
+## OpenCodeReview advisory review process
+
+- [x] OCR-01 merged via PR #121; Issue #119 closed.
+- [x] Exact-ref wrapper rejects moving/symbolic/short refs and is regression-tested.
+- [x] Tests, operational scripts/config and OCR config are first-class review scope.
+- [ ] Use OCR on the next 3-5 code-bearing PRs and record true defects / missing tests / false positives before considering OCR-02 automation.
+- [ ] Keep OCR advisory: no auto-fix, auto-merge or required merge gate during this evidence-collection window.
 
 ## O1 - Controlled local operational release
 
@@ -120,7 +141,8 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 ## Required in every implementation PR
 
 - [ ] Canonical input/output contracts, bounded tests and human-gate STOP documented.
-- [ ] Code, tests and semantic AI_context/TASKS updates in the same PR; exact runtime evidence lives in a dated log/comment.
+- [ ] Code, tests and semantic AI_context/TASKS updates in the same PR when status meaning changes; exact runtime evidence lives in a dated log/comment.
+- [ ] For code-bearing PRs, run exact-ref OpenCodeReview Delegation review after normal CI and before final MG disposition; classify findings before modifying code.
 - [ ] Code/CI/local proof/deployment states remain separate; self-review is not independent local execution evidence.
 - [ ] MG provides an exact local task; Founder copies it and returns the report; no direct-agent-channel assumption.
 - [ ] No automatic merge or runtime permission inherited from a roadmap.
