@@ -9,8 +9,8 @@ import subprocess
 from pathlib import Path
 
 from sqlalchemy import text
-from sqlalchemy.engine import URL, make_url
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.engine import URL
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
@@ -18,6 +18,7 @@ from app.modules.system.postgres_tools import postgres_tool_capability, postgres
 from app.modules.system.recovery import (
     RecoverySafetyError,
     database_fingerprint,
+    validate_operational_database_source,
     validate_restore_target,
 )
 
@@ -104,6 +105,36 @@ async def _drop_database(target: URL) -> None:
         await admin.dispose()
 
 
+async def _migration_revision(engine: AsyncEngine) -> str | None:
+    async with engine.connect() as connection:
+        revision = (
+            await connection.execute(text("select version_num from alembic_version"))
+        ).scalar_one_or_none()
+    return None if revision is None else str(revision)
+
+
+def _manifest_source_revision(
+    manifest: dict[str, object],
+    *,
+    source: URL,
+) -> str | None:
+    format_version = manifest.get("format_version")
+    if format_version not in {1, 2}:
+        raise RecoverySafetyError("manifest_format_unsupported")
+    if manifest.get("source_database") != source.database:
+        raise RecoverySafetyError("manifest_source_database_mismatch")
+    if format_version == 1:
+        return None
+    if manifest.get("source_host") != (source.host or "").lower():
+        raise RecoverySafetyError("manifest_source_host_mismatch")
+    if manifest.get("source_port") != (source.port or 5432):
+        raise RecoverySafetyError("manifest_source_port_mismatch")
+    raw_revision = manifest.get("source_migration_revision")
+    if not isinstance(raw_revision, str) or not raw_revision:
+        raise RecoverySafetyError("manifest_migration_revision_missing")
+    return raw_revision
+
+
 async def _main() -> int:
     args = _parse_args()
     backup = args.backup.expanduser().resolve()
@@ -126,6 +157,9 @@ async def _main() -> int:
     except (OSError, json.JSONDecodeError):
         print("RESTORE_TEST: BLOCKED (manifest_invalid)")
         return 2
+    if not isinstance(manifest, dict):
+        print("RESTORE_TEST: BLOCKED (manifest_invalid)")
+        return 2
     if manifest.get("dump_sha256") != _sha256(backup):
         print("RESTORE_TEST: BLOCKED (backup_hash_mismatch)")
         return 2
@@ -135,9 +169,14 @@ async def _main() -> int:
         return 2
 
     settings = get_settings()
-    source = make_url(settings.database_url)
-    if not source.database:
-        print("RESTORE_TEST: BLOCKED (source_database_missing)")
+    if settings.app_env.strip().lower() == "test":
+        print("RESTORE_TEST: BLOCKED (test_environment_not_operational)")
+        return 2
+    try:
+        source = validate_operational_database_source(settings.database_url)
+        expected_revision = _manifest_source_revision(manifest, source=source)
+    except RecoverySafetyError as exc:
+        print(f"RESTORE_TEST: BLOCKED ({exc.code})")
         return 2
     restore_database = args.restore_database or f"{source.database}_restore_test"
     restore_url = source.set(database=restore_database)
@@ -153,8 +192,18 @@ async def _main() -> int:
     source_engine = create_async_engine(settings.database_url, poolclass=NullPool)
     try:
         source_before = await database_fingerprint(source_engine)
+        source_revision_before = await _migration_revision(source_engine)
     except Exception:
-        print("RESTORE_TEST: BLOCKED (source_fingerprint_failed)")
+        await source_engine.dispose()
+        print("RESTORE_TEST: BLOCKED (source_state_failed)")
+        return 2
+    if source_before.to_dict() != expected:
+        await source_engine.dispose()
+        print("RESTORE_TEST: BLOCKED (source_fingerprint_mismatch_manifest)")
+        return 2
+    if expected_revision is not None and source_revision_before != expected_revision:
+        await source_engine.dispose()
+        print("RESTORE_TEST: BLOCKED (source_migration_revision_mismatch_manifest)")
         return 2
 
     try:
@@ -183,21 +232,27 @@ async def _main() -> int:
         restored_engine = create_async_engine(target, poolclass=NullPool)
         try:
             restored = await database_fingerprint(restored_engine)
+            restored_revision = await _migration_revision(restored_engine)
         finally:
             await restored_engine.dispose()
 
         source_after = await database_fingerprint(source_engine)
-        if source_before != source_after:
+        source_revision_after = await _migration_revision(source_engine)
+        if source_before != source_after or source_revision_before != source_revision_after:
             print("RESTORE_TEST: BLOCKED (source_database_changed)")
             return 2
         if restored.to_dict() != expected:
             print("RESTORE_TEST: BLOCKED (restored_fingerprint_mismatch)")
             return 2
+        if expected_revision is not None and restored_revision != expected_revision:
+            print("RESTORE_TEST: BLOCKED (restored_migration_revision_mismatch)")
+            return 2
 
         print(
             "RESTORE_TEST: READY "
             f"(mode={capability.mode}; database={target.database}; "
-            f"cases={restored.content_cases}; runs={restored.content_runs}; "
+            f"revision={restored_revision}; cases={restored.content_cases}; "
+            f"runs={restored.content_runs}; "
             f"approvals={restored.approvals}; artifacts={restored.artifacts}; "
             f"versions={restored.content_versions}; artifact_hash={restored.artifact_hash}; "
             f"lineage_hash={restored.lineage_hash})"

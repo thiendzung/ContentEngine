@@ -8,12 +8,17 @@ from types import SimpleNamespace
 import pytest
 
 from app.modules.system import postgres_tools
-from app.modules.system.recovery import RecoverySafetyError, validate_restore_target
+from app.modules.system.recovery import (
+    RecoverySafetyError,
+    validate_operational_database_source,
+    validate_restore_target,
+)
 from app.modules.system.test_database import (
     TestDatabasePreparationError as DatabasePreparationError,
 )
 from app.modules.system.test_database import validate_test_database_target
 from scripts.ops_backup import BackupSafetyError, _backup_dir
+from scripts.ops_restore_verify import _manifest_source_revision
 
 ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = ROOT / "backend"
@@ -84,6 +89,146 @@ def test_restore_guard_rejects_unsafe_identifier() -> None:
                 'contentengine_restore_test";drop_database'
             ),
         )
+
+
+def test_operational_source_guard_accepts_loopback_operational_database() -> None:
+    source = validate_operational_database_source(OPERATIONAL)
+    assert source.database == "contentengine"
+
+
+@pytest.mark.parametrize(
+    ("database_url", "code"),
+    [
+        (
+            "postgresql+asyncpg://contentengine:contentengine@db.example.com:5432/contentengine",
+            "operational_database_not_loopback",
+        ),
+        (
+            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_test",
+            "operational_database_looks_disposable",
+        ),
+        (
+            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_restore_test",
+            "operational_database_looks_disposable",
+        ),
+        (
+            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/postgres",
+            "operational_database_looks_disposable",
+        ),
+    ],
+)
+def test_operational_source_guard_rejects_unsafe_sources(
+    database_url: str,
+    code: str,
+) -> None:
+    with pytest.raises(RecoverySafetyError, match=code):
+        validate_operational_database_source(database_url)
+
+
+def test_restore_guard_rejects_remote_target() -> None:
+    with pytest.raises(RecoverySafetyError, match="restore_database_not_loopback"):
+        validate_restore_target(
+            source_url=OPERATIONAL,
+            restore_url=(
+                "postgresql+asyncpg://contentengine:contentengine@db.example.com:5432/"
+                "contentengine_restore_test"
+            ),
+        )
+
+
+def test_restore_guard_rejects_different_loopback_port() -> None:
+    with pytest.raises(RecoverySafetyError, match="restore_database_server_mismatch"):
+        validate_restore_target(
+            source_url=OPERATIONAL,
+            restore_url=(
+                "postgresql+asyncpg://contentengine:contentengine@localhost:55432/"
+                "contentengine_restore_test"
+            ),
+        )
+
+
+def test_manifest_source_contract_allows_legacy_manifest_with_exact_database() -> None:
+    source = validate_operational_database_source(OPERATIONAL)
+    manifest = {
+        "format_version": 1,
+        "source_database": "contentengine",
+    }
+    assert _manifest_source_revision(manifest, source=source) is None
+
+
+def test_manifest_source_contract_rejects_unknown_format() -> None:
+    source = validate_operational_database_source(OPERATIONAL)
+    manifest = {
+        "format_version": 3,
+        "source_database": "contentengine",
+    }
+    with pytest.raises(RecoverySafetyError, match="manifest_format_unsupported"):
+        _manifest_source_revision(manifest, source=source)
+
+
+def test_manifest_source_contract_accepts_v2_exact_identity() -> None:
+    source = validate_operational_database_source(OPERATIONAL)
+    manifest = {
+        "format_version": 2,
+        "source_database": "contentengine",
+        "source_host": "localhost",
+        "source_port": 5432,
+        "source_migration_revision": "20260914_0027",
+    }
+    assert _manifest_source_revision(manifest, source=source) == "20260914_0027"
+
+
+@pytest.mark.parametrize(
+    ("manifest", "code"),
+    [
+        (
+            {
+                "format_version": 2,
+                "source_database": "contentengine_other",
+                "source_host": "localhost",
+                "source_port": 5432,
+                "source_migration_revision": "20260914_0027",
+            },
+            "manifest_source_database_mismatch",
+        ),
+        (
+            {
+                "format_version": 2,
+                "source_database": "contentengine",
+                "source_host": "127.0.0.1",
+                "source_port": 5432,
+                "source_migration_revision": "20260914_0027",
+            },
+            "manifest_source_host_mismatch",
+        ),
+        (
+            {
+                "format_version": 2,
+                "source_database": "contentengine",
+                "source_host": "localhost",
+                "source_port": 55432,
+                "source_migration_revision": "20260914_0027",
+            },
+            "manifest_source_port_mismatch",
+        ),
+        (
+            {
+                "format_version": 2,
+                "source_database": "contentengine",
+                "source_host": "localhost",
+                "source_port": 5432,
+            },
+            "manifest_migration_revision_missing",
+        ),
+    ],
+)
+def test_manifest_source_contract_rejects_identity_drift(
+    manifest: dict[str, object],
+    code: str,
+) -> None:
+    source = validate_operational_database_source(OPERATIONAL)
+    with pytest.raises(RecoverySafetyError, match=code):
+        _manifest_source_revision(manifest, source=source)
 
 
 def test_backup_directory_inside_repository_is_rejected(
