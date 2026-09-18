@@ -3,6 +3,11 @@
     "backend/tests/**/*.py",
     "frontend/**/*.test.{ts,tsx}",
     "frontend/**/__tests__/**/*.{ts,tsx}",
+    ".github/workflows/**/*.{yml,yaml}",
+    ".opencodereview/**/*.{json,md}",
+    "Makefile",
+    "compose.yaml",
+    ".env.example",
     "docs/**/*.md"
   ],
   "exclude": [
@@ -39,6 +44,11 @@
       "rule": "ContentEngine backend invariants: preserve explicit authority boundaries, immutable lineage/audit identity, deterministic exact-ref behavior, bounded execution, and fail-closed handling of stale, ambiguous, or inconsistent state. Flag silent latest-record guessing, hidden side effects, approval/authorization widening, unbounded retries, or changes that make code/CI/local-runtime/deployment states indistinguishable."
     },
     {
+      "path": "backend/scripts/**/*.py",
+      "merge_system_rule": true,
+      "rule": "Operational scripts must fail closed. Flag destructive defaults, accidental operational-DB targeting, secret leakage, implicit migrations/activation, unsafe environment assumptions, non-idempotent recovery actions, or commands that mutate runtime state without explicit authorization and evidence."
+    },
+    {
       "path": "backend/migrations/**/*.py",
       "merge_system_rule": true,
       "rule": "Migration review: protect historical data and immutable audit lineage, keep the migration chain linear, ensure upgrade/downgrade behavior is coherent, and flag destructive or backfilling assumptions that are not explicitly bounded. Never silently weaken DB constraints that enforce workflow identity, approvals, route decisions, or artifact lineage."
@@ -57,6 +67,26 @@
       "path": ".github/workflows/**/*.{yml,yaml}",
       "merge_system_rule": true,
       "rule": "CI must not access operational databases or secrets unnecessarily. Review checks for deterministic refs, least privilege, untrusted PR secret exposure, unsafe checkout/script execution, and accidental conversion of advisory OpenCodeReview findings into an unreviewed auto-fix or auto-merge path."
+    },
+    {
+      "path": ".opencodereview/**/*",
+      "merge_system_rule": true,
+      "rule": "OpenCodeReview configuration is part of the review safety boundary. Flag rules that silently exclude critical production/tests, widen authorization, introduce secrets, make direct LLM mode the default, accept moving refs as exact evidence, or weaken advisory-only behavior."
+    },
+    {
+      "path": "Makefile",
+      "merge_system_rule": true,
+      "rule": "Make targets must fail closed, preserve exact-ref and test/operational isolation, surface command failures, avoid secret leakage, and never turn advisory review into auto-fix/auto-merge. Pay special attention to shell pipeline exit status and moving-ref defaults."
+    },
+    {
+      "path": "compose.yaml",
+      "merge_system_rule": true,
+      "rule": "Compose/runtime configuration must preserve loopback-only exposure, stable operational volume identity, explicit test isolation, and safe service defaults. Flag accidental public binds, volume replacement, or environment mixing."
+    },
+    {
+      "path": ".env.example",
+      "merge_system_rule": true,
+      "rule": "Example environment files must contain placeholders only, document safe defaults, and must not include real credentials, operational connection strings, or defaults that can target production unintentionally."
     },
     {
       "path": "docs/**/*.md",
