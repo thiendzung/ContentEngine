@@ -12,6 +12,7 @@ from test_ce05_review_console import (
     _hash,
     isolated_session,
 )
+from test_operator_quality import _complete_f3_writers
 
 from app.modules.content_engine.journal.models import JournalRequiredLocale
 from app.modules.content_engine.journal.operator_runtime import (
@@ -148,6 +149,75 @@ async def _add_unapproved_active_version(
         )
     )
     await session.flush()
+
+
+async def _finalize_real_f3_writer_runs(session: AsyncSession):
+    fixture, outputs, _outline_result = await _complete_f3_writers(session)
+    case_id = fixture.run.content_case_id
+    writer_runs = list(
+        (
+            await session.scalars(
+                select(ContentRun)
+                .where(
+                    ContentRun.content_case_id == case_id,
+                    ContentRun.run_mode == "localize",
+                )
+                .order_by(ContentRun.created_at, ContentRun.id)
+            )
+        ).all()
+    )
+    assert len(writer_runs) == 2
+    for writer_run in writer_runs:
+        variant = await session.get(LocaleVariant, writer_run.locale_variant_id)
+        assert variant is not None
+        if writer_run.content_item_id is None:
+            item = ContentItem(
+                project_id=writer_run.project_id,
+                content_case_id=case_id,
+                locale_variant_id=variant.id,
+                content_type="journal",
+                canonical_key=f"journal:{case_id}:{variant.locale}",
+            )
+            session.add(item)
+            await session.flush()
+            writer_run.content_item_id = item.id
+        assert writer_run.content_item_id is not None
+        payload = outputs[variant.locale]
+        final_artifact = Artifact(
+            run_id=writer_run.id,
+            artifact_type="final_content",
+            locale=variant.locale,
+            version=1,
+            content_json=payload,
+            content_hash=_hash(payload),
+        )
+        session.add(final_artifact)
+        await session.flush()
+        session.add_all(
+            [
+                Approval(
+                    run_id=writer_run.id,
+                    step_key="final_review",
+                    artifact_id=final_artifact.id,
+                    decision="approved",
+                    actor_id="founder",
+                    comment="completion fixture",
+                ),
+                ContentVersion(
+                    content_item_id=writer_run.content_item_id,
+                    version_no=1,
+                    final_artifact_id=final_artifact.id,
+                    change_reason="completion fixture",
+                    status="approved",
+                    content_json=payload,
+                    created_by_run_id=writer_run.id,
+                ),
+            ]
+        )
+        await transition_run(session, run_id=writer_run.id, status="running")
+        await transition_run(session, run_id=writer_run.id, status="completed")
+    await session.flush()
+    return fixture, writer_runs
 
 
 @pytest.mark.asyncio
@@ -318,6 +388,87 @@ async def test_stale_final_review_decision_for_other_artifact_does_not_block_com
         )
         assert state.status == "COMPLETE"
         assert state.blocker_code is None
+
+
+@pytest.mark.asyncio
+async def test_consumed_outline_source_run_may_remain_waiting_approval_at_complete() -> None:
+    async with isolated_session() as session:
+        fixture, _writer_runs = await _finalize_real_f3_writer_runs(session)
+        source_run = await session.get(ContentRun, fixture.run.id)
+        assert source_run is not None
+        assert source_run.status == "waiting_approval"
+        assert source_run.current_step == "outline"
+
+        state = await get_operator_state(
+            session,
+            content_case_id=source_run.content_case_id,
+        )
+        assert state.status == "COMPLETE"
+        assert state.blocker_code is None
+
+
+@pytest.mark.asyncio
+async def test_unconsumed_waiting_outline_source_run_still_blocks_complete() -> None:
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(session)
+        session.add_all(
+            [
+                JournalRequiredLocale(
+                    content_case_id=fixture.content_case.id,
+                    locale="en",
+                    role="source",
+                    declared_by="founder",
+                ),
+                JournalRequiredLocale(
+                    content_case_id=fixture.content_case.id,
+                    locale="vi-VN",
+                    role="translation",
+                    declared_by="founder",
+                ),
+            ]
+        )
+        await session.flush()
+
+        source_run = await session.scalar(
+            select(ContentRun).where(
+                ContentRun.content_case_id == fixture.content_case.id,
+                ContentRun.current_step == "outline",
+            )
+        )
+        assert source_run is not None
+        assert source_run.status == "waiting_approval"
+
+        state = await get_operator_state(
+            session,
+            content_case_id=fixture.content_case.id,
+        )
+        assert state.status != "COMPLETE"
+
+
+@pytest.mark.asyncio
+async def test_unrelated_active_run_still_blocks_complete() -> None:
+    async with isolated_session() as session:
+        fixture = await _canonical_completed_fixture(session)
+        session.add(
+            ContentRun(
+                project_id=fixture.content_case.project_id,
+                content_case_id=fixture.content_case.id,
+                locale_variant_id=fixture.variants["en"].id,
+                content_item_id=fixture.items["en"].id,
+                run_mode="eval",
+                status="pending",
+                current_step="unrelated_pending",
+                settings_snapshot_id=fixture.writer_runs["en"].settings_snapshot_id,
+                started_at=datetime.now(UTC),
+            )
+        )
+        await session.flush()
+
+        state = await get_operator_state(
+            session,
+            content_case_id=fixture.content_case.id,
+        )
+        assert state.status != "COMPLETE"
 
 
 @pytest.mark.asyncio
