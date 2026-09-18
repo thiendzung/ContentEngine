@@ -32,7 +32,7 @@ Live main: `2b20abeccbbc4377e10c2d5e9defaf09974f85c0` after PR #135. This main c
 | F5 | DONE / `PASS_F5_FINALIZATION` | PR #109 + PR #113; #110 accepted exact VI/EN approvals -> ContentVersions -> `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`. |
 | F6-MINI | DONE / browser acceptance PASS | Browser workspace and canonical end-to-end browser acceptance are complete; #116/#118 and related P1 trackers are closed. |
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
-| OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview v1.12.5 Delegation Mode is advisory; exact-ref wrapper and regression tests are on main. |
+| OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | O1 | O1.0-O1.2 DONE / O1.3 IMPLEMENTATION / Issue #136 | Read-only inspection, fresh backup+isolated restore, migration rehearsal and operational source migration to `20260915_0034` are PASS; controlled runtime lifecycle proof remains. |
 | F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual Journal cases. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
@@ -88,6 +88,6 @@ Recovery, idempotency and wrong-version approval tests ship with each affected s
 
 UI displays only canonical data. Health can be unknown/stale; installed CLI is not worker liveness. `Approved / Not published` is distinct from publishing. No invented due dates, percentages, accounts or activity.
 
-OpenCodeReview is a second semantic reviewer, not workflow authority or runtime proof. For routine OCR use, keep the reviewed v1.12.5 behavior, use Git >=2.41, require exact full commit SHAs, include tests/operational config in review scope, and classify every finding before code changes.
+OpenCodeReview is a second semantic reviewer, not workflow authority or runtime proof. For routine OCR use, use the verified v1.12.6 baseline, Git >=2.41, exact full commit SHAs, tests/operational config in review scope, and classify every finding before code changes. OCR-01 historical evidence remains tied to v1.12.5.
 
 Operational migration requires explicit authorization, backup/restore proof and frozen-M1 verification. New Model Routing policy activation is optional for V1 when existing approved routes suffice. No WordPress/publish, Artwork expansion, vector DB, native Codex multi-agent or Antigravity production activation in this completion scope.
