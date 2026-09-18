@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import signal
 
 from scripts.run_operator_worker import _run
 
@@ -11,11 +12,20 @@ _IDLE_SECONDS = 2.5
 _FAILURE_SECONDS = 5.0
 
 
-async def _loop() -> None:
-    while True:
+async def _wait_for_stop(stop: asyncio.Event, timeout: float) -> None:
+    try:
+        await asyncio.wait_for(stop.wait(), timeout=timeout)
+    except TimeoutError:
+        pass
+
+
+async def _loop(stop: asyncio.Event | None = None) -> None:
+    stop_event = stop or asyncio.Event()
+    while not stop_event.is_set():
+        delay = _IDLE_SECONDS
         try:
             await _run(emit_idle=False)
-        except (KeyboardInterrupt, asyncio.CancelledError):
+        except asyncio.CancelledError:
             raise
         except Exception as exc:
             print(
@@ -27,16 +37,30 @@ async def _loop() -> None:
                     sort_keys=True,
                 )
             )
-            await asyncio.sleep(_FAILURE_SECONDS)
-        else:
-            await asyncio.sleep(_IDLE_SECONDS)
+            delay = _FAILURE_SECONDS
+
+        if stop_event.is_set():
+            return
+        await _wait_for_stop(stop_event, delay)
+
+
+def _install_signal_handlers(stop: asyncio.Event) -> None:
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(signum, stop.set)
+        except NotImplementedError:  # pragma: no cover - non-POSIX event loops
+            pass
+
+
+async def _main() -> None:
+    stop = asyncio.Event()
+    _install_signal_handlers(stop)
+    await _loop(stop)
 
 
 def main() -> None:
-    try:
-        asyncio.run(_loop())
-    except KeyboardInterrupt:
-        pass
+    asyncio.run(_main())
 
 
 if __name__ == "__main__":
