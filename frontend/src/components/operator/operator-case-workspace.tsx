@@ -160,7 +160,12 @@ function AngleCard({
 }) {
   return (
     <article className={selected ? "angle-card selected" : "angle-card"}>
-      <button className="angle-card-select" onClick={onSelect} type="button">
+      <button
+        aria-pressed={selected}
+        className="angle-card-select"
+        onClick={onSelect}
+        type="button"
+      >
         <span className="angle-choice" aria-hidden="true">{selected ? "●" : "○"}</span>
         <span>
           <small>Góc {candidate.angle_id}</small>
