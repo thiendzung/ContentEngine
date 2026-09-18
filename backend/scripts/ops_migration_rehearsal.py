@@ -632,7 +632,11 @@ async def _main() -> int:
     except Exception:
         blocker = "migration_rehearsal_unexpected_failure"
     finally:
-        if source_revision_before is not None and source_fingerprint_before is not None:
+        if (
+            source_revision_before is not None
+            and source_fingerprint_before is not None
+            and source_documents_before is not None
+        ):
             try:
                 source_revision_after, source_fingerprint_after = await _database_state(
                     source_engine
