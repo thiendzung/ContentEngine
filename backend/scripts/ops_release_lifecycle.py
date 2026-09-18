@@ -800,28 +800,6 @@ async def _main() -> int:
         (log_root / "startup").mkdir(parents=True, exist_ok=True)
         (log_root / "restart").mkdir(parents=True, exist_ok=True)
 
-        env = os.environ.copy()
-        cycle_one = await _run_cycle(
-            cycle="startup",
-            engine=engine,
-            baseline=baseline,
-            env=env,
-            log_root=log_root,
-            npm=frontend_build["npm"],
-            settings_version=settings.app_version,
-            settings_environment=settings.app_env,
-        )
-        cycle_two = await _run_cycle(
-            cycle="restart",
-            engine=engine,
-            baseline=baseline,
-            env=env,
-            log_root=log_root,
-            npm=frontend_build["npm"],
-            settings_version=settings.app_version,
-            settings_environment=settings.app_env,
-        )
-
         evidence = {
             "mode": "controlled_release_lifecycle",
             "checkout": checkout,
@@ -834,9 +812,36 @@ async def _main() -> int:
             "runtime_before": runtime_before,
             "idle_state_before": idle_state,
             "baseline": baseline,
-            "cycles": [cycle_one, cycle_two],
+            "cycles": [],
             "log_root": str(log_root),
         }
+
+        env = os.environ.copy()
+        cycle_one = await _run_cycle(
+            cycle="startup",
+            engine=engine,
+            baseline=baseline,
+            env=env,
+            log_root=log_root,
+            npm=frontend_build["npm"],
+            settings_version=settings.app_version,
+            settings_environment=settings.app_env,
+        )
+        cycles = evidence["cycles"]
+        assert isinstance(cycles, list)
+        cycles.append(cycle_one)
+
+        cycle_two = await _run_cycle(
+            cycle="restart",
+            engine=engine,
+            baseline=baseline,
+            env=env,
+            log_root=log_root,
+            npm=frontend_build["npm"],
+            settings_version=settings.app_version,
+            settings_environment=settings.app_env,
+        )
+        cycles.append(cycle_two)
 
         preflight = await build_operational_preflight()
         evidence["post_release_preflight"] = preflight
