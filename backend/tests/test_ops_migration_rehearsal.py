@@ -262,3 +262,33 @@ def test_schema_contract_contains_expected_migration_objects() -> None:
     assert "model_route_decisions" in rehearsal._EXPECTED_TABLES
     assert "validate_source_document_observation" in rehearsal._EXPECTED_FUNCTIONS
     assert rehearsal._EXPECTED_TRIGGERS["routed_model_calls_guard"] == "model_calls"
+
+
+def test_manifest_blocks_when_backup_hash_cannot_be_read(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    backup = tmp_path / "snapshot.dump"
+    manifest = tmp_path / "snapshot.json"
+    backup.write_bytes(b"snapshot")
+    manifest.write_text(
+        json.dumps(
+            {
+                "format_version": 2,
+                "dump_sha256": rehearsal._EXPECTED_DUMP_SHA256,
+                "fingerprint": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def unreadable(_path: Path) -> str:
+        raise OSError("unreadable")
+
+    monkeypatch.setattr(rehearsal, "_sha256", unreadable)
+
+    with pytest.raises(
+        rehearsal.MigrationRehearsalError,
+        match="backup_hash_unavailable",
+    ):
+        rehearsal._load_manifest(backup, manifest)
