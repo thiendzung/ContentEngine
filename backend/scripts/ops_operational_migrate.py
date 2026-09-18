@@ -61,6 +61,25 @@ class OperationalMigrationError(RuntimeError):
         super().__init__(code)
 
 
+def _final_document(
+    *,
+    status: str,
+    payload: dict[str, object],
+    blocker: str | None = None,
+    secondary_blockers: list[str] | None = None,
+    migration_attempted: bool | None = None,
+) -> dict[str, object]:
+    document = dict(payload)
+    document["status"] = status
+    if blocker is not None:
+        document["blocker"] = blocker
+    if secondary_blockers is not None:
+        document["secondary_blockers"] = list(secondary_blockers)
+    if migration_attempted is not None:
+        document["migration_attempted"] = migration_attempted
+    return document
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fail-closed operational migration from the approved O1 source state"
@@ -493,14 +512,13 @@ async def _main() -> int:
     if blocker is not None:
         print(
             json.dumps(
-                {
-                    "status": "BLOCKED",
-                    "mode": "operational_source_migration",
-                    "blocker": blocker,
-                    "secondary_blockers": secondary_blockers,
-                    "migration_attempted": migration_attempted,
-                    **result_payload,
-                },
+                _final_document(
+                    status="BLOCKED",
+                    payload=result_payload,
+                    blocker=blocker,
+                    secondary_blockers=secondary_blockers,
+                    migration_attempted=migration_attempted,
+                ),
                 sort_keys=True,
                 indent=2,
             )
@@ -510,7 +528,7 @@ async def _main() -> int:
     result_payload["secondary_blockers"] = secondary_blockers
     print(
         json.dumps(
-            {"status": "READY", **result_payload},
+            _final_document(status="READY", payload=result_payload),
             sort_keys=True,
             indent=2,
         )
