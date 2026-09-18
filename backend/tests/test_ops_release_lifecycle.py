@@ -28,9 +28,12 @@ def test_validate_checkout_requires_exact_clean_head_and_local_venv(
 ) -> None:
     head = "a" * 40
     backend_root = tmp_path / "backend"
-    python = backend_root / ".venv" / "bin" / "python"
+    venv = backend_root / ".venv"
+    python = venv / "bin" / "python"
     python.parent.mkdir(parents=True)
     python.touch()
+    (venv / "lib").mkdir()
+    (venv / "pyvenv.cfg").write_text("home = /python\n", encoding="utf-8")
 
     def fake_git(*args: str) -> str:
         if args == ("rev-parse", "HEAD"):
@@ -42,12 +45,14 @@ def test_validate_checkout_requires_exact_clean_head_and_local_venv(
     monkeypatch.setattr(lifecycle, "_run_git", fake_git)
     monkeypatch.setattr(lifecycle, "_backend_root", lambda: backend_root)
     monkeypatch.setattr(lifecycle.sys, "executable", str(python))
+    monkeypatch.setattr(lifecycle.sys, "prefix", str(venv))
 
     result = lifecycle._validate_checkout(head)
 
     assert result["head"] == head
     assert result["clean"] is True
-    assert result["python"] == str(python.resolve())
+    assert result["python"] == str(python.absolute())
+    assert result["python_prefix"] == str(venv.absolute())
 
 
 @pytest.mark.parametrize(
@@ -67,9 +72,12 @@ def test_validate_checkout_fails_closed(
     code: str,
 ) -> None:
     backend_root = tmp_path / "backend"
-    python = backend_root / ".venv" / "bin" / "python"
+    venv = backend_root / ".venv"
+    python = venv / "bin" / "python"
     python.parent.mkdir(parents=True)
     python.touch()
+    (venv / "lib").mkdir()
+    (venv / "pyvenv.cfg").write_text("home = /python\n", encoding="utf-8")
 
     def fake_git(*args: str) -> str:
         if args == ("rev-parse", "HEAD"):
@@ -81,6 +89,7 @@ def test_validate_checkout_fails_closed(
     monkeypatch.setattr(lifecycle, "_run_git", fake_git)
     monkeypatch.setattr(lifecycle, "_backend_root", lambda: backend_root)
     monkeypatch.setattr(lifecycle.sys, "executable", str(python))
+    monkeypatch.setattr(lifecycle.sys, "prefix", str(venv))
 
     with pytest.raises(lifecycle.ReleaseLifecycleError, match=code):
         lifecycle._validate_checkout(head)
@@ -92,16 +101,26 @@ def test_validate_checkout_rejects_historical_python(
 ) -> None:
     head = "a" * 40
     backend_root = tmp_path / "backend"
-    expected = backend_root / ".venv" / "bin" / "python"
+    expected_venv = backend_root / ".venv"
+    expected = expected_venv / "bin" / "python"
     expected.parent.mkdir(parents=True)
     expected.touch()
-    other = tmp_path / "historical" / ".venv" / "bin" / "python"
+    (expected_venv / "lib").mkdir()
+    (expected_venv / "pyvenv.cfg").write_text("home = /python\n", encoding="utf-8")
+
+    other_venv = tmp_path / "historical" / ".venv"
+    other = other_venv / "bin" / "python"
     other.parent.mkdir(parents=True)
     other.touch()
 
-    monkeypatch.setattr(lifecycle, "_run_git", lambda *args: head if args[0] == "rev-parse" else "")
+    monkeypatch.setattr(
+        lifecycle,
+        "_run_git",
+        lambda *args: head if args[0] == "rev-parse" else "",
+    )
     monkeypatch.setattr(lifecycle, "_backend_root", lambda: backend_root)
     monkeypatch.setattr(lifecycle.sys, "executable", str(other))
+    monkeypatch.setattr(lifecycle.sys, "prefix", str(other_venv))
 
     with pytest.raises(
         lifecycle.ReleaseLifecycleError,
@@ -117,18 +136,27 @@ def test_frontend_build_requires_exact_checkout_artifacts(
     frontend = tmp_path / "frontend"
     build_id = frontend / ".next" / "BUILD_ID"
     next_binary = frontend / "node_modules" / ".bin" / "next"
+    package_lock = frontend / "package-lock.json"
     build_id.parent.mkdir(parents=True)
     next_binary.parent.mkdir(parents=True)
     build_id.write_text("build-123\n", encoding="utf-8")
     next_binary.touch()
+    package_lock.write_text('{"lockfileVersion": 3}\n', encoding="utf-8")
 
     monkeypatch.setattr(lifecycle, "_frontend_root", lambda: frontend)
-    monkeypatch.setattr(lifecycle.shutil, "which", lambda name: "/usr/bin/npm" if name == "npm" else None)
+    monkeypatch.setattr(
+        lifecycle.shutil,
+        "which",
+        lambda name: "/usr/bin/npm" if name == "npm" else None,
+    )
 
-    assert lifecycle._validate_frontend_build() == {
-        "npm": "/usr/bin/npm",
-        "build_id": "build-123",
-    }
+    result = lifecycle._validate_frontend_build()
+
+    assert result["npm"] == "/usr/bin/npm"
+    assert result["build_id"] == "build-123"
+    assert result["package_lock_sha256"] == lifecycle.hashlib.sha256(
+        package_lock.read_bytes()
+    ).hexdigest()
 
 
 def test_prestart_runtime_guard_accepts_stopped_runtime(
