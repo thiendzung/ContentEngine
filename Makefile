@@ -12,7 +12,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight backup restore-test backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -63,6 +63,9 @@ test-db-prepare:
 test-db-reset:
 	cd backend && APP_ENV=test .venv/bin/python -m scripts.prepare_test_database --reset
 	cd backend && APP_ENV=test .venv/bin/alembic upgrade head
+
+ops-inspect:
+	cd backend && .venv/bin/python -m scripts.ops_inspect
 
 ops-preflight:
 	cd backend && .venv/bin/python -m scripts.ops_preflight
