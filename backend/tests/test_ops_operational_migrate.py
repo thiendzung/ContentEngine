@@ -70,6 +70,8 @@ def test_runtime_guard_accepts_stopped_app(
     assert migrate._runtime_guard() == {
         "backend_port_8000": "STOPPED",
         "frontend_port_3000": "STOPPED",
+        "backend_processes": [],
+        "frontend_processes": [],
         "worker_processes": [],
     }
 
@@ -79,6 +81,8 @@ def test_runtime_guard_accepts_stopped_app(
     [
         (8000, "", "backend_runtime_active"),
         (3000, "", "frontend_runtime_active"),
+        (None, "123 uvicorn app.main:app --host 127.0.0.1\n", "backend_runtime_active"),
+        (None, "123 next dev\n", "frontend_runtime_active"),
         (None, "123 python -m scripts.run_operator_worker\n", "worker_runtime_active"),
         (None, "123 celery -A app worker\n", "worker_runtime_active"),
     ],
