@@ -12,7 +12,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -88,19 +88,19 @@ frontend-check:
 
 check: backend-check frontend-check
 
-ocr-preview:
-	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact ref is required" && exit 2)
-	@test -n "$(OCR_HEAD)" || (echo "OCR_HEAD exact ref is required" && exit 2)
-	@git rev-parse --verify "$(OCR_BASE)^{commit}" >/dev/null
-	@git rev-parse --verify "$(OCR_HEAD)^{commit}" >/dev/null
+ocr-validate-refs:
+	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact full commit SHA is required" && exit 2)
+	@test -n "$(OCR_HEAD)" || (echo "OCR_HEAD exact full commit SHA is required" && exit 2)
+	@base_resolved=$(git rev-parse --verify "$(OCR_BASE)^{commit}" 2>/dev/null) || { echo "OCR_BASE must resolve to a commit"; exit 2; }; \
+		test "$base_resolved" = "$(OCR_BASE)" || { echo "OCR_BASE must be the exact full commit SHA, not a symbolic, moving, or abbreviated ref"; exit 2; }
+	@head_resolved=$(git rev-parse --verify "$(OCR_HEAD)^{commit}" 2>/dev/null) || { echo "OCR_HEAD must resolve to a commit"; exit 2; }; \
+		test "$head_resolved" = "$(OCR_HEAD)" || { echo "OCR_HEAD must be the exact full commit SHA, not a symbolic, moving, or abbreviated ref"; exit 2; }
+
+ocr-preview: ocr-validate-refs
 	mkdir -p "$(dir $(OCR_PREVIEW_OUTPUT))"
 	ocr delegate preview --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" > "$(OCR_PREVIEW_OUTPUT)"
 	cat "$(OCR_PREVIEW_OUTPUT)"
 
-ocr-review-direct:
-	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact ref is required" && exit 2)
-	@test -n "$(OCR_HEAD)" || (echo "OCR_HEAD exact ref is required" && exit 2)
-	@git rev-parse --verify "$(OCR_BASE)^{commit}" >/dev/null
-	@git rev-parse --verify "$(OCR_HEAD)^{commit}" >/dev/null
+ocr-review-direct: ocr-validate-refs
 	mkdir -p "$(dir $(OCR_OUTPUT))"
 	ocr review --audience agent --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" --output "$(OCR_OUTPUT)"
