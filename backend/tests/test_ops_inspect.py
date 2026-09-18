@@ -182,3 +182,53 @@ async def test_operational_inspection_rejects_test_environment(
         match="test_environment_not_operational",
     ):
         await ops_inspect.build_operational_inspection()
+
+
+@pytest.mark.asyncio
+async def test_operational_inspection_preserves_schema_when_fingerprint_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = SimpleNamespace(
+        app_env="development",
+        app_version="0.1.0-ce05",
+        database_url="postgresql+asyncpg://contentengine:x@localhost:5432/contentengine",
+    )
+    monkeypatch.setattr(ops_inspect, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        ops_inspect,
+        "_repository_state",
+        lambda _root: {"head": "c" * 40, "clean": True},
+    )
+    monkeypatch.setattr(ops_inspect, "_expected_migration_head", lambda: "20260915_0034")
+
+    async def fake_snapshot(_database_url: str) -> dict[str, object]:
+        return {
+            "current_database": "contentengine",
+            "current_user": "contentengine",
+            "server_address": "127.0.0.1",
+            "server_port": 5432,
+            "server_version": "17.0",
+            "migration_revision": "20260915_0034",
+        }
+
+    async def failed_fingerprint(_database_url: str) -> dict[str, object]:
+        raise ops_inspect.OperationalInspectionError(
+            "operational_database_fingerprint_failed"
+        )
+
+    monkeypatch.setattr(ops_inspect, "_database_snapshot", fake_snapshot)
+    monkeypatch.setattr(
+        ops_inspect,
+        "_database_fingerprint_snapshot",
+        failed_fingerprint,
+    )
+
+    result = await ops_inspect.build_operational_inspection()
+    database = result["database"]
+
+    assert result["status"] == "BLOCKED"
+    assert result["blockers"] == ["operational_database_fingerprint_failed"]
+    assert isinstance(database, dict)
+    assert database["migration_revision"] == "20260915_0034"
+    assert database["fingerprint"] is None
+    assert database["fingerprint_status"] == "BLOCKED"
