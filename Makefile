@@ -94,7 +94,8 @@ ocr-preview:
 	@git rev-parse --verify "$(OCR_BASE)^{commit}" >/dev/null
 	@git rev-parse --verify "$(OCR_HEAD)^{commit}" >/dev/null
 	mkdir -p "$(dir $(OCR_PREVIEW_OUTPUT))"
-	ocr delegate preview --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" | tee "$(OCR_PREVIEW_OUTPUT)"
+	ocr delegate preview --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" > "$(OCR_PREVIEW_OUTPUT)"
+	cat "$(OCR_PREVIEW_OUTPUT)"
 
 ocr-review-direct:
 	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact ref is required" && exit 2)
