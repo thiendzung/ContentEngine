@@ -90,3 +90,20 @@ jobs:
       - name: Frontend build
         working-directory: frontend
         run: npm run build
+
+      - name: O1.3 capture generated frontend release inputs
+        working-directory: frontend
+        run: |
+          echo "O13_PACKAGE_LOCK_B64_BEGIN"
+          base64 -w0 package-lock.json
+          echo
+          echo "O13_PACKAGE_LOCK_B64_END"
+          echo "O13_NEXT_ENV_BEGIN"
+          cat next-env.d.ts
+          echo "O13_NEXT_ENV_END"
+          echo "O13_TSCONFIG_BEGIN"
+          cat tsconfig.json
+          echo "O13_TSCONFIG_END"
+          echo "O13_FRONTEND_STATUS_BEGIN"
+          git status --porcelain -- next-env.d.ts tsconfig.json package-lock.json
+          echo "O13_FRONTEND_STATUS_END"
