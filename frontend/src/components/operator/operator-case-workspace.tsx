@@ -342,16 +342,16 @@ function ProgressStrip({
   view: OperatorCaseView;
   review: ReviewCaseDetail | null;
 }) {
-  const angleDone = review?.locales.length !== undefined && Boolean(
-    review && (review.next_action !== "NOT_READY" || view.state.human_gate !== "angle"),
-  );
-  const outlineDone = view.writer_lanes.length > 0 || view.quality_lanes.length > 0
-    || view.state.human_gate === "final_review" || view.state.status === "COMPLETE";
-  const writersDone = view.writer_lanes.length > 0
-    && view.writer_lanes.every((lane) => lane.status === "completed");
-  const qualityDone = view.quality_lanes.length > 0
+  const angleDone = Boolean(review?.angle);
+  const outlineDone = Boolean(review?.outline);
+  const writersDone = (
+    view.writer_lanes.length > 0
+    && view.writer_lanes.every((lane) => lane.status === "completed")
+  ) || view.quality_lanes.length > 0;
+  const qualityDone = (
+    view.quality_lanes.length > 0
     && view.quality_lanes.every((lane) => lane.pending_approval_ready)
-    || view.state.human_gate === "final_review"
+  ) || view.state.human_gate === "final_review"
     || view.state.status === "COMPLETE";
   const finalDone = view.state.status === "COMPLETE";
   const steps = [
