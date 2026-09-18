@@ -381,12 +381,10 @@ async def _wait_http(
     timeout_seconds: float,
 ) -> dict[str, object]:
     deadline = time.monotonic() + timeout_seconds
-    last_status: int | None = None
     async with httpx.AsyncClient(timeout=2.0, follow_redirects=False) as client:
         while time.monotonic() < deadline:
             try:
                 response = await client.get(url)
-                last_status = response.status_code
                 if response.status_code == expected_status:
                     payload: object
                     try:
