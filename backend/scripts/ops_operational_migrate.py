@@ -22,6 +22,7 @@ from app.modules.system.recovery import (
     validate_operational_database_source,
 )
 from scripts.ops_migration_rehearsal import (
+    MigrationRehearsalError,
     _EXPECTED_FUNCTIONS,
     _EXPECTED_SOURCE_REVISION,
     _EXPECTED_TABLES,
@@ -333,7 +334,7 @@ async def _main() -> int:
         source_revision_manifest = _manifest_source_revision(manifest, source)
         chain = _upgrade_chain(_alembic_script(), source_revision_manifest)
         expected_fingerprint = _expected_fingerprint(manifest)
-    except OperationalMigrationError as exc:
+    except (OperationalMigrationError, MigrationRehearsalError) as exc:
         print(
             json.dumps(
                 {
@@ -459,7 +460,7 @@ async def _main() -> int:
         runtime_after = _runtime_guard()
         result_payload["runtime_after"] = runtime_after
         result_payload["application_runtime"] = "STOPPED"
-    except OperationalMigrationError as exc:
+    except (OperationalMigrationError, MigrationRehearsalError) as exc:
         blocker = exc.code
     except Exception:
         blocker = "operational_migration_unexpected_failure"
