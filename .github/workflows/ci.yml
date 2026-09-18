@@ -94,10 +94,12 @@ jobs:
       - name: O1.3 capture generated frontend release inputs
         working-directory: frontend
         run: |
-          echo "O13_PACKAGE_LOCK_B64_BEGIN"
-          base64 -w0 package-lock.json
+          echo "O13_PACKAGE_LOCK_SHA256"
+          sha256sum package-lock.json
+          echo "O13_PACKAGE_LOCK_GZIP_B64_BEGIN"
+          gzip -9 -c package-lock.json | base64 -w0
           echo
-          echo "O13_PACKAGE_LOCK_B64_END"
+          echo "O13_PACKAGE_LOCK_GZIP_B64_END"
           echo "O13_NEXT_ENV_BEGIN"
           cat next-env.d.ts
           echo "O13_NEXT_ENV_END"
