@@ -8,13 +8,19 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy.engine import URL, make_url
+from sqlalchemy import text
+from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.modules.system.postgres_tools import postgres_tool_capability, postgres_tool_command
-from app.modules.system.recovery import database_fingerprint
+from app.modules.system.recovery import (
+    DatabaseFingerprint,
+    RecoverySafetyError,
+    database_fingerprint,
+    validate_operational_database_source,
+)
 
 
 class BackupSafetyError(RuntimeError):
@@ -66,6 +72,25 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+async def _source_state(database_url: str) -> tuple[str, DatabaseFingerprint]:
+    engine = create_async_engine(database_url, poolclass=NullPool)
+    try:
+        async with engine.connect() as connection:
+            revision = (
+                await connection.execute(text("select version_num from alembic_version"))
+            ).scalar_one_or_none()
+        if revision is None:
+            raise BackupSafetyError("source_migration_revision_missing")
+        fingerprint = await database_fingerprint(engine)
+    except BackupSafetyError:
+        raise
+    except Exception as exc:
+        raise BackupSafetyError("source_state_failed") from exc
+    finally:
+        await engine.dispose()
+    return str(revision), fingerprint
+
+
 async def _main() -> int:
     capability = postgres_tool_capability()
     if capability is None:
@@ -79,9 +104,13 @@ async def _main() -> int:
         return 2
 
     settings = get_settings()
-    source_url = make_url(settings.database_url)
-    if source_url.get_backend_name() != "postgresql" or not source_url.database:
-        print("BACKUP: BLOCKED (operational_database_unsupported)")
+    if settings.app_env.strip().lower() == "test":
+        print("BACKUP: BLOCKED (test_environment_not_operational)")
+        return 2
+    try:
+        source_url = validate_operational_database_source(settings.database_url)
+    except RecoverySafetyError as exc:
+        print(f"BACKUP: BLOCKED ({exc.code})")
         return 2
 
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -90,14 +119,13 @@ async def _main() -> int:
     dump_path = backup_dir / f"{stem}.dump"
     manifest_path = backup_dir / f"{stem}.json"
 
-    engine = create_async_engine(settings.database_url, poolclass=NullPool)
     try:
-        fingerprint = await database_fingerprint(engine)
-    except Exception:
-        print("BACKUP: BLOCKED (source_fingerprint_failed)")
+        source_revision_before, fingerprint_before = await _source_state(
+            settings.database_url
+        )
+    except BackupSafetyError as exc:
+        print(f"BACKUP: BLOCKED ({exc.code})")
         return 2
-    finally:
-        await engine.dispose()
 
     container_mode = capability.mode == "container"
     connection_args, env = _pg_connection_args(source_url, container_mode=container_mode)
@@ -121,20 +149,41 @@ async def _main() -> int:
         print("BACKUP: BLOCKED (pg_dump_failed)")
         return 2
 
+    try:
+        source_revision_after, fingerprint_after = await _source_state(
+            settings.database_url
+        )
+    except BackupSafetyError as exc:
+        dump_path.unlink(missing_ok=True)
+        print(f"BACKUP: BLOCKED ({exc.code})")
+        return 2
+    if (
+        source_revision_after != source_revision_before
+        or fingerprint_after != fingerprint_before
+    ):
+        dump_path.unlink(missing_ok=True)
+        print("BACKUP: BLOCKED (source_changed_during_backup)")
+        return 2
+
     manifest = {
-        "format_version": 1,
+        "format_version": 2,
         "created_at": datetime.now(UTC).isoformat(),
         "source_database": source_url.database,
+        "source_host": (source_url.host or "").lower(),
+        "source_port": source_url.port or 5432,
+        "source_migration_revision": source_revision_before,
         "tool_mode": capability.mode,
         "dump_sha256": _sha256(dump_path),
-        "fingerprint": fingerprint.to_dict(),
+        "fingerprint": fingerprint_before.to_dict(),
     }
     manifest_path.write_text(
         json.dumps(manifest, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
     )
     print(
-        f"BACKUP: READY (mode={capability.mode}; dump={dump_path}; manifest={manifest_path})"
+        "BACKUP: READY "
+        f"(mode={capability.mode}; revision={source_revision_before}; "
+        f"dump={dump_path}; manifest={manifest_path})"
     )
     return 0
 

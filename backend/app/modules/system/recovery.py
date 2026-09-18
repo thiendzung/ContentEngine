@@ -12,6 +12,7 @@ from app.modules.content_engine.models import ContentCase, ContentVersion
 from app.modules.harness.models import Approval, Artifact, ContentRun
 
 _SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 class RecoverySafetyError(RuntimeError):
@@ -40,15 +41,38 @@ def _identity(url: URL) -> tuple[str, int | None, str]:
     return ((url.host or "").lower(), url.port, (url.database or "").lower())
 
 
+def validate_operational_database_source(database_url: str) -> URL:
+    source = make_url(database_url)
+    database_name = source.database or ""
+    host = (source.host or "").lower()
+    if source.get_backend_name() != "postgresql":
+        raise RecoverySafetyError("operational_database_backend_unsupported")
+    if host not in _LOCAL_HOSTS:
+        raise RecoverySafetyError("operational_database_not_loopback")
+    if not _SAFE_IDENTIFIER.fullmatch(database_name):
+        raise RecoverySafetyError("unsafe_operational_database_name")
+    lowered = database_name.lower()
+    if lowered == "postgres" or "test" in lowered or "restore" in lowered:
+        raise RecoverySafetyError("operational_database_looks_disposable")
+    return source
+
+
 def validate_restore_target(*, source_url: str, restore_url: str) -> URL:
-    source = make_url(source_url)
+    source = validate_operational_database_source(source_url)
     target = make_url(restore_url)
     database_name = target.database or ""
+    host = (target.host or "").lower()
     if target.get_backend_name() != "postgresql":
         raise RecoverySafetyError("restore_database_backend_unsupported")
+    if host not in _LOCAL_HOSTS:
+        raise RecoverySafetyError("restore_database_not_loopback")
     safe_name = _SAFE_IDENTIFIER.fullmatch(database_name)
     if not safe_name or "restore_test" not in database_name.lower():
         raise RecoverySafetyError("unsafe_restore_database_name")
+    if (target.host or "").lower() != (source.host or "").lower():
+        raise RecoverySafetyError("restore_database_server_mismatch")
+    if (target.port or 5432) != (source.port or 5432):
+        raise RecoverySafetyError("restore_database_server_mismatch")
     if _identity(source) == _identity(target):
         raise RecoverySafetyError("restore_database_matches_source")
     return target
