@@ -32,7 +32,7 @@ set -a
 source /Users/thiendung/MOTGU-AI/ContentEngine/.env
 set +a
 export CONTENTENGINE_OPERATIONAL_REPO="/Users/thiendung/MOTGU-AI/ContentEngine"
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="/Applications/ChatGPT.app/Contents/Resources:$HOME/.local/bin:$PATH"
 command -v codex
 codex --version
 ```
@@ -113,6 +113,25 @@ Required:
 - migration_status = CURRENT;
 - blockers = [].
 
+## Pre-release operational preflight
+
+Before any backend/frontend/worker process is started, run:
+
+```sh
+make release-preflight
+```
+
+Required:
+
+- overall status `READY`;
+- operational database binding/connectivity READY;
+- migration CURRENT;
+- Codex executable resolves to the repository-approved exact version and passes no-tool/auth checks;
+- PostgreSQL tools READY.
+
+If this pre-release gate is BLOCKED, STOP before runtime startup. Do not run the lifecycle as a
+diagnostic.
+
 ## No-work safety gate
 
 Before the lifecycle process may start the worker, its built-in DB checks must prove:
@@ -153,7 +172,7 @@ After CI, exact-ref OCR and separate Founder authorization, run exactly:
 make release-lifecycle AUTHORIZED_HEAD="<EXACT_FOUNDER_AUTHORIZED_HEAD>"
 ```
 
-The harness performs two cycles.
+The harness first runs the same release preflight internally and only then performs two cycles.
 
 ### Cycle 1 — startup
 
