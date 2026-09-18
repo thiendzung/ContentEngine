@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
-from app.modules.system.preflight import build_operational_preflight
+from app.modules.system.preflight import build_release_preflight
 from app.modules.system.recovery import (
     RecoverySafetyError,
     database_fingerprint,
@@ -843,7 +843,7 @@ async def _main() -> int:
         )
         cycles.append(cycle_two)
 
-        preflight = await build_operational_preflight()
+        preflight = await build_release_preflight()
         evidence["post_release_preflight"] = preflight
         if preflight.get("status") != "READY":
             raise ReleaseLifecycleError("post_release_preflight_blocked")
