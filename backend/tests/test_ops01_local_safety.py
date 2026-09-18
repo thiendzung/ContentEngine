@@ -137,7 +137,7 @@ def test_operational_cli_modules_import_without_cycle() -> None:
             sys.executable,
             "-c",
             (
-                "import scripts.prepare_test_database; "
+                "import scripts.prepare_test_database; import scripts.ops_inspect; "
                 "import scripts.ops_preflight; "
                 "import scripts.ops_backup; "
                 "import scripts.ops_restore_verify"
