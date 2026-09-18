@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -39,7 +39,7 @@ from app.modules.content_engine.models import (
     ContentVersion,
     LocaleVariant,
 )
-from app.modules.harness.models import ContentRun, Job, StepRun
+from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun
 from app.modules.harness.persistence import enqueue_job
 from app.modules.knowledge.brief_binding import (
     KnowledgeBriefBindingError,
@@ -52,6 +52,8 @@ _JOURNAL_LOCALE_ALIASES = {
     "vi-vn": "vi-VN",
     "en": "en",
 }
+CompletionBindingState = Literal["complete", "missing", "invalid"]
+_COMPLETION_BINDING_BLOCKER = "operator_completion_binding_invalid"
 
 
 def normalize_journal_locale(value: str) -> str:
@@ -252,47 +254,235 @@ async def _start_focus(
     return run, step, job
 
 
+async def _required_locale_completion_binding(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    locale: str,
+) -> tuple[CompletionBindingState, dict[str, object]]:
+    """Resolve one required locale through the exact durable final-approval lineage."""
+
+    payload: dict[str, object] = {"locale": locale}
+    variants = list(
+        (
+            await session.scalars(
+                select(LocaleVariant).where(
+                    LocaleVariant.content_case_id == content_case_id,
+                    LocaleVariant.locale == locale,
+                )
+            )
+        ).all()
+    )
+    payload["variant_ids"] = [str(row.id) for row in variants]
+    if not variants:
+        payload["reason"] = "locale_variant_missing"
+        return "missing", payload
+    if len(variants) != 1:
+        payload["reason"] = "locale_variant_ambiguous"
+        return "invalid", payload
+    variant = variants[0]
+
+    items = list(
+        (
+            await session.scalars(
+                select(ContentItem).where(
+                    ContentItem.content_case_id == content_case_id,
+                    ContentItem.locale_variant_id == variant.id,
+                )
+            )
+        ).all()
+    )
+    payload["content_item_ids"] = [str(row.id) for row in items]
+    if not items:
+        payload["reason"] = "content_item_missing"
+        return "missing", payload
+    if len(items) != 1:
+        payload["reason"] = "content_item_ambiguous"
+        return "invalid", payload
+    item = items[0]
+    if item.content_type != "journal":
+        payload["reason"] = "content_item_type_mismatch"
+        return "invalid", payload
+
+    versions = list(
+        (
+            await session.scalars(
+                select(ContentVersion)
+                .where(
+                    ContentVersion.content_item_id == item.id,
+                    ContentVersion.status.in_(("approved", "published")),
+                )
+                .order_by(ContentVersion.version_no, ContentVersion.id)
+            )
+        ).all()
+    )
+    payload["active_content_versions"] = [
+        {
+            "id": str(row.id),
+            "version_no": row.version_no,
+            "status": row.status,
+            "final_artifact_id": str(row.final_artifact_id)
+            if row.final_artifact_id is not None
+            else None,
+            "created_by_run_id": str(row.created_by_run_id)
+            if row.created_by_run_id is not None
+            else None,
+            "content_hash": _stable_hash(row.content_json),
+        }
+        for row in versions
+    ]
+    if not versions:
+        payload["reason"] = "active_content_version_missing"
+        return "missing", payload
+    if len(versions) != 1:
+        payload["reason"] = "active_content_version_ambiguous"
+        return "invalid", payload
+    version = versions[0]
+    if version.final_artifact_id is None or version.created_by_run_id is None:
+        payload["reason"] = "content_version_final_binding_missing"
+        return "invalid", payload
+
+    final_artifact = await session.get(Artifact, version.final_artifact_id)
+    writer_run = await session.get(ContentRun, version.created_by_run_id)
+    if final_artifact is None or writer_run is None:
+        payload["reason"] = "content_version_final_binding_missing"
+        return "invalid", payload
+    payload["final_artifact"] = {
+        "id": str(final_artifact.id),
+        "run_id": str(final_artifact.run_id),
+        "artifact_type": final_artifact.artifact_type,
+        "locale": final_artifact.locale,
+        "version": final_artifact.version,
+        "content_hash": final_artifact.content_hash,
+    }
+    payload["writer_run"] = {
+        "id": str(writer_run.id),
+        "content_case_id": str(writer_run.content_case_id),
+        "locale_variant_id": str(writer_run.locale_variant_id),
+        "content_item_id": str(writer_run.content_item_id)
+        if writer_run.content_item_id is not None
+        else None,
+        "status": writer_run.status,
+    }
+    if (
+        final_artifact.artifact_type != "final_content"
+        or final_artifact.locale != locale
+        or final_artifact.run_id != writer_run.id
+        or writer_run.content_case_id != content_case_id
+        or writer_run.locale_variant_id != variant.id
+        or writer_run.content_item_id != item.id
+        or writer_run.status != "completed"
+        or version.final_artifact_id != final_artifact.id
+        or version.created_by_run_id != writer_run.id
+        or final_artifact.content_json is None
+        or version.content_json != final_artifact.content_json
+    ):
+        payload["reason"] = "content_version_final_binding_mismatch"
+        return "invalid", payload
+
+    approvals = list(
+        (
+            await session.scalars(
+                select(Approval)
+                .where(
+                    Approval.run_id == writer_run.id,
+                    Approval.step_key == "final_review",
+                    Approval.artifact_id == final_artifact.id,
+                )
+                .order_by(Approval.created_at, Approval.id)
+            )
+        ).all()
+    )
+    payload["final_approvals"] = [
+        {
+            "id": str(row.id),
+            "artifact_id": str(row.artifact_id),
+            "decision": row.decision,
+            "actor_id": row.actor_id,
+        }
+        for row in approvals
+    ]
+    if len(approvals) != 1:
+        payload["reason"] = "final_approval_missing_or_ambiguous"
+        return "invalid", payload
+    approval = approvals[0]
+    if (
+        approval.artifact_id != final_artifact.id
+        or approval.decision != "approved"
+        or approval.actor_id != "founder"
+    ):
+        payload["reason"] = "final_approval_binding_mismatch"
+        return "invalid", payload
+
+    payload["reason"] = None
+    return "complete", payload
+
+
 async def _completion_state(
     session: AsyncSession,
     *,
     content_case_id: UUID,
     base: OperatorState,
 ) -> OperatorState:
-    """Replace the temporary OPS-02 locale-count heuristic with persisted requirements."""
+    """Derive COMPLETE only from required locales and their exact final lineage."""
 
-    required = {
-        row.locale
-        for row in (
+    required_rows = list(
+        (
             await session.scalars(
-                select(JournalRequiredLocale).where(
-                    JournalRequiredLocale.content_case_id == content_case_id
-                )
+                select(JournalRequiredLocale)
+                .where(JournalRequiredLocale.content_case_id == content_case_id)
+                .order_by(JournalRequiredLocale.locale, JournalRequiredLocale.id)
             )
         ).all()
-    }
-    if not required:
+    )
+    if not required_rows:
         return base
+    required = [row.locale for row in required_rows]
 
-    approved = {
-        str(locale)
-        for locale in (
-            await session.scalars(
-                select(LocaleVariant.locale)
-                .join(ContentItem, ContentItem.locale_variant_id == LocaleVariant.id)
-                .join(ContentVersion, ContentVersion.content_item_id == ContentItem.id)
-                .where(
-                    LocaleVariant.content_case_id == content_case_id,
-                    ContentVersion.status.in_(("approved", "published")),
-                )
-            )
-        ).all()
-    }
-    if base.blocker_code != "operator_completion_requirements_not_wired":
-        return base
-    missing = sorted(required - approved)
-    if missing:
+    bindings: list[dict[str, object]] = []
+    states: dict[str, CompletionBindingState] = {}
+    for locale in required:
+        binding_state, payload = await _required_locale_completion_binding(
+            session,
+            content_case_id=content_case_id,
+            locale=locale,
+        )
+        states[locale] = binding_state
+        bindings.append(payload)
+
+    completion_version = _stable_hash(
+        {
+            "base": base.state_version,
+            "required_locales": required,
+            "bindings": bindings,
+        }
+    )
+    invalid = sorted(locale for locale, state in states.items() if state == "invalid")
+    if invalid:
         return base.model_copy(
             update={
+                "state_version": completion_version,
+                "status": "BLOCKED",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "human_gate": None,
+                "blocker_code": _COMPLETION_BINDING_BLOCKER,
+                "blocker_message": (
+                    "Liên kết bản duyệt cuối không nhất quán; chưa được phép đánh dấu hoàn tất."
+                ),
+                "last_checkpoint": (
+                    "Locale có liên kết hoàn tất không hợp lệ: " + ", ".join(invalid)
+                ),
+            }
+        )
+
+    missing = sorted(locale for locale, state in states.items() if state == "missing")
+    if missing:
+        if base.blocker_code != "operator_completion_requirements_not_wired":
+            return base
+        return base.model_copy(
+            update={
+                "state_version": completion_version,
                 "blocker_code": "operator_required_locales_incomplete",
                 "blocker_message": (
                     "Chưa có bản nội dung được duyệt cho mọi locale bắt buộc."
@@ -313,6 +503,7 @@ async def _completion_state(
         return base
     return base.model_copy(
         update={
+            "state_version": completion_version,
             "status": "COMPLETE",
             "phase": "Hoàn tất",
             "primary_intent": None,
@@ -321,7 +512,8 @@ async def _completion_state(
             "blocker_code": None,
             "blocker_message": None,
             "last_checkpoint": (
-                "Mọi locale bắt buộc đã có ContentVersion được duyệt."
+                "Mọi locale bắt buộc đã có ContentVersion khớp exact final_content "
+                "và Founder Approval."
             ),
         }
     )
