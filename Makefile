@@ -6,12 +6,13 @@ COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
 MODEL ?=
 APPROVED_BY ?=
-OCR_BASE ?= main
-OCR_HEAD ?= HEAD
+OCR_BASE ?=
+OCR_HEAD ?=
+OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-preview ocr-review
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -88,8 +89,17 @@ frontend-check:
 check: backend-check frontend-check
 
 ocr-preview:
-	ocr review --preview --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)"
+	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact ref is required" && exit 2)
+	@test -n "$(OCR_HEAD)" || (echo "OCR_HEAD exact ref is required" && exit 2)
+	@git rev-parse --verify "$(OCR_BASE)^{commit}" >/dev/null
+	@git rev-parse --verify "$(OCR_HEAD)^{commit}" >/dev/null
+	mkdir -p "$(dir $(OCR_PREVIEW_OUTPUT))"
+	ocr delegate preview --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" | tee "$(OCR_PREVIEW_OUTPUT)"
 
-ocr-review:
+ocr-review-direct:
+	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact ref is required" && exit 2)
+	@test -n "$(OCR_HEAD)" || (echo "OCR_HEAD exact ref is required" && exit 2)
+	@git rev-parse --verify "$(OCR_BASE)^{commit}" >/dev/null
+	@git rev-parse --verify "$(OCR_HEAD)^{commit}" >/dev/null
 	mkdir -p "$(dir $(OCR_OUTPUT))"
 	ocr review --audience agent --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" --output "$(OCR_OUTPUT)"
