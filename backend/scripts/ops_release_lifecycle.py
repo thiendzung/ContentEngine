@@ -527,13 +527,20 @@ def _stop_runtime(runtime: dict[str, Any]) -> dict[str, object]:
     }
 
 
-def _stop_all(runtimes: dict[str, dict[str, Any]]) -> list[dict[str, object]]:
+def _stop_all(
+    runtimes: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, object]], list[str]]:
     results: list[dict[str, object]] = []
+    errors: list[str] = []
     for name in ("worker", "frontend", "backend"):
         runtime = runtimes.get(name)
-        if runtime is not None:
+        if runtime is None:
+            continue
+        try:
             results.append(_stop_runtime(runtime))
-    return results
+        except Exception:
+            errors.append(f"{name}_shutdown_failed")
+    return results, errors
 
 
 def _assert_runtime_stopped() -> dict[str, object]:
@@ -660,8 +667,13 @@ async def _run_cycle(
     finally:
         if runtimes:
             try:
-                shutdown = _stop_all(runtimes)
+                shutdown, cleanup_errors = _stop_all(runtimes)
                 cycle_evidence["shutdown"] = shutdown
+                if cleanup_errors:
+                    cycle_evidence["cleanup_errors"] = cleanup_errors
+                    secondary.extend(
+                        f"{code}_{cycle}" for code in cleanup_errors
+                    )
             except Exception:
                 secondary.append(f"runtime_cleanup_failed_{cycle}")
 
