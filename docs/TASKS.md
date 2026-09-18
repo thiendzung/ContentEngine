@@ -14,6 +14,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | F3 | DONE / acceptance PASS / PR #104 MERGED | Independent VI/EN Writers accepted. |
 | F4 | DONE / acceptance PASS / PR #105 MERGED | Exact quality path reaches final_review. |
 | F5 | DONE / PASS_F5_FINALIZATION | #109 + #113 merged; #110 accepted COMPLETE / Approved / Not published. |
+| F5.2 | DEFERRED / not normal-path blocker | Implement bounded revision continuation after changes_requested; do not advertise it in F6-MINI. |
 | F6-MINI | CURRENT / Issue #116 / PR #117 Draft | One browser workspace reaches unpublished COMPLETE without CLI/SQL normal-path intervention. |
 | O1 | NEXT RELEASE GATE | Fresh backup/restore proof, actual DB/runtime inspection and supported local release. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
@@ -52,14 +53,14 @@ Exact contract: `logs/2026-09-16-f3-independent-writers-plan.md`.
 
 - [x] Review binds exact final bytes, applicable checks and package identity for each required locale.
 - [x] Approve/request changes/reject have explicit durable outcomes; unsupported actions are not advertised.
-- [x] A changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
+- [ ] F5.2: a changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
 - [x] Reuse canonical ContentItem/ContentVersion persistence; never silently overwrite approved history.
 - [x] Finalization is atomic or durably recoverable; partial locale completion never reports COMPLETE.
 - [x] Required locale membership AND exact approved lineage determine COMPLETE, not row count.
 - [x] Replay/stale approval/partial failure/restart tests and exact-head local acceptance PASS.
 - [x] Publication remains absent; UI reads Approved / Not published.
 
-Backend normal-path completion is an F5 acceptance outcome, not a claim that local production deployment or full UI is finished.
+Backend normal-path completion is an F5 acceptance outcome, not a claim that local production deployment or full UI is finished. `changes_requested` / `rejected` are durable decisions, but the bounded revision continuation after `changes_requested` remains F5.2 and is intentionally not exposed by F6-MINI.
 
 ## F6 - Minimum full UI (three bounded tasks, not a new app)
 
