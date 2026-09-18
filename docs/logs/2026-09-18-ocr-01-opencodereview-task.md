@@ -20,7 +20,9 @@ If OCR is not installed, install the pinned release:
 OCR_VERSION=v1.12.5 npm install -g @alibaba-group/open-code-review
 ```
 
-Record `ocr version`. If a materially different version is already installed, do not silently treat its results as equivalent to the reviewed v1.12.5 behavior.
+Record `ocr version` and `git --version`. OpenCodeReview's integration documentation requires Git >= 2.41. A trial that happens to work on an older Git version is useful evidence, but it is not a supported local baseline. Upgrade the Agent Local OCR lane to Git >= 2.41 before relying on OCR for routine PR review.
+
+If a materially different OCR version is already installed, do not silently treat its results as equivalent to the reviewed v1.12.5 behavior.
 
 Do not store provider secrets in the repository.
 
@@ -58,7 +60,7 @@ This writes `artifacts/ocr/review.json`. Direct mode is not the default Agent Lo
 
 Return:
 - exact start/end HEAD and exact base/head refs;
-- OCR version;
+- OCR version and Git version;
 - preview total/reviewable/excluded files and merge-base;
 - `artifacts/ocr/preview.json` retained locally;
 - review coverage: reviewed files, skipped files with reason, coverage rate;
