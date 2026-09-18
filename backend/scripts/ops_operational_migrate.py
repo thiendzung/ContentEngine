@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import re
 import socket
 import subprocess
@@ -145,6 +146,12 @@ def _runtime_guard() -> dict[str, object]:
     }
 
 
+async def _current_database(engine: AsyncEngine) -> str:
+    async with engine.connect() as connection:
+        database = (await connection.execute(text("select current_database()"))).scalar_one()
+    return str(database)
+
+
 async def _whole_table_fingerprint(
     engine: AsyncEngine,
     *,
@@ -246,7 +253,7 @@ async def _future_schema_objects_present(engine: AsyncEngine) -> dict[str, list[
 def _run_source_upgrade(source: URL) -> None:
     if source.database != _EXPECTED_SOURCE_DATABASE:
         raise OperationalMigrationError("unexpected_operational_database")
-    env = dict(**subprocess.os.environ)
+    env = os.environ.copy()
     env["APP_ENV"] = "development"
     env["DATABASE_URL"] = source.render_as_string(hide_password=False)
 
@@ -347,6 +354,10 @@ async def _main() -> int:
     model_calls_before: dict[str, object] | None = None
 
     try:
+        actual_database_before = await _current_database(engine)
+        if actual_database_before != _EXPECTED_SOURCE_DATABASE:
+            raise OperationalMigrationError("database_identity_mismatch")
+
         revision_before, fingerprint_before = await _database_state(engine)
         source_documents_before = await _source_documents_fingerprint(engine)
         model_calls_before = await _whole_table_fingerprint(
@@ -367,6 +378,10 @@ async def _main() -> int:
 
         migration_attempted = True
         _run_source_upgrade(source)
+
+        actual_database_after = await _current_database(engine)
+        if actual_database_after != _EXPECTED_SOURCE_DATABASE:
+            raise OperationalMigrationError("database_identity_mismatch")
 
         revision_after, fingerprint_after = await _database_state(engine)
         source_documents_after = await _source_documents_fingerprint(engine)
@@ -395,6 +410,8 @@ async def _main() -> int:
             "runtime_before": runtime_before,
             "runtime_after": runtime_after,
             "source_database": source.database,
+            "actual_database_before": actual_database_before,
+            "actual_database_after": actual_database_after,
             "backup": str(backup),
             "manifest": str(manifest_path),
             "dump_sha256": manifest.get("dump_sha256"),
@@ -416,7 +433,7 @@ async def _main() -> int:
     except Exception:
         blocker = "operational_migration_unexpected_failure"
     finally:
-        if migration_attempted and revision_before is not None:
+        if migration_attempted and revision_before is not None and blocker is not None:
             try:
                 revision_final, fingerprint_final = await _database_state(engine)
                 source_documents_final = await _source_documents_fingerprint(engine)
