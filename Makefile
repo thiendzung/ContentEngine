@@ -6,8 +6,12 @@ COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
 MODEL ?=
 APPROVED_BY ?=
+OCR_BASE ?= main
+OCR_HEAD ?= HEAD
+OCR_OUTPUT ?= artifacts/ocr/review.json
+OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-preview ocr-review
 
 setup: backend-install frontend-install
 
@@ -82,3 +86,10 @@ frontend-check:
 	cd frontend && npm run build
 
 check: backend-check frontend-check
+
+ocr-preview:
+	ocr review --preview --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)"
+
+ocr-review:
+	mkdir -p "$(dir $(OCR_OUTPUT))"
+	ocr review --audience agent --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" --output "$(OCR_OUTPUT)"
