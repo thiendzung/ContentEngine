@@ -423,9 +423,25 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    loadSnapshot()
-      .then(() => {
+    loadOperatorCaseView(caseId)
+      .then(async (operatorView) => {
+        let reviewView: ReviewCaseDetail | null = null;
+        try {
+          reviewView = await loadReviewCase(caseId);
+        } catch (reviewError) {
+          if (
+            operatorView.state.human_gate === "final_review"
+            || operatorView.state.status === "COMPLETE"
+          ) {
+            throw reviewError;
+          }
+        }
+        return { operatorView, reviewView };
+      })
+      .then(({ operatorView, reviewView }) => {
         if (cancelled) return;
+        setView(operatorView);
+        setReview(reviewView);
         setError("");
         setLoading(false);
       })
@@ -437,7 +453,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [loadSnapshot]);
+  }, [caseId]);
 
   useEffect(() => {
     if (!view || !["QUEUED", "RUNNING"].includes(view.state.status)) return;
