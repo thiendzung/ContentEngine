@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -57,10 +58,20 @@ def _database_identity(database_url: str) -> dict[str, object]:
     }
 
 
-def _run_git(*args: str) -> str:
+def _operational_repository_root() -> Path:
+    configured = os.environ.get("CONTENTENGINE_OPERATIONAL_REPO")
+    if not configured:
+        return _repository_root()
+    candidate = Path(configured).expanduser().resolve()
+    if not candidate.is_dir():
+        raise OperationalInspectionError("operational_repository_missing")
+    return candidate
+
+
+def _run_git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", *args],
-        cwd=_repository_root(),
+        cwd=root,
         check=False,
         capture_output=True,
         text=True,
@@ -70,10 +81,10 @@ def _run_git(*args: str) -> str:
     return result.stdout.strip()
 
 
-def _repository_state() -> dict[str, object]:
+def _repository_state(root: Path) -> dict[str, object]:
     return {
-        "head": _run_git("rev-parse", "HEAD"),
-        "clean": _run_git("status", "--porcelain") == "",
+        "head": _run_git(root, "rev-parse", "HEAD"),
+        "clean": _run_git(root, "status", "--porcelain") == "",
     }
 
 
@@ -118,13 +129,16 @@ async def build_operational_inspection() -> dict[str, object]:
         raise OperationalInspectionError("test_environment_not_operational")
 
     identity = _database_identity(settings.database_url)
-    repository = _repository_state()
+    inspection_repository = _repository_state(_repository_root())
+    operational_repository = _repository_state(_operational_repository_root())
     expected_revision = _expected_migration_head()
     database = await _database_snapshot(settings.database_url)
 
     blockers: list[str] = []
-    if not repository["clean"]:
-        blockers.append("repository_worktree_dirty")
+    if not inspection_repository["clean"]:
+        blockers.append("inspection_repository_worktree_dirty")
+    if not operational_repository["clean"]:
+        blockers.append("operational_repository_worktree_dirty")
     if database["current_database"] != identity["database"]:
         blockers.append("database_identity_mismatch")
     if expected_revision is None:
@@ -139,7 +153,11 @@ async def build_operational_inspection() -> dict[str, object]:
             "environment": settings.app_env,
             "version": settings.app_version,
         },
-        "repository": repository,
+        "inspection_repository": inspection_repository,
+        "operational_repository": operational_repository,
+        "operational_repository_matches_inspection": (
+            operational_repository["head"] == inspection_repository["head"]
+        ),
         "configured_database": identity,
         "database": database,
         "code_migration_head": expected_revision,
