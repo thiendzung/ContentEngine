@@ -23,7 +23,7 @@ This task is read-only. It does not authorize later O1 stages.
 - Set `CONTENTENGINE_OPERATIONAL_REPO` to the existing operational checkout path.
 - Load the existing operational environment without printing secrets.
 - Do not substitute TEST/restore DB settings.
-- STOP if the operational checkout or database identity is ambiguous.
+- STOP if the operational checkout identity itself is ambiguous. A dirty historical checkout may be reported as a release condition when no active app runtime is using it; do not mutate it.
 
 ## Read-only inspection
 
@@ -42,10 +42,11 @@ The JSON must distinguish:
 - actual Alembic revision;
 - code migration head;
 - durable database fingerprint;
-- blockers.
+- `migration_status` (`CURRENT`, `REQUIRED`, or `UNKNOWN`);
+- `conditions` that must be resolved before later release stages;
+- blockers that make the inspection itself unsafe or incomplete.
 
-The command must exit non-zero on a dirty operational checkout, TEST/restore-looking database,
-non-loopback operational DB target, identity mismatch, or schema mismatch.
+The command must exit non-zero when the inspection itself is unsafe or incomplete, including a dirty inspector checkout, TEST/restore-looking database, non-loopback operational DB target, database identity mismatch, missing code migration head, or fingerprint failure. A dirty historical operational checkout and a schema revision mismatch are reported as `conditions`; they do not mutate anything and do not by themselves invalidate a completed read-only inspection. If an active backend/frontend/worker is proven to be running from a dirty checkout, report a runtime-identity blocker and STOP.
 
 ## Runtime/network evidence
 
@@ -80,8 +81,6 @@ Return exactly one:
 - `PASS_O1_0_READONLY_INSPECTION`
 - `BLOCKED_O1_0_<PRECISE_REASON>`
 
-Include exact inspector HEAD, operational HEAD/clean state, sanitized DB identity, actual/code
-migration revisions, database fingerprint, relevant runtime/network evidence, command exit codes,
-and confirmation that no operational mutation occurred.
+Include exact inspector HEAD, operational HEAD/clean state, sanitized DB identity, actual/code migration revisions, `migration_status`, conditions, blockers, database fingerprint, relevant runtime/network evidence, command exit codes, and confirmation that no operational mutation occurred. If no backend/frontend/worker is running, state that explicitly rather than treating the historical checkout as an active deployment.
 
 Then STOP. O1.1 backup/restore requires a separate Founder authorization.
