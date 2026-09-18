@@ -89,8 +89,8 @@ frontend-check:
 check: backend-check frontend-check
 
 ocr-validate-refs:
-	@printf '%s\n' "$(OCR_BASE)" | grep -Eq '^[0-9a-f]{40}$' || { echo "OCR_BASE must be the exact full 40-character lowercase commit SHA"; exit 2; }
-	@printf '%s\n' "$(OCR_HEAD)" | grep -Eq '^[0-9a-f]{40}$' || { echo "OCR_HEAD must be the exact full 40-character lowercase commit SHA"; exit 2; }
+	@$(PYTHON) -c 'import re, sys; sys.exit(0 if re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) else 2)' "$(OCR_BASE)" || { echo "OCR_BASE must be the exact full 40-character lowercase commit SHA"; exit 2; }
+	@$(PYTHON) -c 'import re, sys; sys.exit(0 if re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) else 2)' "$(OCR_HEAD)" || { echo "OCR_HEAD must be the exact full 40-character lowercase commit SHA"; exit 2; }
 	@git cat-file -e "$(OCR_BASE)^{commit}" 2>/dev/null || { echo "OCR_BASE must identify an existing commit"; exit 2; }
 	@git cat-file -e "$(OCR_HEAD)^{commit}" 2>/dev/null || { echo "OCR_HEAD must identify an existing commit"; exit 2; }
 
