@@ -6,8 +6,13 @@ COMPOSE_PROJECT_NAME ?= contentengine
 BACKUP ?=
 MODEL ?=
 APPROVED_BY ?=
+OCR_BASE ?=
+OCR_HEAD ?=
+OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
+OCR_OUTPUT ?= artifacts/ocr/review.json
+OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-preflight backup restore-test backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -82,3 +87,18 @@ frontend-check:
 	cd frontend && npm run build
 
 check: backend-check frontend-check
+
+ocr-validate-refs:
+	@$(PYTHON) -c 'import re, sys; sys.exit(0 if re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) else 2)' "$(OCR_BASE)" || { echo "OCR_BASE must be the exact full 40-character lowercase commit SHA"; exit 2; }
+	@$(PYTHON) -c 'import re, sys; sys.exit(0 if re.fullmatch(r"[0-9a-f]{40}", sys.argv[1]) else 2)' "$(OCR_HEAD)" || { echo "OCR_HEAD must be the exact full 40-character lowercase commit SHA"; exit 2; }
+	@git cat-file -e "$(OCR_BASE)^{commit}" 2>/dev/null || { echo "OCR_BASE must identify an existing commit"; exit 2; }
+	@git cat-file -e "$(OCR_HEAD)^{commit}" 2>/dev/null || { echo "OCR_HEAD must identify an existing commit"; exit 2; }
+
+ocr-preview: ocr-validate-refs
+	mkdir -p "$(dir $(OCR_PREVIEW_OUTPUT))"
+	ocr delegate preview --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" > "$(OCR_PREVIEW_OUTPUT)"
+	cat "$(OCR_PREVIEW_OUTPUT)"
+
+ocr-review-direct: ocr-validate-refs
+	mkdir -p "$(dir $(OCR_OUTPUT))"
+	ocr review --audience agent --format json --from "$(OCR_BASE)" --to "$(OCR_HEAD)" --background-file "$(OCR_BACKGROUND)" --output "$(OCR_OUTPUT)"

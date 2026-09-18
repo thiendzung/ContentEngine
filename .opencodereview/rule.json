@@ -1,0 +1,97 @@
+{
+  "include": [
+    "backend/tests/**/*.py",
+    "frontend/**/*.test.{ts,tsx}",
+    "frontend/**/__tests__/**/*.{ts,tsx}",
+    ".github/workflows/**/*.{yml,yaml}",
+    ".opencodereview/**/*.{json,md}",
+    "Makefile",
+    "compose.yaml",
+    ".env.example",
+    "docs/**/*.md"
+  ],
+  "exclude": [
+    "backend/openapi.json",
+    "frontend/.next/**",
+    "frontend/node_modules/**",
+    "artifacts/**",
+    "tmp/**"
+  ],
+  "rules": [
+    {
+      "path": "backend/app/modules/harness/**/*.py",
+      "merge_system_rule": true,
+      "rule": "ContentEngine harness invariants: preserve durable state, idempotency, bounded retries, worker lease/reclaim semantics, checkpoint/resume behavior, exact ContextManifest and immutable binding rules. Flag any retry of ambiguous external effects without reconciliation, duplicate side effects, swallowed failure state, unsafe fallbacks, or code paths that can silently bypass budgets or durable job state."
+    },
+    {
+      "path": "backend/app/modules/content_engine/journal/**/*.py",
+      "merge_system_rule": true,
+      "rule": "Journal workflow invariants: backend is workflow authority. Human gates must not be bypassed. Approval/decision logic must bind to the exact current artifact/version/hash and reject stale or conflicting state. Required locales are canonical and independent. Never infer latest/current artifacts ambiguously. Preserve warnings and fail closed on lineage or projection disagreement. Flag any path that can duplicate decisions, lose completed sibling work, or mutate accepted history."
+    },
+    {
+      "path": "backend/app/modules/publishing/**/*.py",
+      "merge_system_rule": true,
+      "rule": "Publishing is a separately authorized side effect. Flag any automatic publish path, missing durable intent/idempotency/reconciliation, weak ContentVersion binding, or behavior that could publish after ambiguous external outcomes. Publication permission must remain distinct from editorial approval."
+    },
+    {
+      "path": "backend/app/modules/system/**/*.py",
+      "merge_system_rule": true,
+      "rule": "System/runtime state must be truthful and fail closed. Unknown or stale health must not be reported as healthy. Do not infer worker liveness from installed software. Protect operational DB identity, environment boundaries, loopback-only assumptions, and secret-safe diagnostics."
+    },
+    {
+      "path": "backend/app/**/*.py",
+      "merge_system_rule": true,
+      "rule": "ContentEngine backend invariants: preserve explicit authority boundaries, immutable lineage/audit identity, deterministic exact-ref behavior, bounded execution, and fail-closed handling of stale, ambiguous, or inconsistent state. Flag silent latest-record guessing, hidden side effects, approval/authorization widening, unbounded retries, or changes that make code/CI/local-runtime/deployment states indistinguishable."
+    },
+    {
+      "path": "backend/scripts/**/*.py",
+      "merge_system_rule": true,
+      "rule": "Operational scripts must fail closed. Flag destructive defaults, accidental operational-DB targeting, secret leakage, implicit migrations/activation, unsafe environment assumptions, non-idempotent recovery actions, or commands that mutate runtime state without explicit authorization and evidence."
+    },
+    {
+      "path": "backend/migrations/**/*.py",
+      "merge_system_rule": true,
+      "rule": "Migration review: protect historical data and immutable audit lineage, keep the migration chain linear, ensure upgrade/downgrade behavior is coherent, and flag destructive or backfilling assumptions that are not explicitly bounded. Never silently weaken DB constraints that enforce workflow identity, approvals, route decisions, or artifact lineage."
+    },
+    {
+      "path": "backend/tests/**/*.py",
+      "merge_system_rule": true,
+      "rule": "Tests are first-class review targets in ContentEngine. Check that tests actually prove the claimed invariant and are not self-fulfilling. Prioritize stale approval rejection, idempotent replay, duplicate prevention, partial failure, restart/resume, wrong-version/hash rejection, ambiguous outcome reconciliation, sibling-lane preservation, and fail-closed behavior. Flag missing negative-path coverage when production logic changes an invariant."
+    },
+    {
+      "path": "frontend/**/*.{ts,tsx}",
+      "merge_system_rule": true,
+      "rule": "Frontend may send semantic user intent only; backend remains workflow authority. Flag client-side selection of stage/provider/model/prompt/recipe/worker, invented state, stale-state mutation, duplicate decisions on double click, or automatic retry after an ambiguous mutation result. Human approval actions must use exact persisted bindings and become disabled when projections disagree. Never expose publish actions unless separately authorized by backend semantics."
+    },
+    {
+      "path": ".github/workflows/**/*.{yml,yaml}",
+      "merge_system_rule": true,
+      "rule": "CI must not access operational databases or secrets unnecessarily. Review checks for deterministic refs, least privilege, untrusted PR secret exposure, unsafe checkout/script execution, and accidental conversion of advisory OpenCodeReview findings into an unreviewed auto-fix or auto-merge path."
+    },
+    {
+      "path": ".opencodereview/**/*",
+      "merge_system_rule": true,
+      "rule": "OpenCodeReview configuration is part of the review safety boundary. Flag rules that silently exclude critical production/tests, widen authorization, introduce secrets, make direct LLM mode the default, accept moving refs as exact evidence, or weaken advisory-only behavior."
+    },
+    {
+      "path": "Makefile",
+      "merge_system_rule": true,
+      "rule": "Make targets must fail closed, preserve exact-ref and test/operational isolation, surface command failures, avoid secret leakage, and never turn advisory review into auto-fix/auto-merge. Pay special attention to shell pipeline exit status and moving-ref defaults."
+    },
+    {
+      "path": "compose.yaml",
+      "merge_system_rule": true,
+      "rule": "Compose/runtime configuration must preserve loopback-only exposure, stable operational volume identity, explicit test isolation, and safe service defaults. Flag accidental public binds, volume replacement, or environment mixing."
+    },
+    {
+      "path": ".env.example",
+      "merge_system_rule": true,
+      "rule": "Example environment files must contain placeholders only, document safe defaults, and must not include real credentials, operational connection strings, or defaults that can target production unintentionally."
+    },
+    {
+      "path": "docs/**/*.md",
+      "merge_system_rule": true,
+      "rule": "Project docs are operational contracts. Flag contradictions between task status and repository truth, instructions that imply permissions not actually granted, stale exact refs presented as current, or wording that blurs code/CI/local-runtime/deployment/publication states. Do not nitpick prose style."
+    }
+  ]
+}
