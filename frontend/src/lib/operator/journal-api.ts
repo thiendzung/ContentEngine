@@ -239,6 +239,17 @@ export type ReviewLocalePanel = {
   next_action_label: string;
 };
 
+export type ReviewLineageArtifact = {
+  artifact: ReviewArtifactRef;
+  approval_id: string;
+  approved_by: string;
+};
+
+export type ReviewAngleLineage = ReviewLineageArtifact & {
+  selected_angle_id: string;
+  selected_working_title: string | null;
+};
+
 export type ReviewCaseDetail = {
   id: string;
   status: string;
@@ -248,6 +259,8 @@ export type ReviewCaseDetail = {
   reader_before: string;
   reader_after: string;
   content_hypothesis: string;
+  angle: ReviewAngleLineage | null;
+  outline: ReviewLineageArtifact | null;
   locales: ReviewLocalePanel[];
   quality_state: string;
   publication_state: string;
