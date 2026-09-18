@@ -432,13 +432,11 @@ async def _main() -> int:
 
         backfill = await _verify_backfill(engine)
         schema_objects = await _verify_schema_objects(engine)
-        runtime_after = _runtime_guard()
 
         result_payload = {
             "mode": "operational_source_migration",
             "checkout": checkout,
             "runtime_before": runtime_before,
-            "runtime_after": runtime_after,
             "source_database": source.database,
             "actual_database_before": actual_database_before,
             "actual_database_after": actual_database_after,
@@ -456,8 +454,11 @@ async def _main() -> int:
             "model_calls_after": model_calls_after,
             "backfill": backfill,
             "schema_objects": schema_objects,
-            "application_runtime": "STOPPED",
         }
+
+        runtime_after = _runtime_guard()
+        result_payload["runtime_after"] = runtime_after
+        result_payload["application_runtime"] = "STOPPED"
     except OperationalMigrationError as exc:
         blocker = exc.code
     except Exception:
