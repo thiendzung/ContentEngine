@@ -49,9 +49,33 @@ _SHUTDOWN_TIMEOUT_SECONDS = 10.0
 class ReleaseLifecycleError(RuntimeError):
     """Raised when O1.3 cannot prove a safe runtime lifecycle."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(
+        self,
+        code: str,
+        *,
+        secondary_blockers: list[str] | None = None,
+        evidence: dict[str, object] | None = None,
+    ) -> None:
         self.code = code
+        self.secondary_blockers = list(secondary_blockers or [])
+        self.evidence = dict(evidence or {})
         super().__init__(code)
+
+
+def _final_document(
+    *,
+    status: str,
+    evidence: dict[str, object],
+    blocker: str | None = None,
+    secondary_blockers: list[str] | None = None,
+) -> dict[str, object]:
+    document = dict(evidence)
+    document["status"] = status
+    if blocker is not None:
+        document["blocker"] = blocker
+    if secondary_blockers is not None:
+        document["secondary_blockers"] = list(secondary_blockers)
+    return document
 
 
 def _parse_args() -> argparse.Namespace:
@@ -577,6 +601,13 @@ async def _run_cycle(
     runtimes: dict[str, dict[str, Any]] = {}
     readiness: dict[str, object] | None = None
     shutdown: list[dict[str, object]] = []
+    primary: ReleaseLifecycleError | None = None
+    secondary: list[str] = []
+    cycle_evidence: dict[str, object] = {
+        "cycle": cycle,
+        "durable_before": "UNCHANGED",
+    }
+
     try:
         runtimes = _start_runtime(
             env=env,
@@ -588,6 +619,7 @@ async def _run_cycle(
             settings_version=settings_version,
             settings_environment=settings_environment,
         )
+        cycle_evidence["readiness"] = readiness
 
         during = await _durable_snapshot(engine)
         _require_snapshot_equal(
@@ -595,29 +627,78 @@ async def _run_cycle(
             during,
             code=f"durable_state_changed_during_{cycle}",
         )
+        cycle_evidence["durable_during"] = "UNCHANGED"
+    except ReleaseLifecycleError as exc:
+        primary = exc
+    except Exception:
+        primary = ReleaseLifecycleError(f"runtime_cycle_unexpected_failure_{cycle}")
     finally:
         if runtimes:
-            shutdown = _stop_all(runtimes)
+            try:
+                shutdown = _stop_all(runtimes)
+                cycle_evidence["shutdown"] = shutdown
+            except Exception:
+                secondary.append(f"runtime_cleanup_failed_{cycle}")
 
-    stopped = _assert_runtime_stopped()
-    if any(bool(row["forced_kill"]) for row in shutdown):
-        raise ReleaseLifecycleError(f"forced_runtime_kill_{cycle}")
+    try:
+        stopped = _assert_runtime_stopped()
+        cycle_evidence["stopped"] = stopped
+    except ReleaseLifecycleError as exc:
+        if primary is None:
+            primary = exc
+        elif exc.code != primary.code:
+            secondary.append(exc.code)
 
-    await _assert_idle_operational_state(engine)
-    after = await _durable_snapshot(engine)
-    _require_snapshot_equal(
-        baseline,
-        after,
-        code=f"durable_state_changed_after_{cycle}",
-    )
+    if shutdown and any(bool(row["forced_kill"]) for row in shutdown):
+        code = f"forced_runtime_kill_{cycle}"
+        if primary is None:
+            primary = ReleaseLifecycleError(code)
+        elif code != primary.code:
+            secondary.append(code)
 
-    return {
-        "cycle": cycle,
-        "readiness": readiness,
-        "shutdown": shutdown,
-        "stopped": stopped,
-        "durable_state": "UNCHANGED",
-    }
+    try:
+        idle_after = await _assert_idle_operational_state(engine)
+        cycle_evidence["idle_after"] = idle_after
+    except ReleaseLifecycleError as exc:
+        if primary is None:
+            primary = exc
+        elif exc.code != primary.code:
+            secondary.append(exc.code)
+
+    try:
+        after = await _durable_snapshot(engine)
+        _require_snapshot_equal(
+            baseline,
+            after,
+            code=f"durable_state_changed_after_{cycle}",
+        )
+        cycle_evidence["durable_after"] = "UNCHANGED"
+    except ReleaseLifecycleError as exc:
+        if primary is None:
+            primary = exc
+        elif exc.code != primary.code:
+            secondary.append(exc.code)
+    except Exception:
+        code = f"durable_state_verification_failed_after_{cycle}"
+        if primary is None:
+            primary = ReleaseLifecycleError(code)
+        else:
+            secondary.append(code)
+
+    if primary is not None:
+        secondary.extend(
+            code
+            for code in primary.secondary_blockers
+            if code != primary.code and code not in secondary
+        )
+        raise ReleaseLifecycleError(
+            primary.code,
+            secondary_blockers=secondary,
+            evidence=cycle_evidence,
+        )
+
+    cycle_evidence["durable_state"] = "UNCHANGED"
+    return cycle_evidence
 
 
 async def _main() -> int:
@@ -680,21 +761,7 @@ async def _main() -> int:
             settings_environment=settings.app_env,
         )
 
-        preflight = await build_operational_preflight()
-        if preflight.get("status") != "READY":
-            raise ReleaseLifecycleError("post_release_preflight_blocked")
-
-        final_snapshot = await _durable_snapshot(engine)
-        _require_snapshot_equal(
-            baseline,
-            final_snapshot,
-            code="durable_state_changed_after_lifecycle",
-        )
-        final_idle = await _assert_idle_operational_state(engine)
-        runtime_final = _assert_runtime_stopped()
-
         evidence = {
-            "status": "READY",
             "mode": "controlled_release_lifecycle",
             "checkout": checkout,
             "frontend_build": frontend_build,
@@ -707,14 +774,33 @@ async def _main() -> int:
             "idle_state_before": idle_state,
             "baseline": baseline,
             "cycles": [cycle_one, cycle_two],
-            "post_release_preflight": preflight,
-            "final_idle_state": final_idle,
-            "runtime_final": runtime_final,
-            "final_snapshot": final_snapshot,
             "log_root": str(log_root),
-            "content_model_publication_delta": "NONE",
         }
-    except (ReleaseLifecycleError, RecoverySafetyError) as exc:
+
+        preflight = await build_operational_preflight()
+        evidence["post_release_preflight"] = preflight
+        if preflight.get("status") != "READY":
+            raise ReleaseLifecycleError("post_release_preflight_blocked")
+
+        final_snapshot = await _durable_snapshot(engine)
+        _require_snapshot_equal(
+            baseline,
+            final_snapshot,
+            code="durable_state_changed_after_lifecycle",
+        )
+        final_idle = await _assert_idle_operational_state(engine)
+        runtime_final = _assert_runtime_stopped()
+
+        evidence["final_idle_state"] = final_idle
+        evidence["runtime_final"] = runtime_final
+        evidence["final_snapshot"] = final_snapshot
+        evidence["content_model_publication_delta"] = "NONE"
+    except ReleaseLifecycleError as exc:
+        blocker = exc.code
+        secondary_blockers.extend(exc.secondary_blockers)
+        if exc.evidence:
+            evidence["failure_cycle"] = exc.evidence
+    except RecoverySafetyError as exc:
         blocker = exc.code
     except Exception:
         blocker = "release_lifecycle_unexpected_failure"
@@ -732,21 +818,29 @@ async def _main() -> int:
     if blocker is not None:
         print(
             json.dumps(
-                {
-                    "status": "BLOCKED",
-                    "mode": "controlled_release_lifecycle",
-                    "blocker": blocker,
-                    "secondary_blockers": secondary_blockers,
-                    **evidence,
-                },
+                _final_document(
+                    status="BLOCKED",
+                    evidence={"mode": "controlled_release_lifecycle", **evidence},
+                    blocker=blocker,
+                    secondary_blockers=secondary_blockers,
+                ),
                 sort_keys=True,
                 indent=2,
             )
         )
         return 2
 
-    evidence["secondary_blockers"] = secondary_blockers
-    print(json.dumps(evidence, sort_keys=True, indent=2))
+    print(
+        json.dumps(
+            _final_document(
+                status="READY",
+                evidence=evidence,
+                secondary_blockers=secondary_blockers,
+            ),
+            sort_keys=True,
+            indent=2,
+        )
+    )
     return 0
 
 
