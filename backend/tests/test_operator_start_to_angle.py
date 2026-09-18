@@ -37,6 +37,7 @@ from app.modules.content_engine.models import (
     Signal,
 )
 from app.modules.harness.agent_runner import (
+    CODEX_CLI_APPROVED_VERSION,
     AgentCapability,
     AgentRunnerRegistry,
     AgentRunRequest,
@@ -243,7 +244,7 @@ class ControlledCodexRunner:
         return AgentCapability(
             provider="codex_cli",
             executable="fixture-codex",
-            version="codex-cli 0.154.0-alpha.6.2",
+            version=CODEX_CLI_APPROVED_VERSION,
             authenticated=True,
             auth_mode="fixture",
         )
