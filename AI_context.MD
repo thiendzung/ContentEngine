@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-16, after the F2 merge. This is the ONE current working window.
+Updated: 2026-09-18, after F5-MINI acceptance and P2.1 completion fix. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -19,30 +19,44 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Dated evidence and exact refs: `docs/logs/2026-09-16-post-f2-status-replan.md`.
+Live main: `0cc118f22e15f6e883469ee746a4ce6c182f8e1e` after PR #113.
 
 | Phase | State | Meaning |
 |---|---|---|
-| F0 / UI-01 | ACCEPTANCE PASS / MERGED, PR #93 | Browser intake -> Start -> real Angle -> exact AngleApproval proved; acceptance #2 is consumed and closed, not reusable authorization. |
-| Planning / roles | MERGED, PR #101 | Founder relay and finish-first policy are established. |
-| F1 | MERGED, PR #102 | Canonical `operator_runtime` and next-action resolver exist; do not rebuild them. |
-| F2 | ACCEPTANCE PASS / MERGED, PR #103 | Real backend/operator path through exact OutlineApproval proved on isolated test data. Full Outline browser review is NOT implemented by this proof. |
-| F3 | CURRENT, Draft PR #104 | At this replan, only its Writer implementation contract and planning docs exist; no F3 runtime implementation/acceptance is claimed. |
-| F4-F8 | PLANNED | Quality continuation, finalization, full UI, operational pilot and polish remain. |
+| F0 / UI-01 | DONE / acceptance PASS / PR #93 merged | Browser intake -> Start -> real Angle -> exact AngleApproval proved. |
+| Planning / roles | DONE / PR #101 merged | Founder relay, MG ownership and finish-first policy established. |
+| F1 | DONE / PR #102 merged | Canonical `operator_runtime` and safe next-action resolver. |
+| F2 | DONE / acceptance PASS / PR #103 merged | Exact Outline path and OutlineApproval backend proof. |
+| F3 | DONE / acceptance PASS / PR #104 merged | Independent canonical `vi-VN` / `en` Writer lanes. |
+| F4 | DONE / acceptance PASS / PR #105 merged | Review/Revise -> Audit -> Source-copy -> exact final_content -> final_review gate. |
+| F5 | DONE / `PASS_F5_FINALIZATION` | PR #109 + PR #113; #110 accepted exact VI/EN approvals -> ContentVersions -> `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`. |
+| F6-MINI | CURRENT / Issue #116 / Draft PR #117 | One browser workspace from Start through unpublished COMPLETE. |
+| O1 | NEXT RELEASE GATE | Controlled local release, backup/restore, DB/runtime ownership and recovery proof. |
+| F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual Journal cases. |
+| F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
-Observed main includes F2 (`0e789da83cd227e4b34b9c27657b554962b2d24d`). Code/test migration baseline is `20260915_0034`. Last documented operational schema is `20260914_0027`; current operational state is NOT freshly inspected here. Do not assume it was upgraded or that any retained test DB still exists.
+Code/test migration baseline remains `20260915_0034`. Last documented operational schema is still historical evidence only; do not infer current deployed schema without fresh O1 inspection.
+
+Separate non-core publication track:
+- #114 Editorial Quality Pass: produce a successor publication-ready revision without mutating accepted V1.
+- #115 Publish Approval Gate: keep final-review approval distinct from permission to publish.
+Neither authorizes publication.
 
 ## Immediate task
 
-MG implements F3 within PR #104 using:
+MG implements F6-MINI in Issue #116 / PR #117 on top of exact F5 main.
 
-`docs/logs/2026-09-16-f3-independent-writers-plan.md`
+Target browser path:
+`Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE`.
 
-Target: exact OutlineApproval -> semantic Continue -> independent `vi-VN` / `en` Writer jobs -> immutable drafts -> STOP at `writers_to_quality`, `executable=false`.
+Critical boundaries:
+- frontend sends semantic intents only; backend remains workflow authority;
+- exact immutable Angle/Outline/final bindings remain mandatory;
+- final normal path exposes approval only; do not advertise changes-requested until F5.2 continuation exists;
+- ambiguous/lost HTTP outcomes reconcile durable state before a new command;
+- final state is Approved / Not published; no publish action exists in F6-MINI.
 
-Critical boundary: normalize new intake alias `vi` to canonical `vi-VN`; leave historical rows unchanged. One completed locale must survive failure/retry of its sibling. Aggregate state/version must cover every required lane. No quality/final/publish execution in F3.
-
-Before a real local Writer acceptance: implementation, self-review and exact-head CI must pass; MG then supplies a bounded task for Founder to copy, with explicit test lineage, inputs, model/research budgets and stop conditions. This planning refresh grants no external execution, activation, migration or approval permission.
+After exact-head CI and MG review, Agent Local performs a bounded browser acceptance on an isolated test runtime. No operational DB migration or production publish is authorized by F6 implementation.
 
 ## Remaining order and completion meaning
 

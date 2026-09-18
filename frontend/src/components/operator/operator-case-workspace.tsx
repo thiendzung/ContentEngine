@@ -1,16 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   approveAngle,
+  approveFinalLocale,
+  approveOutline,
   loadOperatorCaseView,
+  loadReviewCase,
   OperatorApiError,
   submitOperatorIntent,
   type AngleCandidate,
   type OperatorCaseView,
   type OperatorIntent,
+  type OutlineGate,
+  type QualityLane,
+  type ReviewCaseDetail,
+  type ReviewLocalePanel,
 } from "../../lib/operator/journal-api";
 import {
   clearIdempotencyKey,
@@ -54,6 +61,94 @@ function writerLaneStatusLabel(status: string): string {
   return "Lỗi — chỉ lane này được retry";
 }
 
+function qualityStageLabel(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "final_gate_ready") return "Sẵn sàng duyệt cuối";
+  if (normalized.includes("review")) return "Rà soát & chỉnh sửa";
+  if (normalized.includes("audit")) return "Kiểm tra khẳng định";
+  if (normalized.includes("source_copy")) return "Kiểm tra trùng nguồn";
+  if (normalized.includes("failed")) return "Bị chặn";
+  if (normalized.includes("queued")) return "Đang chờ worker";
+  if (normalized.includes("running")) return "Đang kiểm tra";
+  return status;
+}
+
+function qualityResultLabel(value: string | null): string {
+  if (!value) return "Đang chờ";
+  const normalized = value.toLowerCase();
+  if (normalized === "pass") return "Đạt";
+  if (normalized === "warn") return "Cảnh báo";
+  if (normalized === "fail") return "Không đạt";
+  return value;
+}
+
+function exactFinalBindingMatches(
+  view: OperatorCaseView,
+  panel: ReviewLocalePanel,
+): boolean {
+  const lane = view.quality_lanes.find(
+    (item) => item.locale_variant_id === panel.locale_variant_id,
+  );
+  const operatorFinal = lane?.final_content;
+  const reviewFinal = panel.final_content;
+  return Boolean(
+    operatorFinal
+    && reviewFinal
+    && operatorFinal.id === reviewFinal.id
+    && operatorFinal.version === reviewFinal.version
+    && operatorFinal.content_hash === reviewFinal.content_hash,
+  );
+}
+
+function reviewStateLabel(value: string): string {
+  const labels: Record<string, string> = {
+    PASS: "Đạt",
+    WARN: "Cảnh báo",
+    FAIL: "Không đạt",
+    PENDING: "Đang chờ",
+    CONSISTENT: "Nhất quán",
+    INCONSISTENT: "Không nhất quán",
+    NOT_PUBLISHED: "Chưa xuất bản",
+    PUBLISHED: "Đã xuất bản",
+    APPROVED_NOT_PUBLISHED: "Đã duyệt · chưa xuất bản",
+    AWAITING_FOUNDER_APPROVAL: "Chờ duyệt cuối",
+  };
+  return labels[value] ?? value;
+}
+
+function outlineString(outline: Record<string, unknown>, key: string): string | null {
+  const value = outline[key];
+  return typeof value === "string" ? value : null;
+}
+
+type OutlineSectionView = {
+  sectionId: string;
+  heading: string;
+  purpose: string | null;
+  answerDirection: string | null;
+  claimGuards: string[];
+};
+
+function outlineSections(gate: OutlineGate): OutlineSectionView[] {
+  const value = gate.outline.sections;
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw, index) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const row = raw as Record<string, unknown>;
+    const heading = typeof row.heading === "string" ? row.heading : null;
+    if (!heading) return [];
+    return [{
+      sectionId: typeof row.section_id === "string" ? row.section_id : `section-${index + 1}`,
+      heading,
+      purpose: typeof row.purpose === "string" ? row.purpose : null,
+      answerDirection: typeof row.answer_direction === "string" ? row.answer_direction : null,
+      claimGuards: Array.isArray(row.claim_guards)
+        ? row.claim_guards.filter((item): item is string => typeof item === "string")
+        : [],
+    }];
+  });
+}
+
 function AngleCard({
   candidate,
   selected,
@@ -65,7 +160,12 @@ function AngleCard({
 }) {
   return (
     <article className={selected ? "angle-card selected" : "angle-card"}>
-      <button className="angle-card-select" onClick={onSelect} type="button">
+      <button
+        aria-pressed={selected}
+        className="angle-card-select"
+        onClick={onSelect}
+        type="button"
+      >
         <span className="angle-choice" aria-hidden="true">{selected ? "●" : "○"}</span>
         <span>
           <small>Góc {candidate.angle_id}</small>
@@ -102,34 +202,269 @@ function AngleCard({
   );
 }
 
+function QualityLaneCard({ lane }: { lane: QualityLane }) {
+  return (
+    <article className="quality-lane-card">
+      <header>
+        <strong>{localeLabel(lane.locale)}</strong>
+        <span>{qualityStageLabel(lane.status)}</span>
+      </header>
+      <div className="quality-lane-checks">
+        <div>
+          <span>Assertion Audit</span>
+          <strong>{qualityResultLabel(lane.assertion_audit_result)}</strong>
+          <small>
+            nghiêm trọng thiếu nguồn {lane.critical_unsupported_count} · mâu thuẫn {lane.critical_contradicted_count}
+          </small>
+        </div>
+        <div>
+          <span>Source-copy</span>
+          <strong>{qualityResultLabel(lane.source_copy_result)}</strong>
+          <small>lỗi {lane.fail_count} · cảnh báo {lane.warn_count}</small>
+        </div>
+      </div>
+      {lane.warn_count > 0 && (
+        <p className="quality-warning-note">Còn {lane.warn_count} cảnh báo cần đọc ở bản duyệt cuối.</p>
+      )}
+      <details className="operator-technical-details">
+        <summary>Binding chất lượng</summary>
+        <dl>
+          <div><dt>Writer run</dt><dd>{lane.writer_run_id ?? "—"}</dd></div>
+          <div><dt>Revised draft</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
+          <div><dt>Audit artifact</dt><dd>{lane.assertion_audit_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Source-copy artifact</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Final content</dt><dd>{lane.final_content?.id ?? "—"}</dd></div>
+          <div><dt>Final hash</dt><dd>{lane.final_content?.content_hash ?? "—"}</dd></div>
+        </dl>
+      </details>
+    </article>
+  );
+}
+
+function FinalLocaleCard({
+  panel,
+  canApprove,
+  comment,
+  disabled,
+  onCommentChange,
+  onApprove,
+}: {
+  panel: ReviewLocalePanel;
+  canApprove: boolean;
+  comment: string;
+  disabled: boolean;
+  onCommentChange: (value: string) => void;
+  onApprove: () => void;
+}) {
+  return (
+    <article className="locale-panel operator-final-locale">
+      <header className="locale-header">
+        <div>
+          <p className="eyebrow">{localeLabel(panel.locale)}</p>
+          <h2>{panel.article?.title ?? "Chưa có nội dung cuối"}</h2>
+        </div>
+        <div className="header-badges">
+          <span className={`badge badge-${panel.quality_state.toLowerCase()}`}>
+            {reviewStateLabel(panel.quality_state)}
+          </span>
+          <span className={`badge badge-${panel.publication_state.toLowerCase().replaceAll("_", "-")}`}>
+            {reviewStateLabel(panel.publication_state)}
+          </span>
+        </div>
+      </header>
+
+      {panel.article ? (
+        <div className="article-copy">
+          <p className="standfirst">{panel.article.standfirst}</p>
+          <p className="lead">{panel.article.lead_markdown}</p>
+          {panel.article.sections.map((section) => (
+            <section className="article-section" key={section.section_id}>
+              <h3>{section.heading}</h3>
+              <p className="markdown-copy">{section.body_markdown}</p>
+            </section>
+          ))}
+          <p className="closing">{panel.article.closing_markdown}</p>
+        </div>
+      ) : (
+        <p className="empty-copy">Chưa có exact final_content để duyệt.</p>
+      )}
+
+      <div className="quality-grid">
+        <div className="quality-card">
+          <p className="label">Assertion Audit</p>
+          <strong>{qualityResultLabel(panel.assertion_audit.result)}</strong>
+          <small>
+            nghiêm trọng thiếu nguồn {panel.assertion_audit.critical_unsupported_count} · mâu thuẫn {panel.assertion_audit.critical_contradicted_count}
+          </small>
+        </div>
+        <div className="quality-card">
+          <p className="label">Source-copy</p>
+          <strong>{qualityResultLabel(panel.source_copy.result)}</strong>
+          <small>lỗi {panel.source_copy.fail_count} · cảnh báo {panel.source_copy.warn_count}</small>
+        </div>
+      </div>
+
+      {panel.source_copy.findings.length > 0 && (
+        <section className="warnings">
+          <p className="label">Cảnh báo còn lại</p>
+          {panel.source_copy.findings.map((finding, index) => (
+            <p key={`${panel.locale}-finding-${index}`}>
+              {typeof finding.normalized_match === "string"
+                ? finding.normalized_match
+                : `Cảnh báo ${index + 1}`}
+            </p>
+          ))}
+        </section>
+      )}
+
+      <div className="next-action-inline">
+        <strong>{reviewStateLabel(panel.next_action)}</strong>
+        <span>{panel.next_action_label}</span>
+      </div>
+
+      {canApprove && (
+        <section className="review-decision-panel">
+          <p className="label">Quyết định của Người sáng lập</p>
+          <textarea
+            onChange={(event) => onCommentChange(event.target.value)}
+            placeholder="Ghi chú duyệt (không bắt buộc)"
+            rows={3}
+            value={comment}
+          />
+          <div className="review-decision-actions">
+            <button disabled={disabled || !panel.article} onClick={onApprove} type="button">
+              {disabled ? "Đang lưu…" : "Duyệt exact final"}
+            </button>
+          </div>
+          <p className="operator-note">
+            F6-MINI chỉ mở đường duyệt normal path. Yêu cầu sửa sẽ được triển khai cùng F5.2.
+          </p>
+        </section>
+      )}
+
+      <details className="operator-technical-details">
+        <summary>Exact final lineage</summary>
+        <dl>
+          <div><dt>Locale variant</dt><dd>{panel.locale_variant_id}</dd></div>
+          <div><dt>Final artifact</dt><dd>{panel.final_content?.id ?? "—"}</dd></div>
+          <div><dt>Final version</dt><dd>{panel.final_content?.version ?? "—"}</dd></div>
+          <div><dt>Final hash</dt><dd>{panel.final_content?.content_hash ?? "—"}</dd></div>
+          <div><dt>Founder approval</dt><dd>{panel.final_approval?.id ?? "—"}</dd></div>
+          <div><dt>ContentVersion</dt><dd>{panel.content_version_id ?? "—"}</dd></div>
+          <div><dt>ContentVersion no.</dt><dd>{panel.content_version_no ?? "—"}</dd></div>
+        </dl>
+      </details>
+    </article>
+  );
+}
+
+function ProgressStrip({
+  view,
+  review,
+}: {
+  view: OperatorCaseView;
+  review: ReviewCaseDetail | null;
+}) {
+  const angleDone = Boolean(review?.angle);
+  const outlineDone = Boolean(review?.outline);
+  const writersDone = (
+    view.writer_lanes.length > 0
+    && view.writer_lanes.every((lane) => lane.status === "completed")
+  ) || view.quality_lanes.length > 0;
+  const qualityDone = (
+    view.quality_lanes.length > 0
+    && view.quality_lanes.every((lane) => lane.pending_approval_ready)
+  ) || view.state.human_gate === "final_review"
+    || view.state.status === "COMPLETE";
+  const finalDone = view.state.status === "COMPLETE";
+  const steps = [
+    { label: "Intake", done: true },
+    { label: "Angle", done: angleDone },
+    { label: "Outline", done: outlineDone },
+    { label: "VI / EN", done: writersDone || qualityDone },
+    { label: "Quality", done: qualityDone },
+    { label: "Final", done: finalDone },
+  ];
+  const currentIndex = steps.findIndex((step) => !step.done);
+
+  return (
+    <ol className="operator-progress-strip" aria-label="Tiến độ Journal">
+      {steps.map((step, index) => (
+        <li
+          className={step.done ? "done" : index === currentIndex ? "current" : ""}
+          key={step.label}
+        >
+          <span>{step.done ? "✓" : index + 1}</span>
+          <strong>{step.label}</strong>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   const [view, setView] = useState<OperatorCaseView | null>(null);
+  const [review, setReview] = useState<ReviewCaseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [selectedAngleId, setSelectedAngleId] = useState("");
-  const [comment, setComment] = useState("");
+  const [angleComment, setAngleComment] = useState("");
+  const [outlineComment, setOutlineComment] = useState("");
+  const [finalComments, setFinalComments] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
+
+  const loadSnapshot = useCallback(async () => {
+    const operatorView = await loadOperatorCaseView(caseId);
+    setView(operatorView);
+    try {
+      const reviewView = await loadReviewCase(caseId);
+      setReview(reviewView);
+    } catch (reviewError) {
+      setReview(null);
+      if (
+        operatorView.state.human_gate === "final_review"
+        || operatorView.state.status === "COMPLETE"
+      ) {
+        throw reviewError;
+      }
+    }
+    return operatorView;
+  }, [caseId]);
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const result = await loadOperatorCaseView(caseId);
-      setView(result);
+      await loadSnapshot();
       setError("");
     } catch (requestError) {
       setError(technicalError(requestError));
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [caseId]);
+  }, [loadSnapshot]);
 
   useEffect(() => {
     let cancelled = false;
     loadOperatorCaseView(caseId)
-      .then((result) => {
+      .then(async (operatorView) => {
+        let reviewView: ReviewCaseDetail | null = null;
+        try {
+          reviewView = await loadReviewCase(caseId);
+        } catch (reviewError) {
+          if (
+            operatorView.state.human_gate === "final_review"
+            || operatorView.state.status === "COMPLETE"
+          ) {
+            throw reviewError;
+          }
+        }
+        return { operatorView, reviewView };
+      })
+      .then(({ operatorView, reviewView }) => {
         if (cancelled) return;
-        setView(result);
+        setView(operatorView);
+        setReview(reviewView);
         setError("");
         setLoading(false);
       })
@@ -150,10 +485,23 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }, [refresh, view]);
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
+  const outlineGate = view?.pending_gate?.type === "outline" ? view.pending_gate : null;
   const selectedAngle = useMemo(
     () => angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null,
     [angleGate, selectedAngleId],
   );
+
+  async function reconcileMutationFailure(requestError: unknown, keyScope: string) {
+    if (requestError instanceof OperatorApiError && requestError.code === "operator_state_stale") {
+      clearIdempotencyKey(keyScope);
+    } else if (!(requestError instanceof OperatorApiError)) {
+      setNotice(
+        "Phản hồi bị gián đoạn. Hệ thống giữ nguyên idempotency key và đang đối soát trạng thái trước khi gửi lại.",
+      );
+    }
+    await refresh(true);
+    setError(technicalError(requestError));
+  }
 
   async function submitIntent(intent: OperatorIntent) {
     if (!view || submitting || !view.state.allowed_intents.includes(intent)) return;
@@ -168,14 +516,15 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         idempotency_key: getOrCreateIdempotencyKey(keyScope),
       });
       clearIdempotencyKey(keyScope);
-      setNotice(intent === "start" ? "Đã xếp tác vụ vào hàng đợi." : "Đã ghi yêu cầu thử lại.");
+      const labels: Partial<Record<OperatorIntent, string>> = {
+        start: "Đã xếp tác vụ vào hàng đợi.",
+        continue: "Đã ghi yêu cầu tiếp tục từ trạng thái chuẩn.",
+        retry: "Đã ghi yêu cầu thử lại.",
+      };
+      setNotice(labels[intent] ?? "Đã ghi yêu cầu.");
       await refresh(true);
     } catch (requestError) {
-      if (requestError instanceof OperatorApiError && requestError.code === "operator_state_stale") {
-        clearIdempotencyKey(keyScope);
-        await refresh(true);
-      }
-      setError(technicalError(requestError));
+      await reconcileMutationFailure(requestError, keyScope);
     } finally {
       setSubmitting(false);
     }
@@ -203,19 +552,85 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         artifact_hash: artifact.content_hash,
         selected_angle_id: selectedAngle.angle_id,
         selected_candidate_hash: selectedAngle.candidate_hash,
-        comment: comment.trim() || null,
+        comment: angleComment.trim() || null,
       });
       clearIdempotencyKey(keyScope);
       setSelectedAngleId("");
-      setComment("");
-      setNotice("Angle đã được duyệt theo đúng snapshot. UI-01 dừng tại cổng này.");
+      setAngleComment("");
+      setNotice("Angle đã được duyệt theo đúng snapshot.");
       await refresh(true);
     } catch (requestError) {
-      if (requestError instanceof OperatorApiError && requestError.code === "operator_state_stale") {
-        clearIdempotencyKey(keyScope);
-        await refresh(true);
-      }
-      setError(technicalError(requestError));
+      await reconcileMutationFailure(requestError, keyScope);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitOutlineApproval() {
+    if (!view || !outlineGate || submitting) return;
+    const state = view.state;
+    const artifact = outlineGate.artifact;
+    const keyScope = mutationKey(caseId, state.state_version, "approve-outline");
+    if (!window.confirm("Duyệt exact Outline hiện tại?")) return;
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    try {
+      await approveOutline(caseId, {
+        expected_state_version: state.state_version,
+        idempotency_key: getOrCreateIdempotencyKey(keyScope),
+        artifact_id: artifact.id,
+        artifact_version: artifact.version,
+        artifact_hash: artifact.content_hash,
+        comment: outlineComment.trim() || null,
+      });
+      clearIdempotencyKey(keyScope);
+      setOutlineComment("");
+      setNotice("Outline đã được duyệt theo đúng snapshot.");
+      await refresh(true);
+    } catch (requestError) {
+      await reconcileMutationFailure(requestError, keyScope);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitFinalApproval(panel: ReviewLocalePanel) {
+    if (
+      !view
+      || submitting
+      || view.state.human_gate !== "final_review"
+      || panel.next_action !== "AWAITING_FOUNDER_APPROVAL"
+    ) return;
+    if (!exactFinalBindingMatches(view, panel)) {
+      setError(
+        "Exact final binding giữa Operator và Review projection không khớp. Đã chặn duyệt; hãy tải lại trạng thái.",
+      );
+      return;
+    }
+    const state = view.state;
+    const keyScope = mutationKey(
+      caseId,
+      state.state_version,
+      `approve-final:${panel.locale_variant_id}`,
+    );
+    if (!window.confirm(`Duyệt exact final ${localeLabel(panel.locale)}?`)) return;
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    try {
+      await approveFinalLocale(caseId, {
+        expected_state_version: state.state_version,
+        idempotency_key: getOrCreateIdempotencyKey(keyScope),
+        locale_variant_id: panel.locale_variant_id,
+        comment: finalComments[panel.locale_variant_id]?.trim() || null,
+      });
+      clearIdempotencyKey(keyScope);
+      setFinalComments((current) => ({ ...current, [panel.locale_variant_id]: "" }));
+      setNotice(`Đã duyệt exact final ${localeLabel(panel.locale)}. Đang đối soát trạng thái canonical.`);
+      await refresh(true);
+    } catch (requestError) {
+      await reconcileMutationFailure(requestError, keyScope);
     } finally {
       setSubmitting(false);
     }
@@ -236,7 +651,19 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   const state = view.state;
   const canStart = state.status === "READY" && state.allowed_intents.includes("start");
+  const canContinue = state.status === "READY" && state.allowed_intents.includes("continue");
   const canRetry = state.allowed_intents.includes("retry");
+  const sections = outlineGate ? outlineSections(outlineGate) : [];
+  const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
+  const finalPanels = review
+    ? review.locales
+        .filter((panel) => requiredLocales.has(panel.locale))
+        .sort((a, b) => {
+          if (a.locale === "vi-VN") return -1;
+          if (b.locale === "vi-VN") return 1;
+          return a.locale.localeCompare(b.locale);
+        })
+    : [];
 
   return (
     <main className="operator-page">
@@ -254,6 +681,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         </div>
       </header>
 
+      <ProgressStrip review={review} view={view} />
+
       <section className="operator-case-facts">
         <div><span>Độc giả</span><p>{view.reader}</p></div>
         <div><span>Tình huống</span><p>{view.situation}</p></div>
@@ -263,6 +692,208 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <p>{view.intake.required_locales.map((item) => `${localeLabel(item.locale)} · ${item.role}`).join(" / ")}</p>
         </div>
       </section>
+
+      {notice && <p className="operator-success">{notice}</p>}
+      {error && <p className="error">{error}</p>}
+
+      <section className="operator-panel state-panel">
+        <div className="operator-panel-heading">
+          <div>
+            <p className="eyebrow">Trạng thái chuẩn</p>
+            <h2>{operatorStatusLabel(state.status)}</h2>
+          </div>
+          <button className="operator-button secondary" onClick={() => void refresh()} type="button">
+            Tải lại
+          </button>
+        </div>
+        <div className="state-grid">
+          <div><span>Giai đoạn</span><strong>{operatorPhaseLabel(state.phase)}</strong></div>
+          <div><span>Cổng duyệt</span><strong>{humanGateLabel(state.human_gate)}</strong></div>
+          <div><span>Run</span><strong>{shortId(state.current_run_id)}</strong></div>
+          <div><span>Step</span><strong>{shortId(state.current_step_run_id)}</strong></div>
+        </div>
+
+        {(canStart || canContinue) && (
+          <div className="operator-primary-action">
+            <div>
+              <strong>{canStart ? "Bắt đầu sản xuất" : "Tiếp tục bước an toàn tiếp theo"}</strong>
+              <p>
+                Backend tự quyết stage/provider/model từ trạng thái bền vững; UI chỉ gửi ý định {canStart ? "Start" : "Continue"}.
+              </p>
+            </div>
+            <button
+              className="operator-button primary"
+              disabled={submitting}
+              onClick={() => void submitIntent(canStart ? "start" : "continue")}
+              type="button"
+            >
+              {submitting ? "Đang gửi…" : canStart ? "Bắt đầu" : "Tiếp tục"}
+            </button>
+          </div>
+        )}
+
+        {["QUEUED", "RUNNING"].includes(state.status) && (
+          <div className="operator-running-state">
+            <span className="activity-pulse" aria-hidden="true" />
+            <div>
+              <strong>{state.status === "QUEUED" ? "Đang chờ worker" : "Đang xử lý"}</strong>
+              <p>Trang tự tải lại trạng thái khoảng 2,5 giây/lần. Refresh trình duyệt không tạo lệnh mới.</p>
+            </div>
+          </div>
+        )}
+
+        {state.status === "BLOCKED" && (
+          <div className="operator-blocker">
+            <div>
+              <strong>{state.blocker_message ?? "Workflow đang bị chặn."}</strong>
+              <p>{blockerAction(state)}</p>
+            </div>
+            {canRetry && (
+              <button
+                className="operator-button secondary"
+                disabled={submitting}
+                onClick={() => void submitIntent("retry")}
+                type="button"
+              >
+                Thử lại
+              </button>
+            )}
+          </div>
+        )}
+
+        {state.status === "COMPLETE" && review && (
+          <div className="operator-complete-state">
+            <strong>Workflow đã hoàn tất</strong>
+            <p>
+              {reviewStateLabel(review.next_action)} · {reviewStateLabel(review.publication_state)}.
+              Không có quyền publish trong F6-MINI.
+            </p>
+          </div>
+        )}
+
+        <details className="operator-technical-details">
+          <summary>Checkpoint & state version</summary>
+          <dl>
+            <div><dt>State version</dt><dd>{state.state_version}</dd></div>
+            <div><dt>Checkpoint</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
+          </dl>
+        </details>
+      </section>
+
+      {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
+        <section className="operator-panel angle-review-panel">
+          <div className="operator-panel-heading">
+            <div>
+              <p className="eyebrow">Cổng duyệt 1/3</p>
+              <h2>Chọn góc tiếp cận</h2>
+            </div>
+            <span className="operator-note">Chọn một candidate đã được backend khóa hash.</span>
+          </div>
+          <div className="angle-grid">
+            {angleGate.candidates.map((candidate) => (
+              <AngleCard
+                candidate={candidate}
+                key={candidate.angle_id}
+                onSelect={() => setSelectedAngleId(candidate.angle_id)}
+                selected={selectedAngleId === candidate.angle_id}
+              />
+            ))}
+          </div>
+          <div className="angle-approval-bar">
+            <label>
+              <span>Ghi chú duyệt (không bắt buộc)</span>
+              <textarea
+                onChange={(event) => setAngleComment(event.target.value)}
+                placeholder="Lý do chọn góc này…"
+                rows={3}
+                value={angleComment}
+              />
+            </label>
+            <button
+              className="operator-button primary"
+              disabled={!selectedAngle || submitting}
+              onClick={() => void submitAngleApproval()}
+              type="button"
+            >
+              {submitting ? "Đang lưu…" : "Duyệt Angle"}
+            </button>
+          </div>
+          <details className="operator-technical-details artifact-details">
+            <summary>Snapshot Angle</summary>
+            <dl>
+              <div><dt>Artifact</dt><dd>{angleGate.artifact.id}</dd></div>
+              <div><dt>Version</dt><dd>{angleGate.artifact.version}</dd></div>
+              <div><dt>Hash</dt><dd>{angleGate.artifact.content_hash}</dd></div>
+            </dl>
+          </details>
+        </section>
+      )}
+
+      {state.status === "AWAITING_APPROVAL" && state.human_gate === "outline" && outlineGate && (
+        <section className="operator-panel outline-review-panel">
+          <div className="operator-panel-heading">
+            <div>
+              <p className="eyebrow">Cổng duyệt 2/3</p>
+              <h2>{outlineString(outlineGate.outline, "title") ?? "Duyệt Outline"}</h2>
+            </div>
+            <span className="operator-note">Duyệt exact Outline snapshot; không sửa trực tiếp trong UI.</span>
+          </div>
+
+          {outlineString(outlineGate.outline, "primary_answer") && (
+            <div className="outline-primary-answer">
+              <span>Câu trả lời chính</span>
+              <p>{outlineString(outlineGate.outline, "primary_answer")}</p>
+            </div>
+          )}
+
+          <div className="outline-sections">
+            {sections.length === 0 ? (
+              <p className="empty-copy">Outline không có section hiển thị được.</p>
+            ) : sections.map((section, index) => (
+              <article key={section.sectionId}>
+                <span>{index + 1}</span>
+                <div>
+                  <h3>{section.heading}</h3>
+                  {section.purpose && <p>{section.purpose}</p>}
+                  {section.answerDirection && <p><strong>Hướng trả lời:</strong> {section.answerDirection}</p>}
+                  {section.claimGuards.length > 0 && (
+                    <p><strong>Guard:</strong> {section.claimGuards.join(" · ")}</p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="angle-approval-bar">
+            <label>
+              <span>Ghi chú duyệt (không bắt buộc)</span>
+              <textarea
+                onChange={(event) => setOutlineComment(event.target.value)}
+                placeholder="Ghi chú cho exact Outline…"
+                rows={3}
+                value={outlineComment}
+              />
+            </label>
+            <button
+              className="operator-button primary"
+              disabled={submitting}
+              onClick={() => void submitOutlineApproval()}
+              type="button"
+            >
+              {submitting ? "Đang lưu…" : "Duyệt Outline"}
+            </button>
+          </div>
+
+          <details className="operator-technical-details artifact-details">
+            <summary>Snapshot Outline</summary>
+            <dl>
+              <div><dt>Artifact</dt><dd>{outlineGate.artifact.id}</dd></div>
+              <div><dt>Version</dt><dd>{outlineGate.artifact.version}</dd></div>
+              <div><dt>Hash</dt><dd>{outlineGate.artifact.content_hash}</dd></div>
+            </dl>
+          </details>
+        </section>
+      )}
 
       {view.writer_lanes.length > 0 && (
         <section className="operator-panel writer-lanes-panel">
@@ -297,125 +928,90 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         </section>
       )}
 
-      {notice && <p className="operator-success">{notice}</p>}
-      {error && <p className="error">{error}</p>}
-
-      <section className="operator-panel state-panel">
-        <div className="operator-panel-heading">
-          <div>
-            <p className="eyebrow">Trạng thái chuẩn</p>
-            <h2>{operatorStatusLabel(state.status)}</h2>
-          </div>
-          <button className="operator-button secondary" onClick={() => void refresh()} type="button">
-            Tải lại
-          </button>
-        </div>
-        <div className="state-grid">
-          <div><span>Giai đoạn</span><strong>{operatorPhaseLabel(state.phase)}</strong></div>
-          <div><span>Cổng duyệt</span><strong>{humanGateLabel(state.human_gate)}</strong></div>
-          <div><span>Run</span><strong>{shortId(state.current_run_id)}</strong></div>
-          <div><span>Step</span><strong>{shortId(state.current_step_run_id)}</strong></div>
-        </div>
-
-        {canStart && (
-          <div className="operator-primary-action">
-            <div>
-              <strong>Bắt đầu sản xuất</strong>
-              <p>Backend sẽ tự quyết stage/provider/model; UI chỉ gửi ý định Start.</p>
-            </div>
-            <button
-              className="operator-button primary"
-              disabled={submitting}
-              onClick={() => void submitIntent("start")}
-              type="button"
-            >
-              {submitting ? "Đang gửi…" : "Bắt đầu"}
-            </button>
-          </div>
-        )}
-
-        {["QUEUED", "RUNNING"].includes(state.status) && (
-          <div className="operator-running-state">
-            <span className="activity-pulse" aria-hidden="true" />
-            <div>
-              <strong>{state.status === "QUEUED" ? "Đang chờ worker" : "Đang xử lý"}</strong>
-              <p>Trang tự tải lại trạng thái khoảng 2,5 giây/lần. Có thể refresh trình duyệt an toàn.</p>
-            </div>
-          </div>
-        )}
-
-        {state.status === "BLOCKED" && (
-          <div className="operator-blocker">
-            <strong>{state.blocker_message ?? "Workflow đang bị chặn."}</strong>
-            <p>{blockerAction(state)}</p>
-            {canRetry && (
-              <button
-                className="operator-button secondary"
-                disabled={submitting}
-                onClick={() => void submitIntent("retry")}
-                type="button"
-              >
-                Thử lại
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-
-      {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
-        <section className="operator-panel angle-review-panel">
+      {view.quality_lanes.length > 0 && (
+        <section className="operator-panel quality-lanes-panel">
           <div className="operator-panel-heading">
             <div>
-              <p className="eyebrow">Cổng duyệt 1/3</p>
-              <h2>Chọn góc tiếp cận</h2>
+              <p className="eyebrow">Quality</p>
+              <h2>Kiểm tra từng locale</h2>
             </div>
-            <span className="operator-note">Chọn một candidate đã được backend khóa hash.</span>
+            <span className="operator-note">Cảnh báo được giữ nguyên tới cổng duyệt cuối.</span>
           </div>
-          <div className="angle-grid">
-            {angleGate.candidates.map((candidate) => (
-              <AngleCard
-                candidate={candidate}
-                key={candidate.angle_id}
-                onSelect={() => setSelectedAngleId(candidate.angle_id)}
-                selected={selectedAngleId === candidate.angle_id}
-              />
-            ))}
+          <div className="quality-lanes-grid">
+            {view.quality_lanes.map((lane) => <QualityLaneCard key={lane.locale_variant_id} lane={lane} />)}
           </div>
-          <div className="angle-approval-bar">
-            <label>
-              <span>Ghi chú duyệt (không bắt buộc)</span>
-              <textarea
-                onChange={(event) => setComment(event.target.value)}
-                placeholder="Lý do chọn góc này…"
-                rows={3}
-                value={comment}
-              />
-            </label>
-            <button
-              className="operator-button primary"
-              disabled={!selectedAngle || submitting}
-              onClick={() => void submitAngleApproval()}
-              type="button"
-            >
-              {submitting ? "Đang lưu…" : "Duyệt Angle"}
-            </button>
-          </div>
-          <details className="operator-technical-details artifact-details">
-            <summary>Snapshot Angle</summary>
-            <dl>
-              <div><dt>Artifact</dt><dd>{angleGate.artifact.id}</dd></div>
-              <div><dt>Version</dt><dd>{angleGate.artifact.version}</dd></div>
-              <div><dt>Hash</dt><dd>{angleGate.artifact.content_hash}</dd></div>
-              <div><dt>State version</dt><dd>{state.state_version}</dd></div>
-            </dl>
-          </details>
         </section>
       )}
 
-      {state.status === "AWAITING_APPROVAL" && state.human_gate !== "angle" && (
-        <section className="operator-panel">
+      {state.human_gate === "final_review" && (
+        <section className="operator-panel final-review-panel">
+          <div className="operator-panel-heading">
+            <div>
+              <p className="eyebrow">Cổng duyệt 3/3</p>
+              <h2>Duyệt exact final theo từng ngôn ngữ</h2>
+            </div>
+            <span className="operator-note">Approve tạo ContentVersion; không publish.</span>
+          </div>
+          {!review ? (
+            <p className="error">Không tải được exact final review projection. Không được duyệt khi thiếu projection.</p>
+          ) : (
+            <>
+              {review.consistency_state !== "CONSISTENT" && (
+                <p className="error">Review projection không nhất quán. Dừng và kiểm tra binding trước khi duyệt.</p>
+              )}
+              {finalPanels.some((panel) => (
+                panel.next_action === "AWAITING_FOUNDER_APPROVAL"
+                && !exactFinalBindingMatches(view, panel)
+              )) && (
+                <p className="error">
+                  Exact final binding giữa Operator và Review projection không khớp. Không có quyết định duyệt nào được mở.
+                </p>
+              )}
+              <div className="bilingual-grid">
+                {finalPanels.map((panel) => (
+                  <FinalLocaleCard
+                    canApprove={
+                      review.consistency_state === "CONSISTENT"
+                      && panel.next_action === "AWAITING_FOUNDER_APPROVAL"
+                      && exactFinalBindingMatches(view, panel)
+                    }
+                    comment={finalComments[panel.locale_variant_id] ?? ""}
+                    disabled={submitting}
+                    key={panel.locale_variant_id}
+                    onApprove={() => void submitFinalApproval(panel)}
+                    onCommentChange={(value) => setFinalComments((current) => ({
+                      ...current,
+                      [panel.locale_variant_id]: value,
+                    }))}
+                    panel={panel}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {state.status === "COMPLETE" && review && (
+        <section className="operator-panel completion-summary">
+          <div className="operator-panel-heading">
+            <div>
+              <p className="eyebrow">Kết quả</p>
+              <h2>Approved · Not published</h2>
+            </div>
+            <span className="operator-state-badge complete">COMPLETE</span>
+          </div>
+          <div className="completion-locales">
+            {finalPanels.map((panel) => (
+              <div key={panel.locale_variant_id}>
+                <strong>{localeLabel(panel.locale)}</strong>
+                <span>ContentVersion v{panel.content_version_no ?? "—"}</span>
+                <span>{reviewStateLabel(panel.publication_state)}</span>
+              </div>
+            ))}
+          </div>
           <p className="operator-block-note">
-            Workflow đã tới {humanGateLabel(state.human_gate)}. UI-01 chỉ triển khai tới Angle.
+            Workflow nội dung đã hoàn tất nhưng publication chưa được cấp quyền. Publish Approval Gate là bước riêng.
           </p>
         </section>
       )}
@@ -423,6 +1019,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <footer className="operator-footer-links">
         <Link className="operator-link" href="/operator">Điều hành</Link>
         <Link className="operator-link" href="/production">Bảng sản xuất</Link>
+        <Link className="operator-link" href={`/?case=${encodeURIComponent(caseId)}`}>Bảng duyệt chi tiết</Link>
       </footer>
     </main>
   );

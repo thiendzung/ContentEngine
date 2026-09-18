@@ -25,7 +25,7 @@ from app.modules.content_engine.journal.operator_control import OperatorControlE
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
-from app.modules.harness.models import Artifact
+from app.modules.harness.models import Artifact, ContentRun
 from app.modules.harness.persistence import get_latest_checkpoint
 
 LocaleRole = Literal["source", "translation"]
@@ -340,15 +340,31 @@ async def get_operator_case_view(
             pending_gate = await _angle_gate(session, state=state)
         elif state.human_gate == "outline":
             pending_gate = await _outline_gate(session, state=state)
+    source_runs = list(
+        (
+            await session.scalars(
+                select(ContentRun)
+                .where(
+                    ContentRun.content_case_id == content_case.id,
+                    ContentRun.current_step == "outline",
+                    ContentRun.run_mode != "eval",
+                )
+                .order_by(ContentRun.created_at, ContentRun.id)
+            )
+        ).all()
+    )
+    if len(source_runs) > 1:
+        raise OperatorControlError("operator_writer_source_run_conflict")
+    source_run_id = source_runs[0].id if source_runs else None
     writer_progress = await get_writer_lane_progress(
         session,
         content_case_id=content_case.id,
-        source_run_id=None,
+        source_run_id=source_run_id,
     )
     quality_progress = await get_quality_progress(
         session,
         content_case_id=content_case.id,
-        source_run_id=None,
+        source_run_id=source_run_id,
     )
     if writer_progress is None and quality_progress is not None:
         writer_progress = quality_progress.writer_progress
