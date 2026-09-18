@@ -144,16 +144,21 @@ async def build_operational_inspection() -> dict[str, object]:
     database = await _database_snapshot(settings.database_url)
 
     blockers: list[str] = []
+    conditions: list[str] = []
     if not inspection_repository["clean"]:
         blockers.append("inspection_repository_worktree_dirty")
     if not operational_repository["clean"]:
-        blockers.append("operational_repository_worktree_dirty")
+        conditions.append("operational_repository_worktree_dirty")
     if database["current_database"] != identity["database"]:
         blockers.append("database_identity_mismatch")
     if expected_revision is None:
         blockers.append("code_migration_head_missing")
+        migration_status = "UNKNOWN"
     elif database["migration_revision"] != expected_revision:
-        blockers.append("migration_revision_mismatch")
+        conditions.append("migration_revision_mismatch")
+        migration_status = "REQUIRED"
+    else:
+        migration_status = "CURRENT"
 
     fingerprint: dict[str, object] | None = None
     fingerprint_status = "READY"
@@ -177,9 +182,14 @@ async def build_operational_inspection() -> dict[str, object]:
         "operational_repository_matches_inspection": (
             operational_repository["head"] == inspection_repository["head"]
         ),
+        "operational_repository_status": (
+            "CLEAN" if operational_repository["clean"] else "DIRTY"
+        ),
         "configured_database": identity,
         "database": database,
         "code_migration_head": expected_revision,
+        "migration_status": migration_status,
+        "conditions": conditions,
         "blockers": blockers,
     }
 
