@@ -89,12 +89,10 @@ frontend-check:
 check: backend-check frontend-check
 
 ocr-validate-refs:
-	@test -n "$(OCR_BASE)" || (echo "OCR_BASE exact full commit SHA is required" && exit 2)
-	@test -n "$(OCR_HEAD)" || (echo "OCR_HEAD exact full commit SHA is required" && exit 2)
-	@base_resolved=$(git rev-parse --verify "$(OCR_BASE)^{commit}" 2>/dev/null) || { echo "OCR_BASE must resolve to a commit"; exit 2; }; \
-		test "$base_resolved" = "$(OCR_BASE)" || { echo "OCR_BASE must be the exact full commit SHA, not a symbolic, moving, or abbreviated ref"; exit 2; }
-	@head_resolved=$(git rev-parse --verify "$(OCR_HEAD)^{commit}" 2>/dev/null) || { echo "OCR_HEAD must resolve to a commit"; exit 2; }; \
-		test "$head_resolved" = "$(OCR_HEAD)" || { echo "OCR_HEAD must be the exact full commit SHA, not a symbolic, moving, or abbreviated ref"; exit 2; }
+	@printf '%s\n' "$(OCR_BASE)" | grep -Eq '^[0-9a-f]{40}$' || { echo "OCR_BASE must be the exact full 40-character lowercase commit SHA"; exit 2; }
+	@printf '%s\n' "$(OCR_HEAD)" | grep -Eq '^[0-9a-f]{40}$' || { echo "OCR_HEAD must be the exact full 40-character lowercase commit SHA"; exit 2; }
+	@git cat-file -e "$(OCR_BASE)^{commit}" 2>/dev/null || { echo "OCR_BASE must identify an existing commit"; exit 2; }
+	@git cat-file -e "$(OCR_HEAD)^{commit}" 2>/dev/null || { echo "OCR_HEAD must identify an existing commit"; exit 2; }
 
 ocr-preview: ocr-validate-refs
 	mkdir -p "$(dir $(OCR_PREVIEW_OUTPUT))"
