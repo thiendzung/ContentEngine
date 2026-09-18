@@ -580,6 +580,8 @@
   .operator-case-facts,
   .state-grid,
   .writer-lanes-grid,
+  .quality-lanes-grid,
+  .completion-locales,
   .angle-approval-bar {
     grid-template-columns: 1fr;
   }
