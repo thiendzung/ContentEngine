@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-18, after F6-MINI merge, Codex exact repin, and OCR-01 merge. This is the ONE current working window.
+Updated: 2026-09-18, after F6 browser acceptance and O1.2 operational migration. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -19,7 +19,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live main: `9bb3ec77ee805c688e16638443f0c5ada0b85e2e` after PR #121. This main already contains merged F6-MINI PR #117 and exact Codex repin PR #122.
+Live main: `2b20abeccbbc4377e10c2d5e9defaf09974f85c0` after PR #135. This main contains the accepted F6 browser path, OCR advisory tooling, O1 backup/restore hardening, isolated migration rehearsal and the fail-closed operational migration command.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -30,14 +30,14 @@ Live main: `9bb3ec77ee805c688e16638443f0c5ada0b85e2e` after PR #121. This main a
 | F3 | DONE / acceptance PASS / PR #104 merged | Independent canonical `vi-VN` / `en` Writer lanes. |
 | F4 | DONE / acceptance PASS / PR #105 merged | Review/Revise -> Audit -> Source-copy -> exact final_content -> final_review gate. |
 | F5 | DONE / `PASS_F5_FINALIZATION` | PR #109 + PR #113; #110 accepted exact VI/EN approvals -> ContentVersions -> `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`. |
-| F6-MINI | IMPLEMENTED / PR #117 MERGED / acceptance pending | Browser workspace code is merged; Issue #116 remains open until F6.A1 browser acceptance passes. |
-| F6.A1 | CURRENT ACCEPTANCE / Issue #118 | Prior run stopped fail-closed on Codex version drift; PR #122 exact repin is merged. Issue #118 still names old exact ref and must be retargeted/reconfirmed before another model call. |
+| F6-MINI | DONE / browser acceptance PASS | Browser workspace and canonical end-to-end browser acceptance are complete; #116/#118 and related P1 trackers are closed. |
+| F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview v1.12.5 Delegation Mode is advisory; exact-ref wrapper and regression tests are on main. |
-| O1 | NEXT AFTER F6.A1 PASS | Controlled local release, backup/restore, DB/runtime ownership and recovery proof. |
+| O1 | O1.0-O1.2 DONE / O1.3 IMPLEMENTATION / Issue #136 | Read-only inspection, fresh backup+isolated restore, migration rehearsal and operational source migration to `20260915_0034` are PASS; controlled runtime lifecycle proof remains. |
 | F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual Journal cases. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
-Code/test migration baseline remains `20260915_0034`. Last documented operational schema is still historical evidence only; do not infer current deployed schema without fresh O1 inspection.
+Code/test migration head and the verified operational source are both `20260915_0034`. Post-migration inspection reports `CURRENT`; backend/frontend/worker remain stopped pending separately authorized O1.3 lifecycle proof.
 
 Separate non-core publication track:
 - #114 Editorial Quality Pass: produce a successor publication-ready revision without mutating accepted V1.
@@ -46,14 +46,20 @@ Neither authorizes publication.
 
 ## Immediate task
 
-P0 reconciliation is documentation-only. After this reconcile PR is reviewed/merged, the next runtime gate is F6.A1 / Issue #118.
+O1.0-O1.2 are complete. The current bounded task is O1.3 / Issue #136: controlled release and runtime lifecycle proof.
 
-Before any F6.A1 model call:
-- re-read live `main` and pin a fresh disposable checkout to the newly authorized exact target;
-- Issue #118 currently records old merged main `0c3ae7f3214dbdb381dacbddd38fb4e36dc5b41a`; do not silently substitute current `main`;
-- current live main is `9bb3ec77ee805c688e16638443f0c5ada0b85e2e` and contains runtime repin #122 plus advisory OCR tooling #121;
-- Founder must explicitly reconfirm/retarget the bounded F6.A1 execution to the exact current acceptance candidate before Agent Local resumes model execution;
-- then rerun exact-main isolation/preflight and the browser path in #118. No operational DB migration or publication is authorized.
+Current entry conditions:
+- live main is `2b20abeccbbc4377e10c2d5e9defaf09974f85c0` after PR #135;
+- operational DB is `contentengine` at `20260915_0034`, migration status CURRENT;
+- O1.1 recovery material is retained and isolated restore was proven;
+- operational migration PASS preserved core/source_documents/model_calls fingerprints;
+- backend/frontend/worker are stopped;
+- publication, WordPress and real content/model execution remain unauthorized.
+
+O1.3 implementation follows:
+`MG code/tests -> CI -> exact-ref OCR -> MG triage -> Founder authorization -> Agent Local exact release lifecycle proof`.
+
+The operational proof must use a fresh exact checkout and exact dependency environments, must not reuse the historical dirty checkout, must not create or consume operational Jobs, and must leave durable Jobs/StepRuns/ModelCalls/ToolCalls/OutboxIntents unchanged across startup/shutdown/restart.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
