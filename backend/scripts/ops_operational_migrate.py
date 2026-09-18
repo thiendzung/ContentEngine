@@ -416,7 +416,6 @@ async def _main() -> int:
         runtime_after = _runtime_guard()
 
         result_payload = {
-            "status": "READY",
             "mode": "operational_source_migration",
             "checkout": checkout,
             "runtime_before": runtime_before,
@@ -509,7 +508,13 @@ async def _main() -> int:
         return 2
 
     result_payload["secondary_blockers"] = secondary_blockers
-    print(json.dumps(result_payload, sort_keys=True, indent=2))
+    print(
+        json.dumps(
+            {"status": "READY", **result_payload},
+            sort_keys=True,
+            indent=2,
+        )
+    )
     return 0
 
 
