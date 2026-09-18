@@ -609,12 +609,15 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   const canContinue = state.status === "READY" && state.allowed_intents.includes("continue");
   const canRetry = state.allowed_intents.includes("retry");
   const sections = outlineGate ? outlineSections(outlineGate) : [];
+  const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
   const finalPanels = review
-    ? [...review.locales].sort((a, b) => {
-        if (a.locale === "vi-VN") return -1;
-        if (b.locale === "vi-VN") return 1;
-        return a.locale.localeCompare(b.locale);
-      })
+    ? review.locales
+        .filter((panel) => requiredLocales.has(panel.locale))
+        .sort((a, b) => {
+          if (a.locale === "vi-VN") return -1;
+          if (b.locale === "vi-VN") return 1;
+          return a.locale.localeCompare(b.locale);
+        })
     : [];
 
   return (
