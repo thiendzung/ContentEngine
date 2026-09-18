@@ -211,3 +211,18 @@ def test_operational_migration_contract_is_exact() -> None:
         "count": 6,
         "sha256": "865bd5952be18b5ecb14867db335988dfd9f8863683036fb0a911baff3036037",
     }
+
+
+def test_make_target_requires_backup_and_authorized_head() -> None:
+    makefile = (Path(__file__).resolve().parents[2] / "Makefile").read_text(
+        encoding="utf-8"
+    )
+    target = makefile.split("operational-migrate:", maxsplit=1)[1].split(
+        "backend-check:", maxsplit=1
+    )[0]
+
+    assert 'test -n "$(BACKUP)"' in target
+    assert 'test -n "$(AUTHORIZED_HEAD)"' in target
+    assert "scripts.ops_operational_migrate" in target
+    assert '--authorized-head "$(AUTHORIZED_HEAD)"' in target
+    assert "make migrate" not in target
