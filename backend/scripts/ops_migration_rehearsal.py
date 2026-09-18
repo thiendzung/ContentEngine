@@ -122,7 +122,10 @@ def _load_manifest(backup: Path, manifest_path: Path) -> dict[str, object]:
         raise MigrationRehearsalError("manifest_invalid")
     if manifest.get("format_version") != 2:
         raise MigrationRehearsalError("manifest_format_v2_required")
-    actual_dump_sha256 = _sha256(backup)
+    try:
+        actual_dump_sha256 = _sha256(backup)
+    except OSError as exc:
+        raise MigrationRehearsalError("backup_hash_unavailable") from exc
     if manifest.get("dump_sha256") != actual_dump_sha256:
         raise MigrationRehearsalError("backup_hash_mismatch")
     if actual_dump_sha256 != _EXPECTED_DUMP_SHA256:
