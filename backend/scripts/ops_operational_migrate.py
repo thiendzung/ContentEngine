@@ -44,6 +44,8 @@ _EXPECTED_SOURCE_DOCUMENTS = {
     "sha256": "865bd5952be18b5ecb14867db335988dfd9f8863683036fb0a911baff3036037",
 }
 _FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
+_BACKEND_PROCESS_MARKERS = ("uvicorn app.main:app",)
+_FRONTEND_PROCESS_MARKERS = ("next dev", "next start")
 _WORKER_MARKERS = (
     "scripts.run_operator_worker",
     "scripts.run_operator_worker_loop",
@@ -125,18 +127,24 @@ def _runtime_guard() -> dict[str, object]:
     if result.returncode != 0:
         raise OperationalMigrationError("runtime_process_state_unavailable")
 
+    backend_processes: list[str] = []
+    frontend_processes: list[str] = []
     workers: list[str] = []
     for raw_line in result.stdout.splitlines():
         line = raw_line.strip()
         if not line:
             continue
         lowered = line.lower()
+        if any(marker in lowered for marker in _BACKEND_PROCESS_MARKERS):
+            backend_processes.append(line)
+        if any(marker in lowered for marker in _FRONTEND_PROCESS_MARKERS):
+            frontend_processes.append(line)
         if any(marker in lowered for marker in _WORKER_MARKERS):
             workers.append(line)
 
-    if backend_listening:
+    if backend_listening or backend_processes:
         raise OperationalMigrationError("backend_runtime_active")
-    if frontend_listening:
+    if frontend_listening or frontend_processes:
         raise OperationalMigrationError("frontend_runtime_active")
     if workers:
         raise OperationalMigrationError("worker_runtime_active")
@@ -144,6 +152,8 @@ def _runtime_guard() -> dict[str, object]:
     return {
         "backend_port_8000": "STOPPED",
         "frontend_port_3000": "STOPPED",
+        "backend_processes": [],
+        "frontend_processes": [],
         "worker_processes": [],
     }
 
