@@ -18,6 +18,9 @@ from app.modules.content_engine.journal.operator_runtime import (
     get_operator_state,
     resolve_next_operator_action,
 )
+from app.modules.content_engine.journal.operator_vertical_slice import (
+    _required_locale_completion_binding,
+)
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentItem, ContentVersion, LocaleVariant
 from app.modules.harness.models import Artifact, ContentRun
@@ -260,7 +263,7 @@ async def test_extra_non_required_locale_does_not_block_complete() -> None:
 
 
 @pytest.mark.asyncio
-async def test_missing_required_locale_active_version_never_completes() -> None:
+async def test_required_locale_without_active_version_reports_missing_binding() -> None:
     async with isolated_session() as session:
         fixture = await _canonical_completed_fixture(session)
         await _add_required_locale_item(
@@ -269,11 +272,13 @@ async def test_missing_required_locale_active_version_never_completes() -> None:
             locale="fr",
         )
 
-        state = await get_operator_state(
+        binding_state, payload = await _required_locale_completion_binding(
             session,
             content_case_id=fixture.content_case.id,
+            locale="fr",
         )
-        assert state.status != "COMPLETE"
+        assert binding_state == "missing"
+        assert payload["reason"] == "active_content_version_missing"
 
 
 @pytest.mark.asyncio
