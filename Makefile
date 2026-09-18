@@ -12,7 +12,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight backup restore-test backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight backup restore-test migration-rehearsal backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -76,6 +76,10 @@ backup:
 restore-test:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make restore-test BACKUP=/path/to/file.dump" && exit 2)
 	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_restore_verify "$(BACKUP)"
+
+migration-rehearsal:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required: make migration-rehearsal BACKUP=/path/to/file.dump" && exit 2)
+	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_migration_rehearsal "$(BACKUP)"
 
 backend-check:
 	cd backend && .venv/bin/ruff check app tests scripts migrations
