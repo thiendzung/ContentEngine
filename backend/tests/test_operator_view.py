@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 from test_ce05_review_revise import isolated_session
+from test_operator_quality import _complete_f3_writers
 from test_operator_start_to_angle import (
     ControlledCodexRunner,
     ControlledEvidenceWorkflow,
@@ -66,6 +67,25 @@ async def test_operator_view_projects_ready_intake_without_inventing_gate(
         board = await list_production_board_cases(session)
         board_row = next(item for item in board if item.id == created.content_case_id)
         assert board_row.operator_managed is True
+
+
+@pytest.mark.asyncio
+async def test_operator_view_projects_writer_lanes_before_quality_dispatch() -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline = await _complete_f3_writers(session)
+        view = await get_operator_case_view(
+            session,
+            content_case_id=fixture.run.content_case_id,
+        )
+
+        assert view.state.status == "READY"
+        assert view.state.primary_intent == "continue"
+        assert {lane.required_locale for lane in view.writer_lanes} == {"en", "vi-VN"}
+        assert all(lane.status == "completed" for lane in view.writer_lanes)
+        assert all(lane.run_id is not None for lane in view.writer_lanes)
+        assert all(lane.draft_artifact_id is not None for lane in view.writer_lanes)
+        assert all(lane.draft_hash is not None for lane in view.writer_lanes)
+        assert view.quality_lanes == []
 
 
 @pytest.mark.asyncio
