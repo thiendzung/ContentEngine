@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main, ce01-walking-skeleton]
@@ -32,6 +35,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -91,13 +97,15 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: O1.3 package generated frontend release inputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: o1-3-frontend-release-inputs
-          path: |
-            frontend/package-lock.json
-            frontend/next-env.d.ts
-            frontend/tsconfig.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: O1.3 commit canonical frontend release inputs
+        if: github.event_name == 'pull_request' && github.head_ref == 'ops/o1-release-lifecycle'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package-lock.json frontend/next-env.d.ts frontend/tsconfig.json
+          if git diff --cached --quiet; then
+            echo "Canonical frontend release inputs already tracked"
+            exit 0
+          fi
+          git commit -m "build(O1.3): canonicalize frontend release inputs"
+          git push origin HEAD:"$GITHUB_HEAD_REF"
