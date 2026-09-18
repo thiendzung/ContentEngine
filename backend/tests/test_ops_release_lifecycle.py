@@ -284,3 +284,50 @@ def test_make_target_requires_exact_authorized_head() -> None:
     assert "backend-dev" not in target
     assert "frontend-dev" not in target
     assert "operator-worker-loop" not in target
+
+
+@pytest.mark.asyncio
+async def test_release_preflight_helper_returns_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_preflight() -> dict[str, object]:
+        return {"status": "READY", "checks": []}
+
+    monkeypatch.setattr(lifecycle, "build_release_preflight", fake_preflight)
+
+    result = await lifecycle._require_release_preflight(
+        blocker="pre_release_preflight_blocked"
+    )
+
+    assert result == {"status": "READY", "checks": []}
+
+
+@pytest.mark.asyncio
+async def test_release_preflight_helper_blocks_with_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    blocked = {
+        "status": "BLOCKED",
+        "checks": [
+            {
+                "key": "codex_cli",
+                "status": "BLOCKED",
+                "detail": "agent_runner_version_not_approved",
+            }
+        ],
+    }
+
+    async def fake_preflight() -> dict[str, object]:
+        return blocked
+
+    monkeypatch.setattr(lifecycle, "build_release_preflight", fake_preflight)
+
+    with pytest.raises(
+        lifecycle.ReleaseLifecycleError,
+        match="pre_release_preflight_blocked",
+    ) as exc_info:
+        await lifecycle._require_release_preflight(
+            blocker="pre_release_preflight_blocked"
+        )
+
+    assert exc_info.value.evidence == {"release_preflight": blocked}
