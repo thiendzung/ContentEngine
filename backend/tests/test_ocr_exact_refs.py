@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -46,14 +47,16 @@ def test_ocr_ref_validation_accepts_exact_full_commit_sha() -> None:
 @pytest.mark.parametrize(
     "ref_factory",
     [
-        lambda sha: "HEAD",
-        lambda sha: "HEAD~0",
+        lambda _sha: "HEAD",
+        lambda _sha: "HEAD~0",
         lambda sha: sha[:12],
     ],
 )
-def test_ocr_ref_validation_rejects_non_exact_refs(ref_factory: object) -> None:
+def test_ocr_ref_validation_rejects_non_exact_refs(
+    ref_factory: Callable[[str], str],
+) -> None:
     sha = _git_head()
-    ref = ref_factory(sha)  # type: ignore[operator]
+    ref = ref_factory(sha)
 
     result = _validate_refs(ref, sha)
 
