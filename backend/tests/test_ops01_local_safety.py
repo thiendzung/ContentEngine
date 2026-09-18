@@ -285,7 +285,7 @@ def test_operational_cli_modules_import_without_cycle() -> None:
                 "import scripts.prepare_test_database; import scripts.ops_inspect; "
                 "import scripts.ops_preflight; "
                 "import scripts.ops_backup; import scripts.ops_migration_rehearsal; "
-                "import scripts.ops_operational_migrate; "
+                "import scripts.ops_operational_migrate; import scripts.ops_release_lifecycle; "
                 "import scripts.ops_restore_verify"
             ),
         ],
