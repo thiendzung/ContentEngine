@@ -15,10 +15,10 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | F4 | DONE / acceptance PASS / PR #105 MERGED | Exact quality path reaches final_review. |
 | F5 | DONE / PASS_F5_FINALIZATION | #109 + #113 merged; #110 accepted COMPLETE / Approved / Not published. |
 | F5.2 | DEFERRED / not normal-path blocker | Implement bounded revision continuation after changes_requested; do not advertise it in F6-MINI. |
-| F6-MINI | IMPLEMENTED / PR #117 MERGED / Issue #116 open | Browser workspace code is merged; acceptance is not complete until F6.A1 passes. |
-| F6.A1 | CURRENT ACCEPTANCE / Issue #118 | Prior acceptance stopped fail-closed on Codex version drift. PR #122 exact repin is merged; #118 must be retargeted/reconfirmed to the exact current candidate before model execution resumes. |
+| F6-MINI | DONE / browser acceptance PASS / PR #117 MERGED | Browser workspace is merged and the bounded browser acceptance path passed; #116 is closed. |
+| F6.A1 | DONE / real browser acceptance PASS | Exact browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`; #118 is closed. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
-| O1 | O1.0-O1.2 DONE / O1.3 IMPLEMENTATION | Inspection, backup/restore and operational migration PASS; controlled runtime lifecycle proof is next. |
+| P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
 | F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on release candidate. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
@@ -68,7 +68,7 @@ Backend normal-path completion is an F5 acceptance outcome, not a claim that loc
 
 ### F6.1 - Shell and truthful system status
 
-Implementation note: the bounded F6-MINI browser workspace has merged via PR #117. The checklist below remains product-scope tracking; merged code is not equivalent to F6.A1 runtime acceptance.
+Implementation note: F6-MINI merged via PR #117 and F6.A1 browser acceptance passed. The checklist below is retained as product-scope/polish tracking; F6 acceptance does not silently assert every optional polish item below.
 
 - [ ] Header: MOTGU ContentEngine, actual environment and readiness.
 - [ ] Menu: Production / New Journal / System-Runtime.
@@ -98,12 +98,12 @@ Implementation note: the bounded F6-MINI browser workspace has merged via PR #11
 
 ## F6.A1 - Browser acceptance on an exact current candidate
 
-- [ ] Update/reconfirm Issue #118 against one exact current acceptance candidate; do not silently replace its recorded old ref.
-- [ ] Use a fresh disposable clean checkout, isolated TEST DB, loopback-only runtime and protected Founder checkout untouched.
-- [ ] Prove canonical browser path from New Journal through `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` without normal-path SQL/CLI intervention.
-- [ ] Prove refresh/double-click/per-locale final approval/terminal refresh idempotency checks without extra model work.
-- [ ] Record exact bindings, ContentVersions, ModelCalls/ToolCalls, publication delta and operational-DB non-interference.
-- [ ] Close #116 only after bounded F6.A1 acceptance PASS.
+- [x] Reconfirmed #118 against an exact acceptance candidate rather than silently substituting a moving ref.
+- [x] Used a fresh disposable clean checkout, isolated TEST DB, loopback-only runtime and protected Founder checkout.
+- [x] Proved canonical browser path from New Journal through `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` without normal-path SQL/CLI intervention.
+- [x] Proved bounded refresh/double-click/per-locale final approval/terminal refresh idempotency behavior without unintended extra model work.
+- [x] Recorded exact bindings, ContentVersions, ModelCalls/ToolCalls, publication delta and operational-DB non-interference.
+- [x] Closed #116/#118 only after bounded F6.A1 acceptance PASS.
 
 ## OpenCodeReview advisory review process
 
@@ -119,9 +119,15 @@ Implementation note: the bounded F6-MINI browser workspace has merged via PR #11
 - [x] O1.1 created a fresh external backup and proved an isolated restore with exact source revision/fingerprint unchanged.
 - [x] O1.2 rehearsed `0027 -> 0034` on the exact backup, then separately authorized and completed the operational source migration; post-inspect is CURRENT.
 - [x] Frozen core/source_documents/model_calls evidence remained unchanged through migration; no operational reset or test-volume substitution.
-- [ ] O1.3 prove clean exact-release startup/shutdown/restart, loopback bindings, idle-worker lifecycle, durable-state invariance and post-release preflight.
-- [ ] O1.4 close out exact release SHA, DB/runtime identity, recovery material and publication lock after O1.3 PASS.
+- [x] O1.3 proved clean exact-release startup/shutdown/restart, loopback bindings, idle-worker lifecycle, durable-state invariance and pre/post release preflight on the merged PR #137 release code.
+- [x] O1.4 closed out exact release SHA, DB/runtime identity and publication lock; fresh rev-0034 format-v2 backup restored exactly in an isolated disposable DB and both pre-/post-migration recovery points are retained.
 - [x] Keep deployment proof separate from content/model/publication execution; retain O1.1 recovery material.
+
+P2 / O1 closeout result: `PASS_O1_CONTROLLED_OPERATIONAL_RELEASE`.
+
+Recovery points retained:
+- O1.1 pre-migration rev `20260914_0027` dump SHA-256 `488ce3bfdc8978f8343e2f2803dd79e17db269ab77221d87a46afb520a98a1d9`;
+- O1.4 post-release rev `20260915_0034` dump SHA-256 `578d9bad504e9c7b129e95e28c8c58b10c3965f1e54c7714227b767653bc7d42`.
 
 O2: new Model Routing activation requires an explicit policy/model/provider decision, test proof and a new approved immutable SettingsVersion. Existing approved legacy routing may suffice; O2 is not automatically a V1 blocker.
 
