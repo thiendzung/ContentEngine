@@ -22,6 +22,21 @@ Required operational state:
 - O1.2B migration PASS;
 - backend/frontend/worker stopped.
 
+## Operational environment
+
+Before creating either dependency environment or the frontend production build, load the existing
+operational environment without printing secrets:
+
+```sh
+set -a
+source /Users/thiendung/MOTGU-AI/ContentEngine/.env
+set +a
+export CONTENTENGINE_OPERATIONAL_REPO="/Users/thiendung/MOTGU-AI/ContentEngine"
+```
+
+This must happen before `npm run build` so the public API base configuration embedded in the exact
+frontend build is reproducible.
+
 ## Exact checkout and dependency provenance
 
 Use a fresh disposable checkout at the Founder-authorized exact HEAD.
@@ -56,20 +71,6 @@ cat frontend/.next/BUILD_ID
 The lifecycle command itself must fail closed unless the current checkout HEAD is the exact supplied
 Founder-authorized 40-character SHA, the worktree is clean, and the Python interpreter is the
 fresh checkout's own `backend/.venv/bin/python`.
-
-## Operational environment
-
-Load the existing operational environment without printing secrets:
-
-```sh
-set -a
-source /Users/thiendung/MOTGU-AI/ContentEngine/.env
-set +a
-export CONTENTENGINE_OPERATIONAL_REPO="/Users/thiendung/MOTGU-AI/ContentEngine"
-```
-
-The environment must be loaded before the frontend production build so the exact public API base
-configuration used by the build is reproducible.
 
 ## PostgreSQL identity / stable volume proof before runtime
 
