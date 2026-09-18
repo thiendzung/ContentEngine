@@ -491,7 +491,11 @@ async def _quality_state_overlay(
     pending_final_lanes = [
         lane for lane in progress.lanes if lane.status == "final_gate_ready"
     ]
-    if progress.all_qualified and pending_final_lanes:
+    final_materialized = all(
+        lane.final_content is not None and lane.final_review is not None
+        for lane in progress.lanes
+    )
+    if progress.all_qualified and final_materialized and pending_final_lanes:
         final_lane = pending_final_lanes[0]
         return state.model_copy(
             update={
