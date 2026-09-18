@@ -103,11 +103,13 @@ def _validate_authorized_checkout(authorized_head: str) -> dict[str, object]:
 
 
 def _port_listening(port: int) -> bool:
-    try:
-        with socket.create_connection(("127.0.0.1", port), timeout=0.2):
-            return True
-    except OSError:
-        return False
+    for host in ("127.0.0.1", "::1"):
+        try:
+            with socket.create_connection((host, port), timeout=0.2):
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def _runtime_guard() -> dict[str, object]:
