@@ -527,7 +527,13 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       return;
     }
 
-    setError(staleState ? "" : technicalError(requestError));
+    if (staleState || ambiguousOutcome) {
+      setError("");
+      setNotice("Đã đối soát trạng thái chuẩn. Hãy kiểm tra trạng thái hiện tại trước khi thao tác tiếp.");
+      return;
+    }
+
+    setError(technicalError(requestError));
   }
 
   async function submitIntent(intent: OperatorIntent) {
