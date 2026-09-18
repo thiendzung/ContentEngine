@@ -8,56 +8,56 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 
 | ID | State | Next exit |
 |---|---|---|
-| F0 | DONE / acceptance PASS / PR #93 MERGED | Closed; do not rerun acceptance #2 under its consumed authorization. |
-| F1 | DONE within its bounded scope / PR #102 MERGED | Reuse canonical facade/resolver; future stages extend it. |
-| F2 | DONE / acceptance PASS / PR #103 MERGED | Backend reaches OutlineApproval; full Outline UI remains F6. |
-| F3 | CURRENT / PR #104 Draft, planning-only at reconciliation | Independent canonical Writer lanes; stop before Quality. |
-| F4 | PLANNED after F3 | Exact per-locale quality results and final human gate. |
-| F5 | PLANNED after F4 | Exact final decisions, required ContentVersions and COMPLETE. |
-| F6.1 | PLANNED, part of F6 | Minimal header/menu/status shell. |
-| F6.2 | PLANNED, part of F6 | One full case workspace for all three approval gates. |
-| F6.3 | PLANNED, part of F6 | Dense canonical Production Board. |
-| O1 | RELEASE GATE before operational pilot | Authorized deployment/migration and recovery proof. |
-| O2 | OPTIONAL, separately authorized | New Model Routing policy activation only when required. |
-| F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on the release candidate. |
+| F0 | DONE / acceptance PASS / PR #93 MERGED | Closed; consumed authorization is not reusable. |
+| F1 | DONE / PR #102 MERGED | Reuse canonical facade/resolver. |
+| F2 | DONE / acceptance PASS / PR #103 MERGED | Exact Outline backend path accepted. |
+| F3 | DONE / acceptance PASS / PR #104 MERGED | Independent VI/EN Writers accepted. |
+| F4 | DONE / acceptance PASS / PR #105 MERGED | Exact quality path reaches final_review. |
+| F5 | DONE / PASS_F5_FINALIZATION | #109 + #113 merged; #110 accepted COMPLETE / Approved / Not published. |
+| F6-MINI | CURRENT / Issue #116 / PR #117 Draft | One browser workspace reaches unpublished COMPLETE without CLI/SQL normal-path intervention. |
+| O1 | NEXT RELEASE GATE | Fresh backup/restore proof, actual DB/runtime inspection and supported local release. |
+| O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
+| F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on release candidate. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
+| Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
+| Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
 
 ## F3 - OutlineApproval -> independent Writers
 
 Exact contract: `logs/2026-09-16-f3-independent-writers-plan.md`.
 
-- [ ] Normalize NEW intake/source/required locales to `vi-VN` and `en`; accept `vi` only as an input alias; do not rewrite historical rows.
-- [ ] Materialize/reuse canonical required LocaleVariants through existing contracts; reject missing/ambiguous worker bindings.
-- [ ] Require exact OutlineApproval, Outline id/version/hash, context and approved Writer configuration.
-- [ ] One Continue atomically creates/reuses required lane runs/steps/jobs; a failed dispatch does not leave half a fan-out.
-- [ ] Execute each lane durably and independently; sequential consumption is acceptable. Do not feed one locale draft into the other.
-- [ ] Aggregate state/version includes all required lanes and their current jobs/artifacts.
-- [ ] Retry only failed/cancelled lanes; preserve completed sibling work and reject stale or conflicting commands.
-- [ ] Tests prove replay/no duplicate canonical outputs, partial failure, missing approval, locale mismatch and unsupported next-stage rejection.
-- [ ] Exact-head CI, MG review and separately authorized real local bilingual acceptance PASS.
-- [ ] Both drafts -> `writers_to_quality`, `executable=false`; zero quality/final/ContentVersion/publish execution.
+- [x] Normalize NEW intake/source/required locales to `vi-VN` and `en`; accept `vi` only as an input alias; do not rewrite historical rows.
+- [x] Materialize/reuse canonical required LocaleVariants through existing contracts; reject missing/ambiguous worker bindings.
+- [x] Require exact OutlineApproval, Outline id/version/hash, context and approved Writer configuration.
+- [x] One Continue atomically creates/reuses required lane runs/steps/jobs; a failed dispatch does not leave half a fan-out.
+- [x] Execute each lane durably and independently; sequential consumption is acceptable. Do not feed one locale draft into the other.
+- [x] Aggregate state/version includes all required lanes and their current jobs/artifacts.
+- [x] Retry only failed/cancelled lanes; preserve completed sibling work and reject stale or conflicting commands.
+- [x] Tests prove replay/no duplicate canonical outputs, partial failure, missing approval, locale mismatch and unsupported next-stage rejection.
+- [x] Exact-head CI, MG review and separately authorized real local bilingual acceptance PASS.
+- [x] Both drafts -> `writers_to_quality`, `executable=false`; zero quality/final/ContentVersion/publish execution.
 
 ## F4 - Quality -> final human gate
 
-- [ ] Reuse Review/Revise, Assertion Audit and Source-copy for each required locale.
-- [ ] Keep work bounded; persist each completed stage and retain failed-attempt diagnostics without raw private payloads.
-- [ ] Bind results to the exact current artifact/version/hash, not unrelated historical evaluations.
-- [ ] Hard failures BLOCKED; warnings remain verbatim and visible for Founder review.
-- [ ] Retrying one failed lane/stage preserves accepted sibling results.
-- [ ] Prepare exact final artifacts/package and `WAIT_HUMAN(final_review)` only when all required locales qualify.
-- [ ] Read model exposes final snapshot, checks, warnings and safe next actions.
-- [ ] Exact-head tests/replay/restart/local acceptance PASS; no final approval or ContentVersion creation in this slice.
+- [x] Reuse Review/Revise, Assertion Audit and Source-copy for each required locale.
+- [x] Keep work bounded; persist each completed stage and retain failed-attempt diagnostics without raw private payloads.
+- [x] Bind results to the exact current artifact/version/hash, not unrelated historical evaluations.
+- [x] Hard failures BLOCKED; warnings remain verbatim and visible for Founder review.
+- [x] Retrying one failed lane/stage preserves accepted sibling results.
+- [x] Prepare exact final artifacts/package and `WAIT_HUMAN(final_review)` only when all required locales qualify.
+- [x] Read model exposes final snapshot, checks, warnings and safe next actions.
+- [x] Exact-head tests/replay/restart/local acceptance PASS; no final approval or ContentVersion creation in this slice.
 
 ## F5 - Final decisions -> ContentVersions -> COMPLETE
 
-- [ ] Review binds exact final bytes, applicable checks and package identity for each required locale.
-- [ ] Approve/request changes/reject have explicit durable outcomes; unsupported actions are not advertised.
-- [ ] A changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
-- [ ] Reuse canonical ContentItem/ContentVersion persistence; never silently overwrite approved history.
-- [ ] Finalization is atomic or durably recoverable; partial locale completion never reports COMPLETE.
-- [ ] Required locale membership AND exact approved lineage determine COMPLETE, not row count.
-- [ ] Replay/stale approval/partial failure/restart tests and exact-head local acceptance PASS.
-- [ ] Publication remains absent; UI reads Approved / Not published.
+- [x] Review binds exact final bytes, applicable checks and package identity for each required locale.
+- [x] Approve/request changes/reject have explicit durable outcomes; unsupported actions are not advertised.
+- [x] A changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
+- [x] Reuse canonical ContentItem/ContentVersion persistence; never silently overwrite approved history.
+- [x] Finalization is atomic or durably recoverable; partial locale completion never reports COMPLETE.
+- [x] Required locale membership AND exact approved lineage determine COMPLETE, not row count.
+- [x] Replay/stale approval/partial failure/restart tests and exact-head local acceptance PASS.
+- [x] Publication remains absent; UI reads Approved / Not published.
 
 Backend normal-path completion is an F5 acceptance outcome, not a claim that local production deployment or full UI is finished.
 
