@@ -18,7 +18,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | F6-MINI | IMPLEMENTED / PR #117 MERGED / Issue #116 open | Browser workspace code is merged; acceptance is not complete until F6.A1 passes. |
 | F6.A1 | CURRENT ACCEPTANCE / Issue #118 | Prior acceptance stopped fail-closed on Codex version drift. PR #122 exact repin is merged; #118 must be retargeted/reconfirmed to the exact current candidate before model execution resumes. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
-| O1 | NEXT AFTER F6.A1 PASS | Fresh backup/restore proof, actual DB/runtime inspection and supported local release. |
+| O1 | O1.0-O1.2 DONE / O1.3 IMPLEMENTATION | Inspection, backup/restore and operational migration PASS; controlled runtime lifecycle proof is next. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
 | F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on release candidate. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
@@ -115,12 +115,13 @@ Implementation note: the bounded F6-MINI browser workspace has merged via PR #11
 
 ## O1 - Controlled local operational release
 
-- [ ] Inspect actual deployed commit, DB identity/schema, runtime ownership and existing work before changes; do not assume old snapshots are live.
-- [ ] Founder authorizes exact release and any required migration; fresh backup + isolated restore proof precede schema mutation.
-- [ ] Baseline documented schema is operational `0027`, code/test `0034`; re-evaluate actual source/target rather than blindly rerunning migrations.
-- [ ] Frozen M1 counts/hashes remain unchanged; no operational reset or test-volume substitution.
-- [ ] Prove supported startup/shutdown, loopback bindings, worker recovery and post-release preflight.
-- [ ] Separate deployment proof from content/model execution; preserve recovery material.
+- [x] O1.0 inspected exact operational DB/runtime identity read-only; source fingerprint matched frozen M1 and runtime was stopped.
+- [x] O1.1 created a fresh external backup and proved an isolated restore with exact source revision/fingerprint unchanged.
+- [x] O1.2 rehearsed `0027 -> 0034` on the exact backup, then separately authorized and completed the operational source migration; post-inspect is CURRENT.
+- [x] Frozen core/source_documents/model_calls evidence remained unchanged through migration; no operational reset or test-volume substitution.
+- [ ] O1.3 prove clean exact-release startup/shutdown/restart, loopback bindings, idle-worker lifecycle, durable-state invariance and post-release preflight.
+- [ ] O1.4 close out exact release SHA, DB/runtime identity, recovery material and publication lock after O1.3 PASS.
+- [x] Keep deployment proof separate from content/model/publication execution; retain O1.1 recovery material.
 
 O2: new Model Routing activation requires an explicit policy/model/provider decision, test proof and a new approved immutable SettingsVersion. Existing approved legacy routing may suffice; O2 is not automatically a V1 blocker.
 

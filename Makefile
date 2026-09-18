@@ -13,7 +13,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight backup restore-test migration-rehearsal operational-migrate backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -23,7 +23,7 @@ backend-install:
 	$(BACKEND_PIP) install -r backend/requirements-dev.txt
 
 frontend-install:
-	cd frontend && npm install --no-audit --no-fund
+	cd frontend && npm ci --no-audit --no-fund
 
 db-up:
 	docker compose -p $(COMPOSE_PROJECT_NAME) up -d postgres
@@ -71,6 +71,9 @@ ops-inspect:
 ops-preflight:
 	cd backend && .venv/bin/python -m scripts.ops_preflight
 
+release-preflight:
+	cd backend && .venv/bin/python -m scripts.ops_release_preflight
+
 backup:
 	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_backup
 
@@ -86,6 +89,10 @@ operational-migrate:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make operational-migrate BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
 	cd backend && .venv/bin/python -m scripts.ops_operational_migrate "$(BACKUP)" --authorized-head "$(AUTHORIZED_HEAD)"
+
+release-lifecycle:
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required: make release-lifecycle AUTHORIZED_HEAD=<sha>" && exit 2)
+	cd backend && .venv/bin/python -m scripts.ops_release_lifecycle --authorized-head "$(AUTHORIZED_HEAD)"
 
 backend-check:
 	cd backend && .venv/bin/ruff check app tests scripts migrations

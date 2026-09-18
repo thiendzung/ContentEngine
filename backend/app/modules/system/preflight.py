@@ -135,3 +135,22 @@ async def build_operational_preflight() -> dict[str, object]:
         "status": "READY" if ready else "BLOCKED",
         "checks": [asdict(check) for check in checks],
     }
+
+
+async def build_release_preflight() -> dict[str, object]:
+    """Return runtime-release checks without test-database-only requirements."""
+
+    checks = [
+        _local_database_target_check(),
+        await _database_check(),
+        await _migration_check(),
+        await _codex_check(),
+        _antigravity_check(),
+        _postgres_tools_check(),
+    ]
+    required = [check for check in checks if check.status != "OPTIONAL"]
+    ready = all(check.status == "READY" for check in required)
+    return {
+        "status": "READY" if ready else "BLOCKED",
+        "checks": [asdict(check) for check in checks],
+    }
