@@ -32,6 +32,9 @@ from app.modules.content_engine.journal.operator_locking import (
 from app.modules.content_engine.journal.operator_preflight import (
     build_journal_operator_preflight,
 )
+from app.modules.content_engine.journal.operator_writers import (
+    get_writer_lane_progress,
+)
 from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
@@ -418,6 +421,55 @@ async def _required_locale_completion_binding(
     return "complete", payload
 
 
+async def _consumed_outline_source_run(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    run: ContentRun,
+    required_locales: list[str],
+    bindings: list[dict[str, object]],
+) -> bool:
+    """Return True only for the approved Outline source run consumed by exact final writers."""
+
+    if (
+        run.status != "waiting_approval"
+        or run.current_step != "outline"
+        or run.run_mode != "create"
+    ):
+        return False
+    try:
+        progress = await get_writer_lane_progress(
+            session,
+            content_case_id=content_case_id,
+            source_run_id=run.id,
+        )
+    except OperatorControlError:
+        return False
+    if progress is None or set(progress.required_locales) != set(required_locales):
+        return False
+
+    final_writer_runs: dict[str, str] = {}
+    for binding in bindings:
+        locale = binding.get("locale")
+        writer = binding.get("writer_run")
+        if not isinstance(locale, str) or not isinstance(writer, dict):
+            return False
+        writer_run_id = writer.get("id")
+        if not isinstance(writer_run_id, str):
+            return False
+        final_writer_runs[locale] = writer_run_id
+    if set(final_writer_runs) != set(required_locales):
+        return False
+
+    for lane in progress.lanes:
+        if (
+            lane.run is None
+            or final_writer_runs.get(lane.required_locale) != str(lane.run.id)
+        ):
+            return False
+    return True
+
+
 async def _completion_state(
     session: AsyncSession,
     *,
@@ -491,16 +543,42 @@ async def _completion_state(
             }
         )
 
-    active = await session.scalar(
-        select(ContentRun.id)
-        .where(
-            ContentRun.content_case_id == content_case_id,
-            ContentRun.status.in_(("pending", "running", "waiting_approval")),
-        )
-        .limit(1)
+    active_runs = list(
+        (
+            await session.scalars(
+                select(ContentRun)
+                .where(
+                    ContentRun.content_case_id == content_case_id,
+                    ContentRun.status.in_(("pending", "running", "waiting_approval")),
+                )
+                .order_by(ContentRun.created_at, ContentRun.id)
+            )
+        ).all()
     )
-    if active is not None:
+    blocking_active_run_ids: list[str] = []
+    consumed_source_run_ids: list[str] = []
+    for run in active_runs:
+        if await _consumed_outline_source_run(
+            session,
+            content_case_id=content_case_id,
+            run=run,
+            required_locales=required,
+            bindings=bindings,
+        ):
+            consumed_source_run_ids.append(str(run.id))
+            continue
+        blocking_active_run_ids.append(str(run.id))
+    if blocking_active_run_ids:
         return base
+
+    completion_version = _stable_hash(
+        {
+            "base": base.state_version,
+            "required_locales": required,
+            "bindings": bindings,
+            "consumed_source_run_ids": consumed_source_run_ids,
+        }
+    )
     return base.model_copy(
         update={
             "state_version": completion_version,
