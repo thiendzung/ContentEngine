@@ -91,3 +91,12 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Verify frontend release inputs stay clean
+        run: |
+          DIRTY="$(git status --porcelain -- frontend/package-lock.json frontend/next-env.d.ts frontend/tsconfig.json)"
+          if [ -n "$DIRTY" ]; then
+            printf '%s\n' "$DIRTY"
+            echo "Frontend install/build mutated canonical release inputs"
+            exit 1
+          fi
+
