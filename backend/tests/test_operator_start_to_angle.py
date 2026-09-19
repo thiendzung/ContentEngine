@@ -300,6 +300,14 @@ class ControlledEvidenceWorkflow:
         )
 
 
+class ExplodingEvidenceWorkflow:
+    async def run(self, session: AsyncSession, **kwargs: object) -> EvidenceResearchResult:
+        del session, kwargs
+        raise RuntimeError("provider secret=do-not-persist raw_payload=do-not-persist")
+
+
+
+
 class ControlledCodexRunner:
     def __init__(self) -> None:
         self.calls = 0
@@ -886,6 +894,88 @@ async def test_failed_research_diagnostic_survives_research_rollback(
                 ModelCall.run_id == created.bootstrap_run_id
             )
         ) == 0
+
+
+
+
+@pytest.mark.asyncio
+async def test_research_exception_diagnostic_omits_exception_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-exception-diagnostic")
+        )
+        state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="pr45-exception-diagnostic-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-pr45-exception-diagnostic",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        registry = AgentRunnerRegistry()
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_research_failed",
+        ) as exc_info:
+            async with session.begin_nested():
+                await execute_start_to_angle_job(
+                    session,
+                    job_id=leased.id,
+                    worker_id="worker-pr45-exception-diagnostic",
+                    evidence_workflow=ExplodingEvidenceWorkflow(),  # type: ignore[arg-type]
+                    runner_registry=registry,
+                )
+
+        snapshot = exc_info.value.diagnostic_snapshot
+        assert snapshot is not None
+        assert snapshot["diagnostic_complete"] is False
+        assert snapshot["evidence_eligible"] is False
+        assert snapshot["failure_class"] == "RuntimeError"
+        serialized = json.dumps(snapshot, sort_keys=True)
+        assert "do-not-persist" not in serialized
+        assert "raw_payload" not in serialized
+
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-pr45-exception-diagnostic",
+            failure_class="research_failed",
+            message="operator_worker_research_failed",
+            diagnostic_snapshot=snapshot,
+        )
+        diagnostic = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == created.bootstrap_run_id,
+                Artifact.artifact_type == "research_failure_diagnostic",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
+        assert diagnostic is not None and diagnostic.content_json == snapshot
+        research = diagnostic.content_json["research"]
+        assert isinstance(research, dict)
+        assert research["stop_reason"] == "research_exception"
+        assert research["decisions"] == []
+        assert research["source_candidates"] == []
+        assert research["selected_sources"] == []
 
 
 
