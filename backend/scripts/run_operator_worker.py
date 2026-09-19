@@ -307,6 +307,11 @@ async def _run(*, emit_idle: bool = True) -> None:
                         worker_id=worker_id,
                         failure_class=failure_class,
                         message=str(exc)[:2000],
+                        diagnostic_snapshot=(
+                            exc.diagnostic_snapshot
+                            if isinstance(exc, OperatorWorkerError)
+                            else None
+                        ),
                     )
         elif step_key in WRITER_STEP_BY_LOCALE.values():
             failure_class = (
