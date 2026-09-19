@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-19, after PR #145 evidence-gate fix merged and F7 Case #2 fresh retry #146 was opened. This is the ONE current working window.
+Updated: 2026-09-19, after F7 Case #2 fresh retry #146 correctly failed closed and exposed discovery blocker #148. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -35,7 +35,7 @@ Canonical operational release code baseline: `545ca28042c489462606aa47bcbd2c1105
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / fresh Case #2 retry #146 next | PR #145 merged the fail-closed evidence gate; blocker #144 is closed. Historical pre-fix Case #2 remains audit-only; retry the same Founder brief from a fresh Journal on merged main. |
+| F7 | ACTIVE / discovery blocker #148 | Fresh retry #146 correctly failed closed with 8/8 `context_only` evidence and zero Angle execution. Authority-aware evidence discovery #148 is the single active implementation; failed-research diagnostics durability #149 is tracked next. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -49,7 +49,7 @@ Neither authorizes publication.
 
 P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
 
-F7 Case #2 (`#143`) exposed blocker `#144` on the historical case `6b8d33d2-1e38-48e8-ad01-858875619640`: all 8 locked Evidence members were `context_only`. PR #145 fixed the handoff to require at least one `supports|qualifies` member and revalidates legacy Angle use; it merged as `ba78521052ba8b2f193c11967813ce02976babb5`, and #144 is closed. Historical Case #2 must remain untouched as audit evidence. Immediate task is fresh retry #146 from the same Founder brief on merged main. The retry must either reach a valid Angle gate with factual-support evidence or fail closed before Angle as a separate discovery-quality finding.
+F7 Case #2 (`#143`) first exposed blocker `#144` on historical case `6b8d33d2-1e38-48e8-ad01-858875619640`; PR #145 fixed the evidence gate and #144 is closed. Fresh retry #146 on exact main `9fde522f4c9119929cf8f07d5bbfa6e6507ec9d5` created case `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, found 8/8 `context_only` Evidence candidates from weak commercial/community sources, and correctly failed closed before any Angle model call/artifact. This proves the gate works and exposes a separate discovery strategy blocker #148. A second finding #149 tracks loss of research diagnostics when the failed worker transaction rolls back. Immediate WIP is #148 only; #149 follows after #148 closeout. Do not rerun Case #2 until both blockers are resolved and merged.
 
 Closeout evidence:
 - PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
@@ -61,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. The original F7.2A authorization was consumed by the historical Case #2 run and is not reusable. Fresh retry #146 requires its own dispatched Agent Local task; sending that exact task authorizes only the bounded retry slice described there. No approval beyond Angle and no publication are inherited.
+P2 completion did not authorize blanket content/model execution or publication. Both prior F7.2A execution authorizations have been consumed by their completed runs. No further Case #2 execution, approval beyond Angle, or publication is authorized while #148/#149 remain open.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.

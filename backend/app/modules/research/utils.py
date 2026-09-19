@@ -38,6 +38,7 @@ _SECOND_HOP_NOISE_PATHS = ("/share", "/share-post", "/profile", "/login", "/sign
 _SECOND_HOP_NOISE_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".css", ".js")
 _MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+)\)")
 _BARE_URL_RE = re.compile(r"https?://[^\s<>()\]\[\]{}\"']+")
+_INSTITUTIONAL_CCTLD_RE = re.compile(r"(?:^|\.)(?:gov|edu|ac)\.[a-z]{2}$")
 
 
 def as_dict(value: object) -> dict[str, object] | None:
@@ -116,6 +117,14 @@ def validate_public_http_url(url: str) -> str:
     return url
 
 
+def _is_strong_institutional_host(hostname: str) -> bool:
+    normalized = hostname.lower().removeprefix("www.")
+    return (
+        normalized.endswith((".edu", ".gov", ".museum", ".int"))
+        or bool(_INSTITUTIONAL_CCTLD_RE.search(normalized))
+    )
+
+
 def annotate_source(
     *,
     provider: str,
@@ -131,7 +140,7 @@ def annotate_source(
     hostname = (parsed.hostname or "").lower().removeprefix("www.")
     commercial_haystack = f"{hostname} {parsed.path} {title}".lower()
 
-    strong_institutional = hostname.endswith(".edu") or hostname.endswith(".gov")
+    strong_institutional = _is_strong_institutional_host(hostname)
 
     if strong_institutional:
         source_type = "institutional"

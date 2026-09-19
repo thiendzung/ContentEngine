@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / Case #2 retry #146 | PR #145 evidence-gate fix merged; fresh Case #2 retry is next. |
+| F7 | ACTIVE / blocker #148 | Retry #146 proved fail-closed evidence gating; authority-aware discovery #148 is active, diagnostics durability #149 follows. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -138,7 +138,9 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [ ] Capture failures, retry/recovery, model calls, latency and human edit burden; unavailable usage/cost stays unknown.
 - [ ] Founder reviews output value and normal operator friction; no publication without separate authorization.
 - [x] Historical F7 Case #2 (`#143`) exposed blocker `#144`: all 8 locked Evidence members were `context_only`; PR #145 merged the fail-closed evidence gate and #144 is closed. Historical case `6b8d33d2-1e38-48e8-ad01-858875619640` is audit-only and must not be continued.
-- [ ] Run fresh retry `#146` from the same Founder brief on merged main `ba78521052ba8b2f193c11967813ce02976babb5`; accept either a valid Angle gate backed by at least one `supports|qualifies` Evidence member or a fail-closed pre-Angle discovery-quality blocker.
+- [x] Fresh retry `#146` on exact main `9fde522f4c9119929cf8f07d5bbfa6e6507ec9d5` produced 8/8 `context_only` Evidence and correctly failed closed before Angle with zero model/artifact/approval execution; discovery-quality blocker #148 confirmed.
+- [ ] #148: add bounded authority-aware recovery for evidence-oriented research without weakening PR #145.
+- [ ] #149: after #148 closeout, persist sanitized failed-research diagnostics across worker rollback before another real Case #2 retry.
 
 ## F8 - Polish and closeout
 
