@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-19, after PR #150 merged the authority-aware discovery fix and F7 observability blocker #149 became the active WIP. This is the ONE current working window.
+Updated: 2026-09-19, after PR #151 merged failed-research diagnostics durability and fresh F7 Case #2 retry #152 was opened. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -35,7 +35,7 @@ Canonical operational release code baseline: `545ca28042c489462606aa47bcbd2c1105
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / diagnostics blocker #149 | PR #150 merged authority-aware discovery and #148 is closed. Failed-research diagnostics durability #149 is the single active implementation; no Case #2 rerun until #149 is merged and reproved. |
+| F7 | ACTIVE / fresh Case #2 retry #152 next | PR #150 + PR #151 are merged; blockers #144/#148/#149 are closed. Historical attempts remain audit-only; the next bounded action is one fresh same-brief Journal on current merged main. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -49,7 +49,7 @@ Neither authorizes publication.
 
 P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
 
-F7 Case #2 (`#143`) first exposed blocker `#144` on historical case `6b8d33d2-1e38-48e8-ad01-858875619640`; PR #145 fixed the evidence gate and #144 is closed. Fresh retry #146 on exact main `9fde522f4c9119929cf8f07d5bbfa6e6507ec9d5` created case `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, found 8/8 `context_only` Evidence candidates and correctly failed closed before Angle. PR #150 then merged authority-aware evidence discovery as `5a856999c665a5b574aaf07254d72cad16f3d1b5`; #148 is closed. Immediate WIP is #149: persist sanitized failed-research diagnostics across the rollback boundary. Do not rerun Case #2 until #149 is resolved, merged and reproved.
+F7 Case #2 (`#143`) exposed three bounded blockers across two consumed attempts: #144 fail-closed factual-evidence gating, #148 authority-aware discovery, and #149 failed-research diagnostics durability. PR #145, PR #150 and PR #151 are all merged; current main is `345abfaf80ec30f7aa754c031236a11137dc2869`, and #144/#148/#149 are closed. Historical case `6b8d33d2-1e38-48e8-ad01-858875619640` and retry case `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b` remain audit-only and must not be continued. Immediate next task is #152: create exactly one fresh same-brief Journal and Start once, stopping at either a valid `AWAITING_APPROVAL / angle` with factual evidence or a fail-closed research result with durable `research_failure_diagnostic` evidence.
 
 Closeout evidence:
 - PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
@@ -61,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. Both prior F7.2A execution authorizations have been consumed by their completed runs. No further Case #2 execution, approval beyond Angle, or publication is authorized while #149 remains open.
+P2 completion did not authorize blanket content/model execution or publication. Both prior F7.2A execution authorizations have been consumed by their completed runs. Fresh retry #152 requires its own exact Agent Local dispatch; no approval beyond Angle and no publication are inherited.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
