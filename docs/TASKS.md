@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | PLANNED after F6 + O1 | Two additional distinct real bilingual cases on release candidate. |
+| F7 | ACTIVE / Case #2 retry #146 | PR #145 evidence-gate fix merged; fresh Case #2 retry is next. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -137,7 +137,8 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [ ] Use the same merged release candidate without case-specific code changes; fixes require regression/reproof.
 - [ ] Capture failures, retry/recovery, model calls, latency and human edit burden; unavailable usage/cost stays unknown.
 - [ ] Founder reviews output value and normal operator friction; no publication without separate authorization.
-- [ ] F7 Case #2 (`#143`) reached the Angle gate on exact main `7700fad4`, but pilot evidence exposed blocker `#144`: all 8 locked Evidence members were `context_only`. Do not approve that Angle snapshot; merge a bounded fail-closed eligibility fix, reprove, then resume/restart Case #2 through the normal operator path.
+- [x] Historical F7 Case #2 (`#143`) exposed blocker `#144`: all 8 locked Evidence members were `context_only`; PR #145 merged the fail-closed evidence gate and #144 is closed. Historical case `6b8d33d2-1e38-48e8-ad01-858875619640` is audit-only and must not be continued.
+- [ ] Run fresh retry `#146` from the same Founder brief on merged main `ba78521052ba8b2f193c11967813ce02976babb5`; accept either a valid Angle gate backed by at least one `supports|qualifies` Evidence member or a fail-closed pre-Angle discovery-quality blocker.
 
 ## F8 - Polish and closeout
 
