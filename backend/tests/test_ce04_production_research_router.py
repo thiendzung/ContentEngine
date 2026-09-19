@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from pathlib import Path
+import subprocess
+import sys
 from typing import cast
 from uuid import uuid4
 
@@ -27,6 +30,18 @@ from app.modules.research.contracts import (
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.utils import annotate_source
+
+
+def test_research_production_imports_in_fresh_interpreter() -> None:
+    backend_root = Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        [sys.executable, "-c", "import app.modules.research.production"],
+        cwd=backend_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 class FakeProvider:
