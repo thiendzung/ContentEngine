@@ -173,6 +173,7 @@ class ProductionResearchRequest:
     depth: ResearchDepth = ResearchDepth.STANDARD
     max_pages_to_read: int = 1
     preferred_source_types: tuple[str, ...] = ()
+    required_intended_use: IntendedUse | None = None
     parent_url: str | None = None
 
 
