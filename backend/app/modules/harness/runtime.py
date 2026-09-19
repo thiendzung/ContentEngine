@@ -30,14 +30,6 @@ from app.modules.harness.models import (
     ToolCall,
     utc_now,
 )
-from app.modules.knowledge.brief_ref import (
-    KNOWLEDGE_BRIEF_REF_PREFIX,
-    KnowledgeBriefRefError,
-    knowledge_brief_snapshot,
-    resolve_bound_knowledge_brief_refs,
-)
-from app.modules.knowledge.models import EvidenceSet, KnowledgeCandidate, OriginalityPack
-
 
 class RuntimeConfigurationError(ValueError):
     """Raised when resolved runtime settings cannot produce a valid route."""
@@ -527,6 +519,18 @@ async def _validate_context_sources(
     run: ContentRun,
     inputs: ContextInputs,
 ) -> None:
+    from app.modules.knowledge.brief_ref import (
+        KNOWLEDGE_BRIEF_REF_PREFIX,
+        KnowledgeBriefRefError,
+        knowledge_brief_snapshot,
+        resolve_bound_knowledge_brief_refs,
+    )
+    from app.modules.knowledge.models import (
+        EvidenceSet,
+        KnowledgeCandidate,
+        OriginalityPack,
+    )
+
     context_artifact: Artifact | None = None
     if inputs.context_artifact_id is not None:
         context_artifact = await session.get(Artifact, inputs.context_artifact_id)
