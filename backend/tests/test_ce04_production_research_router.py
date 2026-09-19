@@ -202,6 +202,49 @@ async def test_internal_knowledge_sufficient_skips_all_external_calls(
 
 
 @pytest.mark.asyncio
+async def test_evidence_oriented_request_does_not_stop_on_internal_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def retrieve(*args: object, **kwargs: object) -> tuple[RetrievalHit, ...]:
+        del args, kwargs
+        return (_hit(exact_phrase=True),)
+
+    monkeypatch.setattr(production_module, "retrieve_chunks", retrieve)
+    institutional = _source(
+        "exa",
+        0,
+        bias=CommercialBias.LOW,
+        url="https://guidance.example.gov/evidence",
+        source_type="institutional",
+        intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+    )
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    exa = FakeProvider("exa", ProviderResponse((), (institutional,), ()))
+    router = ResearchRouter(
+        serper=serper,
+        exa=exa,
+        sufficiency=ProductionSufficiencyPolicy(min_internal_hits=1),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="evidence needed",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=0,
+        ),
+    )
+
+    assert serper.call_count == 1
+    assert exa.call_count == 1
+    assert result.sufficient is True
+
+
+@pytest.mark.asyncio
 async def test_serper_sufficient_stops_before_fallbacks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
