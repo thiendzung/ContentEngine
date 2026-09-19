@@ -294,11 +294,15 @@ async def _run(*, emit_idle: bool = True) -> None:
                         message=str(exc)[:2000],
                     )
         elif step_key == START_TO_ANGLE_STAGE:
-            failure_class = (
-                "insufficient_evidence"
-                if isinstance(exc, OperatorWorkerError) and "evidence" in exc.code
-                else "internal_error"
-            )
+            if (
+                isinstance(exc, OperatorWorkerError)
+                and exc.code == "operator_worker_research_failed"
+            ):
+                failure_class = "research_failed"
+            elif isinstance(exc, OperatorWorkerError) and "evidence" in exc.code:
+                failure_class = "insufficient_evidence"
+            else:
+                failure_class = "internal_error"
             async with SessionLocal() as session:
                 async with session.begin():
                     await fail_start_to_angle_job(
@@ -307,6 +311,11 @@ async def _run(*, emit_idle: bool = True) -> None:
                         worker_id=worker_id,
                         failure_class=failure_class,
                         message=str(exc)[:2000],
+                        diagnostic_snapshot=(
+                            exc.diagnostic_snapshot
+                            if isinstance(exc, OperatorWorkerError)
+                            else None
+                        ),
                     )
         elif step_key in WRITER_STEP_BY_LOCALE.values():
             failure_class = (
