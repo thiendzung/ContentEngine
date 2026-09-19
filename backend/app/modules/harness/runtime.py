@@ -6,12 +6,14 @@ import hashlib
 import json
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
+if TYPE_CHECKING:
+    from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
+
 from app.modules.harness.model_policy import (
     ModelPolicyError,
     PolicyRouteSelection,
@@ -291,6 +293,8 @@ async def _validated_policy_selection(
     task_key: str,
     route: ModelCandidate,
 ) -> PolicyRouteSelection | None:
+    from app.modules.content_engine.models import SettingsSnapshot
+
     settings_snapshot = await session.get(SettingsSnapshot, manifest.settings_snapshot_id)
     if settings_snapshot is None:
         raise RuntimeStateError("SettingsSnapshot not found")
@@ -550,6 +554,8 @@ async def _validate_context_sources(
         for raw_ref in inputs.knowledge_chunk_refs
     )
     if has_brief_ref:
+        from app.modules.content_engine.models import LocaleVariant
+
         variant = await session.get(LocaleVariant, run.locale_variant_id)
         if variant is None or variant.content_case_id != run.content_case_id:
             raise RuntimeStateError("knowledge_brief_context_locale_variant_invalid")
