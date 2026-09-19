@@ -63,7 +63,7 @@ from app.modules.knowledge.models import (
     SourceDocument,
 )
 from app.modules.knowledge.persistence import content_hash, evidence_set_hash
-from app.modules.research.contracts import ProductionResearchResult
+from app.modules.research.contracts import IntendedUse, ProductionResearchResult
 from app.modules.research.evidence.contracts import EvidenceResearchResult
 
 
@@ -154,10 +154,12 @@ class ControlledEvidenceWorkflow:
         self.calls = 0
         self.relation = relation
         self.evidence_eligible = evidence_eligible
+        self.last_request: object | None = None
 
     async def run(self, session: AsyncSession, **kwargs: object) -> EvidenceResearchResult:
         self.calls += 1
         request = kwargs["request"]
+        self.last_request = request
         opportunity_id = request.content_opportunity_id  # type: ignore[attr-defined]
         content_case = await session.scalar(
             select(ContentCase).where(ContentCase.content_opportunity_id == opportunity_id)
@@ -521,6 +523,9 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
             runner_registry=registry,
         )
         assert workflow.calls == 1 and runner.calls == 1
+        assert workflow.last_request is not None
+        research_request = workflow.last_request.research  # type: ignore[attr-defined]
+        assert research_request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE
         job = await session.get(Job, leased.id)
         step = await session.get(StepRun, leased.step_run_id)
         run = await session.get(ContentRun, created.bootstrap_run_id)
