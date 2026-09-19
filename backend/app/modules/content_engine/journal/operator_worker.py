@@ -67,13 +67,23 @@ from app.modules.knowledge.originality_pack import originality_pack_snapshot_has
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import IntendedUse, ProductionResearchRequest, ResearchDepth
 from app.modules.research.evidence import EvidenceResearchRequest, EvidenceResearchWorkflow
+from app.modules.research.evidence.artifact import (
+    persist_research_failure_diagnostic,
+    research_failure_diagnostic_payload,
+)
 from app.modules.research.evidence.persistence import lock_evidence_set
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
 
 class OperatorWorkerError(RuntimeError):
-    def __init__(self, code: str) -> None:
+    def __init__(
+        self,
+        code: str,
+        *,
+        diagnostic_snapshot: dict[str, object] | None = None,
+    ) -> None:
         self.code = code
+        self.diagnostic_snapshot = diagnostic_snapshot
         super().__init__(code)
 
 
@@ -160,6 +170,7 @@ async def fail_start_to_angle_job(
     worker_id: str,
     failure_class: str,
     message: str,
+    diagnostic_snapshot: dict[str, object] | None = None,
 ) -> Job:
     """Persist a failed attempt while keeping the exact stage explicitly retryable.
 
@@ -198,7 +209,26 @@ async def fail_start_to_angle_job(
     job.lease_owner = None
     job.lease_expires_at = None
     job.updated_at = now
-    step.error_json = {"class": safe_class, "message": safe_message}
+    diagnostic_artifact = None
+    if diagnostic_snapshot is not None:
+        diagnostic_artifact = await persist_research_failure_diagnostic(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            payload=diagnostic_snapshot,
+        )
+    step.error_json = {
+        "class": safe_class,
+        "message": safe_message,
+        **(
+            {
+                "diagnostic_artifact_id": str(diagnostic_artifact.id),
+                "diagnostic_content_hash": diagnostic_artifact.content_hash,
+            }
+            if diagnostic_artifact is not None
+            else {}
+        ),
+    }
     run.failure_code = safe_class
     run.failure_message = safe_message
     receipts = list(
@@ -407,7 +437,10 @@ async def execute_start_to_angle_job(
         or research_result.evidence_set_version is None
         or research_result.evidence_set_content_hash is None
     ):
-        raise OperatorWorkerError("operator_worker_insufficient_evidence")
+        raise OperatorWorkerError(
+            "operator_worker_insufficient_evidence",
+            diagnostic_snapshot=research_failure_diagnostic_payload(research_result),
+        )
 
     evidence_set = await _policy_lock_evidence_set(
         session,
