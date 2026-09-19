@@ -3,12 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import SettingsSnapshot
+if TYPE_CHECKING:
+    from app.modules.content_engine.models import SettingsSnapshot
+
 from app.modules.harness.model_policy_models import ModelRouteDecision
 from app.modules.harness.models import ModelCall
 
