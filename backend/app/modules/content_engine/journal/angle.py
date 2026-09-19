@@ -243,6 +243,20 @@ def _originality_refs(items: Sequence[object]) -> tuple[str, ...]:
     return tuple(refs)
 
 
+def _require_factual_evidence(model_input: dict[str, object]) -> None:
+    evidence_set = _as_dict(
+        model_input.get("evidence_set"), "angle_model_input_evidence_invalid"
+    )
+    evidence_items = evidence_set.get("evidence")
+    if not isinstance(evidence_items, list):
+        raise AngleGenerationError("angle_model_input_evidence_invalid")
+    if not any(
+        isinstance(item, dict) and item.get("relation") in {"supports", "qualifies"}
+        for item in evidence_items
+    ):
+        raise AngleGenerationError("angle_evidence_ineligible")
+
+
 def _sanitized_originality_items(items: Sequence[object]) -> list[dict[str, object]]:
     sanitized: list[dict[str, object]] = []
     for item in items:
@@ -728,6 +742,7 @@ async def load_journal_input_bundle(
         originality_items=originality.item_refs,
         context_manifest=context_manifest,
     )
+    _require_factual_evidence(angle_model_input)
     return JournalInputBundle(
         artifact=artifact,
         payload=payload,

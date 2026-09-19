@@ -137,6 +137,7 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [ ] Use the same merged release candidate without case-specific code changes; fixes require regression/reproof.
 - [ ] Capture failures, retry/recovery, model calls, latency and human edit burden; unavailable usage/cost stays unknown.
 - [ ] Founder reviews output value and normal operator friction; no publication without separate authorization.
+- [ ] F7 Case #2 (`#143`) reached the Angle gate on exact main `7700fad4`, but pilot evidence exposed blocker `#144`: all 8 locked Evidence members were `context_only`. Do not approve that Angle snapshot; merge a bounded fail-closed eligibility fix, reprove, then resume/restart Case #2 through the normal operator path.
 
 ## F8 - Polish and closeout
 

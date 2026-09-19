@@ -193,6 +193,46 @@ def _bundle_hash(payload: dict[str, object]) -> str:
 
 
 @pytest.mark.asyncio
+async def test_angle_approval_revalidates_factual_evidence_for_legacy_artifact() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, bundle, evidence_set, _pack = await _bundle_fixture(session)
+        output = [_candidate_payload(bundle, index) for index in range(1, 4)]
+        generated = await AngleGenerator(max_attempts=1).generate_candidates(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            model=FakeAngleModel([output]),
+            provider="fixture-provider",
+            model_name="fixture-model",
+        )
+        selected = generated.candidates[0]
+
+        evidence_id = UUID(evidence_set.evidence_ids_json[0])
+        evidence = await session.get(Evidence, evidence_id)
+        assert evidence is not None
+        evidence.relation = "context_only"
+        await session.flush()
+
+        with pytest.raises(AngleGenerationError, match="angle_evidence_ineligible"):
+            await load_journal_input_bundle(
+                session,
+                journal_input_bundle_id=bundle_artifact.id,
+                expected_content_hash=bundle_artifact.content_hash,
+            )
+
+        with pytest.raises(AngleApprovalError, match="angle_evidence_ineligible"):
+            await approve_angle_candidate(
+                session,
+                angle_artifact_id=generated.artifact.id,
+                expected_artifact_version=generated.artifact.version,
+                expected_artifact_hash=generated.artifact.content_hash,
+                selected_angle_id=selected.angle_id,
+                expected_candidate_hash=angle_candidate_hash(selected),
+                approved_by="founder",
+                approval_reason="legacy artifact must revalidate evidence eligibility",
+            )
+
+
+@pytest.mark.asyncio
 async def test_valid_bundle_generates_typed_candidates_and_reuses_exact_artifact() -> None:
     async with isolated_session() as session:
         bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(session)

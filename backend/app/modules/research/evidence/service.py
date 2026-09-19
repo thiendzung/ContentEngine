@@ -190,6 +190,10 @@ class EvidenceResearchWorkflow:
             relation_counts=relation_counts,
             originality_item_count=usable_originality_item_count,
         )
+        factual_support_count = (
+            relation_counts[EvidenceRelation.SUPPORTS.value]
+            + relation_counts[EvidenceRelation.QUALIFIES.value]
+        )
         result = EvidenceResearchResult(
             research=production,
             content_case_id=content_case.id,
@@ -212,7 +216,7 @@ class EvidenceResearchWorkflow:
             originality_pack_id=originality.id,
             originality_item_count=usable_originality_item_count,
             research_gaps=gaps,
-            evidence_eligible=bool(evidence_ids),
+            evidence_eligible=bool(evidence_ids) and factual_support_count > 0,
         )
         if run_id is not None and step_run_id is not None:
             artifact = await persist_evidence_artifact(
@@ -475,6 +479,15 @@ class EvidenceResearchWorkflow:
             )
         if evidence_count == 0:
             gaps.append("No source-backed Claim/Evidence link was created.")
+        factual_support_count = (
+            relation_counts[EvidenceRelation.SUPPORTS.value]
+            + relation_counts[EvidenceRelation.QUALIFIES.value]
+        )
+        if evidence_count > 0 and factual_support_count == 0:
+            gaps.append(
+                "No Evidence member can support or qualify factual claims; context-only "
+                "and contradiction evidence cannot ground downstream factual work."
+            )
         if relation_counts[EvidenceRelation.CONTRADICTS.value] == 0:
             gaps.append(
                 "Contradiction coverage is still missing; absence of contradiction is not "
