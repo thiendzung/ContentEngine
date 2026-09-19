@@ -67,11 +67,18 @@ class ProductionSufficiencyPolicy:
             if source.commercial_bias is CommercialBias.LOW
             or source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
         )
-        return (
-            question_count >= self.min_question_signals
-            and len(unique_sources) >= self.min_source_candidates
-            and better_sources >= self.min_better_sources
-        )
+        if (
+            question_count < self.min_question_signals
+            or len(unique_sources) < self.min_source_candidates
+            or better_sources < self.min_better_sources
+        ):
+            return False
+        required_intended_use = result.request.required_intended_use
+        if required_intended_use is not None and not any(
+            source.intended_use is required_intended_use for source in unique_sources
+        ):
+            return False
+        return True
 
     def request_is_sufficient(self, result: ProductionResearchResult) -> bool:
         """Apply purpose-specific sufficiency instead of one generic search threshold."""
@@ -198,7 +205,10 @@ class ResearchRouter:
         else:
             search_stop_reason = await self._run_single_fallback(
                 session,
-                search_request=search_request,
+                search_request=self._fallback_search_request(
+                    search_request,
+                    request=normalized_request,
+                ),
                 result=result,
                 run_id=run_id,
                 step_run_id=step_run_id,
@@ -330,6 +340,20 @@ class ResearchRouter:
             return f"{provider.name}_sufficient"
         return f"{provider.name}_insufficient_bounded_stop"
 
+    def _fallback_search_request(
+        self,
+        search_request: SearchRequest,
+        *,
+        request: ProductionResearchRequest,
+    ) -> SearchRequest:
+        if request.required_intended_use is not IntendedUse.EVIDENCE_CANDIDATE:
+            return search_request
+        recovery_query = (
+            f"{search_request.query} authoritative official institutional guidance "
+            "primary source research"
+        )
+        return replace(search_request, query=recovery_query)
+
     def _fallback_for(
         self,
         request: ProductionResearchRequest,
@@ -338,6 +362,12 @@ class ResearchRouter:
             if self._exa is not None:
                 return self._exa, "second_hop_parent_requires_exa"
             return None, "exa_required_for_second_hop"
+        if request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE:
+            if self._exa is not None:
+                return self._exa, "evidence_candidate_authority_recovery"
+            if self._tavily is not None:
+                return self._tavily, "evidence_candidate_exa_unavailable_use_tavily_once"
+            return None, "no_evidence_candidate_fallback_configured"
         if request.depth is ResearchDepth.DEEP:
             if self._exa is not None:
                 return self._exa, "deep_or_second_hop_sources_required"
