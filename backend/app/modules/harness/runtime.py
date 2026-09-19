@@ -12,7 +12,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
-    from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
+    from app.modules.content_engine.models import SettingsSnapshot
 
 from app.modules.harness.model_policy import (
     ModelPolicyError,
