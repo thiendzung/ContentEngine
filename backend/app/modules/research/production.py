@@ -140,7 +140,11 @@ class ResearchRouter:
 
         await self._load_internal_knowledge(session, result)
         internal_sufficient = self._sufficiency.internal_is_sufficient(result.internal_hits)
-        if internal_sufficient and normalized_request.parent_url is None:
+        if (
+            internal_sufficient
+            and normalized_request.parent_url is None
+            and normalized_request.required_intended_use is None
+        ):
             result.sufficient = True
             result.stop_reason = "internal_knowledge_sufficient"
             result.decisions.append(
