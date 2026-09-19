@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / blocker #149 | PR #150 merged authority-aware discovery; failed-research diagnostics durability #149 is active. |
+| F7 | ACTIVE / fresh retry #152 next | PR #150 + PR #151 merged; blockers #144/#148/#149 are closed. Run one fresh same-brief Case #2 retry and stop at Angle gate or durable fail-closed diagnostic. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -140,7 +140,8 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] Historical F7 Case #2 (`#143`) exposed blocker `#144`: all 8 locked Evidence members were `context_only`; PR #145 merged the fail-closed evidence gate and #144 is closed. Historical case `6b8d33d2-1e38-48e8-ad01-858875619640` is audit-only and must not be continued.
 - [x] Fresh retry `#146` on exact main `9fde522f4c9119929cf8f07d5bbfa6e6507ec9d5` produced 8/8 `context_only` Evidence and correctly failed closed before Angle with zero model/artifact/approval execution; discovery-quality blocker #148 confirmed.
 - [x] #148: bounded authority-aware recovery merged in PR #150; evidence gate remains fail-closed and #148 is closed.
-- [ ] #149: persist sanitized failed-research diagnostics across worker rollback before another real Case #2 retry.
+- [x] #149: sanitized failed-research diagnostics durability merged in PR #151; rollback/sanitization/retry invariants passed and #149 is closed.
+- [ ] #152: create one fresh same-brief Case #2 Journal on exact merged main `345abfaf80ec30f7aa754c031236a11137dc2869`; Start exactly once; stop at valid Angle gate with `supports|qualifies` evidence or fail closed with durable `research_failure_diagnostic` evidence.
 
 ## F8 - Polish and closeout
 
