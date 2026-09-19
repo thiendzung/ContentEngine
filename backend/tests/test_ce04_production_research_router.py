@@ -11,6 +11,7 @@ from app.modules.harness.policy import BudgetLimits
 from app.modules.knowledge.retrieval import RetrievalHit
 from app.modules.research.contracts import (
     CommercialBias,
+    IntendedUse,
     PageDocument,
     PageReadResponse,
     ProductionResearchRequest,
@@ -25,6 +26,7 @@ from app.modules.research.contracts import (
 )
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.base import ResearchProviderError
+from app.modules.research.utils import annotate_source
 
 
 class FakeProvider:
@@ -38,13 +40,14 @@ class FakeProvider:
         self.response = response or ProviderResponse((), (), ())
         self.error = error
         self.call_count = 0
+        self.requests: list[SearchRequest] = []
 
     def estimated_calls(self, request: SearchRequest) -> int:
         del request
         return 1
 
     async def search(self, request: SearchRequest) -> ProviderResponse:
-        del request
+        self.requests.append(request)
         self.call_count += 1
         if self.error is not None:
             raise self.error
@@ -110,13 +113,17 @@ def _source(
     *,
     bias: CommercialBias = CommercialBias.UNKNOWN,
     url: str | None = None,
+    source_type: str = "unknown",
+    intended_use: IntendedUse = IntendedUse.DISCOVERY,
 ) -> SourceCandidate:
     return SourceCandidate(
         provider=provider,
         query="seed",
         url=url or f"https://example.test/{provider}/{index}",
         title=f"source-{provider}-{index}",
+        source_type=source_type,
         commercial_bias=bias,
+        intended_use=intended_use,
     )
 
 
@@ -257,6 +264,130 @@ async def test_standard_route_uses_one_tavily_fallback_only(
         decision.provider == "exa" and "bounded_single_fallback" in decision.reason
         for decision in result.decisions
     )
+
+
+@pytest.mark.asyncio
+async def test_evidence_oriented_route_uses_authority_recovery_exa(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    institutional = _source(
+        "exa",
+        0,
+        bias=CommercialBias.LOW,
+        url="https://mci.si.edu/caring-your-paintings",
+        source_type="institutional",
+        intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+    )
+    exa = FakeProvider(
+        "exa",
+        ProviderResponse((), (institutional,), ()),
+    )
+    tavily = FakeProvider("tavily")
+    router = ResearchRouter(serper=serper, tavily=tavily, exa=exa)
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="caring for an oil painting in humid conditions",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=0,
+        ),
+    )
+
+    assert result.sufficient is True
+    assert serper.call_count == 1
+    assert exa.call_count == 1
+    assert tavily.call_count == 0
+    assert exa.requests[0].query != result.request.query
+    assert "authoritative official institutional guidance" in exa.requests[0].query
+    assert result.selected_sources[0].url == institutional.url
+    assert result.selected_sources[0].intended_use is IntendedUse.EVIDENCE_CANDIDATE
+    assert any(
+        decision.provider == "exa"
+        and decision.reason == "evidence_candidate_authority_recovery"
+        for decision in result.decisions
+    )
+
+
+@pytest.mark.asyncio
+async def test_evidence_oriented_route_uses_tavily_when_exa_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    institutional = _source(
+        "tavily",
+        0,
+        bias=CommercialBias.LOW,
+        url="https://example.gov.uk/guidance",
+        source_type="institutional",
+        intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+    )
+    tavily = FakeProvider(
+        "tavily",
+        ProviderResponse((), (institutional,), ()),
+    )
+    router = ResearchRouter(serper=serper, tavily=tavily, exa=None)
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="safe handling guidance",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=0,
+        ),
+    )
+
+    assert result.sufficient is True
+    assert tavily.call_count == 1
+    assert "authoritative official institutional guidance" in tavily.requests[0].query
+    assert any(
+        decision.provider == "tavily"
+        and decision.reason == "evidence_candidate_exa_unavailable_use_tavily_once"
+        for decision in result.decisions
+    )
+
+
+def test_annotate_source_recognizes_conservative_institutional_suffixes() -> None:
+    for url in (
+        "https://museum.example.edu.vn/care",
+        "https://archive.example.gov.uk/guidance",
+        "https://conservation.example.ac.uk/advice",
+        "https://collection.example.museum/care",
+        "https://agency.example.int/guidance",
+    ):
+        source = annotate_source(
+            provider="fixture",
+            query="care",
+            url=url,
+            title="Institutional guidance",
+            snippet="",
+            found_via="fixture",
+        )
+        assert source.source_type == "institutional"
+        assert source.commercial_bias is CommercialBias.LOW
+        assert source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+
+    unknown = annotate_source(
+        provider="fixture",
+        query="care",
+        url="https://museum-care.example.com/advice",
+        title="Museum Care Shop",
+        snippet="",
+        found_via="fixture",
+    )
+    assert unknown.source_type != "institutional"
+    assert unknown.intended_use is not IntendedUse.EVIDENCE_CANDIDATE
 
 
 @pytest.mark.asyncio
