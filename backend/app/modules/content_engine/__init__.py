@@ -1,39 +1,6 @@
-"""Content workflow orchestration boundary."""
+"""Content workflow orchestration package.
 
-from app.modules.content_engine.journal.context import (
-    MAX_APPROVED_KNOWLEDGE,
-    ApprovedKnowledge,
-    JournalContext,
-    JournalContextError,
-    MemoryOverlap,
-    PersistedJournalContext,
-    build_journal_context,
-    persist_journal_context,
-)
-from app.modules.content_engine.memory_gap import (
-    ContentVersionMemory,
-    MatchedContentItem,
-    MemoryGapError,
-    MemoryGapReport,
-    build_memory_gap_report,
-    check_memory_gap,
-    recommend_memory_gap,
-)
-
-__all__ = [
-    "ContentVersionMemory",
-    "MatchedContentItem",
-    "MemoryGapError",
-    "MemoryGapReport",
-    "build_memory_gap_report",
-    "check_memory_gap",
-    "recommend_memory_gap",
-    "ApprovedKnowledge",
-    "JournalContext",
-    "JournalContextError",
-    "MAX_APPROVED_KNOWLEDGE",
-    "MemoryOverlap",
-    "PersistedJournalContext",
-    "build_journal_context",
-    "persist_journal_context",
-]
+Keep this package boundary import-light. Import concrete submodules explicitly
+instead of re-exporting them here; eager re-exports create circular-import
+risk between content, journal, harness, knowledge, and research modules.
+"""
