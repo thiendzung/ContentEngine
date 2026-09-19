@@ -69,6 +69,7 @@ from app.modules.research.contracts import IntendedUse, ProductionResearchReques
 from app.modules.research.evidence import EvidenceResearchRequest, EvidenceResearchWorkflow
 from app.modules.research.evidence.artifact import (
     persist_research_failure_diagnostic,
+    research_exception_diagnostic_payload,
     research_failure_diagnostic_payload,
 )
 from app.modules.research.evidence.persistence import lock_evidence_set
@@ -411,26 +412,38 @@ async def execute_start_to_angle_job(
     )
 
     settings = get_settings()
-    research_result = await evidence_workflow.run(
-        session,
-        request=EvidenceResearchRequest(
-            research=ProductionResearchRequest(
-                project_id=content_case.project_id,
-                query=opportunity.question,
-                locale=variant.locale,
-                country=spec.research_country,
-                limit=10,
-                depth=ResearchDepth.STANDARD,
-                max_pages_to_read=settings.research_max_pages_read,
-                required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
-            ),
-            content_opportunity_id=opportunity.id,
-            need_hypothesis_id=content_case.need_hypothesis_id,
-            max_claims=8,
+    research_request = EvidenceResearchRequest(
+        research=ProductionResearchRequest(
+            project_id=content_case.project_id,
+            query=opportunity.question,
+            locale=variant.locale,
+            country=spec.research_country,
+            limit=10,
+            depth=ResearchDepth.STANDARD,
+            max_pages_to_read=settings.research_max_pages_read,
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
         ),
-        run_id=run.id,
-        step_run_id=step.id,
+        content_opportunity_id=opportunity.id,
+        need_hypothesis_id=content_case.need_hypothesis_id,
+        max_claims=8,
     )
+    try:
+        research_result = await evidence_workflow.run(
+            session,
+            request=research_request,
+            run_id=run.id,
+            step_run_id=step.id,
+        )
+    except OperatorWorkerError:
+        raise
+    except Exception as exc:
+        raise OperatorWorkerError(
+            "operator_worker_research_failed",
+            diagnostic_snapshot=research_exception_diagnostic_payload(
+                research_request.research,
+                error_class=type(exc).__name__,
+            ),
+        ) from exc
     if (
         not research_result.evidence_eligible
         or research_result.evidence_set_id is None
