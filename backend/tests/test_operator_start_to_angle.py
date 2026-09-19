@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -63,7 +64,15 @@ from app.modules.knowledge.models import (
     SourceDocument,
 )
 from app.modules.knowledge.persistence import content_hash, evidence_set_hash
-from app.modules.research.contracts import IntendedUse, ProductionResearchResult
+from app.modules.research.contracts import (
+    CommercialBias,
+    IntendedUse,
+    PageDocument,
+    ProductionResearchResult,
+    ProviderDecision,
+    ProviderDecisionStatus,
+    SourceCandidate,
+)
 from app.modules.research.evidence.contracts import EvidenceResearchResult
 
 
@@ -224,10 +233,49 @@ class ControlledEvidenceWorkflow:
         )
         session.add(evidence_set)
         await session.flush()
+        intended_use = (
+            IntendedUse.EVIDENCE_CANDIDATE
+            if self.evidence_eligible
+            else IntendedUse.CONTEXT_ONLY
+        )
+        source_type = "institutional" if self.evidence_eligible else "community_or_review"
+        candidate = SourceCandidate(
+            provider="fixture-search",
+            query=request.research.query,  # type: ignore[attr-defined]
+            url=source.canonical_url,
+            title="Controlled research source",
+            source_type=source_type,
+            commercial_bias=CommercialBias.LOW,
+            found_via="fixture-search",
+            intended_use=intended_use,
+            why_selected="Controlled diagnostic fixture.",
+        )
+        research_document = PageDocument(
+            provider="fixture-reader",
+            url=source.canonical_url,
+            requested_url=source.canonical_url,
+            final_url=source.canonical_url,
+            title="Controlled research document",
+            content=text,
+        )
         production = ProductionResearchResult(
             request=request.research,  # type: ignore[attr-defined]
-            stop_reason="controlled_fixture_sufficient",
-            sufficient=True,
+            decisions=[
+                ProviderDecision(
+                    provider="fixture-search",
+                    status=ProviderDecisionStatus.CALLED,
+                    reason="controlled_fixture_search",
+                )
+            ],
+            source_candidates=[candidate],
+            selected_sources=[candidate],
+            documents=[research_document],
+            stop_reason=(
+                "controlled_fixture_sufficient"
+                if self.evidence_eligible
+                else "controlled_fixture_context_only"
+            ),
+            sufficient=self.evidence_eligible,
         )
         return EvidenceResearchResult(
             research=production,
@@ -240,7 +288,14 @@ class ControlledEvidenceWorkflow:
             evidence_set_version=1,
             evidence_set_content_hash=evidence_set.content_hash,
             evidence_set_status="draft",
-            research_gaps=[],
+            research_gaps=(
+                []
+                if self.evidence_eligible
+                else [
+                    "No Evidence member can support or qualify factual claims; "
+                    "context-only evidence cannot ground downstream factual work."
+                ]
+            ),
             evidence_eligible=self.evidence_eligible,
         )
 
@@ -690,6 +745,149 @@ async def test_start_to_angle_rejects_all_context_evidence_before_angle_model(
             or 0
         )
         assert approval_count == 0
+
+
+@pytest.mark.asyncio
+async def test_failed_research_diagnostic_survives_research_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-diagnostic-rollback")
+        )
+        state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="pr45-diagnostic-rollback-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-pr45-diagnostic",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow(
+            relation="context_only",
+            evidence_eligible=False,
+        )
+        runner = ControlledCodexRunner()
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_insufficient_evidence",
+        ) as exc_info:
+            async with session.begin_nested():
+                await execute_start_to_angle_job(
+                    session,
+                    job_id=leased.id,
+                    worker_id="worker-pr45-diagnostic",
+                    evidence_workflow=workflow,  # type: ignore[arg-type]
+                    runner_registry=registry,
+                )
+
+        snapshot = exc_info.value.diagnostic_snapshot
+        assert snapshot is not None
+        assert snapshot["artifact_type"] == "research_failure_diagnostic"
+        assert snapshot["evidence_eligible"] is False
+
+        rolled_back_set = await session.scalar(
+            select(EvidenceSet).where(
+                EvidenceSet.content_case_id == created.content_case_id
+            )
+        )
+        assert rolled_back_set is None
+        assert await session.scalar(
+            select(func.count(Artifact.id)).where(
+                Artifact.run_id == created.bootstrap_run_id,
+                Artifact.artifact_type == "evidence_research_report",
+            )
+        ) == 0
+
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-pr45-diagnostic",
+            failure_class="insufficient_evidence",
+            message="operator_worker_insufficient_evidence",
+            diagnostic_snapshot=snapshot,
+        )
+
+        diagnostic = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == created.bootstrap_run_id,
+                Artifact.artifact_type == "research_failure_diagnostic",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
+        assert diagnostic is not None
+        assert diagnostic.version == 1
+        assert diagnostic.content_json == snapshot
+        payload_json = json.dumps(diagnostic.content_json, sort_keys=True)
+        assert "raw_excerpt" not in payload_json
+        assert "content_markdown" not in payload_json
+        assert "source_document_ids" not in payload_json
+        assert "evidence_ids" not in payload_json
+
+        research = diagnostic.content_json["research"]
+        assert isinstance(research, dict)
+        assert research["query"] == (
+            "How can a visitor evaluate locally made relief artwork in Vietnam?"
+        )
+        assert research["stop_reason"] == "controlled_fixture_context_only"
+        decisions = research["decisions"]
+        assert isinstance(decisions, list) and decisions
+        assert decisions[0]["provider"] == "fixture-search"
+        selected_sources = research["selected_sources"]
+        assert isinstance(selected_sources, list) and selected_sources
+        selected = selected_sources[0]
+        assert isinstance(selected, dict)
+        assert selected["url"].startswith("https://example.test/pr45/")
+        assert selected["intended_use"] == "context_only"
+        read_documents = research["read_documents"]
+        assert isinstance(read_documents, list) and read_documents
+        assert read_documents[0]["final_url"] == selected["url"]
+        assert diagnostic.content_json["relation_counts"] == {"context_only": 1}
+        gaps = diagnostic.content_json["research_gaps"]
+        assert isinstance(gaps, list) and gaps
+
+        failed = await session.get(Job, leased.id)
+        step = await session.get(StepRun, leased.step_run_id)
+        assert failed is not None and failed.status == "failed"
+        assert step is not None and step.error_json is not None
+        assert step.error_json["diagnostic_artifact_id"] == str(diagnostic.id)
+        assert step.error_json["diagnostic_content_hash"] == diagnostic.content_hash
+        assert str(diagnostic.id) in step.output_artifact_refs_json
+        assert runner.calls == 0
+        assert await session.scalar(
+            select(func.count(Artifact.id)).where(
+                Artifact.run_id == created.bootstrap_run_id,
+                Artifact.artifact_type == "angle_candidates",
+            )
+        ) == 0
+        assert await session.scalar(
+            select(func.count(ModelCall.id)).where(
+                ModelCall.run_id == created.bootstrap_run_id
+            )
+        ) == 0
+
+
 
 
 @pytest.mark.asyncio
