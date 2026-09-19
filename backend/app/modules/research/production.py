@@ -350,7 +350,10 @@ class ResearchRouter:
         *,
         request: ProductionResearchRequest,
     ) -> SearchRequest:
-        if request.required_intended_use is not IntendedUse.EVIDENCE_CANDIDATE:
+        if (
+            request.required_intended_use is not IntendedUse.EVIDENCE_CANDIDATE
+            or search_request.parent_url is not None
+        ):
             return search_request
         recovery_query = (
             f"{search_request.query} authoritative official institutional guidance "
