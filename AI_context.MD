@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-19, after O1.4 post-release recovery PASS and P2 / O1 operational closeout. This is the ONE current working window.
+Updated: 2026-09-19, after PR #145 evidence-gate fix merged and F7 Case #2 fresh retry #146 was opened. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -14,6 +14,7 @@ Live GitHub refs/PR state/CI decide repository status. Local state requires date
 - Founder: product/editorial decisions, execution authorization, copying tasks to the separate Agent Local application, returning its reports, and PR merge.
 - Agent Local: exact-ref local verification/runtime execution within the dispatched scope. Code edits only when exact files/scope are delegated; no independent redesign, next-task selection or merge.
 - GitHub: shared code/contracts/plans/tasks/evidence, not a direct communication channel to Agent Local.
+- Product naming: the desktop application is now called **ChatGPT**. Keep repository/runtime identifiers such as `codex_cli` unchanged unless the technical contract itself changes.
 
 A GitHub comment or roadmap does not dispatch a local task. Never claim fresh local agreement without a returned report. WIP: one implementation plus related verification.
 
@@ -34,7 +35,7 @@ Canonical operational release code baseline: `545ca28042c489462606aa47bcbd2c1105
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / Case #2 paused at evidence blocker #144 | Case #2 reached the Angle gate, but all locked Evidence was `context_only`; no Angle approval is authorized until the bounded fail-closed eligibility fix is merged and reproved. |
+| F7 | ACTIVE / fresh Case #2 retry #146 next | PR #145 merged the fail-closed evidence gate; blocker #144 is closed. Historical pre-fix Case #2 remains audit-only; retry the same Founder brief from a fresh Journal on merged main. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -48,7 +49,7 @@ Neither authorizes publication.
 
 P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
 
-F7 Case #2 (`#143`) has started on that exact main and reached `AWAITING_APPROVAL / angle`. The pilot exposed blocker `#144`: research locked 8 Evidence members, all `context_only`, from three commercial/community sources and no evidence-grade institutional source. Outline performs no new research and would reuse that exact EvidenceSet, so the current Angle snapshot must not be approved. Immediate engineering task: make all-context-only research ineligible before Angle handoff, add regression proof, then rerun/resume Case #2 through the normal operator path.
+F7 Case #2 (`#143`) exposed blocker `#144` on the historical case `6b8d33d2-1e38-48e8-ad01-858875619640`: all 8 locked Evidence members were `context_only`. PR #145 fixed the handoff to require at least one `supports|qualifies` member and revalidates legacy Angle use; it merged as `ba78521052ba8b2f193c11967813ce02976babb5`, and #144 is closed. Historical Case #2 must remain untouched as audit evidence. Immediate task is fresh retry #146 from the same Founder brief on merged main. The retry must either reach a valid Angle gate with factual-support evidence or fail closed before Angle as a separate discovery-quality finding.
 
 Closeout evidence:
 - PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
@@ -60,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. Founder separately authorized F7.2A Case #2 execution through the Angle gate; that bounded authorization is complete and stopped. No approval beyond Angle, no publication, and no additional content/model execution is inherited from that authorization.
+P2 completion did not authorize blanket content/model execution or publication. The original F7.2A authorization was consumed by the historical Case #2 run and is not reusable. Fresh retry #146 requires its own dispatched Agent Local task; sending that exact task authorizes only the bounded retry slice described there. No approval beyond Angle and no publication are inherited.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
