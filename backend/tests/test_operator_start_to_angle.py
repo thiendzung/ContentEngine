@@ -306,8 +306,6 @@ class ExplodingEvidenceWorkflow:
         raise RuntimeError("provider secret=do-not-persist raw_payload=do-not-persist")
 
 
-
-
 class ControlledCodexRunner:
     def __init__(self) -> None:
         self.calls = 0
@@ -896,8 +894,6 @@ async def test_failed_research_diagnostic_survives_research_rollback(
         ) == 0
 
 
-
-
 @pytest.mark.asyncio
 async def test_research_exception_diagnostic_omits_exception_message(
     monkeypatch: pytest.MonkeyPatch,
@@ -976,8 +972,6 @@ async def test_research_exception_diagnostic_omits_exception_message(
         assert research["decisions"] == []
         assert research["source_candidates"] == []
         assert research["selected_sources"] == []
-
-
 
 
 @pytest.mark.asyncio
