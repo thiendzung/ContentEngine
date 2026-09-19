@@ -18,6 +18,7 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
     submit_operator_command_v45,
 )
 from app.modules.content_engine.journal.operator_worker import (
+    OperatorWorkerError,
     claim_next_operator_job,
     execute_start_to_angle_job,
     fail_start_to_angle_job,
@@ -144,8 +145,15 @@ async def _activate_seeded_angle_runtime(session: AsyncSession) -> None:
 
 
 class ControlledEvidenceWorkflow:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        relation: str = "supports",
+        evidence_eligible: bool = True,
+    ) -> None:
         self.calls = 0
+        self.relation = relation
+        self.evidence_eligible = evidence_eligible
 
     async def run(self, session: AsyncSession, **kwargs: object) -> EvidenceResearchResult:
         self.calls += 1
@@ -192,7 +200,7 @@ class ControlledEvidenceWorkflow:
             source_document_id=document.id,
             locator="fixture:paragraph-1",
             excerpt=text,
-            relation="supports",
+            relation=self.relation,
             quality_metadata_json={"fixture": True},
             provenance_json={
                 "method": "read_excerpt_link",
@@ -225,13 +233,13 @@ class ControlledEvidenceWorkflow:
             source_document_ids=[document.id],
             claim_ids=[claim.id],
             evidence_ids=[evidence.id],
-            relation_counts={"supports": 1},
+            relation_counts={self.relation: 1},
             evidence_set_id=evidence_set.id,
             evidence_set_version=1,
             evidence_set_content_hash=evidence_set.content_hash,
             evidence_set_status="draft",
             research_gaps=[],
-            evidence_eligible=True,
+            evidence_eligible=self.evidence_eligible,
         )
 
 
@@ -577,6 +585,106 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
         assert model_call is not None and model_call.status == "completed"
         assert receipt is not None and receipt.status == "completed"
         assert receipt.state_after == final_state.state_version
+
+
+@pytest.mark.asyncio
+async def test_start_to_angle_rejects_all_context_evidence_before_angle_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session, **_intake_kwargs(key="pr45-context-only")
+        )
+        state = await get_operator_state_v45(
+            session, content_case_id=created.content_case_id
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="pr45-context-only-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-pr45-context-only",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow(
+            relation="context_only",
+            evidence_eligible=False,
+        )
+        runner = ControlledCodexRunner()
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        model_calls_before = int(
+            await session.scalar(
+                select(func.count(ModelCall.id)).where(
+                    ModelCall.run_id == created.bootstrap_run_id
+                )
+            )
+            or 0
+        )
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_insufficient_evidence",
+        ):
+            await execute_start_to_angle_job(
+                session,
+                job_id=leased.id,
+                worker_id="worker-pr45-context-only",
+                evidence_workflow=workflow,  # type: ignore[arg-type]
+                runner_registry=registry,
+            )
+
+        assert workflow.calls == 1
+        assert runner.calls == 0
+        angle_count = int(
+            await session.scalar(
+                select(func.count(Artifact.id)).where(
+                    Artifact.run_id == created.bootstrap_run_id,
+                    Artifact.artifact_type == "angle_candidates",
+                )
+            )
+            or 0
+        )
+        model_calls_after = int(
+            await session.scalar(
+                select(func.count(ModelCall.id)).where(
+                    ModelCall.run_id == created.bootstrap_run_id
+                )
+            )
+            or 0
+        )
+        assert angle_count == 0
+        assert model_calls_after == model_calls_before
+
+        evidence_set = await session.scalar(
+            select(EvidenceSet).where(
+                EvidenceSet.content_case_id == created.content_case_id
+            )
+        )
+        assert evidence_set is not None
+        assert evidence_set.status == "draft"
+        approval_count = int(
+            await session.scalar(
+                select(func.count(EvidenceSetApproval.id)).where(
+                    EvidenceSetApproval.evidence_set_id == evidence_set.id
+                )
+            )
+            or 0
+        )
+        assert approval_count == 0
 
 
 @pytest.mark.asyncio
