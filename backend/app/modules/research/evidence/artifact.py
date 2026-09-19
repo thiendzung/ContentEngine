@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.harness.models import Artifact, StepRun
+from app.modules.research.contracts import ProductionResearchRequest
 from app.modules.research.evidence.contracts import EvidenceResearchResult
 
 EVIDENCE_ARTIFACT_SCHEMA_VERSION = 1
@@ -21,6 +22,7 @@ def evidence_workflow_payload(result: EvidenceResearchResult) -> dict[str, objec
         "schema_version": EVIDENCE_ARTIFACT_SCHEMA_VERSION,
         "artifact_type": result.artifact_type,
         "evidence_eligible": result.evidence_eligible,
+        "diagnostic_complete": True,
         "research": {
             "query": result.research.request.query,
             "locale": result.research.request.locale,
@@ -98,6 +100,41 @@ def _diagnostic_source_payload(source: object) -> dict[str, object]:
         "intended_use": getattr(intended_use, "value", str(intended_use)),
         "why_selected": _bounded_text(str(why_selected), limit=500) or "",
         "parent_url": _bounded_text(str(parent_url), limit=2048) if parent_url else None,
+    }
+
+
+def research_exception_diagnostic_payload(
+    request: ProductionResearchRequest,
+    *,
+    error_class: str,
+) -> dict[str, object]:
+    required_use = request.required_intended_use
+    return {
+        "schema_version": RESEARCH_FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
+        "artifact_type": RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+        "evidence_eligible": False,
+        "diagnostic_complete": False,
+        "failure_class": _bounded_text(error_class, limit=100) or "research_error",
+        "research": {
+            "query": _bounded_text(request.query, limit=1000) or "",
+            "locale": _bounded_text(request.locale, limit=32) or "",
+            "country": _bounded_text(request.country, limit=32) or "",
+            "required_intended_use": (
+                required_use.value if required_use is not None else None
+            ),
+            "stop_reason": "research_exception",
+            "sufficient": False,
+            "external_provider_calls": None,
+            "pages_read": None,
+            "decisions": [],
+            "source_candidates": [],
+            "selected_sources": [],
+            "read_documents": [],
+        },
+        "relation_counts": {},
+        "research_gaps": [
+            "Research execution failed before a complete diagnostic result was available."
+        ],
     }
 
 
