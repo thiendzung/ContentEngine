@@ -65,7 +65,7 @@ from app.modules.knowledge.models import (
 )
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
-from app.modules.research.contracts import ProductionResearchRequest, ResearchDepth
+from app.modules.research.contracts import IntendedUse, ProductionResearchRequest, ResearchDepth
 from app.modules.research.evidence import EvidenceResearchRequest, EvidenceResearchWorkflow
 from app.modules.research.evidence.persistence import lock_evidence_set
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
@@ -392,6 +392,7 @@ async def execute_start_to_angle_job(
                 limit=10,
                 depth=ResearchDepth.STANDARD,
                 max_pages_to_read=settings.research_max_pages_read,
+                required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
             ),
             content_opportunity_id=opportunity.id,
             need_hypothesis_id=content_case.need_hypothesis_id,
