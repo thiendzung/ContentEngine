@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.harness.models import Artifact, StepRun
-from app.modules.research.contracts import ProductionResearchRequest
+from app.modules.research.contracts import ProductionResearchRequest, SourceCandidate
 from app.modules.research.evidence.contracts import EvidenceResearchResult
 
 EVIDENCE_ARTIFACT_SCHEMA_VERSION = 1
@@ -22,7 +22,6 @@ def evidence_workflow_payload(result: EvidenceResearchResult) -> dict[str, objec
         "schema_version": EVIDENCE_ARTIFACT_SCHEMA_VERSION,
         "artifact_type": result.artifact_type,
         "evidence_eligible": result.evidence_eligible,
-        "diagnostic_complete": True,
         "research": {
             "query": result.research.request.query,
             "locale": result.research.request.locale,
@@ -76,30 +75,19 @@ def _bounded_text(value: str | None, *, limit: int) -> str | None:
     return normalized[:limit]
 
 
-def _diagnostic_source_payload(source: object) -> dict[str, object]:
-    provider = getattr(source, "provider", "")
-    query = getattr(source, "query", "")
-    url = getattr(source, "url", "")
-    title = getattr(source, "title", "")
-    source_type = getattr(source, "source_type", "")
-    commercial_bias = getattr(source, "commercial_bias", "")
-    found_via = getattr(source, "found_via", "")
-    relation = getattr(source, "relation", "")
-    intended_use = getattr(source, "intended_use", "")
-    why_selected = getattr(source, "why_selected", "")
-    parent_url = getattr(source, "parent_url", None)
+def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
     return {
-        "provider": _bounded_text(str(provider), limit=100) or "",
-        "query": _bounded_text(str(query), limit=1000) or "",
-        "url": _bounded_text(str(url), limit=2048) or "",
-        "title": _bounded_text(str(title), limit=500) or "",
-        "source_type": _bounded_text(str(source_type), limit=100) or "",
-        "commercial_bias": getattr(commercial_bias, "value", str(commercial_bias)),
-        "found_via": _bounded_text(str(found_via), limit=100) or "",
-        "relation": getattr(relation, "value", str(relation)),
-        "intended_use": getattr(intended_use, "value", str(intended_use)),
-        "why_selected": _bounded_text(str(why_selected), limit=500) or "",
-        "parent_url": _bounded_text(str(parent_url), limit=2048) if parent_url else None,
+        "provider": _bounded_text(source.provider, limit=100) or "",
+        "query": _bounded_text(source.query, limit=1000) or "",
+        "url": _bounded_text(source.url, limit=2048) or "",
+        "title": _bounded_text(source.title, limit=500) or "",
+        "source_type": _bounded_text(source.source_type, limit=100) or "",
+        "commercial_bias": source.commercial_bias.value,
+        "found_via": _bounded_text(source.found_via, limit=100) or "",
+        "relation": source.relation.value,
+        "intended_use": source.intended_use.value,
+        "why_selected": _bounded_text(source.why_selected, limit=500) or "",
+        "parent_url": _bounded_text(source.parent_url, limit=2048),
     }
 
 
@@ -147,6 +135,7 @@ def research_failure_diagnostic_payload(
         "schema_version": RESEARCH_FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
         "artifact_type": RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
         "evidence_eligible": result.evidence_eligible,
+        "diagnostic_complete": True,
         "research": {
             "query": _bounded_text(research.request.query, limit=1000) or "",
             "locale": _bounded_text(research.request.locale, limit=32) or "",
