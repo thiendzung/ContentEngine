@@ -316,7 +316,54 @@ async def test_community_source_defaults_to_context_only() -> None:
         )
 
         assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 0
         assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is False
+        assert any(
+            "No Evidence member can support or qualify factual claims" in gap
+            for gap in result.research_gaps
+        )
+
+
+@pytest.mark.asyncio
+async def test_qualifying_evidence_is_eligible_even_with_context_only_sources() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_o4_like_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=FakeEvidenceRouter(
+                source_type="community_or_review",
+                commercial_bias=CommercialBias.UNKNOWN,
+                intended_use=IntendedUse.DISCOVERY,
+            )
+        )
+        explicit = (
+            ClaimCandidate(
+                statement="The source qualifies when a buyer should rely on professional advice.",
+                source_url="https://example.test/art-pricing",
+                locator="reviewed_sentence:2",
+                excerpt="There is no single formula that proves an artwork is fairly priced.",
+                relation=EvidenceRelation.QUALIFIES,
+            ),
+        )
+
+        result = await workflow.run(
+            session,
+            request=evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+                explicit_candidates=explicit,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 1
+        assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is True
+        assert not any(
+            "No Evidence member can support or qualify factual claims" in gap
+            for gap in result.research_gaps
+        )
 
 
 @pytest.mark.asyncio
