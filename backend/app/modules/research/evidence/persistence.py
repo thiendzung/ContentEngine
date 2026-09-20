@@ -24,6 +24,7 @@ from app.modules.knowledge.models import (
 )
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import (
+    IntendedUse,
     PageDocument,
     ProductionResearchResult,
     SourceCandidate,
@@ -204,7 +205,10 @@ async def persist_read_documents(
             "provider": document.provider,
             "query": production.request.query,
             "source_ref": canonical_url,
-            "evidence_candidate": True,
+            "evidence_candidate": (
+                candidate is not None
+                and candidate.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+            ),
         }
         if candidate is not None:
             provenance.update(
