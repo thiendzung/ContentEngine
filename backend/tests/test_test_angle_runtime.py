@@ -117,8 +117,9 @@ async def test_partial_activation_is_rejected() -> None:
                 PromptDefinition.version == 2,
             )
         )
-        assert prompt is not None and prompt.status == "active"
-        prompt.status = "retired"
+        assert prompt is not None and prompt.status == "draft"
+        prompt.status = "active"
+        prompt.approved_by = "test-founder"
         await session.flush()
 
         with pytest.raises(TestAngleRuntimeActivationError) as raised:
@@ -128,4 +129,4 @@ async def test_partial_activation_is_rejected() -> None:
                 model="gpt-5.6-luna",
                 approved_by="test-founder",
             )
-        assert raised.value.code == "test_angle_registry_not_active"
+        assert raised.value.code == "journal_coverage_registry_partial_activation"
