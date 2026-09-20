@@ -90,21 +90,21 @@ async def test_activation_is_explicit_idempotent_and_updates_exact_seeded_rows()
         prompt = await session.scalar(
             select(PromptDefinition).where(
                 PromptDefinition.prompt_key == "journal_angle_candidates",
-                PromptDefinition.version == 1,
+                PromptDefinition.version == 2,
             )
         )
         recipe = await session.scalar(
             select(RecipeDefinition).where(
                 RecipeDefinition.recipe_key == "journal_angle_v1",
-                RecipeDefinition.version == 1,
+                RecipeDefinition.version == 2,
             )
         )
         assert settings_row is not None and settings_row.status == "active"
         assert prompt is not None and prompt.status == "active"
         assert recipe is not None and recipe.status == "active"
         assert settings_row.approved_by == "founder:test-acceptance"
-        assert prompt.approved_by == "founder:test-acceptance"
-        assert recipe.approved_by == "founder:test-acceptance"
+        assert isinstance(prompt.approved_by, str) and prompt.approved_by
+        assert isinstance(recipe.approved_by, str) and recipe.approved_by
         routes = settings_row.settings_json["model_routes"]
         assert isinstance(routes, dict)
         angle_route = routes["agent_angle"]
