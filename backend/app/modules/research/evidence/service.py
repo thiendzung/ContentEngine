@@ -104,9 +104,16 @@ _SOURCE_ANCHOR_GENERIC_TERMS = {
     "home",
     "homepage",
     "information",
+    "institute",
+    "institution",
+    "memorial",
+    "museum",
+    "museums",
     "national",
     "official",
+    "organization",
     "page",
+    "park",
     "report",
     "reports",
     "service",
@@ -401,15 +408,20 @@ class EvidenceResearchWorkflow:
     def _source_anchor_terms(self, source: SourceCandidate | None) -> set[str]:
         if source is None:
             return set()
-        values = []
-        for value in (source.title, source.snippet):
-            cleaned = value.strip()
-            if not cleaned or cleaned.startswith(("http://", "https://")):
-                continue
-            values.append(cleaned)
-        if not values:
+        title = source.title.strip()
+        snippet = source.snippet.strip()
+        if not title or title.startswith(("http://", "https://")):
             return set()
-        anchors = self._topic_terms(tuple(values))
+
+        title_terms = self._topic_terms((title,))
+        snippet_terms = (
+            self._topic_terms((snippet,))
+            if snippet and not snippet.startswith(("http://", "https://"))
+            else set()
+        )
+        anchors = title_terms.intersection(snippet_terms) if snippet_terms else title_terms
+        anchors -= _SOURCE_ANCHOR_GENERIC_TERMS
+
         expanded = set(anchors)
         for term in anchors:
             if len(term) >= 5:
@@ -417,7 +429,7 @@ class EvidenceResearchWorkflow:
                     expanded.add(term[:-1])
                 else:
                     expanded.add(f"{term}s")
-        return expanded - _SOURCE_ANCHOR_GENERIC_TERMS
+        return expanded
 
     def _automatic_relation(self, source: SourceCandidate | None) -> EvidenceRelation:
         if source is None:
