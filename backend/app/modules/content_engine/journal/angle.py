@@ -735,7 +735,14 @@ async def load_journal_input_bundle(
         raise AngleGenerationError("angle_opportunity_project_mismatch")
     if current_opportunity.decision in _UPSTREAM_BLOCKING_DECISIONS:
         raise AngleGenerationError("angle_upstream_decision_blocked")
-    if _opportunity_payload(current_opportunity) != opportunity:
+    current_opportunity_snapshot = _opportunity_payload(current_opportunity)
+    if (
+        "coverage_requirements" not in opportunity
+        and current_opportunity_snapshot.get("coverage_requirements") == []
+    ):
+        current_opportunity_snapshot = dict(current_opportunity_snapshot)
+        current_opportunity_snapshot.pop("coverage_requirements", None)
+    if current_opportunity_snapshot != opportunity:
         raise AngleGenerationError("angle_opportunity_snapshot_stale")
     if current_opportunity.decision in _UPSTREAM_BLOCKING_DECISIONS:
         raise AngleGenerationError("angle_upstream_decision_blocked")
