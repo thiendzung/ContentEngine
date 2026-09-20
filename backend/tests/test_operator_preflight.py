@@ -134,8 +134,6 @@ async def test_journal_preflight_blocks_unresolved_angle_model(
     assert checks["journal_angle_recipe"]["status"] == "READY"
     assert checks["journal_outline_prompt"]["status"] == "READY"
     assert checks["journal_outline_recipe"]["status"] == "READY"
-    assert checks["journal_outline_prompt"]["status"] == "READY"
-    assert checks["journal_outline_recipe"]["status"] == "READY"
 
 
 @pytest.mark.asyncio
