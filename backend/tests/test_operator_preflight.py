@@ -6,6 +6,9 @@ from sqlalchemy import func, select
 from test_ce05_review_revise import isolated_session
 
 import app.modules.content_engine.journal.operator_preflight as operator_preflight
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
+)
 from app.core.config import Settings
 from app.modules.content_engine.models import (
     PromptDefinition,
@@ -52,8 +55,12 @@ async def _activate_angle_runtime(
         )
     )
     assert settings is not None and settings.status == "draft"
-    assert prompt is not None and prompt.status == "active"
-    assert recipe is not None and recipe.status == "active"
+    assert prompt is not None and prompt.status == "draft"
+    assert recipe is not None and recipe.status == "draft"
+    await activate_journal_promise_coverage_registry(
+        session,
+        approved_by="test-founder",
+    )
 
     settings.settings_json = {
         "models": {"angle": {"route": "agent_angle"}},
@@ -98,8 +105,10 @@ async def test_journal_preflight_blocks_missing_worker_dependencies(
     assert result["status"] == "BLOCKED"
     assert checks["journal_research_serper"]["detail"] == "operator_worker_serper_required"
     assert checks["journal_angle_settings"]["detail"] == "journal_angle_active_settings_missing"
-    assert checks["journal_angle_prompt"]["status"] == "READY"
-    assert checks["journal_angle_recipe"]["status"] == "READY"
+    assert checks["journal_angle_prompt"]["detail"] == "active_prompt_missing"
+    assert "active_recipe_missing" in str(checks["journal_angle_recipe"]["detail"])
+    assert checks["journal_outline_prompt"]["detail"] == "active_prompt_missing"
+    assert "active_recipe_missing" in str(checks["journal_outline_recipe"]["detail"])
 
 
 @pytest.mark.asyncio
@@ -123,6 +132,8 @@ async def test_journal_preflight_blocks_unresolved_angle_model(
     assert checks["journal_angle_settings"]["detail"] == "journal_angle_model_unresolved"
     assert checks["journal_angle_prompt"]["status"] == "READY"
     assert checks["journal_angle_recipe"]["status"] == "READY"
+    assert checks["journal_outline_prompt"]["status"] == "READY"
+    assert checks["journal_outline_recipe"]["status"] == "READY"
 
 
 @pytest.mark.asyncio
