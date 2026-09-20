@@ -90,6 +90,7 @@ class FakeOutlineRunner:
             provider=request.provider,
             model=request.model,
             runner_version="fake-agent-1",
+            runner_executable="/Applications/ChatGPT.app/Contents/Resources/codex",
             structured_output=self.output,
             raw_output_hash="a" * 64,
             exit_code=0,
@@ -430,3 +431,8 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
         assert call.model == "test-model"
         assert call.runtime_metadata_json is not None
         assert call.runtime_metadata_json["route_reuse"] == "angle"
+        assert call.runtime_metadata_json["runner_version"] == "fake-agent-1"
+        assert (
+            call.runtime_metadata_json["runner_executable"]
+            == "/Applications/ChatGPT.app/Contents/Resources/codex"
+        )
