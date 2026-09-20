@@ -119,6 +119,150 @@ class FakeEvidenceRouter:
         return result
 
 
+class CrossLanguageEvidenceRouter:
+    def __init__(
+        self,
+        *,
+        source_type: str = "institutional",
+        commercial_bias: CommercialBias = CommercialBias.LOW,
+        intended_use: IntendedUse = IntendedUse.EVIDENCE_CANDIDATE,
+        candidate_url: str = "https://museum.gov.example/conservation/oil-paintings",
+        final_url: str | None = None,
+        title: str = "Conservation guidance for oil paintings",
+        snippet: str = (
+            "Museum guidance covers paintings, light exposure, humidity, handling, and storage."
+        ),
+        content: str = (
+            "Oil paintings should be kept away from direct sunlight and strong heat sources. "
+            "Stable display conditions help reduce avoidable environmental stress.\n\n"
+            "The visitor cafe opened a new seasonal menu last summer."
+        ),
+    ) -> None:
+        self.source_type = source_type
+        self.commercial_bias = commercial_bias
+        self.intended_use = intended_use
+        self.candidate_url = candidate_url
+        self.final_url = final_url or candidate_url
+        self.title = title
+        self.snippet = snippet
+        self.content = content
+
+    async def run(
+        self,
+        session: AsyncSession,
+        *,
+        request: ProductionResearchRequest,
+        run_id: UUID | None = None,
+        step_run_id: UUID | None = None,
+    ) -> ProductionResearchResult:
+        del session, run_id, step_run_id
+        source = SourceCandidate(
+            provider="exa",
+            query=request.query,
+            url=self.candidate_url,
+            title=self.title,
+            snippet=self.snippet,
+            source_type=self.source_type,
+            commercial_bias=self.commercial_bias,
+            intended_use=self.intended_use,
+        )
+        return ProductionResearchResult(
+            request=request,
+            source_candidates=[source],
+            selected_sources=[source],
+            documents=[
+                PageDocument(
+                    provider="jina",
+                    url=self.final_url,
+                    requested_url=self.candidate_url,
+                    final_url=self.final_url,
+                    title=self.title,
+                    content=self.content,
+                )
+            ],
+            stop_reason="exa_sufficient",
+            sufficient=True,
+        )
+
+
+async def selected_vi_conservation_plan(
+    session: AsyncSession,
+) -> tuple[Project, NeedHypothesis, ContentOpportunity]:
+    project = (
+        await session.execute(select(Project).where(Project.slug == "motgu"))
+    ).scalar_one()
+    need = NeedHypothesis(
+        project_id=project.id,
+        type="question",
+        statement=(
+            "Người sở hữu tranh sơn dầu cần biết cách chăm sóc tác phẩm trong khí hậu "
+            "nóng ẩm mà không tự thực hiện phục chế rủi ro."
+        ),
+        audience_scope="người sở hữu tranh sơn dầu",
+        situation="đang treo, cất giữ hoặc vận chuyển tranh trong khí hậu nóng ẩm",
+        origin="founder_proposed",
+        status="PROPOSED",
+        alternative_explanations_json=[],
+        missing_evidence_json=[],
+    )
+    session.add(need)
+    await session.flush()
+    opportunity = ContentOpportunity(
+        project_id=project.id,
+        need_hypothesis_id=need.id,
+        locale="vi-VN",
+        reader="người sở hữu tranh sơn dầu",
+        situation="đang chăm sóc tranh trong khí hậu nóng ẩm",
+        need="giảm nguy cơ hư hại mà không tự phục chế",
+        question=(
+            "Người sở hữu nên chăm sóc tranh sơn dầu như thế nào trong khí hậu nóng ẩm?"
+        ),
+        intent="learn",
+        promise="đưa ra checklist chăm sóc tranh có căn cứ",
+        motgu_material_refs_json=[],
+        material_gaps_json=[],
+        existing_content_refs_json=[],
+        what_is_actually_new="hướng dẫn chăm sóc tranh sau khi mua",
+        next_discovery_step="evidence research",
+        decision="CREATE",
+        priority="NOW",
+        reasons_json=["founder selected"],
+        suggested_content_type="journal",
+        suggested_role="cluster",
+        selected_by="founder",
+        selected_at=datetime.now(UTC),
+        selection_reason="selected for cross-language evidence regression",
+    )
+    session.add(opportunity)
+    await session.flush()
+    return project, need, opportunity
+
+
+def vi_evidence_request(
+    *,
+    project_id: UUID,
+    need_id: UUID,
+    opportunity_id: UUID,
+) -> EvidenceResearchRequest:
+    return EvidenceResearchRequest(
+        research=ProductionResearchRequest(
+            project_id=project_id,
+            query=(
+                "Người sở hữu nên chăm sóc tranh sơn dầu như thế nào trong khí hậu nóng ẩm?"
+            ),
+            locale="vi-VN",
+            country="vn",
+            max_pages_to_read=2,
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+        ),
+        content_opportunity_id=opportunity_id,
+        need_hypothesis_id=need_id,
+        max_claims=8,
+    )
+
+
+
+
 async def selected_o4_like_plan(
     session: AsyncSession,
     *,
@@ -364,6 +508,107 @@ async def test_qualifying_evidence_is_eligible_even_with_context_only_sources() 
             "No Evidence member can support or qualify factual claims" in gap
             for gap in result.research_gaps
         )
+
+
+@pytest.mark.asyncio
+async def test_vi_brief_can_extract_support_from_english_institutional_document() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(router=CrossLanguageEvidenceRouter())
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] > 0
+        assert result.relation_counts["qualifies"] == 0
+        assert result.evidence_eligible is True
+
+
+@pytest.mark.asyncio
+async def test_vi_brief_keeps_cross_language_community_evidence_context_only() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                source_type="community_or_review",
+                commercial_bias=CommercialBias.UNKNOWN,
+                intended_use=IntendedUse.DISCOVERY,
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 0
+        assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_source_title_anchor_does_not_admit_unrelated_institutional_sentence() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                content=(
+                    "The visitor cafe opened a new seasonal menu last summer and extended "
+                    "its evening opening hours for tourists."
+                )
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.evidence_ids == []
+        assert result.relation_counts["supports"] == 0
+        assert result.evidence_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_redirected_read_url_preserves_institutional_source_relation() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                candidate_url="https://museum.gov.example/conservation/oil-paintings",
+                final_url="https://museum.gov.example/conservation/oil-paintings/index.html",
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] > 0
+        assert result.relation_counts["context_only"] == 0
+        assert result.evidence_eligible is True
+
+
 
 
 @pytest.mark.asyncio
