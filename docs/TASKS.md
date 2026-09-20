@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / fresh retry #152 next | PR #150 + PR #151 merged; blockers #144/#148/#149 are closed. Run one fresh same-brief Case #2 retry and stop at Angle gate or durable fail-closed diagnostic. |
+| F7 | ACTIVE / blocker #154 | Retry #152 completed Outcome B: authority discovery + durable diagnostics passed, but cross-language/URL-identity claim extraction filtered factual authority evidence. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -141,7 +141,8 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] Fresh retry `#146` on exact main `9fde522f4c9119929cf8f07d5bbfa6e6507ec9d5` produced 8/8 `context_only` Evidence and correctly failed closed before Angle with zero model/artifact/approval execution; discovery-quality blocker #148 confirmed.
 - [x] #148: bounded authority-aware recovery merged in PR #150; evidence gate remains fail-closed and #148 is closed.
 - [x] #149: sanitized failed-research diagnostics durability merged in PR #151; rollback/sanitization/retry invariants passed and #149 is closed.
-- [ ] #152: create one fresh same-brief Case #2 Journal on exact merged main `345abfaf80ec30f7aa754c031236a11137dc2869`; Start exactly once; stop at valid Angle gate with `supports|qualifies` evidence or fail closed with durable `research_failure_diagnostic` evidence.
+- [x] #152: fresh post-#150/#151 retry completed Outcome B on `25d697ef42bbde29f795c608e448e39e7a025930`; authority sources were found/read, fail-closed + durable diagnostic passed, and case `e51f6b14-b048-4d5d-873b-635f7ea6ae40` is audit-only.
+- [ ] #154: make claim extraction Unicode/cross-language aware and preserve selected-source identity across `requested_url`/`final_url`, without weakening relation or evidence eligibility gates.
 
 ## F8 - Polish and closeout
 
