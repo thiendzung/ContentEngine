@@ -536,8 +536,14 @@ class EvidenceResearchWorkflow:
         topic_match = not terms or bool(statement_terms.intersection(terms))
         if subject_match and topic_match:
             return True
+        brief_terms = terms | subject_terms
+        cross_script_bridge = (
+            any(not term.isascii() for term in brief_terms)
+            and bool(source_anchor_terms)
+            and all(term.isascii() for term in source_anchor_terms)
+        )
         return bool(
-            source_anchor_terms
+            cross_script_bridge
             and statement_terms.intersection(source_anchor_terms)
         )
 
