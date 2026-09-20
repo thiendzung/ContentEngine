@@ -612,6 +612,70 @@ async def test_redirected_read_url_preserves_institutional_source_relation() -> 
 
 
 @pytest.mark.asyncio
+async def test_same_language_title_anchor_cannot_override_need_relevance() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_o4_like_plan(session)
+        source_url = "https://museum.example/auction-results"
+        source = SourceCandidate(
+            provider="exa",
+            query="art appraisal valuation factors comparable sales price",
+            url=source_url,
+            title="Auction result",
+            snippet="Auction result from a recent sale.",
+            source_type="institutional",
+            commercial_bias=CommercialBias.LOW,
+            intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+        )
+
+        class SameLanguageIrrelevantRouter:
+            async def run(
+                self,
+                session: AsyncSession,
+                *,
+                request: ProductionResearchRequest,
+                run_id: UUID | None = None,
+                step_run_id: UUID | None = None,
+            ) -> ProductionResearchResult:
+                del session, run_id, step_run_id
+                return ProductionResearchResult(
+                    request=request,
+                    source_candidates=[source],
+                    selected_sources=[source],
+                    documents=[
+                        PageDocument(
+                            provider="jina",
+                            url=source_url,
+                            requested_url=source_url,
+                            final_url=source_url,
+                            title="Auction result",
+                            content=(
+                                "The price was $9,500 and the lot closed after a short auction "
+                                "with several bids recorded during the sale."
+                            ),
+                        )
+                    ],
+                    stop_reason="exa_sufficient",
+                    sufficient=True,
+                )
+
+        workflow = EvidenceResearchWorkflow(router=SameLanguageIrrelevantRouter())
+        result = await workflow.run(
+            session,
+            request=evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.evidence_ids == []
+        assert result.relation_counts["supports"] == 0
+        assert result.evidence_eligible is False
+
+
+
+
+@pytest.mark.asyncio
 async def test_explicit_evidence_excerpt_must_exist_in_read_document() -> None:
     async with isolated_session() as session:
         project, need, opportunity = await selected_o4_like_plan(session)
