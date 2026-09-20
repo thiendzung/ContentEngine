@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-20, after PR #166 merged and #165/#167 closed. F7.2B is complete; R4 is durably at `AWAITING_APPROVAL / outline`. The next authority is Founder review of the exact Outline; no Writer/Quality/publication work is authorized before that human gate. This is the ONE current working window.
+Updated: 2026-09-20, after Founder/MG editorial review rejected R4 Outline v1 for incomplete promise coverage. #170 is the active F7 editorial-integrity blocker: structured Founder coverage requirements must survive intake -> Angle -> Outline. R4 remains immutable audit evidence and must not be approved/continued. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -35,7 +35,7 @@ Live GitHub main for the current F7 reproof window: `e5fe48691cb6308cf764d2cade6
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / F7.2B COMPLETE / FOUNDER OUTLINE REVIEW | PR #166 merged; #165/#167 closed. R4 is durably `AWAITING_APPROVAL / outline` on exact artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 / hash `eb48b9e...`. No OutlineApproval, Writer, Quality or publication has run. |
+| F7 | ACTIVE / #170 PROMISE-COVERAGE BLOCKER | R4 technically reached the Outline gate, but Founder/MG rejected the editorial handoff because the selected Angle/Outline silently narrowed the original promise. R4 is audit-only; no OutlineApproval/Writer/Quality/publication. PR #169 carries the structured coverage fix. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -61,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. The four pre-R4 Case #2 executions remain consumed audit evidence and must never be retried/continued/approved. R4 has reached and passed the Angle human gate, and Founder manually selected the Angle. F7.2B execution, read-only closeout and the #167 metadata-lineage fix are complete. Do not rerun Continue or the historical Outline model. Founder must now review/approve the exact Outline before any F7.2C Writer/Quality execution. Publication remains locked.
+P2 completion did not authorize blanket content/model execution or publication. The four pre-R4 Case #2 executions remain consumed audit evidence and must never be retried/continued/approved. R4 has reached and passed the Angle human gate, and Founder manually selected the Angle. F7.2B runtime/state and #167 metadata-lineage proof are complete, but the R4 Outline is not editorially accepted. Do not approve/continue R4 and do not rerun its historical model calls. #170 must land first; because migration `20260920_0035` changes operational schema/registry, a separately authorized backup/rehearsal/migration is required before any fresh real reproof. Publication remains locked.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
@@ -82,6 +82,7 @@ OCR is advisory only: no auto-fix, auto-merge or required merge gate.
 - 2026-09-20: #167 opened because the historical Outline ModelCall metadata lacks `runner_executable` even though the actual runtime used `/Applications/ChatGPT.app/Contents/Resources/codex`. PR #166 merged as `e5fe48691cb6308cf764d2cade69e1b0cfe1b469`; the bounded fix + regression test passed CI/OCR/local proof. Historical ModelCall remains untouched. #165/#167 are closed completed.
 - 2026-09-20: #164 was a false alarm caused by missing context about the Founder click; classify as no code/UI defect.
 - #168 is a non-blocking OCR process follow-up: verify/pin v1.12.7 before making it the routine baseline and fix uppercase `AI_context.MD` OCR coverage. It does not block F7.
+- 2026-09-20: Founder/MG reverse-review found R4 editorially incomplete despite factual safety: cleaning boundaries and handling/packing/transport were not clearly preserved from the original Founder promise. #170 opened. PR #169 now upgrades the contract with durable `coverage_requirements_json`, explicit Angle `covered|reduced` mapping, fail-closed Outline section mapping, UI visibility and registry v2. R4 remains audit-only.
 - Open audit bookkeeping: the R4 report states 8 supporting evidence items but enumerates 7; reconcile the missing eighth item in the next evidence review, but this does not negate the already-proven factual threshold because at least 7 authoritative supports were explicitly enumerated.
 
 ## Remaining order and completion meaning
