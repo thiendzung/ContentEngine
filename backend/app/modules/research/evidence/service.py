@@ -302,7 +302,10 @@ class EvidenceResearchWorkflow:
                 relation=relation,
                 terms=terms,
                 subject_terms=subject_terms,
-                source_anchor_terms=self._source_anchor_terms(source),
+                source_anchor_terms=self._source_anchor_terms(
+                    source,
+                    document_title=document.title,
+                ),
             )
             if bucket:
                 buckets.append(bucket)
@@ -405,21 +408,27 @@ class EvidenceResearchWorkflow:
                 return source
         return None
 
-    def _source_anchor_terms(self, source: SourceCandidate | None) -> set[str]:
-        if source is None:
+    def _source_anchor_terms(
+        self,
+        source: SourceCandidate | None,
+        *,
+        document_title: str | None,
+    ) -> set[str]:
+        if source is None or document_title is None:
             return set()
-        title = source.title.strip()
-        snippet = source.snippet.strip()
-        if not title or title.startswith(("http://", "https://")):
+        source_title = source.title.strip()
+        read_title = document_title.strip()
+        if (
+            not source_title
+            or not read_title
+            or source_title.startswith(("http://", "https://"))
+            or read_title.startswith(("http://", "https://"))
+        ):
             return set()
 
-        title_terms = self._topic_terms((title,))
-        snippet_terms = (
-            self._topic_terms((snippet,))
-            if snippet and not snippet.startswith(("http://", "https://"))
-            else set()
+        anchors = self._topic_terms((source_title,)).intersection(
+            self._topic_terms((read_title,))
         )
-        anchors = title_terms.intersection(snippet_terms) if snippet_terms else title_terms
         anchors -= _SOURCE_ANCHOR_GENERIC_TERMS
 
         expanded = set(anchors)
