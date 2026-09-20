@@ -490,6 +490,7 @@ Mọi thay đổi trạng thái giữ lịch sử và source refs, không overwr
 
 - `id`, `project_id`, `need_hypothesis_id`, `locale`
 - `reader`, `situation`, `need`, `question`, `intent`, `promise`
+- `coverage_requirements_json`: ordered Founder-authored coverage commitments for the exact opportunity; empty only for legacy/non-structured opportunities
 - `motgu_material_refs`, `material_gaps`, `existing_content_refs`
 - `what_is_actually_new`, `next_discovery_step`
 - `decision`: `CREATE | UPDATE | REFRESH | MERGE | LINK_ONLY | DO_NOT_WRITE`
@@ -499,6 +500,16 @@ Mọi thay đổi trạng thái giữ lịch sử và source refs, không overwr
 
 UPDATE/REFRESH/MERGE/LINK_ONLY yêu cầu existing target refs. Human selection là quyết
 định thử nội dung, không phải xác nhận hypothesis. Không tạo bài chỉ vì còn keyword.
+
+Coverage contract rules:
+
+- each structured Founder Journal intake must persist 1–12 non-empty, de-duplicated coverage requirements;
+- requirement identity is deterministic within the opportunity snapshot: `coverage-1`, `coverage-2`, ... in stored order;
+- an Angle candidate must account for every requirement exactly once as `covered` or `reduced`, with an explicit rationale;
+- a `reduced` requirement is a visible scope decision for Founder approval, not an implicit model omission;
+- every requirement retained as `covered` by the approved Angle must map to at least one Outline section;
+- unknown, duplicate or silently missing requirement IDs fail closed;
+- legacy opportunities with no structured coverage stay readable and their historical Angle/Outline artifact hashes remain unchanged.
 
 ### ContentExperiment
 
