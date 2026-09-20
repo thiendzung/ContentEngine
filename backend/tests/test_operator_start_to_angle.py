@@ -74,6 +74,9 @@ from app.modules.research.contracts import (
     SourceCandidate,
 )
 from app.modules.research.evidence.contracts import EvidenceResearchResult
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
+)
 
 
 async def _ready_preflight(_session: AsyncSession | None = None) -> dict[str, object]:
@@ -145,8 +148,12 @@ async def _activate_seeded_angle_runtime(session: AsyncSession) -> None:
         )
     )
     assert settings is not None and settings.status in {"draft", "active"}
-    assert prompt is not None and prompt.status == "active"
-    assert recipe is not None and recipe.status == "active"
+    assert prompt is not None and prompt.status in {"draft", "active"}
+    assert recipe is not None and recipe.status in {"draft", "active"}
+    await activate_journal_promise_coverage_registry(
+        session,
+        approved_by="test-founder",
+    )
     if settings.status == "draft":
         settings.status = "active"
         settings.approved_by = "test-founder"
