@@ -135,26 +135,23 @@ async def _activate_seeded_angle_runtime(session: AsyncSession) -> None:
     prompt = await session.scalar(
         select(PromptDefinition).where(
             PromptDefinition.prompt_key == "journal_angle_candidates",
-            PromptDefinition.version == 1,
+            PromptDefinition.version == 2,
         )
     )
     recipe = await session.scalar(
         select(RecipeDefinition).where(
             RecipeDefinition.recipe_key == "journal_angle_v1",
-            RecipeDefinition.version == 1,
+            RecipeDefinition.version == 2,
         )
     )
-    assert settings is not None and settings.status == "draft"
-    assert prompt is not None and prompt.status == "draft"
-    assert recipe is not None and recipe.status == "draft"
-    settings.status = "active"
-    settings.approved_by = "test-founder"
-    settings.change_reason = "Test-only activation of exact seeded Angle runtime."
-    prompt.status = "active"
-    prompt.approved_by = "test-founder"
-    recipe.status = "active"
-    recipe.approved_by = "test-founder"
-    await session.flush()
+    assert settings is not None and settings.status in {"draft", "active"}
+    assert prompt is not None and prompt.status == "active"
+    assert recipe is not None and recipe.status == "active"
+    if settings.status == "draft":
+        settings.status = "active"
+        settings.approved_by = "test-founder"
+        settings.change_reason = "Test-only activation of exact seeded Angle runtime."
+        await session.flush()
 
 
 class ControlledEvidenceWorkflow:
