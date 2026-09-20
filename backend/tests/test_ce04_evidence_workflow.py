@@ -517,6 +517,48 @@ async def test_qualifying_evidence_is_eligible_even_with_context_only_sources() 
 
 
 @pytest.mark.asyncio
+async def test_founder_coverage_requirements_expand_evidence_extraction_topics() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_o4_like_plan(session)
+        opportunity.coverage_requirements_json = [
+            "Cover secure transport, stable humidity, padded separation, and safe packing contact."
+        ]
+        await session.flush()
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                title="Oil painting transport conservation guidance",
+                content=(
+                    "Oil paintings should travel in secure rigid supports, with stable humidity "
+                    "and padded separation to reduce avoidable movement during transport; packing "
+                    "should also prevent direct contact between painted surfaces and abrasive "
+                    "wrapping materials."
+                ),
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] > 0
+        assert result.evidence_eligible is True
+        rows = list(
+            (
+                await session.scalars(
+                    select(Evidence).where(Evidence.id.in_(result.evidence_ids))
+                )
+            ).all()
+        )
+        assert any("stable humidity" in row.excerpt for row in rows)
+        assert any("transport" in row.excerpt for row in rows)
+
+
+@pytest.mark.asyncio
 async def test_vi_brief_can_extract_support_from_english_institutional_document() -> None:
     async with isolated_session() as session:
         project, need, opportunity = await selected_vi_conservation_plan(session)
