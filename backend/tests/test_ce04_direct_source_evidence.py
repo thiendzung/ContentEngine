@@ -69,9 +69,9 @@ async def test_direct_source_runner_reads_locked_url_without_search() -> None:
     assert len(result.selected_sources) == 1
     source = result.selected_sources[0]
     assert source.url == url
-    assert source.source_type == "institutional"
+    assert source.source_type == "educational"
     assert source.commercial_bias.value == "low"
-    assert source.intended_use.value == "evidence_candidate"
+    assert source.intended_use.value == "discovery"
     assert source.found_via == "human_review_locked_url"
 
 

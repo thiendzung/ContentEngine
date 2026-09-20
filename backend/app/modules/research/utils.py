@@ -38,7 +38,8 @@ _SECOND_HOP_NOISE_PATHS = ("/share", "/share-post", "/profile", "/login", "/sign
 _SECOND_HOP_NOISE_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".css", ".js")
 _MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)\s]+)\)")
 _BARE_URL_RE = re.compile(r"https?://[^\s<>()\]\[\]{}\"']+")
-_INSTITUTIONAL_CCTLD_RE = re.compile(r"(?:^|\.)(?:gov|edu|ac)\.[a-z]{2}$")
+_INSTITUTIONAL_CCTLD_RE = re.compile(r"(?:^|\.)gov\.[a-z]{2}$")
+_EDUCATIONAL_CCTLD_RE = re.compile(r"(?:^|\.)(?:edu|ac)\.[a-z]{2}$")
 
 
 def as_dict(value: object) -> dict[str, object] | None:
@@ -120,9 +121,14 @@ def validate_public_http_url(url: str) -> str:
 def _is_strong_institutional_host(hostname: str) -> bool:
     normalized = hostname.lower().removeprefix("www.")
     return (
-        normalized.endswith((".edu", ".gov", ".museum", ".int"))
+        normalized.endswith((".gov", ".museum", ".int"))
         or bool(_INSTITUTIONAL_CCTLD_RE.search(normalized))
     )
+
+
+def _is_educational_host(hostname: str) -> bool:
+    normalized = hostname.lower().removeprefix("www.")
+    return normalized.endswith(".edu") or bool(_EDUCATIONAL_CCTLD_RE.search(normalized))
 
 
 def annotate_source(
@@ -141,12 +147,21 @@ def annotate_source(
     commercial_haystack = f"{hostname} {parsed.path} {title}".lower()
 
     strong_institutional = _is_strong_institutional_host(hostname)
+    educational = _is_educational_host(hostname)
 
     if strong_institutional:
         source_type = "institutional"
         bias = CommercialBias.LOW
         intended_use = IntendedUse.EVIDENCE_CANDIDATE
-        why = "Public/academic institutional domain candidate; verify claim-level authority."
+        why = "Public institutional domain candidate; verify claim-level authority."
+    elif educational:
+        source_type = "educational"
+        bias = CommercialBias.LOW
+        intended_use = IntendedUse.DISCOVERY
+        why = (
+            "Educational/academic domain; useful for discovery, "
+            "not automatic factual authority."
+        )
     elif hostname in {"reddit.com", "facebook.com", "tripadvisor.com"} or hostname.endswith(
         ".reddit.com"
     ):
@@ -239,17 +254,18 @@ def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[Sourc
     }
     source_type_order = {
         "institutional": 0,
-        "editorial": 1,
-        "review": 2,
-        "community_or_review": 3,
-        "editorial_or_unknown": 4,
-        "commercial": 5,
-        "unknown": 6,
+        "educational": 1,
+        "editorial": 2,
+        "review": 3,
+        "community_or_review": 4,
+        "editorial_or_unknown": 5,
+        "commercial": 6,
+        "unknown": 7,
     }
     # Python's sort is stable: preserve provider relevance/order within each quality bucket.
     unique.sort(
         key=lambda source: (
-            source_type_order.get(source.source_type, 6),
+            source_type_order.get(source.source_type, 7),
             bias_order[source.commercial_bias],
         )
     )

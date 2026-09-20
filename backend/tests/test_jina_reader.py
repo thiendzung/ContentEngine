@@ -278,12 +278,11 @@ def test_brand_com_institutional_words_do_not_create_authority(url: str) -> None
     assert source.intended_use.value == "discovery"
 
 
-@pytest.mark.parametrize("url", ["https://museum.example.edu/art-appraisal", "https://arts.gov/guide"])
-def test_edu_and_gov_hosts_remain_strong_institutional_candidates(url: str) -> None:
+def test_gov_host_remains_strong_institutional_candidate() -> None:
     source = annotate_source(
         provider="serper",
         query="art appraisal",
-        url=url,
+        url="https://arts.gov/guide",
         title="Artwork appraisal guide",
         snippet="Professional appraisal guidance.",
         found_via="google_organic",
@@ -292,3 +291,18 @@ def test_edu_and_gov_hosts_remain_strong_institutional_candidates(url: str) -> N
     assert source.source_type == "institutional"
     assert source.commercial_bias is CommercialBias.LOW
     assert source.intended_use.value == "evidence_candidate"
+
+
+def test_edu_host_remains_educational_discovery() -> None:
+    source = annotate_source(
+        provider="serper",
+        query="art appraisal",
+        url="https://museum.example.edu/art-appraisal",
+        title="Artwork appraisal guide",
+        snippet="Professional appraisal guidance.",
+        found_via="google_organic",
+    )
+
+    assert source.source_type == "educational"
+    assert source.commercial_bias is CommercialBias.LOW
+    assert source.intended_use.value == "discovery"

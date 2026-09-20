@@ -16,7 +16,13 @@ from app.modules.content_engine.models import (
     Project,
 )
 from app.modules.knowledge.evidence_set_approval import approve_evidence_set
-from app.modules.knowledge.models import Evidence, EvidenceSet, OriginalityPack
+from app.modules.knowledge.models import (
+    Evidence,
+    EvidenceSet,
+    OriginalityPack,
+    Source,
+    SourceDocument,
+)
 from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
@@ -555,6 +561,77 @@ async def test_vi_brief_keeps_cross_language_community_evidence_context_only() -
         assert result.relation_counts["qualifies"] == 0
         assert result.relation_counts["context_only"] > 0
         assert result.evidence_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_vi_brief_keeps_cross_language_educational_discovery_context_only() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                source_type="educational",
+                commercial_bias=CommercialBias.LOW,
+                intended_use=IntendedUse.DISCOVERY,
+                candidate_url="https://artschool.example.edu.vn/oil-painting-care",
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 0
+        assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is False
+
+        document = await session.get(SourceDocument, result.source_document_ids[0])
+        assert document is not None
+        source = await session.get(Source, document.source_id)
+        assert source is not None
+        assert source.source_type == "educational"
+        assert source.provenance_json["intended_use"] == "discovery"
+        assert source.provenance_json["evidence_candidate"] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "intended_use",
+    [IntendedUse.DISCOVERY, IntendedUse.CONTEXT_ONLY],
+)
+async def test_source_type_alone_cannot_promote_non_evidence_use_to_support(
+    intended_use: IntendedUse,
+) -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                source_type="institutional",
+                commercial_bias=CommercialBias.LOW,
+                intended_use=intended_use,
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 0
+        assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is False
+
+
 
 
 @pytest.mark.asyncio
