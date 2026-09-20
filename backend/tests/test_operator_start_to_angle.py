@@ -105,6 +105,10 @@ def _intake_kwargs(*, key: str) -> dict[str, object]:
         "question": "How can a visitor evaluate locally made relief artwork in Vietnam?",
         "intent": "learn",
         "promise": "Give a practical, evidence-backed evaluation framework.",
+        "coverage_requirements": [
+            "Explain how to inspect materials and physical finish.",
+            "Separate factual evidence from MOTGU editorial judgment.",
+        ],
         "selection_reason": "Founder selected this Journal as an acquisition entry point.",
         "originality_material": (
             "MOTGU evaluates relief work by material honesty and craft decisions."
@@ -331,6 +335,8 @@ class ControlledCodexRunner:
         assert isinstance(evidence_set, dict)
         assert isinstance(originality_pack, dict)
         assert isinstance(opportunity, dict)
+        coverage_requirements = opportunity["coverage_requirements"]
+        assert isinstance(coverage_requirements, list) and coverage_requirements
         evidence = evidence_set["evidence"]
         originality = originality_pack["items"]
         assert isinstance(evidence, list) and evidence
@@ -358,6 +364,15 @@ class ControlledCodexRunner:
                 "risks": ["Do not generalize one source into a universal rule."],
                 "confidence": 0.8,
                 "locale": opportunity["locale"],
+                "coverage": [
+                    {
+                        "requirement_id": item["id"],
+                        "status": "covered",
+                        "rationale": "This candidate keeps the Founder requirement.",
+                    }
+                    for item in coverage_requirements
+                    if isinstance(item, dict)
+                ],
             }
             for index in range(1, 4)
         ]
@@ -385,11 +400,16 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         )
         assert replay.replayed and replay.command_id == first.command_id
         assert first.required_locales == ["en", "vi-VN"]
+        assert first.coverage_requirements == [
+            "Explain how to inspect materials and physical finish.",
+            "Separate factual evidence from MOTGU editorial judgment.",
+        ]
         assert first.state.status == "READY" and first.state.primary_intent == "start"
         need = await session.get(NeedHypothesis, first.need_hypothesis_id)
         opportunity = await session.get(ContentOpportunity, first.content_opportunity_id)
         assert need is not None and need.origin == "founder_manual" and need.status == "PROPOSED"
         assert opportunity is not None and opportunity.selected_by == "founder"
+        assert opportunity.coverage_requirements_json == first.coverage_requirements
         assert int(await session.scalar(select(func.count(Signal.id))) or 0) == signals_before
         assert await session.scalar(
             select(func.count(NeedHypothesisSignal.need_hypothesis_id)).where(
