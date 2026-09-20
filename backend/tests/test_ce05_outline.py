@@ -117,8 +117,15 @@ class OutlineFixture:
     recipe_version: str
 
 
-async def _approved_fixture(session: AsyncSession) -> OutlineFixture:
-    bundle_artifact, bundle, evidence_set, pack = await _bundle_fixture(session)
+async def _approved_fixture(
+    session: AsyncSession,
+    *,
+    coverage_requirements: list[str] | None = None,
+) -> OutlineFixture:
+    bundle_artifact, bundle, evidence_set, pack = await _bundle_fixture(
+        session,
+        coverage_requirements=coverage_requirements,
+    )
     angle_output = [_candidate_payload(bundle, index) for index in range(1, 4)]
     angle_result = await AngleGenerator(max_attempts=1).generate_candidates(
         session,
@@ -149,8 +156,8 @@ async def _approved_fixture(session: AsyncSession) -> OutlineFixture:
     )
     session.add(step)
     await session.flush()
-    prompt_version = "journal_outline:v1"
-    recipe_version = "journal_outline_v1:v1"
+    prompt_version = "journal_outline:v2"
+    recipe_version = "journal_outline_v1:v2"
     manifest = await build_context_manifest(
         session,
         run_id=run.id,
@@ -182,6 +189,15 @@ async def _approved_fixture(session: AsyncSession) -> OutlineFixture:
 def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
     evidence_ref = str(bundle.evidence_ids[0])
     originality_ref = bundle.originality_refs[0]
+    opportunity = bundle.angle_model_input["opportunity"]
+    assert isinstance(opportunity, dict)
+    coverage = opportunity.get("coverage_requirements", [])
+    assert isinstance(coverage, list)
+    coverage_ids = [
+        item["id"]
+        for item in coverage
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    ]
     return {
         "primary_answer": (
             "There is no universal formula for an artwork price; start with documented "
@@ -203,6 +219,7 @@ def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
                 "claim_guards": ["Do not imply one factor mechanically determines price."],
                 "reader_movement": "confusion -> factual orientation",
                 "internal_link_targets": [],
+                "coverage_requirement_ids": coverage_ids,
             },
             {
                 "section_id": "s2",
@@ -215,6 +232,7 @@ def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
                 "claim_guards": ["Do not invent availability, price or artist intent."],
                 "reader_movement": "orientation -> concrete evaluation",
                 "internal_link_targets": ["related Artwork when verified"],
+                "coverage_requirement_ids": [],
             },
             {
                 "section_id": "s3",
@@ -227,6 +245,7 @@ def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
                 "claim_guards": ["Keep questions editorial; add no new factual claims."],
                 "reader_movement": "concrete evaluation -> confident next question",
                 "internal_link_targets": [],
+                "coverage_requirement_ids": [],
             },
         ],
     }
@@ -299,6 +318,42 @@ async def test_outline_binds_exact_approval_support_and_reuses_exact_artifact() 
         )
         assert input_ref["content_hash"] == outline_model_input_hash(current_input.model_input)
         assert outline_payload["must_not_claim"] == list(fixture.selected.excluded_claims)
+
+
+@pytest.mark.asyncio
+async def test_outline_fails_closed_when_approved_coverage_is_missing() -> None:
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        valid = _outline_payload(fixture.bundle)
+        generated = await _generate(session, fixture, FakeOutlineModel([valid]))
+        assert generated.outline.coverage_contract_active is True
+        mapped = {
+            requirement_id
+            for section in generated.outline.sections
+            for requirement_id in section.coverage_requirement_ids
+        }
+        assert mapped == {"coverage-1", "coverage-2"}
+
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        invalid = _outline_payload(fixture.bundle)
+        sections = cast(list[object], invalid["sections"])
+        first_section = cast(dict[str, object], sections[0])
+        first_section["coverage_requirement_ids"] = ["coverage-1"]
+        with pytest.raises(OutlineGenerationError, match="outline_model_output_invalid"):
+            await _generate(session, fixture, FakeOutlineModel([invalid]))
 
 
 @pytest.mark.asyncio
