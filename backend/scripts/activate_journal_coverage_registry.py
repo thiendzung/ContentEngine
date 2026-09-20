@@ -24,6 +24,31 @@ from app.modules.system.recovery import (
 _EXPECTED_REVISION = "20260920_0035"
 
 
+def _validated_operational_source():
+    settings = get_settings()
+    if settings.app_env.strip().lower() == "test":
+        raise JournalCoverageRegistryActivationError(
+            "journal_coverage_registry_test_environment_forbidden"
+        )
+    return validate_operational_database_source(settings.database_url)
+
+
+def _validate_database_state(
+    *,
+    expected_database: str | None,
+    current_database: str,
+    revision: object,
+) -> None:
+    if not expected_database or current_database != expected_database:
+        raise JournalCoverageRegistryActivationError(
+            "journal_coverage_registry_database_mismatch"
+        )
+    if revision != _EXPECTED_REVISION:
+        raise JournalCoverageRegistryActivationError(
+            "journal_coverage_registry_schema_revision_mismatch"
+        )
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -52,12 +77,7 @@ def _activation_payload(
 async def _main() -> int:
     args = _parse_args()
     try:
-        settings = get_settings()
-        if settings.app_env.strip().lower() == "test":
-            raise JournalCoverageRegistryActivationError(
-                "journal_coverage_registry_test_environment_forbidden"
-            )
-        source = validate_operational_database_source(settings.database_url)
+        source = _validated_operational_source()
         async with SessionLocal() as session:
             async with session.begin():
                 current_database = str(
@@ -65,19 +85,16 @@ async def _main() -> int:
                         await session.execute(text("select current_database()"))
                     ).scalar_one()
                 )
-                if current_database != source.database:
-                    raise JournalCoverageRegistryActivationError(
-                        "journal_coverage_registry_database_mismatch"
-                    )
                 revision = (
                     await session.execute(
                         text("select version_num from alembic_version")
                     )
                 ).scalar_one_or_none()
-                if revision != _EXPECTED_REVISION:
-                    raise JournalCoverageRegistryActivationError(
-                        "journal_coverage_registry_schema_revision_mismatch"
-                    )
+                _validate_database_state(
+                    expected_database=source.database,
+                    current_database=current_database,
+                    revision=revision,
+                )
                 result = await activate_journal_promise_coverage_registry(
                     session,
                     approved_by=args.approved_by,
