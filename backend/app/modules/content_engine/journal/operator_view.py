@@ -58,6 +58,18 @@ class OperatorOutlineArtifactView(BaseModel):
     content_hash: str
 
 
+class OperatorCoverageRequirementView(BaseModel):
+    id: str
+    requirement: str
+
+
+class OperatorAngleCoverageView(BaseModel):
+    requirement_id: str
+    requirement: str
+    status: Literal["covered", "reduced"]
+    rationale: str
+
+
 class OperatorAngleCandidateView(BaseModel):
     angle_id: str
     candidate_hash: str
@@ -73,6 +85,7 @@ class OperatorAngleCandidateView(BaseModel):
     risks: list[str]
     confidence: float
     locale: str
+    coverage: list[OperatorAngleCoverageView] = Field(default_factory=list)
 
 
 class OperatorAngleGateView(BaseModel):
@@ -152,6 +165,7 @@ class OperatorCaseView(BaseModel):
     need: str
     intent: str
     promise: str
+    coverage_requirements: list[OperatorCoverageRequirementView] = Field(default_factory=list)
     state: OperatorState
     intake: OperatorIntakeView
     pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
@@ -222,6 +236,37 @@ async def _pending_artifact(
     return artifact
 
 
+def _coverage_requirements_from_snapshot(
+    opportunity: dict[str, object],
+) -> list[OperatorCoverageRequirementView]:
+    raw = opportunity.get("coverage_requirements", [])
+    if not isinstance(raw, list):
+        raise OperatorControlError("operator_coverage_requirements_invalid")
+    result: list[OperatorCoverageRequirementView] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            raise OperatorControlError("operator_coverage_requirements_invalid")
+        requirement_id = item.get("id")
+        requirement = item.get("requirement")
+        if (
+            not isinstance(requirement_id, str)
+            or not requirement_id.strip()
+            or not isinstance(requirement, str)
+            or not requirement.strip()
+            or requirement_id in seen
+        ):
+            raise OperatorControlError("operator_coverage_requirements_invalid")
+        seen.add(requirement_id)
+        result.append(
+            OperatorCoverageRequirementView(
+                id=requirement_id,
+                requirement=requirement,
+            )
+        )
+    return result
+
+
 async def _angle_gate(
     session: AsyncSession,
     *,
@@ -250,6 +295,8 @@ async def _angle_gate(
         raise OperatorControlError("operator_angle_projection_stale") from exc
     if not candidates:
         raise OperatorControlError("operator_angle_projection_missing")
+    coverage_requirements = _coverage_requirements_from_snapshot(bundle.opportunity)
+    coverage_by_id = {item.id: item.requirement for item in coverage_requirements}
     return OperatorAngleGateView(
         artifact=OperatorAngleArtifactView(
             id=artifact.id,
@@ -272,6 +319,15 @@ async def _angle_gate(
                 risks=list(candidate.risks),
                 confidence=candidate.confidence,
                 locale=candidate.locale,
+                coverage=[
+                    OperatorAngleCoverageView(
+                        requirement_id=item.requirement_id,
+                        requirement=coverage_by_id[item.requirement_id],
+                        status=cast(Literal["covered", "reduced"], item.status),
+                        rationale=item.rationale,
+                    )
+                    for item in candidate.coverage
+                ],
             )
             for candidate in candidates
         ],
@@ -503,6 +559,13 @@ async def get_operator_case_view(
         need=opportunity.need,
         intent=opportunity.intent,
         promise=opportunity.promise,
+        coverage_requirements=[
+            OperatorCoverageRequirementView(
+                id=f"coverage-{index + 1}",
+                requirement=requirement,
+            )
+            for index, requirement in enumerate(opportunity.coverage_requirements_json)
+        ],
         state=state,
         intake=OperatorIntakeView(
             source_locale=spec.source_locale,
