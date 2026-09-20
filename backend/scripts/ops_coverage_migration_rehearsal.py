@@ -21,8 +21,8 @@ from scripts.ops_migration_rehearsal import (
     _alembic_script,
     _database_state,
     _drop_database,
+    MigrationRehearsalError,
     _expected_fingerprint,
-    _pg_connection_args,
     _recreate_database,
     _restore_backup,
     _verify_backfill,
@@ -416,7 +416,11 @@ async def _main() -> int:
             source_url=settings.database_url,
             restore_url=target_url.render_as_string(hide_password=False),
         )
-    except (CoverageMigrationError, RecoverySafetyError) as exc:
+    except (
+        CoverageMigrationError,
+        MigrationRehearsalError,
+        RecoverySafetyError,
+    ) as exc:
         print(json.dumps({"status": "BLOCKED", "blocker": exc.code}, indent=2))
         return 2
     except Exception:
@@ -527,7 +531,11 @@ async def _main() -> int:
             "schema_objects": schema_objects,
             "coverage_seed": coverage_seed,
         }
-    except (CoverageMigrationError, RecoverySafetyError) as exc:
+    except (
+        CoverageMigrationError,
+        MigrationRehearsalError,
+        RecoverySafetyError,
+    ) as exc:
         blocker = exc.code
     except Exception:
         blocker = "coverage_migration_unexpected_failure"
