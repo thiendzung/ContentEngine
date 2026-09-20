@@ -10,14 +10,14 @@ from test_operator_preflight import (
 )
 
 import app.modules.content_engine.journal.operator_preflight as operator_preflight
-from app.modules.system.journal_coverage_registry import (
-    activate_journal_promise_coverage_registry,
-)
 from app.modules.content_engine.models import (
     PromptDefinition,
     RecipeDefinition,
     SettingsSnapshot,
     SettingsVersion,
+)
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
 )
 
 
