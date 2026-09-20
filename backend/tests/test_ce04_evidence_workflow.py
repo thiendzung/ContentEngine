@@ -16,7 +16,13 @@ from app.modules.content_engine.models import (
     Project,
 )
 from app.modules.knowledge.evidence_set_approval import approve_evidence_set
-from app.modules.knowledge.models import Evidence, EvidenceSet, OriginalityPack
+from app.modules.knowledge.models import (
+    Evidence,
+    EvidenceSet,
+    OriginalityPack,
+    Source,
+    SourceDocument,
+)
 from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
@@ -583,6 +589,14 @@ async def test_vi_brief_keeps_cross_language_educational_discovery_context_only(
         assert result.relation_counts["qualifies"] == 0
         assert result.relation_counts["context_only"] > 0
         assert result.evidence_eligible is False
+
+        document = await session.get(SourceDocument, result.source_document_ids[0])
+        assert document is not None
+        source = await session.get(Source, document.source_id)
+        assert source is not None
+        assert source.source_type == "educational"
+        assert source.provenance_json["intended_use"] == "discovery"
+        assert source.provenance_json["evidence_candidate"] is False
 
 
 @pytest.mark.asyncio
