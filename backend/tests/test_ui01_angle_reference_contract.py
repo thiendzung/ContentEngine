@@ -35,17 +35,18 @@ async def _runtime_fixture(session, bundle_artifact, bundle):
     )
     prompt = await session.scalar(
         select(PromptDefinition).where(
-            PromptDefinition.prompt_key == "journal_angle_candidates"
+            PromptDefinition.prompt_key == "journal_angle_candidates",
+            PromptDefinition.status == "active",
         )
     )
     recipe = await session.scalar(
-        select(RecipeDefinition).where(RecipeDefinition.recipe_key == "journal_angle_v1")
+        select(RecipeDefinition).where(
+            RecipeDefinition.recipe_key == "journal_angle_v1",
+            RecipeDefinition.status == "active",
+        )
     )
-    assert prompt is not None and recipe is not None
-    prompt.status = "active"
-    prompt.approved_by = "founder"
-    recipe.status = "active"
-    recipe.approved_by = "founder"
+    assert prompt is not None and prompt.status == "active"
+    assert recipe is not None and recipe.status == "active"
     session.add(snapshot)
     await session.flush()
     run.settings_snapshot_id = snapshot.id
