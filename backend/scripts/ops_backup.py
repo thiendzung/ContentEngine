@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.engine import URL
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
@@ -72,7 +72,69 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-async def _source_state(database_url: str) -> tuple[str, DatabaseFingerprint]:
+async def _source_documents_fingerprint(
+    engine: AsyncEngine,
+) -> dict[str, object]:
+    async with engine.connect() as connection:
+        rows = list(
+            (
+                await connection.execute(
+                    text(
+                        """
+                        select
+                            id::text,
+                            fetched_at::text,
+                            content_hash,
+                            coalesce(provider, ''),
+                            coalesce(reader, '')
+                        from source_documents
+                        order by id
+                        """
+                    )
+                )
+            ).all()
+        )
+    payload = json.dumps(
+        [[str(value) for value in row] for row in rows],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return {
+        "count": len(rows),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
+async def _model_calls_fingerprint(
+    engine: AsyncEngine,
+) -> dict[str, object]:
+    async with engine.connect() as connection:
+        rows = list(
+            (
+                await connection.execute(
+                    text("select row_to_json(t)::text from model_calls t order by id")
+                )
+            ).scalars()
+        )
+    payload = json.dumps(
+        [str(row) for row in rows],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return {
+        "count": len(rows),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
+async def _source_state(
+    database_url: str,
+) -> tuple[
+    str,
+    DatabaseFingerprint,
+    dict[str, object],
+    dict[str, object],
+]:
     engine = create_async_engine(database_url, poolclass=NullPool)
     try:
         async with engine.connect() as connection:
@@ -82,13 +144,15 @@ async def _source_state(database_url: str) -> tuple[str, DatabaseFingerprint]:
         if revision is None:
             raise BackupSafetyError("source_migration_revision_missing")
         fingerprint = await database_fingerprint(engine)
+        source_documents = await _source_documents_fingerprint(engine)
+        model_calls = await _model_calls_fingerprint(engine)
     except BackupSafetyError:
         raise
     except Exception as exc:
         raise BackupSafetyError("source_state_failed") from exc
     finally:
         await engine.dispose()
-    return str(revision), fingerprint
+    return str(revision), fingerprint, source_documents, model_calls
 
 
 async def _main() -> int:
@@ -120,9 +184,12 @@ async def _main() -> int:
     manifest_path = backup_dir / f"{stem}.json"
 
     try:
-        source_revision_before, fingerprint_before = await _source_state(
-            settings.database_url
-        )
+        (
+            source_revision_before,
+            fingerprint_before,
+            source_documents_before,
+            model_calls_before,
+        ) = await _source_state(settings.database_url)
     except BackupSafetyError as exc:
         print(f"BACKUP: BLOCKED ({exc.code})")
         return 2
@@ -150,9 +217,12 @@ async def _main() -> int:
         return 2
 
     try:
-        source_revision_after, fingerprint_after = await _source_state(
-            settings.database_url
-        )
+        (
+            source_revision_after,
+            fingerprint_after,
+            source_documents_after,
+            model_calls_after,
+        ) = await _source_state(settings.database_url)
     except BackupSafetyError as exc:
         dump_path.unlink(missing_ok=True)
         print(f"BACKUP: BLOCKED ({exc.code})")
@@ -160,6 +230,8 @@ async def _main() -> int:
     if (
         source_revision_after != source_revision_before
         or fingerprint_after != fingerprint_before
+        or source_documents_after != source_documents_before
+        or model_calls_after != model_calls_before
     ):
         dump_path.unlink(missing_ok=True)
         print("BACKUP: BLOCKED (source_changed_during_backup)")
@@ -175,6 +247,8 @@ async def _main() -> int:
         "tool_mode": capability.mode,
         "dump_sha256": _sha256(dump_path),
         "fingerprint": fingerprint_before.to_dict(),
+        "source_documents_fingerprint": source_documents_before,
+        "model_calls_fingerprint": model_calls_before,
     }
     manifest_path.write_text(
         json.dumps(manifest, sort_keys=True, indent=2) + "\n",
