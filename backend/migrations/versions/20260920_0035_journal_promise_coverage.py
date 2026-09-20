@@ -31,21 +31,6 @@ def upgrade() -> None:
     )
 
     now = datetime.now(UTC).replace(tzinfo=None)
-    op.execute(
-        sa.text(
-            "UPDATE prompt_definitions SET status='retired', updated_at=:now "
-            "WHERE prompt_key IN ('journal_angle_candidates','journal_outline') "
-            "AND status='active'"
-        ).bindparams(now=now)
-    )
-    op.execute(
-        sa.text(
-            "UPDATE recipe_definitions SET status='retired', updated_at=:now "
-            "WHERE recipe_key IN ('journal_angle_v1','journal_outline_v1') "
-            "AND status='active'"
-        ).bindparams(now=now)
-    )
-
     prompt = sa.table(
         "prompt_definitions",
         sa.column("id", sa.Uuid()),
@@ -143,9 +128,9 @@ def upgrade() -> None:
                         }
                     },
                 },
-                "status": "active",
+                "status": "draft",
                 "change_reason": "F7 real-pilot finding: make Founder promise reductions explicit before Angle approval.",
-                "approved_by": "founder",
+                "approved_by": None,
                 "created_at": now,
                 "updated_at": now,
             },
@@ -206,9 +191,9 @@ def upgrade() -> None:
                         },
                     },
                 },
-                "status": "active",
+                "status": "draft",
                 "change_reason": "F7 real-pilot finding: fail closed when Outline drops an approved Founder promise commitment.",
-                "approved_by": "founder",
+                "approved_by": None,
                 "created_at": now,
                 "updated_at": now,
             },
@@ -239,8 +224,8 @@ def upgrade() -> None:
                     "steps": ["reader_problem", "central_question", "core_promise", "map_founder_coverage", "point_of_view", "why_now"],
                     "constraints": ["grounded_in_supplied_evidence", "grounded_in_approved_originality", "explicit_scope_reduction", "no_silent_promise_drop"],
                 },
-                "status": "active",
-                "approved_by": "founder",
+                "status": "draft",
+                "approved_by": None,
                 "created_at": now,
                 "updated_at": now,
             },
@@ -253,8 +238,8 @@ def upgrade() -> None:
                     "steps": ["answer_primary_question_first", "organize_reader_decision_path", "map_covered_requirements_to_sections", "map_factual_sections_to_evidence", "carry_claim_guards"],
                     "constraints": ["exact_approved_angle_only", "no_silent_promise_drop", "grounded_in_locked_evidence", "no_new_research", "human_first_machine_legible"],
                 },
-                "status": "active",
-                "approved_by": "founder",
+                "status": "draft",
+                "approved_by": None,
                 "created_at": now,
                 "updated_at": now,
             },
