@@ -187,6 +187,9 @@ class ContentOpportunity(TimestampMixin, Base):
     question: Mapped[str] = mapped_column(Text, nullable=False)
     intent: Mapped[str] = mapped_column(String(64), nullable=False)
     promise: Mapped[str] = mapped_column(Text, nullable=False)
+    coverage_requirements_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     motgu_material_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     material_gaps_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     existing_content_refs_json: Mapped[list[str]] = mapped_column(
