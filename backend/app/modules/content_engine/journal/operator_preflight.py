@@ -17,8 +17,14 @@ from app.modules.content_engine.journal.agent_bridge import (
     ANGLE_RECIPE_KEY,
     ANGLE_TASK_KEY,
 )
+from app.modules.content_engine.journal.outline_agent_bridge import (
+    OUTLINE_PROMPT_KEY,
+    OUTLINE_RECIPE_KEY,
+    OUTLINE_TASK_KEY,
+)
 from app.modules.content_engine.models import Project, SettingsSnapshot, SettingsVersion
 from app.modules.harness.runtime import RuntimeConfigurationError, SettingsModelRouter
+from app.modules.system.journal_coverage_registry import JOURNAL_COVERAGE_REGISTRY_VERSION
 from app.modules.system.preflight import build_operational_preflight
 from app.modules.system.settings_service import (
     SettingsResolutionError,
@@ -124,6 +130,12 @@ async def _angle_prompt_check(session: AsyncSession) -> dict[str, object]:
         prompt = await active_prompt_definition(session, prompt_key=ANGLE_PROMPT_KEY)
     except SettingsResolutionError as exc:
         return _check("journal_angle_prompt", "BLOCKED", exc.code)
+    if prompt.version != JOURNAL_COVERAGE_REGISTRY_VERSION:
+        return _check(
+            "journal_angle_prompt",
+            "BLOCKED",
+            "journal_coverage_registry_activation_required",
+        )
     return _check(
         "journal_angle_prompt",
         "READY",
@@ -157,8 +169,71 @@ async def _angle_recipe_check(session: AsyncSession) -> dict[str, object]:
                 "journal_angle_recipe_locale_mismatch",
             )
     assert recipe is not None
+    if recipe.version != JOURNAL_COVERAGE_REGISTRY_VERSION:
+        return _check(
+            "journal_angle_recipe",
+            "BLOCKED",
+            "journal_coverage_registry_activation_required",
+        )
     return _check(
         "journal_angle_recipe",
+        "READY",
+        f"{recipe.recipe_key}:v{recipe.version}; locales=en,vi",
+    )
+
+
+async def _outline_prompt_check(session: AsyncSession) -> dict[str, object]:
+    try:
+        prompt = await active_prompt_definition(session, prompt_key=OUTLINE_PROMPT_KEY)
+    except SettingsResolutionError as exc:
+        return _check("journal_outline_prompt", "BLOCKED", exc.code)
+    if prompt.version != JOURNAL_COVERAGE_REGISTRY_VERSION:
+        return _check(
+            "journal_outline_prompt",
+            "BLOCKED",
+            "journal_coverage_registry_activation_required",
+        )
+    return _check(
+        "journal_outline_prompt",
+        "READY",
+        f"{prompt.prompt_key}:v{prompt.version}",
+    )
+
+
+async def _outline_recipe_check(session: AsyncSession) -> dict[str, object]:
+    recipe = None
+    for locale in _SUPPORTED_SOURCE_LOCALES:
+        try:
+            candidate = await active_recipe_definition(
+                session,
+                recipe_key=OUTLINE_RECIPE_KEY,
+                content_type=_CONTENT_TYPE,
+                locale=locale,
+                task_key=OUTLINE_TASK_KEY,
+            )
+        except SettingsResolutionError as exc:
+            return _check(
+                "journal_outline_recipe",
+                "BLOCKED",
+                f"locale={locale}; {exc.code}",
+            )
+        if recipe is None:
+            recipe = candidate
+        elif candidate.id != recipe.id:
+            return _check(
+                "journal_outline_recipe",
+                "BLOCKED",
+                "journal_outline_recipe_locale_mismatch",
+            )
+    assert recipe is not None
+    if recipe.version != JOURNAL_COVERAGE_REGISTRY_VERSION:
+        return _check(
+            "journal_outline_recipe",
+            "BLOCKED",
+            "journal_coverage_registry_activation_required",
+        )
+    return _check(
+        "journal_outline_recipe",
         "READY",
         f"{recipe.recipe_key}:v{recipe.version}; locales=en,vi",
     )
@@ -182,6 +257,8 @@ async def build_journal_operator_preflight(
             await _angle_settings_check(session),
             await _angle_prompt_check(session),
             await _angle_recipe_check(session),
+            await _outline_prompt_check(session),
+            await _outline_recipe_check(session),
         ]
     )
     ready = all(check.get("status") in {"READY", "OPTIONAL"} for check in checks)
