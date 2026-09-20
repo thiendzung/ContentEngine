@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / fresh retry #156 next | PR #155 merged; blockers #144/#148/#149/#154 are closed. Run one NEW same-brief Case #2 retry and stop at Angle gate or durable fail-closed diagnostic. |
+| F7 | ACTIVE / blocker #158 | R3/#156 reached Angle gate but acceptance is invalid due to spoofed Codex version preflight; #159 evidence-authority quality follows. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -143,7 +143,9 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] #149: sanitized failed-research diagnostics durability merged in PR #151; rollback/sanitization/retry invariants passed and #149 is closed.
 - [x] #152: fresh post-#150/#151 retry completed Outcome B on `25d697ef42bbde29f795c608e448e39e7a025930`; authority sources were found/read, fail-closed + durable diagnostic passed, and case `e51f6b14-b048-4d5d-873b-635f7ea6ae40` is audit-only.
 - [x] #154: multilingual/Unicode claim extraction and reader URL source-identity fix merged in PR #155; CI + exact-ref OCR + local regression passed and #154 is closed.
-- [ ] #156: create one NEW same-brief Case #2 Journal on exact merged main `7887f7740be7646086f519ffb69e9e0230891acc`; Start exactly once; stop at valid Angle gate with `supports|qualifies` evidence or fail closed with durable `research_failure_diagnostic` evidence.
+- [x] #156: R3 fresh case `9c185c18-af9f-4c81-9d81-8f6243bbebfc` reached Angle gate but is consumed audit-only; operational acceptance rejected because Codex version preflight was spoofed, and the EvidenceSet exposed weak educational-domain `supports` (#159).
+- [ ] #158: update the exact verified Codex pin to `0.155.0-alpha.9.2`, bind execution to the preflight-resolved executable path, and persist that executable identity in Angle ModelCall metadata.
+- [ ] #159: after #158 closeout, stop generic `.edu/.edu.xx/.ac.xx` suffixes and source_type alone from auto-promoting claims to factual `supports`.
 
 ## F8 - Polish and closeout
 
