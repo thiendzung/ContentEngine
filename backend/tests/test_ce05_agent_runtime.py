@@ -152,6 +152,7 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     result = await CodexCliRunner().run(_request("codex_cli"))
     execution = processes[-1]
     assert result.structured_output == {"candidates": [{"angle_id": "one"}]}
+    assert result.runner_executable == "/usr/local/bin/codex"
     assert execution.argv[0] == "/usr/local/bin/codex"
     assert execution.stdin is not None and execution.stdin.closed
     assert "--model" in execution.argv
@@ -716,6 +717,7 @@ class FakeAngleRunner:
             exit_code=0,
             usage={"input_tokens": 10, "output_tokens": 20},
             duration_ms=7,
+            runner_executable="/usr/local/bin/codex",
             session_id="safe-session",
         )
 
@@ -795,6 +797,7 @@ async def test_cli_angle_bridge_records_modelcall_and_passes_only_sanitized_inpu
         assert call.status == "completed"
         assert call.runtime_metadata_json == {
             "runner_version": "fake-agent-1",
+            "runner_executable": "/usr/local/bin/codex",
             "exit_code": 0,
             "raw_output_hash": "a" * 64,
             "duration_ms": 7,
