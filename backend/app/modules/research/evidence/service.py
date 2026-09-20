@@ -447,12 +447,7 @@ class EvidenceResearchWorkflow:
             return EvidenceRelation.CONTEXT_ONLY
         if source.commercial_bias is CommercialBias.HIGH:
             return EvidenceRelation.CONTEXT_ONLY
-        if source.intended_use is IntendedUse.CONTEXT_ONLY:
-            return EvidenceRelation.CONTEXT_ONLY
-        if (
-            source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
-            or source.source_type in {"institutional", "editorial"}
-        ):
+        if source.intended_use is IntendedUse.EVIDENCE_CANDIDATE:
             return EvidenceRelation.SUPPORTS
         return EvidenceRelation.CONTEXT_ONLY
 
