@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / blocker #159 | PR #160 merged and #158 closed; prevent generic educational domains/source type from auto-promoting claims to factual `supports`. |
+| F7 | ACTIVE / R4 ANGLE SELECTED BY FOUNDER | Fresh R4 Case #2 reached a valid factual Angle gate on exact main after #160/#161. Founder manually selected `angle-environment-checklist`; no Continue/Outline has run. F7.2B is next only after explicit Founder authorization. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -145,7 +145,10 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] #154: multilingual/Unicode claim extraction and reader URL source-identity fix merged in PR #155; CI + exact-ref OCR + local regression passed and #154 is closed.
 - [x] #156: R3 fresh case `9c185c18-af9f-4c81-9d81-8f6243bbebfc` reached Angle gate but is consumed audit-only; operational acceptance rejected because Codex version preflight was spoofed, and the EvidenceSet exposed weak educational-domain `supports` (#159).
 - [x] #158: PR #160 merged; verified exact Codex `.9.2` pin, resolved executable reuse and durable Angle runner identity; truthful release-preflight/local proof passed.
-- [ ] #159: stop generic `.edu/.edu.xx/.ac.xx` suffixes and source_type alone from auto-promoting claims to factual `supports`; keep educational sources high-priority discovery/context.
+- [x] #159: PR #161 merged; generic `.edu/.edu.xx/.ac.xx` sources remain discovery/context by default and source_type alone cannot auto-promote factual `supports`; #159 closed.
+- [x] Fresh Case #2 R4: case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached a valid factual Angle gate on exact main with truthful packaged `codex-cli 0.155.0-alpha.9.2`; Founder manually selected `angle-environment-checklist`. No Continue/Outline ran.
+- [ ] F7.2B: after explicit Founder authorization, continue the accepted R4 case to the exact Outline gate and STOP. Do not authorize Writer/Quality/finalization/publication in this slice.
+- [ ] Audit bookkeeping: reconcile the R4 report's `8 supports` total against the 7 explicitly enumerated evidence rows; treat this as evidence-report completeness, not as permission to rerun/continue without the F7.2B authorization.
 
 ## F8 - Polish and closeout
 
