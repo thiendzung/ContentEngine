@@ -121,7 +121,7 @@ async def activate_test_journal_angle_runtime(
     approved_by: str,
     project_slug: str = "motgu",
 ) -> TestAngleRuntimeActivation:
-    """Activate only the seeded test model route; the coverage-aware registry must already be active."""
+    """Activate the seeded test model route with the coverage-aware registry active."""
 
     target = validate_test_angle_activation_target(settings)
     requested_model = _require_text(model, "test_angle_model_required")
