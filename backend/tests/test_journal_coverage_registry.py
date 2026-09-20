@@ -4,6 +4,8 @@ import json
 
 import pytest
 from sqlalchemy import select
+
+from app.core.config import Settings
 from test_ce05_review_revise import isolated_session
 
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition
@@ -16,7 +18,13 @@ from app.modules.system.journal_coverage_registry import (
     JournalCoverageRegistryActivationError,
     activate_journal_promise_coverage_registry,
 )
-from scripts.activate_journal_coverage_registry import _activation_payload
+from app.modules.system.recovery import RecoverySafetyError
+import scripts.activate_journal_coverage_registry as activation_script
+from scripts.activate_journal_coverage_registry import (
+    _activation_payload,
+    _validate_database_state,
+    _validated_operational_source,
+)
 
 
 async def _prompt(session, key: str, version: int) -> PromptDefinition:
@@ -39,6 +47,68 @@ async def _recipe(session, key: str, version: int) -> RecipeDefinition:
     )
     assert row is not None
     return row
+
+
+def test_coverage_registry_activation_target_guards(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        activation_script,
+        "get_settings",
+        lambda: Settings(
+            app_env="test",
+            database_url=(
+                "postgresql+asyncpg://contentengine:contentengine@127.0.0.1:5432/"
+                "contentengine"
+            ),
+        ),
+    )
+    with pytest.raises(
+        JournalCoverageRegistryActivationError,
+        match="journal_coverage_registry_test_environment_forbidden",
+    ):
+        _validated_operational_source()
+
+    monkeypatch.setattr(
+        activation_script,
+        "get_settings",
+        lambda: Settings(
+            app_env="development",
+            database_url=(
+                "postgresql+asyncpg://contentengine:contentengine@127.0.0.1:5432/"
+                "contentengine_restore_test"
+            ),
+        ),
+    )
+    with pytest.raises(
+        RecoverySafetyError,
+        match="operational_database_looks_disposable",
+    ):
+        _validated_operational_source()
+
+    with pytest.raises(
+        JournalCoverageRegistryActivationError,
+        match="journal_coverage_registry_database_mismatch",
+    ):
+        _validate_database_state(
+            expected_database="contentengine",
+            current_database="another_database",
+            revision="20260920_0035",
+        )
+    with pytest.raises(
+        JournalCoverageRegistryActivationError,
+        match="journal_coverage_registry_schema_revision_mismatch",
+    ):
+        _validate_database_state(
+            expected_database="contentengine",
+            current_database="contentengine",
+            revision="20260915_0034",
+        )
+    _validate_database_state(
+        expected_database="contentengine",
+        current_database="contentengine",
+        revision="20260920_0035",
+    )
 
 
 @pytest.mark.asyncio
