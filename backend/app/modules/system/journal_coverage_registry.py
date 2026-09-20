@@ -211,7 +211,9 @@ async def activate_journal_promise_coverage_registry(
             "journal_coverage_registry_active_recipe_mismatch"
         )
 
-    for row in (*active_prompts, *active_recipes):
+    for row in active_prompts:
+        row.status = "retired"
+    for row in active_recipes:
         row.status = "retired"
     await session.flush()
 
