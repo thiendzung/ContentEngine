@@ -21,6 +21,10 @@ from app.modules.content_engine.models import (
     RecipeDefinition,
     SettingsVersion,
 )
+from app.modules.system.journal_coverage_registry import (
+    JournalCoverageRegistryActivationError,
+    activate_journal_promise_coverage_registry,
+)
 from app.modules.system.test_database import (
     TestDatabasePreparationError,
     validate_test_database_target,
@@ -166,50 +170,50 @@ async def activate_test_journal_angle_runtime(
     provider, persisted_model, payload = _route_from_settings(settings_row)
     if provider != ANGLE_PROVIDER:
         raise TestAngleRuntimeActivationError("test_angle_provider_mismatch")
-    if prompt.status != "active" or recipe.status != "active":
-        raise TestAngleRuntimeActivationError("test_angle_registry_not_active")
-    if (
-        not isinstance(prompt.approved_by, str)
-        or not prompt.approved_by.strip()
-        or not isinstance(recipe.approved_by, str)
-        or not recipe.approved_by.strip()
-    ):
-        raise TestAngleRuntimeActivationError("test_angle_registry_approval_missing")
 
-    if settings_row.status == "active":
+    settings_replayed = settings_row.status == "active"
+    if settings_replayed:
         if persisted_model != requested_model:
             raise TestAngleRuntimeActivationError("test_angle_active_model_mismatch")
         if settings_row.approved_by != approver:
             raise TestAngleRuntimeActivationError("test_angle_active_approver_mismatch")
-        return TestAngleRuntimeActivation(
-            project_id=project.id,
-            settings_id=settings_row.id,
-            prompt_id=prompt.id,
-            recipe_id=recipe.id,
-            provider=provider,
-            model=persisted_model,
-            approved_by=approver,
-            replayed=True,
-        )
-
-    if settings_row.status != "draft":
+    elif settings_row.status == "draft":
+        normalized_persisted = persisted_model.casefold()
+        if (
+            normalized_persisted not in _PENDING_MODELS
+            and not normalized_persisted.startswith("pending_")
+            and persisted_model != requested_model
+        ):
+            raise TestAngleRuntimeActivationError("test_angle_draft_model_mismatch")
+    else:
         raise TestAngleRuntimeActivationError("test_angle_partial_activation_forbidden")
-    normalized_persisted = persisted_model.casefold()
-    if (
-        normalized_persisted not in _PENDING_MODELS
-        and not normalized_persisted.startswith("pending_")
-        and persisted_model != requested_model
-    ):
-        raise TestAngleRuntimeActivationError("test_angle_draft_model_mismatch")
 
-    settings_row.settings_json = _set_route_model(payload, requested_model)
-    settings_row.status = "active"
-    settings_row.approved_by = approver
-    settings_row.change_reason = (
-        "Test-only acceptance activation of the seeded Angle model route; "
-        f"model={requested_model}"
-    )
-    await session.flush()
+    try:
+        registry = await activate_journal_promise_coverage_registry(
+            session,
+            approved_by=approver,
+        )
+    except JournalCoverageRegistryActivationError as exc:
+        if exc.code == "journal_coverage_registry_active_approver_mismatch":
+            raise TestAngleRuntimeActivationError(
+                "test_angle_active_approver_mismatch"
+            ) from exc
+        raise TestAngleRuntimeActivationError(exc.code) from exc
+
+    if prompt.status != "active" or recipe.status != "active":
+        raise TestAngleRuntimeActivationError("test_angle_registry_not_active")
+    if prompt.approved_by != approver or recipe.approved_by != approver:
+        raise TestAngleRuntimeActivationError("test_angle_registry_approval_mismatch")
+
+    if not settings_replayed:
+        settings_row.settings_json = _set_route_model(payload, requested_model)
+        settings_row.status = "active"
+        settings_row.approved_by = approver
+        settings_row.change_reason = (
+            "Test-only acceptance activation of the seeded Angle model route; "
+            f"model={requested_model}"
+        )
+        await session.flush()
 
     return TestAngleRuntimeActivation(
         project_id=project.id,
@@ -219,7 +223,7 @@ async def activate_test_journal_angle_runtime(
         provider=ANGLE_PROVIDER,
         model=requested_model,
         approved_by=approver,
-        replayed=False,
+        replayed=settings_replayed and registry.replayed,
     )
 
 
