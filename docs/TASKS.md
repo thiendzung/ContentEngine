@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / OUTLINE GATE TECHNICALLY REACHED | R4 Continue ran once and produced a durable Outline gate. Formal #165 closeout is pending read-only exact-main preflight/state verification because execution used the pre-#162 runtime-equivalent SHA. |
+| F7 | ACTIVE / OUTLINE GATE PASS / #167 BLOCKER | `PASS_F7_2B_READONLY_CLOSEOUT` proved exact-main preflight + durable Outline gate. #167 is the only active F7.2B blocker: persist `runner_executable` in Outline ModelCall metadata before Founder Outline approval. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -147,8 +147,9 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] #158: PR #160 merged; verified exact Codex `.9.2` pin, resolved executable reuse and durable Angle runner identity; truthful release-preflight/local proof passed.
 - [x] #159: PR #161 merged; generic `.edu/.edu.xx/.ac.xx` sources remain discovery/context by default and source_type alone cannot auto-promote factual `supports`; #159 closed.
 - [x] Fresh Case #2 R4: case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached a valid factual Angle gate on exact main with truthful packaged `codex-cli 0.155.0-alpha.9.2`; Founder manually selected `angle-environment-checklist`. No Continue/Outline ran.
-- [~] F7.2B: technical execution reached `AWAITING_APPROVAL / outline` with one Continue and Outline artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`. Formal closeout remains pending because the run used pre-#162 SHA `39336052...`; GitHub proves #162 was docs-only, so do NOT rerun Continue/model. Complete only a read-only exact-main closeout on `ed7e76ced561886940c1add77a85bf350c3f9ca5`.
-- [ ] Audit bookkeeping: reconcile the R4 report's `8 supports` total against the 7 explicitly enumerated evidence rows; treat this as evidence-report completeness, not as permission to rerun/continue without the F7.2B authorization.
+- [x] F7.2B runtime/state closeout: `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`; R4 remains `AWAITING_APPROVAL / outline`, artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, with one Continue/Outline path and zero downstream mutation.
+- [x] Audit bookkeeping: durable EvidenceSet contains 8 rows = 6 institutional `supports` + 2 educational `context_only`; prior `8 supports` wording was a reporting error.
+- [ ] #167: persist non-null `runner_executable` in Outline ModelCall runtime metadata and regression-test it. Do not backfill or rerun the historical R4 Outline call; fix applies to future Outline executions. Founder Outline approval remains blocked until #167 is merged and verified.
 
 ## F8 - Polish and closeout
 
