@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-20, after `PASS_F7_2B_READONLY_CLOSEOUT` on exact main proved R4 is durably at `AWAITING_APPROVAL / outline`. F7.2B runtime/state acceptance is good, but #167 is the active audit-lineage blocker because Outline ModelCall metadata omitted `runner_executable`. This is the ONE current working window.
+Updated: 2026-09-20, after PR #166 merged and #165/#167 closed. F7.2B is complete; R4 is durably at `AWAITING_APPROVAL / outline`. The next authority is Founder review of the exact Outline; no Writer/Quality/publication work is authorized before that human gate. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current F7 reproof window: `ed7e76ced561886940c1add77a85bf350c3f9ca5` (merge PR #162). The Agent Local Outline execution used pre-merge SHA `39336052e18b1761e3a63c73f746aab7d91eaa85`; GitHub comparison proves the only differences to current main are `AI_context.MD` and `docs/TASKS.md`, with no runtime/application code drift. Canonical P2 operational release code baseline remains `545ca28042c489462606aa47bcbd2c11052fa3fe`, the merge commit of PR #137; do not confuse the historical operational release baseline with the current code candidate used for F7 evidence.
+Live GitHub main for the current F7 reproof window: `e5fe48691cb6308cf764d2cade69e1b0cfe1b469` (merge PR #166). The Agent Local Outline execution used pre-merge SHA `39336052e18b1761e3a63c73f746aab7d91eaa85`; GitHub comparison proves the only differences to current main are `AI_context.MD` and `docs/TASKS.md`, with no runtime/application code drift. Canonical P2 operational release code baseline remains `545ca28042c489462606aa47bcbd2c11052fa3fe`, the merge commit of PR #137; do not confuse the historical operational release baseline with the current code candidate used for F7 evidence.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -35,7 +35,7 @@ Live GitHub main for the current F7 reproof window: `ed7e76ced561886940c1add77a8
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / OUTLINE GATE TECHNICALLY REACHED | R4 Continue ran exactly once and produced durable Outline artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077`; state is `AWAITING_APPROVAL / outline`. Formal #165 closeout still needs read-only exact-main preflight/state proof. No Outline approval, Writer, Quality or publication has run. |
+| F7 | ACTIVE / F7.2B COMPLETE / FOUNDER OUTLINE REVIEW | PR #166 merged; #165/#167 closed. R4 is durably `AWAITING_APPROVAL / outline` on exact artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 / hash `eb48b9e...`. No OutlineApproval, Writer, Quality or publication has run. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -49,7 +49,7 @@ Neither authorizes publication.
 
 P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
 
-F7 Case #2 (`#143`) has four earlier consumed audit-only executions: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, `e51f6b14-b048-4d5d-873b-635f7ea6ae40`, and R3 `9c185c18-af9f-4c81-9d81-8f6243bbebfc`. PR #160 fixed truthful Codex runner identity/executable integrity; PR #161 fixed educational-domain authority promotion. Fresh R4 case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached `AWAITING_APPROVAL / angle` with locked factual evidence and truthful runner metadata. Founder personally selected `angle-environment-checklist`. Agent Local later submitted Continue exactly once and the normal Outline path produced artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, leaving the run at `AWAITING_APPROVAL / outline`. That execution used pre-#162 SHA `39336052...`; #162 was docs-only, so no rerun was needed. Agent Local subsequently returned `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`, confirming preflight PASS, durable Outline state, exactly one Continue/Outline path, zero downstream mutations and the corrected EvidenceSet composition of 6 `supports` + 2 `context_only`. The closeout also exposed #167: Outline `runtime_metadata_json` persisted runner version but not `runner_executable`.
+F7 Case #2 (`#143`) has four earlier consumed audit-only executions: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, `e51f6b14-b048-4d5d-873b-635f7ea6ae40`, and R3 `9c185c18-af9f-4c81-9d81-8f6243bbebfc`. PR #160 fixed truthful Codex runner identity/executable integrity; PR #161 fixed educational-domain authority promotion. Fresh R4 case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached `AWAITING_APPROVAL / angle` with locked factual evidence and truthful runner metadata. Founder personally selected `angle-environment-checklist`. Agent Local later submitted Continue exactly once and the normal Outline path produced artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, leaving the run at `AWAITING_APPROVAL / outline`. That execution used pre-#162 SHA `39336052...`; #162 was docs-only, so no rerun was needed. Agent Local subsequently returned `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`, confirming preflight PASS, durable Outline state, exactly one Continue/Outline path, zero downstream mutations and the corrected EvidenceSet composition of 6 `supports` + 2 `context_only`. The closeout also exposed #167: Outline `runtime_metadata_json` persisted runner version but not `runner_executable`. PR #166 fixed that lineage gap, CI/OCR/local regression passed, and #167/#165 are now closed completed.
 
 Closeout evidence:
 - PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
@@ -61,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. The four pre-R4 Case #2 executions remain consumed audit evidence and must never be retried/continued/approved. R4 has reached and passed the Angle human gate, and Founder manually selected the Angle. F7.2B execution and read-only closeout have both passed. Do not rerun Continue or the historical Outline model. Before Founder Outline approval, close #167 by shipping the bounded metadata-persistence fix and regression proof. Publication remains locked.
+P2 completion did not authorize blanket content/model execution or publication. The four pre-R4 Case #2 executions remain consumed audit evidence and must never be retried/continued/approved. R4 has reached and passed the Angle human gate, and Founder manually selected the Angle. F7.2B execution, read-only closeout and the #167 metadata-lineage fix are complete. Do not rerun Continue or the historical Outline model. Founder must now review/approve the exact Outline before any F7.2C Writer/Quality execution. Publication remains locked.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
@@ -79,8 +79,9 @@ OCR is advisory only: no auto-fix, auto-merge or required merge gate.
 - 2026-09-20: formal #165 execution discipline was imperfect: the run used pre-#162 SHA and did not report a fresh slice-level `make release-preflight`. GitHub proved #162 changed docs only, so the already-created Outline was preserved and only read-only exact-main closeout was requested.
 - 2026-09-20: Agent Local returned `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`: preflight PASS, durable Outline artifact/state unchanged, exactly one AngleApproval/Continue/Outline step/job/model call, zero OutlineApproval/Writer/Quality/ContentVersion/publication delta, and zero mutation during closeout.
 - 2026-09-20: EvidenceSet bookkeeping corrected to 8 total rows = 6 institutional `supports` + 2 educational `context_only`; the previous `8 supports` wording was a reporting error.
-- 2026-09-20: #167 opened because the historical Outline ModelCall metadata lacks `runner_executable` even though the actual runtime used `/Applications/ChatGPT.app/Contents/Resources/codex`. PR #166 now carries the bounded persistence fix + regression test; historical ModelCall is not mutated/backfilled.
+- 2026-09-20: #167 opened because the historical Outline ModelCall metadata lacks `runner_executable` even though the actual runtime used `/Applications/ChatGPT.app/Contents/Resources/codex`. PR #166 merged as `e5fe48691cb6308cf764d2cade69e1b0cfe1b469`; the bounded fix + regression test passed CI/OCR/local proof. Historical ModelCall remains untouched. #165/#167 are closed completed.
 - 2026-09-20: #164 was a false alarm caused by missing context about the Founder click; classify as no code/UI defect.
+- #168 is a non-blocking OCR process follow-up: verify/pin v1.12.7 before making it the routine baseline and fix uppercase `AI_context.MD` OCR coverage. It does not block F7.
 - Open audit bookkeeping: the R4 report states 8 supporting evidence items but enumerates 7; reconcile the missing eighth item in the next evidence review, but this does not negate the already-proven factual threshold because at least 7 authoritative supports were explicitly enumerated.
 
 ## Remaining order and completion meaning
