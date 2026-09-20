@@ -6,15 +6,15 @@ from sqlalchemy import func, select
 from test_ce05_review_revise import isolated_session
 
 import app.modules.content_engine.journal.operator_preflight as operator_preflight
-from app.modules.system.journal_coverage_registry import (
-    activate_journal_promise_coverage_registry,
-)
 from app.core.config import Settings
 from app.modules.content_engine.models import (
     PromptDefinition,
     RecipeDefinition,
     SettingsSnapshot,
     SettingsVersion,
+)
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
 )
 
 
@@ -134,6 +134,8 @@ async def test_journal_preflight_blocks_unresolved_angle_model(
     assert checks["journal_angle_recipe"]["status"] == "READY"
     assert checks["journal_outline_prompt"]["status"] == "READY"
     assert checks["journal_outline_recipe"]["status"] == "READY"
+    assert checks["journal_outline_prompt"]["status"] == "READY"
+    assert checks["journal_outline_recipe"]["status"] == "READY"
 
 
 @pytest.mark.asyncio
@@ -164,3 +166,5 @@ async def test_journal_preflight_ready_is_read_only_for_valid_runtime(
     assert checks["journal_angle_settings"]["status"] == "READY"
     assert checks["journal_angle_prompt"]["status"] == "READY"
     assert checks["journal_angle_recipe"]["status"] == "READY"
+    assert checks["journal_outline_prompt"]["status"] == "READY"
+    assert checks["journal_outline_recipe"]["status"] == "READY"
