@@ -107,8 +107,14 @@ async def test_journal_preflight_blocks_missing_worker_dependencies(
     assert checks["journal_angle_settings"]["detail"] == "journal_angle_active_settings_missing"
     assert checks["journal_angle_prompt"]["detail"] == "active_prompt_missing"
     assert "active_recipe_missing" in str(checks["journal_angle_recipe"]["detail"])
-    assert checks["journal_outline_prompt"]["detail"] == "active_prompt_missing"
-    assert "active_recipe_missing" in str(checks["journal_outline_recipe"]["detail"])
+    assert (
+        checks["journal_outline_prompt"]["detail"]
+        == "journal_coverage_registry_activation_required"
+    )
+    assert (
+        checks["journal_outline_recipe"]["detail"]
+        == "journal_coverage_registry_activation_required"
+    )
 
 
 @pytest.mark.asyncio
@@ -140,8 +146,17 @@ async def test_journal_preflight_blocks_legacy_registry_v1_after_schema_upgrade(
         )
         assert len(prompt_rows) == 2
         assert len(recipe_rows) == 2
-        for row in (*prompt_rows, *recipe_rows):
-            assert row.status == "draft"
+        rows_by_key = {
+            row.prompt_key: row for row in prompt_rows
+        } | {
+            row.recipe_key: row for row in recipe_rows
+        }
+        assert rows_by_key["journal_angle_candidates"].status == "draft"
+        assert rows_by_key["journal_angle_v1"].status == "draft"
+        assert rows_by_key["journal_outline"].status == "active"
+        assert rows_by_key["journal_outline_v1"].status == "active"
+        for key in ("journal_angle_candidates", "journal_angle_v1"):
+            row = rows_by_key[key]
             row.status = "active"
             row.approved_by = "founder:legacy-v1"
         await session.flush()
