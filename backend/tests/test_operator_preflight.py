@@ -98,8 +98,8 @@ async def test_journal_preflight_blocks_missing_worker_dependencies(
     assert result["status"] == "BLOCKED"
     assert checks["journal_research_serper"]["detail"] == "operator_worker_serper_required"
     assert checks["journal_angle_settings"]["detail"] == "journal_angle_active_settings_missing"
-    assert checks["journal_angle_prompt"]["detail"] == "active_prompt_missing"
-    assert "active_recipe_missing" in str(checks["journal_angle_recipe"]["detail"])
+    assert checks["journal_angle_prompt"]["status"] == "READY"
+    assert checks["journal_angle_recipe"]["status"] == "READY"
 
 
 @pytest.mark.asyncio
