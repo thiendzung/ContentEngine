@@ -49,6 +49,9 @@ from app.modules.harness.agent_runner import (
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, ModelCall, StepRun
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 from app.modules.knowledge.models import EvidenceSet, OriginalityPack
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
+)
 from app.modules.system.settings_service import settings_hash
 
 
@@ -442,11 +445,21 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
         )
         assert fixture.manifest.settings_snapshot_id == snapshot.id
 
+        await activate_journal_promise_coverage_registry(
+            session,
+            approved_by="founder",
+        )
         prompt = await session.scalar(
-            select(PromptDefinition).where(PromptDefinition.prompt_key == OUTLINE_PROMPT_KEY)
+            select(PromptDefinition).where(
+                PromptDefinition.prompt_key == OUTLINE_PROMPT_KEY,
+                PromptDefinition.status == "active",
+            )
         )
         recipe = await session.scalar(
-            select(RecipeDefinition).where(RecipeDefinition.recipe_key == OUTLINE_RECIPE_KEY)
+            select(RecipeDefinition).where(
+                RecipeDefinition.recipe_key == OUTLINE_RECIPE_KEY,
+                RecipeDefinition.status == "active",
+            )
         )
         assert prompt is not None and recipe is not None
         assert prompt.status == "active"
