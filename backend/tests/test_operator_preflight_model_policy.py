@@ -33,18 +33,18 @@ async def _activate_policy_angle_runtime(
     prompt = await session.scalar(
         select(PromptDefinition).where(
             PromptDefinition.prompt_key == "journal_angle_candidates",
-            PromptDefinition.version == 1,
+            PromptDefinition.version == 2,
         )
     )
     recipe = await session.scalar(
         select(RecipeDefinition).where(
             RecipeDefinition.recipe_key == "journal_angle_v1",
-            RecipeDefinition.version == 1,
+            RecipeDefinition.version == 2,
         )
     )
     assert settings is not None and settings.status == "draft"
-    assert prompt is not None and prompt.status == "draft"
-    assert recipe is not None and recipe.status == "draft"
+    assert prompt is not None and prompt.status == "active"
+    assert recipe is not None and recipe.status == "active"
 
     settings.settings_json = {
         "models": {
@@ -76,10 +76,6 @@ async def _activate_policy_angle_runtime(
     settings.status = "active"
     settings.approved_by = "test-founder"
     settings.change_reason = "Synthetic policy-mode preflight test only."
-    prompt.status = "active"
-    prompt.approved_by = "test-founder"
-    recipe.status = "active"
-    recipe.approved_by = "test-founder"
     await session.flush()
 
 
