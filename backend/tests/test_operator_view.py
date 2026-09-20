@@ -60,6 +60,10 @@ async def test_operator_view_projects_ready_intake_without_inventing_gate(
         assert view.pending_gate is None
         assert view.intake.source_locale == "en"
         assert view.intake.research_country == "vn"
+        assert [item.requirement for item in view.coverage_requirements] == [
+            "Explain how to inspect materials and physical finish.",
+            "Separate factual evidence from MOTGU editorial judgment.",
+        ]
         assert [(item.locale, item.role) for item in view.intake.required_locales] == [
             ("en", "source"),
             ("vi-VN", "translation"),
@@ -159,6 +163,10 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
         for item in view.pending_gate.candidates:
             assert len(item.candidate_hash) == 64
             assert item.locale == "en"
+            assert [(row.requirement_id, row.status) for row in item.coverage] == [
+                ("coverage-1", "covered"),
+                ("coverage-2", "covered"),
+            ]
         assert runner.received_context is not None
         # Candidate hashes are backend-owned exact bindings, not frontend-derived values.
         assert len({item.candidate_hash for item in view.pending_gate.candidates}) == 3
