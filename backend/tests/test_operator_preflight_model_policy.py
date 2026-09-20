@@ -10,6 +10,9 @@ from test_operator_preflight import (
 )
 
 import app.modules.content_engine.journal.operator_preflight as operator_preflight
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
+)
 from app.modules.content_engine.models import (
     PromptDefinition,
     RecipeDefinition,
@@ -43,8 +46,12 @@ async def _activate_policy_angle_runtime(
         )
     )
     assert settings is not None and settings.status == "draft"
-    assert prompt is not None and prompt.status == "active"
-    assert recipe is not None and recipe.status == "active"
+    assert prompt is not None and prompt.status == "draft"
+    assert recipe is not None and recipe.status == "draft"
+    await activate_journal_promise_coverage_registry(
+        session,
+        approved_by="test-founder",
+    )
 
     settings.settings_json = {
         "models": {
