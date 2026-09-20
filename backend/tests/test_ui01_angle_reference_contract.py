@@ -15,10 +15,17 @@ from app.modules.content_engine.models import PromptDefinition, RecipeDefinition
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import ContentRun, ModelCall
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
+from app.modules.system.journal_coverage_registry import (
+    activate_journal_promise_coverage_registry,
+)
 from app.modules.system.settings_service import settings_hash
 
 
 async def _runtime_fixture(session, bundle_artifact, bundle):
+    await activate_journal_promise_coverage_registry(
+        session,
+        approved_by="founder",
+    )
     run = await session.get(ContentRun, bundle_artifact.run_id)
     assert run is not None
     resolved = {
