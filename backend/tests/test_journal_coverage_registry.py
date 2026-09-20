@@ -4,10 +4,10 @@ import json
 
 import pytest
 from sqlalchemy import select
-
-from app.core.config import Settings
 from test_ce05_review_revise import isolated_session
 
+import scripts.activate_journal_coverage_registry as activation_script
+from app.core.config import Settings
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition
 from app.modules.system.journal_coverage_registry import (
     ANGLE_PROMPT_KEY,
@@ -19,7 +19,6 @@ from app.modules.system.journal_coverage_registry import (
     activate_journal_promise_coverage_registry,
 )
 from app.modules.system.recovery import RecoverySafetyError
-import scripts.activate_journal_coverage_registry as activation_script
 from scripts.activate_journal_coverage_registry import (
     _activation_payload,
     _validate_database_state,
