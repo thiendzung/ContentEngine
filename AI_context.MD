@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-20, after F7 retry #152 completed Outcome B and exposed cross-language evidence-extraction blocker #154. This is the ONE current working window.
+Updated: 2026-09-20, after PR #155 merged the multilingual evidence-extraction fix and fresh F7 Case #2 retry #156 was opened. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -35,7 +35,7 @@ Canonical operational release code baseline: `545ca28042c489462606aa47bcbd2c1105
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / extraction blocker #154 | Retry #152 proved discovery + durable diagnostics but authoritative EN sources were filtered before factual claim creation for a `vi-VN` brief. #154 is the single active implementation; no new Case #2 run until merge/reproof. |
+| F7 | ACTIVE / fresh Case #2 retry #156 next | PR #145/#150/#151/#155 are merged; blockers #144/#148/#149/#154 are closed. Three prior Case #2 attempts remain audit-only; the next bounded action is one NEW same-brief Journal on current merged main. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -49,7 +49,7 @@ Neither authorizes publication.
 
 P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
 
-F7 Case #2 (`#143`) now has three consumed audit-only attempts: historical `6b8d33d2-1e38-48e8-ad01-858875619640`, retry `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, and post-fix retry `e51f6b14-b048-4d5d-873b-635f7ea6ae40`. Retry #152 proved PR #145 fail-closed gating, PR #150 authority discovery (Serper -> Exa found NPS/Australian War Memorial sources) and PR #151 durable failure diagnostics, but still ended `supports=0`, `qualifies=0`, `context_only=1`. MG triage identified #154: claim extraction is not robust to `vi-VN` brief + English authority sources and can also lose source classification across reader URL canonicalization. Immediate WIP is #154 only; do not Retry/Continue any consumed case.
+F7 Case #2 (`#143`) has three consumed audit-only attempts: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, and `e51f6b14-b048-4d5d-873b-635f7ea6ae40`. Retry #152 proved PR #145 fail-closed gating, PR #150 authority discovery and PR #151 durable diagnostics, then exposed #154. PR #155 fixed Unicode/cross-language relevance plus selected-source identity across reader URL variants without weakening `_automatic_relation()` or `supports + qualifies > 0`. Current merged main is `7887f7740be7646086f519ffb69e9e0230891acc`. Immediate next task is #156: create exactly one NEW same-brief Journal and Start once, stopping at either valid `AWAITING_APPROVAL / angle` with factual evidence or a fail-closed research result with durable diagnostic evidence.
 
 Closeout evidence:
 - PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
@@ -61,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. All three F7 Case #2 executions so far are consumed audit evidence. No further Case #2 execution, Angle approval, Continue, or publication is authorized while #154 remains open.
+P2 completion did not authorize blanket content/model execution or publication. All three prior F7 Case #2 executions are consumed audit evidence. Fresh retry #156 requires its own exact Agent Local dispatch; no Angle approval, Continue, downstream execution or publication is inherited.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
