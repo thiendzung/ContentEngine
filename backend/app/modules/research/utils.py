@@ -265,7 +265,7 @@ def choose_sources(sources: Iterable[SourceCandidate], limit: int) -> list[Sourc
     # Python's sort is stable: preserve provider relevance/order within each quality bucket.
     unique.sort(
         key=lambda source: (
-            source_type_order.get(source.source_type, 6),
+            source_type_order.get(source.source_type, 7),
             bias_order[source.commercial_bias],
         )
     )
