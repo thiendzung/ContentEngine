@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / F7.2B COMPLETE / FOUNDER OUTLINE REVIEW | PR #166 merged; #165/#167 closed. R4 is durably at `AWAITING_APPROVAL / outline`. Next: Founder reviews/approves the exact Outline before F7.2C. |
+| F7 | ACTIVE / #170 PROMISE-COVERAGE BLOCKER | R4 is technically at Outline gate but editorially rejected for silent promise narrowing. PR #169 implements structured coverage preservation before any new real Case #2 reproof. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -150,7 +150,9 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] F7.2B runtime/state closeout: `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`; R4 remains `AWAITING_APPROVAL / outline`, artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, with one Continue/Outline path and zero downstream mutation.
 - [x] Audit bookkeeping: durable EvidenceSet contains 8 rows = 6 institutional `supports` + 2 educational `context_only`; prior `8 supports` wording was a reporting error.
 - [x] #167: PR #166 merged; Outline ModelCall now persists non-null `runner_executable`, regression coverage passed CI/OCR/local proof, and #167/#165 are closed. Historical R4 Outline call was not mutated or rerun.
-- [ ] Founder Outline review: exact artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 / hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`. Do not dispatch F7.2C until Founder explicitly approves this exact Outline.
+- [x] Founder/MG reverse-review of R4 Outline: REJECTED as editorially incomplete. Exact artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 remains audit-only; do not approve/continue it.
+- [ ] #170: persist structured Founder coverage requirements; every Angle explicitly marks each requirement `covered|reduced`; every `covered` requirement must map to at least one Outline section; surface mappings at human gates; preserve legacy artifact validity.
+- [ ] After #170 merge: separately authorize migration `20260920_0035` with fresh backup + isolated rehearsal before operational DB migration. Then run one NEW same-brief Case #2 reproof; do not mutate/reuse R4.
 - [ ] #168: non-blocking OCR follow-up for v1.12.7 compatibility/pinning and uppercase `AI_context.MD` coverage.
 
 ## F8 - Polish and closeout
