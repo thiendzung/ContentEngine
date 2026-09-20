@@ -558,6 +558,63 @@ async def test_vi_brief_keeps_cross_language_community_evidence_context_only() -
 
 
 @pytest.mark.asyncio
+async def test_vi_brief_keeps_cross_language_educational_discovery_context_only() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                source_type="educational",
+                commercial_bias=CommercialBias.LOW,
+                intended_use=IntendedUse.DISCOVERY,
+                candidate_url="https://artschool.example.edu.vn/oil-painting-care",
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 0
+        assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_source_type_alone_cannot_promote_discovery_to_support() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_vi_conservation_plan(session)
+        workflow = EvidenceResearchWorkflow(
+            router=CrossLanguageEvidenceRouter(
+                source_type="institutional",
+                commercial_bias=CommercialBias.LOW,
+                intended_use=IntendedUse.DISCOVERY,
+            )
+        )
+
+        result = await workflow.run(
+            session,
+            request=vi_evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert result.relation_counts["supports"] == 0
+        assert result.relation_counts["qualifies"] == 0
+        assert result.relation_counts["context_only"] > 0
+        assert result.evidence_eligible is False
+
+
+
+
+@pytest.mark.asyncio
 async def test_source_title_anchor_does_not_admit_unrelated_institutional_sentence() -> None:
     async with isolated_session() as session:
         project, need, opportunity = await selected_vi_conservation_plan(session)
