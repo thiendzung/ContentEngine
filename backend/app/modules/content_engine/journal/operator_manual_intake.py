@@ -60,6 +60,7 @@ class FounderJournalIntakeResult(BaseModel):
     source_locale_variant_id: UUID
     originality_pack_id: UUID
     required_locales: list[str]
+    coverage_requirements: list[str]
     research_country: str
     replayed: bool
     state: OperatorState
@@ -78,6 +79,23 @@ def _normalized_locales(values: list[str]) -> list[str]:
         raise OperatorControlError("operator_required_locales_invalid")
     if len(set(normalized)) != len(normalized):
         raise OperatorControlError("operator_required_locales_duplicate")
+    return normalized
+
+
+def _normalized_coverage_requirements(values: list[str]) -> list[str]:
+    if not values or len(values) > 12:
+        raise OperatorControlError("operator_manual_coverage_requirements_invalid")
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = _text(value, "operator_manual_coverage_requirement_required")
+        if len(text) > 500:
+            raise OperatorControlError("operator_manual_coverage_requirement_too_long")
+        key = text.casefold()
+        if key in seen:
+            raise OperatorControlError("operator_manual_coverage_requirement_duplicate")
+        seen.add(key)
+        normalized.append(text)
     return normalized
 
 
@@ -180,6 +198,7 @@ async def _replay_result(
         source_locale_variant_id=variant.id,
         originality_pack_id=pack.id,
         required_locales=required,
+        coverage_requirements=list(opportunity.coverage_requirements_json),
         research_country=spec.research_country,
         replayed=True,
         state=state,
@@ -199,6 +218,7 @@ async def create_founder_journal_intake(
     question: str,
     intent: str,
     promise: str,
+    coverage_requirements: list[str],
     selection_reason: str,
     originality_material: str,
     originality_writer_use: str,
@@ -237,6 +257,7 @@ async def create_founder_journal_intake(
     question_text = _text(question, "operator_manual_question_required")
     intent_text = _text(intent, "operator_manual_intent_required")
     promise_text = _text(promise, "operator_manual_promise_required")
+    coverage = _normalized_coverage_requirements(coverage_requirements)
     reason_text = _text(
         selection_reason,
         "operator_manual_selection_reason_required",
@@ -264,6 +285,7 @@ async def create_founder_journal_intake(
         question=question_text,
         intent=intent_text,
         promise=promise_text,
+        coverage_requirements=coverage,
         selection_reason=reason_text,
         originality_material=material_text,
         originality_writer_use=writer_use_text,
@@ -318,6 +340,7 @@ async def create_founder_journal_intake(
         question=question_text,
         intent=intent_text,
         promise=promise_text,
+        coverage_requirements_json=coverage,
         motgu_material_refs_json=[],
         material_gaps_json=[
             "Factual evidence must be researched and read before Angle generation."
@@ -453,6 +476,7 @@ async def create_founder_journal_intake(
         source_locale_variant_id=created.source_locale_variant_id,
         originality_pack_id=pack.id,
         required_locales=locales,
+        coverage_requirements=coverage,
         research_country=country,
         replayed=False,
         state=state,
