@@ -62,8 +62,12 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
 
 async def _bundle_fixture(
     session: AsyncSession,
+    *,
+    coverage_requirements: list[str] | None = None,
 ) -> tuple[Artifact, JournalInputBundle, EvidenceSet, OriginalityPack]:
     project, content_case, opportunity, _need = await _content_case(session)
+    opportunity.coverage_requirements_json = list(coverage_requirements or [])
+    await session.flush()
     evidence = await _evidence_row(session, project_id=project.id, suffix="angle")
     evidence_set = await create_locked_evidence_set(
         session,
@@ -107,7 +111,7 @@ async def _bundle_fixture(
 
 
 def _candidate_payload(bundle: JournalInputBundle, index: int) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "angle_id": f"angle-{index}",
         "working_title": f"Grounded title {index}",
         "reader_problem": "The reader lacks a grounded next question.",
@@ -122,6 +126,21 @@ def _candidate_payload(bundle: JournalInputBundle, index: int) -> dict[str, obje
         "confidence": 0.8,
         "locale": bundle.locale,
     }
+    opportunity = bundle.angle_model_input["opportunity"]
+    assert isinstance(opportunity, dict)
+    coverage_requirements = opportunity.get("coverage_requirements", [])
+    if coverage_requirements:
+        assert isinstance(coverage_requirements, list)
+        payload["coverage"] = [
+            {
+                "requirement_id": item["id"],
+                "status": "covered",
+                "rationale": "This candidate keeps the Founder requirement.",
+            }
+            for item in coverage_requirements
+            if isinstance(item, dict)
+        ]
+    return payload
 
 
 class FakeAngleModel:
@@ -163,6 +182,8 @@ class GroundedAngleModel:
         opportunity = input_bundle["opportunity"]
         assert isinstance(opportunity, dict)
         locale = opportunity["locale"]
+        coverage_requirements = opportunity.get("coverage_requirements", [])
+        assert isinstance(coverage_requirements, list)
         assert isinstance(evidence_ref, str)
         assert isinstance(originality_ref, str)
         assert isinstance(locale, str)
@@ -181,9 +202,65 @@ class GroundedAngleModel:
                 "risks": ["The reader may overgeneralize the evidence."],
                 "confidence": 0.8,
                 "locale": locale,
+                **(
+                    {
+                        "coverage": [
+                            {
+                                "requirement_id": item["id"],
+                                "status": "covered",
+                                "rationale": "This candidate keeps the Founder requirement.",
+                            }
+                            for item in coverage_requirements
+                            if isinstance(item, dict)
+                        ]
+                    }
+                    if coverage_requirements
+                    else {}
+                ),
             }
             for index in range(1, 4)
         ]
+
+
+@pytest.mark.asyncio
+async def test_angle_requires_complete_explicit_founder_coverage() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        valid = [_candidate_payload(bundle, index) for index in range(1, 4)]
+        assert all("coverage" in candidate for candidate in valid)
+
+        invalid = copy.deepcopy(valid)
+        first_coverage = invalid[0]["coverage"]
+        assert isinstance(first_coverage, list)
+        first_coverage.pop()
+
+        with pytest.raises(AngleGenerationError, match="angle_model_output_invalid"):
+            await AngleGenerator(max_attempts=1).generate_candidates(
+                session,
+                journal_input_bundle_id=bundle_artifact.id,
+                model=FakeAngleModel([invalid]),
+                provider="fixture-provider",
+                model_name="fixture-model",
+            )
+
+        generated = await AngleGenerator(max_attempts=1).generate_candidates(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            model=FakeAngleModel([valid]),
+            provider="fixture-provider",
+            model_name="fixture-model",
+        )
+        assert [item.requirement_id for item in generated.candidates[0].coverage] == [
+            "coverage-1",
+            "coverage-2",
+        ]
+        assert all(item.status == "covered" for item in generated.candidates[0].coverage)
 
 
 def _bundle_hash(payload: dict[str, object]) -> str:
