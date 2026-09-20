@@ -118,8 +118,11 @@ async def test_coverage_registry_activation_retires_exact_active_v1_rows() -> No
             old_angle_recipe,
             old_outline_recipe,
         )
-        assert all(row.status == "draft" for row in old_rows)
-        for row in old_rows:
+        assert old_angle_prompt.status == "draft"
+        assert old_angle_recipe.status == "draft"
+        assert old_outline_prompt.status == "active"
+        assert old_outline_recipe.status == "active"
+        for row in (old_angle_prompt, old_angle_recipe):
             row.status = "active"
             row.approved_by = "founder:legacy"
         await session.flush()
