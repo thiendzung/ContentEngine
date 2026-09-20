@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Protocol
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,7 @@ from app.modules.knowledge.ingest import canonicalize_markdown
 from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
+    PageDocument,
     ProductionResearchRequest,
     ProductionResearchResult,
     SourceCandidate,
@@ -91,6 +93,32 @@ _SUBJECT_SYNONYMS = {
 }
 _MARKDOWN_LINK_ONLY_RE = re.compile(r"^\[[^\]]+\]\(https?://[^)]+\)$")
 _MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(https?://[^)]+\)")
+_WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
+_SOURCE_ANCHOR_GENERIC_TERMS = {
+    "about",
+    "advice",
+    "document",
+    "documents",
+    "guide",
+    "guidance",
+    "home",
+    "homepage",
+    "information",
+    "institute",
+    "institution",
+    "memorial",
+    "museum",
+    "museums",
+    "national",
+    "official",
+    "organization",
+    "page",
+    "park",
+    "report",
+    "reports",
+    "service",
+    "services",
+}
 
 
 class EvidenceResearchWorkflow:
@@ -266,13 +294,18 @@ class EvidenceResearchWorkflow:
             source_url = document.final_url or document.url or document.requested_url
             if not source_url:
                 continue
-            relation = self._automatic_relation(sources.get(self._url_key(source_url)))
+            source = self._source_candidate_for_document(sources, document)
+            relation = self._automatic_relation(source)
             bucket = self._document_claim_candidates(
                 content=document.content,
                 source_url=source_url,
                 relation=relation,
                 terms=terms,
                 subject_terms=subject_terms,
+                source_anchor_terms=self._source_anchor_terms(
+                    source,
+                    document_title=document.title,
+                ),
             )
             if bucket:
                 buckets.append(bucket)
@@ -310,6 +343,7 @@ class EvidenceResearchWorkflow:
         relation: EvidenceRelation,
         terms: set[str],
         subject_terms: set[str],
+        source_anchor_terms: set[str],
     ) -> list[ClaimCandidate]:
         canonical = canonicalize_markdown(content)
         segments = re.split(r"(?<=[.!;])(?:\s+|\n+)|\n{2,}", canonical)
@@ -320,11 +354,21 @@ class EvidenceResearchWorkflow:
                 "",
                 raw_segment.strip(),
             ).strip()
-            if not self._usable_statement(excerpt, terms, subject_terms):
+            if not self._usable_statement(
+                excerpt,
+                terms,
+                subject_terms,
+                source_anchor_terms,
+            ):
                 continue
             ranked.append(
                 (
-                    self._statement_score(excerpt, terms, subject_terms),
+                    self._statement_score(
+                        excerpt,
+                        terms,
+                        subject_terms,
+                        source_anchor_terms,
+                    ),
                     index,
                     ClaimCandidate(
                         statement=excerpt,
@@ -346,6 +390,55 @@ class EvidenceResearchWorkflow:
         for source in (*production.selected_sources, *production.source_candidates):
             sources.setdefault(self._url_key(source.url), source)
         return sources
+
+    def _source_candidate_for_document(
+        self,
+        sources: dict[str, SourceCandidate],
+        document: PageDocument,
+    ) -> SourceCandidate | None:
+        for value in (
+            getattr(document, "final_url", None),
+            getattr(document, "url", None),
+            getattr(document, "requested_url", None),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                continue
+            source = sources.get(self._url_key(value))
+            if source is not None:
+                return source
+        return None
+
+    def _source_anchor_terms(
+        self,
+        source: SourceCandidate | None,
+        *,
+        document_title: str | None,
+    ) -> set[str]:
+        if source is None or document_title is None:
+            return set()
+        source_title = source.title.strip()
+        read_title = document_title.strip()
+        if (
+            not source_title
+            or not read_title
+            or source_title.startswith(("http://", "https://"))
+            or read_title.startswith(("http://", "https://"))
+        ):
+            return set()
+
+        anchors = self._topic_terms((source_title,)).intersection(
+            self._topic_terms((read_title,))
+        )
+        anchors -= _SOURCE_ANCHOR_GENERIC_TERMS
+
+        expanded = set(anchors)
+        for term in anchors:
+            if len(term) >= 5:
+                if term.endswith("s"):
+                    expanded.add(term[:-1])
+                else:
+                    expanded.add(f"{term}s")
+        return expanded
 
     def _automatic_relation(self, source: SourceCandidate | None) -> EvidenceRelation:
         if source is None:
@@ -386,10 +479,13 @@ class EvidenceResearchWorkflow:
                 break
         return output
 
+    def _word_tokens(self, value: str) -> list[str]:
+        return _WORD_RE.findall(self._normalize(value))
+
     def _topic_terms(self, values: tuple[str, ...]) -> set[str]:
         terms: set[str] = set()
         for value in values:
-            for token in re.findall(r"[a-z0-9]+", value.casefold()):
+            for token in self._word_tokens(value):
                 if token in _STOPWORDS:
                     continue
                 if len(token) >= 4 or token in {"art", "buy"}:
@@ -413,6 +509,7 @@ class EvidenceResearchWorkflow:
         statement: str,
         terms: set[str],
         subject_terms: set[str],
+        source_anchor_terms: set[str],
     ) -> bool:
         if len(statement) < 40 or len(statement) > 600:
             return False
@@ -427,36 +524,64 @@ class EvidenceResearchWorkflow:
             return False
         if len(_MARKDOWN_LINK_RE.findall(statement)) >= 2:
             return False
-        words = re.findall(r"[a-z0-9]+", normalized)
+        words = self._word_tokens(normalized)
         if len(words) < 8:
             return False
         if len(words) <= 16 and not re.search(r"[.!;:]$", statement):
             return False
         statement_terms = set(words)
-        if subject_terms and not statement_terms.intersection(subject_terms):
-            return False
-        if not terms:
+        subject_match = not subject_terms or bool(
+            statement_terms.intersection(subject_terms)
+        )
+        topic_match = not terms or bool(statement_terms.intersection(terms))
+        if subject_match and topic_match:
             return True
-        return bool(statement_terms.intersection(terms))
+        brief_terms = terms | subject_terms
+        cross_script_bridge = (
+            any(not term.isascii() for term in brief_terms)
+            and bool(source_anchor_terms)
+            and all(term.isascii() for term in source_anchor_terms)
+        )
+        return bool(
+            cross_script_bridge
+            and statement_terms.intersection(source_anchor_terms)
+        )
 
     def _statement_score(
         self,
         statement: str,
         terms: set[str],
         subject_terms: set[str],
+        source_anchor_terms: set[str],
     ) -> int:
-        words = re.findall(r"[a-z0-9]+", self._normalize(statement))
+        words = self._word_tokens(statement)
         word_set = set(words)
         subject_overlap = len(word_set.intersection(subject_terms))
         overlap = len(word_set.intersection(terms))
+        anchor_overlap = len(word_set.intersection(source_anchor_terms))
         sentence_bonus = 3 if re.search(r"[.!;:]$", statement) else 0
-        return subject_overlap * 50 + overlap * 10 + sentence_bonus + min(len(words), 40)
+        return (
+            subject_overlap * 50
+            + anchor_overlap * 20
+            + overlap * 10
+            + sentence_bonus
+            + min(len(words), 40)
+        )
 
     def _normalize(self, value: str) -> str:
         return re.sub(r"\s+", " ", value).strip().casefold()
 
     def _url_key(self, value: str) -> str:
-        return value.strip().rstrip("/").casefold()
+        candidate = value.strip()
+        parts = urlsplit(candidate)
+        if not parts.scheme or not parts.netloc:
+            return candidate.rstrip("/").casefold()
+        path = parts.path or "/"
+        if path != "/":
+            path = path.rstrip("/")
+        return urlunsplit(
+            (parts.scheme.lower(), parts.netloc.lower(), path, parts.query, "")
+        ).casefold()
 
     def _research_gaps(
         self,
