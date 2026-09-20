@@ -83,6 +83,63 @@ def _runtime_metadata(result: AgentRunResult) -> dict[str, object]:
     return metadata
 
 
+def _committed_coverage_ids(input_bundle: dict[str, object]) -> list[str]:
+    approved_angle = input_bundle.get("approved_angle")
+    if not isinstance(approved_angle, dict):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    candidate = approved_angle.get("candidate")
+    if not isinstance(candidate, dict):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    coverage = candidate.get("coverage", [])
+    if not isinstance(coverage, list):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    committed: list[str] = []
+    for raw in coverage:
+        if not isinstance(raw, dict):
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+        requirement_id = raw.get("requirement_id")
+        status = raw.get("status")
+        if not isinstance(requirement_id, str) or not requirement_id.strip():
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+        if status == "covered":
+            committed.append(requirement_id)
+        elif status != "reduced":
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+    if len(set(committed)) != len(committed):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    return committed
+
+
+def _bind_outline_output_schema(
+    base_schema: dict[str, object],
+    *,
+    input_bundle: dict[str, object],
+) -> dict[str, object]:
+    cloned = json.loads(json.dumps(base_schema, ensure_ascii=False))
+    if not isinstance(cloned, dict):
+        raise OutlineGenerationError("outline_output_schema_invalid")
+    properties = cloned.get("properties")
+    sections = properties.get("sections") if isinstance(properties, dict) else None
+    section_items = sections.get("items") if isinstance(sections, dict) else None
+    section_properties = (
+        section_items.get("properties") if isinstance(section_items, dict) else None
+    )
+    coverage_schema = (
+        section_properties.get("coverage_requirement_ids")
+        if isinstance(section_properties, dict)
+        else None
+    )
+    item_schema = coverage_schema.get("items") if isinstance(coverage_schema, dict) else None
+    if not isinstance(coverage_schema, dict) or not isinstance(item_schema, dict):
+        raise OutlineGenerationError("outline_output_schema_invalid")
+    allowed = _committed_coverage_ids(input_bundle)
+    if allowed:
+        item_schema["enum"] = allowed
+    else:
+        coverage_schema["maxItems"] = 0
+    return cast(dict[str, object], cloned)
+
+
 def render_outline_prompt(
     prompt: PromptDefinition,
     recipe: RecipeDefinition,
@@ -222,7 +279,10 @@ class CliOutlineModelPort(OutlineModelPort):
                 outline_model_input=sanitized_input,
                 attempt=attempt,
             ),
-            structured_output_schema=self._prompt.output_schema_json,
+            structured_output_schema=_bind_outline_output_schema(
+                self._prompt.output_schema_json,
+                input_bundle=sanitized_input,
+            ),
             working_context={"outline_model_input": sanitized_input},
             timeout=self._timeout,
         )
