@@ -36,6 +36,7 @@ _JOURNAL_INPUT_BUNDLE_SCHEMA_VERSION = 1
 ANGLE_CANDIDATES_SCHEMA_VERSION = 1
 ANGLE_GENERATOR_VERSION = "ce05.angle_generator.v1"
 _UPSTREAM_BLOCKING_DECISIONS = {"MERGE", "LINK_ONLY", "DO_NOT_WRITE"}
+_ANGLE_COVERAGE_STATUSES = {"covered", "reduced"}
 
 
 class AngleGenerationError(ValueError):
@@ -66,6 +67,20 @@ class AngleModelPort(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class AngleCoverage:
+    requirement_id: str
+    status: str
+    rationale: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "requirement_id": self.requirement_id,
+            "status": self.status,
+            "rationale": self.rationale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class AngleCandidate:
     angle_id: str
     working_title: str
@@ -80,9 +95,10 @@ class AngleCandidate:
     risks: tuple[str, ...]
     confidence: float
     locale: str
+    coverage: tuple[AngleCoverage, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "angle_id": self.angle_id,
             "working_title": self.working_title,
             "reader_problem": self.reader_problem,
@@ -97,6 +113,9 @@ class AngleCandidate:
             "confidence": self.confidence,
             "locale": self.locale,
         }
+        if self.coverage:
+            payload["coverage"] = [item.to_dict() for item in self.coverage]
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -463,12 +482,70 @@ async def _build_angle_model_input(
     return model_input
 
 
+def _coverage_requirement_ids(model_input: dict[str, object]) -> tuple[str, ...]:
+    opportunity = _as_dict(
+        model_input.get("opportunity"), "angle_model_input_opportunity_invalid"
+    )
+    raw_requirements = opportunity.get("coverage_requirements", [])
+    if not isinstance(raw_requirements, list):
+        raise AngleGenerationError("angle_coverage_requirements_invalid")
+    ids: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_requirements:
+        item = _as_dict(raw, "angle_coverage_requirement_invalid")
+        requirement_id = _text(
+            item.get("id"), "angle_coverage_requirement_id_required"
+        )
+        _text(item.get("requirement"), "angle_coverage_requirement_text_required")
+        if requirement_id in seen:
+            raise AngleGenerationError("angle_coverage_requirement_id_duplicate")
+        seen.add(requirement_id)
+        ids.append(requirement_id)
+    return tuple(ids)
+
+
+def _coverage_from_raw(
+    raw: object,
+    *,
+    required_ids: tuple[str, ...],
+) -> tuple[AngleCoverage, ...]:
+    if not required_ids:
+        if raw is None or raw == []:
+            return ()
+        raise AngleGenerationError("angle_coverage_unexpected")
+    if not isinstance(raw, list):
+        raise AngleGenerationError("angle_coverage_required")
+    by_id: dict[str, AngleCoverage] = {}
+    for raw_item in raw:
+        item = _as_dict(raw_item, "angle_coverage_item_invalid")
+        requirement_id = _text(
+            item.get("requirement_id"), "angle_coverage_requirement_id_required"
+        )
+        if requirement_id not in required_ids:
+            raise AngleGenerationError("angle_coverage_requirement_unknown")
+        if requirement_id in by_id:
+            raise AngleGenerationError("angle_coverage_requirement_duplicate")
+        status = _text(item.get("status"), "angle_coverage_status_required")
+        if status not in _ANGLE_COVERAGE_STATUSES:
+            raise AngleGenerationError("angle_coverage_status_invalid")
+        rationale = _text(item.get("rationale"), "angle_coverage_rationale_required")
+        by_id[requirement_id] = AngleCoverage(
+            requirement_id=requirement_id,
+            status=status,
+            rationale=rationale,
+        )
+    if set(by_id) != set(required_ids):
+        raise AngleGenerationError("angle_coverage_incomplete")
+    return tuple(by_id[requirement_id] for requirement_id in required_ids)
+
+
 def _candidate_from_raw(
     raw: object,
     *,
     locale: str,
     allowed_evidence: set[str],
     allowed_originality: set[str],
+    required_coverage_ids: tuple[str, ...],
 ) -> AngleCandidate:
     candidate = _as_dict(raw, "angle_model_output_candidate_invalid")
     fields = (
@@ -512,6 +589,9 @@ def _candidate_from_raw(
     if not 0 <= float(confidence) <= 1:
         raise AngleGenerationError("angle_confidence_invalid")
     candidate_locale = _text(candidate["locale"], "angle_locale_invalid")
+    coverage = _coverage_from_raw(
+        candidate.get("coverage"), required_ids=required_coverage_ids
+    )
     if candidate_locale != locale:
         raise AngleGenerationError("angle_locale_mismatch")
     return AngleCandidate(
@@ -530,6 +610,7 @@ def _candidate_from_raw(
         risks=tuple(_string_list(candidate["risks"], "angle_risks_invalid")),
         confidence=float(confidence),
         locale=candidate_locale,
+        coverage=coverage,
     )
 
 
@@ -575,12 +656,14 @@ def _validate_candidates(
         for item in originality_items
         if isinstance(item, dict) and isinstance(item.get("source_ref"), str)
     }
+    required_coverage_ids = _coverage_requirement_ids(model_input)
     candidates = tuple(
         _candidate_from_raw(
             item,
             locale=bundle.locale,
             allowed_evidence=allowed_evidence,
             allowed_originality=allowed_originality,
+            required_coverage_ids=required_coverage_ids,
         )
         for item in decoded
     )
