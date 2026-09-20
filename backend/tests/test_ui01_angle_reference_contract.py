@@ -67,7 +67,10 @@ async def _runtime_fixture(session, bundle_artifact, bundle):
 @pytest.mark.asyncio
 async def test_render_angle_prompt_exposes_exact_reference_allow_list_and_retry_note() -> None:
     async with isolated_session() as session:
-        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            coverage_requirements=["Cover display safety.", "Cover handling safety."],
+        )
         _run, _snapshot, prompt, recipe, _manifest = await _runtime_fixture(
             session, bundle_artifact, bundle
         )
@@ -97,6 +100,7 @@ async def test_render_angle_prompt_exposes_exact_reference_allow_list_and_retry_
         )
         assert str(bundle.evidence_ids[0]) in first
         assert bundle.originality_refs[0] in first
+        assert "coverage-1" in first and "coverage-2" in first
         assert '"forbidden_source_fields":["approval_ref","id","snapshot_hash"]' in first
         assert "BOUNDED_RETRY_NOTE:" not in first
         assert "BOUNDED_RETRY_NOTE:" in retry
@@ -106,7 +110,10 @@ async def test_render_angle_prompt_exposes_exact_reference_allow_list_and_retry_
 @pytest.mark.asyncio
 async def test_approval_ref_is_rejected_and_bad_ref_diagnostics_are_durable() -> None:
     async with isolated_session() as session:
-        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            coverage_requirements=["Cover display safety.", "Cover handling safety."],
+        )
         run, snapshot, _prompt, _recipe, manifest = await _runtime_fixture(
             session, bundle_artifact, bundle
         )
@@ -156,14 +163,25 @@ async def test_approval_ref_is_rejected_and_bad_ref_diagnostics_are_durable() ->
         assert isinstance(candidate_properties, dict)
         evidence_refs_schema = candidate_properties["evidence_refs"]
         originality_refs_schema = candidate_properties["originality_refs"]
+        coverage_schema = candidate_properties["coverage"]
         assert isinstance(evidence_refs_schema, dict)
         assert isinstance(originality_refs_schema, dict)
+        assert isinstance(coverage_schema, dict)
         evidence_item_schema = evidence_refs_schema["items"]
         originality_item_schema = originality_refs_schema["items"]
+        coverage_items = coverage_schema["items"]
+        assert isinstance(coverage_items, dict)
+        coverage_properties = coverage_items["properties"]
+        assert isinstance(coverage_properties, dict)
+        requirement_id_schema = coverage_properties["requirement_id"]
+        assert isinstance(requirement_id_schema, dict)
         assert isinstance(evidence_item_schema, dict)
         assert isinstance(originality_item_schema, dict)
         assert evidence_item_schema["enum"] == [str(bundle.evidence_ids[0])]
         assert originality_item_schema["enum"] == [bundle.originality_refs[0]]
+        assert requirement_id_schema["enum"] == ["coverage-1", "coverage-2"]
+        assert coverage_schema["minItems"] == 2
+        assert coverage_schema["maxItems"] == 2
         assert approval_ref not in originality_item_schema["enum"]
 
         call = await session.scalar(
