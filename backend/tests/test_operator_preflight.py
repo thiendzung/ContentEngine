@@ -112,6 +112,52 @@ async def test_journal_preflight_blocks_missing_worker_dependencies(
 
 
 @pytest.mark.asyncio
+async def test_journal_preflight_blocks_legacy_registry_v1_after_schema_upgrade() -> None:
+    async with isolated_session() as session:
+        prompt_rows = list(
+            (
+                await session.scalars(
+                    select(PromptDefinition).where(
+                        PromptDefinition.prompt_key.in_(
+                            ["journal_angle_candidates", "journal_outline"]
+                        ),
+                        PromptDefinition.version == 1,
+                    )
+                )
+            ).all()
+        )
+        recipe_rows = list(
+            (
+                await session.scalars(
+                    select(RecipeDefinition).where(
+                        RecipeDefinition.recipe_key.in_(
+                            ["journal_angle_v1", "journal_outline_v1"]
+                        ),
+                        RecipeDefinition.version == 1,
+                    )
+                )
+            ).all()
+        )
+        assert len(prompt_rows) == 2
+        assert len(recipe_rows) == 2
+        for row in (*prompt_rows, *recipe_rows):
+            assert row.status == "draft"
+            row.status = "active"
+            row.approved_by = "founder:legacy-v1"
+        await session.flush()
+
+        angle_prompt = await operator_preflight._angle_prompt_check(session)
+        angle_recipe = await operator_preflight._angle_recipe_check(session)
+        outline_prompt = await operator_preflight._outline_prompt_check(session)
+        outline_recipe = await operator_preflight._outline_recipe_check(session)
+
+        assert angle_prompt["detail"] == "journal_coverage_registry_activation_required"
+        assert angle_recipe["detail"] == "journal_coverage_registry_activation_required"
+        assert outline_prompt["detail"] == "journal_coverage_registry_activation_required"
+        assert outline_recipe["detail"] == "journal_coverage_registry_activation_required"
+
+
+@pytest.mark.asyncio
 async def test_journal_preflight_blocks_unresolved_angle_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
