@@ -156,6 +156,19 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
                 and ref.strip()
             ]
 
+    coverage_requirement_ids: list[str] = []
+    opportunity = angle_model_input.get("opportunity")
+    if isinstance(opportunity, dict):
+        requirements = opportunity.get("coverage_requirements")
+        if isinstance(requirements, list):
+            coverage_requirement_ids = [
+                requirement_id.strip()
+                for item in requirements
+                if isinstance(item, dict)
+                and isinstance((requirement_id := item.get("id")), str)
+                and requirement_id.strip()
+            ]
+
     return {
         "evidence_refs": {
             "source_path": "ANGLE_INPUT_JSON.evidence_set.evidence[*].evidence_id",
@@ -167,6 +180,11 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
             "allowed_values": sorted(set(originality_refs)),
             "rule": "Every output originality_refs value must exactly equal one allowed value.",
             "forbidden_source_fields": ["approval_ref", "id", "snapshot_hash"],
+        },
+        "coverage_requirement_ids": {
+            "source_path": "ANGLE_INPUT_JSON.opportunity.coverage_requirements[*].id",
+            "allowed_values": coverage_requirement_ids,
+            "rule": "Every coverage requirement_id must exactly equal one supplied Founder requirement ID.",
         },
     }
 
@@ -198,6 +216,26 @@ def _bind_angle_output_schema(
     )
     if not isinstance(candidate_properties, dict):
         raise AngleGenerationError("angle_output_schema_invalid")
+
+    coverage_schema = candidate_properties.get("coverage")
+    coverage_items = coverage_schema.get("items") if isinstance(coverage_schema, dict) else None
+    coverage_properties = (
+        coverage_items.get("properties") if isinstance(coverage_items, dict) else None
+    )
+    requirement_schema = (
+        coverage_properties.get("requirement_id")
+        if isinstance(coverage_properties, dict)
+        else None
+    )
+    if not isinstance(coverage_schema, dict) or not isinstance(requirement_schema, dict):
+        raise AngleGenerationError("angle_output_schema_invalid")
+    allowed_coverage = _contract_values(contract, "coverage_requirement_ids")
+    if allowed_coverage:
+        requirement_schema["enum"] = allowed_coverage
+        coverage_schema["minItems"] = len(allowed_coverage)
+        coverage_schema["maxItems"] = len(allowed_coverage)
+    else:
+        coverage_schema["maxItems"] = 0
 
     for key in ("evidence_refs", "originality_refs"):
         ref_schema = candidate_properties.get(key)
