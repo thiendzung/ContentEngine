@@ -184,7 +184,10 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
         "coverage_requirement_ids": {
             "source_path": "ANGLE_INPUT_JSON.opportunity.coverage_requirements[*].id",
             "allowed_values": coverage_requirement_ids,
-            "rule": "Every coverage requirement_id must exactly equal one supplied Founder requirement ID.",
+            "rule": (
+                "Every coverage requirement_id must exactly equal one supplied "
+                "Founder requirement ID."
+            ),
         },
     }
 
