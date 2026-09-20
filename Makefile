@@ -13,7 +13,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-journal-coverage-registry activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-journal-coverage-registry activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate coverage-migration-rehearsal coverage-operational-migrate release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -93,6 +93,15 @@ operational-migrate:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make operational-migrate BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
 	cd backend && .venv/bin/python -m scripts.ops_operational_migrate "$(BACKUP)" --authorized-head "$(AUTHORIZED_HEAD)"
+
+coverage-migration-rehearsal:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required: make coverage-migration-rehearsal BACKUP=/path/to/file.dump" && exit 2)
+	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_coverage_migration_rehearsal "$(BACKUP)"
+
+coverage-operational-migrate:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required: make coverage-operational-migrate BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	cd backend && .venv/bin/python -m scripts.ops_coverage_operational_migrate "$(BACKUP)" --authorized-head "$(AUTHORIZED_HEAD)"
 
 release-lifecycle:
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required: make release-lifecycle AUTHORIZED_HEAD=<sha>" && exit 2)
