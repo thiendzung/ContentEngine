@@ -13,7 +13,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-journal-coverage-registry activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -45,6 +45,10 @@ operator-worker:
 
 operator-worker-loop:
 	cd backend && .venv/bin/python -m scripts.run_operator_worker_loop
+
+activate-journal-coverage-registry:
+	@test -n "$(APPROVED_BY)" || (echo "APPROVED_BY is required" && exit 2)
+	cd backend && .venv/bin/python -m scripts.activate_journal_coverage_registry --approved-by "$(APPROVED_BY)"
 
 activate-test-angle-runtime:
 	@test -n "$(MODEL)" || (echo "MODEL is required" && exit 2)
