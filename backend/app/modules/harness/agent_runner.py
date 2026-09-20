@@ -579,6 +579,7 @@ class AntigravityCliRunner(_CliRunner):
         return await self._execute(
             request,
             runner_version=capability.version,
+            runner_executable=capability.executable,
             argv_builder=argv,
         )
 
