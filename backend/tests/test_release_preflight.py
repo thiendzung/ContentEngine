@@ -105,3 +105,30 @@ async def test_release_preflight_keeps_codex_as_required_dependency(
     )
     assert codex["status"] == "BLOCKED"
     assert codex["detail"] == "agent_executable_missing"
+
+
+@pytest.mark.asyncio
+async def test_codex_preflight_exposes_resolved_executable_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeRunner:
+        async def preflight(self):
+            return type(
+                "Capability",
+                (),
+                {
+                    "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+                    "version": "codex-cli 0.155.0-alpha.9.2",
+                    "auth_mode": "cached_session",
+                },
+            )()
+
+    monkeypatch.setattr(preflight, "CodexCliRunner", FakeRunner)
+
+    check = await preflight._codex_check()
+
+    assert check.status == "READY"
+    assert check.detail == (
+        "executable=/Applications/ChatGPT.app/Contents/Resources/codex; "
+        "version=codex-cli 0.155.0-alpha.9.2; auth=cached_session"
+    )

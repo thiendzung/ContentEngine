@@ -152,6 +152,8 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     result = await CodexCliRunner().run(_request("codex_cli"))
     execution = processes[-1]
     assert result.structured_output == {"candidates": [{"angle_id": "one"}]}
+    assert result.runner_executable == "/usr/local/bin/codex"
+    assert execution.argv[0] == "/usr/local/bin/codex"
     assert execution.stdin is not None and execution.stdin.closed
     assert "--model" in execution.argv
     assert "read-only" in execution.argv
@@ -166,6 +168,34 @@ async def test_codex_runner_uses_safe_argv_stdin_and_ignores_api_key_env(monkeyp
     assert "--search" not in execution.argv
     assert "OPENAI_API_KEY" not in execution.env
     assert "must-not-cross-boundary" not in execution.env.values()
+
+
+@pytest.mark.asyncio
+async def test_codex_preflight_reports_resolved_executable_path(monkeypatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        del kwargs
+        calls.append(argv)
+        control = _codex_control_process(argv)
+        if control is not None:
+            return control
+        if argv[1:] == ("--version",):
+            return FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
+        if argv[1:] == ("login", "status"):
+            return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
+        pytest.fail(f"unexpected subprocess: {argv!r}")
+
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/codex")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+
+    capability = await CodexCliRunner().preflight()
+
+    assert capability.executable == "/usr/local/bin/codex"
+    assert capability.version == CODEX_CLI_APPROVED_VERSION
+    assert all(argv[0] == "/usr/local/bin/codex" for argv in calls)
+
+
 
 
 @pytest.mark.asyncio
@@ -250,7 +280,7 @@ async def test_antigravity_runner_uses_headless_json_schema_and_read_only(monkey
     result = await AntigravityCliRunner().run(_request("antigravity_cli"))
     execution = calls[-1]
     assert result.structured_output == {"candidates": []}
-    assert execution[:2] == ("agy", "headless")
+    assert execution[:2] == ("/usr/local/bin/agy", "headless")
     assert "--output-format" in execution and "json" in execution
     assert "--json-schema" in execution
     assert "--sandbox" in execution and "read-only" in execution
@@ -687,6 +717,7 @@ class FakeAngleRunner:
             exit_code=0,
             usage={"input_tokens": 10, "output_tokens": 20},
             duration_ms=7,
+            runner_executable="/usr/local/bin/codex",
             session_id="safe-session",
         )
 
@@ -766,6 +797,7 @@ async def test_cli_angle_bridge_records_modelcall_and_passes_only_sanitized_inpu
         assert call.status == "completed"
         assert call.runtime_metadata_json == {
             "runner_version": "fake-agent-1",
+            "runner_executable": "/usr/local/bin/codex",
             "exit_code": 0,
             "raw_output_hash": "a" * 64,
             "duration_ms": 7,

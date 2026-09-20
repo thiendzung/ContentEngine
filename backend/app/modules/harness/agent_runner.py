@@ -29,7 +29,7 @@ class AgentRunnerError(RuntimeError):
         super().__init__(code)
 
 
-CODEX_CLI_APPROVED_VERSION = "codex-cli 0.155.0-alpha.9"
+CODEX_CLI_APPROVED_VERSION = "codex-cli 0.155.0-alpha.9.2"
 CODEX_NO_TOOL_FEATURES = (
     "shell_tool",
     "unified_exec",
@@ -76,6 +76,7 @@ class AgentRunResult:
     exit_code: int
     usage: dict[str, object] | None
     duration_ms: int
+    runner_executable: str | None = None
     session_id: str | None = None
     repository_revision: str | None = None
     repository_tree_hash: str | None = None
@@ -326,9 +327,11 @@ class _CliRunner:
         self.provider = provider
         self.auth_args = auth_args
 
-    def _ensure_executable(self) -> None:
-        if shutil.which(self.executable) is None:
+    def _resolved_executable(self) -> str:
+        resolved = shutil.which(self.executable)
+        if resolved is None:
             raise AgentRunnerError("agent_executable_missing")
+        return str(Path(resolved).resolve())
 
     def _auth_mode(self, output: bytes) -> str | None:
         text = _decode(output).lower()
@@ -342,20 +345,20 @@ class _CliRunner:
         return None
 
     async def preflight(self) -> AgentCapability:
-        self._ensure_executable()
-        version = await _run_command([self.executable, "--version"], timeout=10.0)
+        executable = self._resolved_executable()
+        version = await _run_command([executable, "--version"], timeout=10.0)
         if version.exit_code != 0:
             raise AgentRunnerError("agent_version_check_failed")
         version_text = (_decode(version.stdout) or _decode(version.stderr)).strip()
         if not version_text:
             raise AgentRunnerError("agent_version_check_failed")
-        auth = await _run_command([self.executable, *self.auth_args], timeout=10.0)
+        auth = await _run_command([executable, *self.auth_args], timeout=10.0)
         auth_mode = self._auth_mode(auth.stdout + b"\n" + auth.stderr)
         if auth.exit_code != 0 or auth_mode is None:
             raise AgentRunnerError("agent_auth_required")
         return AgentCapability(
             provider=self.provider,
-            executable=self.executable,
+            executable=executable,
             version=version_text.splitlines()[0][:200],
             authenticated=True,
             auth_mode=auth_mode,
@@ -366,6 +369,7 @@ class _CliRunner:
         request: AgentRunRequest,
         *,
         runner_version: str,
+        runner_executable: str | None,
         argv_builder: Callable[[Path, Path], list[str]],
     ) -> AgentRunResult:
         _validate_request(request, self.provider)
@@ -440,6 +444,7 @@ class _CliRunner:
                 exit_code=exit_code,
                 usage=usage,
                 duration_ms=duration_ms,
+                runner_executable=runner_executable,
                 session_id=session_id,
                 repository_revision=repository_revision,
                 repository_tree_hash=repository_tree_hash,
@@ -458,11 +463,11 @@ class CodexCliRunner(_CliRunner):
             auth_args=("login", "status"),
         )
 
-    async def _verify_no_tool_support(self) -> None:
+    async def _verify_no_tool_support(self, *, executable: str) -> None:
         """Verify this installed CLI can explicitly disable every unsafe surface."""
 
         help_result = await _run_command(
-            [self.executable, "exec", "--help"],
+            [executable, "exec", "--help"],
             timeout=10.0,
         )
         help_text = _decode(help_result.stdout + b"\n" + help_result.stderr)
@@ -470,7 +475,7 @@ class CodexCliRunner(_CliRunner):
             raise AgentRunnerError("agent_tool_disable_unsupported")
 
         feature_result = await _run_command(
-            [self.executable, "features", "list"],
+            [executable, "features", "list"],
             timeout=10.0,
         )
         if feature_result.exit_code != 0:
@@ -484,8 +489,8 @@ class CodexCliRunner(_CliRunner):
             raise AgentRunnerError("agent_tool_disable_unsupported")
 
     async def preflight(self) -> AgentCapability:
-        self._ensure_executable()
-        version = await _run_command([self.executable, "--version"], timeout=10.0)
+        executable = self._resolved_executable()
+        version = await _run_command([executable, "--version"], timeout=10.0)
         if version.exit_code != 0:
             raise AgentRunnerError("agent_version_check_failed")
         version_text = (_decode(version.stdout) or _decode(version.stderr)).strip()
@@ -493,14 +498,14 @@ class CodexCliRunner(_CliRunner):
             raise AgentRunnerError("agent_version_check_failed")
         if version_text.splitlines()[0].strip() != CODEX_CLI_APPROVED_VERSION:
             raise AgentRunnerError("agent_runner_version_not_approved")
-        await self._verify_no_tool_support()
-        auth = await _run_command([self.executable, *self.auth_args], timeout=10.0)
+        await self._verify_no_tool_support(executable=executable)
+        auth = await _run_command([executable, *self.auth_args], timeout=10.0)
         auth_mode = self._auth_mode(auth.stdout + b"\n" + auth.stderr)
         if auth.exit_code != 0 or auth_mode is None:
             raise AgentRunnerError("agent_auth_required")
         return AgentCapability(
             provider=self.provider,
-            executable=self.executable,
+            executable=executable,
             version=version_text.splitlines()[0][:200],
             authenticated=True,
             auth_mode=auth_mode,
@@ -511,7 +516,7 @@ class CodexCliRunner(_CliRunner):
 
         def argv(schema_path: Path, result_path: Path) -> list[str]:
             return [
-                self.executable,
+                capability.executable,
                 "exec",
                 "--model",
                 request.model,
@@ -538,6 +543,7 @@ class CodexCliRunner(_CliRunner):
         return await self._execute(
             request,
             runner_version=capability.version,
+            runner_executable=capability.executable,
             argv_builder=argv,
         )
 
@@ -557,7 +563,7 @@ class AntigravityCliRunner(_CliRunner):
 
         def argv(schema_path: Path, _result_path: Path) -> list[str]:
             return [
-                self.executable,
+                capability.executable,
                 "headless",
                 "--model",
                 request.model,
@@ -573,6 +579,7 @@ class AntigravityCliRunner(_CliRunner):
         return await self._execute(
             request,
             runner_version=capability.version,
+            runner_executable=capability.executable,
             argv_builder=argv,
         )
 

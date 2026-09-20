@@ -74,6 +74,8 @@ def _runtime_metadata(result: AgentRunResult) -> dict[str, object]:
         "raw_output_hash": result.raw_output_hash,
         "duration_ms": result.duration_ms,
     }
+    if result.runner_executable is not None:
+        metadata["runner_executable"] = result.runner_executable
     if result.session_id is not None:
         metadata["session_id"] = result.session_id
     if result.usage is not None:

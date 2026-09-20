@@ -96,7 +96,10 @@ async def _codex_check() -> PreflightCheck:
     return PreflightCheck(
         "codex_cli",
         "READY",
-        f"version={capability.version}; auth={capability.auth_mode}",
+        (
+            f"executable={capability.executable}; "
+            f"version={capability.version}; auth={capability.auth_mode}"
+        ),
     )
 
 

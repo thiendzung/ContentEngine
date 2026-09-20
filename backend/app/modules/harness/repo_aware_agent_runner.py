@@ -61,7 +61,7 @@ class RepoAwareCodexCliRunner(CodexCliRunner):
             workdir = schema_path.parent
             repository_root = workdir / "repository"
             return [
-                self.executable,
+                capability.executable,
                 "exec",
                 "--model",
                 request.model,
@@ -97,6 +97,7 @@ class RepoAwareCodexCliRunner(CodexCliRunner):
         return await self._execute(
             request,
             runner_version=capability.version,
+            runner_executable=capability.executable,
             argv_builder=argv,
         )
 
