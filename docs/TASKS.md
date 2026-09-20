@@ -151,8 +151,10 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] Audit bookkeeping: durable EvidenceSet contains 8 rows = 6 institutional `supports` + 2 educational `context_only`; prior `8 supports` wording was a reporting error.
 - [x] #167: PR #166 merged; Outline ModelCall now persists non-null `runner_executable`, regression coverage passed CI/OCR/local proof, and #167/#165 are closed. Historical R4 Outline call was not mutated or rerun.
 - [x] Founder/MG reverse-review of R4 Outline: REJECTED as editorially incomplete. Exact artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 remains audit-only; do not approve/continue it.
-- [ ] #170: persist structured Founder coverage requirements; every Angle explicitly marks each requirement `covered|reduced`; every `covered` requirement must map to at least one Outline section; surface mappings at human gates; preserve legacy artifact validity.
-- [ ] After #170 merge: separately authorize migration `20260920_0035` with fresh backup + isolated rehearsal before operational DB migration. Then run one NEW same-brief Case #2 reproof; do not mutate/reuse R4.
+- [ ] #170: persist structured Founder coverage requirements; include them in evidence-extraction topics; every Angle explicitly marks each requirement `covered|reduced`; every `covered` requirement must map to at least one Outline section; surface mappings at human gates; preserve legacy artifact validity.
+- [ ] After #170 merge: separately authorize fresh backup + isolated `0034 -> 0035` rehearsal + operational migration. Verify v2 prompt/recipe rows remain `draft` and current v1 remains active after migration; migration alone must not change model behavior.
+- [ ] Founder separately activates the exact coverage registry v2 with `make activate-journal-coverage-registry APPROVED_BY=<actor>`; preflight must remain BLOCKED before activation and READY only after exact activation/reconciliation.
+- [ ] Only after migration + explicit registry activation + release preflight: run one NEW same-brief Case #2 reproof; do not mutate/reuse R4.
 - [ ] #168: non-blocking OCR follow-up for v1.12.7 compatibility/pinning and uppercase `AI_context.MD` coverage.
 
 ## F8 - Polish and closeout
