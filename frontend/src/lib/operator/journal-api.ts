@@ -50,6 +50,18 @@ export type ArtifactBinding = {
   content_hash: string;
 };
 
+export type CoverageRequirement = {
+  id: string;
+  requirement: string;
+};
+
+export type AngleCoverage = {
+  requirement_id: string;
+  requirement: string;
+  status: "covered" | "reduced";
+  rationale: string;
+};
+
 export type AngleCandidate = {
   angle_id: string;
   candidate_hash: string;
@@ -65,6 +77,7 @@ export type AngleCandidate = {
   risks: string[];
   confidence: number;
   locale: string;
+  coverage: AngleCoverage[];
 };
 
 export type AngleGate = {
@@ -144,6 +157,7 @@ export type OperatorCaseView = {
   need: string;
   intent: string;
   promise: string;
+  coverage_requirements: CoverageRequirement[];
   state: OperatorState;
   intake: {
     source_locale: string;
@@ -281,6 +295,7 @@ export type FounderJournalIntakeRequest = {
   question: string;
   intent: string;
   promise: string;
+  coverage_requirements: string[];
   selection_reason: string;
   originality_material: string;
   originality_writer_use: string;
@@ -294,6 +309,7 @@ export type FounderJournalIntakeResult = {
   bootstrap_run_id: string;
   source_locale_variant_id: string;
   required_locales: string[];
+  coverage_requirements: string[];
   research_country: string;
   replayed: boolean;
   state: OperatorState;
