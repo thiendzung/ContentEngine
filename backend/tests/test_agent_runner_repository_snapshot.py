@@ -88,7 +88,7 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
     async def fake_preflight() -> AgentCapability:
         return AgentCapability(
             provider="codex_cli",
-            executable="codex",
+            executable="/usr/local/bin/codex",
             version=CODEX_CLI_APPROVED_VERSION,
             authenticated=True,
             auth_mode="cached_session",
@@ -142,6 +142,7 @@ async def test_codex_runner_executes_inside_exact_scoped_tracked_snapshot(
 
     argv = seen["argv"]
     assert isinstance(argv, tuple)
+    assert argv[0] == "/usr/local/bin/codex"
     pairs = set(zip(argv, argv[1:], strict=False))
     assert "--sandbox" not in argv
     assert ("--disable", "shell_tool") not in pairs
