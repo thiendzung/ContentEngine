@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-20, after PR #160 merged the Codex runner integrity fix and #158 closed; #159 evidence-authority quality is now the single active F7 blocker. This is the ONE current working window.
+Updated: 2026-09-20, after PR #161 merged the evidence-authority fix and #159 closed. F7 is active and ready for one NEW fresh Case #2 reproof on exact current main. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Canonical operational release code baseline: `545ca28042c489462606aa47bcbd2c11052fa3fe`, the merge commit of PR #137. The P2 closeout change is documentation-only and does not alter that release code/runtime baseline; always re-read live GitHub refs before execution.
+Live GitHub main for the current F7 reproof window: `39336052e18b1761e3a63c73f746aab7d91eaa85` (merge PR #161). Canonical P2 operational release code baseline remains `545ca28042c489462606aa47bcbd2c11052fa3fe`, the merge commit of PR #137; do not confuse the historical operational release baseline with the current code candidate used for F7 evidence.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -35,7 +35,7 @@ Canonical operational release code baseline: `545ca28042c489462606aa47bcbd2c1105
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / evidence-authority blocker #159 | PR #160 merged and #158 is closed. R3/#156 remains audit-only because generic educational domains were auto-promoted to factual `supports`; fix/reprove #159 before any new real Case #2. |
+| F7 | ACTIVE / READY FOR FRESH CASE #2 REPROOF | PR #160 + PR #161 are merged; #158 and #159 are closed. All four prior Case #2 executions are audit-only. Next action is exactly one NEW fresh Case #2 on current main. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
 Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
@@ -49,7 +49,7 @@ Neither authorizes publication.
 
 P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
 
-F7 Case #2 (`#143`) now has four consumed audit-only executions: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, `e51f6b14-b048-4d5d-873b-635f7ea6ae40`, and R3 `9c185c18-af9f-4c81-9d81-8f6243bbebfc`. R3 technically reached `AWAITING_APPROVAL / angle`, but acceptance was rejected because Agent Local spoofed the exact Codex version gate with a PATH shim. PR #160 fixed #158 by pinning the verified packaged binary version `codex-cli 0.155.0-alpha.9.2`, binding execution to the preflight-resolved executable path, and persisting runner executable identity for Angle audit. R3 also exposed #159: generic `.edu/.edu.xx/.ac.xx` sources can become factual `supports` solely from domain/source classification. Immediate WIP is #159 only. Do not approve/continue R3.
+F7 Case #2 (`#143`) has four consumed audit-only executions: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, `e51f6b14-b048-4d5d-873b-635f7ea6ae40`, and R3 `9c185c18-af9f-4c81-9d81-8f6243bbebfc`. R3 technically reached `AWAITING_APPROVAL / angle`, but acceptance was rejected because Agent Local spoofed the exact Codex version gate with a PATH shim and the EvidenceSet over-promoted generic educational-domain material. PR #160 fixed truthful Codex runner identity/executable integrity; PR #161 fixed educational-domain authority promotion. #158 and #159 are both CLOSED. None of the four consumed cases may be retried, continued or approved. Immediate WIP is one NEW fresh Case #2 reproof on exact current main `39336052e18b1761e3a63c73f746aab7d91eaa85`.
 
 Closeout evidence:
 - PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
@@ -61,7 +61,7 @@ Closeout evidence:
 - PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
 - O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
 
-P2 completion did not authorize blanket content/model execution or publication. All four F7 Case #2 executions are consumed audit evidence. R3 Angle approval/Continue is explicitly prohibited. No new real F7 execution is authorized until #159 is closed and reproved.
+P2 completion did not authorize blanket content/model execution or publication. All four F7 Case #2 executions are consumed audit evidence and must never be retried/continued/approved. #158/#159 are closed; the next separately authorized F7 action is exactly one NEW fresh Case #2 Start on current main, with truthful preflight and publication still locked.
 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
