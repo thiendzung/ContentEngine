@@ -127,6 +127,7 @@ type OutlineSectionView = {
   purpose: string | null;
   answerDirection: string | null;
   claimGuards: string[];
+  coverageRequirementIds: string[];
 };
 
 function outlineSections(gate: OutlineGate): OutlineSectionView[] {
@@ -144,6 +145,9 @@ function outlineSections(gate: OutlineGate): OutlineSectionView[] {
       answerDirection: typeof row.answer_direction === "string" ? row.answer_direction : null,
       claimGuards: Array.isArray(row.claim_guards)
         ? row.claim_guards.filter((item): item is string => typeof item === "string")
+        : [],
+      coverageRequirementIds: Array.isArray(row.coverage_requirement_ids)
+        ? row.coverage_requirement_ids.filter((item): item is string => typeof item === "string")
         : [],
     }];
   });
@@ -183,6 +187,19 @@ function AngleCard({
         <span>Độ tin cậy {Math.round(candidate.confidence * 100)}%</span>
         <span>{localeLabel(candidate.locale)}</span>
       </div>
+      {candidate.coverage.length > 0 && (
+        <div className="angle-risks">
+          <span className="label">Phủ lời hứa Founder</span>
+          <ul>
+            {candidate.coverage.map((item) => (
+              <li key={item.requirement_id}>
+                <strong>{item.status === "covered" ? "Giữ" : "Thu hẹp"}:</strong>{" "}
+                {item.requirement} — {item.rationale}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {candidate.risks.length > 0 && (
         <div className="angle-risks">
           <span className="label">Rủi ro cần giữ</span>
@@ -695,6 +712,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       })
     : "chưa có";
   const sections = outlineGate ? outlineSections(outlineGate) : [];
+  const coverageById = new Map(
+    view.coverage_requirements.map((item) => [item.id, item.requirement]),
+  );
   const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
   const finalPanels = review
     ? review.locales
@@ -723,6 +743,23 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       </header>
 
       <ProgressStrip review={review} view={view} />
+
+      {view.coverage_requirements.length > 0 && (
+        <section className="operator-panel">
+          <div className="operator-panel-heading">
+            <div>
+              <p className="eyebrow">Founder promise</p>
+              <h2>Cam kết phạm vi bắt buộc</h2>
+            </div>
+            <span className="operator-note">Angle phải khai báo rõ nếu thu hẹp; Outline không được tự làm rơi mục đã giữ.</span>
+          </div>
+          <ol>
+            {view.coverage_requirements.map((item) => (
+              <li key={item.id}>{item.requirement}</li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <section className="operator-case-facts">
         <div><span>Độc giả</span><p>{view.reader}</p></div>
@@ -924,6 +961,14 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   <h3>{section.heading}</h3>
                   {section.purpose && <p>{section.purpose}</p>}
                   {section.answerDirection && <p><strong>Hướng trả lời:</strong> {section.answerDirection}</p>}
+                  {section.coverageRequirementIds.length > 0 && (
+                    <p>
+                      <strong>Cam kết được phủ:</strong>{" "}
+                      {section.coverageRequirementIds
+                        .map((id) => coverageById.get(id) ?? id)
+                        .join(" · ")}
+                    </p>
+                  )}
                   {section.claimGuards.length > 0 && (
                     <p><strong>Guard:</strong> {section.claimGuards.join(" · ")}</p>
                   )}
