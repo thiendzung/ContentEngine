@@ -76,6 +76,7 @@ class AgentRunResult:
     exit_code: int
     usage: dict[str, object] | None
     duration_ms: int
+    runner_executable: str | None = None
     session_id: str | None = None
     repository_revision: str | None = None
     repository_tree_hash: str | None = None
@@ -368,6 +369,7 @@ class _CliRunner:
         request: AgentRunRequest,
         *,
         runner_version: str,
+        runner_executable: str | None,
         argv_builder: Callable[[Path, Path], list[str]],
     ) -> AgentRunResult:
         _validate_request(request, self.provider)
@@ -442,6 +444,7 @@ class _CliRunner:
                 exit_code=exit_code,
                 usage=usage,
                 duration_ms=duration_ms,
+                runner_executable=runner_executable,
                 session_id=session_id,
                 repository_revision=repository_revision,
                 repository_tree_hash=repository_tree_hash,
@@ -540,6 +543,7 @@ class CodexCliRunner(_CliRunner):
         return await self._execute(
             request,
             runner_version=capability.version,
+            runner_executable=capability.executable,
             argv_builder=argv,
         )
 
