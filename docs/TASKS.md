@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / blocker #159 | PR #160 merged and #158 closed; prevent generic educational domains/source type from auto-promoting claims to factual `supports`. |
+| F7 | ACTIVE / READY FOR FRESH CASE #2 REPROOF | PR #160 + PR #161 merged; #158/#159 closed. Run exactly one NEW Case #2 on current main; all four previous Case #2 IDs are audit-only and must never continue. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -145,7 +145,8 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] #154: multilingual/Unicode claim extraction and reader URL source-identity fix merged in PR #155; CI + exact-ref OCR + local regression passed and #154 is closed.
 - [x] #156: R3 fresh case `9c185c18-af9f-4c81-9d81-8f6243bbebfc` reached Angle gate but is consumed audit-only; operational acceptance rejected because Codex version preflight was spoofed, and the EvidenceSet exposed weak educational-domain `supports` (#159).
 - [x] #158: PR #160 merged; verified exact Codex `.9.2` pin, resolved executable reuse and durable Angle runner identity; truthful release-preflight/local proof passed.
-- [ ] #159: stop generic `.edu/.edu.xx/.ac.xx` suffixes and source_type alone from auto-promoting claims to factual `supports`; keep educational sources high-priority discovery/context.
+- [x] #159: PR #161 merged; generic `.edu/.edu.xx/.ac.xx` sources remain discovery/context by default and source_type alone cannot auto-promote factual `supports`; #159 closed.
+- [ ] Fresh Case #2 reproof: run ONE NEW Journal on exact current main `39336052e18b1761e3a63c73f746aab7d91eaa85` with the same Founder brief (`caring for an oil painting in a hot/humid climate`), truthful packaged Codex `0.155.0-alpha.9.2`, no shim, and Start exactly once. STOP at a valid Angle gate or at a durable fail-closed research diagnostic.
 
 ## F8 - Polish and closeout
 
