@@ -586,14 +586,20 @@ async def test_vi_brief_keeps_cross_language_educational_discovery_context_only(
 
 
 @pytest.mark.asyncio
-async def test_source_type_alone_cannot_promote_discovery_to_support() -> None:
+@pytest.mark.parametrize(
+    "intended_use",
+    [IntendedUse.DISCOVERY, IntendedUse.CONTEXT_ONLY],
+)
+async def test_source_type_alone_cannot_promote_non_evidence_use_to_support(
+    intended_use: IntendedUse,
+) -> None:
     async with isolated_session() as session:
         project, need, opportunity = await selected_vi_conservation_plan(session)
         workflow = EvidenceResearchWorkflow(
             router=CrossLanguageEvidenceRouter(
                 source_type="institutional",
                 commercial_bias=CommercialBias.LOW,
-                intended_use=IntendedUse.DISCOVERY,
+                intended_use=intended_use,
             )
         )
 
