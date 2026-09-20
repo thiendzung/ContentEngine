@@ -103,8 +103,8 @@ async def test_activation_is_explicit_idempotent_and_updates_exact_seeded_rows()
         assert prompt is not None and prompt.status == "active"
         assert recipe is not None and recipe.status == "active"
         assert settings_row.approved_by == "founder:test-acceptance"
-        assert isinstance(prompt.approved_by, str) and prompt.approved_by
-        assert isinstance(recipe.approved_by, str) and recipe.approved_by
+        assert prompt.approved_by == "founder:test-acceptance"
+        assert recipe.approved_by == "founder:test-acceptance"
         routes = settings_row.settings_json["model_routes"]
         assert isinstance(routes, dict)
         angle_route = routes["agent_angle"]
