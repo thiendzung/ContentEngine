@@ -11,6 +11,7 @@ from app.modules.knowledge.ingest import canonicalize_markdown
 from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
+    PageDocument,
     ProductionResearchRequest,
     ProductionResearchResult,
     SourceCandidate,
@@ -383,7 +384,7 @@ class EvidenceResearchWorkflow:
     def _source_candidate_for_document(
         self,
         sources: dict[str, SourceCandidate],
-        document: object,
+        document: PageDocument,
     ) -> SourceCandidate | None:
         for value in (
             getattr(document, "final_url", None),
