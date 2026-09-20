@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -28,6 +29,7 @@ from scripts.ops_coverage_migration_rehearsal import (
     _verify_coverage_seed,
 )
 from scripts.ops_migration_rehearsal import (
+    MigrationRehearsalError,
     _database_state,
     _expected_fingerprint,
     _verify_backfill,
@@ -66,10 +68,12 @@ def _backend_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _run_source_upgrade(source_url: str) -> None:
+def _run_source_upgrade(source: URL) -> None:
+    if source.database != _EXPECTED_SOURCE_DATABASE:
+        raise CoverageOperationalMigrationError("unexpected_operational_database")
     env = os.environ.copy()
     env["APP_ENV"] = "development"
-    env["DATABASE_URL"] = source_url
+    env["DATABASE_URL"] = source.render_as_string(hide_password=False)
     result = subprocess.run(
         [
             sys.executable,
@@ -123,6 +127,7 @@ async def _main() -> int:
     except (
         CoverageMigrationError,
         CoverageOperationalMigrationError,
+        MigrationRehearsalError,
         RecoverySafetyError,
     ) as exc:
         print(
@@ -185,7 +190,7 @@ async def _main() -> int:
         _assert_coverage_absent(future_before)
 
         migration_attempted = True
-        _run_source_upgrade(source.render_as_string(hide_password=False))
+        _run_source_upgrade(source)
 
         actual_database_after = await _current_database(engine)
         if actual_database_after != _EXPECTED_SOURCE_DATABASE:
@@ -244,6 +249,7 @@ async def _main() -> int:
     except (
         CoverageMigrationError,
         CoverageOperationalMigrationError,
+        MigrationRehearsalError,
     ) as exc:
         blocker = exc.code
     except Exception:
