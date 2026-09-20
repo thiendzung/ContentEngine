@@ -31,8 +31,8 @@ ANGLE_RECIPE_KEY = "journal_angle_v1"
 ANGLE_SETTINGS_SCOPE_TYPE = "content_type"
 ANGLE_SETTINGS_SCOPE_KEY = "journal"
 ANGLE_SETTINGS_VERSION = 1
-ANGLE_PROMPT_VERSION = 1
-ANGLE_RECIPE_VERSION = 1
+ANGLE_PROMPT_VERSION = 2
+ANGLE_RECIPE_VERSION = 2
 ANGLE_PROVIDER = "codex_cli"
 _PENDING_MODELS = {"pending", "pending_human_selection", "todo", "tbd"}
 
@@ -121,7 +121,7 @@ async def activate_test_journal_angle_runtime(
     approved_by: str,
     project_slug: str = "motgu",
 ) -> TestAngleRuntimeActivation:
-    """Activate the exact seeded Angle v1 rows on a validated test database only."""
+    """Activate only the seeded test model route; the coverage-aware registry must already be active."""
 
     target = validate_test_angle_activation_target(settings)
     requested_model = _require_text(model, "test_angle_model_required")
@@ -163,18 +163,23 @@ async def activate_test_journal_angle_runtime(
     if settings_row is None or prompt is None or recipe is None:
         raise TestAngleRuntimeActivationError("test_angle_seeded_runtime_missing")
 
-    statuses = {settings_row.status, prompt.status, recipe.status}
     provider, persisted_model, payload = _route_from_settings(settings_row)
     if provider != ANGLE_PROVIDER:
         raise TestAngleRuntimeActivationError("test_angle_provider_mismatch")
+    if prompt.status != "active" or recipe.status != "active":
+        raise TestAngleRuntimeActivationError("test_angle_registry_not_active")
+    if (
+        not isinstance(prompt.approved_by, str)
+        or not prompt.approved_by.strip()
+        or not isinstance(recipe.approved_by, str)
+        or not recipe.approved_by.strip()
+    ):
+        raise TestAngleRuntimeActivationError("test_angle_registry_approval_missing")
 
-    if statuses == {"active"}:
+    if settings_row.status == "active":
         if persisted_model != requested_model:
             raise TestAngleRuntimeActivationError("test_angle_active_model_mismatch")
-        approvals = {settings_row.approved_by, prompt.approved_by, recipe.approved_by}
-        if None in approvals or "" in approvals:
-            raise TestAngleRuntimeActivationError("test_angle_active_approval_missing")
-        if approvals != {approver}:
+        if settings_row.approved_by != approver:
             raise TestAngleRuntimeActivationError("test_angle_active_approver_mismatch")
         return TestAngleRuntimeActivation(
             project_id=project.id,
@@ -187,7 +192,7 @@ async def activate_test_journal_angle_runtime(
             replayed=True,
         )
 
-    if statuses != {"draft"}:
+    if settings_row.status != "draft":
         raise TestAngleRuntimeActivationError("test_angle_partial_activation_forbidden")
     normalized_persisted = persisted_model.casefold()
     if (
@@ -201,13 +206,9 @@ async def activate_test_journal_angle_runtime(
     settings_row.status = "active"
     settings_row.approved_by = approver
     settings_row.change_reason = (
-        "Test-only UI-01 acceptance activation of the exact seeded Angle v1 route; "
+        "Test-only acceptance activation of the seeded Angle model route; "
         f"model={requested_model}"
     )
-    prompt.status = "active"
-    prompt.approved_by = approver
-    recipe.status = "active"
-    recipe.approved_by = approver
     await session.flush()
 
     return TestAngleRuntimeActivation(
