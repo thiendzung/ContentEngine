@@ -29,7 +29,7 @@ from app.modules.research.contracts import (
 )
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.base import ResearchProviderError
-from app.modules.research.utils import annotate_source
+from app.modules.research.utils import annotate_source, choose_sources
 
 
 def test_research_production_imports_in_fresh_interpreter() -> None:
@@ -416,11 +416,11 @@ async def test_evidence_oriented_route_uses_tavily_when_exa_unavailable(
     )
 
 
-def test_annotate_source_recognizes_conservative_institutional_suffixes() -> None:
+def test_annotate_source_separates_public_authority_from_educational_domains() -> None:
     for url in (
-        "https://museum.example.edu.vn/care",
+        "https://nps.gov/museum/publications/conserveogram/13-01.pdf",
+        "https://awm.gov.au/about/our-work/projects/conservation",
         "https://archive.example.gov.uk/guidance",
-        "https://conservation.example.ac.uk/advice",
         "https://collection.example.museum/care",
         "https://agency.example.int/guidance",
     ):
@@ -436,6 +436,24 @@ def test_annotate_source_recognizes_conservative_institutional_suffixes() -> Non
         assert source.commercial_bias is CommercialBias.LOW
         assert source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
 
+    for url in (
+        "https://example.edu/care",
+        "https://artschool.example.edu.vn/care",
+        "https://conservation.example.ac.uk/advice",
+    ):
+        source = annotate_source(
+            provider="fixture",
+            query="care",
+            url=url,
+            title="Educational guidance",
+            snippet="",
+            found_via="fixture",
+        )
+        assert source.source_type == "educational"
+        assert source.commercial_bias is CommercialBias.LOW
+        assert source.intended_use is IntendedUse.DISCOVERY
+        assert "not automatic factual authority" in source.why_selected
+
     unknown = annotate_source(
         provider="fixture",
         query="care",
@@ -446,6 +464,31 @@ def test_annotate_source_recognizes_conservative_institutional_suffixes() -> Non
     )
     assert unknown.source_type != "institutional"
     assert unknown.intended_use is not IntendedUse.EVIDENCE_CANDIDATE
+
+
+def test_choose_sources_keeps_educational_discovery_high_priority_without_promotion() -> None:
+    educational = annotate_source(
+        provider="fixture",
+        query="care",
+        url="https://artschool.example.edu.vn/care",
+        title="Educational care guidance",
+        snippet="",
+        found_via="fixture",
+    )
+    unknown = annotate_source(
+        provider="fixture",
+        query="care",
+        url="https://unknown.example.com/care",
+        title="Care guidance",
+        snippet="",
+        found_via="fixture",
+    )
+
+    selected = choose_sources([unknown, educational], limit=2)
+
+    assert selected[0].url == educational.url
+    assert selected[0].source_type == "educational"
+    assert selected[0].intended_use is IntendedUse.DISCOVERY
 
 
 @pytest.mark.asyncio
