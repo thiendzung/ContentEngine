@@ -28,6 +28,7 @@ type FormState = {
   question: string;
   intent: string;
   promise: string;
+  coverage_requirements: string;
   selection_reason: string;
   originality_material: string;
   originality_writer_use: string;
@@ -45,6 +46,7 @@ const initialState: FormState = {
   question: "",
   intent: "learn",
   promise: "",
+  coverage_requirements: "",
   selection_reason: "",
   originality_material: "",
   originality_writer_use: "",
@@ -92,6 +94,14 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       setError("Ngôn ngữ nguồn phải nằm trong các ngôn ngữ bắt buộc.");
       return;
     }
+    const coverageRequirements = form.coverage_requirements
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (coverageRequirements.length === 0) {
+      setError("Cần khai báo ít nhất một cam kết phạm vi, mỗi dòng một mục.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -106,6 +116,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
         question: form.question.trim(),
         intent: form.intent.trim(),
         promise: form.promise.trim(),
+        coverage_requirements: coverageRequirements,
         selection_reason: form.selection_reason.trim(),
         originality_material: form.originality_material.trim(),
         originality_writer_use: form.originality_writer_use.trim(),
@@ -221,6 +232,17 @@ export function JournalIntakeForm({ preflightReady }: Props) {
               rows={3}
               value={form.promise}
             />
+          </label>
+          <label>
+            <span>Cam kết phạm vi bắt buộc</span>
+            <textarea
+              onChange={(event) => update("coverage_requirements", event.target.value)}
+              placeholder={"Mỗi dòng một mục, ví dụ:\nTreo và ánh sáng\nVệ sinh an toàn\nVận chuyển"}
+              required
+              rows={5}
+              value={form.coverage_requirements}
+            />
+            <small>Angle phải khai báo rõ mục nào giữ nguyên hoặc thu hẹp; Outline không được tự làm rơi mục đã cam kết.</small>
           </label>
         </div>
         <label className="full-field">
