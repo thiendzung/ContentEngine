@@ -157,12 +157,11 @@ def _alembic_script() -> ScriptDirectory:
 
 
 def _upgrade_chain(script: ScriptDirectory, source_revision: str) -> tuple[str, ...]:
-    head = script.get_current_head()
-    if head != _EXPECTED_TARGET_REVISION:
-        raise MigrationRehearsalError("unexpected_code_migration_head")
-    revision = script.get_revision(head)
+    # O1 rehearsal is historical recovery evidence pinned to rev-0034.
+    # Newer application migrations must not silently widen that old proof.
+    revision = script.get_revision(_EXPECTED_TARGET_REVISION)
     if revision is None:
-        raise MigrationRehearsalError("code_migration_head_missing")
+        raise MigrationRehearsalError("historical_target_revision_missing")
 
     reverse_path: list[str] = []
     while revision.revision != source_revision:
