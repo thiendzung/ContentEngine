@@ -1487,3 +1487,100 @@ async def test_budget_exhaustion_blocks_execution_but_can_be_recorded_as_failure
         assert run.status == "failed"
         assert run.failure_code == "budget_exceeded"
 
+@pytest.mark.asyncio
+async def test_completion_rejects_output_created_exactly_at_step_start() -> None:
+    async with isolated_session() as session:
+        run, step = await _pending_fixture(session)
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+        )
+        job = await enqueue_execution_plan_job(
+            session,
+            execution_plan_artifact_id=plan_artifact.id,
+            worker_key="customer-map-worker",
+        )
+        lease = await claim_agent_task(
+            session,
+            worker_key="customer-map-worker",
+            worker_instance_id="timestamp-boundary-agent",
+            lease_seconds=30,
+        )
+        assert lease is not None
+        await session.refresh(step)
+        assert step.started_at is not None
+
+        payload = {"schema_version": 1, "value": "equal-start"}
+        output = Artifact(
+            run_id=run.id,
+            step_run_id=step.id,
+            artifact_type="customer_map_snapshot",
+            version=1,
+            content_json=payload,
+            external_ref=None,
+            content_hash=_hash(payload),
+            created_at=step.started_at,
+        )
+        session.add(output)
+        await session.flush()
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_output_artifact_predates_execution",
+        ):
+            await complete_agent_task(
+                session,
+                job_id=job.id,
+                worker_key="customer-map-worker",
+                worker_instance_id="timestamp-boundary-agent",
+                output_refs=[output.id],
+            )
+
+
+@pytest.mark.asyncio
+async def test_completion_rejects_external_only_output_without_verifier() -> None:
+    async with isolated_session() as session:
+        run, step = await _pending_fixture(session)
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+        )
+        job = await enqueue_execution_plan_job(
+            session,
+            execution_plan_artifact_id=plan_artifact.id,
+            worker_key="customer-map-worker",
+        )
+        lease = await claim_agent_task(
+            session,
+            worker_key="customer-map-worker",
+            worker_instance_id="external-output-agent",
+            lease_seconds=30,
+        )
+        assert lease is not None
+
+        output = Artifact(
+            run_id=run.id,
+            step_run_id=step.id,
+            artifact_type="customer_map_snapshot",
+            version=1,
+            content_json=None,
+            external_ref="external://unverified-object",
+            content_hash="f" * 64,
+        )
+        session.add(output)
+        await session.flush()
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_external_output_hash_unverifiable",
+        ):
+            await complete_agent_task(
+                session,
+                job_id=job.id,
+                worker_key="customer-map-worker",
+                worker_instance_id="external-output-agent",
+                output_refs=[output.id],
+            )
+
