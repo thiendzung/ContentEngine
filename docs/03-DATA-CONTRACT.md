@@ -1135,6 +1135,10 @@ All candidates may be HOLD/DROP. That is a valid stop state and blocks Angle ins
 
 Changing a reviewed choice creates a new Lens Selection Artifact version. Historical selection Artifacts remain immutable.
 
+Hash validity alone is not enough for a Lens Selection Artifact. On downstream read, ContentEngine revalidates the referenced current candidate and deterministically reconstructs decisions, primary/merged Lens state, evidence_context, angle_context and the one-article contract; a semantically forged but correctly hashed Artifact fails closed.
+
+When a Lens Artifact is produced inside a StepRun, its Artifact id is recorded in `StepRun.output_artifact_refs_json`. Exact replay inside the same step reuses the Artifact; a retry in a different StepRun gets distinct Artifact lineage/version even when semantic inputs are otherwise equal.
+
 ### Downstream context
 
 The Lens Selection Artifact contains two explicit projections:
