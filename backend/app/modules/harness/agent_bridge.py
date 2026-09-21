@@ -913,6 +913,12 @@ async def heartbeat_agent_task(
         )
     except LeaseOwnershipError as exc:
         raise AgentBridgeError("agent_bridge_lease_invalid") from exc
+    if (
+        updated.lease_expires_at is not None
+        and updated.lease_expires_at > deadline
+    ):
+        updated.lease_expires_at = deadline
+        await session.flush()
     return await _lease_payload(
         session,
         job=updated,
