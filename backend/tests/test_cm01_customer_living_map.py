@@ -224,6 +224,27 @@ async def test_insight_need_link_is_exact_scoped_and_immutable() -> None:
                 reason="Audience-mismatched link must fail.",
             )
 
+        direct_cross_project = await _need(
+            session,
+            project_id=other.id,
+            statement="Direct DB cross-project need.",
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="customer_map_insight_need_project_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(
+                    CustomerInsightNeedLink(
+                        customer_insight_id=insight.id,
+                        need_hypothesis_id=direct_cross_project.id,
+                        relation="supports",
+                        linked_by="direct-db-test",
+                        reason="Must be rejected by DB guard.",
+                    )
+                )
+                await session.flush()
+
         with pytest.raises(
             DBAPIError,
             match="customer_insight_need_link_is_immutable",
@@ -250,14 +271,13 @@ async def test_need_and_audience_scope_cannot_drift_after_map_binding() -> None:
         audience = await _audience(
             session,
             project_id=project.id,
-            name="First-time buyer",
+            name="Need-only audience",
         )
         insight = await ensure_customer_insight(
             session,
             project_id=project.id,
             insight_type="question",
             statement="Buyer asks how authenticity is verified.",
-            audience_hypothesis_id=audience.id,
         )
         need = await _need(
             session,
@@ -648,6 +668,39 @@ async def test_changes_api_model_is_read_only_against_latest_snapshot() -> None:
         assert changes["baseline"] is False
         assert changes["previous_snapshot_hash"] == persisted.artifact.content_hash
         assert count_after == count_before
+
+
+@pytest.mark.asyncio
+async def test_changes_fail_closed_on_corrupt_snapshot_artifact() -> None:
+    async with isolated_session() as session:
+        base = await _approved_fixture(session)
+        run = base.writer_runs["en"]
+        first = await refresh_customer_map_snapshot_artifact(
+            session,
+            run_id=run.id,
+            step_run_id=None,
+        )
+        malformed = Artifact(
+            run_id=run.id,
+            step_run_id=None,
+            artifact_type="customer_map_snapshot",
+            locale=None,
+            version=first.artifact.version + 1,
+            content_json=first.artifact.content_json,
+            external_ref=None,
+            content_hash="0" * 64,
+        )
+        session.add(malformed)
+        await session.flush()
+
+        with pytest.raises(
+            CustomerMapError,
+            match="customer_map_snapshot_artifact_hash_mismatch",
+        ):
+            await customer_map_changes(
+                session,
+                project_id=run.project_id,
+            )
 
 
 def test_customer_map_routes_are_registered() -> None:
