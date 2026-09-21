@@ -978,7 +978,7 @@ CC-01 is a deterministic read model over canonical ContentCase / ContentItem / C
 
 Primary Need is the existing `ContentCase.need_hypothesis_id`.
 
-Do not duplicate primary Need into another relation table.
+Do not duplicate primary Need into another relation table. After ContentCase creation, the primary Need identity is immutable; changing it would silently rewrite historical coverage.
 
 Supporting Need uses immutable `ContentCaseSupportingNeed`:
 
@@ -1023,11 +1023,15 @@ V1 coverage status is evidence-bounded:
 - `PUBLISHED`: at least one relevant published ContentVersion exists;
 - `NEEDS_UPDATE`: published coverage exists and an explicit selected UPDATE/REFRESH target or a newer unpublished revision exists;
 - `WEAK`: there is no usable published coverage and the current content attempt has an unresolved quality failure or final-review rejection/revision request;
-- `INSUFFICIENT_DATA`: coverage cannot be trusted because selected update targets are invalid/unresolved.
+- `INSUFFICIENT_DATA`: no published coverage is known and the planning state cannot be trusted because selected update targets are invalid/unresolved.
+
+If published coverage is already known, an invalid UPDATE/REFRESH target is surfaced as a planning inconsistency/reason; it does not erase the known `PUBLISHED` state.
 
 `PUBLISHED` means “published coverage exists”. It does **not** mean the customer problem is solved.
 
 `WORKING` is reserved for PM-01, when behaviour/conversion evidence can support that statement.
+
+A locale filter counts work only when a matching LocaleVariant exists. A ContentCase that currently exists only in another locale does not make the requested locale `IN_PROGRESS`.
 
 ### Duplicate detection
 
