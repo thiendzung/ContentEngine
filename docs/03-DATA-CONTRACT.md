@@ -1062,3 +1062,91 @@ Optional filters:
 - `need_id`.
 
 The endpoint is read-only. It must not call research providers, models, tools, or delegated workers.
+
+## Lens Selection V1
+
+LS-01 does not add a Lens table or a `primary_lens` column. V1 keeps Lens candidates and reviewed Lens Selection as immutable versioned Artifacts so Lens remains a content approach, not a new canonical customer-truth dimension.
+
+### Seven Lens candidates
+
+Every candidate Artifact contains exactly:
+
+- `DEFINITION`
+- `MISCONCEPTION`
+- `SIGNALS`
+- `CAUSES`
+- `METHOD`
+- `CASE`
+- `POV`
+
+Each candidate carries:
+
+- reader_need;
+- primary_question;
+- added_value;
+- evidence_needed;
+- evidence_available;
+- speaking_authority;
+- authority_context;
+- existing_coverage;
+- guards;
+- reasons;
+- source_refs;
+- eligible.
+
+No aggregate Lens score is produced.
+
+`authority_context` carries only approved or explicitly typed context needed to make the Lens usable downstream: observed misconception statement, CustomerInsight interpretation context for SIGNALS, approved causal statement, MOTGU material refs, approved case summary/provenance/rights, or approved MOTGU POV statement. It is not a replacement for EvidenceSet/Originality validation.
+
+A selected ContentOpportunity must also have exactly one matching durable HumanSelection. Setting only the convenience fields on ContentOpportunity is not enough to authorize Lens Selection.
+
+Candidate inputs are exact snapshots/hashes of:
+
+- selected ContentOpportunity;
+- relevant Customer Living Map Need/Audience/Insights;
+- locale-scoped Content Coverage;
+- exact run SettingsSnapshot and approved guard-source refs.
+
+If those relevant inputs change after the candidate Artifact is created, selection from that stale Artifact fails closed.
+
+### Guard semantics
+
+- DEFINITION needs traceable source material.
+- MISCONCEPTION needs an explicitly observed/approved customer belief; contradictory evidence by itself does not prove a misconception exists.
+- SIGNALS needs observed Signals and preserves `indicator != conclusion`.
+- CAUSES requires explicit approved causal evidence and preserves `correlation != causality`.
+- METHOD requires traceable MOTGU first-party material.
+- CASE requires real case + provenance + rights proof.
+- POV requires an explicitly approved MOTGU position.
+
+Missing guard-critical evidence means the candidate cannot be SELECTed or MERGEd.
+
+### Lens Selection Artifact
+
+Every candidate receives exactly one reviewed decision:
+
+- `SELECT`
+- `MERGE`
+- `HOLD`
+- `DROP`
+
+V1 permits at most one primary `SELECT`.
+
+A `MERGE` candidate must merge into that selected primary. It is a supporting approach inside the same content item; it does not create another article.
+
+All candidates may be HOLD/DROP. That is a valid stop state and blocks Angle instead of forcing weak content.
+
+Changing a reviewed choice creates a new Lens Selection Artifact version. Historical selection Artifacts remain immutable.
+
+Hash validity alone is not enough for a Lens Selection Artifact. On downstream read, ContentEngine revalidates the referenced current candidate and deterministically reconstructs decisions, primary/merged Lens state, evidence_context, angle_context and the one-article contract; a semantically forged but correctly hashed Artifact fails closed.
+
+When a Lens Artifact is produced inside a StepRun, its Artifact id is recorded in `StepRun.output_artifact_refs_json`. Exact replay inside the same step reuses the Artifact; a retry in a different StepRun gets distinct Artifact lineage/version even when semantic inputs are otherwise equal.
+
+### Downstream context
+
+The Lens Selection Artifact contains two explicit projections:
+
+- `evidence_context`: active lenses plus HOLD lenses, with active/held evidence requirements, available refs and guards so missing evidence can be gathered without silently activating the Lens;
+- `angle_context`: primary/supporting lens, reader Need/question, speaking authority + authority_context, added value, guardrails, source refs, existing coverage.
+
+Angle consumes the latest valid selection only when one active primary Lens exists. If no Lens Selection exists, legacy Journal behaviour is unchanged. If a Lens Selection exists but is stale or all HOLD/DROP, it cannot silently proceed into Angle.
