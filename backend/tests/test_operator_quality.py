@@ -25,13 +25,13 @@ from app.modules.content_engine.journal.operator_quality import (
     QUALITY_REVIEW_TASK_KEYS,
     get_quality_progress,
 )
-from app.modules.content_engine.journal.quality_readiness import READINESS_CRITERIA
 from app.modules.content_engine.journal.operator_runtime import (
     get_operator_state,
     resolve_next_operator_action,
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_view import get_operator_case_view
+from app.modules.content_engine.journal.quality_readiness import READINESS_CRITERIA
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun, utc_now
@@ -2245,4 +2245,3 @@ async def test_f4_r2_source_copy_exact_lineage_budget_and_historical_isolation(
             "operator_quality_retry_requires_failed_job",
             "operator_quality_retry_exhausted",
         }
-
