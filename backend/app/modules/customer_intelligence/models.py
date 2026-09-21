@@ -100,6 +100,8 @@ class CustomerInsightSignal(Base):
         primary_key=True,
     )
     relation: Mapped[str] = mapped_column(String(16), nullable=False)
+    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (
         CheckConstraint(
@@ -136,30 +138,6 @@ class CustomerInsightNeedLink(Base):
             "ix_customer_insight_need_links_need",
             "need_hypothesis_id",
             "relation",
-        ),
-    )
-
-
-class CustomerNeedJourneyStageLink(Base):
-    __tablename__ = "customer_need_journey_stage_links"
-
-    need_hypothesis_id: Mapped[UUID] = mapped_column(
-        ForeignKey("need_hypotheses.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    stage_key: Mapped[str] = mapped_column(String(64), primary_key=True)
-    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
-
-    __table_args__ = (
-        CheckConstraint(
-            "stage_key ~ '^[a-z0-9][a-z0-9_-]{0,63}$'",
-            name="ck_customer_need_journey_stage_key",
-        ),
-        Index(
-            "ix_customer_need_journey_stage",
-            "stage_key",
-            "need_hypothesis_id",
         ),
     )
 
@@ -207,5 +185,4 @@ __all__ = [
     "CustomerInsightNeedLink",
     "CustomerInsightReview",
     "CustomerInsightSignal",
-    "CustomerNeedJourneyStageLink",
 ]
