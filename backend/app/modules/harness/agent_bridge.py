@@ -1186,14 +1186,15 @@ async def _validated_outputs(
             raise AgentBridgeError(
                 "agent_bridge_output_type_not_expected"
             )
-        if (
-            artifact.content_json is not None
-            and artifact.content_hash != _stable_hash(artifact.content_json)
-        ):
+        if artifact.content_json is None:
+            raise AgentBridgeError(
+                "agent_bridge_external_output_hash_unverifiable"
+            )
+        if artifact.content_hash != _stable_hash(artifact.content_json):
             raise AgentBridgeError(
                 "agent_bridge_output_artifact_hash_mismatch"
             )
-        if artifact.created_at < step.started_at:
+        if artifact.created_at <= step.started_at:
             raise AgentBridgeError(
                 "agent_bridge_output_artifact_predates_execution"
             )
