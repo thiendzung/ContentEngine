@@ -380,6 +380,7 @@ async def request_execution_plan_approval(
         "artifact_id": str(artifact.id),
     }
     if run.status == "waiting_approval" and pending == expected:
+        assert checkpoint is not None
         return checkpoint  # exact request replay
     if run.status != "running":
         raise AgentBridgeError(
@@ -630,7 +631,7 @@ async def _existing_worker_lease(
     worker_instance_id: str,
 ) -> Job | None:
     now = utc_now()
-    return await session.scalar(
+    job: Job | None = await session.scalar(
         select(Job)
         .where(
             Job.status == "leased",
@@ -641,6 +642,7 @@ async def _existing_worker_lease(
         .order_by(Job.created_at, Job.id)
         .limit(1)
     )
+    return job
 
 
 async def _queued_worker_job(
@@ -649,7 +651,7 @@ async def _queued_worker_job(
     worker_key: str,
 ) -> Job | None:
     now = utc_now()
-    return await session.scalar(
+    job: Job | None = await session.scalar(
         select(Job)
         .where(
             Job.status == "queued",
@@ -660,6 +662,7 @@ async def _queued_worker_job(
         .limit(1)
         .with_for_update(skip_locked=True)
     )
+    return job
 
 
 async def _expired_worker_job(
@@ -668,7 +671,7 @@ async def _expired_worker_job(
     worker_key: str,
 ) -> Job | None:
     now = utc_now()
-    return await session.scalar(
+    job: Job | None = await session.scalar(
         select(Job)
         .where(
             Job.status == "leased",
@@ -679,6 +682,7 @@ async def _expired_worker_job(
         .limit(1)
         .with_for_update(skip_locked=True)
     )
+    return job
 
 
 async def _lease_payload(
