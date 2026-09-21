@@ -46,6 +46,56 @@ class CustomerInsight(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
+            "insight_key ~ '^[0-9a-f]{64} ('job','pain','desire','question','fear','objection','barrier',"
+            "'trigger','decision_factor','trust_builder','trust_breaker','language','behaviour',"
+            "'expectation','post_purchase_need','referral_trigger','repeat_purchase_trigger')",
+            name="ck_customer_insights_type",
+        ),
+        CheckConstraint(
+            "status in ('CANDIDATE','TESTING','SUPPORTED','REJECTED','INSUFFICIENT_EVIDENCE')",
+            name="ck_customer_insights_status",
+        ),
+        CheckConstraint("version > 0", name="ck_customer_insights_version_positive"),
+        UniqueConstraint(
+            "project_id",
+            "insight_key",
+            "version",
+            name="uq_customer_insight_project_key_version",
+        ),
+        Index(
+            "ix_customer_insights_project_type",
+            "project_id",
+            "insight_type",
+            "status",
+        ),
+        Index("ix_customer_insights_audience", "audience_hypothesis_id"),
+    )
+
+
+class CustomerInsightSignal(Base):
+    __tablename__ = "customer_insight_signals"
+
+    customer_insight_id: Mapped[UUID] = mapped_column(
+        ForeignKey("customer_insights.id", ondelete="CASCADE"), primary_key=True
+    )
+    signal_id: Mapped[UUID] = mapped_column(
+        ForeignKey("signals.id", ondelete="CASCADE"), primary_key=True
+    )
+    relation: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "relation in ('supports','contradicts','context')",
+            name="ck_customer_insight_signals_relation",
+        ),
+        Index("ix_customer_insight_signals_signal", "signal_id", "relation"),
+    )
+
+
+__all__ = ["CustomerInsight", "CustomerInsightSignal"]",
+            name="ck_customer_insights_key",
+        ),
+        CheckConstraint(
             "insight_type in ('job','pain','desire','question','fear','objection','barrier',"
             "'trigger','decision_factor','trust_builder','trust_breaker','language','behaviour',"
             "'expectation','post_purchase_need','referral_trigger','repeat_purchase_trigger')",
