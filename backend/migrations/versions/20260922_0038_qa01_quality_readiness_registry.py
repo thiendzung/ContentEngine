@@ -228,11 +228,23 @@ def upgrade() -> None:
 def downgrade() -> None:
     for prompt_id, _key, _locale, _stage, _body in _PROMPTS:
         op.execute(
+            sa.text(
+                "UPDATE prompt_definitions SET status = 'retired' "
+                "WHERE id = CAST(:id AS uuid) AND status = 'active'"
+            ).bindparams(id=prompt_id)
+        )
+        op.execute(
             sa.text("DELETE FROM prompt_definitions WHERE id = CAST(:id AS uuid)").bindparams(
                 id=prompt_id
             )
         )
     for recipe_id, _key, _locale, _task, _stage in _RECIPES:
+        op.execute(
+            sa.text(
+                "UPDATE recipe_definitions SET status = 'retired' "
+                "WHERE id = CAST(:id AS uuid) AND status = 'active'"
+            ).bindparams(id=recipe_id)
+        )
         op.execute(
             sa.text("DELETE FROM recipe_definitions WHERE id = CAST(:id AS uuid)").bindparams(
                 id=recipe_id
