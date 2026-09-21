@@ -222,6 +222,16 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <strong>{qualityResultLabel(lane.source_copy_result)}</strong>
           <small>lỗi {lane.fail_count} · cảnh báo {lane.warn_count}</small>
         </div>
+        <div>
+          <span>Giá trị cho người đọc</span>
+          <strong>{qualityResultLabel(lane.reader_value_result)}</strong>
+          <small>{lane.reader_value_findings.length} tiêu chí được kiểm tra</small>
+        </div>
+        <div>
+          <span>SEO / AI readiness</span>
+          <strong>{qualityResultLabel(lane.search_ai_result)}</strong>
+          <small>{lane.search_ai_findings.length} tiêu chí được kiểm tra</small>
+        </div>
       </div>
       {lane.warn_count > 0 && (
         <p className="quality-warning-note">Còn {lane.warn_count} cảnh báo cần đọc ở bản duyệt cuối.</p>
@@ -233,6 +243,8 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <div><dt>Revised draft</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
           <div><dt>Audit artifact</dt><dd>{lane.assertion_audit_artifact?.id ?? "—"}</dd></div>
           <div><dt>Source-copy artifact</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Reader Value</dt><dd>{lane.reader_value_artifact?.id ?? "—"}</dd></div>
+          <div><dt>SEO / AI readiness</dt><dd>{lane.search_ai_artifact?.id ?? "—"}</dd></div>
           <div><dt>Final content</dt><dd>{lane.final_content?.id ?? "—"}</dd></div>
           <div><dt>Final hash</dt><dd>{lane.final_content?.content_hash ?? "—"}</dd></div>
         </dl>
