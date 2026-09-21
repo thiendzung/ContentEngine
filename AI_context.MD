@@ -162,3 +162,26 @@ Current bounded implementation:
 
 Review flow remains:
 `CI → exact-ref OpenCodeReview → MG triage → Agent Local bounded proof → Founder merge`.
+
+## CM-01 implementation window — 2026-09-21
+
+PR #173 is merged. Live main at CM-01 start is `13485b0e28c0881c7a68a888e86e016c008241bc`.
+
+AU-01 is DONE at code/review level. It added no migration. Operational DB remains under the existing controlled-release state; neither CT-01 rev-0035 nor CM-01 rev-0036 is authorized for operational application by this implementation work.
+
+Current bounded implementation:
+- branch `feat/cm01-customer-living-map`;
+- PR #174;
+- project-level Customer Living Map from AudienceHypothesis + NeedHypothesis + latest CustomerInsight;
+- explicit immutable/audited CustomerInsight ↔ NeedHypothesis relation with project/audience guards;
+- Journey remains a configurable derived view, not a persisted Need↔Journey truth table;
+- deterministic run-bound `customer_map_snapshot` Artifact;
+- incremental NEW / SUPPORT / CONTRADICT / DUPLICATE report;
+- read-only summary/audience/changes APIs;
+- read/refresh path does not invoke research, models, tools or delegated workers;
+- Content Coverage, Lens Selection and UI are not part of CM-01.
+
+CM-01 code migration head is `20260921_0036`. Any operational migration remains a separate Founder-authorized task with the existing backup/restore/rehearsal discipline.
+
+Review flow:
+`CI → exact-ref OpenCodeReview → MG triage → Agent Local disposable-DB proof → Founder merge`.
