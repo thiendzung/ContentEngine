@@ -45,7 +45,8 @@ def _create_customer_insight_guards() -> None:
                        OR OLD.statement IS DISTINCT FROM NEW.statement
                        OR OLD.audience_hypothesis_id IS DISTINCT FROM NEW.audience_hypothesis_id
                        OR OLD.situation IS DISTINCT FROM NEW.situation
-                       OR OLD.alternative_explanations_json IS DISTINCT FROM NEW.alternative_explanations_json
+                       OR OLD.alternative_explanations_json
+                          IS DISTINCT FROM NEW.alternative_explanations_json
                        OR OLD.missing_evidence_json IS DISTINCT FROM NEW.missing_evidence_json THEN
                         RAISE EXCEPTION 'customer_insight_version_content_immutable';
                     END IF;
