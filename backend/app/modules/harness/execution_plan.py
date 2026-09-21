@@ -48,6 +48,18 @@ HUMAN_GATED_CAPABILITIES: frozenset[str] = frozenset(
         "CHANGE_WORKFLOW",
     }
 )
+_ACTION_CAPABILITIES: dict[str, str] = {
+    "read": "READ",
+    "artifact.write": "WRITE_ARTIFACT",
+    "model.run": "RUN_MODEL",
+    "tool.run": "RUN_TOOL",
+    "research.external": "RESEARCH_EXTERNAL",
+    "database.write": "WRITE_DATABASE",
+    "publish": "PUBLISH",
+    "settings.change": "CHANGE_SETTINGS",
+    "prompt.change": "CHANGE_PROMPT",
+    "workflow.change": "CHANGE_WORKFLOW",
+}
 _BUDGET_FIELDS = frozenset(
     {
         "max_model_calls",
@@ -350,11 +362,11 @@ def _resolve_worker_policy(
         raw_worker.get("capabilities"),
         "execution_plan_policy_capabilities_invalid",
     )
-    allowed_actions = _key_list(
+    allowed_actions = _action_list(
         raw_worker.get("allowed_actions"),
         "execution_plan_policy_allowed_actions_invalid",
     )
-    forbidden_actions = _key_list(
+    forbidden_actions = _action_list(
         raw_worker.get("forbidden_actions"),
         "execution_plan_policy_forbidden_actions_invalid",
     )
@@ -405,6 +417,30 @@ def _authorize_plan(
         raise ExecutionPlanError("execution_plan_policy_forbidden_action_missing")
     if not set(plan.allowed_tools).issubset(policy.allowed_tools):
         raise ExecutionPlanError("execution_plan_tool_not_allowed")
+
+    required_capabilities = set(plan.required_capabilities)
+    for action in plan.allowed_actions:
+        action_capability = _capability_for_action(action)
+        if action_capability not in required_capabilities:
+            raise ExecutionPlanError("execution_plan_action_capability_missing")
+    if plan.allowed_tools and "RUN_TOOL" not in required_capabilities:
+        raise ExecutionPlanError("execution_plan_tool_capability_missing")
+    if "RESEARCH_EXTERNAL" in required_capabilities:
+        if "RUN_TOOL" not in required_capabilities or not plan.allowed_tools:
+            raise ExecutionPlanError("execution_plan_research_tool_required")
+
+    required_budget_fields = {"max_wall_clock_seconds"}
+    if "RUN_MODEL" in required_capabilities:
+        required_budget_fields.update(
+            {"max_model_calls", "max_output_tokens", "max_estimated_cost"}
+        )
+    if "RUN_TOOL" in required_capabilities:
+        required_budget_fields.add("max_tool_calls")
+    if "RESEARCH_EXTERNAL" in required_capabilities:
+        required_budget_fields.add("max_research_sources")
+    if not required_budget_fields.issubset(plan.budget):
+        raise ExecutionPlanError("execution_plan_required_budget_missing")
+
     if plan.timeout_seconds > policy.max_timeout_seconds:
         raise ExecutionPlanError("execution_plan_timeout_exceeds_policy")
     if plan.max_attempts > policy.max_attempts:
@@ -492,11 +528,11 @@ def _parse_plan_fields(
         raw.get("required_capabilities"),
         "execution_plan_required_capabilities_invalid",
     )
-    allowed_actions = _key_list(
+    allowed_actions = _action_list(
         raw.get("allowed_actions"),
         "execution_plan_allowed_actions_invalid",
     )
-    forbidden_actions = _key_list(
+    forbidden_actions = _action_list(
         raw.get("forbidden_actions"),
         "execution_plan_forbidden_actions_invalid",
     )
@@ -659,6 +695,31 @@ def _text_list(value: object, code: str) -> tuple[str, ...]:
 
 def _key_list(value: object, code: str) -> tuple[str, ...]:
     return _unique_list(value, parser=_required_key, code=code)
+
+
+def _action(value: object, code: str) -> str:
+    action = _required_key(value, code)
+    _capability_for_action(action, code=code)
+    return action
+
+
+def _action_list(value: object, code: str) -> tuple[str, ...]:
+    return _unique_list(value, parser=_action, code=code)
+
+
+def _capability_for_action(
+    action: str,
+    *,
+    code: str = "execution_plan_action_invalid",
+) -> str:
+    matches = [
+        capability
+        for prefix, capability in _ACTION_CAPABILITIES.items()
+        if action == prefix or action.startswith(f"{prefix}.")
+    ]
+    if len(matches) != 1:
+        raise ExecutionPlanError(code)
+    return matches[0]
 
 
 def _capability(value: object, code: str) -> str:
