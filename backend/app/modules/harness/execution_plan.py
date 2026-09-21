@@ -1,8 +1,8 @@
 """Immutable task contracts and least-privilege capability policy for AU-01.
 
 ExecutionPlan is a versioned Artifact bound to the ContentRun's immutable
-SettingsSnapshot. This module authorizes plans only; AU-02 will add claim/heartbeat
-and auto-next execution semantics.
+SettingsSnapshot. This module authorizes plans; AU-02 consumes that exact contract
+through the Local Agent Bridge without weakening its capability policy.
 """
 
 from __future__ import annotations
