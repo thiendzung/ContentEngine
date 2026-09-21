@@ -173,10 +173,17 @@ def upgrade() -> None:
                        OR OLD.audience_hypothesis_id
                           IS DISTINCT FROM NEW.audience_hypothesis_id
                    )
-                   AND EXISTS(
-                       SELECT 1
-                       FROM customer_insight_need_links cinl
-                       WHERE cinl.need_hypothesis_id = OLD.id
+                   AND (
+                       EXISTS(
+                           SELECT 1
+                           FROM customer_insight_need_links cinl
+                           WHERE cinl.need_hypothesis_id = OLD.id
+                       )
+                       OR EXISTS(
+                           SELECT 1
+                           FROM customer_need_journey_stage_links cnjsl
+                           WHERE cnjsl.need_hypothesis_id = OLD.id
+                       )
                    ) THEN
                     RAISE EXCEPTION
                         'customer_map_linked_need_scope_immutable';
