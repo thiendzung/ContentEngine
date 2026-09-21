@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,11 @@ from app.modules.customer_intelligence.insights import (
     link_customer_insight_signal,
     review_customer_insight,
 )
-from app.modules.customer_intelligence.models import CustomerInsight, CustomerInsightSignal
+from app.modules.customer_intelligence.models import (
+    CustomerInsight,
+    CustomerInsightReview,
+    CustomerInsightSignal,
+)
 
 
 @asynccontextmanager
@@ -137,13 +142,13 @@ async def test_customer_insight_exact_replay_and_revision_are_durable() -> None:
 
 
 @pytest.mark.asyncio
-async def test_customer_insight_requires_explicit_review_for_truth_promotion() -> None:
+async def test_customer_insight_initial_status_must_be_candidate() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
 
         with pytest.raises(
             CustomerInsightError,
-            match="customer_insight_review_required",
+            match="customer_insight_initial_status_must_be_candidate",
         ):
             await ensure_customer_insight(
                 session,
@@ -153,42 +158,122 @@ async def test_customer_insight_requires_explicit_review_for_truth_promotion() -
                 status="SUPPORTED",
             )
 
+
+@pytest.mark.asyncio
+async def test_supported_review_requires_real_support_evidence() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
         insight = await ensure_customer_insight(
             session,
             project_id=project.id,
             insight_type="pain",
             statement="Visible pricing may reduce uncertainty.",
         )
+
+        with pytest.raises(
+            CustomerInsightError,
+            match="customer_insight_support_evidence_required",
+        ):
+            await review_customer_insight(
+                session,
+                customer_insight_id=insight.id,
+                status="SUPPORTED",
+                reviewed_by="founder",
+                reason="No evidence should not be enough.",
+            )
+
+        support = await _signal(
+            session,
+            project_id=project.id,
+            text="I could not find the price.",
+        )
+        await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=support.id,
+            relation="supports",
+        )
+
         reviewed = await review_customer_insight(
             session,
             customer_insight_id=insight.id,
             status="SUPPORTED",
             reviewed_by="founder",
-            reason="Reviewed against independent customer evidence.",
+            reason="Supported by a linked customer signal.",
+        )
+
+        assert reviewed.status == "SUPPORTED"
+        assert reviewed.reviewed_at is not None
+
+
+@pytest.mark.asyncio
+async def test_review_lifecycle_preserves_history_and_allows_progression() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="barrier",
+            statement="Shipping uncertainty may block a purchase.",
+        )
+
+        testing = await review_customer_insight(
+            session,
+            customer_insight_id=insight.id,
+            status="TESTING",
+            reviewed_by="founder",
+            reason="Need direct customer evidence.",
+        )
+        assert testing.status == "TESTING"
+
+        support = await _signal(
+            session,
+            project_id=project.id,
+            text="How do I take this painting home safely?",
+        )
+        await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=support.id,
+            relation="supports",
+        )
+
+        supported = await review_customer_insight(
+            session,
+            customer_insight_id=insight.id,
+            status="SUPPORTED",
+            reviewed_by="founder",
+            reason="Direct customer question now supports the insight.",
         )
         replay = await review_customer_insight(
             session,
             customer_insight_id=insight.id,
             status="SUPPORTED",
             reviewed_by="founder",
-            reason="Reviewed against independent customer evidence.",
+            reason="Direct customer question now supports the insight.",
         )
 
-        assert reviewed.status == "SUPPORTED"
-        assert reviewed.reviewed_at is not None
-        assert replay.id == reviewed.id
+        reviews = list(
+            (
+                await session.scalars(
+                    select(CustomerInsightReview)
+                    .where(
+                        CustomerInsightReview.customer_insight_id
+                        == insight.id
+                    )
+                    .order_by(CustomerInsightReview.reviewed_at)
+                )
+            ).all()
+        )
 
-        with pytest.raises(
-            CustomerInsightError,
-            match="customer_insight_already_reviewed",
-        ):
-            await review_customer_insight(
-                session,
-                customer_insight_id=insight.id,
-                status="REJECTED",
-                reviewed_by="founder",
-                reason="Conflicting second review.",
-            )
+        assert supported.status == "SUPPORTED"
+        assert replay.id == supported.id
+        assert len(reviews) == 2
+        assert [review.status for review in reviews] == [
+            "TESTING",
+            "SUPPORTED",
+        ]
+        assert reviews[0].reason == "Need direct customer evidence."
 
 
 @pytest.mark.asyncio
@@ -265,6 +350,46 @@ async def test_customer_insight_relation_replay_is_exact_and_project_scoped() ->
 
 
 @pytest.mark.asyncio
+async def test_customer_insight_signal_relation_and_delete_are_database_immutable() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="question",
+            statement="Buyer asks how authenticity is verified.",
+        )
+        signal = await _signal(
+            session,
+            project_id=project.id,
+            text="How can I know this painting is original?",
+        )
+        link = await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=signal.id,
+            relation="supports",
+        )
+
+        link.relation = "contradicts"
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_signal_is_immutable",
+        ):
+            async with session.begin_nested():
+                await session.flush()
+
+        await session.refresh(link)
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_signal_delete_forbidden",
+        ):
+            async with session.begin_nested():
+                await session.delete(link)
+                await session.flush()
+
+
+@pytest.mark.asyncio
 async def test_duplicate_signals_do_not_inflate_independent_evidence() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
@@ -322,7 +447,89 @@ async def test_duplicate_signals_do_not_inflate_independent_evidence() -> None:
 
 
 @pytest.mark.asyncio
-async def test_customer_insight_version_content_is_database_immutable() -> None:
+async def test_duplicate_chain_validates_parent_even_when_group_is_present() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        other = await _project(session, "other")
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="pain",
+            statement="Repeated reposts must not fake independent support.",
+        )
+        foreign_parent = await _signal(
+            session,
+            project_id=other.id,
+            text="Foreign parent.",
+        )
+        child = await _signal(
+            session,
+            project_id=project.id,
+            text="Grouped child.",
+            duplicate_of_id=foreign_parent.id,
+            independence_group="same-discussion",
+        )
+        await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=child.id,
+            relation="supports",
+        )
+
+        with pytest.raises(
+            CustomerInsightError,
+            match="customer_insight_signal_duplicate_parent_invalid",
+        ):
+            await customer_insight_evidence_counts(
+                session,
+                customer_insight_id=insight.id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_duplicate_cycle_fails_closed_even_with_independence_group() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="pain",
+            statement="Cyclic duplicate lineage is invalid.",
+        )
+        first = await _signal(
+            session,
+            project_id=project.id,
+            text="First.",
+            independence_group="same-discussion",
+        )
+        second = await _signal(
+            session,
+            project_id=project.id,
+            text="Second.",
+            duplicate_of_id=first.id,
+            independence_group="same-discussion",
+        )
+        first.duplicate_of_id = second.id
+        await session.flush()
+        await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=second.id,
+            relation="supports",
+        )
+
+        with pytest.raises(
+            CustomerInsightError,
+            match="customer_insight_signal_duplicate_cycle",
+        ):
+            await customer_insight_evidence_counts(
+                session,
+                customer_insight_id=insight.id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_customer_insight_version_content_and_delete_are_database_immutable() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
         insight = await ensure_customer_insight(
@@ -340,9 +547,69 @@ async def test_customer_insight_version_content_is_database_immutable() -> None:
             async with session.begin_nested():
                 await session.flush()
 
+        await session.refresh(insight)
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_delete_forbidden",
+        ):
+            async with session.begin_nested():
+                await session.delete(insight)
+                await session.flush()
+
 
 @pytest.mark.asyncio
-async def test_customer_insight_database_rejects_invalid_type_and_unreviewed_support() -> None:
+async def test_database_requires_audited_review_and_support_for_promotion() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="pain",
+            statement="Promotion must be evidence-backed and audited.",
+        )
+
+        now = datetime.now(UTC)
+        insight.status = "SUPPORTED"
+        insight.reviewed_by = "founder"
+        insight.reviewed_at = now
+        insight.review_reason = "Direct update without audit."
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_review_record_required",
+        ):
+            async with session.begin_nested():
+                await session.flush()
+
+        await session.refresh(insight)
+        now = datetime.now(UTC)
+        session.add(
+            CustomerInsightReview(
+                customer_insight_id=insight.id,
+                status="SUPPORTED",
+                reviewed_by="founder",
+                reason="Audited but unsupported.",
+                support_signal_refs_json=[],
+                contradict_signal_refs_json=[],
+                context_signal_refs_json=[],
+                reviewed_at=now,
+            )
+        )
+        await session.flush()
+
+        insight.status = "SUPPORTED"
+        insight.reviewed_by = "founder"
+        insight.reviewed_at = now
+        insight.review_reason = "Audited but unsupported."
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_support_evidence_required",
+        ):
+            async with session.begin_nested():
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_database_rejects_invalid_type_and_non_candidate_insert() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
 
@@ -361,20 +628,20 @@ async def test_customer_insight_database_rejects_invalid_type_and_unreviewed_sup
                 session.add(invalid)
                 await session.flush()
 
-        unreviewed = CustomerInsight(
+        non_candidate = CustomerInsight(
             project_id=project.id,
             insight_key="b" * 64,
             version=1,
             insight_type="pain",
-            statement="Unreviewed promotion.",
+            statement="Cannot insert directly as supported.",
             status="SUPPORTED",
             alternative_explanations_json=[],
             missing_evidence_json=[],
         )
         with pytest.raises(
             DBAPIError,
-            match="customer_insight_review_required",
+            match="customer_insight_initial_status_must_be_candidate",
         ):
             async with session.begin_nested():
-                session.add(unreviewed)
+                session.add(non_candidate)
                 await session.flush()
