@@ -23,6 +23,7 @@ def _customer_map_http_error(exc: CustomerMapError) -> HTTPException:
     not_found = {
         "customer_map_project_not_found",
         "customer_map_audience_not_found",
+        "customer_map_need_not_found",
     }
     status_code = 404 if exc.code in not_found else 409
     return HTTPException(
