@@ -7,6 +7,7 @@ from app.modules.customer_intelligence.insights import (
     derive_insight_key,
     ensure_customer_insight,
     link_customer_insight_signal,
+    review_customer_insight,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "derive_insight_key",
     "ensure_customer_insight",
     "link_customer_insight_signal",
+    "review_customer_insight",
 ]
