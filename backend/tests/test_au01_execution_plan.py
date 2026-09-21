@@ -284,7 +284,15 @@ async def test_execution_plan_replay_conflict_fails_closed() -> None:
                     "model.run.writer",
                 ],
             },
-            {},
+            {
+                "capabilities": [
+                    "READ",
+                    "WRITE_ARTIFACT",
+                    "RUN_TOOL",
+                    "WRITE_DATABASE",
+                    "RUN_MODEL",
+                ]
+            },
             "execution_plan_action_not_allowed",
         ),
         (
@@ -339,6 +347,24 @@ async def test_execution_plan_replay_conflict_fails_closed() -> None:
             {},
             "execution_plan_required_budget_missing",
         ),
+        (
+            {
+                "budget": {
+                    "max_tool_calls": 6,
+                    "max_model_calls": 1,
+                    "max_output_tokens": 4000,
+                    "max_estimated_cost": "0.50",
+                    "max_wall_clock_seconds": 60,
+                }
+            },
+            {},
+            "execution_plan_timeout_exceeds_plan_budget",
+        ),
+        (
+            {"reviewer": "customer-map-worker"},
+            {},
+            "execution_plan_reviewer_must_be_independent",
+        ),
     ],
 )
 async def test_execution_plan_policy_mismatch_fails_closed(
@@ -359,6 +385,43 @@ async def test_execution_plan_policy_mismatch_fails_closed(
                 step_run_id=step.id,
                 plan=_plan(**plan_override),
             )
+
+
+@pytest.mark.asyncio
+async def test_execution_plan_revisions_are_contiguous() -> None:
+    async with isolated_session() as session:
+        run, step = await _execution_fixture(session)
+
+        with pytest.raises(
+            ExecutionPlanError,
+            match="execution_plan_previous_version_required",
+        ):
+            await persist_execution_plan_artifact(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                plan=_plan(goal="Revision without v1 must fail."),
+                version=2,
+            )
+
+        first = await persist_execution_plan_artifact(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            plan=_plan(),
+            version=1,
+        )
+        second = await persist_execution_plan_artifact(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            plan=_plan(goal="Reviewed second version."),
+            version=2,
+        )
+
+        assert first.version == 1
+        assert second.version == 2
+        assert first.id != second.id
 
 
 @pytest.mark.asyncio
@@ -425,6 +488,51 @@ async def test_authorization_rejects_wrong_worker_and_stale_run_binding() -> Non
         with pytest.raises(
             ExecutionPlanError,
             match="execution_plan_settings_snapshot_mismatch",
+        ):
+            await authorize_execution_plan(
+                session,
+                artifact_id=artifact.id,
+                worker_key="customer-map-worker",
+            )
+
+
+@pytest.mark.asyncio
+async def test_authorization_rejects_completed_or_noncurrent_step() -> None:
+    async with isolated_session() as session:
+        run, step = await _execution_fixture(session)
+        artifact = await persist_execution_plan_artifact(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            plan=_plan(),
+        )
+
+        step.status = "completed"
+        step.completed_at = datetime.now(UTC)
+        await session.flush()
+        with pytest.raises(
+            ExecutionPlanError,
+            match="execution_plan_step_not_authorizable",
+        ):
+            await authorize_execution_plan(
+                session,
+                artifact_id=artifact.id,
+                worker_key="customer-map-worker",
+            )
+
+    async with isolated_session() as session:
+        run, step = await _execution_fixture(session)
+        artifact = await persist_execution_plan_artifact(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            plan=_plan(),
+        )
+        run.current_step = "different_step"
+        await session.flush()
+        with pytest.raises(
+            ExecutionPlanError,
+            match="execution_plan_step_not_current",
         ):
             await authorize_execution_plan(
                 session,
