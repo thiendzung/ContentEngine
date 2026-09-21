@@ -1388,3 +1388,63 @@ async def test_forged_review_request_fails_semantic_revalidation() -> None:
                 checks=_passing_checks(),
             )
 
+@pytest.mark.asyncio
+async def test_budget_exhaustion_blocks_execution_but_can_be_recorded_as_failure() -> None:
+    async with isolated_session() as session:
+        run, step = await _pending_fixture(session)
+        plan = _plan(
+            budget={
+                "max_tool_calls": 6,
+                "max_model_calls": 1,
+                "max_output_tokens": 4000,
+                "max_estimated_cost": "0.50",
+                "max_wall_clock_seconds": 1,
+            },
+            timeout_seconds=120,
+        )
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+            plan=plan,
+        )
+        job = await enqueue_execution_plan_job(
+            session,
+            execution_plan_artifact_id=plan_artifact.id,
+            worker_key="customer-map-worker",
+        )
+        lease = await claim_agent_task(
+            session,
+            worker_key="customer-map-worker",
+            worker_instance_id="budget-agent",
+            lease_seconds=30,
+        )
+        assert lease is not None
+        step.started_at = utc_now() - timedelta(seconds=2)
+        await session.flush()
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_budget_exceeded",
+        ):
+            await heartbeat_agent_task(
+                session,
+                job_id=job.id,
+                worker_key="customer-map-worker",
+                worker_instance_id="budget-agent",
+                extend_seconds=10,
+            )
+
+        failure = await fail_agent_task(
+            session,
+            job_id=job.id,
+            worker_key="customer-map-worker",
+            worker_instance_id="budget-agent",
+            failure_class="budget_exceeded",
+            message="ExecutionPlan wall-clock budget exhausted.",
+        )
+        assert failure.retry_step_run_id is None
+        await session.refresh(run)
+        assert run.status == "failed"
+        assert run.failure_code == "budget_exceeded"
+
