@@ -14,6 +14,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -51,10 +52,15 @@ from app.modules.harness.persistence import (
     enqueue_job,
     get_latest_checkpoint,
     heartbeat_job,
+    load_budget_usage,
     pause_for_approval,
 )
 from app.modules.harness.policy import (
+    BudgetExceededError,
+    BudgetExtras,
+    BudgetLimits,
     UnknownFailureClassError,
+    enforce_budget,
     is_retryable_failure,
 )
 
@@ -93,6 +99,9 @@ class AgentTaskLease:
     plan_deadline: datetime
     root_execution_id: UUID
     approval_id: UUID | None
+    execution_plan: dict[str, object]
+    settings_snapshot_id: UUID
+    settings_snapshot_hash: str
     replayed: bool
 
 
@@ -137,6 +146,172 @@ def _required_text(value: object, code: str) -> str:
     return value.strip()
 
 
+def _execution_plan_payload(plan: ExecutionPlan) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "task_key": plan.task_key,
+        "worker_key": plan.worker_key,
+        "goal": plan.goal,
+        "input_refs": list(plan.input_refs),
+        "expected_output_types": list(plan.expected_output_types),
+        "required_capabilities": list(plan.required_capabilities),
+        "allowed_actions": list(plan.allowed_actions),
+        "forbidden_actions": list(plan.forbidden_actions),
+        "allowed_tools": list(plan.allowed_tools),
+        "budget": dict(plan.budget),
+        "timeout_seconds": plan.timeout_seconds,
+        "max_attempts": plan.max_attempts,
+        "stop_conditions": list(plan.stop_conditions),
+        "required_checks": list(plan.required_checks),
+        "reviewer": plan.reviewer,
+        "next_on_pass": plan.next_on_pass,
+        "next_on_fail": plan.next_on_fail,
+        "human_gate_required": plan.human_gate_required,
+        "settings_snapshot_id": str(plan.settings_snapshot_id),
+        "settings_snapshot_hash": plan.settings_snapshot_hash,
+    }
+
+
+def _optional_int_budget(
+    plan: ExecutionPlan,
+    key: str,
+) -> int | None:
+    value = plan.budget.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise AgentBridgeError("agent_bridge_plan_budget_invalid")
+    return value
+
+
+def _optional_float_budget(
+    plan: ExecutionPlan,
+    key: str,
+) -> float | None:
+    value = plan.budget.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise AgentBridgeError("agent_bridge_plan_budget_invalid")
+    return float(value)
+
+
+def _optional_decimal_budget(
+    plan: ExecutionPlan,
+    key: str,
+) -> Decimal | None:
+    value = plan.budget.get(key)
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except Exception as exc:
+        raise AgentBridgeError(
+            "agent_bridge_plan_budget_invalid"
+        ) from exc
+
+
+def _plan_budget_limits(plan: ExecutionPlan) -> BudgetLimits:
+    return BudgetLimits(
+        max_model_calls=_optional_int_budget(plan, "max_model_calls"),
+        max_tool_calls=_optional_int_budget(plan, "max_tool_calls"),
+        max_context_estimate=_optional_int_budget(
+            plan,
+            "max_context_estimate",
+        ),
+        max_output_tokens=_optional_int_budget(
+            plan,
+            "max_output_tokens",
+        ),
+        max_estimated_cost=_optional_decimal_budget(
+            plan,
+            "max_estimated_cost",
+        ),
+        max_wall_clock_seconds=_optional_float_budget(
+            plan,
+            "max_wall_clock_seconds",
+        ),
+        max_research_sources=_optional_int_budget(
+            plan,
+            "max_research_sources",
+        ),
+        max_revise_loops=_optional_int_budget(
+            plan,
+            "max_revise_loops",
+        ),
+    )
+
+
+def _budget_extras(
+    plan: ExecutionPlan,
+    value: object,
+    *,
+    require_limited: bool,
+) -> BudgetExtras:
+    if value is None:
+        raw: dict[str, object] = {}
+    elif isinstance(value, dict):
+        raw = {str(key): item for key, item in value.items()}
+    else:
+        raise AgentBridgeError("agent_bridge_budget_telemetry_invalid")
+    allowed = {"context_estimate", "research_sources", "revise_loops"}
+    if not set(raw).issubset(allowed):
+        raise AgentBridgeError("agent_bridge_budget_telemetry_invalid")
+
+    mapping = {
+        "max_context_estimate": "context_estimate",
+        "max_research_sources": "research_sources",
+        "max_revise_loops": "revise_loops",
+    }
+    if require_limited:
+        for budget_key, telemetry_key in mapping.items():
+            if (
+                budget_key in plan.budget
+                and telemetry_key not in raw
+            ):
+                raise AgentBridgeError(
+                    "agent_bridge_budget_telemetry_required"
+                )
+
+    normalized: dict[str, int] = {}
+    for key in allowed:
+        item = raw.get(key, 0)
+        if isinstance(item, bool) or not isinstance(item, int) or item < 0:
+            raise AgentBridgeError(
+                "agent_bridge_budget_telemetry_invalid"
+            )
+        normalized[key] = item
+    return BudgetExtras(
+        context_estimate=normalized["context_estimate"],
+        research_sources=normalized["research_sources"],
+        revise_loops=normalized["revise_loops"],
+    )
+
+
+async def _enforce_plan_budget(
+    session: AsyncSession,
+    *,
+    authorized: AuthorizedExecutionPlan,
+    budget_extras: object = None,
+    require_nonledger_telemetry: bool,
+) -> None:
+    extras = _budget_extras(
+        authorized.plan,
+        budget_extras,
+        require_limited=require_nonledger_telemetry,
+    )
+    usage = await load_budget_usage(
+        session,
+        run_id=authorized.run_id,
+        step_run_id=authorized.step_run_id,
+        extras=extras,
+    )
+    try:
+        enforce_budget(_plan_budget_limits(authorized.plan), usage)
+    except BudgetExceededError as exc:
+        raise AgentBridgeError("agent_bridge_budget_exceeded") from exc
+
+
 def _stable_hash(value: object) -> str:
     encoded = json.dumps(
         value,
@@ -156,7 +331,7 @@ def _artifact_type(prefix: str, identity: object) -> str:
 
 
 def _worker_bucket(worker_key: str) -> str:
-    digest = hashlib.sha256(worker_key.encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(worker_key.encode("utf-8")).hexdigest()
     return f"agent_bridge:{digest}:"
 
 
@@ -412,16 +587,16 @@ async def enqueue_execution_plan_job(
     )
     if step.status != "pending":
         raise AgentBridgeError("agent_bridge_step_not_queueable")
-    await _bind_plan_to_step(
-        session,
-        step=step,
-        plan_artifact=artifact,
-    )
     await _real_approval(
         session,
         authorized=authorized,
         plan_artifact=artifact,
         step=step,
+    )
+    await _bind_plan_to_step(
+        session,
+        step=step,
+        plan_artifact=artifact,
     )
     return await enqueue_job(
         session,
@@ -438,11 +613,18 @@ async def enqueue_execution_plan_job(
 def _plan_deadline(
     *,
     step: StepRun,
-    timeout_seconds: float,
+    plan: ExecutionPlan,
 ) -> datetime:
     if step.started_at is None:
         raise AgentBridgeError("agent_bridge_step_not_started")
-    return step.started_at + timedelta(seconds=timeout_seconds)
+    effective_timeout = plan.timeout_seconds
+    budget_wall = _optional_float_budget(
+        plan,
+        "max_wall_clock_seconds",
+    )
+    if budget_wall is not None:
+        effective_timeout = min(effective_timeout, budget_wall)
+    return step.started_at + timedelta(seconds=effective_timeout)
 
 
 def _lease_seconds(value: object) -> float:
@@ -641,6 +823,7 @@ async def _existing_worker_lease(
         )
         .order_by(Job.created_at, Job.id)
         .limit(1)
+        .with_for_update()
     )
     return job
 
@@ -706,7 +889,7 @@ async def _lease_payload(
     now = utc_now()
     deadline = _plan_deadline(
         step=step,
-        timeout_seconds=authorized.plan.timeout_seconds,
+        plan=authorized.plan,
     )
     if now >= deadline:
         raise AgentBridgeError("agent_bridge_plan_timeout")
@@ -748,6 +931,9 @@ async def _lease_payload(
         plan_deadline=deadline,
         root_execution_id=root.id,
         approval_id=approval.id if approval is not None else None,
+        execution_plan=_execution_plan_payload(authorized.plan),
+        settings_snapshot_id=authorized.plan.settings_snapshot_id,
+        settings_snapshot_hash=authorized.plan.settings_snapshot_hash,
         replayed=replayed,
     )
 
