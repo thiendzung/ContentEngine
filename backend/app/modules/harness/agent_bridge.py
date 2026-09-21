@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.harness.delegation import (
@@ -687,7 +687,6 @@ async def _lease_payload(
     job: Job,
     worker_key: str,
     worker_instance_id: str,
-    lease_seconds: float,
     replayed: bool,
 ) -> AgentTaskLease:
     (
@@ -777,7 +776,6 @@ async def claim_agent_task(
             job=existing,
             worker_key=normalized_worker,
             worker_instance_id=instance,
-            lease_seconds=requested_lease,
             replayed=True,
         )
 
@@ -857,7 +855,6 @@ async def claim_agent_task(
         job=job,
         worker_key=normalized_worker,
         worker_instance_id=instance,
-        lease_seconds=requested_lease,
         replayed=False,
     )
 
@@ -917,7 +914,6 @@ async def heartbeat_agent_task(
         job=updated,
         worker_key=normalized_worker,
         worker_instance_id=instance,
-        lease_seconds=requested,
         replayed=True,
     )
 
@@ -984,6 +980,13 @@ async def _validated_outputs(
         if artifact.artifact_type not in plan.expected_output_types:
             raise AgentBridgeError(
                 "agent_bridge_output_type_not_expected"
+            )
+        if (
+            artifact.content_json is not None
+            and artifact.content_hash != _stable_hash(artifact.content_json)
+        ):
+            raise AgentBridgeError(
+                "agent_bridge_output_artifact_hash_mismatch"
             )
         artifacts.append(artifact)
 
