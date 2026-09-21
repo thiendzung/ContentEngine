@@ -783,7 +783,7 @@ def _build_candidate_rows(
         )
     ]
 
-    misconception_context = [
+    misconception_context: list[dict[str, object]] = [
         {
             "kind": "approved_observed_misconception",
             "statement": row["statement"],
@@ -792,7 +792,7 @@ def _build_candidate_rows(
         }
         for row in misconception_rows
     ]
-    signal_context = [
+    signal_context: list[dict[str, object]] = [
         {
             "kind": "customer_insight",
             "insight_type": row.get("insight_type"),
@@ -802,7 +802,7 @@ def _build_candidate_rows(
         }
         for row in insights
     ]
-    causal_context = [
+    causal_context: list[dict[str, object]] = [
         {
             "kind": "approved_causal_statement",
             "statement": row["statement"],
@@ -811,14 +811,14 @@ def _build_candidate_rows(
         }
         for row in causal_rows
     ]
-    method_context = [
+    method_context: list[dict[str, object]] = [
         {
             "kind": "motgu_material_ref",
             "material_ref": ref,
         }
         for ref in material_refs
     ]
-    case_context = [
+    case_context: list[dict[str, object]] = [
         {
             "kind": "approved_case_material",
             "summary": row["summary"],
@@ -827,7 +827,7 @@ def _build_candidate_rows(
         }
         for row in case_rows
     ]
-    pov_context = [
+    pov_context: list[dict[str, object]] = [
         {
             "kind": "approved_motgu_position",
             "statement": row["statement"],
