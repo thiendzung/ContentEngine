@@ -474,6 +474,31 @@ async def _real_approval(
         raise AgentBridgeError(
             "agent_bridge_human_approval_not_checkpointed"
         )
+
+    requested = {
+        "step_key": step.step_key,
+        "artifact_id": str(plan_artifact.id),
+    }
+    checkpoints = (
+        await session.scalars(
+            select(Artifact)
+            .where(
+                Artifact.run_id == authorized.run_id,
+                Artifact.artifact_type == "checkpoint",
+            )
+            .order_by(Artifact.version.desc(), Artifact.id.desc())
+        )
+    ).all()
+    approval_request_seen = any(
+        isinstance(item.content_json, dict)
+        and item.content_json.get("pending_approval") == requested
+        and item.created_at <= approval.created_at
+        for item in checkpoints
+    )
+    if not approval_request_seen:
+        raise AgentBridgeError(
+            "agent_bridge_human_approval_request_missing"
+        )
     return approval
 
 
