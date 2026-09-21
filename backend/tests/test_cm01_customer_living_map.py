@@ -29,6 +29,7 @@ from app.modules.customer_intelligence.living_map import (
     compare_customer_map_snapshots,
     customer_map_audience_detail,
     customer_map_changes,
+    customer_map_need_detail,
     customer_map_summary,
     ensure_customer_insight_need_link,
     refresh_customer_map_snapshot_artifact,
@@ -502,6 +503,17 @@ async def test_customer_map_uses_latest_insight_version_and_explicit_need_link()
         assert summary["counts"]["audiences"] == 1
         assert summary["counts"]["needs"] == 1
         assert summary["counts"]["insights"] == 1
+
+        need_detail = await customer_map_need_detail(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+        )
+        assert need_detail["need"]["id"] == str(need.id)
+        assert need_detail["audience"]["id"] == str(audience.id)
+        assert [row["id"] for row in need_detail["insights"]] == [
+            str(revised.id)
+        ]
 
 
 @pytest.mark.asyncio
