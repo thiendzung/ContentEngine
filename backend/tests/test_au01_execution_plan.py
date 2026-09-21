@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.exc import DBAPIError
 from test_ce05_review_console import _approved_fixture, isolated_session
 
-from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.content_engine.models import SettingsSnapshot, SettingsVersion
 from app.modules.harness.execution_plan import (
     ExecutionPlanError,
     authorize_execution_plan,
@@ -134,6 +134,32 @@ def _plan(**overrides: object) -> dict[str, object]:
     return plan
 
 
+async def _approved_policy_snapshot(
+    session,
+    *,
+    project_id,
+    settings: dict[str, object],
+) -> SettingsSnapshot:
+    version = SettingsVersion(
+        project_id=None,
+        scope_type="system",
+        scope_key=f"au01-{uuid4().hex[:12]}",
+        version=1,
+        settings_json=settings,
+        status="active",
+        change_reason="AU-01 capability policy test fixture",
+        approved_by="founder",
+    )
+    session.add(version)
+    await session.flush()
+    return await create_settings_snapshot(
+        session,
+        project_id=project_id,
+        resolved_settings=settings,
+        source_version_refs=[f"settings_version:{version.id}:v{version.version}"],
+    )
+
+
 async def _execution_fixture(
     session,
     *,
@@ -141,11 +167,10 @@ async def _execution_fixture(
 ) -> tuple[ContentRun, StepRun]:
     base = await _approved_fixture(session)
     source = base.writer_runs["en"]
-    snapshot = await create_settings_snapshot(
+    snapshot = await _approved_policy_snapshot(
         session,
         project_id=source.project_id,
-        resolved_settings=settings or _policy(),
-        source_version_refs=[f"au01-test:{uuid4().hex}"],
+        settings=settings or _policy(),
     )
     run = ContentRun(
         project_id=source.project_id,
@@ -389,11 +414,10 @@ async def test_authorization_rejects_wrong_worker_and_stale_run_binding() -> Non
                 worker_key="other-worker",
             )
 
-        replacement = await create_settings_snapshot(
+        replacement = await _approved_policy_snapshot(
             session,
             project_id=run.project_id,
-            resolved_settings=_policy(max_attempts=1),
-            source_version_refs=["au01-test:replacement"],
+            settings=_policy(max_attempts=1),
         )
         run.settings_snapshot_id = replacement.id
         await session.flush()
@@ -406,6 +430,95 @@ async def test_authorization_rejects_wrong_worker_and_stale_run_binding() -> Non
                 session,
                 artifact_id=artifact.id,
                 worker_key="customer-map-worker",
+            )
+
+
+@pytest.mark.asyncio
+async def test_execution_plan_requires_approved_policy_source() -> None:
+    async with isolated_session() as session:
+        base = await _approved_fixture(session)
+        source = base.writer_runs["en"]
+        snapshot = await create_settings_snapshot(
+            session,
+            project_id=source.project_id,
+            resolved_settings=_policy(),
+            source_version_refs=["run_override:unapproved-policy"],
+        )
+        run = ContentRun(
+            project_id=source.project_id,
+            content_case_id=source.content_case_id,
+            locale_variant_id=source.locale_variant_id,
+            content_item_id=source.content_item_id,
+            run_mode="update",
+            status="running",
+            current_step="customer_map_refresh",
+            settings_snapshot_id=snapshot.id,
+            started_at=datetime.now(UTC),
+        )
+        session.add(run)
+        await session.flush()
+
+        with pytest.raises(
+            ExecutionPlanError,
+            match="execution_plan_policy_approved_source_required",
+        ):
+            await persist_execution_plan_artifact(
+                session,
+                run_id=run.id,
+                step_run_id=None,
+                plan=_plan(),
+            )
+
+
+@pytest.mark.asyncio
+async def test_execution_plan_rejects_policy_snapshot_source_mismatch() -> None:
+    async with isolated_session() as session:
+        base = await _approved_fixture(session)
+        source = base.writer_runs["en"]
+        approved = _policy(max_attempts=1)
+        version = SettingsVersion(
+            project_id=None,
+            scope_type="system",
+            scope_key=f"au01-mismatch-{uuid4().hex[:12]}",
+            version=1,
+            settings_json=approved,
+            status="active",
+            change_reason="AU-01 mismatch test",
+            approved_by="founder",
+        )
+        session.add(version)
+        await session.flush()
+        snapshot = await create_settings_snapshot(
+            session,
+            project_id=source.project_id,
+            resolved_settings=_policy(max_attempts=3),
+            source_version_refs=[
+                f"settings_version:{version.id}:v{version.version}"
+            ],
+        )
+        run = ContentRun(
+            project_id=source.project_id,
+            content_case_id=source.content_case_id,
+            locale_variant_id=source.locale_variant_id,
+            content_item_id=source.content_item_id,
+            run_mode="update",
+            status="running",
+            current_step="customer_map_refresh",
+            settings_snapshot_id=snapshot.id,
+            started_at=datetime.now(UTC),
+        )
+        session.add(run)
+        await session.flush()
+
+        with pytest.raises(
+            ExecutionPlanError,
+            match="execution_plan_policy_snapshot_source_mismatch",
+        ):
+            await persist_execution_plan_artifact(
+                session,
+                run_id=run.id,
+                step_run_id=None,
+                plan=_plan(),
             )
 
 
