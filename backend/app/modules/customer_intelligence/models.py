@@ -114,6 +114,35 @@ class CustomerInsightSignal(Base):
     )
 
 
+
+
+
+class CustomerInsightNeedLink(Base):
+    __tablename__ = "customer_insight_need_links"
+
+    customer_insight_id: Mapped[UUID] = mapped_column(
+        ForeignKey("customer_insights.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    need_hypothesis_id: Mapped[UUID] = mapped_column(
+        ForeignKey("need_hypotheses.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    relation: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "relation in ('supports','contradicts','context')",
+            name="ck_customer_insight_need_links_relation",
+        ),
+        Index(
+            "ix_customer_insight_need_links_need",
+            "need_hypothesis_id",
+            "relation",
+        ),
+    )
+
+
 class CustomerInsightReview(Base):
     __tablename__ = "customer_insight_reviews"
 
@@ -154,6 +183,7 @@ class CustomerInsightReview(Base):
 
 __all__ = [
     "CustomerInsight",
+    "CustomerInsightNeedLink",
     "CustomerInsightReview",
     "CustomerInsightSignal",
 ]
