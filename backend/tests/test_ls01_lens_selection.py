@@ -756,6 +756,30 @@ async def test_lens_artifacts_are_bound_to_step_outputs() -> None:
         assert str(candidates.artifact.id) in step.output_artifact_refs_json
         assert str(selection.artifact.id) in step.output_artifact_refs_json
 
+        retry_step = StepRun(
+            run_id=run.id,
+            step_key="lens_selection",
+            attempt=2,
+            status="running",
+            input_artifact_refs_json=[],
+            output_artifact_refs_json=[],
+            started_at=datetime.now(UTC),
+        )
+        session.add(retry_step)
+        await session.flush()
+        retry_candidates = await persist_lens_candidates(
+            session,
+            run_id=run.id,
+            step_run_id=retry_step.id,
+        )
+        assert retry_candidates.artifact.id != candidates.artifact.id
+        assert retry_candidates.artifact.version == (
+            candidates.artifact.version + 1
+        )
+        assert retry_candidates.payload["run_ref"]["step_run_id"] == str(
+            retry_step.id
+        )
+
 
 @pytest.mark.asyncio
 async def test_forged_selection_payload_fails_semantic_revalidation() -> None:
