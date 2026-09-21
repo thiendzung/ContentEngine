@@ -28,12 +28,12 @@ from app.modules.content_engine.models import (
     HumanSelection,
     LocaleVariant,
     NeedHypothesis,
+    NeedHypothesisSignal,
     Project,
     SettingsVersion,
     Signal,
 )
 from app.modules.harness.models import (
-    Artifact,
     ContentRun,
     ModelCall,
     ToolCall,
