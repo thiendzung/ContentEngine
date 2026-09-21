@@ -12,6 +12,7 @@ from app.modules.harness.execution_plan import (
     authorize_execution_plan,
     persist_execution_plan_artifact,
 )
+from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.system.settings_service import create_settings_snapshot
 
@@ -32,26 +33,39 @@ def _policy(
                 "enabled": True,
                 "workers": {
                     "customer-map-worker": {
-                        "capabilities": capabilities
-                        or [
-                            "READ",
-                            "WRITE_ARTIFACT",
-                            "RUN_TOOL",
-                            "WRITE_DATABASE",
-                        ],
-                        "allowed_actions": allowed_actions
-                        or [
-                            "customer.read",
-                            "customer.map.refresh",
-                            "artifact.write",
-                        ],
-                        "forbidden_actions": forbidden_actions
-                        or [
-                            "publish.execute",
-                            "settings.change",
-                            "workflow.change",
-                        ],
-                        "allowed_tools": allowed_tools or ["customer_store", "dedupe"],
+                        "capabilities": (
+                            capabilities
+                            if capabilities is not None
+                            else [
+                                "READ",
+                                "WRITE_ARTIFACT",
+                                "RUN_TOOL",
+                                "WRITE_DATABASE",
+                            ]
+                        ),
+                        "allowed_actions": (
+                            allowed_actions
+                            if allowed_actions is not None
+                            else [
+                                "customer.read",
+                                "customer.map.refresh",
+                                "artifact.write",
+                            ]
+                        ),
+                        "forbidden_actions": (
+                            forbidden_actions
+                            if forbidden_actions is not None
+                            else [
+                                "publish.execute",
+                                "settings.change",
+                                "workflow.change",
+                            ]
+                        ),
+                        "allowed_tools": (
+                            allowed_tools
+                            if allowed_tools is not None
+                            else ["customer_store", "dedupe"]
+                        ),
                         "budget_ceiling": {
                             "max_tool_calls": 12,
                             "max_model_calls": 2,
@@ -364,10 +378,6 @@ async def test_execution_plan_and_settings_snapshot_are_database_immutable() -> 
             step_run_id=step.id,
             plan=_plan(),
         )
-        snapshot = await session.get(type(run).__table__.metadata.tables["settings_snapshots"] if False else object, run.settings_snapshot_id)
-        # Load through the mapped class without introducing an alternate settings model.
-        from app.modules.content_engine.models import SettingsSnapshot
-
         snapshot_row = await session.get(SettingsSnapshot, run.settings_snapshot_id)
         assert snapshot_row is not None
 
