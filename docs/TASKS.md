@@ -168,3 +168,46 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [ ] No automatic merge or runtime permission inherited from a roadmap.
 
 Retain completed CE00-CE04, M1, Review Console/Board, observability/delegation, OPS-01/02, K1-K6 and routing foundations. Defer WordPress/publish automation, Artwork expansion, broad evaluator platform, vector DB, new workflow engines/providers, native multi-agent and Antigravity activation.
+
+## Customer Living Map + Controlled Autopilot track
+
+Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
+
+| ID | State | Next exit |
+|---|---|---|
+| ARCH-21 | IN REVIEW | Founder merges this docs/contract PR; no runtime execution implied. |
+| CT-01 | QUEUED AFTER ARCH-21 | CustomerInsight model + Signal relations + migration + tests. |
+| AU-01 | PLANNED | Immutable ExecutionPlan + capability policy; permission mismatch fails closed. |
+| CM-01 | PLANNED | Living Map snapshot/read API for Audience + Needs + Journey. |
+| CC-01 | PLANNED | Content Coverage relations/status/gap detection. |
+| LS-01 | PLANNED | 7 Content Lenses as selection tool, not article generator. |
+| AU-02 | PLANNED | Local agent bridge + safe auto-next orchestration + independent review. |
+| QA-01 | PLANNED | Reader Value gate + separate SEO/AI readiness. |
+| PM-01 | PLANNED | Publish/measurement identity and safe adapters. |
+| LL-01 | PLANNED | Measurement → Signal → LearningCandidate → reviewed map update. |
+| UX-01 | PLANNED | Control Center + Living Map dashboard + Needs Me + Daily Digest. |
+| E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
+
+### CT-01 immediate checklist
+
+- [ ] Add CustomerInsight contract/model with bounded taxonomy.
+- [ ] Add CustomerInsight ↔ Signal relation with supports/contradicts/context semantics.
+- [ ] Preserve provenance, version, missing evidence and alternative explanations.
+- [ ] Dedupe cannot count reposts as independent support.
+- [ ] Add migration and disposable-DB upgrade/round-trip proof.
+- [ ] Add focused unit/persistence/replay tests.
+- [ ] Do not change Journal Angle/Outline/Writer behaviour.
+- [ ] No operational DB migration until Founder separately authorizes it.
+- [ ] Code-bearing PR follows CI → exact-ref OpenCodeReview → MG triage → bounded Agent Local proof when needed → Founder merge.
+
+### AU-01 immediate checklist
+
+- [ ] Define immutable ExecutionPlan artifact schema.
+- [ ] Bind goal/input/output/tool/action/forbidden-action contract.
+- [ ] Add max attempts, timeout, budget and stop conditions.
+- [ ] Use versioned capability policy through existing SettingsSnapshot machinery.
+- [ ] Worker/plan/policy mismatch fails closed.
+- [ ] Add duplicate/stale/replay tests.
+- [ ] Do not add a second workflow engine or free-form agent permission system.
+
+Remaining milestone checklists are canonical in spec 21 and become exact tasks one bounded slice at a time.

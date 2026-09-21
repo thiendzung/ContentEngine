@@ -106,3 +106,39 @@ UI displays only canonical data. Health can be unknown/stale; installed CLI is n
 OpenCodeReview is a second semantic reviewer, not workflow authority or runtime proof. For routine OCR use, use the verified v1.12.6 baseline, Git >=2.41, exact full commit SHAs, tests/operational config in review scope, and classify every finding before code changes. OCR-01 historical evidence remains tied to v1.12.5.
 
 Operational migration requires explicit authorization, backup/restore proof and frozen-M1 verification. New Model Routing policy activation is optional for V1 when existing approved routes suffice. No WordPress/publish, Artwork expansion, vector DB, native Codex multi-agent or Antigravity production activation in this completion scope.
+
+## Approved next architecture direction — 2026-09-21
+
+Founder approved `docs/21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md` as the next product architecture track.
+
+Target flow:
+
+```text
+Deep Research
+→ Raw Sources
+→ Signal
+→ Customer Insight
+→ Customer Living Map (Audience + Needs + Journey)
+→ Content Coverage
+→ Content Opportunity
+→ Lens Selection
+→ Evidence / Originality
+→ Angle → Outline → Writer
+→ Reader Value → SEO/AI Readiness
+→ Publish
+→ Search / Behaviour / Sales
+→ Signal
+→ Customer Map Update
+```
+
+Automation goal: about 99% of execution through controlled plans, least-privilege capabilities, existing Harness, independent review and human-by-exception.
+
+This docs change does NOT:
+- authorize local migration;
+- authorize a paid/model run;
+- activate Antigravity;
+- remove Angle/Outline/final approvals;
+- authorize publication;
+- mutate the active F7 runtime lineage.
+
+After ARCH-21 merge, first code slice is CT-01 CustomerInsight foundation, followed by AU-01 ExecutionPlan + capability policy.

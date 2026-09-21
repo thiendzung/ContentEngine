@@ -49,3 +49,30 @@ This delivery order replaces the assumption that every full CE06/CE07 feature mu
 ## Change selection rule
 
 Every proposed change states: observed problem, affected outcome, smallest fix, evidence of success, rollback, and what is deliberately NOT being built. Before M1 it must directly unblock the current real Journal or fix demonstrated security/data-integrity risk. Otherwise it stays in backlog.
+
+## Approved next architecture track — Customer Living Map + Controlled Autopilot
+
+Canonical contract: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
+
+This track extends the proven Journal foundation. It does not erase M1-M4, authorize a local migration, or permit model/runtime execution merely because the roadmap exists.
+
+| Order | ID | Deliverable | Exit evidence |
+|---|---|---|---|
+| 0 | ARCH-21 | Contract/plan sync | Spec + PLAN + TASKS + CHECKLIST + AI_context agree |
+| 1 | CT-01 | CustomerInsight foundation | Signal → Insight with provenance, support/contradiction, versioning and tests |
+| 2 | AU-01 | ExecutionPlan + capability policy | Every automated task has bounded scope, permissions, retries, budget and stop rules |
+| 3 | CM-01 | Customer Living Map | Audience/Needs/Journey snapshot + incremental change API |
+| 4 | CC-01 | Content Coverage | Need ↔ Content ↔ Journey coverage/gap map |
+| 5 | LS-01 | Lens Selection | 7-lens candidates with SELECT/MERGE/HOLD/DROP and evidence guards |
+| 6 | AU-02 | Agent Bridge + orchestration | Approved plan auto-runs safe next tasks through existing Harness with independent review |
+| 7 | QA-01 | Reader Value + SEO/AI readiness | Reader Value is prerequisite; discovery readiness is separate |
+| 8 | PM-01 | Publish + measurement identity | Published URL/version maps back to audience/need/journey/lens |
+| 9 | LL-01 | Closed learning loop | Observation → candidate → experiment → regression → reviewed promotion |
+| 10 | UX-01 | Control Center + Living Map UI | Overview/Customers/Content Map/Production/Needs Me/Learning/System |
+| 11 | E2E-01 | Real closed-loop pilot | One real case completes the full loop without case-specific bypass |
+
+Execution rules:
+- ARCH-21 is docs/contracts only.
+- CT-01 is the first code slice after Founder merges ARCH-21.
+- Do not interleave new schema/runtime mutation with an active F7 content execution.
+- WIP stays one implementation plus one related verification.
