@@ -965,6 +965,7 @@ The change report is observation/reporting only. It does not auto-promote Custom
 
 - `GET /customer-map/summary`
 - `GET /customer-map/audiences/{audience_id}`
+- `GET /customer-map/needs/{need_id}`
 - `GET /customer-map/changes`
 
 These endpoints are read-only against canonical persisted state and do not call research providers, models or delegated workers.
