@@ -110,3 +110,50 @@ Every PR:
 `GOAL / SCOPE / EXACT REF / FILES CHANGED / EVIDENCE / CHECKS NOT RUN / RISKS-BLOCKERS / STATE TRANSITION / STATUS / NEXT`
 
 Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCKED, NEED HUMAN DECISION. State which scope is ready; stop after the task.
+
+## J. Customer truth and living map
+
+- [ ] Raw Source, Signal, CustomerInsight and Hypothesis/Map are distinct.
+- [ ] Every Insight traces to one or more Signals; relation is support/contradict/context.
+- [ ] Duplicate/repost does not count as independent evidence.
+- [ ] Missing evidence and alternative explanations are retained.
+- [ ] Model interpretation is not silently promoted to customer truth.
+- [ ] Direct/private customer data is minimized and sanitized for GitHub evidence.
+- [ ] Journey stage is descriptive/configurable, not a forced linear funnel.
+- [ ] VPC/Keyword/JTBD are derived views, not independent truth stores.
+
+## K. Content coverage and Lens
+
+- [ ] Each content item has one primary Need and optional supporting Needs.
+- [ ] Need ↔ Content ↔ Journey links are traceable.
+- [ ] Coverage uses explicit states, not fake precision scores.
+- [ ] Existing content checked before CREATE.
+- [ ] Topic, Intent and Lens remain separate.
+- [ ] Lens candidates can SELECT/MERGE/HOLD/DROP; no requirement to use all seven.
+- [ ] CASE has real provenance/rights; POV has approved MOTGU position; SIGNALS is not conclusion; CAUSES needs causal support.
+- [ ] One Lens does not automatically create one article.
+
+## L. Controlled autopilot
+
+- [ ] Exact immutable ExecutionPlan exists before automated delegation.
+- [ ] Allowed/forbidden actions, tools, budget, timeout, attempts and stop conditions are explicit.
+- [ ] Worker capability is least privilege and bound to exact plan/settings.
+- [ ] Control Plane may propose next work; Harness remains durable workflow authority.
+- [ ] Missing/ambiguous policy fails closed.
+- [ ] Worker output is independently checked where judgement is required.
+- [ ] Coordinator/subagent telemetry is persisted without chain-of-thought or secrets.
+- [ ] No uncontrolled multi-agent/app/plugin activation.
+- [ ] Learning proposes production changes; it does not silently promote them.
+- [ ] Current Angle/Outline/final and publish gates remain intact unless a separate approved contract changes them.
+
+## M. Dashboard, measure and closed loop
+
+- [ ] Dashboard reads backend read models and never invents worker/business state.
+- [ ] Overview, Customers, Content Map, Production, Needs Me, Learning and System states are distinguishable.
+- [ ] Important automated decisions expose Why/reasons/source refs.
+- [ ] PublishedContent identity traces to ContentVersion/Opportunity/Need/Audience/Journey/Lens.
+- [ ] Search/behaviour/sales observations return as Signal without causal overclaim.
+- [ ] Small sample/low exposure remains INSUFFICIENT_DATA.
+- [ ] Daily refresh reports what changed, not only row counts.
+- [ ] External Deep Research is triggered by need/gap/freshness, not blind daily crawling.
+- [ ] Real E2E pilot proves restart/replay/idempotency before claiming 99% automation.
