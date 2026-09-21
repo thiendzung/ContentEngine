@@ -36,6 +36,12 @@ from app.modules.content_engine.journal.operator_writers import (
     WriterLaneProgress,
     get_writer_lane_progress,
 )
+from app.modules.content_engine.journal.quality_readiness import (
+    READINESS_ARTIFACT_TYPES,
+    READINESS_HANDOFF_TYPES,
+    READER_VALUE_TASK_KEYS,
+    SEARCH_AI_TASK_KEYS,
+)
 from app.modules.content_engine.journal.review_revise import load_review_revise_input
 from app.modules.content_engine.journal.review_revise_agent_bridge import (
     review_revise_registry_config,
@@ -145,6 +151,8 @@ class QualityLane:
     review: QualityStage
     audit: QualityStage
     source_copy: QualityStage
+    reader_value: QualityStage
+    search_ai: QualityStage
     final_item: ContentItem | None = None
     final_content: Artifact | None = None
     final_review: StepRun | None = None
@@ -168,13 +176,62 @@ class QualityLane:
             == {"step_key": "final_review", "artifact_id": str(self.final_content.id)}
         ):
             return "final_gate_ready"
+        search_eval = self.search_ai.evaluation
+        if search_eval is not None:
+            return "quality_blocked" if search_eval.result == "fail" else "qualified"
+        search_job = self.search_ai.job
+        if search_job is not None and search_job.status in {"queued", "leased"}:
+            return "search_ai_running" if search_job.status == "leased" else "search_ai_queued"
+        if (
+            (search_job is not None and search_job.status in {"failed", "cancelled"})
+            or (self.search_ai.run is not None and self.search_ai.run.status in {"failed", "cancelled"})
+        ):
+            if _stage_has_integrity_failure(self.search_ai):
+                return "quality_blocked"
+            is_exhausted = (
+                self.search_ai.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (search_job is not None and search_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
+                or (
+                    self.search_ai.run is not None
+                    and self.search_ai.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
+            return "execution_failed_exhausted" if is_exhausted else "execution_failed_retryable"
+
+        reader_eval = self.reader_value.evaluation
+        if reader_eval is not None:
+            if reader_eval.result == "fail":
+                return "quality_blocked"
+            return "reader_value_ready" if self.search_ai.run is None else "search_ai_queued"
+        reader_job = self.reader_value.job
+        if reader_job is not None and reader_job.status in {"queued", "leased"}:
+            return "reader_value_running" if reader_job.status == "leased" else "reader_value_queued"
+        if (
+            (reader_job is not None and reader_job.status in {"failed", "cancelled"})
+            or (
+                self.reader_value.run is not None
+                and self.reader_value.run.status in {"failed", "cancelled"}
+            )
+        ):
+            if _stage_has_integrity_failure(self.reader_value):
+                return "quality_blocked"
+            is_exhausted = (
+                self.reader_value.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (reader_job is not None and reader_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
+                or (
+                    self.reader_value.run is not None
+                    and self.reader_value.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
+            return "execution_failed_exhausted" if is_exhausted else "execution_failed_retryable"
+
         if self.source_copy.evaluation is not None:
             result = self.source_copy.evaluation.result
             findings = self.source_copy.evaluation.findings_json
             fail_count = findings.get("fail_count", 0) if isinstance(findings, dict) else 0
             if result == "fail" or fail_count:
                 return "quality_blocked"
-            return "qualified"
+            return "source_copy_ready"
         source_job = self.source_copy.job
         if source_job is not None and source_job.status in {"queued", "leased"}:
             return "source_copy_running" if source_job.status == "leased" else "source_copy_queued"
@@ -271,6 +328,8 @@ class QualityProgress:
             lane.review.step is not None
             or lane.audit.run is not None
             or lane.source_copy.run is not None
+            or lane.reader_value.run is not None
+            or lane.search_ai.run is not None
             or lane.final_content is not None
             for lane in self.lanes
         )
@@ -290,7 +349,13 @@ class QualityProgress:
         return any(
             stage.job is not None and stage.job.status in {"queued", "leased"}
             for lane in self.lanes
-            for stage in (lane.review, lane.audit, lane.source_copy)
+            for stage in (
+                lane.review,
+                lane.audit,
+                lane.source_copy,
+                lane.reader_value,
+                lane.search_ai,
+            )
         )
 
     @property
@@ -336,6 +401,22 @@ class QualityProgress:
                         "jobs": [_job_payload(job) for job in lane.source_copy.jobs],
                         "artifact": _ref(lane.source_copy.artifact),
                         "evaluation": _evaluation_payload(lane.source_copy.evaluation),
+                    },
+                    "reader_value": {
+                        "run_id": str(lane.reader_value.run.id) if lane.reader_value.run else None,
+                        "handoff": _ref(lane.reader_value.handoff),
+                        "step": _step_payload(lane.reader_value.step),
+                        "jobs": [_job_payload(job) for job in lane.reader_value.jobs],
+                        "artifact": _ref(lane.reader_value.artifact),
+                        "evaluation": _evaluation_payload(lane.reader_value.evaluation),
+                    },
+                    "search_ai": {
+                        "run_id": str(lane.search_ai.run.id) if lane.search_ai.run else None,
+                        "handoff": _ref(lane.search_ai.handoff),
+                        "step": _step_payload(lane.search_ai.step),
+                        "jobs": [_job_payload(job) for job in lane.search_ai.jobs],
+                        "artifact": _ref(lane.search_ai.artifact),
+                        "evaluation": _evaluation_payload(lane.search_ai.evaluation),
                     },
                     "final": {
                         "content_item_id": str(lane.final_item.id) if lane.final_item else None,
@@ -437,7 +518,7 @@ async def _stage_for_handoff(
                 and source_ref is not None
                 and source_ref == _ref(source_draft)
             )
-        else:
+        elif handoff_type == "source_copy_handoff":
             if audit_artifact is None or audit_evaluation is None:
                 matches_source = False
             else:
@@ -460,6 +541,14 @@ async def _stage_for_handoff(
                     and audit_ref == _ref(audit_artifact)
                     and audit_eval_id == str(audit_evaluation.id)
                 )
+        else:
+            source_run_ref_text = _payload_id(payload, "source_writer_run_id")
+            source_ref = _payload_ref(payload, "source_draft")
+            matches_source = (
+                source_run_ref_text == str(writer.run.id)
+                and source_ref is not None
+                and source_ref == _ref(source_draft)
+            )
         if not matches_source:
             continue
         run = await session.get(ContentRun, handoff.run_id)
@@ -515,7 +604,14 @@ async def _stage_for_handoff(
                     select(Artifact).where(
                         Artifact.run_id == run.id,
                         Artifact.step_run_id == step.id,
-                        Artifact.artifact_type.in_(("assertion_audit", "source_copy_check")),
+                        Artifact.artifact_type.in_(
+                            (
+                                "assertion_audit",
+                                "source_copy_check",
+                                READINESS_ARTIFACT_TYPES["reader_value"],
+                                READINESS_ARTIFACT_TYPES["search_ai"],
+                            )
+                        ),
                         Artifact.locale == locale,
                     )
                 )
@@ -663,6 +759,22 @@ async def get_quality_progress(
             audit_artifact=audit.artifact,
             audit_evaluation=audit.evaluation,
         )
+        reader_value = await _stage_for_handoff(
+            session,
+            handoff_type=READINESS_HANDOFF_TYPES["reader_value"],
+            locale=writer.required_locale,
+            writer=writer,
+            source_draft=audit_input_draft,
+            task_key=READER_VALUE_TASK_KEYS[writer.required_locale],
+        )
+        search_ai = await _stage_for_handoff(
+            session,
+            handoff_type=READINESS_HANDOFF_TYPES["search_ai"],
+            locale=writer.required_locale,
+            writer=writer,
+            source_draft=audit_input_draft,
+            task_key=SEARCH_AI_TASK_KEYS[writer.required_locale],
+        )
         item = None
         final_content = None
         final_review = None
@@ -728,6 +840,8 @@ async def get_quality_progress(
             review=review,
             audit=audit,
             source_copy=source_copy,
+            reader_value=reader_value,
+            search_ai=search_ai,
             final_item=item,
             final_content=final_content,
             final_review=final_review,
@@ -1447,6 +1561,8 @@ async def prepare_final_gates(
                 review=lane.review,
                 audit=lane.audit,
                 source_copy=lane.source_copy,
+                reader_value=lane.reader_value,
+                search_ai=lane.search_ai,
                 final_item=item,
                 final_content=final,
                 final_review=step,
