@@ -18,7 +18,6 @@ from app.modules.content_engine.models import (
     NeedHypothesisSignal,
     Project,
     SettingsVersion,
-    Signal,
 )
 from app.modules.customer_intelligence.insights import (
     CustomerInsightError,
@@ -28,7 +27,6 @@ from app.modules.customer_intelligence.models import (
     CustomerInsight,
     CustomerInsightNeedLink,
     CustomerInsightSignal,
-    CustomerNeedJourneyStageLink,
 )
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 
@@ -113,9 +111,17 @@ async def ensure_customer_insight_need_link(
     customer_insight_id: UUID,
     need_hypothesis_id: UUID,
     relation: InsightNeedRelation,
+    linked_by: str,
+    reason: str,
 ) -> CustomerInsightNeedLink:
     if relation not in {"supports", "contradicts", "context"}:
         raise CustomerMapError("customer_map_insight_need_relation_invalid")
+    actor = linked_by.strip()
+    rationale = reason.strip()
+    if not actor:
+        raise CustomerMapError("customer_map_insight_need_actor_required")
+    if not rationale:
+        raise CustomerMapError("customer_map_insight_need_reason_required")
 
     insight = await session.get(CustomerInsight, customer_insight_id)
     if insight is None:
@@ -137,7 +143,11 @@ async def ensure_customer_insight_need_link(
         (customer_insight_id, need_hypothesis_id),
     )
     if existing is not None:
-        if existing.relation != relation:
+        if (
+            existing.relation != relation
+            or existing.linked_by != actor
+            or existing.reason != rationale
+        ):
             raise CustomerMapError("customer_map_insight_need_replay_conflict")
         return existing
 
@@ -145,53 +155,6 @@ async def ensure_customer_insight_need_link(
         customer_insight_id=customer_insight_id,
         need_hypothesis_id=need_hypothesis_id,
         relation=relation,
-    )
-    session.add(link)
-    await session.flush()
-    return link
-
-
-async def ensure_need_journey_stage_link(
-    session: AsyncSession,
-    *,
-    need_hypothesis_id: UUID,
-    stage_key: str,
-    linked_by: str,
-    reason: str,
-) -> CustomerNeedJourneyStageLink:
-    need = await session.get(NeedHypothesis, need_hypothesis_id)
-    if need is None:
-        raise CustomerMapError("customer_map_need_not_found")
-    normalized_stage = stage_key.strip()
-    actor = linked_by.strip()
-    rationale = reason.strip()
-    if not _KEY_RE.fullmatch(normalized_stage):
-        raise CustomerMapError("customer_map_journey_stage_key_invalid")
-    if not actor:
-        raise CustomerMapError("customer_map_journey_link_actor_required")
-    if not rationale:
-        raise CustomerMapError("customer_map_journey_link_reason_required")
-
-    journey = await resolve_journey_config(
-        session,
-        project_id=need.project_id,
-    )
-    valid_stages = {stage["key"] for stage in journey.stages}
-    if normalized_stage not in valid_stages:
-        raise CustomerMapError("customer_map_journey_stage_not_configured")
-
-    existing = await session.get(
-        CustomerNeedJourneyStageLink,
-        (need_hypothesis_id, normalized_stage),
-    )
-    if existing is not None:
-        if existing.linked_by != actor or existing.reason != rationale:
-            raise CustomerMapError("customer_map_journey_link_replay_conflict")
-        return existing
-
-    link = CustomerNeedJourneyStageLink(
-        need_hypothesis_id=need_hypothesis_id,
-        stage_key=normalized_stage,
         linked_by=actor,
         reason=rationale,
     )
@@ -381,25 +344,6 @@ async def build_customer_map_snapshot(
                 )
             ).scalars()
         )
-    journey_link_rows = []
-    if need_ids:
-        journey_link_rows = list(
-            (
-                await session.execute(
-                    select(CustomerNeedJourneyStageLink)
-                    .where(
-                        CustomerNeedJourneyStageLink.need_hypothesis_id.in_(
-                            need_ids
-                        )
-                    )
-                    .order_by(
-                        CustomerNeedJourneyStageLink.need_hypothesis_id,
-                        CustomerNeedJourneyStageLink.stage_key,
-                    )
-                )
-            ).scalars()
-        )
-
     need_signal_rows = []
     if need_ids:
         need_signal_rows = list(
@@ -436,30 +380,17 @@ async def build_customer_map_snapshot(
             {
                 "need_hypothesis_id": str(link.need_hypothesis_id),
                 "relation": link.relation,
+                "linked_by": link.linked_by,
+                "reason": link.reason,
             }
         )
         need_insight_map.setdefault(link.need_hypothesis_id, []).append(
             {
                 "customer_insight_id": str(link.customer_insight_id),
                 "relation": link.relation,
-            }
-        )
-
-    journey_stage_keys = {stage["key"] for stage in journey.stages}
-    need_journey_map: dict[UUID, list[dict[str, str]]] = {}
-    stage_need_map: dict[str, list[str]] = {}
-    for link in journey_link_rows:
-        if link.stage_key not in journey_stage_keys:
-            raise CustomerMapError("customer_map_need_journey_stage_stale")
-        need_journey_map.setdefault(link.need_hypothesis_id, []).append(
-            {
-                "stage_key": link.stage_key,
                 "linked_by": link.linked_by,
                 "reason": link.reason,
             }
-        )
-        stage_need_map.setdefault(link.stage_key, []).append(
-            str(link.need_hypothesis_id)
         )
 
     need_signal_map: dict[UUID, dict[str, list[str]]] = {}
@@ -564,10 +495,6 @@ async def build_customer_map_snapshot(
                         item["relation"],
                     ),
                 ),
-                "journey_stages": sorted(
-                    need_journey_map.get(need.id, []),
-                    key=lambda item: item["stage_key"],
-                ),
             }
         )
 
@@ -634,15 +561,7 @@ async def build_customer_map_snapshot(
             "name": project.name,
         },
         "journey": {
-            "stages": [
-                {
-                    **dict(stage),
-                    "need_ids": sorted(
-                        stage_need_map.get(str(stage["key"]), [])
-                    ),
-                }
-                for stage in journey.stages
-            ],
+            "stages": [dict(stage) for stage in journey.stages],
             "source_refs": list(journey.source_refs),
         },
         "audiences": audience_payloads,
@@ -1226,7 +1145,6 @@ __all__ = [
     "customer_map_changes",
     "customer_map_summary",
     "ensure_customer_insight_need_link",
-    "ensure_need_journey_stage_link",
     "latest_customer_map_snapshot_artifact",
     "refresh_customer_map_snapshot_artifact",
     "resolve_journey_config",
