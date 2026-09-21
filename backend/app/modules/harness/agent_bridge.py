@@ -966,17 +966,20 @@ async def claim_agent_task(
             session,
             job=job,
         )
-        if old_root.status == "running":
-            try:
-                await fail_delegation_execution(
-                    session,
-                    execution_id=old_root.id,
-                    error_class="lease_lost",
-                )
-            except DelegationStateError as exc:
-                raise AgentBridgeError(
-                    "agent_bridge_root_execution_invalid"
-                ) from exc
+        if old_root.status != "running":
+            raise AgentBridgeError(
+                "agent_bridge_expired_lease_state_inconsistent"
+            )
+        try:
+            await fail_delegation_execution(
+                session,
+                execution_id=old_root.id,
+                error_class="lease_lost",
+            )
+        except DelegationStateError as exc:
+            raise AgentBridgeError(
+                "agent_bridge_root_execution_invalid"
+            ) from exc
         job.attempt += 1
     else:
         if step.status != "pending":
@@ -1125,6 +1128,9 @@ async def _validated_outputs(
     output_refs: object,
 ) -> tuple[list[UUID], list[Artifact]]:
     refs = _normalize_output_refs(output_refs)
+    step = await session.get(StepRun, job.step_run_id)
+    if step is None or step.started_at is None:
+        raise AgentBridgeError("agent_bridge_step_not_started")
     artifacts: list[Artifact] = []
     for ref in refs:
         artifact = await session.get(Artifact, ref)
@@ -1146,6 +1152,24 @@ async def _validated_outputs(
         ):
             raise AgentBridgeError(
                 "agent_bridge_output_artifact_hash_mismatch"
+            )
+        if artifact.created_at < step.started_at:
+            raise AgentBridgeError(
+                "agent_bridge_output_artifact_predates_execution"
+            )
+        latest = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == job.run_id,
+                Artifact.step_run_id == job.step_run_id,
+                Artifact.artifact_type == artifact.artifact_type,
+            )
+            .order_by(Artifact.version.desc(), Artifact.id.desc())
+            .limit(1)
+        )
+        if latest is None or latest.id != artifact.id:
+            raise AgentBridgeError(
+                "agent_bridge_output_artifact_stale"
             )
         artifacts.append(artifact)
 
@@ -1801,7 +1825,11 @@ async def start_subagent_telemetry(
             worker_kind="subagent",
             worker_key=child_worker,
             task_key=child_task,
-            dedupe_key=f"agent_bridge_child:{logical_key}",
+            dedupe_key=(
+                "agent_bridge_child:"
+                f"{root.id}:"
+                f"{hashlib.sha256(logical_key.encode('utf-8')).hexdigest()[:24]}"
+            ),
             attempt=attempt,
         )
         return await start_delegation_execution(
