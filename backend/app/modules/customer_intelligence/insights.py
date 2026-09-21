@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import AudienceHypothesis, Signal
+from app.modules.content_engine.models import AudienceHypothesis, Signal, utc_now
 from app.modules.customer_intelligence.models import CustomerInsight, CustomerInsightSignal
 
 InsightType = Literal[
@@ -181,6 +181,8 @@ async def ensure_customer_insight(
         raise CustomerInsightError("customer_insight_type_invalid")
     if status not in _INSIGHT_STATUSES:
         raise CustomerInsightError("customer_insight_status_invalid")
+    if status in {"SUPPORTED", "REJECTED"}:
+        raise CustomerInsightError("customer_insight_review_required")
     if version < 1:
         raise CustomerInsightError("customer_insight_version_invalid")
 
@@ -253,6 +255,48 @@ async def ensure_customer_insight(
         missing_evidence_json=missing,
     )
     session.add(insight)
+    await session.flush()
+    return insight
+
+
+async def review_customer_insight(
+    session: AsyncSession,
+    *,
+    customer_insight_id: UUID,
+    status: Literal["SUPPORTED", "REJECTED", "INSUFFICIENT_EVIDENCE", "TESTING"],
+    reviewed_by: str,
+    reason: str,
+) -> CustomerInsight:
+    """Record an explicit human review without rewriting versioned insight content."""
+
+    if status not in {
+        "SUPPORTED",
+        "REJECTED",
+        "INSUFFICIENT_EVIDENCE",
+        "TESTING",
+    }:
+        raise CustomerInsightError("customer_insight_review_status_invalid")
+    actor = _required_text(reviewed_by, "customer_insight_reviewer_required")
+    review_reason = _required_text(reason, "customer_insight_review_reason_required")
+
+    insight = await session.get(CustomerInsight, customer_insight_id)
+    if insight is None:
+        raise CustomerInsightError("customer_insight_not_found")
+
+    if (
+        insight.status == status
+        and insight.reviewed_by == actor
+        and insight.review_reason == review_reason
+        and insight.reviewed_at is not None
+    ):
+        return insight
+    if insight.reviewed_at is not None:
+        raise CustomerInsightError("customer_insight_already_reviewed")
+
+    insight.status = status
+    insight.reviewed_by = actor
+    insight.reviewed_at = utc_now()
+    insight.review_reason = review_reason
     await session.flush()
     return insight
 
@@ -386,4 +430,5 @@ __all__ = [
     "derive_insight_key",
     "ensure_customer_insight",
     "link_customer_insight_signal",
+    "review_customer_insight",
 ]
