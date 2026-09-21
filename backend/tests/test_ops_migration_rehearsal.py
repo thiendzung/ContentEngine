@@ -20,6 +20,16 @@ def test_upgrade_chain_is_exact_expected_chain() -> None:
     assert chain[-1] == rehearsal._EXPECTED_TARGET_REVISION
 
 
+def test_historical_rehearsal_target_may_precede_current_code_head() -> None:
+    script = rehearsal._alembic_script()
+
+    assert script.get_current_head() != rehearsal._EXPECTED_TARGET_REVISION
+    assert rehearsal._upgrade_chain(
+        script,
+        rehearsal._EXPECTED_SOURCE_REVISION,
+    ) == rehearsal._EXPECTED_UPGRADE_CHAIN
+
+
 def test_upgrade_chain_rejects_wrong_source_revision() -> None:
     with pytest.raises(
         rehearsal.MigrationRehearsalError,
