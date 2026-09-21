@@ -374,6 +374,40 @@ async def test_guarded_lenses_require_approved_guard_sources() -> None:
         for lens in ("MISCONCEPTION", "CASE", "POV", "CAUSES"):
             assert _candidate(payload, lens)["eligible"] is True
 
+        pov = _candidate(payload, "POV")
+        pov_context = pov["authority_context"]
+        assert isinstance(pov_context, list)
+        assert pov_context == [
+            {
+                "kind": "approved_motgu_position",
+                "statement": (
+                    "Authenticity should be checked through traceable facts."
+                ),
+                "approval_ref": "approval:pov:1",
+            }
+        ]
+
+        candidates = await persist_lens_candidates(
+            session,
+            run_id=run.id,
+        )
+        await persist_lens_selection(
+            session,
+            candidate_artifact_id=candidates.artifact.id,
+            decisions=_decisions(primary="POV"),
+            selected_by="founder",
+            reason="Use the explicitly approved MOTGU position.",
+        )
+        angle_context = await lens_selection_angle_context(
+            session,
+            run_id=run.id,
+        )
+        assert angle_context is not None
+        authority = angle_context["authority"]
+        assert isinstance(authority, list)
+        assert authority[0]["lens"] == "POV"
+        assert authority[0]["authority_context"] == pov_context
+
 
 @pytest.mark.asyncio
 async def test_run_override_cannot_self_approve_lens_guards() -> None:
