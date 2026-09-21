@@ -766,6 +766,7 @@ async def _load_job_plan(
     *,
     job: Job,
     worker_key: str,
+    require_budget_within_limit: bool = True,
 ) -> tuple[AuthorizedExecutionPlan, Artifact, StepRun, Approval | None]:
     step = await session.get(StepRun, job.step_run_id)
     if step is None or step.run_id != job.run_id:
@@ -796,10 +797,11 @@ async def _load_job_plan(
         plan_artifact=plan_artifact,
         step=step,
     )
-    await _enforce_plan_budget(
-        session,
-        authorized=authorized,
-    )
+    if require_budget_within_limit:
+        await _enforce_plan_budget(
+            session,
+            authorized=authorized,
+        )
     return authorized, plan_artifact, step, approval
 
 
@@ -1667,6 +1669,7 @@ async def fail_agent_task(
         session,
         job=job,
         worker_key=normalized_worker,
+        require_budget_within_limit=False,
     )
     root = await _root_execution_for_job(session, job=job)
     if root.status == "running":
