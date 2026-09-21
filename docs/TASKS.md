@@ -180,8 +180,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | AU-01 | DONE / PR #173 MERGED | ExecutionPlan + approved capability-policy provenance + fail-closed authorization accepted with CI/OCR/local proof. |
 | CM-01 | DONE / PR #174 MERGED | Customer Living Map accepted with CI + exact-ref OCR + disposable local verification. Operational rev-0035/0036 remain separately authorized. |
 | CC-01 | DONE / PR #175 MERGED | Content Coverage accepted with CI + exact-ref OCR + locale-quality re-verification. Operational rev-0035/0036/0037 remain separately authorized. |
-| LS-01 | IN IMPLEMENTATION | 7 Lens candidate Artifact + SELECT/MERGE/HOLD/DROP + evidence/authority guards on `feat/ls01-lens-selection`. |
-| AU-02 | PLANNED | Local agent bridge + safe auto-next orchestration + independent review. |
+| LS-01 | DONE / PR #176 MERGED | Lens Selection accepted with exact evidence/authority guards, semantic revalidation, CI/OCR/local proof. |
+| AU-02 | IN IMPLEMENTATION / PR #177 | Local Agent Bridge over existing Harness + real approval-before-execution + safe auto-next after independent review. |
 | QA-01 | PLANNED | Reader Value gate + separate SEO/AI readiness. |
 | PM-01 | PLANNED | Publish/measurement identity and safe adapters. |
 | LL-01 | PLANNED | Measurement → Signal → LearningCandidate → reviewed map update. |
@@ -243,9 +243,9 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Ensure read path creates no ModelCall/ToolCall and performs no research.
 - [x] Add rev-0037 schema guards and focused tests.
 - [x] CI on implementation head after self-review fixes; rerun after final docs sync.
-- [ ] Exact-ref OpenCodeReview.
-- [ ] Agent Local disposable-DB verification.
-- [ ] Founder merge.
+- [x] Exact-ref OpenCodeReview.
+- [x] Agent Local disposable-DB verification.
+- [x] Founder merge.
 - [ ] Operational migration remains separately authorized.
 
 ### LS-01 immediate checklist
@@ -269,6 +269,30 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] All HOLD/DROP is valid and blocks Angle instead of forcing weak content.
 - [x] Read/build/persist path does not run research/model/tool work.
 - [x] Final CI PASS after code self-review and contract/docs sync.
+- [x] Exact-ref OpenCodeReview.
+- [x] Agent Local verification.
+- [x] Founder merge.
+
+### AU-02 immediate checklist
+
+- [x] Reuse existing ContentRun / StepRun / Job / Approval / Artifact / checkpoint / DelegationExecution primitives; do not create a second workflow engine.
+- [x] Bind one exact AU-01 ExecutionPlan + SettingsSnapshot + task + worker to every bridge job.
+- [x] Return the exact authorized ExecutionPlan and SettingsSnapshot identity to the claimed local worker.
+- [x] Require a canonical approval-request checkpoint + exact approved Approval Artifact binding before any human-gated plan can queue or execute.
+- [x] Recheck approval at claim/heartbeat/complete/fail; worker cannot self-approve.
+- [x] Implement worker-scoped claim, lease heartbeat, expiry reclaim and bounded attempts.
+- [x] Cap leases by ExecutionPlan timeout and durable wall-clock budget.
+- [x] Enforce durable model/tool/output-token/cost/wall-clock budget usage; fail closed on AU-01 budget counters that are not yet durably observable.
+- [x] Validate completed output refs by exact run/step, expected type, content hash, creation lineage and latest artifact version.
+- [x] Reuse DelegationExecution for root/subagent telemetry; do not persist prompts, provider payloads or chain-of-thought.
+- [x] Persist completion/failure receipts and checkpoints for restart/recovery.
+- [x] Create independent review request from immutable plan/output lineage; reviewer must differ from worker and satisfy every required check.
+- [x] Semantically reconstruct review request/result before auto-next; hash validity alone is insufficient.
+- [x] Materialize auto-next only after canonical review result; create the next pending StepRun but do not enqueue it without its own ExecutionPlan.
+- [x] Retryable failures create a new StepRun + new ExecutionPlan; sensitive retries require a fresh Approval.
+- [x] Keep Antigravity activation outside AU-02 until a separate reviewed adapter/policy task exists.
+- [x] No new migration; code Alembic head remains rev-0037 and operational rev-0035→0037 remain separately authorized.
+- [ ] Final CI on exact implementation/docs head.
 - [ ] Exact-ref OpenCodeReview.
-- [ ] Agent Local verification.
+- [ ] Agent Local verification on exact head.
 - [ ] Founder merge.
