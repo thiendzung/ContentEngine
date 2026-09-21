@@ -244,7 +244,21 @@ async def test_execution_plan_replay_conflict_fails_closed() -> None:
             "execution_plan_tool_not_allowed",
         ),
         (
-            {"allowed_actions": ["workflow.change"]},
+            {
+                "required_capabilities": [
+                    "READ",
+                    "WRITE_ARTIFACT",
+                    "RUN_TOOL",
+                    "WRITE_DATABASE",
+                    "RUN_MODEL",
+                ],
+                "allowed_actions": [
+                    "read.customer",
+                    "database.write.customer_map",
+                    "artifact.write.customer_map",
+                    "model.run.writer",
+                ],
+            },
             {},
             "execution_plan_action_not_allowed",
         ),
@@ -408,24 +422,24 @@ async def test_execution_plan_and_settings_snapshot_are_database_immutable() -> 
         snapshot_row = await session.get(SettingsSnapshot, run.settings_snapshot_id)
         assert snapshot_row is not None
 
-        with pytest.raises(DBAPIError, match="execution_plan_artifact_is_immutable"):
+        with pytest.raises(DBAPIError, match="artifact_is_immutable"):
             async with session.begin_nested():
                 artifact.content_hash = "0" * 64
                 await session.flush()
 
         await session.refresh(artifact)
-        with pytest.raises(DBAPIError, match="execution_plan_artifact_delete_forbidden"):
+        with pytest.raises(DBAPIError, match="artifact_is_immutable"):
             async with session.begin_nested():
                 await session.delete(artifact)
                 await session.flush()
 
-        with pytest.raises(DBAPIError, match="settings_snapshot_is_immutable"):
+        with pytest.raises(DBAPIError, match="settings_snapshots_are_immutable"):
             async with session.begin_nested():
                 snapshot_row.content_hash = "f" * 64
                 await session.flush()
 
         await session.refresh(snapshot_row)
-        with pytest.raises(DBAPIError, match="settings_snapshot_delete_forbidden"):
+        with pytest.raises(DBAPIError, match="settings_snapshots_are_immutable"):
             async with session.begin_nested():
                 await session.delete(snapshot_row)
                 await session.flush()
