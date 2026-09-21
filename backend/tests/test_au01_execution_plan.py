@@ -269,7 +269,15 @@ async def test_execution_plan_replay_conflict_fails_closed() -> None:
             "execution_plan_attempts_exceed_policy",
         ),
         (
-            {"budget": {"max_tool_calls": 13}},
+            {
+                "budget": {
+                    "max_tool_calls": 13,
+                    "max_model_calls": 1,
+                    "max_output_tokens": 4000,
+                    "max_estimated_cost": "0.50",
+                    "max_wall_clock_seconds": 120,
+                }
+            },
             {},
             "execution_plan_budget_exceeds_policy",
         ),
