@@ -252,6 +252,7 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 
 - [x] Build exactly 7 deterministic Lens candidates: DEFINITION / MISCONCEPTION / SIGNALS / CAUSES / METHOD / CASE / POV.
 - [x] Build candidates from the selected ContentOpportunity + Customer Living Map + Content Coverage.
+- [x] Require durable HumanSelection matching the selected ContentOpportunity.
 - [x] Persist candidate and selection state only as versioned immutable Artifacts; no LS schema/migration.
 - [x] Require explicit reviewed decisions: SELECT / MERGE / HOLD / DROP.
 - [x] Allow at most one primary SELECT; MERGE only into that primary; do not create one article per Lens.
@@ -262,10 +263,12 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] CAUSES preserves correlation != causality and requires approved causal proof.
 - [x] METHOD requires traceable MOTGU first-party material.
 - [x] Candidate becomes stale if relevant Customer Map/Coverage inputs change.
+- [x] Revalidate Lens Selection Artifact semantics on every downstream read; hash-only validation is insufficient.
+- [x] Bind Lens artifacts to exact StepRun outputs; retry steps get distinct artifact lineage.
 - [x] Persist evidence_context and angle_context; optional valid Lens context flows into Angle model input.
 - [x] All HOLD/DROP is valid and blocks Angle instead of forcing weak content.
 - [x] Read/build/persist path does not run research/model/tool work.
-- [ ] CI on final implementation head.
+- [x] CI on implementation head after final code self-review; rerun after this docs sync.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Agent Local verification.
 - [ ] Founder merge.
