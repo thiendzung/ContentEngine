@@ -1399,3 +1399,49 @@ async def submit_operator_command(
             content_case_id=content_case_id,
             intent=intent,
             expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            actor_id=actor_id,
+        )
+    if resolved.action_key == "outline_to_writers":
+        if knowledge_brief_id is not None:
+            raise OperatorControlError("operator_knowledge_brief_binding_start_only")
+        return await _submit_outline_to_writers_command(
+            session,
+            content_case_id=content_case_id,
+            intent=intent,
+            expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            actor_id=actor_id,
+        )
+    if resolved.action_key == "writers_to_quality":
+        if knowledge_brief_id is not None:
+            raise OperatorControlError("operator_knowledge_brief_binding_start_only")
+        return await submit_writers_to_quality_command(
+            session,
+            content_case_id=content_case_id,
+            intent=intent,
+            expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            actor_id=actor_id,
+            resolved_state=resolved,
+        )
+
+    return await _submit_operator_command_impl(
+        session,
+        content_case_id=content_case_id,
+        intent=intent,
+        expected_state_version=expected_state_version,
+        idempotency_key=idempotency_key,
+        knowledge_brief_id=knowledge_brief_id,
+        actor_id=actor_id,
+    )
+
+
+__all__ = [
+    "OperatorActionKey",
+    "ResolvedOperatorAction",
+    "START_TO_ANGLE_STAGE",
+    "get_operator_state",
+    "resolve_next_operator_action",
+    "submit_operator_command",
+]
