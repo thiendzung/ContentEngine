@@ -371,12 +371,12 @@ async def test_customer_insight_signal_relation_and_delete_are_database_immutabl
             relation="supports",
         )
 
-        link.relation = "contradicts"
         with pytest.raises(
             DBAPIError,
             match="customer_insight_signal_is_immutable",
         ):
             async with session.begin_nested():
+                link.relation = "contradicts"
                 await session.flush()
 
         await session.refresh(link)
@@ -539,12 +539,12 @@ async def test_customer_insight_version_content_and_delete_are_database_immutabl
             statement="Buyer wants a meaningful connection to the work.",
         )
 
-        insight.statement = "Silently rewritten interpretation."
         with pytest.raises(
             DBAPIError,
             match="customer_insight_version_content_immutable",
         ):
             async with session.begin_nested():
+                insight.statement = "Silently rewritten interpretation."
                 await session.flush()
 
         await session.refresh(insight)
@@ -569,15 +569,15 @@ async def test_database_requires_audited_review_and_support_for_promotion() -> N
         )
 
         now = datetime.now(UTC)
-        insight.status = "SUPPORTED"
-        insight.reviewed_by = "founder"
-        insight.reviewed_at = now
-        insight.review_reason = "Direct update without audit."
         with pytest.raises(
             DBAPIError,
             match="customer_insight_review_record_required",
         ):
             async with session.begin_nested():
+                insight.status = "SUPPORTED"
+                insight.reviewed_by = "founder"
+                insight.reviewed_at = now
+                insight.review_reason = "Direct update without audit."
                 await session.flush()
 
         await session.refresh(insight)
@@ -596,15 +596,15 @@ async def test_database_requires_audited_review_and_support_for_promotion() -> N
         )
         await session.flush()
 
-        insight.status = "SUPPORTED"
-        insight.reviewed_by = "founder"
-        insight.reviewed_at = now
-        insight.review_reason = "Audited but unsupported."
         with pytest.raises(
             DBAPIError,
             match="customer_insight_support_evidence_required",
         ):
             async with session.begin_nested():
+                insight.status = "SUPPORTED"
+                insight.reviewed_by = "founder"
+                insight.reviewed_at = now
+                insight.review_reason = "Audited but unsupported."
                 await session.flush()
 
 
