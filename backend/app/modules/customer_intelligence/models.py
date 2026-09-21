@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-from app.modules.content_engine.models import TimestampMixin, new_id
+from app.modules.content_engine.models import TimestampMixin, new_id, utc_now
 
 
 class CustomerInsight(TimestampMixin, Base):
@@ -114,4 +114,46 @@ class CustomerInsightSignal(Base):
     )
 
 
-__all__ = ["CustomerInsight", "CustomerInsightSignal"]
+class CustomerInsightReview(Base):
+    __tablename__ = "customer_insight_reviews"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    customer_insight_id: Mapped[UUID] = mapped_column(
+        ForeignKey("customer_insights.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    reviewed_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    support_signal_refs_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    contradict_signal_refs_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    context_signal_refs_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    reviewed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in "
+            "('TESTING','SUPPORTED','REJECTED','INSUFFICIENT_EVIDENCE')",
+            name="ck_customer_insight_reviews_status",
+        ),
+        Index(
+            "ix_customer_insight_reviews_insight_time",
+            "customer_insight_id",
+            "reviewed_at",
+        ),
+    )
+
+
+__all__ = [
+    "CustomerInsight",
+    "CustomerInsightReview",
+    "CustomerInsightSignal",
+]
