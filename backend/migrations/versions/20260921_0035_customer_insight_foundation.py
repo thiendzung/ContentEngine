@@ -52,6 +52,10 @@ def _create_customer_insight_guards() -> None:
                             'customer_insight_signal_duplicate_parent_invalid';
                     END IF;
                     IF current_project IS DISTINCT FROM p_project_id THEN
+                        IF current_id = p_signal_id THEN
+                            RAISE EXCEPTION
+                                'customer_insight_signal_project_mismatch';
+                        END IF;
                         RAISE EXCEPTION
                             'customer_insight_signal_duplicate_parent_invalid';
                     END IF;
