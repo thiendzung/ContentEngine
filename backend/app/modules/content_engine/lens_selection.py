@@ -1097,6 +1097,11 @@ async def build_lens_candidate_payload(
         "artifact_type": LENS_CANDIDATES_ARTIFACT_TYPE,
         "run_ref": {
             "run_id": str(run.id),
+            "step_run_id": (
+                str(step_run_id)
+                if step_run_id is not None
+                else None
+            ),
             "content_case_id": str(content_case.id),
             "locale_variant_id": str(variant.id),
             "locale": variant.locale,
@@ -1165,6 +1170,7 @@ async def _persist_payload_artifact(
         select(Artifact)
         .where(
             Artifact.run_id == run_id,
+            Artifact.step_run_id == step_run_id,
             Artifact.artifact_type == artifact_type,
             Artifact.content_hash == content_hash,
         )
@@ -1175,7 +1181,6 @@ async def _persist_payload_artifact(
         if (
             existing.content_json != payload
             or existing.locale != locale
-            or existing.step_run_id != step_run_id
         ):
             raise LensSelectionError("lens_artifact_replay_conflict")
         await _bind_step_output_artifact(
