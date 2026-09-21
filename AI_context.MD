@@ -224,13 +224,17 @@ Current bounded LS-01 implementation:
 - no new DB migration; code migration head remains rev-0037;
 - exactly seven deterministic Lens candidates;
 - exact inputs from selected ContentOpportunity + relevant Customer Map + locale-scoped Coverage + exact SettingsSnapshot;
+- selected ContentOpportunity must match one durable HumanSelection;
+- MISCONCEPTION requires an approved observed-belief ref; contradictory evidence alone is insufficient;
 - versioned immutable `lens_candidates` and `lens_selection` Artifacts;
 - reviewed SELECT/MERGE/HOLD/DROP contract with at most one primary Lens;
 - no one-Lens-one-article behaviour;
 - guard-critical missing evidence blocks SELECT/MERGE;
 - approved SettingsVersion provenance for CASE/POV/causal guard authority;
 - all-HOLD/DROP is a valid stop;
-- selection output includes evidence_context + angle_context;
+- selection output includes active + HOLD evidence requirements and angle_context;
+- Lens Selection downstream reads reconstruct semantic payloads instead of trusting hash validity alone;
+- StepRun-bound candidate/selection Artifacts are recorded in output refs; retries get distinct lineage;
 - Angle receives Lens context only when a current valid active selection exists;
 - no research/model/tool execution is introduced by Lens candidate/selection logic.
 
