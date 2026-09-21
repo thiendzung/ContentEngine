@@ -45,7 +45,7 @@ def upgrade() -> None:
         sa.text(
             """
             CREATE FUNCTION protect_execution_plan_artifact()
-            RETURNS trigger AS $
+            RETURNS trigger AS $plan$
             BEGIN
                 IF TG_OP = 'UPDATE' THEN
                     IF OLD.artifact_type LIKE 'execution_plan_%'
@@ -60,7 +60,7 @@ def upgrade() -> None:
                 END IF;
                 RETURN OLD;
             END;
-            $ LANGUAGE plpgsql
+            $plan$ LANGUAGE plpgsql
             """
         )
     )
