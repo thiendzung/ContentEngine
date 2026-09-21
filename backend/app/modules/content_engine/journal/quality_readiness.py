@@ -239,6 +239,8 @@ def validate_quality_readiness_output(
             "quality_readiness_output_criterion_invalid",
         )
         key = _nonempty_text(item.get("key"), "quality_readiness_output_criterion_key_invalid")
+        raw_repair = item.get("repair_suggestion")
+        repair_suggestion = raw_repair.strip() if isinstance(raw_repair, str) else ""
         parsed.append(
             ReadinessCriterion(
                 key=key,
@@ -250,11 +252,7 @@ def validate_quality_readiness_output(
                     item.get("finding"),
                     "quality_readiness_output_criterion_finding_invalid",
                 ),
-                repair_suggestion=(
-                    item.get("repair_suggestion").strip()
-                    if isinstance(item.get("repair_suggestion"), str)
-                    else ""
-                ),
+                repair_suggestion=repair_suggestion,
             )
         )
 
