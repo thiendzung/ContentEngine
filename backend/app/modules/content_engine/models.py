@@ -325,6 +325,37 @@ class ContentCase(TimestampMixin, Base):
     )
 
 
+class ContentCaseSupportingNeed(TimestampMixin, Base):
+    __tablename__ = "content_case_supporting_needs"
+
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    need_hypothesis_id: Mapped[UUID] = mapped_column(
+        ForeignKey("need_hypotheses.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "length(btrim(linked_by)) > 0",
+            name="ck_content_case_supporting_need_actor",
+        ),
+        CheckConstraint(
+            "length(btrim(reason)) > 0",
+            name="ck_content_case_supporting_need_reason",
+        ),
+        Index(
+            "ix_content_case_supporting_needs_need",
+            "need_hypothesis_id",
+            "content_case_id",
+        ),
+    )
+
+
 class LocaleVariant(TimestampMixin, Base):
     __tablename__ = "locale_variants"
 
@@ -366,6 +397,164 @@ class ContentItem(TimestampMixin, Base):
         CheckConstraint(
             "content_type in ('journal','artwork')",
             name="ck_content_items_type",
+        ),
+    )
+
+
+class ContentItemJourneyStage(TimestampMixin, Base):
+    __tablename__ = "content_item_journey_stages"
+
+    content_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_items.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    stage_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "stage_key ~ '^[a-z0-9][a-z0-9_-]{0,63}    __tablename__ = "content_versions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    content_item_id: Mapped[UUID] = mapped_column(ForeignKey("content_items.id"), nullable=False)
+    version_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    final_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
+    change_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    content_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    created_by_run_id: Mapped[UUID | None] = mapped_column(ForeignKey("content_runs.id"))
+
+    __table_args__ = (
+        UniqueConstraint("content_item_id", "version_no", name="uq_content_version_number"),
+        CheckConstraint("version_no > 0", name="ck_content_version_positive"),
+        CheckConstraint(
+            "status in ('draft','approved','published','superseded')",
+            name="ck_content_version_status",
+        ),
+        Index("ix_content_versions_item", "content_item_id"),
+    )
+
+
+class SettingsVersion(TimestampMixin, Base):
+    __tablename__ = "settings_versions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID | None] = mapped_column(ForeignKey("projects.id"))
+    scope_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    scope_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    settings_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    change_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id", "scope_type", "scope_key", "version", name="uq_settings_version"
+        ),
+        CheckConstraint(
+            "scope_type in ('system','project','content_type','locale')", name="ck_settings_scope"
+        ),
+        CheckConstraint("status in ('draft','active','retired')", name="ck_settings_status"),
+        CheckConstraint("version > 0", name="ck_settings_version_positive"),
+    )
+
+
+class SettingsSnapshot(TimestampMixin, Base):
+    __tablename__ = "settings_snapshots"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    resolved_settings_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    source_version_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class PromptDefinition(TimestampMixin, Base):
+    __tablename__ = "prompt_definitions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    prompt_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    input_contract_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    output_schema_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    change_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        UniqueConstraint("prompt_key", "version", name="uq_prompt_definition_version"),
+        CheckConstraint("status in ('draft','active','retired')", name="ck_prompt_status"),
+        CheckConstraint("version > 0", name="ck_prompt_version_positive"),
+    )
+
+
+class RecipeDefinition(TimestampMixin, Base):
+    __tablename__ = "recipe_definitions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    recipe_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    selector_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    recipe_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        UniqueConstraint("recipe_key", "version", name="uq_recipe_definition_version"),
+        CheckConstraint("status in ('draft','active','retired')", name="ck_recipe_status"),
+        CheckConstraint("version > 0", name="ck_recipe_version_positive"),
+    )
+
+
+class CalibrationExample(TimestampMixin, Base):
+    __tablename__ = "calibration_examples"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    locale: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(32))
+    intent: Mapped[str | None] = mapped_column(String(64))
+    example_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    polarity: Mapped[str] = mapped_column(String(16), nullable=False)
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="approved")
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+
+    __table_args__ = (
+        CheckConstraint("polarity in ('positive','negative')", name="ck_calibration_polarity"),
+        CheckConstraint(
+            "status in ('candidate','approved','retired')", name="ck_calibration_status"
+        ),
+    )
+
+
+def register_models() -> None:
+    """Import hook used by migration metadata discovery."""
+    from app.modules.content_engine.journal import models as _journal_models  # noqa: F401
+    from app.modules.customer_intelligence import (
+        models as _customer_intelligence_models,  # noqa: F401
+    )
+    from app.modules.harness import models as _harness_models  # noqa: F401
+    from app.modules.knowledge import models as _knowledge_models  # noqa: F401",
+            name="ck_content_item_journey_stage_key",
+        ),
+        CheckConstraint(
+            "length(btrim(linked_by)) > 0",
+            name="ck_content_item_journey_stage_actor",
+        ),
+        CheckConstraint(
+            "length(btrim(reason)) > 0",
+            name="ck_content_item_journey_stage_reason",
+        ),
+        Index(
+            "ix_content_item_journey_stage",
+            "stage_key",
+            "content_item_id",
         ),
     )
 
