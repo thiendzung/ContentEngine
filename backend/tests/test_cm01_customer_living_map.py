@@ -31,14 +31,10 @@ from app.modules.customer_intelligence.living_map import (
     customer_map_changes,
     customer_map_summary,
     ensure_customer_insight_need_link,
-    ensure_need_journey_stage_link,
     refresh_customer_map_snapshot_artifact,
     resolve_journey_config,
 )
-from app.modules.customer_intelligence.models import (
-    CustomerInsightNeedLink,
-    CustomerNeedJourneyStageLink,
-)
+from app.modules.customer_intelligence.models import CustomerInsightNeedLink
 from app.modules.harness.models import Artifact, ModelCall, ToolCall
 
 
@@ -167,12 +163,16 @@ async def test_insight_need_link_is_exact_scoped_and_immutable() -> None:
             customer_insight_id=insight.id,
             need_hypothesis_id=need.id,
             relation="supports",
+            linked_by="founder",
+            reason="Insight supports this explicit customer need.",
         )
         replay = await ensure_customer_insight_need_link(
             session,
             customer_insight_id=insight.id,
             need_hypothesis_id=need.id,
             relation="supports",
+            linked_by="founder",
+            reason="Insight supports this explicit customer need.",
         )
         assert replay.customer_insight_id == first.customer_insight_id
 
@@ -185,6 +185,8 @@ async def test_insight_need_link_is_exact_scoped_and_immutable() -> None:
                 customer_insight_id=insight.id,
                 need_hypothesis_id=need.id,
                 relation="contradicts",
+                linked_by="founder",
+                reason="Conflicting replay.",
             )
 
         cross_project_need = await _need(
@@ -200,6 +202,8 @@ async def test_insight_need_link_is_exact_scoped_and_immutable() -> None:
                 customer_insight_id=insight.id,
                 need_hypothesis_id=cross_project_need.id,
                 relation="supports",
+                linked_by="founder",
+                reason="Cross-project link must fail.",
             )
 
         wrong_audience_need = await _need(
@@ -216,6 +220,8 @@ async def test_insight_need_link_is_exact_scoped_and_immutable() -> None:
                 customer_insight_id=insight.id,
                 need_hypothesis_id=wrong_audience_need.id,
                 relation="supports",
+                linked_by="founder",
+                reason="Audience-mismatched link must fail.",
             )
 
         with pytest.raises(
@@ -263,6 +269,8 @@ async def test_need_and_audience_scope_cannot_drift_after_map_binding() -> None:
             customer_insight_id=insight.id,
             need_hypothesis_id=need.id,
             relation="supports",
+            linked_by="founder",
+            reason="Bind evidence to the need before scope drift checks.",
         )
 
         with pytest.raises(
@@ -388,108 +396,6 @@ async def test_journey_config_conflict_fails_closed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_need_can_link_to_multiple_configured_journey_stages() -> None:
-    async with isolated_session() as session:
-        project = await _project(session, "motgu")
-        need = await _need(session, project_id=project.id)
-
-        first = await ensure_need_journey_stage_link(
-            session,
-            need_hypothesis_id=need.id,
-            stage_key="aware",
-            linked_by="founder",
-            reason="Observed when the customer first recognizes the need.",
-        )
-        second = await ensure_need_journey_stage_link(
-            session,
-            need_hypothesis_id=need.id,
-            stage_key="trust",
-            linked_by="founder",
-            reason="The same need remains relevant before purchase.",
-        )
-        replay = await ensure_need_journey_stage_link(
-            session,
-            need_hypothesis_id=need.id,
-            stage_key="aware",
-            linked_by="founder",
-            reason="Observed when the customer first recognizes the need.",
-        )
-
-        assert replay.need_hypothesis_id == first.need_hypothesis_id
-        assert second.stage_key == "trust"
-
-        snapshot = await build_customer_map_snapshot(
-            session,
-            project_id=project.id,
-        )
-        need_payload = snapshot["needs"][0]
-        assert [item["stage_key"] for item in need_payload["journey_stages"]] == [
-            "aware",
-            "trust",
-        ]
-        journey_rows = {
-            row["key"]: row["need_ids"]
-            for row in snapshot["journey"]["stages"]
-        }
-        assert str(need.id) in journey_rows["aware"]
-        assert str(need.id) in journey_rows["trust"]
-
-        with pytest.raises(
-            CustomerMapError,
-            match="customer_map_journey_stage_not_configured",
-        ):
-            await ensure_need_journey_stage_link(
-                session,
-                need_hypothesis_id=need.id,
-                stage_key="not-configured",
-                linked_by="founder",
-                reason="Invalid stage.",
-            )
-
-        with pytest.raises(
-            DBAPIError,
-            match="customer_need_journey_stage_link_is_immutable",
-        ):
-            async with session.begin_nested():
-                first.reason = "Rewritten rationale."
-                await session.flush()
-
-        await session.refresh(first)
-        with pytest.raises(
-            DBAPIError,
-            match="customer_need_journey_stage_link_delete_forbidden",
-        ):
-            async with session.begin_nested():
-                await session.delete(first)
-                await session.flush()
-
-
-@pytest.mark.asyncio
-async def test_snapshot_fails_closed_on_direct_stale_journey_stage_link() -> None:
-    async with isolated_session() as session:
-        project = await _project(session, "motgu")
-        need = await _need(session, project_id=project.id)
-        session.add(
-            CustomerNeedJourneyStageLink(
-                need_hypothesis_id=need.id,
-                stage_key="legacy_stage",
-                linked_by="direct-db-test",
-                reason="Bypass service to prove read model fails closed.",
-            )
-        )
-        await session.flush()
-
-        with pytest.raises(
-            CustomerMapError,
-            match="customer_map_need_journey_stage_stale",
-        ):
-            await build_customer_map_snapshot(
-                session,
-                project_id=project.id,
-            )
-
-
-@pytest.mark.asyncio
 async def test_customer_map_uses_latest_insight_version_and_explicit_need_link() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
@@ -536,13 +442,8 @@ async def test_customer_map_uses_latest_insight_version_and_explicit_need_link()
             customer_insight_id=revised.id,
             need_hypothesis_id=need.id,
             relation="supports",
-        )
-        await ensure_need_journey_stage_link(
-            session,
-            need_hypothesis_id=need.id,
-            stage_key="trust",
             linked_by="founder",
-            reason="Authenticity confidence is required at trust stage.",
+            reason="Latest insight version explicitly supports this need.",
         )
 
         snapshot = await build_customer_map_snapshot(
@@ -558,6 +459,8 @@ async def test_customer_map_uses_latest_insight_version_and_explicit_need_link()
             {
                 "need_hypothesis_id": str(need.id),
                 "relation": "supports",
+                "linked_by": "founder",
+                "reason": "Latest insight version explicitly supports this need.",
             }
         ]
 
