@@ -21,6 +21,10 @@ from app.modules.content_engine.journal.research_handoff import (
     ResearchDecision,
     _opportunity_payload,
 )
+from app.modules.content_engine.lens_selection import (
+    LensSelectionError,
+    lens_selection_angle_context,
+)
 from app.modules.content_engine.models import ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
 from app.modules.knowledge.brief_ref import (
@@ -460,6 +464,16 @@ async def _build_angle_model_input(
             ):
                 raise AngleGenerationError("angle_knowledge_brief_context_snapshot_mismatch")
             model_input["knowledge_brief"] = expected_snapshot
+
+    try:
+        lens_context = await lens_selection_angle_context(
+            session,
+            run_id=run.id,
+        )
+    except LensSelectionError as exc:
+        raise AngleGenerationError(exc.code) from exc
+    if lens_context is not None:
+        model_input["lens_selection"] = lens_context
     return model_input
 
 
