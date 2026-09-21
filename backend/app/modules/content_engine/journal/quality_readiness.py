@@ -18,6 +18,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.source_copy import (
+    SOURCE_COPY_EVALUATOR_KEY,
+    SOURCE_COPY_EVALUATOR_VERSION,
+)
 from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
@@ -296,6 +300,7 @@ async def _validated_evaluation(
     source_artifact: Artifact,
     writer_input: WriterInput,
     allowed_results: set[str],
+    evaluator_version: str | None = None,
 ) -> tuple[Artifact, QualityEvaluation]:
     artifact = await session.get(Artifact, artifact_id)
     evaluation = await session.get(QualityEvaluation, evaluation_id)
@@ -309,6 +314,7 @@ async def _validated_evaluation(
         or evaluation.artifact_id != artifact.id
         or evaluation.run_id != artifact.run_id
         or evaluation.evaluator_key != evaluator_key
+        or (evaluator_version is not None and evaluation.evaluator_version != evaluator_version)
         or evaluation.result not in allowed_results
     ):
         raise QualityReadinessError("quality_readiness_prerequisite_invalid")
@@ -423,10 +429,11 @@ async def load_quality_readiness_input(
         artifact_id=source_copy_artifact_id,
         evaluation_id=source_copy_quality_evaluation_id,
         artifact_type="source_copy_check",
-        evaluator_key="source_copy_basic_gate",
+        evaluator_key=SOURCE_COPY_EVALUATOR_KEY,
         source_artifact=source,
         writer_input=writer_input,
         allowed_results={"pass", "warn"},
+        evaluator_version=SOURCE_COPY_EVALUATOR_VERSION,
     )
 
     reader_artifact: Artifact | None = None
@@ -443,6 +450,7 @@ async def load_quality_readiness_input(
             source_artifact=source,
             writer_input=writer_input,
             allowed_results={"pass", "warn"},
+            evaluator_version=READER_VALUE_EVALUATOR_VERSION,
         )
     elif reader_value_artifact_id is not None or reader_value_quality_evaluation_id is not None:
         raise QualityReadinessError("quality_readiness_reader_value_unexpected")
@@ -776,6 +784,7 @@ async def evaluate_quality_readiness(
         or handoff.run_id != run.id
         or handoff.step_run_id is not None
         or run.run_mode != "eval"
+        or run.status not in {"running", "completed"}
         or run.current_step != readiness_task_key(
             source_input.stage,
             source_input.writer_input.locale,
@@ -790,6 +799,39 @@ async def evaluate_quality_readiness(
         raise QualityReadinessError("quality_readiness_execution_binding_invalid")
     if handoff.artifact_type != READINESS_HANDOFF_TYPES[source_input.stage]:
         raise QualityReadinessError("quality_readiness_handoff_type_mismatch")
+    snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+    if snapshot is None:
+        raise QualityReadinessError("quality_readiness_settings_snapshot_missing")
+    expected_handoff = _handoff_payload(
+        source_input,
+        task_key=readiness_task_key(
+            source_input.stage,
+            source_input.writer_input.locale,
+        ),
+        settings_snapshot=snapshot,
+    )
+    if (
+        handoff.content_json != expected_handoff
+        or handoff.content_hash != _canonical_hash(expected_handoff)
+    ):
+        raise QualityReadinessError("quality_readiness_handoff_snapshot_invalid")
+    bundle = source_input.writer_input.outline_input.bundle
+    if (
+        manifest.evidence_set_id != bundle.evidence_set_id
+        or manifest.originality_pack_id != bundle.originality_pack_id
+    ):
+        raise QualityReadinessError("quality_readiness_context_manifest_mismatch")
+    if not provider.strip() or not model_name.strip():
+        raise QualityReadinessError("quality_readiness_model_metadata_required")
+    identity_resolver = getattr(model, "resolved_model_identity", None)
+    if callable(identity_resolver):
+        identity = identity_resolver()
+        if (
+            not isinstance(identity, tuple)
+            or len(identity) != 2
+            or identity != (provider.strip(), model_name.strip())
+        ):
+            raise QualityReadinessError("quality_readiness_model_route_mismatch")
 
     evaluator_key, evaluator_version, artifact_type = _evaluation_metadata(source_input.stage)
     existing = list(
@@ -819,7 +861,12 @@ async def evaluate_quality_readiness(
                 )
             ).all()
         )
-        if len(evaluations) != 1 or not isinstance(artifact.content_json, dict):
+        if (
+            len(evaluations) != 1
+            or not isinstance(artifact.content_json, dict)
+            or run.status != "completed"
+            or step.status != "completed"
+        ):
             raise QualityReadinessError("quality_readiness_evaluation_conflict")
         evaluation = evaluations[0]
         raw_criteria = artifact.content_json.get("criteria")
@@ -840,6 +887,7 @@ async def evaluate_quality_readiness(
             artifact.content_hash != _canonical_hash(artifact.content_json)
             or artifact.content_json.get("source_draft") != _ref(source_input.source_artifact)
             or evaluation.result != result
+            or evaluation.evaluator_version != evaluator_version
             or evaluation.score is not None
         ):
             raise QualityReadinessError("quality_readiness_artifact_stale")
