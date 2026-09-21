@@ -100,8 +100,6 @@ class CustomerInsightSignal(Base):
         primary_key=True,
     )
     relation: Mapped[str] = mapped_column(String(16), nullable=False)
-    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (
         CheckConstraint(
@@ -128,6 +126,8 @@ class CustomerInsightNeedLink(Base):
         primary_key=True,
     )
     relation: Mapped[str] = mapped_column(String(16), nullable=False)
+    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (
         CheckConstraint(
