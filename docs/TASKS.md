@@ -175,9 +175,9 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 
 | ID | State | Next exit |
 |---|---|---|
-| ARCH-21 | IN REVIEW | Founder merges this docs/contract PR; no runtime execution implied. |
-| CT-01 | QUEUED AFTER ARCH-21 | CustomerInsight model + Signal relations + migration + tests. |
-| AU-01 | PLANNED | Immutable ExecutionPlan + capability policy; permission mismatch fails closed. |
+| ARCH-21 | DONE / PR #171 MERGED | Canonical Customer Living Map + Controlled Autopilot architecture is on main. |
+| CT-01 | DONE / PR #172 MERGED | CustomerInsight foundation accepted with CI + exact-ref OCR + final local verification. Operational DB migration remains separately authorized. |
+| AU-01 | IN IMPLEMENTATION | ExecutionPlan artifact + SettingsSnapshot capability policy + DB immutability guards + fail-closed tests on branch `feat/au01-execution-plan-policy`. |
 | CM-01 | PLANNED | Living Map snapshot/read API for Audience + Needs + Journey. |
 | CC-01 | PLANNED | Content Coverage relations/status/gap detection. |
 | LS-01 | PLANNED | 7 Content Lenses as selection tool, not article generator. |
