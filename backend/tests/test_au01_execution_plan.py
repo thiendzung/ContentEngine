@@ -47,9 +47,9 @@ def _policy(
                             allowed_actions
                             if allowed_actions is not None
                             else [
-                                "customer.read",
-                                "customer.map.refresh",
-                                "artifact.write",
+                                "read.customer",
+                                "database.write.customer_map",
+                                "artifact.write.customer_map",
                             ]
                         ),
                         "forbidden_actions": (
@@ -97,9 +97,9 @@ def _plan(**overrides: object) -> dict[str, object]:
             "WRITE_DATABASE",
         ],
         "allowed_actions": [
-            "customer.read",
-            "customer.map.refresh",
-            "artifact.write",
+            "read.customer",
+            "database.write.customer_map",
+            "artifact.write.customer_map",
         ],
         "forbidden_actions": [
             "publish.execute",
@@ -272,6 +272,25 @@ async def test_execution_plan_replay_conflict_fails_closed() -> None:
             {"budget": {"max_tool_calls": 13}},
             {},
             "execution_plan_budget_exceeds_policy",
+        ),
+        (
+            {
+                "required_capabilities": ["READ", "WRITE_ARTIFACT", "RUN_TOOL"],
+            },
+            {},
+            "execution_plan_action_capability_missing",
+        ),
+        (
+            {
+                "budget": {
+                    "max_tool_calls": 6,
+                    "max_model_calls": 1,
+                    "max_output_tokens": 4000,
+                    "max_estimated_cost": "0.50",
+                }
+            },
+            {},
+            "execution_plan_required_budget_missing",
         ),
     ],
 )
