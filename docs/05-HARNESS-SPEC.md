@@ -426,3 +426,11 @@ Provider/transport boundary:
 - no unauthenticated public bridge endpoint is introduced;
 - an app-specific/local transport adapter must preserve these service semantics and receive its own review before activation.
 
+### AU-02 output-integrity boundary
+
+A completed output must be produced **strictly after** the bound StepRun starts. Equality with `StepRun.started_at` is not sufficient provenance and fails closed.
+
+AU-02 currently verifies Artifact content hashes only for canonical `content_json` payloads. The base Artifact model also permits an `external_ref` without `content_json`, but the repository does not yet define a canonical resolver/hash-verification contract for external objects.
+
+Therefore external-only output Artifacts are not accepted by AU-02 execution completion yet; they fail closed with `agent_bridge_external_output_hash_unverifiable`. Supporting external-object outputs later requires a reviewed canonical external-object verifier rather than trusting an arbitrary stored hash.
+
