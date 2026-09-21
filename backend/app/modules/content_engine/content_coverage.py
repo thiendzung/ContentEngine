@@ -24,7 +24,7 @@ from app.modules.content_engine.models import (
     Project,
 )
 from app.modules.customer_intelligence.living_map import resolve_journey_config
-from app.modules.harness.models import Approval, ContentRun
+from app.modules.harness.models import Approval, ContentRun, QualityEvaluation
 
 CoverageStatus = Literal[
     "MISSING",
@@ -244,6 +244,17 @@ def _negative_final_decision(
     return latest_negative
 
 
+def _version_no(value: object) -> int:
+    if value is None:
+        return 0
+    if not isinstance(value, dict):
+        raise ContentCoverageError("content_coverage_version_projection_invalid")
+    version_no = value.get("version_no")
+    if isinstance(version_no, bool) or not isinstance(version_no, int):
+        raise ContentCoverageError("content_coverage_version_projection_invalid")
+    return version_no
+
+
 def _selected_opportunity_payload(
     opportunity: ContentOpportunity,
     selections: list[HumanSelection],
@@ -335,6 +346,7 @@ def _coverage_status(
     selected_opportunities: list[ContentOpportunity],
     update_target_ids: set[UUID],
     invalid_target_refs: list[str],
+    unresolved_quality_failure: bool,
 ) -> tuple[CoverageStatus, list[str]]:
     reasons: list[str] = []
     if invalid_target_refs:
@@ -345,36 +357,46 @@ def _coverage_status(
         for item in items
         if item.get("unresolved_negative_final_decision") is not None
     ]
-    if weak_ids:
-        return "WEAK", ["unresolved_final_review_rejection_or_revision"]
-
     published_ids = {
         UUID(str(item["id"]))
         for item in items
         if item.get("latest_published_version") is not None
     }
     update_in_progress = any(
-        item.get("latest_version") is not None
-        and item.get("latest_published_version") is not None
-        and (
-            item["latest_version"]["version_no"]
-            > item["latest_published_version"]["version_no"]
-        )
+        _version_no(item.get("latest_version"))
+        > _version_no(item.get("latest_published_version"))
         for item in items
+        if item.get("latest_published_version") is not None
     )
     unpublished_items = [
         item for item in items if item.get("latest_published_version") is None
     ]
-    if update_in_progress or unpublished_items or (has_case and not items):
-        reasons.append("content_work_exists_without_current_published_completion")
-        return "IN_PROGRESS", reasons
 
     if published_ids:
-        if published_ids & update_target_ids:
-            return "NEEDS_UPDATE", [
+        if published_ids & update_target_ids or update_in_progress:
+            update_reasons = [
                 "selected_update_or_refresh_targets_published_content"
+                if published_ids & update_target_ids
+                else "newer_unpublished_revision_exists"
             ]
-        return "PUBLISHED", ["published_content_exists"]
+            if weak_ids or unresolved_quality_failure:
+                update_reasons.append("weak_or_failed_revision_exists")
+            return "NEEDS_UPDATE", update_reasons
+        published_reasons = ["published_content_exists"]
+        if weak_ids or unresolved_quality_failure:
+            published_reasons.append(
+                "additional_weak_content_does_not_erase_published_coverage"
+            )
+        return "PUBLISHED", published_reasons
+
+    if weak_ids or unresolved_quality_failure:
+        return "WEAK", [
+            "unresolved_quality_failure_or_final_review_revision"
+        ]
+
+    if unpublished_items or (has_case and not items):
+        reasons.append("content_work_exists_without_current_published_completion")
+        return "IN_PROGRESS", reasons
 
     selected_write = [
         row
@@ -587,6 +609,35 @@ async def build_content_coverage(
                 )
             journey_by_item[link.content_item_id].append(link)
 
+    latest_quality_by_case_evaluator: dict[
+        tuple[UUID, str], QualityEvaluation
+    ] = {}
+    if case_ids:
+        quality_rows = (
+            await session.execute(
+                select(QualityEvaluation, ContentRun.content_case_id)
+                .join(ContentRun, ContentRun.id == QualityEvaluation.run_id)
+                .where(ContentRun.content_case_id.in_(case_ids))
+            )
+        ).all()
+        for evaluation, content_case_id in quality_rows:
+            key = (content_case_id, evaluation.evaluator_key)
+            previous = latest_quality_by_case_evaluator.get(key)
+            if previous is None or (
+                evaluation.created_at,
+                str(evaluation.id),
+            ) > (
+                previous.created_at,
+                str(previous.id),
+            ):
+                latest_quality_by_case_evaluator[key] = evaluation
+    failed_quality_case_ids = {
+        content_case_id
+        for (content_case_id, _evaluator), evaluation
+        in latest_quality_by_case_evaluator.items()
+        if evaluation.result == "fail"
+    }
+
     approvals_by_item: dict[UUID, list[Approval]] = defaultdict(list)
     if item_ids:
         approval_rows = (
@@ -733,12 +784,16 @@ async def build_content_coverage(
                 )
             )
 
+        relevant_case_ids = {content_case.id for content_case, _ in case_roles}
         status, reasons = _coverage_status(
             has_case=bool(case_roles),
             items=item_payloads,
             selected_opportunities=selected,
             update_target_ids=update_targets,
             invalid_target_refs=invalid_target_refs,
+            unresolved_quality_failure=bool(
+                relevant_case_ids & failed_quality_case_ids
+            ),
         )
         duplicates = _duplicate_groups(item_payloads)
         if duplicates:
