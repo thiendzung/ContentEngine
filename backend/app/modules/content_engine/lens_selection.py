@@ -1130,6 +1130,27 @@ async def build_lens_candidate_payload(
     }
 
 
+async def _bind_step_output_artifact(
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+    step_run_id: UUID | None,
+    artifact_id: UUID,
+) -> None:
+    if step_run_id is None:
+        return
+    step = await session.get(StepRun, step_run_id)
+    if step is None or step.run_id != run_id:
+        raise LensSelectionError("lens_step_mismatch")
+    artifact_ref = str(artifact_id)
+    if artifact_ref not in step.output_artifact_refs_json:
+        step.output_artifact_refs_json = [
+            *step.output_artifact_refs_json,
+            artifact_ref,
+        ]
+        await session.flush()
+
+
 async def _persist_payload_artifact(
     session: AsyncSession,
     *,
@@ -1157,6 +1178,12 @@ async def _persist_payload_artifact(
             or existing.step_run_id != step_run_id
         ):
             raise LensSelectionError("lens_artifact_replay_conflict")
+        await _bind_step_output_artifact(
+            session,
+            run_id=run_id,
+            step_run_id=step_run_id,
+            artifact_id=existing.id,
+        )
         return existing
 
     latest_version = await session.scalar(
@@ -1176,6 +1203,12 @@ async def _persist_payload_artifact(
     )
     session.add(artifact)
     await session.flush()
+    await _bind_step_output_artifact(
+        session,
+        run_id=run_id,
+        step_run_id=step_run_id,
+        artifact_id=artifact.id,
+    )
     return artifact
 
 
@@ -1445,14 +1478,14 @@ def _selection_contexts(
     return evidence_context, angle_context
 
 
-async def persist_lens_selection(
-    session: AsyncSession,
+def _build_selection_payload(
     *,
-    candidate_artifact_id: UUID,
+    candidate_artifact: Artifact,
+    candidate_payload: dict[str, object],
     decisions: list[dict[str, object]],
     selected_by: str,
     reason: str,
-) -> LensSelectionResult:
+) -> dict[str, object]:
     actor = _required_text(
         selected_by,
         "lens_selection_actor_required",
@@ -1461,20 +1494,8 @@ async def persist_lens_selection(
         reason,
         "lens_selection_reason_required",
     )
-    candidate_artifact = await _load_candidate_artifact(
-        session,
-        artifact_id=candidate_artifact_id,
-    )
-    candidate_payload = await _require_current_candidate(
-        session,
-        artifact=candidate_artifact,
-    )
     candidates = _candidate_by_lens(candidate_payload)
-    (
-        normalized_decisions,
-        primary,
-        merged,
-    ) = _validate_decisions(
+    normalized_decisions, primary, merged = _validate_decisions(
         candidates=candidates,
         decisions=decisions,
     )
@@ -1484,14 +1505,7 @@ async def persist_lens_selection(
         primary=primary,
         merged=merged,
     )
-    run = await session.get(ContentRun, candidate_artifact.run_id)
-    if run is None:
-        raise LensSelectionError("lens_run_not_found")
-    variant = await session.get(LocaleVariant, run.locale_variant_id)
-    if variant is None:
-        raise LensSelectionError("lens_locale_variant_mismatch")
-
-    payload: dict[str, object] = {
+    return {
         "schema_version": LENS_SCHEMA_VERSION,
         "artifact_type": LENS_SELECTION_ARTIFACT_TYPE,
         "run_ref": _clone(candidate_payload["run_ref"]),
@@ -1513,6 +1527,38 @@ async def persist_lens_selection(
             "all_hold_or_drop_stops_before_angle": primary is None,
         },
     }
+
+
+async def persist_lens_selection(
+    session: AsyncSession,
+    *,
+    candidate_artifact_id: UUID,
+    decisions: list[dict[str, object]],
+    selected_by: str,
+    reason: str,
+) -> LensSelectionResult:
+    candidate_artifact = await _load_candidate_artifact(
+        session,
+        artifact_id=candidate_artifact_id,
+    )
+    candidate_payload = await _require_current_candidate(
+        session,
+        artifact=candidate_artifact,
+    )
+    payload = _build_selection_payload(
+        candidate_artifact=candidate_artifact,
+        candidate_payload=candidate_payload,
+        decisions=decisions,
+        selected_by=selected_by,
+        reason=reason,
+    )
+    run = await session.get(ContentRun, candidate_artifact.run_id)
+    if run is None:
+        raise LensSelectionError("lens_run_not_found")
+    variant = await session.get(LocaleVariant, run.locale_variant_id)
+    if variant is None:
+        raise LensSelectionError("lens_locale_variant_mismatch")
+
     artifact = await _persist_payload_artifact(
         session,
         run_id=run.id,
@@ -1590,10 +1636,34 @@ async def _validated_latest_selection_payload(
         raise LensSelectionError(
             "lens_selection_candidate_ref_mismatch"
         )
-    await _require_current_candidate(
+    candidate_payload = await _require_current_candidate(
         session,
         artifact=candidate,
     )
+    raw_decisions = payload.get("decisions")
+    decisions = _records(
+        raw_decisions,
+        "lens_selection_decisions_invalid",
+    )
+    selected_by = _required_text(
+        payload.get("selected_by"),
+        "lens_selection_actor_required",
+    )
+    reason = _required_text(
+        payload.get("selection_reason"),
+        "lens_selection_reason_required",
+    )
+    expected = _build_selection_payload(
+        candidate_artifact=candidate,
+        candidate_payload=candidate_payload,
+        decisions=decisions,
+        selected_by=selected_by,
+        reason=reason,
+    )
+    if expected != payload:
+        raise LensSelectionError(
+            "lens_selection_artifact_semantic_mismatch"
+        )
     return payload
 
 
