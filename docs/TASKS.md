@@ -179,8 +179,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | CT-01 | DONE / PR #172 MERGED | CustomerInsight foundation accepted with CI + exact-ref OCR + final local verification. Operational DB migration remains separately authorized. |
 | AU-01 | DONE / PR #173 MERGED | ExecutionPlan + approved capability-policy provenance + fail-closed authorization accepted with CI/OCR/local proof. |
 | CM-01 | DONE / PR #174 MERGED | Customer Living Map accepted with CI + exact-ref OCR + disposable local verification. Operational rev-0035/0036 remain separately authorized. |
-| CC-01 | IN IMPLEMENTATION | Primary Need reused from ContentCase; supporting Need + ContentItem↔Journey audit links; derived coverage status/read API on `feat/cc01-content-coverage`. |
-| LS-01 | PLANNED | 7 Content Lenses as selection tool, not article generator. |
+| CC-01 | DONE / PR #175 MERGED | Content Coverage accepted with CI + exact-ref OCR + locale-quality re-verification. Operational rev-0035/0036/0037 remain separately authorized. |
+| LS-01 | IN IMPLEMENTATION | 7 Lens candidate Artifact + SELECT/MERGE/HOLD/DROP + evidence/authority guards on `feat/ls01-lens-selection`. |
 | AU-02 | PLANNED | Local agent bridge + safe auto-next orchestration + independent review. |
 | QA-01 | PLANNED | Reader Value gate + separate SEO/AI readiness. |
 | PM-01 | PLANNED | Publish/measurement identity and safe adapters. |
@@ -247,3 +247,25 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [ ] Agent Local disposable-DB verification.
 - [ ] Founder merge.
 - [ ] Operational migration remains separately authorized.
+
+### LS-01 immediate checklist
+
+- [x] Build exactly 7 deterministic Lens candidates: DEFINITION / MISCONCEPTION / SIGNALS / CAUSES / METHOD / CASE / POV.
+- [x] Build candidates from the selected ContentOpportunity + Customer Living Map + Content Coverage.
+- [x] Persist candidate and selection state only as versioned immutable Artifacts; no LS schema/migration.
+- [x] Require explicit reviewed decisions: SELECT / MERGE / HOLD / DROP.
+- [x] Allow at most one primary SELECT; MERGE only into that primary; do not create one article per Lens.
+- [x] Block SELECT/MERGE for candidates whose required guard evidence is missing.
+- [x] CASE requires approved real-case + provenance + rights refs.
+- [x] POV requires approved MOTGU position.
+- [x] SIGNALS preserves indicator != conclusion.
+- [x] CAUSES preserves correlation != causality and requires approved causal proof.
+- [x] METHOD requires traceable MOTGU first-party material.
+- [x] Candidate becomes stale if relevant Customer Map/Coverage inputs change.
+- [x] Persist evidence_context and angle_context; optional valid Lens context flows into Angle model input.
+- [x] All HOLD/DROP is valid and blocks Angle instead of forcing weak content.
+- [x] Read/build/persist path does not run research/model/tool work.
+- [ ] CI on final implementation head.
+- [ ] Exact-ref OpenCodeReview.
+- [ ] Agent Local verification.
+- [ ] Founder merge.
