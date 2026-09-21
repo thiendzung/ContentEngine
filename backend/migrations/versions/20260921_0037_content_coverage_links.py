@@ -213,12 +213,17 @@ def upgrade() -> None:
                 need_audience uuid;
             BEGIN
                 IF TG_OP = 'UPDATE'
+                   AND OLD.need_hypothesis_id
+                       IS DISTINCT FROM NEW.need_hypothesis_id THEN
+                    RAISE EXCEPTION
+                        'content_coverage_primary_need_immutable';
+                END IF;
+
+                IF TG_OP = 'UPDATE'
                    AND (
                        OLD.project_id IS DISTINCT FROM NEW.project_id
                        OR OLD.audience_hypothesis_id
                           IS DISTINCT FROM NEW.audience_hypothesis_id
-                       OR OLD.need_hypothesis_id
-                          IS DISTINCT FROM NEW.need_hypothesis_id
                    )
                    AND EXISTS(
                        SELECT 1
