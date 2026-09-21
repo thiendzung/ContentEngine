@@ -407,3 +407,94 @@ Mỗi thay đổi Settings production cần:
 6. rollout record.
 
 Nếu thay đổi phá contract canonical, phải vào Contract Change Mode trước code.
+
+## 22. Controlled Autopilot capability policy
+
+AU-01 dùng `SettingsSnapshot` hiện có làm policy snapshot bất biến cho từng ContentRun. Không tạo permission store hoặc workflow engine thứ hai.
+
+Schema V1:
+
+```yaml
+autopilot:
+  capability_policy:
+    schema_version: 1
+    enabled: true
+    workers:
+      customer-map-worker:
+        capabilities:
+          - READ
+          - WRITE_ARTIFACT
+          - RUN_TOOL
+          - WRITE_DATABASE
+        allowed_actions:
+          - read.customer
+          - artifact.write.customer_map
+          - database.write.customer_map
+        forbidden_actions:
+          - publish.execute
+          - settings.change
+          - workflow.change
+        allowed_tools:
+          - customer_store
+          - dedupe
+        budget_ceiling:
+          max_tool_calls: 12
+          max_model_calls: 2
+          max_output_tokens: 8000
+          max_estimated_cost: "1.50"
+          max_wall_clock_seconds: 240
+        max_timeout_seconds: 300
+        max_attempts: 3
+```
+
+Capability V1:
+- `READ`;
+- `WRITE_ARTIFACT`;
+- `RUN_MODEL`;
+- `RUN_TOOL`;
+- `RESEARCH_EXTERNAL`;
+- `WRITE_DATABASE`;
+- `PUBLISH`;
+- `CHANGE_SETTINGS`;
+- `CHANGE_PROMPT`;
+- `CHANGE_WORKFLOW`.
+
+Action namespace V1 phải map được về đúng capability:
+- `read.*` → `READ`;
+- `artifact.write.*` → `WRITE_ARTIFACT`;
+- `model.run.*` → `RUN_MODEL`;
+- `tool.run.*` → `RUN_TOOL`;
+- `research.external.*` → `RESEARCH_EXTERNAL`;
+- `database.write.*` → `WRITE_DATABASE`;
+- `publish.*` → `PUBLISH`;
+- `settings.change.*` → `CHANGE_SETTINGS`;
+- `prompt.change.*` → `CHANGE_PROMPT`;
+- `workflow.change.*` → `CHANGE_WORKFLOW`.
+
+ExecutionPlan phải bind exact:
+- run + optional step;
+- task + worker;
+- SettingsSnapshot id + hash;
+- input refs;
+- expected output types;
+- required capabilities;
+- allowed/forbidden actions;
+- allowed tools;
+- budget;
+- timeout;
+- max attempts;
+- stop conditions;
+- required checks;
+- reviewer;
+- next-on-pass/fail;
+- human-gate requirement.
+
+Fail closed khi:
+- worker/plan/policy không khớp;
+- action/tool/capability vượt quyền;
+- policy forbidden action bị plan bỏ quên;
+- timeout/attempt/budget vượt ceiling;
+- budget bắt buộc cho model/tool/research bị thiếu;
+- SettingsSnapshot hoặc Artifact binding/hash không còn đúng.
+
+`PUBLISH`, `CHANGE_SETTINGS`, `CHANGE_PROMPT`, `CHANGE_WORKFLOW` luôn yêu cầu `human_gate_required=true` ở contract. AU-01 chỉ xác nhận contract; AU-02 mới chịu trách nhiệm kiểm tra gate thực tế trước execution.
