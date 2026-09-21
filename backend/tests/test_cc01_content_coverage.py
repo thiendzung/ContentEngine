@@ -490,6 +490,35 @@ async def test_coverage_scope_drift_is_rejected_after_links() -> None:
 
 
 @pytest.mark.asyncio
+async def test_primary_need_identity_cannot_be_reassigned() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        primary = await _need(
+            session,
+            project_id=project.id,
+            statement="Original primary need",
+        )
+        replacement = await _need(
+            session,
+            project_id=project.id,
+            statement="Different same-project need",
+        )
+        content_case = await _content_case(
+            session,
+            project_id=project.id,
+            need=primary,
+        )
+
+        with pytest.raises(
+            DBAPIError,
+            match="content_coverage_primary_need_immutable",
+        ):
+            async with session.begin_nested():
+                content_case.need_hypothesis_id = replacement.id
+                await session.flush()
+
+
+@pytest.mark.asyncio
 async def test_item_journey_link_is_config_valid_audited_and_immutable() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
