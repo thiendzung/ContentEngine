@@ -25,6 +25,7 @@ from app.modules.content_engine.journal.operator_quality import (
     QUALITY_REVIEW_TASK_KEYS,
     get_quality_progress,
 )
+from app.modules.content_engine.journal.quality_readiness import READINESS_CRITERIA
 from app.modules.content_engine.journal.operator_runtime import (
     get_operator_state,
     resolve_next_operator_action,
@@ -48,6 +49,76 @@ class _CapturePort:
         del attempt
         self.inputs.append(copy.deepcopy(input_bundle))
         return copy.deepcopy(self.output)
+
+
+def _passing_readiness_output(stage: str, locale: str) -> dict[str, object]:
+    return {
+        "locale": locale,
+        "result": "pass",
+        "summary": f"{stage} passes in the bounded fixture.",
+        "criteria": [
+            {
+                "key": key,
+                "result": "pass",
+                "finding": f"{key} passes.",
+                "repair_suggestion": "",
+            }
+            for key in READINESS_CRITERIA[stage]
+        ],
+    }
+
+
+async def _install_passing_readiness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _fake_readiness_port(
+        _session: AsyncSession,
+        *,
+        stage: str,
+        locale: str,
+        **kwargs: object,
+    ) -> _CapturePort:
+        del _session, kwargs
+        return _CapturePort(_passing_readiness_output(stage, locale))
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_quality_readiness_model_port",
+        _fake_readiness_port,
+    )
+
+
+async def _complete_readiness_jobs(
+    session: AsyncSession,
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    runner_registry: AgentRunnerRegistry,
+    worker_prefix: str,
+    max_jobs: int = 4,
+) -> None:
+    await _install_passing_readiness(monkeypatch)
+    completed = 0
+    while completed < max_jobs:
+        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id=f"{worker_prefix}-{completed}",
+        )
+        if job is None:
+            break
+        step = await session.get(StepRun, job.step_run_id)
+        assert step is not None
+        if not (
+            step.step_key.startswith("reader_value_")
+            or step.step_key.startswith("search_ai_readiness_")
+        ):
+            raise AssertionError(f"unexpected quality stage: {step.step_key}")
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=job.id,
+            worker_id=f"{worker_prefix}-{completed}",
+            runner_registry=runner_registry,
+        )
+        completed += 1
 
 
 async def _complete_f3_writers(
@@ -309,6 +380,14 @@ async def _complete_healthy_lane_from_audit(
             runner_registry=runner_registry,
         )
 
+    await _complete_readiness_jobs(
+        session,
+        monkeypatch=monkeypatch,
+        runner_registry=runner_registry,
+        worker_prefix=f"{worker_prefix}-readiness",
+        max_jobs=2,
+    )
+
 
 @pytest.mark.asyncio
 async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
@@ -418,6 +497,14 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
                 worker_id=f"f4-source-copy-{_}",
                 runner_registry=registry,
             )
+
+        await _complete_readiness_jobs(
+            session,
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="f4-readiness",
+            max_jobs=4,
+        )
 
         progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
         assert progress is not None
@@ -2158,5 +2245,4 @@ async def test_f4_r2_source_copy_exact_lineage_budget_and_historical_isolation(
             "operator_quality_retry_requires_failed_job",
             "operator_quality_retry_exhausted",
         }
-
 
