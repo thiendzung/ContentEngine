@@ -349,8 +349,6 @@ def _coverage_status(
     unresolved_quality_failure: bool,
 ) -> tuple[CoverageStatus, list[str]]:
     reasons: list[str] = []
-    if invalid_target_refs:
-        return "INSUFFICIENT_DATA", ["selected_update_target_ref_invalid"]
 
     weak_ids = [
         item["id"]
@@ -379,15 +377,22 @@ def _coverage_status(
                 if published_ids & update_target_ids
                 else "newer_unpublished_revision_exists"
             ]
+            if invalid_target_refs:
+                update_reasons.append("selected_update_target_ref_invalid")
             if weak_ids or unresolved_quality_failure:
                 update_reasons.append("weak_or_failed_revision_exists")
             return "NEEDS_UPDATE", update_reasons
         published_reasons = ["published_content_exists"]
+        if invalid_target_refs:
+            published_reasons.append("selected_update_target_ref_invalid")
         if weak_ids or unresolved_quality_failure:
             published_reasons.append(
                 "additional_weak_content_does_not_erase_published_coverage"
             )
         return "PUBLISHED", published_reasons
+
+    if invalid_target_refs:
+        return "INSUFFICIENT_DATA", ["selected_update_target_ref_invalid"]
 
     if weak_ids or unresolved_quality_failure:
         return "WEAK", [
@@ -550,6 +555,9 @@ async def build_content_coverage(
         )
     variant_by_id = {row.id: row for row in variants}
     variant_ids = set(variant_by_id)
+    relevant_case_ids_for_locale = {
+        row.content_case_id for row in variants
+    }
 
     items = []
     if variant_ids:
@@ -790,9 +798,15 @@ async def build_content_coverage(
                 )
             )
 
-        relevant_case_ids = {content_case.id for content_case, _ in case_roles}
+        relevant_case_ids = {
+            content_case.id for content_case, _ in case_roles
+        }
+        has_relevant_case = bool(case_roles) and (
+            locale_filter is None
+            or bool(relevant_case_ids & relevant_case_ids_for_locale)
+        )
         status, reasons = _coverage_status(
-            has_case=bool(case_roles),
+            has_case=has_relevant_case,
             items=item_payloads,
             selected_opportunities=selected,
             update_target_ids=update_targets,
