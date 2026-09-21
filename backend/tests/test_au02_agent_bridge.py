@@ -239,6 +239,8 @@ async def test_safe_plan_enqueues_claims_and_exact_claim_replays() -> None:
         assert lease is not None
         assert lease.job_id == job.id
         assert lease.execution_plan_artifact_id == plan_artifact.id
+        assert lease.execution_plan_artifact_version == plan_artifact.version
+        assert lease.execution_plan_artifact_hash == plan_artifact.content_hash
         assert lease.approval_id is None
         assert lease.execution_plan["task_key"] == "customer_map_refresh"
         assert lease.execution_plan["worker_key"] == "customer-map-worker"
