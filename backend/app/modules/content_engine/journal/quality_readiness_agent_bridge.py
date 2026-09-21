@@ -144,9 +144,19 @@ def render_quality_readiness_prompt(
     return (
         f"{prompt.body.rstrip()}\n\n"
         "RECIPE_JSON:\n"
-        f"{json.dumps(recipe.recipe_json, ensure_ascii=False, sort_keys=True, separators=(',', ':'))}\n\n"
+        f"{json.dumps(
+            recipe.recipe_json,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(',', ':'),
+        )}\n\n"
         "QUALITY_READINESS_INPUT_JSON:\n"
-        f"{json.dumps(model_input, ensure_ascii=False, sort_keys=True, separators=(',', ':'))}\n\n"
+        f"{json.dumps(
+            model_input,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(',', ':'),
+        )}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
