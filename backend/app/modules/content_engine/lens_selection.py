@@ -407,6 +407,10 @@ async def _approved_guard_config(
             raise LensSelectionError("lens_settings_source_ref_invalid")
         match = _SETTINGS_REF_RE.fullmatch(raw_ref)
         if match is None:
+            if raw_ref.strip().startswith("settings_version:"):
+                raise LensSelectionError(
+                    "lens_settings_source_ref_invalid"
+                )
             continue
         try:
             row_id = UUID(match.group(1))
