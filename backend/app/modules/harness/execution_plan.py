@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
@@ -317,9 +319,8 @@ def _resolve_worker_policy(
     *,
     worker_key: str,
 ) -> WorkerCapabilityPolicy:
-    root = _as_exact_dict(
+    root = _as_dict(
         snapshot.resolved_settings_json.get("autopilot"),
-        {"capability_policy"},
         "execution_plan_policy_root_invalid",
     )
     raw_policy = _as_exact_dict(
@@ -636,7 +637,7 @@ def _required_key(value: object, code: str) -> str:
 def _unique_list(
     value: object,
     *,
-    parser,
+    parser: Callable[[object, str], str],
     code: str,
 ) -> tuple[str, ...]:
     if not isinstance(value, list):
@@ -679,11 +680,11 @@ def _budget(value: object, code: str) -> dict[str, int | float | str]:
     for key in sorted(raw):
         item = raw[key]
         if key in _INTEGER_BUDGET_FIELDS:
-            normalized[key] = _positive_int(item, code)
+            normalized[key] = _nonnegative_int(item, code)
         elif key in _FLOAT_BUDGET_FIELDS:
-            normalized[key] = _positive_float(item, code)
+            normalized[key] = _nonnegative_float(item, code)
         elif key in _DECIMAL_BUDGET_FIELDS:
-            normalized[key] = _positive_decimal_text(item, code)
+            normalized[key] = _nonnegative_decimal_text(item, code)
         else:
             raise ExecutionPlanError(code)
     return normalized
@@ -699,19 +700,34 @@ def _positive_float(value: object, code: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ExecutionPlanError(code)
     normalized = float(value)
-    if normalized <= 0:
+    if not math.isfinite(normalized) or normalized <= 0:
         raise ExecutionPlanError(code)
     return normalized
 
 
-def _positive_decimal_text(value: object, code: str) -> str:
+def _nonnegative_int(value: object, code: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ExecutionPlanError(code)
+    return value
+
+
+def _nonnegative_float(value: object, code: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ExecutionPlanError(code)
+    normalized = float(value)
+    if not math.isfinite(normalized) or normalized < 0:
+        raise ExecutionPlanError(code)
+    return normalized
+
+
+def _nonnegative_decimal_text(value: object, code: str) -> str:
     if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
         raise ExecutionPlanError(code)
     try:
         normalized = Decimal(str(value))
     except InvalidOperation as exc:
         raise ExecutionPlanError(code) from exc
-    if not normalized.is_finite() or normalized <= 0:
+    if not normalized.is_finite() or normalized < 0:
         raise ExecutionPlanError(code)
     return format(normalized.normalize(), "f")
 
