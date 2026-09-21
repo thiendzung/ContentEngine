@@ -1329,6 +1329,10 @@ async def _completed_replay(
         raise AgentBridgeError(
             "agent_bridge_review_request_missing"
         )
+    await _review_request_artifact(
+        session,
+        review_request_id=review.id,
+    )
     return AgentTaskCompletion(
         job_id=job.id,
         completion_receipt_id=receipt.id,
@@ -1917,6 +1921,192 @@ async def fail_subagent_telemetry(
         ) from exc
 
 
+def _uuid_value(value: object, code: str) -> UUID:
+    if not isinstance(value, str):
+        raise AgentBridgeError(code)
+    try:
+        return UUID(value)
+    except ValueError as exc:
+        raise AgentBridgeError(code) from exc
+
+
+def _object_dict(value: object, code: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise AgentBridgeError(code)
+    return {str(key): item for key, item in value.items()}
+
+
+def _string_list(value: object, code: str) -> list[str]:
+    if (
+        not isinstance(value, list)
+        or not all(isinstance(item, str) and item for item in value)
+    ):
+        raise AgentBridgeError(code)
+    return [str(item) for item in value]
+
+
+async def _validate_review_request_semantics(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+    payload: dict[str, object],
+) -> None:
+    if artifact.step_run_id is None:
+        raise AgentBridgeError("agent_bridge_review_step_missing")
+    job_id = _uuid_value(
+        payload.get("job_id"),
+        "agent_bridge_review_request_invalid",
+    )
+    job = await session.get(Job, job_id)
+    if (
+        job is None
+        or job.status != "completed"
+        or job.run_id != artifact.run_id
+        or job.step_run_id != artifact.step_run_id
+        or artifact.artifact_type
+        != _artifact_type("agent_review_request_", job.id)
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+
+    step = await session.get(StepRun, job.step_run_id)
+    if (
+        step is None
+        or step.status != "completed"
+        or step.run_id != job.run_id
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+    output_refs = _string_list(
+        payload.get("output_refs"),
+        "agent_bridge_review_request_invalid",
+    )
+    if output_refs != step.output_artifact_refs_json:
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+
+    completion_ref = _object_dict(
+        payload.get("completion_receipt"),
+        "agent_bridge_review_request_invalid",
+    )
+    completion_id = _uuid_value(
+        completion_ref.get("id"),
+        "agent_bridge_review_request_invalid",
+    )
+    completion = await session.get(Artifact, completion_id)
+    if (
+        completion is None
+        or completion.run_id != job.run_id
+        or completion.step_run_id != job.step_run_id
+        or completion.artifact_type
+        != _artifact_type(
+            "agent_bridge_complete_",
+            f"{job.id}:{job.attempt}",
+        )
+        or not isinstance(completion.content_json, dict)
+        or completion.content_hash
+        != _stable_hash(completion.content_json)
+        or completion_ref.get("content_hash")
+        != completion.content_hash
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+    completion_payload = completion.content_json
+    if (
+        completion_payload.get("job_id") != str(job.id)
+        or completion_payload.get("job_attempt") != job.attempt
+        or completion_payload.get("run_id") != str(job.run_id)
+        or completion_payload.get("step_run_id")
+        != str(job.step_run_id)
+        or completion_payload.get("output_refs") != output_refs
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+
+    root_id = _uuid_value(
+        completion_payload.get("root_execution_id"),
+        "agent_bridge_review_request_invalid",
+    )
+    root = await session.get(DelegationExecution, root_id)
+    if (
+        root is None
+        or root.status != "completed"
+        or root.run_id != job.run_id
+        or root.step_run_id != job.step_run_id
+        or root.result_artifact_id != completion.id
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+
+    request_plan_ref = _object_dict(
+        payload.get("execution_plan"),
+        "agent_bridge_review_request_invalid",
+    )
+    completion_plan_ref = _object_dict(
+        completion_payload.get("execution_plan"),
+        "agent_bridge_review_request_invalid",
+    )
+    if request_plan_ref != completion_plan_ref:
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+    plan_id = _uuid_value(
+        request_plan_ref.get("id"),
+        "agent_bridge_review_request_invalid",
+    )
+    plan_artifact = await session.get(Artifact, plan_id)
+    if (
+        plan_artifact is None
+        or plan_artifact.run_id != job.run_id
+        or plan_artifact.step_run_id != job.step_run_id
+        or not plan_artifact.artifact_type.startswith(
+            EXECUTION_PLAN_ARTIFACT_PREFIX
+        )
+        or not isinstance(plan_artifact.content_json, dict)
+        or plan_artifact.content_hash
+        != _stable_hash(plan_artifact.content_json)
+        or request_plan_ref.get("version") != plan_artifact.version
+        or request_plan_ref.get("content_hash")
+        != plan_artifact.content_hash
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+    plan_payload = plan_artifact.content_json
+    expected: dict[str, object] = {
+        "schema_version": AGENT_BRIDGE_SCHEMA_VERSION,
+        "job_id": str(job.id),
+        "run_id": str(job.run_id),
+        "step_run_id": str(job.step_run_id),
+        "task_key": plan_payload.get("task_key"),
+        "worker_key": plan_payload.get("worker_key"),
+        "execution_plan": {
+            "id": str(plan_artifact.id),
+            "version": plan_artifact.version,
+            "content_hash": plan_artifact.content_hash,
+        },
+        "completion_receipt": {
+            "id": str(completion.id),
+            "content_hash": completion.content_hash,
+        },
+        "reviewer": plan_payload.get("reviewer"),
+        "required_checks": plan_payload.get("required_checks"),
+        "next_on_pass": plan_payload.get("next_on_pass"),
+        "next_on_fail": plan_payload.get("next_on_fail"),
+        "output_refs": output_refs,
+    }
+    if payload != expected:
+        raise AgentBridgeError(
+            "agent_bridge_review_request_semantic_mismatch"
+        )
+
+
 async def _review_request_artifact(
     session: AsyncSession,
     *,
@@ -1925,16 +2115,19 @@ async def _review_request_artifact(
     artifact = await session.get(Artifact, review_request_id)
     if (
         artifact is None
-        or not artifact.artifact_type.startswith(
-            "agent_review_request_"
-        )
         or not isinstance(artifact.content_json, dict)
         or artifact.content_hash != _stable_hash(artifact.content_json)
     ):
         raise AgentBridgeError(
             "agent_bridge_review_request_invalid"
         )
-    return artifact, artifact.content_json
+    payload = artifact.content_json
+    await _validate_review_request_semantics(
+        session,
+        artifact=artifact,
+        payload=payload,
+    )
+    return artifact, payload
 
 
 def _normalize_review_checks(
@@ -2063,6 +2256,64 @@ def _raise_missing_review_step() -> UUID:
     raise AgentBridgeError("agent_bridge_review_step_missing")
 
 
+def _expected_review_result_payload(
+    *,
+    result_payload: dict[str, object],
+    request_artifact: Artifact,
+    request_payload: dict[str, object],
+) -> dict[str, object]:
+    reviewer = _required_text(
+        result_payload.get("reviewer"),
+        "agent_bridge_review_result_invalid",
+    )
+    expected_reviewer = request_payload.get("reviewer")
+    worker_key = request_payload.get("worker_key")
+    if (
+        not isinstance(expected_reviewer, str)
+        or reviewer != expected_reviewer
+        or reviewer == worker_key
+    ):
+        raise AgentBridgeError(
+            "agent_bridge_review_result_semantic_mismatch"
+        )
+    decision = _required_text(
+        result_payload.get("decision"),
+        "agent_bridge_review_result_invalid",
+    ).lower()
+    if decision not in {"pass", "fail"}:
+        raise AgentBridgeError(
+            "agent_bridge_review_result_invalid"
+        )
+    required_checks = _string_list(
+        request_payload.get("required_checks"),
+        "agent_bridge_review_request_invalid",
+    )
+    checks = _normalize_review_checks(
+        result_payload.get("checks"),
+        required_checks=required_checks,
+        decision=decision,
+    )
+    comment = result_payload.get("comment")
+    if comment is not None:
+        comment = _required_text(
+            comment,
+            "agent_bridge_review_comment_invalid",
+        )
+    return {
+        "schema_version": AGENT_BRIDGE_SCHEMA_VERSION,
+        "review_request": {
+            "id": str(request_artifact.id),
+            "content_hash": request_artifact.content_hash,
+        },
+        "run_id": request_payload.get("run_id"),
+        "step_run_id": request_payload.get("step_run_id"),
+        "reviewer": reviewer,
+        "decision": decision,
+        "checks": checks,
+        "comment": comment,
+    }
+
+
 async def _review_result_artifact(
     session: AsyncSession,
     *,
@@ -2108,9 +2359,23 @@ async def _review_result_artifact(
         != request_artifact.content_hash
         or result.run_id != request_artifact.run_id
         or result.step_run_id != request_artifact.step_run_id
+        or result.artifact_type
+        != _artifact_type(
+            "agent_review_result_",
+            request_artifact.id,
+        )
     ):
         raise AgentBridgeError(
             "agent_bridge_review_result_binding_invalid"
+        )
+    expected = _expected_review_result_payload(
+        result_payload=result_payload,
+        request_artifact=request_artifact,
+        request_payload=request_payload,
+    )
+    if result_payload != expected:
+        raise AgentBridgeError(
+            "agent_bridge_review_result_semantic_mismatch"
         )
     return (
         result,
@@ -2222,10 +2487,16 @@ async def materialize_auto_next(
             raise AgentBridgeError(
                 "agent_bridge_route_replay_conflict"
             )
+        try:
+            next_step_id = UUID(raw_next)
+        except ValueError as exc:
+            raise AgentBridgeError(
+                "agent_bridge_route_receipt_invalid"
+            ) from exc
         return AutoNextResult(
             review_result_id=result_artifact.id,
             route=route_key,
-            next_step_run_id=UUID(raw_next),
+            next_step_run_id=next_step_id,
             route_receipt_id=existing_receipt.id,
             replayed=True,
         )
