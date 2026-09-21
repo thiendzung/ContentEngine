@@ -130,21 +130,6 @@ def upgrade() -> None:
             DECLARE
                 audience_project uuid;
             BEGIN
-                IF NEW.audience_hypothesis_id IS NOT NULL THEN
-                    SELECT project_id
-                    INTO audience_project
-                    FROM audience_hypotheses
-                    WHERE id = NEW.audience_hypothesis_id;
-
-                    IF audience_project IS NULL THEN
-                        RAISE EXCEPTION 'customer_map_need_audience_not_found';
-                    END IF;
-                    IF audience_project IS DISTINCT FROM NEW.project_id THEN
-                        RAISE EXCEPTION
-                            'customer_map_need_audience_project_mismatch';
-                    END IF;
-                END IF;
-
                 IF TG_OP = 'UPDATE'
                    AND (
                        OLD.project_id IS DISTINCT FROM NEW.project_id
@@ -158,6 +143,21 @@ def upgrade() -> None:
                    ) THEN
                     RAISE EXCEPTION
                         'customer_map_linked_need_scope_immutable';
+                END IF;
+
+                IF NEW.audience_hypothesis_id IS NOT NULL THEN
+                    SELECT project_id
+                    INTO audience_project
+                    FROM audience_hypotheses
+                    WHERE id = NEW.audience_hypothesis_id;
+
+                    IF audience_project IS NULL THEN
+                        RAISE EXCEPTION 'customer_map_need_audience_not_found';
+                    END IF;
+                    IF audience_project IS DISTINCT FROM NEW.project_id THEN
+                        RAISE EXCEPTION
+                            'customer_map_need_audience_project_mismatch';
+                    END IF;
                 END IF;
 
                 RETURN NEW;
