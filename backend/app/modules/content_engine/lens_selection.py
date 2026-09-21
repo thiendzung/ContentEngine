@@ -20,6 +20,7 @@ from app.modules.content_engine.content_coverage import (
 from app.modules.content_engine.models import (
     ContentCase,
     ContentOpportunity,
+    HumanSelection,
     LocaleVariant,
     NeedHypothesisSignal,
     Project,
@@ -194,9 +195,56 @@ def _parse_guard_config(
     raw: dict[str, object],
 ) -> dict[str, list[dict[str, object]]]:
     if not set(raw).issubset(
-        {"case_materials", "pov_positions", "causal_evidence"}
+        {
+            "misconceptions",
+            "case_materials",
+            "pov_positions",
+            "causal_evidence",
+        }
     ):
         raise LensSelectionError("lens_guard_config_unknown_key")
+
+    misconceptions = _records(
+        raw.get("misconceptions", []),
+        "lens_misconceptions_invalid",
+    )
+    parsed_misconceptions: list[dict[str, object]] = []
+    for item in misconceptions:
+        _validate_guard_entry_keys(
+            item,
+            {
+                "ref",
+                "need_hypothesis_id",
+                "statement",
+                "observation_ref",
+                "approval_ref",
+            },
+            "lens_misconception_invalid",
+        )
+        parsed_misconceptions.append(
+            {
+                "ref": _required_text(
+                    item["ref"],
+                    "lens_misconception_ref_required",
+                ),
+                "need_hypothesis_id": _optional_uuid_text(
+                    item["need_hypothesis_id"],
+                    "lens_misconception_need_invalid",
+                ),
+                "statement": _required_text(
+                    item["statement"],
+                    "lens_misconception_statement_required",
+                ),
+                "observation_ref": _required_text(
+                    item["observation_ref"],
+                    "lens_misconception_observation_required",
+                ),
+                "approval_ref": _required_text(
+                    item["approval_ref"],
+                    "lens_misconception_approval_required",
+                ),
+            }
+        )
 
     cases = _records(
         raw.get("case_materials", []),
@@ -320,6 +368,7 @@ def _parse_guard_config(
         )
 
     return {
+        "misconceptions": parsed_misconceptions,
         "case_materials": parsed_cases,
         "pov_positions": parsed_positions,
         "causal_evidence": parsed_causal,
@@ -472,6 +521,34 @@ async def _run_context(
         or not opportunity.selection_reason.strip()
     ):
         raise LensSelectionError("lens_opportunity_selection_required")
+    human_selections = list(
+        (
+            await session.scalars(
+                select(HumanSelection)
+                .where(
+                    HumanSelection.content_opportunity_id
+                    == opportunity.id
+                )
+                .order_by(
+                    HumanSelection.selected_at,
+                    HumanSelection.id,
+                )
+            )
+        ).all()
+    )
+    matching_selection = [
+        row
+        for row in human_selections
+        if (
+            row.selected_by == opportunity.selected_by
+            and row.reason == opportunity.selection_reason
+            and row.selected_at == opportunity.selected_at
+        )
+    ]
+    if len(human_selections) != 1 or len(matching_selection) != 1:
+        raise LensSelectionError(
+            "lens_opportunity_human_selection_mismatch"
+        )
     return run, step, content_case, variant, opportunity
 
 
@@ -655,6 +732,10 @@ def _build_candidate_rows(
     )
     coverage_reason = f"existing_coverage={coverage_status}"
 
+    misconception_rows = _matching_guard_entries(
+        guard_config["misconceptions"],
+        need_id=need_id,
+    )
     case_rows = _matching_guard_entries(
         guard_config["case_materials"],
         need_id=need_id,
@@ -668,6 +749,15 @@ def _build_candidate_rows(
         need_id=need_id,
     )
 
+    misconception_refs = [
+        str(value)
+        for row in misconception_rows
+        for value in (
+            row["ref"],
+            row["observation_ref"],
+            row["approval_ref"],
+        )
+    ]
     case_refs = [
         str(value)
         for row in case_rows
@@ -726,23 +816,27 @@ def _build_candidate_rows(
             lens="MISCONCEPTION",
             opportunity=opportunity,
             coverage=coverage_lane,
-            source_refs=contradicts,
+            source_refs=misconception_refs,
             evidence_needed=[
-                "traceable evidence that the suspected belief is actually present",
+                "an observed customer belief tied to traceable evidence",
                 "evidence that corrects or qualifies the belief",
             ],
-            authority="EVIDENCE_LED",
+            authority=(
+                "APPROVED_MISCONCEPTION_OBSERVATION"
+                if misconception_rows
+                else "MISSING_OBSERVED_MISCONCEPTION"
+            ),
             guards=[
                 _guard(
                     "misconception_observed",
-                    "PASS" if contradicts else "BLOCK",
-                    "Do not invent a misconception without contradictory evidence.",
-                    contradicts,
+                    "PASS" if misconception_rows else "BLOCK",
+                    "Do not infer a misconception from contradictory evidence alone.",
+                    [*misconception_refs, *guard_source_refs],
                 )
             ],
             added_value=(
-                "Correct a documented misunderstanding instead of repeating "
-                "generic advice."
+                "Correct a documented misunderstanding instead of inventing "
+                "a belief the customer may not actually hold."
             ),
             reasons=[
                 coverage_reason,
