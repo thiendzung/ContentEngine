@@ -241,3 +241,41 @@ Current bounded LS-01 implementation:
 
 Review flow remains:
 `CI → exact-ref OpenCodeReview → MG triage → Agent Local proof → Founder merge`.
+
+## AU-02 implementation window — 2026-09-21
+
+PR #176 (LS-01) is merged. Live main at AU-02 start is `5f3cef586e74442e48e213b6229d697cbd34d103`.
+
+Current bounded AU-02 implementation:
+- branch `feat/au02-agent-bridge`;
+- PR #177;
+- no new DB migration; code Alembic head remains `20260921_0037`;
+- reuses ContentRun / StepRun / Job / Approval / Artifact / checkpoint / DelegationExecution;
+- no second workflow engine;
+- exact AU-01 ExecutionPlan + SettingsSnapshot + task + worker binding;
+- worker claim returns the exact authorized plan and settings identity;
+- human-gated plans require the canonical approval-request checkpoint, exact approved Approval, canonical approval checkpoint, non-worker actor, and executable run state before queue/claim;
+- approval is rechecked at execution operations, not accepted only as a plan declaration;
+- worker-scoped claim/heartbeat/expiry reclaim with bounded attempts and absolute plan/budget deadline;
+- durable ModelCall/ToolCall/output-token/cost/wall-clock budgets enforced; non-durable AU-01 counters fail closed instead of trusting worker self-reporting;
+- completion validates exact output lineage/type/hash/latest version;
+- completion/failure receipts plus checkpoints provide restart/recovery evidence;
+- root/subagent telemetry reuses DelegationExecution and excludes prompt/raw payload/COT;
+- completion creates an independent review request; worker cannot self-certify;
+- review request/result are semantically rebuilt from canonical lineage before auto-next;
+- auto-next only materializes the next pending StepRun after review; it does not enqueue future work without that step's own ExecutionPlan;
+- retryable failure creates a new StepRun + new ExecutionPlan; human-gated retry requires fresh approval;
+- malformed SettingsVersion-like capability-policy provenance fails closed;
+- no unauthenticated public bridge endpoint and no Antigravity activation are introduced by AU-02.
+
+Important limitation made explicit rather than hidden: the current Harness does not durably ledger context-estimate, research-source and revise-loop counters at this bridge boundary. AU-02 therefore rejects plans using those budget counters until a durable source exists; it does not accept local-agent self-report as enforcement truth.
+
+Operational DB remains under the separately controlled release state. AU-02 adds no migration and does not authorize applying rev-0035 → rev-0037 operationally.
+
+Review flow remains:
+`CI → exact-ref OpenCodeReview → MG triage → Agent Local exact-head proof → Founder merge`.
+
+AU-02 verification hardening:
+- output timestamp is strict: Artifact `created_at` must be greater than `StepRun.started_at`, not equal;
+- external-only output Artifacts fail closed until ContentEngine has a canonical external-object resolver/hash verifier; AU-02 does not treat an arbitrary stored hash as proof of external object integrity.
+
