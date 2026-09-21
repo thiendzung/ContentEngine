@@ -1343,6 +1343,22 @@ def _validate_decisions(
     return ordered, primary, merged
 
 
+async def _validate_step_output_binding(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+) -> None:
+    if artifact.step_run_id is None:
+        return
+    step = await session.get(StepRun, artifact.step_run_id)
+    if (
+        step is None
+        or step.run_id != artifact.run_id
+        or str(artifact.id) not in step.output_artifact_refs_json
+    ):
+        raise LensSelectionError("lens_artifact_step_binding_invalid")
+
+
 async def _load_candidate_artifact(
     session: AsyncSession,
     *,
@@ -1358,6 +1374,10 @@ async def _load_candidate_artifact(
         raise LensSelectionError("lens_candidate_artifact_invalid")
     if artifact.content_hash != _stable_hash(artifact.content_json):
         raise LensSelectionError("lens_candidate_artifact_hash_mismatch")
+    await _validate_step_output_binding(
+        session,
+        artifact=artifact,
+    )
     return artifact
 
 
@@ -1595,6 +1615,10 @@ async def latest_lens_selection_artifact(
         raise LensSelectionError("lens_selection_artifact_invalid")
     if artifact.content_hash != _stable_hash(artifact.content_json):
         raise LensSelectionError("lens_selection_artifact_hash_mismatch")
+    await _validate_step_output_binding(
+        session,
+        artifact=artifact,
+    )
     return artifact
 
 
@@ -1634,6 +1658,13 @@ async def _validated_latest_selection_payload(
     )
     if candidate.run_id != run_id:
         raise LensSelectionError("lens_selection_run_mismatch")
+    if (
+        artifact.step_run_id != candidate.step_run_id
+        or artifact.locale != candidate.locale
+    ):
+        raise LensSelectionError(
+            "lens_selection_candidate_binding_mismatch"
+        )
     if (
         candidate_ref.get("version") != candidate.version
         or candidate_ref.get("content_hash") != candidate.content_hash
