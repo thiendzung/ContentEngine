@@ -502,27 +502,31 @@ async def build_content_coverage(
             )
         cases_by_need[primary_need.id].append((content_case, "primary"))
 
-    for link in supporting_links:
-        content_case = case_lookup.get(link.content_case_id)
-        support_need = all_project_needs.get(link.need_hypothesis_id)
-        if content_case is None or support_need is None:
+    for supporting_link in supporting_links:
+        supporting_case = case_lookup.get(supporting_link.content_case_id)
+        support_need = all_project_needs.get(
+            supporting_link.need_hypothesis_id
+        )
+        if supporting_case is None or support_need is None:
             raise ContentCoverageError(
                 "content_coverage_supporting_need_project_mismatch"
             )
-        if support_need.id == content_case.need_hypothesis_id:
+        if support_need.id == supporting_case.need_hypothesis_id:
             raise ContentCoverageError(
                 "content_coverage_supporting_need_is_primary"
             )
         if (
-            content_case.audience_hypothesis_id is not None
+            supporting_case.audience_hypothesis_id is not None
             and support_need.audience_hypothesis_id is not None
-            and content_case.audience_hypothesis_id
+            and supporting_case.audience_hypothesis_id
             != support_need.audience_hypothesis_id
         ):
             raise ContentCoverageError(
                 "content_coverage_supporting_need_audience_mismatch"
             )
-        cases_by_need[support_need.id].append((content_case, "supporting"))
+        cases_by_need[support_need.id].append(
+            (supporting_case, "supporting")
+        )
 
     variants = []
     if case_ids:
@@ -602,12 +606,14 @@ async def build_content_coverage(
                 )
             ).all()
         )
-        for link in journey_rows:
-            if link.stage_key not in stage_keys:
+        for journey_link in journey_rows:
+            if journey_link.stage_key not in stage_keys:
                 raise ContentCoverageError(
                     "content_coverage_journey_stage_stale"
                 )
-            journey_by_item[link.content_item_id].append(link)
+            journey_by_item[journey_link.content_item_id].append(
+                journey_link
+            )
 
     latest_quality_by_case_evaluator: dict[
         tuple[UUID, str], QualityEvaluation
@@ -799,7 +805,7 @@ async def build_content_coverage(
         if duplicates:
             reasons = [*reasons, "duplicate_candidate_detected"]
 
-        lane = {
+        lane: dict[str, object] = {
             "need": {
                 "id": str(need.id),
                 "type": need.type,
