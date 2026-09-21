@@ -1806,7 +1806,7 @@ async def fail_agent_task(
         payload=payload,
     )
     await session.flush()
-    pending_retry_approval = (
+    pending_retry_approval: dict[str, object] | None = (
         {
             "step_key": retry_step.step_key,
             "artifact_id": str(retry_plan_artifact.id),
