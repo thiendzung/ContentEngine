@@ -626,12 +626,15 @@ async def build_content_coverage(
     latest_quality_by_case_evaluator: dict[
         tuple[UUID, str], QualityEvaluation
     ] = {}
-    if case_ids:
+    if case_ids and variant_ids:
         quality_rows = (
             await session.execute(
                 select(QualityEvaluation, ContentRun.content_case_id)
                 .join(ContentRun, ContentRun.id == QualityEvaluation.run_id)
-                .where(ContentRun.content_case_id.in_(case_ids))
+                .where(
+                    ContentRun.content_case_id.in_(case_ids),
+                    ContentRun.locale_variant_id.in_(variant_ids),
+                )
             )
         ).all()
         for evaluation, content_case_id in quality_rows:
