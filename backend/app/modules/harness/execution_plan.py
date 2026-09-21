@@ -19,7 +19,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import SettingsSnapshot
+from app.modules.content_engine.models import SettingsSnapshot, SettingsVersion
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.system.settings_service import settings_hash
 
@@ -318,12 +318,79 @@ async def _execution_context(
     if snapshot is None or snapshot.project_id != run.project_id:
         raise ExecutionPlanError("execution_plan_settings_snapshot_missing")
     _validate_settings_snapshot_hash(snapshot)
+    await _validate_capability_policy_provenance(session, snapshot=snapshot)
     return run, step, snapshot
 
 
 def _validate_settings_snapshot_hash(snapshot: SettingsSnapshot) -> None:
     if snapshot.content_hash != settings_hash(snapshot.resolved_settings_json):
         raise ExecutionPlanError("execution_plan_settings_snapshot_hash_mismatch")
+
+
+async def _validate_capability_policy_provenance(
+    session: AsyncSession,
+    *,
+    snapshot: SettingsSnapshot,
+) -> None:
+    """Require the effective capability policy to come from approved SettingsVersion."""
+
+    root = _as_dict(
+        snapshot.resolved_settings_json.get("autopilot"),
+        "execution_plan_policy_root_invalid",
+    )
+    effective_policy = root.get("capability_policy")
+    if not isinstance(effective_policy, dict):
+        raise ExecutionPlanError("execution_plan_capability_policy_invalid")
+
+    policy_sources: list[dict[str, object]] = []
+    for raw_ref in snapshot.source_version_refs_json:
+        if not isinstance(raw_ref, str):
+            raise ExecutionPlanError("execution_plan_policy_source_ref_invalid")
+        match = re.fullmatch(
+            r"settings_version:([0-9a-fA-F-]{36}):v([1-9][0-9]*)",
+            raw_ref,
+        )
+        if match is None:
+            continue
+        try:
+            version_id = UUID(match.group(1))
+        except ValueError as exc:
+            raise ExecutionPlanError(
+                "execution_plan_policy_source_ref_invalid"
+            ) from exc
+        expected_version = int(match.group(2))
+        row = await session.get(SettingsVersion, version_id)
+        if (
+            row is None
+            or row.version != expected_version
+            or row.status != "active"
+            or not isinstance(row.approved_by, str)
+            or not row.approved_by.strip()
+            or (row.project_id is not None and row.project_id != snapshot.project_id)
+        ):
+            raise ExecutionPlanError("execution_plan_policy_source_not_approved")
+
+        settings = row.settings_json
+        if not isinstance(settings, dict):
+            raise ExecutionPlanError("execution_plan_policy_source_invalid")
+        source_autopilot = settings.get("autopilot")
+        if not isinstance(source_autopilot, dict):
+            continue
+        source_policy = source_autopilot.get("capability_policy")
+        if source_policy is not None:
+            if not isinstance(source_policy, dict):
+                raise ExecutionPlanError("execution_plan_policy_source_invalid")
+            policy_sources.append(
+                {str(key): value for key, value in source_policy.items()}
+            )
+
+    if not policy_sources:
+        raise ExecutionPlanError("execution_plan_policy_approved_source_required")
+    canonical = policy_sources[0]
+    if any(source != canonical for source in policy_sources[1:]):
+        raise ExecutionPlanError("execution_plan_policy_source_conflict")
+    if canonical != effective_policy:
+        raise ExecutionPlanError("execution_plan_policy_snapshot_source_mismatch")
 
 
 def _resolve_worker_policy(
