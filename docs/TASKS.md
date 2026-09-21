@@ -292,7 +292,7 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Retryable failures create a new StepRun + new ExecutionPlan; sensitive retries require a fresh Approval.
 - [x] Keep Antigravity activation outside AU-02 until a separate reviewed adapter/policy task exists.
 - [x] No new migration; code Alembic head remains rev-0037 and operational rev-0035→0037 remain separately authorized.
-- [ ] Final CI on exact implementation/docs head.
+- [x] Final CI on implementation/docs head before OCR freeze.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Agent Local verification on exact head.
 - [ ] Founder merge.
