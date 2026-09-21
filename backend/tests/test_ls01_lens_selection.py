@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -34,8 +36,10 @@ from app.modules.content_engine.models import (
     Signal,
 )
 from app.modules.harness.models import (
+    Artifact,
     ContentRun,
     ModelCall,
+    StepRun,
     ToolCall,
 )
 from app.modules.system.settings_service import create_settings_snapshot
@@ -715,6 +719,91 @@ async def test_contradicting_signal_alone_does_not_prove_misconception() -> None
         assert isinstance(guards, list)
         assert guards[0]["key"] == "misconception_observed"
         assert guards[0]["status"] == "BLOCK"
+
+
+@pytest.mark.asyncio
+async def test_lens_artifacts_are_bound_to_step_outputs() -> None:
+    async with isolated_session() as session:
+        _project, _need, _opportunity, _case, _variant, run = (
+            await _fixture(session)
+        )
+        step = StepRun(
+            run_id=run.id,
+            step_key="lens_selection",
+            attempt=1,
+            status="running",
+            input_artifact_refs_json=[],
+            output_artifact_refs_json=[],
+            started_at=datetime.now(UTC),
+        )
+        session.add(step)
+        await session.flush()
+
+        candidates = await persist_lens_candidates(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+        )
+        selection = await persist_lens_selection(
+            session,
+            candidate_artifact_id=candidates.artifact.id,
+            decisions=_decisions(primary="SIGNALS"),
+            selected_by="founder",
+            reason="Bind exact LS-01 outputs to the step.",
+        )
+        await session.refresh(step)
+
+        assert str(candidates.artifact.id) in step.output_artifact_refs_json
+        assert str(selection.artifact.id) in step.output_artifact_refs_json
+
+
+@pytest.mark.asyncio
+async def test_forged_selection_payload_fails_semantic_revalidation() -> None:
+    async with isolated_session() as session:
+        _project, _need, _opportunity, _case, _variant, run = (
+            await _fixture(session)
+        )
+        candidates = await persist_lens_candidates(
+            session,
+            run_id=run.id,
+        )
+        valid = await persist_lens_selection(
+            session,
+            candidate_artifact_id=candidates.artifact.id,
+            decisions=_decisions(primary="SIGNALS"),
+            selected_by="founder",
+            reason="Valid selection before direct-insert attack fixture.",
+        )
+        forged = json.loads(json.dumps(valid.payload))
+        angle_context = forged["angle_context"]
+        assert isinstance(angle_context, dict)
+        angle_context["source_refs"] = ["forged:source"]
+        encoded = json.dumps(
+            forged,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        artifact = Artifact(
+            run_id=run.id,
+            step_run_id=None,
+            artifact_type="lens_selection",
+            locale="en",
+            version=valid.artifact.version + 1,
+            content_json=forged,
+            content_hash=hashlib.sha256(encoded).hexdigest(),
+        )
+        session.add(artifact)
+        await session.flush()
+
+        with pytest.raises(
+            LensSelectionError,
+            match="lens_selection_artifact_semantic_mismatch",
+        ):
+            await lens_selection_angle_context(
+                session,
+                run_id=run.id,
+            )
 
 
 @pytest.mark.asyncio
