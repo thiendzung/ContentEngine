@@ -423,8 +423,6 @@ async def build_content_coverage(
     )
     if need_id is not None and not needs:
         raise ContentCoverageError("content_coverage_need_not_found")
-    need_ids = {row.id for row in needs}
-
     all_cases = list(
         (
             await session.scalars(
@@ -452,10 +450,6 @@ async def build_content_coverage(
                 )
             ).all()
         )
-
-    supporting_by_case: dict[UUID, list[ContentCaseSupportingNeed]] = defaultdict(list)
-    for link in supporting_links:
-        supporting_by_case[link.content_case_id].append(link)
 
     cases_by_need: dict[UUID, list[tuple[ContentCase, str]]] = defaultdict(list)
     case_lookup = {row.id: row for row in all_cases}
