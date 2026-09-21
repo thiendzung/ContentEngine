@@ -367,10 +367,15 @@ async def _approved_guard_config(
                 "lens_settings_source_ref_invalid"
             ) from exc
         row = await session.get(SettingsVersion, row_id)
+        if row is None or row.version != int(match.group(2)):
+            raise LensSelectionError(
+                "lens_settings_source_ref_invalid"
+            )
+        source_lens = row.settings_json.get("lens_selection")
+        if source_lens is None:
+            continue
         if (
-            row is None
-            or row.version != int(match.group(2))
-            or row.status != "active"
+            row.status != "active"
             or not isinstance(row.approved_by, str)
             or not row.approved_by.strip()
             or not _scope_matches(
@@ -383,9 +388,6 @@ async def _approved_guard_config(
             raise LensSelectionError(
                 "lens_settings_source_not_approved"
             )
-        source_lens = row.settings_json.get("lens_selection")
-        if source_lens is None:
-            continue
         source_lens_dict = _dict(
             source_lens,
             "lens_settings_source_invalid",
@@ -1191,7 +1193,10 @@ def _validate_decisions(
         row = normalized[lens]
         decision = row["decision"]
         candidate = candidates[lens]
-        if decision in {"SELECT", "MERGE"} and not candidate["eligible"]:
+        if (
+            decision in {"SELECT", "MERGE"}
+            and not _candidate_eligible(candidate)
+        ):
             raise LensSelectionError("lens_ineligible_candidate_activated")
         if decision == "MERGE":
             if primary is None:
@@ -1240,72 +1245,103 @@ async def _require_current_candidate(
     return current
 
 
+def _candidate_eligible(
+    candidate: dict[str, object],
+) -> bool:
+    value = candidate.get("eligible")
+    if not isinstance(value, bool):
+        raise LensSelectionError("lens_candidate_eligibility_invalid")
+    return value
+
+
+def _candidate_requirement(
+    row: dict[str, object],
+) -> dict[str, object]:
+    lens = _required_text(
+        row.get("lens"),
+        "lens_candidate_name_invalid",
+    )
+    return {
+        "lens": lens,
+        "evidence_needed": _clone(row.get("evidence_needed")),
+        "evidence_available": _clone(
+            row.get("evidence_available")
+        ),
+        "guards": _clone(row.get("guards")),
+        "source_refs": _clone(row.get("source_refs")),
+    }
+
+
 def _selection_contexts(
     *,
     candidates: dict[str, dict[str, object]],
+    decisions: list[dict[str, object]],
     primary: str | None,
     merged: list[str],
 ) -> tuple[dict[str, object], dict[str, object]]:
     active = [primary, *merged] if primary is not None else []
-    active_rows = [
-        candidates[lens]
-        for lens in active
-        if lens is not None
+    active_rows = [candidates[lens] for lens in active]
+    held_lenses = [
+        _required_text(
+            row.get("lens"),
+            "lens_decision_lens_required",
+        )
+        for row in decisions
+        if row.get("decision") == "HOLD"
     ]
+    held_rows = [candidates[lens] for lens in held_lenses]
+
     evidence_context = {
         "primary_lens": primary,
         "supporting_lenses": merged,
         "active_lenses": active,
-        "evidence_requirements": [
-            {
-                "lens": row["lens"],
-                "evidence_needed": _clone(row["evidence_needed"]),
-                "evidence_available": _clone(
-                    row["evidence_available"]
-                ),
-                "guards": _clone(row["guards"]),
-                "source_refs": _clone(row["source_refs"]),
-            }
-            for row in active_rows
+        "held_lenses": held_lenses,
+        "active_requirements": [
+            _candidate_requirement(row) for row in active_rows
+        ],
+        "held_requirements": [
+            _candidate_requirement(row) for row in held_rows
         ],
     }
     angle_context = {
         "primary_lens": primary,
         "supporting_lenses": merged,
         "reader_need": (
-            active_rows[0]["reader_need"]
+            active_rows[0].get("reader_need")
             if active_rows
             else None
         ),
         "primary_question": (
-            active_rows[0]["primary_question"]
+            active_rows[0].get("primary_question")
             if active_rows
             else None
         ),
         "added_value": [
             {
-                "lens": row["lens"],
-                "value": row["added_value"],
+                "lens": row.get("lens"),
+                "value": row.get("added_value"),
             }
             for row in active_rows
         ],
         "guardrails": [
             {
-                "lens": row["lens"],
-                "guards": _clone(row["guards"]),
+                "lens": row.get("lens"),
+                "guards": _clone(row.get("guards")),
             }
             for row in active_rows
         ],
         "source_refs": sorted(
             {
-                str(ref)
+                ref
                 for row in active_rows
-                for ref in row["source_refs"]
-                if isinstance(ref, str)
+                for ref in _strings(
+                    row.get("source_refs"),
+                    "lens_candidate_source_refs_invalid",
+                )
             }
         ),
         "existing_coverage": (
-            _clone(active_rows[0]["existing_coverage"])
+            _clone(active_rows[0].get("existing_coverage"))
             if active_rows
             else None
         ),
@@ -1348,6 +1384,7 @@ async def persist_lens_selection(
     )
     evidence_context, angle_context = _selection_contexts(
         candidates=candidates,
+        decisions=normalized_decisions,
         primary=primary,
         merged=merged,
     )
