@@ -7,12 +7,12 @@ import pytest
 from sqlalchemy.exc import DBAPIError
 from test_ce05_review_console import _approved_fixture, isolated_session
 
+from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.execution_plan import (
     ExecutionPlanError,
     authorize_execution_plan,
     persist_execution_plan_artifact,
 )
-from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.system.settings_service import create_settings_snapshot
 
