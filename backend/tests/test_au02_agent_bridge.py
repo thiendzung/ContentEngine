@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import timedelta
+
 import pytest
 from sqlalchemy import func, select
 from test_au01_execution_plan import (
