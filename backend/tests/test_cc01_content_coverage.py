@@ -725,6 +725,48 @@ async def test_content_coverage_statuses_are_evidence_bounded() -> None:
 
 
 @pytest.mark.asyncio
+async def test_invalid_update_ref_does_not_erase_known_published_coverage() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        need = await _need(session, project_id=project.id)
+        content_case = await _content_case(
+            session,
+            project_id=project.id,
+            need=need,
+        )
+        _variant, item = await _item(
+            session,
+            project_id=project.id,
+            content_case=content_case,
+        )
+        await _version(
+            session,
+            item=item,
+            version_no=1,
+            status="published",
+        )
+        await _opportunity(
+            session,
+            project_id=project.id,
+            need=need,
+            decision="UPDATE",
+            refs=["not-a-content-item-ref"],
+            selected=True,
+        )
+
+        report = await build_content_coverage(
+            session,
+            project_id=project.id,
+        )
+        lane = _lane(report, need.id)
+        assert lane["coverage_status"] == "PUBLISHED"
+        assert "selected_update_target_ref_invalid" in lane["reason_codes"]
+        assert lane["invalid_update_target_refs"] == [
+            "not-a-content-item-ref"
+        ]
+
+
+@pytest.mark.asyncio
 async def test_newer_unpublished_revision_is_needs_update() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
@@ -1109,6 +1151,39 @@ async def test_coverage_filters_by_locale_audience_and_need() -> None:
         assert len(rows) == 1
         assert rows[0]["need"]["id"] == str(target.id)
         assert rows[0]["content_items"][0]["locale"] == "en"
+
+
+@pytest.mark.asyncio
+async def test_locale_filter_does_not_treat_other_locale_case_as_in_progress() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        need = await _need(session, project_id=project.id)
+        content_case = await _content_case(
+            session,
+            project_id=project.id,
+            need=need,
+        )
+        _variant, item = await _item(
+            session,
+            project_id=project.id,
+            content_case=content_case,
+            locale="vi-VN",
+        )
+        await _version(
+            session,
+            item=item,
+            version_no=1,
+            status="published",
+        )
+
+        report = await build_content_coverage(
+            session,
+            project_id=project.id,
+            locale="en",
+        )
+        lane = _lane(report, need.id)
+        assert lane["coverage_status"] == "MISSING"
+        assert lane["content_items"] == []
 
 
 @pytest.mark.asyncio
