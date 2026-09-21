@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
 from test_au01_execution_plan import (
-    _execution_fixture,
+    _approved_policy_snapshot,
     _plan,
     _policy,
 )
-from test_ce05_review_console import isolated_session
+from test_ce05_review_console import _approved_fixture, isolated_session
 
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_bridge import (
@@ -62,12 +62,35 @@ async def _pending_fixture(
     *,
     settings: dict[str, object] | None = None,
 ) -> tuple[ContentRun, StepRun]:
-    run, step = await _execution_fixture(
+    base = await _approved_fixture(session)
+    source = base.writer_runs["en"]
+    snapshot = await _approved_policy_snapshot(
         session,
-        settings=settings,
+        project_id=source.project_id,
+        settings=settings or _policy(),
     )
-    step.status = "pending"
-    step.started_at = None
+    run = ContentRun(
+        project_id=source.project_id,
+        content_case_id=source.content_case_id,
+        locale_variant_id=source.locale_variant_id,
+        content_item_id=source.content_item_id,
+        run_mode="update",
+        status="running",
+        current_step="customer_map_refresh",
+        settings_snapshot_id=snapshot.id,
+        started_at=datetime.now(UTC),
+    )
+    session.add(run)
+    await session.flush()
+    step = StepRun(
+        run_id=run.id,
+        step_key="customer_map_refresh",
+        attempt=1,
+        status="pending",
+        input_artifact_refs_json=[],
+        output_artifact_refs_json=[],
+    )
+    session.add(step)
     await session.flush()
     return run, step
 
