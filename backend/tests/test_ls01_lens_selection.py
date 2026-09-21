@@ -25,6 +25,7 @@ from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
     ContentOpportunity,
+    HumanSelection,
     LocaleVariant,
     NeedHypothesis,
     NeedHypothesisSignal,
@@ -165,6 +166,14 @@ async def _fixture(
     )
     session.add(opportunity)
     await session.flush()
+    human_selection = HumanSelection(
+        content_opportunity_id=opportunity.id,
+        selected_by="founder",
+        reason="Use this Need for LS-01.",
+        selected_at=opportunity.selected_at,
+    )
+    session.add(human_selection)
+    await session.flush()
 
     content_case = ContentCase(
         project_id=project.id,
@@ -297,7 +306,7 @@ async def test_candidates_are_exactly_seven_and_do_not_run_ai() -> None:
         assert [row["lens"] for row in rows] == list(LENS_ORDER)
         assert len(rows) == 7
         assert _candidate(first.payload, "DEFINITION")["eligible"] is True
-        assert _candidate(first.payload, "MISCONCEPTION")["eligible"] is True
+        assert _candidate(first.payload, "MISCONCEPTION")["eligible"] is False
         assert _candidate(first.payload, "SIGNALS")["eligible"] is True
         assert _candidate(first.payload, "METHOD")["eligible"] is True
         assert _candidate(first.payload, "CAUSES")["eligible"] is False
@@ -312,9 +321,18 @@ async def test_candidates_are_exactly_seven_and_do_not_run_ai() -> None:
 
 
 @pytest.mark.asyncio
-async def test_case_pov_and_causes_require_approved_guard_sources() -> None:
+async def test_guarded_lenses_require_approved_guard_sources() -> None:
     async with isolated_session() as session:
         config = {
+            "misconceptions": [
+                {
+                    "ref": "misconception:signature",
+                    "need_hypothesis_id": None,
+                    "statement": "A signature alone proves authenticity.",
+                    "observation_ref": "signal:observed-belief-1",
+                    "approval_ref": "approval:misconception:1",
+                }
+            ],
             "case_materials": [
                 {
                     "ref": "case:authenticity-visit",
@@ -350,7 +368,7 @@ async def test_case_pov_and_causes_require_approved_guard_sources() -> None:
             run_id=run.id,
         )
 
-        for lens in ("CASE", "POV", "CAUSES"):
+        for lens in ("MISCONCEPTION", "CASE", "POV", "CAUSES"):
             assert _candidate(payload, lens)["eligible"] is True
 
 
@@ -537,6 +555,11 @@ async def test_all_hold_is_valid_but_cannot_feed_angle() -> None:
         )
         assert evidence_context is not None
         assert evidence_context["active_lenses"] == []
+        assert evidence_context["held_lenses"] == list(LENS_ORDER)
+        held_requirements = evidence_context["held_requirements"]
+        assert isinstance(held_requirements, list)
+        assert len(held_requirements) == 7
+        assert {row["lens"] for row in held_requirements} == set(LENS_ORDER)
         with pytest.raises(
             LensSelectionError,
             match="lens_selection_no_active_lens",
@@ -614,6 +637,85 @@ async def test_changed_selection_creates_new_version_not_history_rewrite() -> No
         assert second.artifact.version == 2
         assert first.payload["primary_lens"] == "SIGNALS"
         assert second.payload["primary_lens"] == "DEFINITION"
+
+
+@pytest.mark.asyncio
+async def test_unrelated_retired_settings_ref_does_not_block_lens() -> None:
+    async with isolated_session() as session:
+        project, _need, _opportunity, _case, _variant, run = (
+            await _fixture(session)
+        )
+        unrelated = SettingsVersion(
+            project_id=project.id,
+            scope_type="project",
+            scope_key=project.slug,
+            version=9,
+            settings_json={"unrelated_feature": {"enabled": True}},
+            status="retired",
+            change_reason="Unrelated historical setting.",
+            approved_by=None,
+        )
+        session.add(unrelated)
+        await session.flush()
+        snapshot = await create_settings_snapshot(
+            session,
+            project_id=project.id,
+            resolved_settings={"unrelated_feature": {"enabled": True}},
+            source_version_refs=[
+                f"settings_version:{unrelated.id}:v{unrelated.version}"
+            ],
+        )
+        run.settings_snapshot_id = snapshot.id
+        await session.flush()
+
+        payload = await build_lens_candidate_payload(
+            session,
+            run_id=run.id,
+        )
+        assert len(payload["candidates"]) == 7
+
+
+@pytest.mark.asyncio
+async def test_opportunity_requires_matching_durable_human_selection() -> None:
+    async with isolated_session() as session:
+        _project, _need, opportunity, _case, _variant, run = (
+            await _fixture(session)
+        )
+        selection = await session.scalar(
+            select(HumanSelection).where(
+                HumanSelection.content_opportunity_id == opportunity.id
+            )
+        )
+        assert selection is not None
+        selection.reason = "Changed durable selection reason."
+        await session.flush()
+
+        with pytest.raises(
+            LensSelectionError,
+            match="lens_opportunity_human_selection_mismatch",
+        ):
+            await build_lens_candidate_payload(
+                session,
+                run_id=run.id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_contradicting_signal_alone_does_not_prove_misconception() -> None:
+    async with isolated_session() as session:
+        _project, _need, _opportunity, _case, _variant, run = (
+            await _fixture(session)
+        )
+        payload = await build_lens_candidate_payload(
+            session,
+            run_id=run.id,
+        )
+        misconception = _candidate(payload, "MISCONCEPTION")
+        assert misconception["eligible"] is False
+        guards = misconception["guards"]
+        assert isinstance(guards, list)
+        assert guards[0]["key"] == "misconception_observed"
+        assert guards[0]["status"] == "BLOCK"
 
 
 @pytest.mark.asyncio
