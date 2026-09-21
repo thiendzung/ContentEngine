@@ -88,37 +88,54 @@ async def _install_passing_readiness(
     )
 
 
-async def _complete_readiness_jobs(
+async def _complete_readiness_lane(
     session: AsyncSession,
     *,
+    case_id: UUID,
+    locale: str,
     monkeypatch: pytest.MonkeyPatch,
     runner_registry: AgentRunnerRegistry,
     worker_prefix: str,
-    max_jobs: int = 4,
 ) -> None:
     await _install_passing_readiness(monkeypatch)
-    completed = 0
-    while completed < max_jobs:
-        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+    for stage_name in ("reader_value", "search_ai"):
+        progress = await get_quality_progress(
             session,
-            worker_id=f"{worker_prefix}-{completed}",
+            content_case_id=case_id,
+            source_run_id=None,
         )
-        if job is None:
-            break
+        assert progress is not None
+        lane = next(candidate for candidate in progress.lanes if candidate.locale == locale)
+        stage = getattr(lane, stage_name)
+        assert stage.job is not None
+        job = await session.get(Job, stage.job.id)
+        assert job is not None
+        assert job.status == "queued"
         step = await session.get(StepRun, job.step_run_id)
         assert step is not None
-        if not (
-            step.step_key.startswith("reader_value_")
-            or step.step_key.startswith("search_ai_readiness_")
-        ):
-            raise AssertionError(f"unexpected quality stage: {step.step_key}")
+        expected_prefix = (
+            "reader_value_" if stage_name == "reader_value" else "search_ai_readiness_"
+        )
+        assert step.step_key.startswith(expected_prefix)
+        run = await session.get(ContentRun, job.run_id)
+        assert run is not None
+        now = utc_now()
+        step.status = "running"
+        step.started_at = now
+        if run.status == "pending":
+            run.status = "running"
+        worker_id = f"{worker_prefix}-{stage_name}"
+        job.status = "leased"
+        job.lease_owner = worker_id
+        job.lease_expires_at = now + timedelta(seconds=900)
+        job.updated_at = now
+        await session.flush()
         await operator_quality_worker.execute_quality_job(
             session,
             job_id=job.id,
-            worker_id=f"{worker_prefix}-{completed}",
+            worker_id=worker_id,
             runner_registry=runner_registry,
         )
-        completed += 1
 
 
 async def _complete_f3_writers(
@@ -380,12 +397,13 @@ async def _complete_healthy_lane_from_audit(
             runner_registry=runner_registry,
         )
 
-    await _complete_readiness_jobs(
+    await _complete_readiness_lane(
         session,
+        case_id=case_id,
+        locale=healthy_lane.locale,
         monkeypatch=monkeypatch,
         runner_registry=runner_registry,
         worker_prefix=f"{worker_prefix}-readiness",
-        max_jobs=2,
     )
 
 
@@ -498,12 +516,21 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
                 runner_registry=registry,
             )
 
-        await _complete_readiness_jobs(
+        await _complete_readiness_lane(
             session,
+            case_id=case_id,
+            locale="vi-VN",
             monkeypatch=monkeypatch,
             runner_registry=registry,
-            worker_prefix="f4-readiness",
-            max_jobs=4,
+            worker_prefix="f4-readiness-vi",
+        )
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="en",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="f4-readiness-en",
         )
 
         progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
@@ -1329,6 +1356,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             job_id=vi_source_job.id,
             worker_id="worker-sc-vi",
             runner_registry=registry,
+        )
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="vi-VN",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-sc-vi-readiness",
         )
 
         # Now VI is qualified, EN Audit failed, no active jobs remain -> command failed
