@@ -156,7 +156,7 @@ Current bounded implementation:
 - canonical semantic action namespaces mapped to capabilities;
 - fail-closed tool/action/capability/budget/timeout/attempt checks;
 - human-gate declaration required for publish/settings/prompt/workflow-changing capabilities;
-- DB immutability guard for SettingsSnapshot and ExecutionPlan artifacts;
+- reuses the existing DB immutability guards for SettingsSnapshot and all Artifacts; no AU-01 migration is added;
 - no second workflow engine;
 - no Agent Bridge/auto-next execution yet — that remains AU-02.
 
