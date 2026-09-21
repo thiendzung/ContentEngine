@@ -512,7 +512,9 @@ async def get_operator_case_view(
                         lane.reader_value.evaluation.id if lane.reader_value.evaluation else None
                     ),
                     reader_value_result=(
-                        lane.reader_value.evaluation.result if lane.reader_value.evaluation else None
+                        lane.reader_value.evaluation.result
+                        if lane.reader_value.evaluation
+                        else None
                     ),
                     reader_value_findings=(
                         cast(list[object], reader_findings.get("criteria", []))
