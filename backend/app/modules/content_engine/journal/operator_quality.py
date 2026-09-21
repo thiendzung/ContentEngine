@@ -37,9 +37,9 @@ from app.modules.content_engine.journal.operator_writers import (
     get_writer_lane_progress,
 )
 from app.modules.content_engine.journal.quality_readiness import (
+    READER_VALUE_TASK_KEYS,
     READINESS_ARTIFACT_TYPES,
     READINESS_HANDOFF_TYPES,
-    READER_VALUE_TASK_KEYS,
     SEARCH_AI_TASK_KEYS,
     QualityReadinessInput,
     ensure_quality_readiness_run,
@@ -187,7 +187,10 @@ class QualityLane:
             return "search_ai_running" if search_job.status == "leased" else "search_ai_queued"
         if (
             (search_job is not None and search_job.status in {"failed", "cancelled"})
-            or (self.search_ai.run is not None and self.search_ai.run.status in {"failed", "cancelled"})
+            or (
+                self.search_ai.run is not None
+                and self.search_ai.run.status in {"failed", "cancelled"}
+            )
         ):
             if _stage_has_integrity_failure(self.search_ai):
                 return "quality_blocked"
@@ -208,7 +211,11 @@ class QualityLane:
             return "reader_value_ready" if self.search_ai.run is None else "search_ai_queued"
         reader_job = self.reader_value.job
         if reader_job is not None and reader_job.status in {"queued", "leased"}:
-            return "reader_value_running" if reader_job.status == "leased" else "reader_value_queued"
+            return (
+                "reader_value_running"
+                if reader_job.status == "leased"
+                else "reader_value_queued"
+            )
         if (
             (reader_job is not None and reader_job.status in {"failed", "cancelled"})
             or (
@@ -1240,8 +1247,14 @@ async def _queue_quality_retry_lane(
         )
         return
     if (
-        (lane.reader_value.job is not None and lane.reader_value.job.status in {"failed", "cancelled"})
-        or (lane.reader_value.run is not None and lane.reader_value.run.status in {"failed", "cancelled"})
+        (
+            lane.reader_value.job is not None
+            and lane.reader_value.job.status in {"failed", "cancelled"}
+        )
+        or (
+            lane.reader_value.run is not None
+            and lane.reader_value.run.status in {"failed", "cancelled"}
+        )
     ):
         if lane.source_copy.artifact is None or lane.source_copy.evaluation is None:
             raise OperatorControlError("operator_quality_retry_source_copy_missing")
