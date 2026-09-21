@@ -1258,7 +1258,7 @@ async def _queue_quality_retry_lane(
     ):
         if lane.source_copy.artifact is None or lane.source_copy.evaluation is None:
             raise OperatorControlError("operator_quality_retry_source_copy_missing")
-        source_input = await load_quality_readiness_input(
+        readiness_input = await load_quality_readiness_input(
             session,
             stage="reader_value",
             writer_run_id=lane.writer.run.id,
@@ -1274,7 +1274,7 @@ async def _queue_quality_retry_lane(
         )
         await _enqueue_readiness_retry(
             session,
-            source_input=source_input,
+            source_input=readiness_input,
             dedupe_suffix=f"retry:{command.id}:{lane.locale}",
         )
         return
@@ -1289,7 +1289,7 @@ async def _queue_quality_retry_lane(
             or lane.reader_value.evaluation is None
         ):
             raise OperatorControlError("operator_quality_retry_readiness_missing")
-        source_input = await load_quality_readiness_input(
+        readiness_input = await load_quality_readiness_input(
             session,
             stage="search_ai",
             writer_run_id=lane.writer.run.id,
@@ -1307,7 +1307,7 @@ async def _queue_quality_retry_lane(
         )
         await _enqueue_readiness_retry(
             session,
-            source_input=source_input,
+            source_input=readiness_input,
             dedupe_suffix=f"retry:{command.id}:{lane.locale}",
         )
         return
