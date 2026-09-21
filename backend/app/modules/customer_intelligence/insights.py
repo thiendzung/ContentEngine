@@ -318,12 +318,18 @@ async def review_customer_insight(
     if insight is None:
         raise CustomerInsightError("customer_insight_not_found")
 
-    if (
-        insight.status == status
-        and insight.reviewed_by == actor
-        and insight.review_reason == review_reason
-        and insight.reviewed_at is not None
-    ):
+    existing_review = await session.scalar(
+        select(CustomerInsightReview)
+        .where(
+            CustomerInsightReview.customer_insight_id == customer_insight_id,
+            CustomerInsightReview.status == status,
+            CustomerInsightReview.reviewed_by == actor,
+            CustomerInsightReview.reason == review_reason,
+        )
+        .order_by(CustomerInsightReview.reviewed_at.asc())
+        .limit(1)
+    )
+    if existing_review is not None:
         return insight
 
     if status == "SUPPORTED":
@@ -383,6 +389,10 @@ async def link_customer_insight_signal(
         raise CustomerInsightError("customer_insight_signal_not_found")
     if signal.project_id != insight.project_id:
         raise CustomerInsightError("customer_insight_signal_project_mismatch")
+
+    # Validate the whole duplicate ancestry before accepting durable evidence.
+    # DB triggers enforce the same rule for direct writes.
+    await _signal_independence_key(session, signal, {})
 
     existing = await session.get(
         CustomerInsightSignal, (customer_insight_id, signal_id)
