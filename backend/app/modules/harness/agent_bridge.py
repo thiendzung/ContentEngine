@@ -490,12 +490,6 @@ async def request_execution_plan_approval(
     )
     if not authorized.plan.human_gate_required:
         raise AgentBridgeError("agent_bridge_human_gate_not_required")
-    await _bind_plan_to_step(
-        session,
-        step=step,
-        plan_artifact=artifact,
-    )
-
     run = await session.get(ContentRun, authorized.run_id)
     if run is None:
         raise AgentBridgeError("agent_bridge_run_not_found")
@@ -515,11 +509,20 @@ async def request_execution_plan_approval(
     }
     if run.status == "waiting_approval" and pending == expected:
         assert checkpoint is not None
+        if str(artifact.id) not in step.input_artifact_refs_json:
+            raise AgentBridgeError(
+                "agent_bridge_approval_plan_binding_missing"
+            )
         return checkpoint  # exact request replay
     if run.status != "running":
         raise AgentBridgeError(
             "agent_bridge_run_not_ready_for_approval"
         )
+    await _bind_plan_to_step(
+        session,
+        step=step,
+        plan_artifact=artifact,
+    )
     try:
         return await pause_for_approval(
             session,
@@ -546,6 +549,9 @@ async def enqueue_execution_plan_job(
     )
     if step.status != "pending":
         raise AgentBridgeError("agent_bridge_step_not_queueable")
+    run = await session.get(ContentRun, authorized.run_id)
+    if run is None or run.status != "running":
+        raise AgentBridgeError("agent_bridge_run_not_queueable")
     await _real_approval(
         session,
         authorized=authorized,
@@ -756,6 +762,9 @@ async def _load_job_plan(
         )
     if job.attempt > authorized.plan.max_attempts:
         raise AgentBridgeError("agent_bridge_job_attempt_exceeds_plan")
+    run = await session.get(ContentRun, authorized.run_id)
+    if run is None or run.status != "running":
+        raise AgentBridgeError("agent_bridge_run_not_executable")
     approval = await _real_approval(
         session,
         authorized=authorized,
@@ -1481,6 +1490,7 @@ async def complete_agent_task(
     step.completed_at = now
     step.updated_at = now
     await session.flush()
+    await create_checkpoint(session, run_id=job.run_id)
 
     return AgentTaskCompletion(
         job_id=job.id,
@@ -1764,6 +1774,7 @@ async def fail_agent_task(
         payload=payload,
     )
     await session.flush()
+    await create_checkpoint(session, run_id=job.run_id)
     return AgentTaskFailure(
         job_id=job.id,
         failure_receipt_id=receipt.id,
