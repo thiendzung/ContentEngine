@@ -969,3 +969,92 @@ The change report is observation/reporting only. It does not auto-promote Custom
 - `GET /customer-map/changes`
 
 These endpoints are read-only against canonical persisted state and do not call research providers, models or delegated workers.
+
+## Content Coverage V1
+
+CC-01 is a deterministic read model over canonical ContentCase / ContentItem / ContentVersion / NeedHypothesis data. It does not create a second planning engine or a new “coverage truth” table.
+
+### Primary and supporting Need semantics
+
+Primary Need is the existing `ContentCase.need_hypothesis_id`.
+
+Do not duplicate primary Need into another relation table.
+
+Supporting Need uses immutable `ContentCaseSupportingNeed`:
+
+- `content_case_id`;
+- `need_hypothesis_id`;
+- `linked_by`;
+- `reason`;
+- timestamps.
+
+Rules:
+
+- ContentCase and supporting Need must belong to the same project;
+- when both specify an AudienceHypothesis, the audience must match;
+- a primary Need cannot be duplicated as supporting;
+- exact replay requires the same actor + reason;
+- supporting links are immutable;
+- project/audience scope drift after binding fails closed.
+
+One ContentCase may support multiple Needs. One Need may be covered by multiple ContentCases. **One Need does not imply one article.**
+
+### ContentItem ↔ Journey
+
+`ContentItemJourneyStage` is editorial mapping metadata, not customer truth:
+
+- `content_item_id`;
+- `stage_key`;
+- `linked_by`;
+- `reason`;
+- timestamps.
+
+A ContentItem may map to multiple configured Journey stages.
+
+Creation validates `stage_key` against the current approved/built-in Customer Living Map Journey config. If a persisted stage no longer exists in the current config, the coverage read model fails closed instead of silently remapping it.
+
+### Coverage statuses
+
+V1 coverage status is evidence-bounded:
+
+- `MISSING`: no relevant ContentCase/ContentItem and no selected write plan;
+- `PLANNED`: a human-selected ContentOpportunity exists but content work has not materialized yet;
+- `IN_PROGRESS`: content work exists without a current published completion;
+- `PUBLISHED`: at least one relevant published ContentVersion exists;
+- `NEEDS_UPDATE`: published coverage exists and an explicit selected UPDATE/REFRESH target or a newer unpublished revision exists;
+- `WEAK`: there is no usable published coverage and the current content attempt has an unresolved quality failure or final-review rejection/revision request;
+- `INSUFFICIENT_DATA`: coverage cannot be trusted because selected update targets are invalid/unresolved.
+
+`PUBLISHED` means “published coverage exists”. It does **not** mean the customer problem is solved.
+
+`WORKING` is reserved for PM-01, when behaviour/conversion evidence can support that statement.
+
+### Duplicate detection
+
+CC-01 never labels two articles duplicate merely because they address the same Need.
+
+A duplicate candidate requires the same:
+
+- primary Need;
+- locale;
+- primary intent;
+- normalized primary question.
+
+Supporting-Need relations do not create duplicate candidates.
+
+### Existing planning reuse
+
+UPDATE/REFRESH detection consumes the existing human-selected ContentOpportunity and its `existing_content_refs_json`. CC-01 does not independently re-decide CREATE/UPDATE/REFRESH/MERGE.
+
+### Read API
+
+`GET /content-coverage`
+
+Optional filters:
+
+- `project_slug`;
+- `locale`;
+- `audience_id`;
+- `need_id`.
+
+The endpoint is read-only. It must not call research providers, models, tools, or delegated workers.
