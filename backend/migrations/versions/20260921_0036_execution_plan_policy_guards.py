@@ -45,24 +45,22 @@ def upgrade() -> None:
         sa.text(
             """
             CREATE FUNCTION protect_execution_plan_artifact()
-            RETURNS trigger AS $$
+            RETURNS trigger AS $
             BEGIN
-                IF OLD.artifact_type LIKE 'execution_plan_%'
-                   OR (
-                       TG_OP = 'UPDATE'
-                       AND NEW.artifact_type LIKE 'execution_plan_%'
-                   ) THEN
-                    IF TG_OP = 'UPDATE' THEN
+                IF TG_OP = 'UPDATE' THEN
+                    IF OLD.artifact_type LIKE 'execution_plan_%'
+                       OR NEW.artifact_type LIKE 'execution_plan_%' THEN
                         RAISE EXCEPTION 'execution_plan_artifact_is_immutable';
                     END IF;
-                    RAISE EXCEPTION 'execution_plan_artifact_delete_forbidden';
-                END IF;
-                IF TG_OP = 'UPDATE' THEN
                     RETURN NEW;
+                END IF;
+
+                IF OLD.artifact_type LIKE 'execution_plan_%' THEN
+                    RAISE EXCEPTION 'execution_plan_artifact_delete_forbidden';
                 END IF;
                 RETURN OLD;
             END;
-            $$ LANGUAGE plpgsql
+            $ LANGUAGE plpgsql
             """
         )
     )
