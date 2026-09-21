@@ -505,3 +505,41 @@ Fail closed khi:
 ExecutionPlan revision phải liên tục theo version trên cùng run/step/task; không được nhảy cóc version. Reviewer trong plan phải độc lập với worker.
 
 `PUBLISH`, `CHANGE_SETTINGS`, `CHANGE_PROMPT`, `CHANGE_WORKFLOW` luôn yêu cầu `human_gate_required=true` ở contract. AU-01 chỉ xác nhận contract; AU-02 mới chịu trách nhiệm kiểm tra gate thực tế trước execution.
+
+## LS-01 approved Lens guard sources
+
+Lens candidates are derived from Customer Map + Coverage, but three high-risk Lens types need explicit approved authority before they may be SELECTed or MERGEd.
+
+V1 stores these approved guard sources under the existing versioned Settings machinery:
+
+```yaml
+lens_selection:
+  case_materials:
+    - ref: case:authenticity-consultation
+      need_hypothesis_id: null
+      summary: Real customer consultation approved for this use
+      provenance_ref: provenance:case-001
+      rights_ref: rights:case-001
+  pov_positions:
+    - ref: pov:authenticity
+      need_hypothesis_id: null
+      statement: Authenticity claims should be grounded in traceable facts
+      approval_ref: approval:pov:001
+  causal_evidence:
+    - ref: causal:example
+      need_hypothesis_id: null
+      statement: Approved causal statement
+      source_ref: evidence:causal:001
+      approval_ref: approval:causal:001
+```
+
+Rules:
+
+- `need_hypothesis_id: null` means project/general applicability; otherwise the entry applies only to that exact Need.
+- effective `lens_selection` settings must be reproducible from active, approved SettingsVersion refs carried by the exact run SettingsSnapshot;
+- `run_override` or an arbitrary SettingsSnapshot cannot self-approve CASE, POV, or causal authority;
+- conflicting settings layers fail closed; there is no implicit override policy;
+- CASE requires all of: real-case ref, provenance ref, rights ref;
+- POV requires an explicitly approved MOTGU position;
+- CAUSES requires an explicitly approved causal evidence/source ref;
+- settings prove permission/authority to consider a Lens; they do not replace downstream factual Evidence validation.
