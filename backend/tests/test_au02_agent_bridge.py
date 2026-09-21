@@ -240,6 +240,15 @@ async def test_safe_plan_enqueues_claims_and_exact_claim_replays() -> None:
         assert lease.job_id == job.id
         assert lease.execution_plan_artifact_id == plan_artifact.id
         assert lease.approval_id is None
+        assert lease.execution_plan["task_key"] == "customer_map_refresh"
+        assert lease.execution_plan["worker_key"] == "customer-map-worker"
+        assert lease.execution_plan["settings_snapshot_id"] == str(
+            run.settings_snapshot_id
+        )
+        assert lease.settings_snapshot_id == run.settings_snapshot_id
+        assert lease.settings_snapshot_hash == lease.execution_plan[
+            "settings_snapshot_hash"
+        ]
         assert lease.replayed is False
 
         replay = await claim_agent_task(
@@ -492,7 +501,7 @@ async def test_heartbeat_requires_owner_and_never_crosses_plan_deadline() -> Non
         await session.flush()
         with pytest.raises(
             AgentBridgeError,
-            match="agent_bridge_plan_timeout",
+            match="agent_bridge_budget_exceeded",
         ):
             await heartbeat_agent_task(
                 session,
@@ -1193,3 +1202,189 @@ async def test_malformed_capability_settings_provenance_fails_closed() -> None:
                 step_run_id=step.id,
                 plan=_plan(),
             )
+
+@pytest.mark.asyncio
+async def test_nonrunning_run_cannot_queue_plan() -> None:
+    async with isolated_session() as session:
+        run, step = await _pending_fixture(session)
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+        )
+        run.status = "failed"
+        run.completed_at = utc_now()
+        await session.flush()
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_run_not_queueable",
+        ):
+            await enqueue_execution_plan_job(
+                session,
+                execution_plan_artifact_id=plan_artifact.id,
+                worker_key="customer-map-worker",
+            )
+        assert str(plan_artifact.id) not in step.input_artifact_refs_json
+
+
+@pytest.mark.asyncio
+async def test_bridge_fails_closed_on_nondurable_budget_counter() -> None:
+    async with isolated_session() as session:
+        settings = _policy()
+        autopilot = settings["autopilot"]
+        assert isinstance(autopilot, dict)
+        capability_policy = autopilot["capability_policy"]
+        assert isinstance(capability_policy, dict)
+        workers = capability_policy["workers"]
+        assert isinstance(workers, dict)
+        worker = workers["customer-map-worker"]
+        assert isinstance(worker, dict)
+        ceiling = worker["budget_ceiling"]
+        assert isinstance(ceiling, dict)
+        ceiling["max_context_estimate"] = 100
+
+        run, step = await _pending_fixture(
+            session,
+            settings=settings,
+        )
+        plan = _plan(
+            budget={
+                "max_tool_calls": 6,
+                "max_model_calls": 1,
+                "max_context_estimate": 50,
+                "max_output_tokens": 4000,
+                "max_estimated_cost": "0.50",
+                "max_wall_clock_seconds": 120,
+            }
+        )
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+            plan=plan,
+        )
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_budget_field_not_durable",
+        ):
+            await enqueue_execution_plan_job(
+                session,
+                execution_plan_artifact_id=plan_artifact.id,
+                worker_key="customer-map-worker",
+            )
+
+
+@pytest.mark.asyncio
+async def test_completion_rejects_stale_output_artifact_version() -> None:
+    async with isolated_session() as session:
+        run, step = await _pending_fixture(session)
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+        )
+        job = await enqueue_execution_plan_job(
+            session,
+            execution_plan_artifact_id=plan_artifact.id,
+            worker_key="customer-map-worker",
+        )
+        lease = await claim_agent_task(
+            session,
+            worker_key="customer-map-worker",
+            worker_instance_id="stale-output-agent",
+            lease_seconds=30,
+        )
+        assert lease is not None
+        first = await _output_artifact(
+            session,
+            run=run,
+            step=step,
+        )
+        newer_payload = {"schema_version": 1, "value": "newer"}
+        newer = Artifact(
+            run_id=run.id,
+            step_run_id=step.id,
+            artifact_type="customer_map_snapshot",
+            version=2,
+            content_json=newer_payload,
+            content_hash=_hash(newer_payload),
+        )
+        session.add(newer)
+        await session.flush()
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_output_artifact_stale",
+        ):
+            await complete_agent_task(
+                session,
+                job_id=job.id,
+                worker_key="customer-map-worker",
+                worker_instance_id="stale-output-agent",
+                output_refs=[first.id],
+            )
+
+
+@pytest.mark.asyncio
+async def test_forged_review_request_fails_semantic_revalidation() -> None:
+    async with isolated_session() as session:
+        run, step = await _pending_fixture(session)
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+        )
+        job = await enqueue_execution_plan_job(
+            session,
+            execution_plan_artifact_id=plan_artifact.id,
+            worker_key="customer-map-worker",
+        )
+        lease = await claim_agent_task(
+            session,
+            worker_key="customer-map-worker",
+            worker_instance_id="review-forge-agent",
+            lease_seconds=30,
+        )
+        assert lease is not None
+        output = await _output_artifact(
+            session,
+            run=run,
+            step=step,
+        )
+        completed = await complete_agent_task(
+            session,
+            job_id=job.id,
+            worker_key="customer-map-worker",
+            worker_instance_id="review-forge-agent",
+            output_refs=[output.id],
+        )
+        real = await session.get(Artifact, completed.review_request_id)
+        assert real is not None
+        assert real.content_json is not None
+        forged_payload = dict(real.content_json)
+        forged_payload["reviewer"] = "forged-reviewer"
+        forged = Artifact(
+            run_id=run.id,
+            step_run_id=step.id,
+            artifact_type="agent_review_request_forged",
+            version=1,
+            content_json=forged_payload,
+            content_hash=_hash(forged_payload),
+        )
+        session.add(forged)
+        await session.flush()
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_review_request_semantic_mismatch",
+        ):
+            await record_agent_review(
+                session,
+                review_request_id=forged.id,
+                reviewer_key="forged-reviewer",
+                decision="pass",
+                checks=_passing_checks(),
+            )
+
