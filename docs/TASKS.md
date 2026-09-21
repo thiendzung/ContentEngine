@@ -224,14 +224,14 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Ensure read/refresh creates no ModelCall or ToolCall.
 - [x] Add rev-0036 schema + DB project/audience/immutability guards.
 - [x] CI lint/type/migration/full test/front-end checks pass on implementation head before docs sync.
-- [ ] Exact-ref OpenCodeReview on final head.
-- [ ] Agent Local disposable-DB proof on final head.
-- [ ] Founder merge.
+- [x] Exact-ref OpenCodeReview on final head.
+- [x] Agent Local disposable-DB proof on final head.
+- [x] Founder merge.
 - [ ] Operational migration remains a separate explicitly authorized task.
 
 ### CC-01 immediate checklist
 
-- [x] Reuse `ContentCase.need_hypothesis_id` as the primary Need; do not duplicate primary truth.
+- [x] Reuse `ContentCase.need_hypothesis_id` as the primary Need; do not duplicate primary truth; block silent reassignment.
 - [x] Add immutable/audited supporting Need links.
 - [x] Add immutable/audited ContentItem ↔ Journey-stage links.
 - [x] Keep one Need able to map to multiple articles and one article able to support multiple Needs.
@@ -242,7 +242,7 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Expose read-only `GET /content-coverage`.
 - [x] Ensure read path creates no ModelCall/ToolCall and performs no research.
 - [x] Add rev-0037 schema guards and focused tests.
-- [ ] CI on final implementation head.
+- [x] CI on implementation head after self-review fixes; rerun after final docs sync.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Agent Local disposable-DB verification.
 - [ ] Founder merge.
