@@ -1673,23 +1673,6 @@ async def prepare_final_gates(
         )
         if len(steps) > 1 or (steps and steps[0].attempt != 1):
             raise OperatorControlError("operator_quality_final_step_conflict", lane.locale)
-        step = (
-            steps[0]
-            if steps
-            else StepRun(
-                run_id=lane.writer.run.id,
-                step_key="final_review",
-                attempt=1,
-                status="pending",
-                input_artifact_refs_json=[
-                    str(lane.revised_draft.id),
-                    str(item.id),
-                    str(lane.reader_value.artifact.id),
-                    str(lane.search_ai.artifact.id),
-                ],
-                output_artifact_refs_json=[],
-            )
-        )
         if lane.reader_value.artifact is None or lane.search_ai.artifact is None:
             raise OperatorControlError("operator_quality_final_readiness_missing", lane.locale)
         expected_final_inputs = [
@@ -1698,6 +1681,18 @@ async def prepare_final_gates(
             str(lane.reader_value.artifact.id),
             str(lane.search_ai.artifact.id),
         ]
+        step = (
+            steps[0]
+            if steps
+            else StepRun(
+                run_id=lane.writer.run.id,
+                step_key="final_review",
+                attempt=1,
+                status="pending",
+                input_artifact_refs_json=expected_final_inputs,
+                output_artifact_refs_json=[],
+            )
+        )
         if not steps:
             session.add(step)
             await session.flush()
