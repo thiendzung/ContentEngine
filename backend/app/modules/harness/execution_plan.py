@@ -212,6 +212,17 @@ async def persist_execution_plan_artifact(
     )
     payload_hash = _stable_hash(payload)
 
+    if version > 1:
+        previous = await session.scalar(
+            select(Artifact).where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == artifact_type,
+                Artifact.version == version - 1,
+            )
+        )
+        if previous is None:
+            raise ExecutionPlanError("execution_plan_previous_version_required")
+
     existing = await session.scalar(
         select(Artifact).where(
             Artifact.run_id == run.id,
@@ -269,11 +280,12 @@ async def authorize_execution_plan(
     if artifact.artifact_type != expected_type:
         raise ExecutionPlanError("execution_plan_artifact_binding_mismatch")
 
-    run, _, snapshot = await _execution_context(
+    run, step, snapshot = await _execution_context(
         session,
         run_id=artifact.run_id,
         step_run_id=artifact.step_run_id,
     )
+    _require_authorizable_state(run, step)
     if plan.settings_snapshot_id != run.settings_snapshot_id:
         raise ExecutionPlanError("execution_plan_settings_snapshot_mismatch")
     if plan.settings_snapshot_id != snapshot.id:
@@ -320,6 +332,20 @@ async def _execution_context(
     _validate_settings_snapshot_hash(snapshot)
     await _validate_capability_policy_provenance(session, snapshot=snapshot)
     return run, step, snapshot
+
+
+def _require_authorizable_state(
+    run: ContentRun,
+    step: StepRun | None,
+) -> None:
+    if run.status != "running":
+        raise ExecutionPlanError("execution_plan_run_not_authorizable")
+    if step is None:
+        return
+    if step.status not in {"pending", "running"}:
+        raise ExecutionPlanError("execution_plan_step_not_authorizable")
+    if run.current_step != step.step_key:
+        raise ExecutionPlanError("execution_plan_step_not_current")
 
 
 def _validate_settings_snapshot_hash(snapshot: SettingsSnapshot) -> None:
@@ -512,6 +538,14 @@ def _authorize_plan(
         raise ExecutionPlanError("execution_plan_timeout_exceeds_policy")
     if plan.max_attempts > policy.max_attempts:
         raise ExecutionPlanError("execution_plan_attempts_exceed_policy")
+    if plan.reviewer == plan.worker_key:
+        raise ExecutionPlanError("execution_plan_reviewer_must_be_independent")
+    wall_clock = _budget_number(
+        "max_wall_clock_seconds",
+        plan.budget["max_wall_clock_seconds"],
+    )
+    if Decimal(str(plan.timeout_seconds)) > wall_clock:
+        raise ExecutionPlanError("execution_plan_timeout_exceeds_plan_budget")
     _enforce_budget_ceiling(plan.budget, policy.budget_ceiling)
 
     if (
