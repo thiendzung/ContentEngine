@@ -178,8 +178,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | ARCH-21 | DONE / PR #171 MERGED | Canonical Customer Living Map + Controlled Autopilot architecture is on main. |
 | CT-01 | DONE / PR #172 MERGED | CustomerInsight foundation accepted with CI + exact-ref OCR + final local verification. Operational DB migration remains separately authorized. |
 | AU-01 | DONE / PR #173 MERGED | ExecutionPlan + approved capability-policy provenance + fail-closed authorization accepted with CI/OCR/local proof. |
-| CM-01 | IN IMPLEMENTATION / PR #174 | Living Map read model + audited Insight↔Need links + derived Journey + immutable snapshots/change report + read APIs. Operational migration rev-0036 remains separately authorized. |
-| CC-01 | PLANNED | Content Coverage relations/status/gap detection. |
+| CM-01 | DONE / PR #174 MERGED | Customer Living Map accepted with CI + exact-ref OCR + disposable local verification. Operational rev-0035/0036 remain separately authorized. |
+| CC-01 | IN IMPLEMENTATION | Primary Need reused from ContentCase; supporting Need + ContentItem↔Journey audit links; derived coverage status/read API on `feat/cc01-content-coverage`. |
 | LS-01 | PLANNED | 7 Content Lenses as selection tool, not article generator. |
 | AU-02 | PLANNED | Local agent bridge + safe auto-next orchestration + independent review. |
 | QA-01 | PLANNED | Reader Value gate + separate SEO/AI readiness. |
@@ -224,7 +224,26 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Ensure read/refresh creates no ModelCall or ToolCall.
 - [x] Add rev-0036 schema + DB project/audience/immutability guards.
 - [x] CI lint/type/migration/full test/front-end checks pass on implementation head before docs sync.
-- [ ] Exact-ref OpenCodeReview on final head.
-- [ ] Agent Local disposable-DB proof on final head.
-- [ ] Founder merge.
+- [x] Exact-ref OpenCodeReview on final head.
+- [x] Agent Local disposable-DB proof on final head.
+- [x] Founder merge.
 - [ ] Operational migration remains a separate explicitly authorized task.
+
+### CC-01 immediate checklist
+
+- [x] Reuse `ContentCase.need_hypothesis_id` as the primary Need; do not duplicate primary truth; block silent reassignment.
+- [x] Add immutable/audited supporting Need links.
+- [x] Add immutable/audited ContentItem ↔ Journey-stage links.
+- [x] Keep one Need able to map to multiple articles and one article able to support multiple Needs.
+- [x] Derive `MISSING / PLANNED / IN_PROGRESS / PUBLISHED / NEEDS_UPDATE / WEAK / INSUFFICIENT_DATA`.
+- [x] Do not emit `WORKING` before PM-01 measurement evidence exists.
+- [x] Detect duplicate candidates only for same primary Need + locale + intent + normalized primary question.
+- [x] Reuse selected ContentOpportunity target refs for update/refresh detection; do not create a second content-decision engine.
+- [x] Expose read-only `GET /content-coverage`.
+- [x] Ensure read path creates no ModelCall/ToolCall and performs no research.
+- [x] Add rev-0037 schema guards and focused tests.
+- [x] CI on implementation head after self-review fixes; rerun after final docs sync.
+- [ ] Exact-ref OpenCodeReview.
+- [ ] Agent Local disposable-DB verification.
+- [ ] Founder merge.
+- [ ] Operational migration remains separately authorized.

@@ -185,3 +185,30 @@ CM-01 code migration head is `20260921_0036`. Any operational migration remains 
 
 Review flow:
 `CI → exact-ref OpenCodeReview → MG triage → Agent Local disposable-DB proof → Founder merge`.
+
+## CC-01 implementation window — 2026-09-21
+
+PR #174 is merged. Live main at CC-01 start is `e8fd9221099eea458051d53ab51cfc5a0cf57d41`.
+
+CM-01 is DONE at code/review level. Operational DB remains at the separately controlled release state; rev-0035, rev-0036 and new CC-01 rev-0037 are not authorized for operational application by this implementation work.
+
+Current bounded implementation:
+- branch `feat/cc01-content-coverage`;
+- reuse existing `ContentCase.need_hypothesis_id` as primary Need and block silent reassignment;
+- add immutable/audited supporting Need links;
+- add immutable/audited ContentItem ↔ Journey-stage links;
+- deterministic project/locale/audience/need Content Coverage read model;
+- coverage states `MISSING / PLANNED / IN_PROGRESS / PUBLISHED / NEEDS_UPDATE / WEAK / INSUFFICIENT_DATA`;
+- no `WORKING` claim until PM-01 measurement evidence exists;
+- duplicate candidates require same primary Need + locale + intent + normalized primary question;
+- selected ContentOpportunity target refs are reused for update/refresh detection;
+- locale-filtered coverage only counts matching LocaleVariants;
+- planning inconsistencies do not erase already-known published coverage;
+- read-only `GET /content-coverage`;
+- no research/model/tool/delegated-worker execution in the read path;
+- Content Opportunity generation, Lens Selection and measurement are not part of CC-01.
+
+CC-01 code migration head is `20260921_0037`. Any operational migration remains a separate Founder-authorized task with backup/restore/rehearsal discipline.
+
+Review flow:
+`CI → exact-ref OpenCodeReview → MG triage → Agent Local disposable-DB proof → Founder merge`.

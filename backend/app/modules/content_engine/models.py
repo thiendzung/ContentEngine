@@ -325,6 +325,37 @@ class ContentCase(TimestampMixin, Base):
     )
 
 
+class ContentCaseSupportingNeed(TimestampMixin, Base):
+    __tablename__ = "content_case_supporting_needs"
+
+    content_case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_cases.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    need_hypothesis_id: Mapped[UUID] = mapped_column(
+        ForeignKey("need_hypotheses.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "length(btrim(linked_by)) > 0",
+            name="ck_content_case_supporting_need_actor",
+        ),
+        CheckConstraint(
+            "length(btrim(reason)) > 0",
+            name="ck_content_case_supporting_need_reason",
+        ),
+        Index(
+            "ix_content_case_supporting_needs_need",
+            "need_hypothesis_id",
+            "content_case_id",
+        ),
+    )
+
+
 class LocaleVariant(TimestampMixin, Base):
     __tablename__ = "locale_variants"
 
@@ -366,6 +397,38 @@ class ContentItem(TimestampMixin, Base):
         CheckConstraint(
             "content_type in ('journal','artwork')",
             name="ck_content_items_type",
+        ),
+    )
+
+
+class ContentItemJourneyStage(TimestampMixin, Base):
+    __tablename__ = "content_item_journey_stages"
+
+    content_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_items.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    stage_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    linked_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "stage_key ~ '^[a-z0-9][a-z0-9_-]{0,63}$'",
+            name="ck_content_item_journey_stage_key",
+        ),
+        CheckConstraint(
+            "length(btrim(linked_by)) > 0",
+            name="ck_content_item_journey_stage_actor",
+        ),
+        CheckConstraint(
+            "length(btrim(reason)) > 0",
+            name="ck_content_item_journey_stage_reason",
+        ),
+        Index(
+            "ix_content_item_journey_stage",
+            "stage_key",
+            "content_item_id",
         ),
     )
 
