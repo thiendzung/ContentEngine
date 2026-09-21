@@ -13,6 +13,7 @@ from app.modules.customer_intelligence.insights import (
     customer_insight_evidence_counts,
     ensure_customer_insight,
     link_customer_insight_signal,
+    review_customer_insight,
 )
 from app.modules.customer_intelligence.models import CustomerInsight, CustomerInsightSignal
 
@@ -132,6 +133,61 @@ async def test_customer_insight_exact_replay_and_revision_are_durable() -> None:
                 statement="Skipped revision.",
                 insight_key=first.insight_key,
                 version=4,
+            )
+
+
+@pytest.mark.asyncio
+async def test_customer_insight_requires_explicit_review_for_truth_promotion() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+
+        with pytest.raises(
+            CustomerInsightError,
+            match="customer_insight_review_required",
+        ):
+            await ensure_customer_insight(
+                session,
+                project_id=project.id,
+                insight_type="pain",
+                statement="Cannot silently start as supported.",
+                status="SUPPORTED",
+            )
+
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="pain",
+            statement="Visible pricing may reduce uncertainty.",
+        )
+        reviewed = await review_customer_insight(
+            session,
+            customer_insight_id=insight.id,
+            status="SUPPORTED",
+            reviewed_by="founder",
+            reason="Reviewed against independent customer evidence.",
+        )
+        replay = await review_customer_insight(
+            session,
+            customer_insight_id=insight.id,
+            status="SUPPORTED",
+            reviewed_by="founder",
+            reason="Reviewed against independent customer evidence.",
+        )
+
+        assert reviewed.status == "SUPPORTED"
+        assert reviewed.reviewed_at is not None
+        assert replay.id == reviewed.id
+
+        with pytest.raises(
+            CustomerInsightError,
+            match="customer_insight_already_reviewed",
+        ):
+            await review_customer_insight(
+                session,
+                customer_insight_id=insight.id,
+                status="REJECTED",
+                reviewed_by="founder",
+                reason="Conflicting second review.",
             )
 
 
