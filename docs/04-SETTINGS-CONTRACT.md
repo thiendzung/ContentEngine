@@ -514,6 +514,12 @@ V1 stores these approved guard sources under the existing versioned Settings mac
 
 ```yaml
 lens_selection:
+  misconceptions:
+    - ref: misconception:signature-alone
+      need_hypothesis_id: null
+      statement: A signature alone proves authenticity
+      observation_ref: signal:observed-belief-001
+      approval_ref: approval:misconception:001
   case_materials:
     - ref: case:authenticity-consultation
       need_hypothesis_id: null
@@ -539,6 +545,7 @@ Rules:
 - effective `lens_selection` settings must be reproducible from active, approved SettingsVersion refs carried by the exact run SettingsSnapshot;
 - `run_override` or an arbitrary SettingsSnapshot cannot self-approve CASE, POV, or causal authority;
 - conflicting settings layers fail closed; there is no implicit override policy;
+- MISCONCEPTION requires an explicitly observed belief + observation ref + approval ref; a contradictory Signal alone does not prove that customers hold a misconception;
 - CASE requires all of: real-case ref, provenance ref, rights ref;
 - POV requires an explicitly approved MOTGU position;
 - CAUSES requires an explicitly approved causal evidence/source ref;
