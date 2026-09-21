@@ -268,7 +268,7 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Persist evidence_context and angle_context; optional valid Lens context flows into Angle model input.
 - [x] All HOLD/DROP is valid and blocks Angle instead of forcing weak content.
 - [x] Read/build/persist path does not run research/model/tool work.
-- [x] CI on implementation head after final code self-review; rerun after this docs sync.
+- [x] Final CI PASS after code self-review and contract/docs sync.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Agent Local verification.
 - [ ] Founder merge.
