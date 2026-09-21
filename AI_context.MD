@@ -142,3 +142,23 @@ This docs change does NOT:
 - mutate the active F7 runtime lineage.
 
 After ARCH-21 merge, first code slice is CT-01 CustomerInsight foundation, followed by AU-01 ExecutionPlan + capability policy.
+
+## AU-01 implementation window — 2026-09-21
+
+Live main at AU-01 start: `e17784d92f1a56277d52b3b9323d778973ea2602`, merge commit of PR #172.
+
+CT-01 is complete at code/review level. Operational DB remains at the previously verified rev-0034 until a separate Founder-authorized migration task; AU-01 does not consume that authorization.
+
+Current bounded implementation:
+- branch `feat/au01-execution-plan-policy`;
+- immutable ExecutionPlan Artifact bound to exact run/step/SettingsSnapshot;
+- capability policy stored in existing versioned SettingsSnapshot;
+- canonical semantic action namespaces mapped to capabilities;
+- fail-closed tool/action/capability/budget/timeout/attempt checks;
+- human-gate declaration required for publish/settings/prompt/workflow-changing capabilities;
+- DB immutability guard for SettingsSnapshot and ExecutionPlan artifacts;
+- no second workflow engine;
+- no Agent Bridge/auto-next execution yet — that remains AU-02.
+
+Review flow remains:
+`CI → exact-ref OpenCodeReview → MG triage → Agent Local bounded proof → Founder merge`.
