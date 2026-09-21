@@ -19,11 +19,169 @@ def _create_customer_insight_guards() -> None:
     op.execute(
         sa.text(
             """
+            CREATE FUNCTION validate_customer_insight_signal_lineage(
+                p_signal_id uuid,
+                p_project_id uuid
+            ) RETURNS text AS $$
+            DECLARE
+                current_id uuid := p_signal_id;
+                current_project uuid;
+                parent_id uuid;
+                current_group text;
+                group_key text := NULL;
+                visited uuid[] := ARRAY[]::uuid[];
+            BEGIN
+                LOOP
+                    IF current_id IS NULL THEN
+                        RAISE EXCEPTION
+                            'customer_insight_signal_duplicate_parent_invalid';
+                    END IF;
+                    IF current_id = ANY(visited) THEN
+                        RAISE EXCEPTION
+                            'customer_insight_signal_duplicate_cycle';
+                    END IF;
+                    visited := array_append(visited, current_id);
+
+                    SELECT project_id, duplicate_of_id, independence_group
+                    INTO current_project, parent_id, current_group
+                    FROM signals
+                    WHERE id = current_id;
+
+                    IF NOT FOUND THEN
+                        RAISE EXCEPTION
+                            'customer_insight_signal_duplicate_parent_invalid';
+                    END IF;
+                    IF current_project IS DISTINCT FROM p_project_id THEN
+                        RAISE EXCEPTION
+                            'customer_insight_signal_duplicate_parent_invalid';
+                    END IF;
+
+                    IF current_group IS NOT NULL
+                       AND btrim(current_group) <> '' THEN
+                        IF group_key IS NULL THEN
+                            group_key := current_group;
+                        ELSIF group_key IS DISTINCT FROM current_group THEN
+                            RAISE EXCEPTION
+                                'customer_insight_signal_'
+                                'independence_group_conflict';
+                        END IF;
+                    END IF;
+
+                    IF parent_id IS NULL THEN
+                        IF group_key IS NOT NULL THEN
+                            RETURN 'group:' || group_key;
+                        END IF;
+                        RETURN 'signal:' || current_id::text;
+                    END IF;
+
+                    current_id := parent_id;
+                END LOOP;
+            END;
+            $$ LANGUAGE plpgsql STABLE
+            """
+        )
+    )
+
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION customer_insight_signal_is_in_use(
+                p_signal_id uuid
+            ) RETURNS boolean AS $$
+                WITH RECURSIVE descendants(id) AS (
+                    SELECT p_signal_id
+                    UNION
+                    SELECT s.id
+                    FROM signals s
+                    JOIN descendants d
+                      ON s.duplicate_of_id = d.id
+                )
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM descendants d
+                    JOIN customer_insight_signals cis
+                      ON cis.signal_id = d.id
+                )
+            $$ LANGUAGE sql STABLE
+            """
+        )
+    )
+
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION protect_customer_insight_signal_lineage()
+            RETURNS trigger AS $$
+            BEGIN
+                IF (
+                    OLD.project_id IS DISTINCT FROM NEW.project_id
+                    OR OLD.duplicate_of_id IS DISTINCT FROM NEW.duplicate_of_id
+                    OR OLD.independence_group
+                       IS DISTINCT FROM NEW.independence_group
+                )
+                AND customer_insight_signal_is_in_use(OLD.id) THEN
+                    RAISE EXCEPTION
+                        'customer_insight_signal_lineage_immutable';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER customer_insight_signal_lineage_guard
+            BEFORE UPDATE OF project_id, duplicate_of_id, independence_group
+            ON signals
+            FOR EACH ROW
+            EXECUTE FUNCTION protect_customer_insight_signal_lineage()
+            """
+        )
+    )
+
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION protect_customer_insight_audience_scope()
+            RETURNS trigger AS $$
+            BEGIN
+                IF OLD.project_id IS DISTINCT FROM NEW.project_id
+                   AND EXISTS(
+                       SELECT 1
+                       FROM customer_insights ci
+                       WHERE ci.audience_hypothesis_id = OLD.id
+                   ) THEN
+                    RAISE EXCEPTION
+                        'customer_insight_audience_project_change_forbidden';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER customer_insight_audience_scope_guard
+            BEFORE UPDATE OF project_id ON audience_hypotheses
+            FOR EACH ROW
+            EXECUTE FUNCTION protect_customer_insight_audience_scope()
+            """
+        )
+    )
+
+    op.execute(
+        sa.text(
+            """
             CREATE FUNCTION validate_customer_insight() RETURNS trigger AS $$
             DECLARE
                 audience_project uuid;
                 matching_review boolean;
-                support_exists boolean;
+                support_key text;
+                support_keys text[] := ARRAY[]::text[];
             BEGIN
                 IF TG_OP = 'DELETE' THEN
                     RAISE EXCEPTION 'customer_insight_delete_forbidden';
@@ -79,6 +237,12 @@ def _create_customer_insight_guards() -> None:
                                 'customer_insight_review_required';
                         END IF;
 
+                        IF OLD.reviewed_at IS NOT NULL
+                           AND NEW.reviewed_at <= OLD.reviewed_at THEN
+                            RAISE EXCEPTION
+                                'customer_insight_review_must_advance';
+                        END IF;
+
                         SELECT EXISTS(
                             SELECT 1
                             FROM customer_insight_reviews cir
@@ -98,15 +262,24 @@ def _create_customer_insight_guards() -> None:
                 END IF;
 
                 IF NEW.status = 'SUPPORTED' THEN
-                    SELECT EXISTS(
-                        SELECT 1
+                    FOR support_key IN
+                        SELECT validate_customer_insight_signal_lineage(
+                            cis.signal_id,
+                            NEW.project_id
+                        )
                         FROM customer_insight_signals cis
                         WHERE cis.customer_insight_id = NEW.id
                           AND cis.relation = 'supports'
-                    )
-                    INTO support_exists;
+                    LOOP
+                        IF NOT support_key = ANY(support_keys) THEN
+                            support_keys := array_append(
+                                support_keys,
+                                support_key
+                            );
+                        END IF;
+                    END LOOP;
 
-                    IF NOT support_exists THEN
+                    IF COALESCE(array_length(support_keys, 1), 0) < 1 THEN
                         RAISE EXCEPTION
                             'customer_insight_support_evidence_required';
                     END IF;
@@ -134,7 +307,6 @@ def _create_customer_insight_guards() -> None:
             CREATE FUNCTION validate_customer_insight_signal() RETURNS trigger AS $$
             DECLARE
                 insight_project uuid;
-                signal_project uuid;
             BEGIN
                 IF TG_OP = 'UPDATE' THEN
                     RAISE EXCEPTION
@@ -149,20 +321,14 @@ def _create_customer_insight_guards() -> None:
                 FROM customer_insights
                 WHERE id = NEW.customer_insight_id;
 
-                SELECT project_id INTO signal_project
-                FROM signals
-                WHERE id = NEW.signal_id;
-
                 IF insight_project IS NULL THEN
                     RAISE EXCEPTION 'customer_insight_not_found';
                 END IF;
-                IF signal_project IS NULL THEN
-                    RAISE EXCEPTION 'customer_insight_signal_not_found';
-                END IF;
-                IF insight_project IS DISTINCT FROM signal_project THEN
-                    RAISE EXCEPTION
-                        'customer_insight_signal_project_mismatch';
-                END IF;
+
+                PERFORM validate_customer_insight_signal_lineage(
+                    NEW.signal_id,
+                    insight_project
+                );
 
                 RETURN NEW;
             END;
@@ -361,6 +527,39 @@ def downgrade() -> None:
         )
     )
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_customer_insight()"))
+    op.execute(
+        sa.text(
+            "DROP TRIGGER IF EXISTS customer_insight_audience_scope_guard "
+            "ON audience_hypotheses"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DROP FUNCTION IF EXISTS protect_customer_insight_audience_scope()"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DROP TRIGGER IF EXISTS customer_insight_signal_lineage_guard "
+            "ON signals"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DROP FUNCTION IF EXISTS protect_customer_insight_signal_lineage()"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DROP FUNCTION IF EXISTS customer_insight_signal_is_in_use(uuid)"
+        )
+    )
+    op.execute(
+        sa.text(
+            "DROP FUNCTION IF EXISTS "
+            "validate_customer_insight_signal_lineage(uuid, uuid)"
+        )
+    )
     op.drop_index(
         "ix_customer_insight_reviews_insight_time",
         table_name="customer_insight_reviews",
