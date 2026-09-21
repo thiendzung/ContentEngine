@@ -447,6 +447,8 @@ autopilot:
         max_attempts: 3
 ```
 
+Capability policy phải đến từ ít nhất một `SettingsVersion` đang `active`, có `approved_by`, và ref đó phải nằm trong `SettingsSnapshot.source_version_refs_json`. Policy hiệu lực trong snapshot phải khớp chính xác policy đã duyệt; `run_override` hoặc snapshot tự tạo không được dùng để tự nâng quyền. V1 coi toàn bộ `capability_policy` là một khối policy nguyên tử, không ghép quyền từ nhiều nguồn mâu thuẫn.
+
 Capability V1:
 - `READ`;
 - `WRITE_ARTIFACT`;
