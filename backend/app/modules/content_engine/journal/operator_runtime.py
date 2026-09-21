@@ -548,13 +548,14 @@ async def _quality_state_overlay(
             )
             if stage.job is not None and stage.job.status in {"queued", "leased"}
         )
+        active_run = active_stage.run or active_lane.writer.run
         return state.model_copy(
             update={
                 **common,
                 "status": "RUNNING"
                 if active_stage.job and active_stage.job.status == "leased"
                 else "QUEUED",
-                "current_run_id": active_lane.writer.run.id if active_lane.writer.run else None,
+                "current_run_id": active_run.id if active_run else None,
                 "current_step_run_id": active_stage.step.id if active_stage.step else None,
                 "current_worker": active_stage.job.lease_owner if active_stage.job else None,
                 "primary_intent": None,
@@ -1398,21 +1399,3 @@ async def submit_operator_command(
             content_case_id=content_case_id,
             intent=intent,
             expected_state_version=expected_state_version,
-            idempotency_key=idempotency_key,
-            actor_id=actor_id,
-        )
-    if resolved.action_key == "outline_to_writers":
-        if knowledge_brief_id is not None:
-            raise OperatorControlError("operator_knowledge_brief_binding_start_only")
-        return await _submit_outline_to_writers_command(
-            session,
-            content_case_id=content_case_id,
-            intent=intent,
-            expected_state_version=expected_state_version,
-            idempotency_key=idempotency_key,
-            actor_id=actor_id,
-        )
-    if resolved.action_key == "writers_to_quality":
-        if knowledge_brief_id is not None:
-            raise OperatorControlError("operator_knowledge_brief_binding_start_only")
-        return await submit_writers_to_quality_command(
