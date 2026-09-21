@@ -28,7 +28,6 @@ from app.modules.content_engine.models import (
     HumanSelection,
     LocaleVariant,
     NeedHypothesis,
-    NeedHypothesisSignal,
     Project,
     SettingsVersion,
     Signal,
