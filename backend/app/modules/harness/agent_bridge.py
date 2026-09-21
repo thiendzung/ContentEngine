@@ -57,7 +57,6 @@ from app.modules.harness.persistence import (
 )
 from app.modules.harness.policy import (
     BudgetExceededError,
-    BudgetExtras,
     BudgetLimits,
     UnknownFailureClassError,
     enforce_budget,
@@ -242,69 +241,28 @@ def _plan_budget_limits(plan: ExecutionPlan) -> BudgetLimits:
     )
 
 
-def _budget_extras(
-    plan: ExecutionPlan,
-    value: object,
-    *,
-    require_limited: bool,
-) -> BudgetExtras:
-    if value is None:
-        raw: dict[str, object] = {}
-    elif isinstance(value, dict):
-        raw = {str(key): item for key, item in value.items()}
-    else:
-        raise AgentBridgeError("agent_bridge_budget_telemetry_invalid")
-    allowed = {"context_estimate", "research_sources", "revise_loops"}
-    if not set(raw).issubset(allowed):
-        raise AgentBridgeError("agent_bridge_budget_telemetry_invalid")
-
-    mapping = {
-        "max_context_estimate": "context_estimate",
-        "max_research_sources": "research_sources",
-        "max_revise_loops": "revise_loops",
+def _ensure_bridge_budget_supported(plan: ExecutionPlan) -> None:
+    unsupported = {
+        "max_context_estimate",
+        "max_research_sources",
+        "max_revise_loops",
     }
-    if require_limited:
-        for budget_key, telemetry_key in mapping.items():
-            if (
-                budget_key in plan.budget
-                and telemetry_key not in raw
-            ):
-                raise AgentBridgeError(
-                    "agent_bridge_budget_telemetry_required"
-                )
-
-    normalized: dict[str, int] = {}
-    for key in allowed:
-        item = raw.get(key, 0)
-        if isinstance(item, bool) or not isinstance(item, int) or item < 0:
-            raise AgentBridgeError(
-                "agent_bridge_budget_telemetry_invalid"
-            )
-        normalized[key] = item
-    return BudgetExtras(
-        context_estimate=normalized["context_estimate"],
-        research_sources=normalized["research_sources"],
-        revise_loops=normalized["revise_loops"],
-    )
+    if unsupported & set(plan.budget):
+        raise AgentBridgeError(
+            "agent_bridge_budget_field_not_durable"
+        )
 
 
 async def _enforce_plan_budget(
     session: AsyncSession,
     *,
     authorized: AuthorizedExecutionPlan,
-    budget_extras: object = None,
-    require_nonledger_telemetry: bool,
 ) -> None:
-    extras = _budget_extras(
-        authorized.plan,
-        budget_extras,
-        require_limited=require_nonledger_telemetry,
-    )
+    _ensure_bridge_budget_supported(authorized.plan)
     usage = await load_budget_usage(
         session,
         run_id=authorized.run_id,
         step_run_id=authorized.step_run_id,
-        extras=extras,
     )
     try:
         enforce_budget(_plan_budget_limits(authorized.plan), usage)
@@ -395,6 +353,7 @@ async def _authorize_latest_plan(
         raise AgentBridgeError("agent_bridge_step_binding_invalid")
     if step.attempt > authorized.plan.max_attempts:
         raise AgentBridgeError("agent_bridge_step_attempt_exceeds_plan")
+    _ensure_bridge_budget_supported(authorized.plan)
     return authorized, artifact, step
 
 
@@ -802,6 +761,10 @@ async def _load_job_plan(
         authorized=authorized,
         plan_artifact=plan_artifact,
         step=step,
+    )
+    await _enforce_plan_budget(
+        session,
+        authorized=authorized,
     )
     return authorized, plan_artifact, step, approval
 
