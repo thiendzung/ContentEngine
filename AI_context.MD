@@ -194,7 +194,7 @@ CM-01 is DONE at code/review level. Operational DB remains at the separately con
 
 Current bounded implementation:
 - branch `feat/cc01-content-coverage`;
-- reuse existing `ContentCase.need_hypothesis_id` as primary Need;
+- reuse existing `ContentCase.need_hypothesis_id` as primary Need and block silent reassignment;
 - add immutable/audited supporting Need links;
 - add immutable/audited ContentItem ↔ Journey-stage links;
 - deterministic project/locale/audience/need Content Coverage read model;
@@ -202,6 +202,8 @@ Current bounded implementation:
 - no `WORKING` claim until PM-01 measurement evidence exists;
 - duplicate candidates require same primary Need + locale + intent + normalized primary question;
 - selected ContentOpportunity target refs are reused for update/refresh detection;
+- locale-filtered coverage only counts matching LocaleVariants;
+- planning inconsistencies do not erase already-known published coverage;
 - read-only `GET /content-coverage`;
 - no research/model/tool/delegated-worker execution in the read path;
 - Content Opportunity generation, Lens Selection and measurement are not part of CC-01.
