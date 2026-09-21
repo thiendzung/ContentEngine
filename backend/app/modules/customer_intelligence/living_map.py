@@ -361,45 +361,57 @@ async def build_customer_map_snapshot(
         )
 
     insight_signal_map: dict[UUID, dict[str, list[str]]] = {}
-    for link in insight_signal_rows:
+    for insight_signal_link in insight_signal_rows:
         refs = insight_signal_map.setdefault(
-            link.customer_insight_id,
+            insight_signal_link.customer_insight_id,
             {"supports": [], "contradicts": [], "context": []},
         )
-        refs[link.relation].append(str(link.signal_id))
+        refs[insight_signal_link.relation].append(
+            str(insight_signal_link.signal_id)
+        )
 
     insight_need_map: dict[UUID, list[dict[str, str]]] = {}
     need_insight_map: dict[UUID, list[dict[str, str]]] = {}
     need_id_set = set(need_ids)
-    for link in insight_need_rows:
-        if link.need_hypothesis_id not in need_id_set:
+    for insight_need_link in insight_need_rows:
+        if insight_need_link.need_hypothesis_id not in need_id_set:
             raise CustomerMapError(
                 "customer_map_insight_need_project_mismatch"
             )
-        insight_need_map.setdefault(link.customer_insight_id, []).append(
+        insight_need_map.setdefault(
+            insight_need_link.customer_insight_id, []
+        ).append(
             {
-                "need_hypothesis_id": str(link.need_hypothesis_id),
-                "relation": link.relation,
-                "linked_by": link.linked_by,
-                "reason": link.reason,
+                "need_hypothesis_id": str(
+                    insight_need_link.need_hypothesis_id
+                ),
+                "relation": insight_need_link.relation,
+                "linked_by": insight_need_link.linked_by,
+                "reason": insight_need_link.reason,
             }
         )
-        need_insight_map.setdefault(link.need_hypothesis_id, []).append(
+        need_insight_map.setdefault(
+            insight_need_link.need_hypothesis_id, []
+        ).append(
             {
-                "customer_insight_id": str(link.customer_insight_id),
-                "relation": link.relation,
-                "linked_by": link.linked_by,
-                "reason": link.reason,
+                "customer_insight_id": str(
+                    insight_need_link.customer_insight_id
+                ),
+                "relation": insight_need_link.relation,
+                "linked_by": insight_need_link.linked_by,
+                "reason": insight_need_link.reason,
             }
         )
 
     need_signal_map: dict[UUID, dict[str, list[str]]] = {}
-    for link in need_signal_rows:
+    for need_signal_link in need_signal_rows:
         refs = need_signal_map.setdefault(
-            link.need_hypothesis_id,
+            need_signal_link.need_hypothesis_id,
             {"supports": [], "contradicts": []},
         )
-        refs[link.relation].append(str(link.signal_id))
+        refs[need_signal_link.relation].append(
+            str(need_signal_link.signal_id)
+        )
 
     insight_payloads: list[dict[str, object]] = []
     for insight in insights:
@@ -500,15 +512,15 @@ async def build_customer_map_snapshot(
 
     insight_ref_by_audience: dict[str, list[dict[str, object]]] = {}
     unassigned_insights: list[dict[str, object]] = []
-    for insight in insight_payloads:
+    for insight_payload in insight_payloads:
         ref = {
-            "id": insight["id"],
-            "insight_key": insight["insight_key"],
-            "version": insight["version"],
-            "status": insight["status"],
-            "insight_type": insight["insight_type"],
+            "id": insight_payload["id"],
+            "insight_key": insight_payload["insight_key"],
+            "version": insight_payload["version"],
+            "status": insight_payload["status"],
+            "insight_type": insight_payload["insight_type"],
         }
-        audience_id = insight["audience_hypothesis_id"]
+        audience_id = insight_payload["audience_hypothesis_id"]
         if isinstance(audience_id, str):
             insight_ref_by_audience.setdefault(audience_id, []).append(ref)
         else:
@@ -516,15 +528,15 @@ async def build_customer_map_snapshot(
 
     need_ref_by_audience: dict[str, list[dict[str, object]]] = {}
     unassigned_needs: list[dict[str, object]] = []
-    for need in need_payloads:
+    for need_payload in need_payloads:
         ref = {
-            "id": need["id"],
-            "version": need["version"],
-            "status": need["status"],
-            "type": need["type"],
-            "statement": need["statement"],
+            "id": need_payload["id"],
+            "version": need_payload["version"],
+            "status": need_payload["status"],
+            "type": need_payload["type"],
+            "statement": need_payload["statement"],
         }
-        audience_id = need["audience_hypothesis_id"]
+        audience_id = need_payload["audience_hypothesis_id"]
         if isinstance(audience_id, str):
             need_ref_by_audience.setdefault(audience_id, []).append(ref)
         else:
@@ -542,7 +554,7 @@ async def build_customer_map_snapshot(
                 insight_ref_by_audience.get(str(audience.id), []),
                 key=lambda item: (
                     str(item["insight_key"]),
-                    int(item["version"]),
+                    _object_int(item["version"]),
                 ),
             ),
             "needs": sorted(
@@ -572,7 +584,7 @@ async def build_customer_map_snapshot(
                 unassigned_insights,
                 key=lambda item: (
                     str(item["insight_key"]),
-                    int(item["version"]),
+                    _object_int(item["version"]),
                 ),
             ),
             "needs": sorted(
@@ -588,7 +600,7 @@ async def latest_customer_map_snapshot_artifact(
     *,
     project_id: UUID,
 ) -> Artifact | None:
-    return await session.scalar(
+    artifact = await session.scalar(
         select(Artifact)
         .join(ContentRun, ContentRun.id == Artifact.run_id)
         .where(
@@ -598,6 +610,11 @@ async def latest_customer_map_snapshot_artifact(
         .order_by(Artifact.created_at.desc(), Artifact.id.desc())
         .limit(1)
     )
+    if artifact is None:
+        return None
+    if not isinstance(artifact, Artifact):
+        raise CustomerMapError("customer_map_snapshot_artifact_invalid")
+    return artifact
 
 
 async def refresh_customer_map_snapshot_artifact(
@@ -1143,6 +1160,12 @@ def _by_id(
             raise CustomerMapError("customer_map_snapshot_duplicate_identity")
         output[identifier] = row
     return output
+
+
+def _object_int(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise CustomerMapError("customer_map_snapshot_invalid")
+    return value
 
 
 def _stable_hash(value: object) -> str:
