@@ -1284,7 +1284,10 @@ def _validate_decisions(
     merged: list[str] = []
     for lens in LENS_ORDER:
         row = normalized[lens]
-        decision = row["decision"]
+        decision = _required_text(
+            row.get("decision"),
+            "lens_decision_value_required",
+        )
         candidate = candidates[lens]
         if (
             decision in {"SELECT", "MERGE"}
@@ -1384,7 +1387,7 @@ def _selection_contexts(
     ]
     held_rows = [candidates[lens] for lens in held_lenses]
 
-    evidence_context = {
+    evidence_context: dict[str, object] = {
         "primary_lens": primary,
         "supporting_lenses": merged,
         "active_lenses": active,
@@ -1396,7 +1399,7 @@ def _selection_contexts(
             _candidate_requirement(row) for row in held_rows
         ],
     }
-    angle_context = {
+    angle_context: dict[str, object] = {
         "primary_lens": primary,
         "supporting_lenses": merged,
         "reader_need": (
