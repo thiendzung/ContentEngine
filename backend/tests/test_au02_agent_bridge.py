@@ -1218,7 +1218,7 @@ async def test_nonrunning_run_cannot_queue_plan() -> None:
 
         with pytest.raises(
             AgentBridgeError,
-            match="agent_bridge_run_not_queueable",
+            match="execution_plan_run_not_authorizable",
         ):
             await enqueue_execution_plan_job(
                 session,
@@ -1398,9 +1398,9 @@ async def test_budget_exhaustion_blocks_execution_but_can_be_recorded_as_failure
                 "max_model_calls": 1,
                 "max_output_tokens": 4000,
                 "max_estimated_cost": "0.50",
-                "max_wall_clock_seconds": 1,
+                "max_wall_clock_seconds": 5,
             },
-            timeout_seconds=120,
+            timeout_seconds=5,
         )
         plan_artifact = await _persist_default_plan(
             session,
@@ -1420,7 +1420,7 @@ async def test_budget_exhaustion_blocks_execution_but_can_be_recorded_as_failure
             lease_seconds=30,
         )
         assert lease is not None
-        step.started_at = utc_now() - timedelta(seconds=2)
+        step.started_at = utc_now() - timedelta(seconds=6)
         await session.flush()
 
         with pytest.raises(
