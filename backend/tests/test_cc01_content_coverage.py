@@ -1216,6 +1216,93 @@ async def test_locale_filter_does_not_treat_other_locale_case_as_in_progress() -
 
 
 @pytest.mark.asyncio
+async def test_locale_quality_failure_does_not_contaminate_other_locale() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        need = await _need(session, project_id=project.id)
+        content_case = await _content_case(
+            session,
+            project_id=project.id,
+            need=need,
+        )
+        vi_variant = LocaleVariant(
+            content_case_id=content_case.id,
+            locale="vi-VN",
+            content_role="cluster",
+            primary_question="Vi quality failure fixture?",
+            primary_intent="evaluate",
+            status="draft",
+        )
+        session.add(vi_variant)
+        await session.flush()
+
+        snapshot = SettingsSnapshot(
+            project_id=project.id,
+            resolved_settings_json={},
+            source_version_refs_json=[],
+            content_hash="4" * 64,
+        )
+        session.add(snapshot)
+        await session.flush()
+
+        run = ContentRun(
+            project_id=project.id,
+            content_case_id=content_case.id,
+            locale_variant_id=vi_variant.id,
+            content_item_id=None,
+            run_mode="create",
+            status="running",
+            current_step="assertion_audit_vi",
+            settings_snapshot_id=snapshot.id,
+            started_at=datetime.now(UTC),
+        )
+        session.add(run)
+        await session.flush()
+
+        artifact = Artifact(
+            run_id=run.id,
+            artifact_type="assertion_audit",
+            locale="vi-VN",
+            version=1,
+            content_json={"findings": ["critical unsupported claim"]},
+            content_hash="5" * 64,
+        )
+        session.add(artifact)
+        await session.flush()
+
+        evaluation = QualityEvaluation(
+            run_id=run.id,
+            artifact_id=artifact.id,
+            evaluator_key="assertion_audit",
+            evaluator_version="v1",
+            evaluator_type="deterministic",
+            result="fail",
+            score=None,
+            severity="critical",
+            findings_json={"critical_unsupported_count": 1},
+        )
+        session.add(evaluation)
+        await session.flush()
+
+        en_report = await build_content_coverage(
+            session,
+            project_id=project.id,
+            locale="en",
+        )
+        en_lane = _lane(en_report, need.id)
+        assert en_lane["coverage_status"] == "MISSING"
+        assert en_lane["content_items"] == []
+
+        vi_report = await build_content_coverage(
+            session,
+            project_id=project.id,
+            locale="vi-VN",
+        )
+        vi_lane = _lane(vi_report, need.id)
+        assert vi_lane["coverage_status"] == "WEAK"
+
+
+@pytest.mark.asyncio
 async def test_coverage_read_does_not_create_model_or_tool_calls() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
