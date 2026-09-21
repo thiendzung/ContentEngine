@@ -623,23 +623,20 @@ async def build_content_coverage(
                 journey_link
             )
 
-    latest_quality_by_case_evaluator: dict[
+    latest_quality_by_variant_evaluator: dict[
         tuple[UUID, str], QualityEvaluation
     ] = {}
-    if case_ids and variant_ids:
+    if variant_ids:
         quality_rows = (
             await session.execute(
-                select(QualityEvaluation, ContentRun.content_case_id)
+                select(QualityEvaluation, ContentRun.locale_variant_id)
                 .join(ContentRun, ContentRun.id == QualityEvaluation.run_id)
-                .where(
-                    ContentRun.content_case_id.in_(case_ids),
-                    ContentRun.locale_variant_id.in_(variant_ids),
-                )
+                .where(ContentRun.locale_variant_id.in_(variant_ids))
             )
         ).all()
-        for evaluation, content_case_id in quality_rows:
-            key = (content_case_id, evaluation.evaluator_key)
-            previous = latest_quality_by_case_evaluator.get(key)
+        for evaluation, locale_variant_id in quality_rows:
+            key = (locale_variant_id, evaluation.evaluator_key)
+            previous = latest_quality_by_variant_evaluator.get(key)
             if previous is None or (
                 evaluation.created_at,
                 str(evaluation.id),
@@ -647,11 +644,11 @@ async def build_content_coverage(
                 previous.created_at,
                 str(previous.id),
             ):
-                latest_quality_by_case_evaluator[key] = evaluation
-    failed_quality_case_ids = {
-        content_case_id
-        for (content_case_id, _evaluator), evaluation
-        in latest_quality_by_case_evaluator.items()
+                latest_quality_by_variant_evaluator[key] = evaluation
+    failed_quality_variant_ids = {
+        locale_variant_id
+        for (locale_variant_id, _evaluator), evaluation
+        in latest_quality_by_variant_evaluator.items()
         if evaluation.result == "fail"
     }
 
@@ -804,6 +801,11 @@ async def build_content_coverage(
         relevant_case_ids = {
             content_case.id for content_case, _ in case_roles
         }
+        relevant_variant_ids = {
+            variant.id
+            for variant in variants
+            if variant.content_case_id in relevant_case_ids
+        }
         has_relevant_case = bool(case_roles) and (
             locale_filter is None
             or bool(relevant_case_ids & relevant_case_ids_for_locale)
@@ -815,7 +817,7 @@ async def build_content_coverage(
             update_target_ids=update_targets,
             invalid_target_refs=invalid_target_refs,
             unresolved_quality_failure=bool(
-                relevant_case_ids & failed_quality_case_ids
+                relevant_variant_ids & failed_quality_variant_ids
             ),
         )
         duplicates = _duplicate_groups(item_payloads)
