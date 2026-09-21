@@ -32,6 +32,7 @@ from app.modules.content_engine.models import (
     NeedHypothesis,
     NeedHypothesisSignal,
     Project,
+    SettingsSnapshot,
     SettingsVersion,
     Signal,
 )
@@ -407,6 +408,54 @@ async def test_guarded_lenses_require_approved_guard_sources() -> None:
         assert isinstance(authority, list)
         assert authority[0]["lens"] == "POV"
         assert authority[0]["authority_context"] == pov_context
+
+
+@pytest.mark.asyncio
+async def test_malformed_settings_version_provenance_fails_closed() -> None:
+    async with isolated_session() as session:
+        config = {
+            "pov_positions": [
+                {
+                    "ref": "pov:authenticity",
+                    "need_hypothesis_id": None,
+                    "statement": (
+                        "Authenticity should be checked through traceable facts."
+                    ),
+                    "approval_ref": "approval:pov:1",
+                }
+            ]
+        }
+        project, _need, _opportunity, _case, _variant, run = (
+            await _fixture(session, guard_config=config)
+        )
+        current_snapshot = await session.get(
+            SettingsSnapshot,
+            run.settings_snapshot_id,
+        )
+        assert current_snapshot is not None
+        valid_refs = list(current_snapshot.source_version_refs_json)
+        assert len(valid_refs) == 1
+
+        malformed_snapshot = await create_settings_snapshot(
+            session,
+            project_id=project.id,
+            resolved_settings={"lens_selection": config},
+            source_version_refs=[
+                valid_refs[0],
+                "settings_version:fake:v1",
+            ],
+        )
+        run.settings_snapshot_id = malformed_snapshot.id
+        await session.flush()
+
+        with pytest.raises(
+            LensSelectionError,
+            match="lens_settings_source_ref_invalid",
+        ):
+            await build_lens_candidate_payload(
+                session,
+                run_id=run.id,
+            )
 
 
 @pytest.mark.asyncio
