@@ -197,6 +197,10 @@ async def resolve_journey_config(
         journey = root.get("journey")
         if journey is None:
             continue
+        if not isinstance(row.approved_by, str) or not row.approved_by.strip():
+            raise CustomerMapError(
+                "customer_map_journey_config_approval_required"
+            )
         if not isinstance(journey, dict) or set(journey) != {"stages"}:
             raise CustomerMapError("customer_map_journey_settings_invalid")
         stages = _parse_journey_stages(journey.get("stages"))
@@ -273,6 +277,24 @@ async def build_customer_map_snapshot(
         key=lambda row: (row.insight_key, row.version, str(row.id)),
     )
 
+    audience_ids = {row.id for row in audiences}
+    for need in needs:
+        if (
+            need.audience_hypothesis_id is not None
+            and need.audience_hypothesis_id not in audience_ids
+        ):
+            raise CustomerMapError(
+                "customer_map_need_audience_project_mismatch"
+            )
+    for insight in insights:
+        if (
+            insight.audience_hypothesis_id is not None
+            and insight.audience_hypothesis_id not in audience_ids
+        ):
+            raise CustomerMapError(
+                "customer_map_insight_audience_project_mismatch"
+            )
+
     insight_ids = [row.id for row in insights]
     need_ids = [row.id for row in needs]
 
@@ -335,7 +357,12 @@ async def build_customer_map_snapshot(
 
     insight_need_map: dict[UUID, list[dict[str, str]]] = {}
     need_insight_map: dict[UUID, list[dict[str, str]]] = {}
+    need_id_set = set(need_ids)
     for link in insight_need_rows:
+        if link.need_hypothesis_id not in need_id_set:
+            raise CustomerMapError(
+                "customer_map_insight_need_project_mismatch"
+            )
         insight_need_map.setdefault(link.customer_insight_id, []).append(
             {
                 "need_hypothesis_id": str(link.need_hypothesis_id),
