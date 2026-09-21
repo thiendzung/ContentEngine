@@ -22,7 +22,6 @@ from app.modules.content_engine.models import (
     ContentOpportunity,
     HumanSelection,
     LocaleVariant,
-    NeedHypothesisSignal,
     Project,
     SettingsSnapshot,
     SettingsVersion,
