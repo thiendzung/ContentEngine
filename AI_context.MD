@@ -233,6 +233,7 @@ Current bounded LS-01 implementation:
 - approved SettingsVersion provenance for CASE/POV/causal guard authority;
 - all-HOLD/DROP is a valid stop;
 - selection output includes active + HOLD evidence requirements and angle_context;
+- approved Lens authority content is carried explicitly downstream; opaque refs alone are not expected to make Angle infer a POV/case/causal statement;
 - Lens Selection downstream reads reconstruct semantic payloads instead of trusting hash validity alone;
 - StepRun-bound candidate/selection Artifacts are recorded in output refs; retries get distinct lineage;
 - Angle receives Lens context only when a current valid active selection exists;
