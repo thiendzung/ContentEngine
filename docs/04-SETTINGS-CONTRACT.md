@@ -497,6 +497,11 @@ Fail closed khi:
 - policy forbidden action bị plan bỏ quên;
 - timeout/attempt/budget vượt ceiling;
 - budget bắt buộc cho model/tool/research bị thiếu;
-- SettingsSnapshot hoặc Artifact binding/hash không còn đúng.
+- SettingsSnapshot hoặc Artifact binding/hash không còn đúng;
+- reviewer trùng với worker;
+- timeout lớn hơn wall-clock budget của chính plan;
+- authorize một plan khi run không còn `running`, hoặc step đã kết thúc/không còn là current step.
+
+ExecutionPlan revision phải liên tục theo version trên cùng run/step/task; không được nhảy cóc version. Reviewer trong plan phải độc lập với worker.
 
 `PUBLISH`, `CHANGE_SETTINGS`, `CHANGE_PROMPT`, `CHANGE_WORKFLOW` luôn yêu cầu `human_gate_required=true` ở contract. AU-01 chỉ xác nhận contract; AU-02 mới chịu trách nhiệm kiểm tra gate thực tế trước execution.
