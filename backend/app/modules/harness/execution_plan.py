@@ -377,6 +377,10 @@ async def _validate_capability_policy_provenance(
             raw_ref,
         )
         if match is None:
+            if raw_ref.strip().startswith("settings_version:"):
+                raise ExecutionPlanError(
+                    "execution_plan_policy_source_ref_invalid"
+                )
             continue
         try:
             version_id = UUID(match.group(1))
