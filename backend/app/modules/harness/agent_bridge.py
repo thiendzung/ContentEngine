@@ -1802,7 +1802,21 @@ async def fail_agent_task(
         payload=payload,
     )
     await session.flush()
-    await create_checkpoint(session, run_id=job.run_id)
+    pending_retry_approval = (
+        {
+            "step_key": retry_step.step_key,
+            "artifact_id": str(retry_plan_artifact.id),
+        }
+        if retry_requires_approval
+        and retry_step is not None
+        and retry_plan_artifact is not None
+        else None
+    )
+    await create_checkpoint(
+        session,
+        run_id=job.run_id,
+        pending_approval=pending_retry_approval,
+    )
     return AgentTaskFailure(
         job_id=job.id,
         failure_receipt_id=receipt.id,
