@@ -284,7 +284,7 @@ async def _customer_insight_evidence_refs(
             )
         )
     ).all()
-    refs = {
+    refs: dict[str, list[str]] = {
         "supports": [],
         "contradicts": [],
         "context": [],
