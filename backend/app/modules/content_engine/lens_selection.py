@@ -676,6 +676,7 @@ def _candidate(
     source_refs: list[str],
     evidence_needed: list[str],
     authority: str,
+    authority_context: list[dict[str, object]] | None = None,
     guards: list[dict[str, object]],
     added_value: str,
     reasons: list[str],
@@ -695,6 +696,7 @@ def _candidate(
             "refs": sorted(set(source_refs)),
         },
         "speaking_authority": authority,
+        "authority_context": _clone(authority_context or []),
         "existing_coverage": _clone(coverage),
         "guards": guards,
         "reasons": reasons,
@@ -781,6 +783,59 @@ def _build_candidate_rows(
         )
     ]
 
+    misconception_context = [
+        {
+            "kind": "approved_observed_misconception",
+            "statement": row["statement"],
+            "observation_ref": row["observation_ref"],
+            "approval_ref": row["approval_ref"],
+        }
+        for row in misconception_rows
+    ]
+    signal_context = [
+        {
+            "kind": "customer_insight",
+            "insight_type": row.get("insight_type"),
+            "statement": row.get("statement"),
+            "status": row.get("status"),
+            "signal_refs": _clone(row.get("signal_refs")),
+        }
+        for row in insights
+    ]
+    causal_context = [
+        {
+            "kind": "approved_causal_statement",
+            "statement": row["statement"],
+            "source_ref": row["source_ref"],
+            "approval_ref": row["approval_ref"],
+        }
+        for row in causal_rows
+    ]
+    method_context = [
+        {
+            "kind": "motgu_material_ref",
+            "material_ref": ref,
+        }
+        for ref in material_refs
+    ]
+    case_context = [
+        {
+            "kind": "approved_case_material",
+            "summary": row["summary"],
+            "provenance_ref": row["provenance_ref"],
+            "rights_ref": row["rights_ref"],
+        }
+        for row in case_rows
+    ]
+    pov_context = [
+        {
+            "kind": "approved_motgu_position",
+            "statement": row["statement"],
+            "approval_ref": row["approval_ref"],
+        }
+        for row in pov_rows
+    ]
+
     rows: list[dict[str, object]] = []
 
     rows.append(
@@ -825,6 +880,7 @@ def _build_candidate_rows(
                 if misconception_rows
                 else "MISSING_OBSERVED_MISCONCEPTION"
             ),
+            authority_context=misconception_context,
             guards=[
                 _guard(
                     "misconception_observed",
@@ -855,6 +911,7 @@ def _build_candidate_rows(
                 "explicit limits on what those indicators can prove",
             ],
             authority="OBSERVATION_LED",
+            authority_context=signal_context,
             guards=[
                 _guard(
                     "signals_present",
@@ -891,6 +948,7 @@ def _build_candidate_rows(
                 if causal_rows
                 else "MISSING_CAUSAL_AUTHORITY"
             ),
+            authority_context=causal_context,
             guards=[
                 _guard(
                     "causal_evidence_approved",
@@ -927,6 +985,7 @@ def _build_candidate_rows(
                 if material_refs
                 else "MISSING_FIRST_PARTY_METHOD"
             ),
+            authority_context=method_context,
             guards=[
                 _guard(
                     "first_party_method_material",
@@ -959,6 +1018,7 @@ def _build_candidate_rows(
                 if case_rows
                 else "MISSING_CASE_PROVENANCE_OR_RIGHTS"
             ),
+            authority_context=case_context,
             guards=[
                 _guard(
                     "real_case_provenance_rights",
@@ -990,6 +1050,7 @@ def _build_candidate_rows(
                 if pov_rows
                 else "MISSING_APPROVED_POSITION"
             ),
+            authority_context=pov_context,
             guards=[
                 _guard(
                     "motgu_position_approved",
@@ -1421,6 +1482,12 @@ def _candidate_requirement(
         "evidence_available": _clone(
             row.get("evidence_available")
         ),
+        "speaking_authority": _clone(
+            row.get("speaking_authority")
+        ),
+        "authority_context": _clone(
+            row.get("authority_context")
+        ),
         "guards": _clone(row.get("guards")),
         "source_refs": _clone(row.get("source_refs")),
     }
@@ -1470,6 +1537,18 @@ def _selection_contexts(
             if active_rows
             else None
         ),
+        "authority": [
+            {
+                "lens": row.get("lens"),
+                "speaking_authority": row.get(
+                    "speaking_authority"
+                ),
+                "authority_context": _clone(
+                    row.get("authority_context")
+                ),
+            }
+            for row in active_rows
+        ],
         "added_value": [
             {
                 "lens": row.get("lens"),
