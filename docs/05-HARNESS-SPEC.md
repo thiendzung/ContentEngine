@@ -373,3 +373,56 @@ Phải có test cho:
 - failed post-run job recovery;
 - bounded revise loop;
 - context manifest reproducibility.
+
+## 22. AU-02 Local Agent Bridge contract
+
+AU-02 is a thin control-plane layer over the existing Harness. It does not add a second scheduler, queue, workflow engine, approval store, or telemetry table.
+
+Execution boundary:
+
+1. an immutable AU-01 `ExecutionPlan` is authorized against the run's immutable `SettingsSnapshot`;
+2. the exact plan Artifact is bound to one `StepRun`;
+3. human-gated plans must pass the existing canonical approval pause/resume flow before a Job can be queued;
+4. claim returns the exact plan/settings/task/worker contract to the local worker;
+5. heartbeat/reclaim reuse the existing Job lease lifecycle and cannot exceed the plan deadline;
+6. complete/fail re-authorizes the exact plan and canonical run state before changing durable state;
+7. completion outputs must belong to the exact run/step, match expected types, have valid content hashes, be produced after execution start, and be the latest version of that output type;
+8. worker completion creates a review request, not an auto-pass;
+9. an independent reviewer must match `ExecutionPlan.reviewer`, differ from the worker, and return every required check;
+10. review request/result semantics are reconstructed from canonical Job/StepRun/ExecutionPlan/completion lineage before auto-next;
+11. auto-next creates only the next pending StepRun. It does not enqueue that step until that step has its own authorized ExecutionPlan.
+
+Approval provenance is stronger than the presence of one `Approval` row. A human-gated execution requires:
+
+- an earlier immutable checkpoint showing `pending_approval` for the exact step + ExecutionPlan Artifact;
+- an exact approved `Approval` bound to that Artifact;
+- a later canonical checkpoint containing that Approval;
+- a non-worker approval actor;
+- the run back in executable `running` state.
+
+Retry:
+
+- transient retry creates a new StepRun attempt and a new ExecutionPlan Artifact;
+- a human-gated retry requires fresh approval for the retry plan;
+- an expired lease can be reclaimed only inside the plan's bounded attempts;
+- completion/failure write immutable receipts and a checkpoint for restart/recovery.
+
+Budget enforcement:
+
+- AU-02 directly enforces durable ModelCall/ToolCall/output-token/estimated-cost/wall-clock usage already observable in the Harness;
+- AU-01 counters that are not yet durably observable at this boundary (`max_context_estimate`, `max_research_sources`, `max_revise_loops`) fail closed rather than trusting worker self-reporting;
+- adding durable ledgers for those counters is a separate hardening task, not permission to infer or self-report them.
+
+Telemetry:
+
+- root worker/subagent hierarchy reuses `DelegationExecution`;
+- safe bridge telemetry is allowlisted;
+- prompts, raw provider payloads, secrets, environment dumps and chain-of-thought are not bridge telemetry.
+
+Provider/transport boundary:
+
+- this contract is provider-neutral and transport-neutral;
+- AU-02 does not activate Antigravity;
+- no unauthenticated public bridge endpoint is introduced;
+- an app-specific/local transport adapter must preserve these service semantics and receive its own review before activation.
+
