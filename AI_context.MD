@@ -212,3 +212,27 @@ CC-01 code migration head is `20260921_0037`. Any operational migration remains 
 
 Review flow:
 `CI → exact-ref OpenCodeReview → MG triage → Agent Local disposable-DB proof → Founder merge`.
+
+## LS-01 implementation window — 2026-09-21
+
+PR #175 is merged. Live main at LS-01 start is `5249ad08ad4c50f8cec91f72a23224170b071b26`.
+
+CC-01 is DONE at code/review level. Operational DB remains at the separately controlled rev-0034 release; rev-0035 → rev-0037 are not authorized operational migrations by this work.
+
+Current bounded LS-01 implementation:
+- branch `feat/ls01-lens-selection`;
+- no new DB migration; code migration head remains rev-0037;
+- exactly seven deterministic Lens candidates;
+- exact inputs from selected ContentOpportunity + relevant Customer Map + locale-scoped Coverage + exact SettingsSnapshot;
+- versioned immutable `lens_candidates` and `lens_selection` Artifacts;
+- reviewed SELECT/MERGE/HOLD/DROP contract with at most one primary Lens;
+- no one-Lens-one-article behaviour;
+- guard-critical missing evidence blocks SELECT/MERGE;
+- approved SettingsVersion provenance for CASE/POV/causal guard authority;
+- all-HOLD/DROP is a valid stop;
+- selection output includes evidence_context + angle_context;
+- Angle receives Lens context only when a current valid active selection exists;
+- no research/model/tool execution is introduced by Lens candidate/selection logic.
+
+Review flow remains:
+`CI → exact-ref OpenCodeReview → MG triage → Agent Local proof → Founder merge`.
