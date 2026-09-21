@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.observability import configure_logging, get_logger, observe_http_request
+from app.modules.content_engine.content_coverage_router import (
+    router as content_coverage_router,
+)
 from app.modules.content_engine.journal.router import router as journal_router
 from app.modules.customer_intelligence.router import router as customer_map_router
 from app.modules.system.router import router as system_router
@@ -22,6 +25,7 @@ app.add_middleware(
 app.include_router(system_router)
 app.include_router(journal_router)
 app.include_router(customer_map_router)
+app.include_router(content_coverage_router)
 
 logger.info(
     "application_configured",
