@@ -252,6 +252,13 @@ async def test_review_lifecycle_preserves_history_and_allows_progression() -> No
             reviewed_by="founder",
             reason="Direct customer question now supports the insight.",
         )
+        historical_replay = await review_customer_insight(
+            session,
+            customer_insight_id=insight.id,
+            status="TESTING",
+            reviewed_by="founder",
+            reason="Need direct customer evidence.",
+        )
 
         reviews = list(
             (
@@ -268,12 +275,25 @@ async def test_review_lifecycle_preserves_history_and_allows_progression() -> No
 
         assert supported.status == "SUPPORTED"
         assert replay.id == supported.id
+        assert historical_replay.status == "SUPPORTED"
         assert len(reviews) == 2
         assert [review.status for review in reviews] == [
             "TESTING",
             "SUPPORTED",
         ]
         assert reviews[0].reason == "Need direct customer evidence."
+
+        first_review = reviews[0]
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_review_must_advance",
+        ):
+            async with session.begin_nested():
+                insight.status = first_review.status
+                insight.reviewed_by = first_review.reviewed_by
+                insight.reviewed_at = first_review.reviewed_at
+                insight.review_reason = first_review.reason
+                await session.flush()
 
 
 @pytest.mark.asyncio
@@ -469,21 +489,30 @@ async def test_duplicate_chain_validates_parent_even_when_group_is_present() -> 
             duplicate_of_id=foreign_parent.id,
             independence_group="same-discussion",
         )
-        await link_customer_insight_signal(
-            session,
-            customer_insight_id=insight.id,
-            signal_id=child.id,
-            relation="supports",
-        )
-
         with pytest.raises(
             CustomerInsightError,
             match="customer_insight_signal_duplicate_parent_invalid",
         ):
-            await customer_insight_evidence_counts(
+            await link_customer_insight_signal(
                 session,
                 customer_insight_id=insight.id,
+                signal_id=child.id,
+                relation="supports",
             )
+
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_signal_duplicate_parent_invalid",
+        ):
+            async with session.begin_nested():
+                session.add(
+                    CustomerInsightSignal(
+                        customer_insight_id=insight.id,
+                        signal_id=child.id,
+                        relation="supports",
+                    )
+                )
+                await session.flush()
 
 
 @pytest.mark.asyncio
@@ -511,21 +540,121 @@ async def test_duplicate_cycle_fails_closed_even_with_independence_group() -> No
         )
         first.duplicate_of_id = second.id
         await session.flush()
-        await link_customer_insight_signal(
-            session,
-            customer_insight_id=insight.id,
-            signal_id=second.id,
-            relation="supports",
-        )
-
         with pytest.raises(
             CustomerInsightError,
             match="customer_insight_signal_duplicate_cycle",
         ):
-            await customer_insight_evidence_counts(
+            await link_customer_insight_signal(
                 session,
                 customer_insight_id=insight.id,
+                signal_id=second.id,
+                relation="supports",
             )
+
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_signal_duplicate_cycle",
+        ):
+            async with session.begin_nested():
+                session.add(
+                    CustomerInsightSignal(
+                        customer_insight_id=insight.id,
+                        signal_id=second.id,
+                        relation="supports",
+                    )
+                )
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_linked_signal_and_ancestor_project_scope_cannot_drift() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        other = await _project(session, "other")
+        insight = await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="question",
+            statement="Buyer asks whether a source is trustworthy.",
+        )
+
+        direct = await _signal(
+            session,
+            project_id=project.id,
+            text="Direct signal.",
+        )
+        await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=direct.id,
+            relation="supports",
+        )
+
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_signal_lineage_immutable",
+        ):
+            async with session.begin_nested():
+                direct.project_id = other.id
+                await session.flush()
+
+        await session.refresh(direct)
+
+        root = await _signal(
+            session,
+            project_id=project.id,
+            text="Root signal.",
+        )
+        child = await _signal(
+            session,
+            project_id=project.id,
+            text="Child signal.",
+            duplicate_of_id=root.id,
+        )
+        await link_customer_insight_signal(
+            session,
+            customer_insight_id=insight.id,
+            signal_id=child.id,
+            relation="context",
+        )
+
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_signal_lineage_immutable",
+        ):
+            async with session.begin_nested():
+                root.project_id = other.id
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_referenced_audience_project_scope_cannot_drift() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        other = await _project(session, "other")
+        audience = AudienceHypothesis(
+            project_id=project.id,
+            name="First-time buyer",
+            description="Audience linked to CT-01 insight.",
+        )
+        session.add(audience)
+        await session.flush()
+
+        await ensure_customer_insight(
+            session,
+            project_id=project.id,
+            insight_type="fear",
+            statement="Buyer fears choosing the wrong artwork.",
+            audience_hypothesis_id=audience.id,
+        )
+
+        with pytest.raises(
+            DBAPIError,
+            match="customer_insight_audience_project_change_forbidden",
+        ):
+            async with session.begin_nested():
+                audience.project_id = other.id
+                await session.flush()
 
 
 @pytest.mark.asyncio
