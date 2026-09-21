@@ -871,3 +871,101 @@ Giữ lâu dài:
 - aggregate telemetry.
 
 Có thể áp dụng retention ngắn hơn cho raw debug payload lớn nếu không cần audit, nhưng vẫn phải tái hiện được quyết định quan trọng.
+
+## Customer Living Map V1
+
+CM-01 builds a project-level read model from canonical customer evidence. It does not create a second customer-truth store.
+
+### CustomerInsightNeedLink
+
+Explicit audited relation between a CustomerInsight and a NeedHypothesis:
+
+- `customer_insight_id`
+- `need_hypothesis_id`
+- `relation`: `supports | contradicts | context`
+- `linked_by`
+- `reason`
+
+Rules:
+
+- the Insight and Need must belong to the same project;
+- when both carry an AudienceHypothesis, the audiences must match;
+- the relation is immutable;
+- exact replay is allowed only when relation + actor + reason are identical;
+- direct DB writes are held to the same project/audience constraints;
+- once a Need is linked, its project/audience scope cannot be silently moved.
+
+This relation means “this reviewed interpretation informs this Need”; it does not automatically promote the Need or the Insight.
+
+### Customer Living Map read model
+
+The read model is derived from:
+
+- AudienceHypothesis;
+- the latest version of each CustomerInsight logical key;
+- NeedHypothesis;
+- CustomerInsightSignal / NeedHypothesisSignal evidence refs;
+- CustomerInsightNeedLink.
+
+It exposes Audience, Needs and CustomerInsight context without running research/model/tool work.
+
+### Journey view
+
+Journey is a configured/derived view, not a canonical truth table.
+
+V1 default stages:
+
+`unaware → aware → interested → preference → trust → purchase → satisfied → referral → repeat_purchase`
+
+A project may replace this display/configuration through an active, approved SettingsVersion under:
+
+`customer_living_map.journey.stages`
+
+Conflicting active journey configurations fail closed.
+
+CM-01 intentionally does **not** persist a Need↔Journey assignment table. A later evidence-backed projection may add such relationships only after its semantics and provenance are proven.
+
+### CustomerMapSnapshot Artifact
+
+`customer_map_snapshot` is an immutable Artifact containing the deterministic semantic map:
+
+- project identity;
+- journey configuration + source refs;
+- audiences;
+- latest CustomerInsights;
+- Needs;
+- signal/evidence refs and independent evidence counts;
+- explicit Insight↔Need links;
+- unassigned Needs/Insights.
+
+The snapshot contains no generated timestamp in its semantic payload, so identical canonical state hashes identically.
+
+Existing Artifact storage is run-bound. Therefore CM-01:
+
+- exposes the live project read model independently;
+- persists a snapshot only when a caller supplies an existing ContentRun;
+- does not create a second artifact/workflow store.
+
+Persisted snapshot content/hash must validate before it is used as a comparison baseline.
+
+### Change report
+
+CM-01 compares the current semantic map with the latest persisted snapshot and emits:
+
+- `NEW`
+- `SUPPORT`
+- `CONTRADICT`
+- `DUPLICATE`
+
+Duplicate/reposted signals do not count as new independent support merely because another Signal row exists.
+
+The change report is observation/reporting only. It does not auto-promote CustomerInsight, NeedHypothesis, settings or strategy.
+
+### Read APIs
+
+- `GET /customer-map/summary`
+- `GET /customer-map/audiences/{audience_id}`
+- `GET /customer-map/needs/{need_id}`
+- `GET /customer-map/changes`
+
+These endpoints are read-only against canonical persisted state and do not call research providers, models or delegated workers.

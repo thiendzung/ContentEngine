@@ -177,8 +177,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 |---|---|---|
 | ARCH-21 | DONE / PR #171 MERGED | Canonical Customer Living Map + Controlled Autopilot architecture is on main. |
 | CT-01 | DONE / PR #172 MERGED | CustomerInsight foundation accepted with CI + exact-ref OCR + final local verification. Operational DB migration remains separately authorized. |
-| AU-01 | IN IMPLEMENTATION | ExecutionPlan artifact + SettingsSnapshot capability policy + DB immutability guards + fail-closed tests on branch `feat/au01-execution-plan-policy`. |
-| CM-01 | PLANNED | Living Map snapshot/read API for Audience + Needs + Journey. |
+| AU-01 | DONE / PR #173 MERGED | ExecutionPlan + approved capability-policy provenance + fail-closed authorization accepted with CI/OCR/local proof. |
+| CM-01 | IN IMPLEMENTATION / PR #174 | Living Map read model + audited Insight↔Need links + derived Journey + immutable snapshots/change report + read APIs. Operational migration rev-0036 remains separately authorized. |
 | CC-01 | PLANNED | Content Coverage relations/status/gap detection. |
 | LS-01 | PLANNED | 7 Content Lenses as selection tool, not article generator. |
 | AU-02 | PLANNED | Local agent bridge + safe auto-next orchestration + independent review. |
@@ -211,3 +211,20 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 - [ ] Do not add a second workflow engine or free-form agent permission system.
 
 Remaining milestone checklists are canonical in spec 21 and become exact tasks one bounded slice at a time.
+
+### CM-01 immediate checklist
+
+- [x] Build project-scoped Audience / Need / latest CustomerInsight read model.
+- [x] Add explicit audited CustomerInsight ↔ NeedHypothesis relation.
+- [x] Keep Journey configurable/derived; do not persist Need ↔ Journey as truth.
+- [x] Add deterministic `customer_map_snapshot` Artifact for run-bound snapshots.
+- [x] Add NEW / SUPPORT / CONTRADICT / DUPLICATE change reporting.
+- [x] Reuse CT-01 independent-evidence semantics for duplicate/repost handling.
+- [x] Add summary, audience-detail and change read APIs.
+- [x] Ensure read/refresh creates no ModelCall or ToolCall.
+- [x] Add rev-0036 schema + DB project/audience/immutability guards.
+- [x] CI lint/type/migration/full test/front-end checks pass on implementation head before docs sync.
+- [ ] Exact-ref OpenCodeReview on final head.
+- [ ] Agent Local disposable-DB proof on final head.
+- [ ] Founder merge.
+- [ ] Operational migration remains a separate explicitly authorized task.
