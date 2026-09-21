@@ -12,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import AudienceHypothesis, Signal, utc_now
-from app.modules.customer_intelligence.models import CustomerInsight, CustomerInsightSignal
+from app.modules.customer_intelligence.models import (
+    CustomerInsight,
+    CustomerInsightReview,
+    CustomerInsightSignal,
+)
 
 InsightType = Literal[
     "job",
@@ -181,8 +185,8 @@ async def ensure_customer_insight(
         raise CustomerInsightError("customer_insight_type_invalid")
     if status not in _INSIGHT_STATUSES:
         raise CustomerInsightError("customer_insight_status_invalid")
-    if status in {"SUPPORTED", "REJECTED"}:
-        raise CustomerInsightError("customer_insight_review_required")
+    if status != "CANDIDATE":
+        raise CustomerInsightError("customer_insight_initial_status_must_be_candidate")
     if version < 1:
         raise CustomerInsightError("customer_insight_version_invalid")
 
@@ -259,6 +263,37 @@ async def ensure_customer_insight(
     return insight
 
 
+async def _customer_insight_evidence_refs(
+    session: AsyncSession,
+    *,
+    customer_insight_id: UUID,
+) -> dict[str, list[str]]:
+    rows = (
+        await session.execute(
+            select(
+                CustomerInsightSignal.signal_id,
+                CustomerInsightSignal.relation,
+            )
+            .where(
+                CustomerInsightSignal.customer_insight_id
+                == customer_insight_id
+            )
+            .order_by(
+                CustomerInsightSignal.relation,
+                CustomerInsightSignal.signal_id,
+            )
+        )
+    ).all()
+    refs = {
+        "supports": [],
+        "contradicts": [],
+        "context": [],
+    }
+    for signal_id, relation in rows:
+        refs[relation].append(str(signal_id))
+    return refs
+
+
 async def review_customer_insight(
     session: AsyncSession,
     *,
@@ -267,7 +302,7 @@ async def review_customer_insight(
     reviewed_by: str,
     reason: str,
 ) -> CustomerInsight:
-    """Record an explicit human review without rewriting versioned insight content."""
+    """Record an auditable review without rewriting versioned insight content."""
 
     if status not in {
         "SUPPORTED",
@@ -290,12 +325,39 @@ async def review_customer_insight(
         and insight.reviewed_at is not None
     ):
         return insight
-    if insight.reviewed_at is not None:
-        raise CustomerInsightError("customer_insight_already_reviewed")
+
+    if status == "SUPPORTED":
+        counts = await customer_insight_evidence_counts(
+            session,
+            customer_insight_id=customer_insight_id,
+        )
+        if counts.independent_supports < 1:
+            raise CustomerInsightError(
+                "customer_insight_support_evidence_required"
+            )
+
+    refs = await _customer_insight_evidence_refs(
+        session,
+        customer_insight_id=customer_insight_id,
+    )
+    reviewed_at = utc_now()
+    session.add(
+        CustomerInsightReview(
+            customer_insight_id=customer_insight_id,
+            status=status,
+            reviewed_by=actor,
+            reason=review_reason,
+            support_signal_refs_json=refs["supports"],
+            contradict_signal_refs_json=refs["contradicts"],
+            context_signal_refs_json=refs["context"],
+            reviewed_at=reviewed_at,
+        )
+    )
+    await session.flush()
 
     insight.status = status
     insight.reviewed_by = actor
-    insight.reviewed_at = utc_now()
+    insight.reviewed_at = reviewed_at
     insight.review_reason = review_reason
     await session.flush()
     return insight
@@ -351,23 +413,43 @@ async def _signal_independence_key(
 
     current = signal
     visited: set[UUID] = set()
+    independence_groups: set[str] = set()
+    root_signal_id: UUID | None = None
     while True:
         if current.id in visited:
             raise CustomerInsightError("customer_insight_signal_duplicate_cycle")
+        if current.project_id != signal.project_id:
+            raise CustomerInsightError(
+                "customer_insight_signal_duplicate_parent_invalid"
+            )
         visited.add(current.id)
 
         if current.independence_group:
-            key = f"group:{current.independence_group}"
-            break
+            independence_groups.add(current.independence_group)
+
         if current.duplicate_of_id is None:
-            key = f"signal:{current.id}"
+            root_signal_id = current.id
             break
+
         parent = await session.get(Signal, current.duplicate_of_id)
         if parent is None or parent.project_id != signal.project_id:
             raise CustomerInsightError(
                 "customer_insight_signal_duplicate_parent_invalid"
             )
         current = parent
+
+    if len(independence_groups) > 1:
+        raise CustomerInsightError(
+            "customer_insight_signal_independence_group_conflict"
+        )
+    if independence_groups:
+        key = f"group:{next(iter(independence_groups))}"
+    elif root_signal_id is not None:
+        key = f"signal:{root_signal_id}"
+    else:
+        raise CustomerInsightError(
+            "customer_insight_signal_duplicate_parent_invalid"
+        )
 
     for signal_id in visited:
         cache[signal_id] = key
