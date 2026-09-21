@@ -36,6 +36,7 @@ from app.modules.harness.models import (
     Artifact,
     ContentRun,
     ModelCall,
+    QualityEvaluation,
     ToolCall,
 )
 
@@ -724,7 +725,7 @@ async def test_content_coverage_statuses_are_evidence_bounded() -> None:
 
 
 @pytest.mark.asyncio
-async def test_newer_unpublished_revision_is_in_progress_not_needs_update() -> None:
+async def test_newer_unpublished_revision_is_needs_update() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
         need = await _need(session, project_id=project.id)
@@ -755,7 +756,79 @@ async def test_newer_unpublished_revision_is_in_progress_not_needs_update() -> N
             session,
             project_id=project.id,
         )
-        assert _lane(report, need.id)["coverage_status"] == "IN_PROGRESS"
+        assert _lane(report, need.id)["coverage_status"] == "NEEDS_UPDATE"
+
+
+@pytest.mark.asyncio
+async def test_unresolved_quality_failure_marks_unpublished_coverage_weak() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        need = await _need(session, project_id=project.id)
+        content_case = await _content_case(
+            session,
+            project_id=project.id,
+            need=need,
+        )
+        variant = LocaleVariant(
+            content_case_id=content_case.id,
+            locale="en",
+            content_role="cluster",
+            primary_question="Quality-blocked fixture?",
+            primary_intent="evaluate",
+            status="draft",
+        )
+        session.add(variant)
+        await session.flush()
+        snapshot = SettingsSnapshot(
+            project_id=project.id,
+            resolved_settings_json={},
+            source_version_refs_json=[],
+            content_hash="2" * 64,
+        )
+        session.add(snapshot)
+        await session.flush()
+        run = ContentRun(
+            project_id=project.id,
+            content_case_id=content_case.id,
+            locale_variant_id=variant.id,
+            content_item_id=None,
+            run_mode="create",
+            status="running",
+            current_step="assertion_audit_en",
+            settings_snapshot_id=snapshot.id,
+            started_at=datetime.now(UTC),
+        )
+        session.add(run)
+        await session.flush()
+        artifact = Artifact(
+            run_id=run.id,
+            artifact_type="assertion_audit",
+            locale="en",
+            version=1,
+            content_json={"findings": ["critical unsupported claim"]},
+            content_hash="3" * 64,
+        )
+        session.add(artifact)
+        await session.flush()
+        evaluation = QualityEvaluation(
+            run_id=run.id,
+            artifact_id=artifact.id,
+            evaluator_key="assertion_audit_en",
+            evaluator_version="v1",
+            evaluator_type="deterministic",
+            result="fail",
+            score=None,
+            severity="critical",
+            findings_json={"critical_unsupported_count": 1},
+        )
+        session.add(evaluation)
+        await session.flush()
+
+        report = await build_content_coverage(
+            session,
+            project_id=project.id,
+        )
+        assert _lane(report, need.id)["coverage_status"] == "WEAK"
 
 
 @pytest.mark.asyncio
