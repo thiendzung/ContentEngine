@@ -89,6 +89,8 @@ class AgentTaskLease:
     run_id: UUID
     step_run_id: UUID
     execution_plan_artifact_id: UUID
+    execution_plan_artifact_version: int
+    execution_plan_artifact_hash: str
     worker_key: str
     worker_instance_id: str
     task_key: str
@@ -921,6 +923,8 @@ async def _lease_payload(
         run_id=job.run_id,
         step_run_id=job.step_run_id,
         execution_plan_artifact_id=plan_artifact.id,
+        execution_plan_artifact_version=plan_artifact.version,
+        execution_plan_artifact_hash=plan_artifact.content_hash,
         worker_key=authorized.plan.worker_key,
         worker_instance_id=worker_instance_id,
         task_key=authorized.plan.task_key,
