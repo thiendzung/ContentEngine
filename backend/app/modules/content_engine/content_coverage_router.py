@@ -51,8 +51,8 @@ async def _project_id_from_slug(
 async def get_content_coverage(
     project_slug: str = Query(default="motgu", min_length=1, max_length=100),
     locale: str | None = Query(default=None, min_length=1, max_length=32),
-    audience_id: UUID | None = Query(default=None),
-    need_id: UUID | None = Query(default=None),
+    audience_id: UUID | None = None,
+    need_id: UUID | None = None,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict[str, object]:
     try:
