@@ -42,7 +42,7 @@ from app.modules.harness.models import (
     ToolCall,
     utc_now,
 )
-from app.modules.harness.persistence import resolve_approval
+from app.modules.harness.persistence import create_checkpoint, resolve_approval
 from app.modules.system.settings_service import create_settings_snapshot
 
 
@@ -378,6 +378,43 @@ async def test_direct_approval_without_checkpoint_does_not_authorize() -> None:
         with pytest.raises(
             AgentBridgeError,
             match="agent_bridge_human_approval_not_checkpointed",
+        ):
+            await enqueue_execution_plan_job(
+                session,
+                execution_plan_artifact_id=plan_artifact.id,
+                worker_key="customer-map-worker",
+            )
+
+
+@pytest.mark.asyncio
+async def test_approval_row_plus_generic_checkpoint_is_not_real_approval() -> None:
+    async with isolated_session() as session:
+        settings, plan = _sensitive_settings_and_plan()
+        run, step = await _pending_fixture(
+            session,
+            settings=settings,
+        )
+        plan_artifact = await _persist_default_plan(
+            session,
+            run=run,
+            step=step,
+            plan=plan,
+        )
+        approval = Approval(
+            run_id=run.id,
+            step_key=step.step_key,
+            artifact_id=plan_artifact.id,
+            decision="approved",
+            actor_id="founder",
+            comment="Synthetic approval row without approval-request provenance.",
+        )
+        session.add(approval)
+        await session.flush()
+        await create_checkpoint(session, run_id=run.id)
+
+        with pytest.raises(
+            AgentBridgeError,
+            match="agent_bridge_human_approval_request_missing",
         ):
             await enqueue_execution_plan_job(
                 session,
