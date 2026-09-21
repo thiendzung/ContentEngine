@@ -1095,6 +1095,8 @@ Each candidate carries:
 
 No aggregate Lens score is produced.
 
+A selected ContentOpportunity must also have exactly one matching durable HumanSelection. Setting only the convenience fields on ContentOpportunity is not enough to authorize Lens Selection.
+
 Candidate inputs are exact snapshots/hashes of:
 
 - selected ContentOpportunity;
@@ -1107,7 +1109,7 @@ If those relevant inputs change after the candidate Artifact is created, selecti
 ### Guard semantics
 
 - DEFINITION needs traceable source material.
-- MISCONCEPTION needs observed contradictory evidence; do not invent a misconception.
+- MISCONCEPTION needs an explicitly observed/approved customer belief; contradictory evidence by itself does not prove a misconception exists.
 - SIGNALS needs observed Signals and preserves `indicator != conclusion`.
 - CAUSES requires explicit approved causal evidence and preserves `correlation != causality`.
 - METHOD requires traceable MOTGU first-party material.
@@ -1137,7 +1139,7 @@ Changing a reviewed choice creates a new Lens Selection Artifact version. Histor
 
 The Lens Selection Artifact contains two explicit projections:
 
-- `evidence_context`: active lenses, evidence requirements, available refs, guards;
+- `evidence_context`: active lenses plus HOLD lenses, with active/held evidence requirements, available refs and guards so missing evidence can be gathered without silently activating the Lens;
 - `angle_context`: primary/supporting lens, reader Need/question, added value, guardrails, source refs, existing coverage.
 
 Angle consumes the latest valid selection only when one active primary Lens exists. If no Lens Selection exists, legacy Journal behaviour is unchanged. If a Lens Selection exists but is stale or all HOLD/DROP, it cannot silently proceed into Angle.
