@@ -301,7 +301,7 @@ def _job_dedupe_key(
 ) -> str:
     return (
         f"{_worker_bucket(worker_key)}"
-        f"{plan_artifact_id.hex[:20]}:{step_attempt}"
+        f"{plan_artifact_id.hex}:{step_attempt}"
     )
 
 
