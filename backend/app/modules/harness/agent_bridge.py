@@ -990,7 +990,7 @@ async def claim_agent_task(
 
     deadline = _plan_deadline(
         step=step,
-        timeout_seconds=authorized.plan.timeout_seconds,
+        plan=authorized.plan,
     )
     if now >= deadline:
         raise AgentBridgeError("agent_bridge_plan_timeout")
@@ -1047,7 +1047,7 @@ async def heartbeat_agent_task(
     )
     deadline = _plan_deadline(
         step=step,
-        timeout_seconds=authorized.plan.timeout_seconds,
+        plan=authorized.plan,
     )
     now = utc_now()
     if now >= deadline:
@@ -1393,7 +1393,7 @@ async def complete_agent_task(
     )
     deadline = _plan_deadline(
         step=step,
-        timeout_seconds=authorized.plan.timeout_seconds,
+        plan=authorized.plan,
     )
     if utc_now() >= deadline:
         raise AgentBridgeError("agent_bridge_plan_timeout")
