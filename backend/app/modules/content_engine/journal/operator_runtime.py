@@ -479,7 +479,13 @@ async def _quality_state_overlay(
         progress.lanes[0],
     )
     focused_run = focused.writer.run
-    focused_step = focused.review.step or focused.audit.step or focused.source_copy.step
+    focused_step = (
+        focused.review.step
+        or focused.audit.step
+        or focused.source_copy.step
+        or focused.reader_value.step
+        or focused.search_ai.step
+    )
     common = {
         "state_version": state_version,
         "current_run_id": focused_run.id if focused_run is not None else state.current_run_id,
@@ -522,12 +528,24 @@ async def _quality_state_overlay(
             for lane in progress.lanes
             if any(
                 stage.job is not None and stage.job.status in {"queued", "leased"}
-                for stage in (lane.review, lane.audit, lane.source_copy)
+                for stage in (
+                    lane.review,
+                    lane.audit,
+                    lane.source_copy,
+                    lane.reader_value,
+                    lane.search_ai,
+                )
             )
         )
         active_stage = next(
             stage
-            for stage in (active_lane.review, active_lane.audit, active_lane.source_copy)
+            for stage in (
+                active_lane.review,
+                active_lane.audit,
+                active_lane.source_copy,
+                active_lane.reader_value,
+                active_lane.search_ai,
+            )
             if stage.job is not None and stage.job.status in {"queued", "leased"}
         )
         return state.model_copy(
@@ -1398,31 +1416,3 @@ async def submit_operator_command(
         if knowledge_brief_id is not None:
             raise OperatorControlError("operator_knowledge_brief_binding_start_only")
         return await submit_writers_to_quality_command(
-            session,
-            content_case_id=content_case_id,
-            intent=intent,
-            expected_state_version=expected_state_version,
-            idempotency_key=idempotency_key,
-            actor_id=actor_id,
-            resolved_state=resolved,
-        )
-
-    return await _submit_operator_command_impl(
-        session,
-        content_case_id=content_case_id,
-        intent=intent,
-        expected_state_version=expected_state_version,
-        idempotency_key=idempotency_key,
-        knowledge_brief_id=knowledge_brief_id,
-        actor_id=actor_id,
-    )
-
-
-__all__ = [
-    "OperatorActionKey",
-    "ResolvedOperatorAction",
-    "START_TO_ANGLE_STAGE",
-    "get_operator_state",
-    "resolve_next_operator_action",
-    "submit_operator_command",
-]
