@@ -923,6 +923,64 @@ async def customer_map_audience_detail(
     }
 
 
+async def customer_map_need_detail(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    need_id: UUID,
+) -> dict[str, object]:
+    snapshot = await build_customer_map_snapshot(
+        session,
+        project_id=project_id,
+    )
+    need = next(
+        (
+            row
+            for row in _records(snapshot, "needs")
+            if row.get("id") == str(need_id)
+        ),
+        None,
+    )
+    if need is None:
+        raise CustomerMapError("customer_map_need_not_found")
+
+    insight_ids = {
+        str(item["customer_insight_id"])
+        for item in _records(need, "insight_links")
+        if isinstance(item.get("customer_insight_id"), str)
+    }
+    related_insights = [
+        row
+        for row in _records(snapshot, "insights")
+        if row.get("id") in insight_ids
+    ]
+
+    audience: dict[str, object] | None = None
+    audience_id = need.get("audience_hypothesis_id")
+    if isinstance(audience_id, str):
+        audience = next(
+            (
+                row
+                for row in _records(snapshot, "audiences")
+                if row.get("id") == audience_id
+            ),
+            None,
+        )
+        if audience is None:
+            raise CustomerMapError(
+                "customer_map_need_audience_project_mismatch"
+            )
+
+    return {
+        "project": snapshot["project"],
+        "snapshot_hash": _stable_hash(snapshot),
+        "journey": snapshot["journey"],
+        "need": need,
+        "audience": audience,
+        "insights": related_insights,
+    }
+
+
 async def customer_map_changes(
     session: AsyncSession,
     *,
@@ -1188,6 +1246,7 @@ __all__ = [
     "compare_customer_map_snapshots",
     "customer_map_audience_detail",
     "customer_map_changes",
+    "customer_map_need_detail",
     "customer_map_summary",
     "ensure_customer_insight_need_link",
     "latest_customer_map_snapshot_artifact",
