@@ -622,8 +622,13 @@ async def refresh_customer_map_snapshot_artifact(
         session,
         project_id=run.project_id,
     )
+    previous_payload = (
+        _artifact_snapshot_payload(previous)
+        if previous is not None
+        else None
+    )
     report = compare_customer_map_snapshots(
-        previous.content_json if previous is not None else None,
+        previous_payload,
         current,
     )
     content_hash = _stable_hash(current)
@@ -637,10 +642,14 @@ async def refresh_customer_map_snapshot_artifact(
         .order_by(Artifact.version.desc())
         .limit(1)
     )
+    if latest_in_run is not None:
+        latest_payload = _artifact_snapshot_payload(latest_in_run)
+    else:
+        latest_payload = None
     if (
         latest_in_run is not None
+        and latest_payload == current
         and latest_in_run.content_hash == content_hash
-        and latest_in_run.content_json == current
         and latest_in_run.step_run_id == step_run_id
     ):
         return CustomerMapRefreshResult(
@@ -907,10 +916,23 @@ async def customer_map_changes(
         session,
         project_id=project_id,
     )
+    previous_payload = (
+        _artifact_snapshot_payload(previous)
+        if previous is not None
+        else None
+    )
     return compare_customer_map_snapshots(
-        previous.content_json if previous is not None else None,
+        previous_payload,
         current,
     )
+
+
+def _artifact_snapshot_payload(artifact: Artifact) -> dict[str, object]:
+    if artifact.content_json is None:
+        raise CustomerMapError("customer_map_snapshot_artifact_content_missing")
+    if artifact.content_hash != _stable_hash(artifact.content_json):
+        raise CustomerMapError("customer_map_snapshot_artifact_hash_mismatch")
+    return _validate_snapshot(artifact.content_json)
 
 
 def _parse_journey_stages(value: object) -> tuple[dict[str, str | None], ...]:
