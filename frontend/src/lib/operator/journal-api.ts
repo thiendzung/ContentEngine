@@ -130,6 +130,14 @@ export type QualityLane = {
   fail_count: number;
   max_overlap_tokens: number;
   source_copy_findings: unknown[];
+  reader_value_artifact: QualityRef | null;
+  reader_value_quality_evaluation_id: string | null;
+  reader_value_result: string | null;
+  reader_value_findings: unknown[];
+  search_ai_artifact: QualityRef | null;
+  search_ai_quality_evaluation_id: string | null;
+  search_ai_result: string | null;
+  search_ai_findings: unknown[];
   content_item_id: string | null;
   final_content: QualityRef | null;
   final_review_step_run_id: string | null;
