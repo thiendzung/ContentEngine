@@ -275,3 +275,7 @@ Operational DB remains under the separately controlled release state. AU-02 adds
 Review flow remains:
 `CI → exact-ref OpenCodeReview → MG triage → Agent Local exact-head proof → Founder merge`.
 
+AU-02 verification hardening:
+- output timestamp is strict: Artifact `created_at` must be greater than `StepRun.started_at`, not equal;
+- external-only output Artifacts fail closed until ContentEngine has a canonical external-object resolver/hash verifier; AU-02 does not treat an arbitrary stored hash as proof of external object integrity.
+
