@@ -266,7 +266,7 @@ async def test_ll01c_stale_need_version_blocks_application_before_mutation(
 
         with pytest.raises(
             LearningApplicationError,
-            match="learning_review_stale",
+            match="learning_review_need_version_stale",
         ):
             await apply_learning_candidate(
                 session,
