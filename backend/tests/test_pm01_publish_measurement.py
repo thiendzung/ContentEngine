@@ -22,7 +22,7 @@ from app.modules.content_engine.journal.review_console import (
     ReviewConsoleError,
     get_review_case,
 )
-from app.modules.content_engine.memory_gap import recommend_memory_gap
+from app.modules.content_engine.memory_gap import MemoryGapError, recommend_memory_gap
 from app.modules.content_engine.models import (
     AudienceHypothesis,
     ContentCase,
@@ -1417,6 +1417,15 @@ async def test_pm01_read_models_fail_closed_on_publication_mapping_drift(
             await get_review_case(
                 session,
                 content_case_id=fixture.content_case.id,
+            )
+
+        with pytest.raises(
+            MemoryGapError,
+            match="memory_gap_publication_event_mismatch",
+        ):
+            await recommend_memory_gap(
+                session,
+                content_opportunity_id=fixture.opportunity.id,
             )
 
 
