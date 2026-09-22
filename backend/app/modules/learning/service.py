@@ -42,6 +42,25 @@ _ASSESSMENT_ARTIFACT_TYPE = "learning_assessment"
 _ASSESSMENT_SCHEMA_VERSION = 1
 _CANDIDATE_SCOPE_VERSION = 1
 _WS_RE = re.compile(r"\s+")
+_INSIGHT_TYPES = {
+    "job",
+    "pain",
+    "desire",
+    "question",
+    "fear",
+    "objection",
+    "barrier",
+    "trigger",
+    "decision_factor",
+    "trust_builder",
+    "trust_breaker",
+    "language",
+    "behaviour",
+    "expectation",
+    "post_purchase_need",
+    "referral_trigger",
+    "repeat_purchase_trigger",
+}
 
 
 class LearningError(ValueError):
@@ -151,6 +170,44 @@ def _clean_strings(values: list[str], code: str) -> list[str]:
 def _normalized_statement(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value).casefold().strip()
     return _WS_RE.sub(" ", normalized)
+
+
+def _normalize_candidate_proposal(
+    *,
+    target_type: str,
+    proposal: dict[str, object] | None,
+) -> dict[str, object]:
+    raw = {} if proposal is None else dict(proposal)
+    if target_type != "new_customer_insight":
+        if raw:
+            raise LearningError("learning_candidate_proposal_unexpected")
+        return {}
+    if set(raw) != {"insight_type", "situation", "need_relation"}:
+        raise LearningError("learning_candidate_new_insight_proposal_invalid")
+    insight_type = _text(
+        raw.get("insight_type"),
+        "learning_candidate_new_insight_type_invalid",
+    )
+    if insight_type not in _INSIGHT_TYPES:
+        raise LearningError("learning_candidate_new_insight_type_invalid")
+    situation_raw = raw.get("situation")
+    if situation_raw is None:
+        situation: str | None = None
+    elif isinstance(situation_raw, str) and situation_raw.strip():
+        situation = situation_raw.strip()
+    else:
+        raise LearningError("learning_candidate_new_insight_situation_invalid")
+    need_relation = _text(
+        raw.get("need_relation"),
+        "learning_candidate_new_insight_need_relation_invalid",
+    )
+    if need_relation not in {"supports", "contradicts", "context"}:
+        raise LearningError("learning_candidate_new_insight_need_relation_invalid")
+    return {
+        "insight_type": insight_type,
+        "situation": situation,
+        "need_relation": need_relation,
+    }
 
 
 def _lens_scope(value: object) -> tuple[str | None, list[str]]:
@@ -1022,6 +1079,7 @@ def _candidate_key(
     target_type: str,
     target_id: UUID | None,
     statement: str,
+    proposal: dict[str, object],
     scope: dict[str, object],
 ) -> str:
     return _hash(
@@ -1030,6 +1088,7 @@ def _candidate_key(
             "target_type": target_type,
             "target_id": str(target_id) if target_id is not None else None,
             "statement": _normalized_statement(statement),
+            "proposal": proposal,
             "scope": scope,
         }
     )
@@ -1256,12 +1315,16 @@ def _validate_candidate_relation_for_evidence(
     relation: str,
     signal_relations: dict[UUID, EvidenceRelation],
 ) -> None:
-    if target_type not in {"need_hypothesis", "customer_insight"}:
-        return
     has_support = any(value == "supports" for value in signal_relations.values())
     has_contradiction = any(
         value == "contradicts" for value in signal_relations.values()
     )
+    if target_type == "new_customer_insight":
+        if not has_support or has_contradiction:
+            raise LearningError("learning_candidate_new_insight_evidence_invalid")
+        return
+    if target_type not in {"need_hypothesis", "customer_insight"}:
+        return
     expected_relation = (
         "context"
         if has_support == has_contradiction
@@ -1313,6 +1376,7 @@ async def create_learning_candidate(
     target_id: UUID | None,
     statement: str,
     relation: str,
+    proposal: dict[str, object] | None = None,
     expected_benefit: str | None = None,
     regression_risk: str | None = None,
 ) -> LearningCandidateResult:
@@ -1336,6 +1400,10 @@ async def create_learning_candidate(
         payload.get("candidate_scope"),
         "learning_candidate_scope_invalid",
     )
+    normalized_proposal = _normalize_candidate_proposal(
+        target_type=target_type,
+        proposal=proposal,
+    )
     await _validate_candidate_target(
         session,
         project_id=project_id,
@@ -1349,6 +1417,7 @@ async def create_learning_candidate(
         target_type=target_type,
         target_id=target_id,
         statement=clean_statement,
+        proposal=normalized_proposal,
         scope=scope,
     )
     latest = await session.scalar(
@@ -1401,6 +1470,7 @@ async def create_learning_candidate(
             and latest.target_id == target_id
             and latest.statement == clean_statement
             and latest.relation == relation
+            and latest.proposal_json == normalized_proposal
             and latest.scope_json == scope
             and latest.evidence_status == evidence_status
             and latest.alternative_explanations_json == alternatives
@@ -1419,6 +1489,7 @@ async def create_learning_candidate(
         target_id=target_id,
         statement=clean_statement,
         relation=relation,
+        proposal_json=normalized_proposal,
         scope_json=scope,
         evidence_status=evidence_status,
         alternative_explanations_json=alternatives,
