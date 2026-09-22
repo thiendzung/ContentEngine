@@ -18,6 +18,7 @@ from app.modules.content_engine.models import (
     LocaleVariant,
 )
 from app.modules.harness.models import Approval, Artifact, ContentRun, QualityEvaluation
+from app.modules.publishing.models import PublishedContent
 
 
 class ReviewConsoleError(ValueError):
@@ -187,6 +188,7 @@ class _CaseRows:
         variants: list[LocaleVariant],
         items: list[ContentItem],
         versions: list[ContentVersion],
+        publications: list[PublishedContent],
         runs: list[ContentRun],
         artifacts: list[Artifact],
         approvals: list[Approval],
@@ -199,6 +201,10 @@ class _CaseRows:
         self.variants = variants
         self.items = items
         self.versions = versions
+        self.publications = publications
+        self.publication_by_item = {
+            row.content_item_id: row for row in publications
+        }
         self.runs = runs
         self.artifacts = artifacts
         self.approvals = approvals
@@ -253,6 +259,27 @@ async def _load_case_rows(session: AsyncSession, content_case_id: UUID) -> _Case
         if item_ids
         else []
     )
+    publications = (
+        list(
+            (
+                await session.scalars(
+                    select(PublishedContent)
+                    .where(
+                        PublishedContent.content_item_id.in_(item_ids),
+                        PublishedContent.target == "wordpress",
+                    )
+                    .order_by(
+                        PublishedContent.content_item_id,
+                        PublishedContent.id,
+                    )
+                )
+            ).all()
+        )
+        if item_ids
+        else []
+    )
+    if len({row.content_item_id for row in publications}) != len(publications):
+        raise ReviewConsoleError("journal_review_publication_ambiguous")
     runs = list(
         (
             await session.scalars(
@@ -334,6 +361,7 @@ async def _load_case_rows(session: AsyncSession, content_case_id: UUID) -> _Case
         variants=variants,
         items=items,
         versions=versions,
+        publications=publications,
         runs=runs,
         artifacts=artifacts,
         approvals=approvals,
@@ -449,6 +477,7 @@ def _next_action(
     final_artifact: Artifact | None,
     final_approval: Approval | None,
     version: ContentVersion | None,
+    current_version_is_published: bool,
     writer_run: ContentRun | None,
     has_review_output: bool,
 ) -> tuple[str, str]:
@@ -458,9 +487,9 @@ def _next_action(
         return "QUALITY_BLOCKED", "Current bytes are blocked by quality gates"
     if final_artifact is not None and final_approval is None:
         return "AWAITING_FOUNDER_APPROVAL", "Awaiting Founder final approval"
-    if version is not None and version.status == "published":
+    if current_version_is_published:
         return "PUBLISHED", "Published"
-    if version is not None and version.status == "approved":
+    if version is not None and version.status in {"approved", "published"}:
         return "APPROVED_NOT_PUBLISHED", "Approved; publishing not authorized"
     if has_review_output or (
         writer_run is not None and writer_run.status == "waiting_approval"
@@ -573,6 +602,34 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
         issues.append("multiple_content_items_for_locale_variant")
     item = variant_items[0] if len(variant_items) == 1 else None
     version = _current_version(rows, item)
+    publication = (
+        rows.publication_by_item.get(item.id) if item is not None else None
+    )
+    publication_is_live = bool(
+        publication is not None and publication.external_status == "publish"
+    )
+    current_version_is_published = bool(
+        version is not None
+        and (
+            (
+                publication is not None
+                and publication.external_status == "publish"
+                and publication.current_content_version_id == version.id
+            )
+            or (publication is None and version.status == "published")
+        )
+    )
+    if publication is not None and item is not None:
+        if publication.project_id != item.project_id:
+            consistency_state = "INCONSISTENT"
+            issues.append("published_content_project_mismatch")
+        if not any(
+            row.id == publication.current_content_version_id
+            and row.content_item_id == item.id
+            for row in rows.versions
+        ):
+            consistency_state = "INCONSISTENT"
+            issues.append("published_content_version_mismatch")
 
     final_artifact: Artifact | None = None
     if version is not None and version.final_artifact_id is not None:
@@ -761,7 +818,12 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
         quality_state = "FAIL"
     publication_state = (
         "PUBLISHED"
-        if version is not None and version.status == "published"
+        if publication_is_live
+        or (
+            publication is None
+            and version is not None
+            and version.status == "published"
+        )
         else "NOT_PUBLISHED"
     )
     has_review_output = any(
@@ -777,6 +839,7 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
         final_artifact=final_artifact,
         final_approval=final_approval,
         version=version,
+        current_version_is_published=current_version_is_published,
         writer_run=writer_run,
         has_review_output=has_review_output,
     )
