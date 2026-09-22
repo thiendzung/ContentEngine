@@ -1008,6 +1008,22 @@ async def _runtime_package_binding(
         mapping is None or experiment.published_content_id != mapping.id
     ):
         raise PublishError("publish_experiment_publication_conflict")
+    if mapping is not None:
+        event_experiment_ids = set(
+            (
+                await session.scalars(
+                    select(PublishEvent.content_experiment_id).where(
+                        PublishEvent.published_content_id == mapping.id,
+                        PublishEvent.content_version_id == version.id,
+                    )
+                )
+            ).all()
+        )
+        if any(
+            experiment_id != experiment.id
+            for experiment_id in event_experiment_ids
+        ):
+            raise PublishError("publish_version_experiment_conflict")
     return identity, target, content, item, version, experiment, mapping
 
 
