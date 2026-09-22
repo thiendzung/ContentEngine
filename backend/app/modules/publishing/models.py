@@ -82,6 +82,9 @@ class PublishEvent(TimestampMixin, Base):
     content_version_id: Mapped[UUID] = mapped_column(
         ForeignKey("content_versions.id"), nullable=False
     )
+    content_experiment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("content_experiments.id"), nullable=False
+    )
     publish_package_artifact_id: Mapped[UUID] = mapped_column(
         ForeignKey("artifacts.id"), nullable=False
     )
@@ -113,6 +116,11 @@ class PublishEvent(TimestampMixin, Base):
         Index(
             "ix_publish_events_content_version",
             "content_version_id",
+            "created_at",
+        ),
+        Index(
+            "ix_publish_events_experiment",
+            "content_experiment_id",
             "created_at",
         ),
     )
