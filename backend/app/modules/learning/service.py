@@ -101,6 +101,12 @@ def _strings(value: object, code: str) -> list[str]:
     return result
 
 
+def _records(value: object, code: str) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        raise LearningError(code)
+    return [_dict(item, code) for item in value]
+
+
 def _uuid(value: object, code: str) -> UUID:
     if not isinstance(value, str):
         raise LearningError(code)
@@ -129,10 +135,11 @@ def _aware(value: datetime | None, code: str) -> datetime:
 
 
 def _clean_strings(values: list[str], code: str) -> list[str]:
-    result = sorted({value.strip() for value in values if value.strip()})
-    if len(result) != len([value for value in values if value.strip()]):
-        # Duplicate explanatory text is harmless, but accepting silent duplicates
-        # makes assessment input fingerprints unnecessarily unstable.
+    if any(not isinstance(value, str) or not value.strip() for value in values):
+        raise LearningError(code)
+    normalized = [value.strip() for value in values]
+    result = sorted(set(normalized))
+    if len(result) != len(normalized):
         raise LearningError(code)
     return result
 
@@ -351,6 +358,18 @@ async def _validate_signal(
     )
     if provenance.get("kind") != "content_performance_signal":
         raise LearningError("learning_assessment_signal_kind_invalid")
+    if (
+        signal.external_id is None
+        or signal.fingerprint
+        != _hash(
+            {
+                "external_id": signal.external_id,
+                "observed_text": signal.observed_text,
+                "provenance": provenance,
+            }
+        )
+    ):
+        raise LearningError("learning_assessment_signal_fingerprint_mismatch")
     experiment = _dict(
         provenance.get("experiment"),
         "learning_assessment_signal_provenance_invalid",
@@ -365,8 +384,63 @@ async def _validate_signal(
         content.get("content_version_id") != str(context.content_version_id)
         or content.get("content_item_id") != str(context.content_item_id)
         or content.get("content_case_id") != str(context.content_case_id)
+        or content.get("locale") != context.candidate_scope.get("locale")
+        or signal.locale != context.candidate_scope.get("locale")
     ):
         raise LearningError("learning_assessment_signal_content_mismatch")
+    customer = _dict(
+        provenance.get("customer"),
+        "learning_assessment_signal_provenance_invalid",
+    )
+    if (
+        customer.get("audience_hypothesis_id")
+        != context.candidate_scope.get("audience_hypothesis_id")
+        or customer.get("need_hypothesis_id")
+        != context.candidate_scope.get("need_hypothesis_id")
+        or customer.get("need_hypothesis_version")
+        != context.candidate_scope.get("need_hypothesis_version")
+        or sorted(
+            _strings(
+                customer.get("journey_stages"),
+                "learning_assessment_signal_customer_invalid",
+            )
+        )
+        != context.candidate_scope.get("journey_stages")
+        or customer.get("identity_source") != "publish_package"
+    ):
+        raise LearningError("learning_assessment_signal_customer_mismatch")
+    primary_lens, supporting_lenses = _lens_scope(
+        provenance.get("lens_selection")
+    )
+    if (
+        primary_lens != context.candidate_scope.get("primary_lens")
+        or supporting_lenses != context.candidate_scope.get("supporting_lenses")
+    ):
+        raise LearningError("learning_assessment_signal_lens_mismatch")
+    for metric in _records(
+        provenance.get("metrics"),
+        "learning_assessment_signal_metrics_invalid",
+    ):
+        if set(metric) - {
+            "id",
+            "snapshot_id",
+            "provider",
+            "metric_date",
+            "metric_name",
+            "metric_value",
+        }:
+            raise LearningError("learning_assessment_signal_metric_shape_invalid")
+    for window in _records(
+        provenance.get("measurement_windows"),
+        "learning_assessment_signal_windows_invalid",
+    ):
+        if set(window) - {
+            "snapshot_id",
+            "provider",
+            "window_start",
+            "window_end",
+        }:
+            raise LearningError("learning_assessment_signal_window_shape_invalid")
     observation_ref = _dict(
         provenance.get("content_performance_observation"),
         "learning_assessment_signal_provenance_invalid",
@@ -734,8 +808,10 @@ async def _candidate_evidence(
         payload.get("evidence"),
         "learning_candidate_assessment_evidence_invalid",
     )
-    for row in evidence.get("signals", []):
-        record = _dict(row, "learning_candidate_assessment_signal_invalid")
+    for record in _records(
+        evidence.get("signals", []),
+        "learning_candidate_assessment_signal_invalid",
+    ):
         signal_id = _uuid(
             record.get("id"),
             "learning_candidate_assessment_signal_invalid",
@@ -751,8 +827,10 @@ async def _candidate_evidence(
             raise LearningError("learning_candidate_signal_relation_conflict")
         signal_relations[signal_id] = relation  # type: ignore[assignment]
 
-    for row in evidence.get("observations", []):
-        record = _dict(row, "learning_candidate_assessment_observation_invalid")
+    for record in _records(
+        evidence.get("observations", []),
+        "learning_candidate_assessment_observation_invalid",
+    ):
         observation_id = _uuid(
             record.get("id"),
             "learning_candidate_assessment_observation_invalid",
@@ -917,8 +995,8 @@ async def create_learning_candidate(
         .order_by(LearningCandidate.version.desc())
         .limit(1)
     )
-    if latest is not None and latest.status == "ARCHIVED":
-        raise LearningError("learning_candidate_archived")
+    if latest is not None and latest.status != "OPEN":
+        raise LearningError("learning_candidate_latest_not_open")
 
     signal_relations, observation_relations, assessment_ids = await _candidate_evidence(
         session,
