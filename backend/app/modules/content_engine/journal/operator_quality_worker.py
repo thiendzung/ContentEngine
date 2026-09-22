@@ -28,6 +28,7 @@ from app.modules.content_engine.journal.operator_quality import (
     settle_quality_command,
 )
 from app.modules.content_engine.journal.quality_readiness import (
+    READINESS_HANDOFF_TYPES,
     READER_VALUE_TASK_KEYS,
     SEARCH_AI_TASK_KEYS,
     QualityReadinessInput,
@@ -867,7 +868,14 @@ async def fail_quality_job(
         handoff = await session.scalar(
             select(Artifact).where(
                 Artifact.run_id == run.id,
-                Artifact.artifact_type.in_(("assertion_audit_handoff", "source_copy_handoff")),
+                Artifact.artifact_type.in_(
+                    (
+                        "assertion_audit_handoff",
+                        "source_copy_handoff",
+                        READINESS_HANDOFF_TYPES["reader_value"],
+                        READINESS_HANDOFF_TYPES["search_ai"],
+                    )
+                ),
             )
         )
         if handoff is not None:
