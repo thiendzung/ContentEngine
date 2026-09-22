@@ -10,7 +10,12 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
 from test_ll01a_performance_signal import _publish, _record_search_observation
-from test_pm01_publish_measurement import isolated_session
+from test_pm01_publish_measurement import (
+    FakeWordPress,
+    _approve_and_claim,
+    _fixture,
+    isolated_session,
+)
 
 from app.modules.content_engine.models import NeedHypothesis, Project, Signal
 from app.modules.customer_intelligence.models import CustomerInsight
@@ -35,6 +40,12 @@ from app.modules.measurement.service import (
 )
 from app.modules.measurement.service import (
     get_measurement_identity as canonical_get_measurement_identity,
+)
+from app.modules.publishing.service import (
+    begin_wordpress_dispatch,
+    execute_wordpress_call,
+    prepare_publish_package,
+    record_wordpress_execution_result,
 )
 
 
@@ -124,6 +135,110 @@ async def _analytics_signal(
     )
     assert materialized.signal is not None
     return observation, materialized.signal
+
+
+@pytest.mark.asyncio
+async def test_ll01b_uses_latest_publish_event_for_same_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        gateway = FakeWordPress()
+
+        first_package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug=f"ll01b-first-{uuid4().hex[:8]}",
+            action="publish",
+        )
+        _decision, _dispatch, first_claimed = await _approve_and_claim(
+            session,
+            package_run_id=first_package.run.id,
+            package_artifact_id=first_package.artifact.id,
+            worker_id="ll01b-first-publish",
+        )
+        first_prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=first_claimed.id,
+            worker_id="ll01b-first-publish",
+        )
+        first_external = await execute_wordpress_call(
+            gateway=gateway,
+            request=first_prepared.request,
+        )
+        mapping, first_event = await record_wordpress_execution_result(
+            session,
+            job_id=first_claimed.id,
+            worker_id="ll01b-first-publish",
+            result=first_external,
+        )
+        assert mapping is not None
+        assert first_event is not None
+        assert first_event.external_status == "publish"
+
+        second_package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug=f"ll01b-second-{uuid4().hex[:8]}",
+            action="publish",
+        )
+        _decision, _dispatch, second_claimed = await _approve_and_claim(
+            session,
+            package_run_id=second_package.run.id,
+            package_artifact_id=second_package.artifact.id,
+            worker_id="ll01b-second-publish",
+        )
+        second_prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=second_claimed.id,
+            worker_id="ll01b-second-publish",
+        )
+        second_external = await execute_wordpress_call(
+            gateway=gateway,
+            request=second_prepared.request,
+        )
+        mapping2, second_event = await record_wordpress_execution_result(
+            session,
+            job_id=second_claimed.id,
+            worker_id="ll01b-second-publish",
+            result=second_external,
+        )
+        assert mapping2 is not None
+        assert second_event is not None
+        assert mapping2.id == mapping.id
+        assert second_event.id != first_event.id
+        assert second_event.external_status == "publish"
+
+        observation, _snapshot = await _record_search_observation(
+            session,
+            fixture=fixture,
+            mapping=mapping2,
+        )
+        materialized = await materialize_performance_signal(
+            session,
+            observation_id=observation.id,
+        )
+        assert materialized.signal is not None
+        assert materialized.signal.provenance_json["publication"][
+            "publish_event_id"
+        ] == str(second_event.id)
+
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={materialized.signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        assert assessment.artifact.content_json["lineage"]["publish_event_id"] == str(
+            second_event.id
+        )
+        assert assessment.artifact.content_json["lineage"]["publish_event_id"] != str(
+            first_event.id
+        )
 
 
 @pytest.mark.asyncio
