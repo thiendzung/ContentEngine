@@ -218,3 +218,45 @@ class ModelCall(TimestampMixin, Base):
 
 class ToolCall(TimestampMixin, Base):
     __tablename__ = "tool_calls"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("content_runs.id"), nullable=False)
+    step_run_id: Mapped[UUID | None] = mapped_column(ForeignKey("step_runs.id"))
+    tool_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result_ref: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_class: Mapped[str | None] = mapped_column(String(64))
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('pending','running','completed','failed')", name="ck_tool_call_status"
+        ),
+    )
+
+
+class QualityEvaluation(TimestampMixin, Base):
+    __tablename__ = "quality_evaluations"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("content_runs.id"), nullable=False)
+    artifact_id: Mapped[UUID] = mapped_column(ForeignKey("artifacts.id"), nullable=False)
+    evaluator_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    evaluator_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    evaluator_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    result: Mapped[str] = mapped_column(String(64), nullable=False)
+    score: Mapped[float | None] = mapped_column(Float)
+    severity: Mapped[str | None] = mapped_column(String(32))
+    findings_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+
+    __table_args__ = (
+        CheckConstraint("result in ('pass','fail','warn')", name="ck_quality_evaluation_result"),
+        CheckConstraint(
+            "evaluator_type in ('deterministic','model','human')",
+            name="ck_quality_evaluation_type",
+        ),
+    )
