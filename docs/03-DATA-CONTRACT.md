@@ -727,7 +727,9 @@ Mapping ContentItem với WordPress/external target.
 - `external_id`
 - `canonical_url`
 - `current_content_version_id`
-- `published_at`
+- `external_revision_id` nullable
+- `external_status`: `draft | publish | future | private`
+- `published_at` nullable
 - timestamps
 
 Unique recommendation: `(project_id, content_item_id, target)`.
@@ -739,11 +741,16 @@ Lịch sử publish/update.
 - `id`
 - `published_content_id`
 - `content_version_id`
+- `publish_package_artifact_id`
+- `publish_approval_id`
+- `outbox_intent_id`
 - `idempotency_key`
-- `status`
+- `action`: `draft | publish | update_draft | update_publish`
 - `external_revision_id` nullable
+- `external_status`
+- `canonical_url`
 - `published_at` nullable
-- `error_json` nullable
+- `result_json`
 
 ### PerformanceSnapshot
 
@@ -751,9 +758,11 @@ Giữ raw/aggregate payload của provider để audit.
 
 - `id`
 - `published_content_id`
+- `content_version_id`
 - `provider`
 - `window_start`
 - `window_end`
+- `payload_fingerprint`
 - `raw_metrics_json`
 - `imported_at`
 
@@ -781,7 +790,7 @@ Một nhận xét có cấu trúc từ metrics, chưa phải learning rule.
 - `observation_type`
 - `statement`
 - `metric_refs_json`
-- `data_status`: `insufficient | early_signal | repeated_pattern`
+- `data_status`: `INSUFFICIENT_DATA | EARLY_SIGNAL | REPEATED_PATTERN | LEARNING_CANDIDATE_READY`
 - `observed_at`
 
 ### LearningCandidate
