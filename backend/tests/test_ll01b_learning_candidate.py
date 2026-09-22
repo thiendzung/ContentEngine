@@ -663,7 +663,6 @@ def test_ll01b_candidate_maturity_requires_independent_experiments() -> None:
         _classify_candidate_evidence_status(
             support_groups={"experiment:a"},
             contradict_groups=set(),
-            assessment_statuses=["CANDIDATE_READY"],
             assessment_results=["SUPPORTS"],
         )
         == "EARLY_SIGNAL"
@@ -672,7 +671,6 @@ def test_ll01b_candidate_maturity_requires_independent_experiments() -> None:
         _classify_candidate_evidence_status(
             support_groups={"experiment:a", "experiment:b"},
             contradict_groups=set(),
-            assessment_statuses=["REPEATED_PATTERN", "CANDIDATE_READY"],
             assessment_results=["SUPPORTS", "SUPPORTS"],
         )
         == "REPEATED_PATTERN"
@@ -681,7 +679,14 @@ def test_ll01b_candidate_maturity_requires_independent_experiments() -> None:
         _classify_candidate_evidence_status(
             support_groups={"experiment:a", "experiment:b"},
             contradict_groups=set(),
-            assessment_statuses=["CANDIDATE_READY", "CANDIDATE_READY"],
+            assessment_results=["SUPPORTS", "INCONCLUSIVE"],
+        )
+        == "EARLY_SIGNAL"
+    )
+    assert (
+        _classify_candidate_evidence_status(
+            support_groups={"experiment:a", "experiment:b"},
+            contradict_groups=set(),
             assessment_results=["SUPPORTS", "SUPPORTS"],
         )
         == "REPEATED_PATTERN"
@@ -690,7 +695,6 @@ def test_ll01b_candidate_maturity_requires_independent_experiments() -> None:
         _classify_candidate_evidence_status(
             support_groups={"experiment:a"},
             contradict_groups={"experiment:b"},
-            assessment_statuses=["CANDIDATE_READY", "CANDIDATE_READY"],
             assessment_results=["SUPPORTS", "CONTRADICTS"],
         )
         == "CONTESTED"
