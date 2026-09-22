@@ -241,7 +241,7 @@ async def ingest_performance_snapshot(
             or existing.raw_metrics_json != raw_copy
         ):
             raise MeasurementError("measurement_snapshot_replay_conflict")
-        rows = tuple(
+        existing_metrics = tuple(
             (
                 await session.scalars(
                     select(PerformanceMetric)
@@ -264,13 +264,13 @@ async def ingest_performance_snapshot(
                 row.metric_value,
                 row.dimensions_json,
             )
-            for row in rows
+            for row in existing_metrics
         ]
         if actual != expected:
             raise MeasurementError("measurement_snapshot_metric_conflict")
         return MeasurementIngestResult(
             snapshot=existing,
-            metrics=rows,
+            metrics=existing_metrics,
             replayed=True,
         )
 
@@ -287,7 +287,7 @@ async def ingest_performance_snapshot(
     session.add(snapshot)
     await session.flush()
 
-    rows: list[PerformanceMetric] = []
+    metric_rows: list[PerformanceMetric] = []
     for metric_date, name, value, dimensions in normalized:
         row = PerformanceMetric(
             snapshot_id=snapshot.id,
@@ -300,11 +300,11 @@ async def ingest_performance_snapshot(
             dimensions_json=dimensions,
         )
         session.add(row)
-        rows.append(row)
+        metric_rows.append(row)
     await session.flush()
     return MeasurementIngestResult(
         snapshot=snapshot,
-        metrics=tuple(rows),
+        metrics=tuple(metric_rows),
         replayed=False,
     )
 
