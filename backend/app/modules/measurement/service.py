@@ -157,29 +157,22 @@ async def _measurement_mapping(
     if mapping is None or version is None:
         raise MeasurementError("measurement_identity_missing")
     item = await session.get(ContentItem, mapping.content_item_id)
-    if (
-        item is None
-        or version.content_item_id != item.id
-        or mapping.current_content_version_id != version.id
-    ):
+    if item is None or version.content_item_id != item.id:
         raise MeasurementError("measurement_identity_mismatch")
-    if provider != "rank_math" and (
-        mapping.external_status != "publish" or mapping.published_at is None
-    ):
-        raise MeasurementError("measurement_content_not_published")
     event = await session.scalar(
         select(PublishEvent)
         .where(
             PublishEvent.published_content_id == mapping.id,
             PublishEvent.content_version_id == version.id,
-            PublishEvent.external_status == mapping.external_status,
         )
         .order_by(PublishEvent.created_at.desc(), PublishEvent.id.desc())
         .limit(1)
     )
     if event is None:
         raise MeasurementError("measurement_publish_event_missing")
-    if provider != "rank_math" and event.external_status != "publish":
+    if provider != "rank_math" and (
+        event.external_status != "publish" or event.published_at is None
+    ):
         raise MeasurementError("measurement_publish_event_not_public")
     return mapping, version, item
 
