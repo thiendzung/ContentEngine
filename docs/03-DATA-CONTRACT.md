@@ -720,6 +720,10 @@ Durable intent cho side effect quan trọng như publish.
 
 Mapping ContentItem với WordPress/external target.
 
+`current_content_version_id` là snapshot đang tương ứng với external object. Khi một
+approved ContentVersion được WordPress xác nhận live, PM-01 tạo một ContentVersion mới
+`status=published`; không mutate version đã approved.
+
 - `id`
 - `project_id`
 - `content_item_id`
@@ -737,6 +741,9 @@ Unique recommendation: `(project_id, content_item_id, target)`.
 ### PublishEvent
 
 Lịch sử publish/update.
+
+`content_version_id` là effective external snapshot của event. Publish Package vẫn giữ
+source approved ContentVersion trong immutable package identity để truy ngược approval.
 
 - `id`
 - `published_content_id`
