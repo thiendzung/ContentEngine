@@ -429,10 +429,12 @@ async def materialize_performance_signal(
         "project_id": str(mapping.project_id),
         "content_performance_observation": {
             "id": str(observation.id),
-            "observation_type": observation.observation_type,
-            "data_status": observation.data_status,
             "observed_at": observed_at.isoformat(),
-            "statement_excluded": True,
+            "interpretation_fields_excluded": [
+                "statement",
+                "observation_type",
+                "data_status",
+            ],
         },
         "publication": {
             "published_content_id": str(mapping.id),
