@@ -336,9 +336,10 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Add rev-0039 schema and DB identity guards.
 - [x] Add focused tests for authorization, draft→publish, ambiguous reconciliation, idempotent measurement and identity trace.
 - [x] Keep approved ContentVersion immutable; external publish state lives in PublishedContent/PublishEvent.
-- [x] Freeze ContentExperiment to one ContentItem/ContentVersion and persist content_experiment_id on immutable PublishEvent.
+- [x] Freeze each ContentExperiment candidate to one ContentItem/ContentVersion + measurement contract; permit exact replacement candidate before external effect; persist canonical content_experiment_id on immutable PublishEvent.
 - [x] Revalidate experiment measurement snapshot before external dispatch; stale package fails before Outbox processing.
 - [x] Verify Content Coverage/Review Console against latest PublishEvent; mapping drift fails closed.
+- [x] Move Memory Gap publish/freshness truth to PublishedContent + PublishEvent while retaining legacy ContentVersion fallback.
 - [x] Positive-test Search Console, Analytics, MOTGU conversion and INSUFFICIENT_DATA semantics.
 - [x] CI implementation proof PASS after identity/read-model hardening — CI #1491 on `37cd2f0bd4e4851389239f1d6c2e861b93d2d9b5`: Ruff PASS; mypy 158 source files; rev-0038↔0039 round-trip PASS; full backend + OpenAPI + frontend lint/typecheck/build all PASS. Final docs-head CI still must be green before OCR freeze.
 - [ ] Exact-ref OpenCodeReview Delegation review and MG triage.
