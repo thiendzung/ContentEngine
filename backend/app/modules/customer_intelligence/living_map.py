@@ -408,7 +408,8 @@ async def build_customer_map_snapshot(
         )
 
     need_signal_map: dict[UUID, dict[str, list[str]]] = {}
-    need_evidence_counts: dict[UUID, dict[str, object]] = {}
+    need_evidence_totals: dict[UUID, dict[str, int]] = {}
+    need_independence: dict[UUID, dict[str, set[str]]] = {}
     independence_cache: dict[UUID, str] = {}
     need_project_by_id = {need.id: need.project_id for need in needs}
     for need_signal_link, signal in need_signal_rows:
@@ -424,26 +425,23 @@ async def build_customer_map_snapshot(
         refs[need_signal_link.relation].append(
             str(need_signal_link.signal_id)
         )
-        evidence = need_evidence_counts.setdefault(
+        totals = need_evidence_totals.setdefault(
             need_signal_link.need_hypothesis_id,
-            {
-                "supports": 0,
-                "contradicts": 0,
-                "independent_supports": set(),
-                "independent_contradicts": set(),
-            },
+            {"supports": 0, "contradicts": 0},
         )
         relation = need_signal_link.relation
-        evidence[relation] = int(evidence[relation]) + 1
-        independent_key = await signal_independence_key(
-            session,
-            signal,
-            independence_cache,
+        totals[relation] += 1
+        independent = need_independence.setdefault(
+            need_signal_link.need_hypothesis_id,
+            {"supports": set(), "contradicts": set()},
         )
-        independent_bucket = evidence[f"independent_{relation}"]
-        if not isinstance(independent_bucket, set):
-            raise CustomerMapError("customer_map_need_evidence_invalid")
-        independent_bucket.add(independent_key)
+        independent[relation].add(
+            await signal_independence_key(
+                session,
+                signal,
+                independence_cache,
+            )
+        )
 
     insight_payloads: list[dict[str, object]] = []
     for insight in insights:
@@ -507,22 +505,14 @@ async def build_customer_map_snapshot(
             need.id,
             {"supports": [], "contradicts": []},
         )
-        evidence = need_evidence_counts.get(
+        need_totals = need_evidence_totals.get(
             need.id,
-            {
-                "supports": 0,
-                "contradicts": 0,
-                "independent_supports": set(),
-                "independent_contradicts": set(),
-            },
+            {"supports": 0, "contradicts": 0},
         )
-        independent_supports = evidence["independent_supports"]
-        independent_contradicts = evidence["independent_contradicts"]
-        if not isinstance(independent_supports, set) or not isinstance(
-            independent_contradicts,
-            set,
-        ):
-            raise CustomerMapError("customer_map_need_evidence_invalid")
+        independent = need_independence.get(
+            need.id,
+            {"supports": set(), "contradicts": set()},
+        )
         need_payloads.append(
             {
                 "id": str(need.id),
@@ -549,10 +539,12 @@ async def build_customer_map_snapshot(
                     "contradicts": sorted(refs["contradicts"]),
                 },
                 "evidence_counts": {
-                    "supports": int(evidence["supports"]),
-                    "contradicts": int(evidence["contradicts"]),
-                    "independent_supports": len(independent_supports),
-                    "independent_contradicts": len(independent_contradicts),
+                    "supports": need_totals["supports"],
+                    "contradicts": need_totals["contradicts"],
+                    "independent_supports": len(independent["supports"]),
+                    "independent_contradicts": len(
+                        independent["contradicts"]
+                    ),
                 },
                 "insight_links": sorted(
                     need_insight_map.get(need.id, []),
