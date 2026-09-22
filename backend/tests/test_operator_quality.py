@@ -31,7 +31,11 @@ from app.modules.content_engine.journal.operator_runtime import (
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_view import get_operator_case_view
-from app.modules.content_engine.journal.quality_readiness import READINESS_CRITERIA
+from app.modules.content_engine.journal.quality_readiness import (
+    READINESS_CRITERIA,
+    READINESS_HANDOFF_TYPES,
+    READER_VALUE_TASK_KEYS,
+)
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun, utc_now
@@ -2288,3 +2292,191 @@ async def test_f4_r2_source_copy_exact_lineage_budget_and_historical_isolation(
             "operator_quality_retry_requires_failed_job",
             "operator_quality_retry_exhausted",
         }
+
+@pytest.mark.asyncio
+async def test_qa01_reader_value_retry_budget_ignores_unrelated_historical_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reader Value retry budget is scoped to the exact handoff, not locale history."""
+
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        await _dispatch_quality(session, fixture=fixture)
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_review_revise_model_port",
+            fake_review_port,
+        )
+        registry = AgentRunnerRegistry()
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.review.job is not None
+
+        first_review = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-review-1",
+        )
+        second_review = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-review-2",
+        )
+        assert first_review is not None and second_review is not None
+        vi_review = (
+            first_review
+            if first_review.id == vi_lane.review.job.id
+            else second_review
+        )
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_review.id,
+            worker_id=cast(str, vi_review.lease_owner),
+            runner_registry=registry,
+        )
+
+        async def fake_audit_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            current = await get_quality_progress(
+                session,
+                content_case_id=case_id,
+                source_run_id=None,
+            )
+            assert current is not None
+            lane = next(item for item in current.lanes if item.locale == locale)
+            assert lane.writer.run is not None
+            assert lane.revised_draft is not None
+            audit_input = await load_assertion_audit_input(
+                session,
+                writer_run_id=lane.writer.run.id,
+                revised_draft_artifact_id=lane.revised_draft.id,
+                expected_revised_draft_version=lane.revised_draft.version,
+                expected_revised_draft_hash=lane.revised_draft.content_hash,
+                outline_artifact_id=outline_result.artifact.id,  # type: ignore[union-attr]
+                expected_outline_version=outline_result.artifact.version,  # type: ignore[union-attr]
+                expected_outline_hash=outline_result.artifact.content_hash,  # type: ignore[union-attr]
+                locale=lane.locale,
+            )
+            return _CapturePort(_passing_output(audit_input))
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_assertion_audit_model_port",
+            fake_audit_port,
+        )
+
+        audit_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-audit",
+        )
+        assert audit_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=audit_job.id,
+            worker_id="qa01-reader-audit",
+            runner_registry=registry,
+        )
+
+        source_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-source",
+        )
+        assert source_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=source_job.id,
+            worker_id="qa01-reader-source",
+            runner_registry=registry,
+        )
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.reader_value.job is not None
+        assert vi_lane.reader_value.run is not None
+        reader_run = vi_lane.reader_value.run
+
+        historical_run = ContentRun(
+            project_id=reader_run.project_id,
+            content_case_id=reader_run.content_case_id,
+            locale_variant_id=reader_run.locale_variant_id,
+            run_mode="eval",
+            current_step=READER_VALUE_TASK_KEYS["vi-VN"],
+            status="failed",
+            failure_code="operator_quality_retry_exhausted",
+            settings_snapshot_id=reader_run.settings_snapshot_id,
+            started_at=utc_now() - timedelta(hours=4),
+            completed_at=utc_now() - timedelta(hours=4),
+        )
+        session.add(historical_run)
+        await session.flush()
+        session.add(
+            Artifact(
+                run_id=historical_run.id,
+                artifact_type=READINESS_HANDOFF_TYPES["reader_value"],
+                locale="vi-VN",
+                version=1,
+                content_json={
+                    "task_key": READER_VALUE_TASK_KEYS["vi-VN"],
+                    "source_writer_run_id": str(vi_lane.writer.run.id),  # type: ignore[union-attr]
+                    "source_draft": {
+                        "id": str(uuid4()),
+                        "version": 1,
+                        "content_hash": "a" * 64,
+                    },
+                },
+                content_hash="b" * 64,
+            )
+        )
+        await session.flush()
+
+        reader_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-value",
+        )
+        assert reader_job is not None
+        assert reader_job.id == vi_lane.reader_value.job.id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=reader_job.id,
+            worker_id="qa01-reader-value",
+            failure_class="network_timeout",
+            message="Reader Value attempt 1 timeout",
+        )
+
+        refreshed_run = await session.get(ContentRun, reader_run.id)
+        assert refreshed_run is not None
+        assert refreshed_run.failure_code == "network_timeout"
+
+        final_progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert final_progress is not None
+        refreshed_vi = next(lane for lane in final_progress.lanes if lane.locale == "vi-VN")
+        assert refreshed_vi.reader_value.attempt == 1
+        assert refreshed_vi.status == "execution_failed_retryable"
+
