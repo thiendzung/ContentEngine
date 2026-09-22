@@ -69,6 +69,10 @@ Nếu không biết WordPress đã nhận request hay chưa, phải reconcile tr
 
 Final editorial approval và publish authorization là hai quyết định khác nhau. Duyệt nội dung không tự động cấp quyền xuất bản.
 
+`ContentVersion` đã duyệt là immutable. Khi WordPress xác nhận publish, PM-01 giữ
+nguyên version đó và ghi external state vào `PublishedContent/PublishEvent`; không
+tạo bản sao version chỉ để có `status=published`, và không UPDATE version cũ.
+
 Ranh giới transaction là bắt buộc: trạng thái Outbox `processing` phải được commit trước khi gọi WordPress. Không được giữ một transaction chưa commit xuyên qua external write.
 
 Nếu một ContentItem đang ở trạng thái WordPress `publish`, PM-01 V1 không hạ trực tiếp
