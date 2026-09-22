@@ -296,39 +296,6 @@ def upgrade() -> None:
         ["id"],
     )
 
-    op.add_column(
-        "signals",
-        sa.Column("published_content_id", sa.Uuid(), nullable=True),
-    )
-    op.add_column(
-        "signals",
-        sa.Column("content_version_id", sa.Uuid(), nullable=True),
-    )
-    op.add_column(
-        "signals",
-        sa.Column(
-            "metric_refs_json",
-            sa.JSON(),
-            nullable=False,
-            server_default=sa.text("'[]'::json"),
-        ),
-    )
-    op.create_foreign_key(
-        "fk_signals_published_content",
-        "signals",
-        "published_contents",
-        ["published_content_id"],
-        ["id"],
-    )
-    op.create_foreign_key(
-        "fk_signals_content_version",
-        "signals",
-        "content_versions",
-        ["content_version_id"],
-        ["id"],
-    )
-    op.alter_column("signals", "metric_refs_json", server_default=None)
-
     op.execute(
         sa.text(
             """
@@ -477,20 +444,6 @@ def downgrade() -> None:
         )
     )
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_published_content_scope()"))
-
-    op.drop_constraint(
-        "fk_signals_content_version",
-        "signals",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        "fk_signals_published_content",
-        "signals",
-        type_="foreignkey",
-    )
-    op.drop_column("signals", "metric_refs_json")
-    op.drop_column("signals", "content_version_id")
-    op.drop_column("signals", "published_content_id")
 
     op.drop_constraint(
         "fk_content_experiments_published_content",
