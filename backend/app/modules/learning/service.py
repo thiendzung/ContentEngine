@@ -25,6 +25,7 @@ from app.modules.content_engine.models import (
     Project,
     Signal,
 )
+from app.modules.customer_intelligence.insights import derive_insight_key
 from app.modules.customer_intelligence.models import CustomerInsight
 from app.modules.harness.models import Artifact, ContentRun
 from app.modules.learning.models import (
@@ -1580,6 +1581,24 @@ async def create_learning_candidate(
         target_type=target_type,
         proposal=proposal,
     )
+    if target_type == "new_customer_insight":
+        audience_raw = scope.get("audience_hypothesis_id")
+        frozen_audience = (
+            None
+            if audience_raw is None
+            else _uuid(
+                audience_raw,
+                "learning_candidate_audience_scope_invalid",
+            )
+        )
+        insight_type = cast(str, normalized_proposal["insight_type"])
+        situation = cast(str | None, normalized_proposal["situation"])
+        normalized_proposal["insight_key"] = derive_insight_key(
+            insight_type=insight_type,
+            statement=clean_statement,
+            audience_hypothesis_id=frozen_audience,
+            situation=situation,
+        )
     await _validate_candidate_target(
         session,
         project_id=project_id,
