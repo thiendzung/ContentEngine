@@ -77,6 +77,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("published_content_id", sa.Uuid(), nullable=False),
         sa.Column("content_version_id", sa.Uuid(), nullable=False),
+        sa.Column("content_experiment_id", sa.Uuid(), nullable=False),
         sa.Column("publish_package_artifact_id", sa.Uuid(), nullable=False),
         sa.Column("publish_approval_id", sa.Uuid(), nullable=False),
         sa.Column("outbox_intent_id", sa.Uuid(), nullable=False),
@@ -106,6 +107,10 @@ def upgrade() -> None:
             ["content_versions.id"],
         ),
         sa.ForeignKeyConstraint(
+            ["content_experiment_id"],
+            ["content_experiments.id"],
+        ),
+        sa.ForeignKeyConstraint(
             ["publish_package_artifact_id"],
             ["artifacts.id"],
         ),
@@ -125,6 +130,12 @@ def upgrade() -> None:
         "ix_publish_events_content_version",
         "publish_events",
         ["content_version_id", "created_at"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_publish_events_experiment",
+        "publish_events",
+        ["content_experiment_id", "created_at"],
         unique=False,
     )
 
@@ -294,6 +305,46 @@ def upgrade() -> None:
         "published_contents",
         ["published_content_id"],
         ["id"],
+    )
+    op.create_unique_constraint(
+        "uq_content_experiment_content_version",
+        "content_experiments",
+        ["content_version_id"],
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION prevent_content_experiment_rebind()
+            RETURNS trigger AS $pm01$
+            BEGIN
+                IF OLD.content_item_id IS NOT NULL
+                   AND NEW.content_item_id IS DISTINCT FROM OLD.content_item_id THEN
+                    RAISE EXCEPTION 'pm01_content_experiment_binding_is_immutable';
+                END IF;
+                IF OLD.content_version_id IS NOT NULL
+                   AND NEW.content_version_id IS DISTINCT FROM OLD.content_version_id THEN
+                    RAISE EXCEPTION 'pm01_content_experiment_binding_is_immutable';
+                END IF;
+                IF OLD.published_content_id IS NOT NULL
+                   AND NEW.published_content_id IS DISTINCT FROM OLD.published_content_id THEN
+                    RAISE EXCEPTION 'pm01_content_experiment_binding_is_immutable';
+                END IF;
+                RETURN NEW;
+            END;
+            $pm01$ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER content_experiment_binding_immutable
+            BEFORE UPDATE OF content_item_id, content_version_id, published_content_id
+            ON content_experiments
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_content_experiment_rebind()
+            """
+        )
     )
 
     op.execute(
@@ -473,6 +524,18 @@ def downgrade() -> None:
     )
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_published_content_scope()"))
 
+    op.execute(
+        sa.text(
+            "DROP TRIGGER IF EXISTS content_experiment_binding_immutable "
+            "ON content_experiments"
+        )
+    )
+    op.execute(sa.text("DROP FUNCTION IF EXISTS prevent_content_experiment_rebind()"))
+    op.drop_constraint(
+        "uq_content_experiment_content_version",
+        "content_experiments",
+        type_="unique",
+    )
     op.drop_constraint(
         "fk_content_experiments_published_content",
         "content_experiments",
@@ -507,6 +570,10 @@ def downgrade() -> None:
         table_name="performance_snapshots",
     )
     op.drop_table("performance_snapshots")
+    op.drop_index(
+        "ix_publish_events_experiment",
+        table_name="publish_events",
+    )
     op.drop_index(
         "ix_publish_events_content_version",
         table_name="publish_events",
