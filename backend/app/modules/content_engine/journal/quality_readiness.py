@@ -240,7 +240,11 @@ def validate_quality_readiness_output(
         )
         key = _nonempty_text(item.get("key"), "quality_readiness_output_criterion_key_invalid")
         raw_repair = item.get("repair_suggestion")
-        repair_suggestion = raw_repair.strip() if isinstance(raw_repair, str) else ""
+        if not isinstance(raw_repair, str):
+            raise QualityReadinessError(
+                "quality_readiness_output_criterion_repair_invalid"
+            )
+        repair_suggestion = raw_repair.strip()
         parsed.append(
             ReadinessCriterion(
                 key=key,
@@ -380,6 +384,18 @@ def _variant_payload(writer_input: WriterInput) -> dict[str, object]:
     }
 
 
+def _editorial_context(writer_input: WriterInput) -> tuple[dict[str, object], dict[str, object]]:
+    angle = writer_input.outline_input.approved_angle.candidate.to_dict()
+    raw_pack = writer_input.outline_input.bundle.angle_model_input.get("originality_pack")
+    if not isinstance(raw_pack, dict):
+        raise QualityReadinessError("quality_readiness_originality_pack_missing")
+    pack = copy.deepcopy(cast(dict[str, object], raw_pack))
+    items = pack.get("items")
+    if not isinstance(items, list) or not items:
+        raise QualityReadinessError("quality_readiness_originality_pack_missing")
+    return angle, pack
+
+
 async def load_quality_readiness_input(
     session: AsyncSession,
     *,
@@ -422,6 +438,8 @@ async def load_quality_readiness_input(
     if opportunity is None or opportunity.project_id != case.project_id:
         raise QualityReadinessError("quality_readiness_opportunity_missing")
 
+    approved_angle, originality_pack = _editorial_context(writer_input)
+
     source_copy, source_copy_eval = await _validated_evaluation(
         session,
         artifact_id=source_copy_artifact_id,
@@ -461,6 +479,8 @@ async def load_quality_readiness_input(
         "content_case": _case_payload(case),
         "content_opportunity": _opportunity_payload(opportunity),
         "locale_variant": _variant_payload(writer_input),
+        "approved_angle": approved_angle,
+        "originality_pack": originality_pack,
         "source_copy": {
             "artifact": _ref(source_copy),
             "quality_evaluation": _quality_ref(source_copy_eval),
@@ -646,17 +666,17 @@ async def load_quality_readiness_input_from_handoff(
     reader_artifact_id: UUID | None = None
     reader_evaluation_id: UUID | None = None
     raw_reader = payload.get("reader_value")
-    if raw_reader is not None:
-        if not isinstance(raw_reader, dict):
-            raise QualityReadinessError("quality_readiness_handoff_reader_value_invalid")
-        raw_reader_artifact = raw_reader.get("artifact")
-        raw_reader_eval = raw_reader.get("quality_evaluation")
-        if not isinstance(raw_reader_artifact, dict) or not isinstance(raw_reader_eval, dict):
-            raise QualityReadinessError("quality_readiness_handoff_reader_value_invalid")
-        reader_artifact_id = UUID(cast(str, raw_reader_artifact["id"]))
-        reader_evaluation_id = UUID(cast(str, raw_reader_eval["id"]))
-
     try:
+        if raw_reader is not None:
+            if not isinstance(raw_reader, dict):
+                raise QualityReadinessError("quality_readiness_handoff_reader_value_invalid")
+            raw_reader_artifact = raw_reader.get("artifact")
+            raw_reader_eval = raw_reader.get("quality_evaluation")
+            if not isinstance(raw_reader_artifact, dict) or not isinstance(raw_reader_eval, dict):
+                raise QualityReadinessError("quality_readiness_handoff_reader_value_invalid")
+            reader_artifact_id = UUID(cast(str, raw_reader_artifact["id"]))
+            reader_evaluation_id = UUID(cast(str, raw_reader_eval["id"]))
+
         return await load_quality_readiness_input(
             session,
             stage=stage,
@@ -673,6 +693,8 @@ async def load_quality_readiness_input_from_handoff(
             reader_value_artifact_id=reader_artifact_id,
             reader_value_quality_evaluation_id=reader_evaluation_id,
         )
+    except QualityReadinessError:
+        raise
     except (KeyError, TypeError, ValueError) as exc:
         raise QualityReadinessError("quality_readiness_handoff_binding_invalid") from exc
 
