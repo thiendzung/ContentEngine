@@ -1063,8 +1063,7 @@ async def _finalize_confirmed_publish(
         mapping.current_content_version_id = version.id
         mapping.external_revision_id = revision
         mapping.external_status = status
-        if status == "publish":
-            mapping.published_at = published_at
+        mapping.published_at = published_at if status == "publish" else None
         await session.flush()
 
     action = _text(target.get("action"), "publish_action_invalid")
