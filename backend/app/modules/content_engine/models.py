@@ -78,13 +78,6 @@ class Signal(TimestampMixin, Base):
     duplicate_of_id: Mapped[UUID | None] = mapped_column(ForeignKey("signals.id"))
     independence_group: Mapped[str | None] = mapped_column(String(255))
     provenance_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
-    published_content_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("published_contents.id")
-    )
-    content_version_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("content_versions.id")
-    )
-    metric_refs_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
     __table_args__ = (
         CheckConstraint(
