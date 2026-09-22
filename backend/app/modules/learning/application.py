@@ -136,6 +136,7 @@ async def _target_snapshot(
     session: AsyncSession,
     *,
     candidate: LearningCandidate,
+    lock_target: bool,
 ) -> dict[str, object]:
     scope = candidate.scope_json
     frozen_audience = _optional_uuid_from_scope(
@@ -162,7 +163,14 @@ async def _target_snapshot(
     if candidate.target_type == "need_hypothesis":
         if candidate.target_id is None or candidate.target_id != frozen_need_id:
             raise LearningApplicationError("learning_review_need_target_mismatch")
-        need = await session.get(NeedHypothesis, candidate.target_id)
+        need_stmt = (
+            select(NeedHypothesis)
+            .where(NeedHypothesis.id == candidate.target_id)
+            .execution_options(populate_existing=True)
+        )
+        if lock_target:
+            need_stmt = need_stmt.with_for_update()
+        need = await session.scalar(need_stmt)
         if need is None or need.project_id != candidate.project_id:
             raise LearningApplicationError("learning_review_need_target_stale")
         if need.version != frozen_need_version:
@@ -182,7 +190,14 @@ async def _target_snapshot(
     elif candidate.target_type == "customer_insight":
         if candidate.target_id is None:
             raise LearningApplicationError("learning_review_insight_target_missing")
-        insight = await session.get(CustomerInsight, candidate.target_id)
+        insight_stmt = (
+            select(CustomerInsight)
+            .where(CustomerInsight.id == candidate.target_id)
+            .execution_options(populate_existing=True)
+        )
+        if lock_target:
+            insight_stmt = insight_stmt.with_for_update()
+        insight = await session.scalar(insight_stmt)
         if insight is None or insight.project_id != candidate.project_id:
             raise LearningApplicationError("learning_review_insight_target_stale")
         insight_audience = (
@@ -212,7 +227,14 @@ async def _target_snapshot(
     elif candidate.target_type == "new_customer_insight":
         if candidate.target_id is not None:
             raise LearningApplicationError("learning_review_new_insight_target_invalid")
-        need = await session.get(NeedHypothesis, frozen_need_id)
+        need_stmt = (
+            select(NeedHypothesis)
+            .where(NeedHypothesis.id == frozen_need_id)
+            .execution_options(populate_existing=True)
+        )
+        if lock_target:
+            need_stmt = need_stmt.with_for_update()
+        need = await session.scalar(need_stmt)
         if need is None or need.project_id != candidate.project_id:
             raise LearningApplicationError("learning_review_new_insight_need_stale")
         need_audience = (
@@ -275,6 +297,7 @@ async def _candidate_snapshot(
     *,
     candidate_id: UUID,
     lock: bool,
+    lock_target: bool = False,
 ) -> CandidateSnapshot:
     stmt = select(LearningCandidate).where(LearningCandidate.id == candidate_id)
     if lock:
@@ -466,6 +489,7 @@ async def _candidate_snapshot(
     target_snapshot = await _target_snapshot(
         session,
         candidate=candidate,
+        lock_target=lock_target,
     )
     snapshot_payload: dict[str, object] = {
         "candidate": {
@@ -890,6 +914,7 @@ async def apply_learning_candidate(
         session,
         candidate_id=review.learning_candidate_id,
         lock=True,
+        lock_target=True,
     )
     if (
         review.project_id != snapshot.candidate.project_id
