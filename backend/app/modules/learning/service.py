@@ -13,7 +13,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -154,6 +154,20 @@ def _text(value: object, code: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise LearningError(code)
     return value.strip()
+
+
+def _evidence_relation(value: object, code: str) -> EvidenceRelation:
+    relation = _text(value, code)
+    if relation not in {"supports", "contradicts", "context"}:
+        raise LearningError(code)
+    return cast(EvidenceRelation, relation)
+
+
+def _assessment_result(value: object, code: str) -> AssessmentResult:
+    result = _text(value, code)
+    if result not in {"SUPPORTS", "CONTRADICTS", "INCONCLUSIVE"}:
+        raise LearningError(code)
+    return cast(AssessmentResult, result)
 
 
 def _aware(value: datetime | None, code: str) -> datetime:
@@ -884,12 +898,10 @@ async def _validated_assessment_payload(
         "minimum_evidence_interpreted",
     }:
         raise LearningError("learning_candidate_assessment_shape_invalid")
-    proposed_result = _text(
+    proposed_result = _assessment_result(
         assessment.get("proposed_result"),
         "learning_candidate_assessment_result_invalid",
     )
-    if proposed_result not in {"SUPPORTS", "CONTRADICTS", "INCONCLUSIVE"}:
-        raise LearningError("learning_candidate_assessment_result_invalid")
     if (
         assessment.get("causal_claim_allowed") is not False
         or assessment.get("minimum_evidence_interpreted") is not False
@@ -933,13 +945,10 @@ async def _validated_assessment_payload(
         if signal_id in seen_signals:
             raise LearningError("learning_candidate_assessment_signal_duplicate")
         seen_signals.add(signal_id)
-        relation_raw = _text(
+        relation = _evidence_relation(
             record.get("relation"),
             "learning_candidate_assessment_signal_invalid",
         )
-        if relation_raw not in {"supports", "contradicts", "context"}:
-            raise LearningError("learning_candidate_assessment_signal_invalid")
-        relation: EvidenceRelation = relation_raw  # type: ignore[assignment]
         signal, observation = await _validate_signal(
             session,
             context=context,
@@ -1022,7 +1031,7 @@ async def _validated_assessment_payload(
         "learning_candidate_missing_evidence_invalid",
     )
     _validate_assessment_direction(
-        proposed_result=proposed_result,  # type: ignore[arg-type]
+        proposed_result=proposed_result,
         relations=signal_relations,
         alternatives=alternatives,
         missing=missing,
@@ -1168,30 +1177,36 @@ async def _candidate_evidence(
     assessment_ids: set[UUID] = set()
 
     if candidate is not None:
-        for row in (
+        for assessment_link in (
             await session.scalars(
                 select(LearningCandidateAssessment).where(
                     LearningCandidateAssessment.learning_candidate_id == candidate.id
                 )
             )
         ).all():
-            assessment_ids.add(row.assessment_artifact_id)
-        for row in (
+            assessment_ids.add(assessment_link.assessment_artifact_id)
+        for signal_link in (
             await session.scalars(
                 select(LearningCandidateSignal).where(
                     LearningCandidateSignal.learning_candidate_id == candidate.id
                 )
             )
         ).all():
-            signal_relations[row.signal_id] = row.relation  # type: ignore[assignment]
-        for row in (
+            signal_relations[signal_link.signal_id] = _evidence_relation(
+                signal_link.relation,
+                "learning_candidate_signal_relation_invalid",
+            )
+        for observation_link in (
             await session.scalars(
                 select(LearningCandidateObservation).where(
                     LearningCandidateObservation.learning_candidate_id == candidate.id
                 )
             )
         ).all():
-            observation_relations[row.observation_id] = row.relation  # type: ignore[assignment]
+            observation_relations[observation_link.observation_id] = _evidence_relation(
+                observation_link.relation,
+                "learning_candidate_observation_relation_invalid",
+            )
 
     payload = _assessment_payload(assessment)
     evidence = _dict(
@@ -1206,16 +1221,14 @@ async def _candidate_evidence(
             record.get("id"),
             "learning_candidate_assessment_signal_invalid",
         )
-        relation = _text(
+        relation = _evidence_relation(
             record.get("relation"),
             "learning_candidate_assessment_signal_invalid",
         )
-        if relation not in {"supports", "contradicts", "context"}:
-            raise LearningError("learning_candidate_assessment_signal_invalid")
         existing = signal_relations.get(signal_id)
         if existing is not None and existing != relation:
             raise LearningError("learning_candidate_signal_relation_conflict")
-        signal_relations[signal_id] = relation  # type: ignore[assignment]
+        signal_relations[signal_id] = relation
 
     for record in _records(
         evidence.get("observations", []),
@@ -1225,16 +1238,14 @@ async def _candidate_evidence(
             record.get("id"),
             "learning_candidate_assessment_observation_invalid",
         )
-        relation = _text(
+        relation = _evidence_relation(
             record.get("relation"),
             "learning_candidate_assessment_observation_invalid",
         )
-        if relation not in {"supports", "contradicts", "context"}:
-            raise LearningError("learning_candidate_assessment_observation_invalid")
         existing = observation_relations.get(observation_id)
         if existing is not None and existing != relation:
             raise LearningError("learning_candidate_observation_relation_conflict")
-        observation_relations[observation_id] = relation  # type: ignore[assignment]
+        observation_relations[observation_id] = relation
 
     assessment_ids.add(assessment.id)
     return signal_relations, observation_relations, assessment_ids
