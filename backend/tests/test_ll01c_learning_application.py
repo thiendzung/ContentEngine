@@ -865,6 +865,37 @@ async def test_ll01c_review_and_application_receipts_are_immutable(
             applied_by="founder",
         )
 
+        forged_scope = dict(candidate.scope_json)
+        forged_scope["need_hypothesis_version"] = (
+            int(forged_scope["need_hypothesis_version"]) + 1
+        )
+        forged_receipt = LearningApplication(
+            project_id=candidate.project_id,
+            learning_candidate_id=candidate.id,
+            candidate_version=candidate.version,
+            review_id=review.review.id,
+            candidate_snapshot_hash=review.review.candidate_snapshot_hash,
+            target_type=candidate.target_type,
+            target_id=candidate.target_id,
+            resulting_target_id=None,
+            applied_action="no_map_change",
+            applied_signal_refs_json=[],
+            frozen_scope_json=forged_scope,
+            before_state_hash=None,
+            after_state_hash=None,
+            customer_map_snapshot_artifact_id=None,
+            change_report_json=None,
+            applied_by="founder",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_scope_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged_receipt)
+                await session.flush()
+
         with pytest.raises(
             DBAPIError,
             match="learning_candidate_review_update_forbidden",
