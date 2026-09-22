@@ -371,13 +371,15 @@ async def get_measurement_identity(
     session: AsyncSession,
     *,
     published_content_id: UUID,
+    content_version_id: UUID | None = None,
 ) -> dict[str, object]:
-    """Return the exact customer/content identity used by PM-01 and later LL-01."""
+    """Return exact current or historical publication identity for later LL-01."""
 
     mapping = await session.get(PublishedContent, published_content_id)
     if mapping is None:
         raise MeasurementError("measurement_identity_missing")
-    version = await session.get(ContentVersion, mapping.current_content_version_id)
+    resolved_version_id = content_version_id or mapping.current_content_version_id
+    version = await session.get(ContentVersion, resolved_version_id)
     item = await session.get(ContentItem, mapping.content_item_id)
     if version is None or item is None or version.content_item_id != item.id:
         raise MeasurementError("measurement_identity_mismatch")
@@ -500,6 +502,9 @@ async def get_measurement_identity(
         },
         "content": {
             "content_version_id": str(version.id),
+            "is_current_published_content_version": (
+                version.id == mapping.current_content_version_id
+            ),
             "content_version_no": version.version_no,
             "source_content_version_id": str(source_version.id),
             "source_content_version_no": source_version.version_no,
