@@ -207,6 +207,57 @@ def _journal_body(draft: dict[str, object]) -> str:
     return "\n\n".join(parts)
 
 
+def _aware_datetime(value: datetime, code: str) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise PublishError(code)
+    return value
+
+
+async def set_measurement_review_window(
+    session: AsyncSession,
+    *,
+    experiment_id: UUID,
+    review_window_start: datetime,
+    review_window_end: datetime,
+) -> ContentExperiment:
+    """Set the explicit pre-publish review window before the experiment is bound."""
+
+    start = _aware_datetime(
+        review_window_start,
+        "publish_experiment_review_window_timezone_required",
+    )
+    end = _aware_datetime(
+        review_window_end,
+        "publish_experiment_review_window_timezone_required",
+    )
+    if end <= start:
+        raise PublishError("publish_experiment_review_window_invalid")
+
+    experiment = await session.get(ContentExperiment, experiment_id)
+    if experiment is None:
+        raise PublishError("publish_experiment_not_found")
+
+    if (
+        experiment.review_window_start == start
+        and experiment.review_window_end == end
+    ):
+        return experiment
+
+    if (
+        experiment.content_item_id is not None
+        or experiment.content_version_id is not None
+        or experiment.published_content_id is not None
+        or experiment.status != "PLANNED"
+        or experiment.result != "PENDING"
+    ):
+        raise PublishError("publish_experiment_review_window_frozen")
+
+    experiment.review_window_start = start
+    experiment.review_window_end = end
+    await session.flush()
+    return experiment
+
+
 async def _approved_lineage(
     session: AsyncSession,
     *,
@@ -307,7 +358,7 @@ async def _approved_lineage(
         or not experiment.minimum_evidence_json
         or experiment.review_window_start is None
         or experiment.review_window_end is None
-        or experiment.review_window_end < experiment.review_window_start
+        or experiment.review_window_end <= experiment.review_window_start
     ):
         raise PublishError("publish_experiment_not_ready")
     if experiment.content_item_id not in {None, item.id}:
@@ -1552,5 +1603,6 @@ __all__ = [
     "prepare_wordpress_reconciliation",
     "record_wordpress_execution_result",
     "record_wordpress_reconciliation",
+    "set_measurement_review_window",
     "submit_publish_decision",
 ]
