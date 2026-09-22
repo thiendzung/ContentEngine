@@ -13,6 +13,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
+from app.modules.content_engine.content_coverage import build_content_coverage
+from app.modules.content_engine.journal.review_console import get_review_case
 from app.modules.content_engine.models import (
     AudienceHypothesis,
     ContentCase,
@@ -607,26 +609,32 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         assert mapping2.external_status == "publish"
         assert mapping2.published_at is not None
         assert fixture.version.status == "approved"
-        published_version = await session.get(
-            ContentVersion,
-            mapping2.current_content_version_id,
-        )
-        assert published_version is not None
-        assert published_version.id != fixture.version.id
-        assert published_version.status == "published"
-        assert published_version.content_json == fixture.version.content_json
-        assert published_version.final_artifact_id == fixture.final_artifact.id
-        assert publish_event.content_version_id == published_version.id
+        assert mapping2.current_content_version_id == fixture.version.id
+        assert publish_event.content_version_id == fixture.version.id
         assert fixture.item.status == "published"
         assert fixture.experiment.status == "RUNNING"
-        assert fixture.experiment.content_version_id == published_version.id
+        assert fixture.experiment.content_version_id == fixture.version.id
+
+        coverage = await build_content_coverage(
+            session,
+            project_id=fixture.project.id,
+            need_id=fixture.need.id,
+            locale="en",
+        )
+        assert coverage["needs"][0]["coverage_status"] == "PUBLISHED"
+        review = await get_review_case(
+            session,
+            content_case_id=fixture.content_case.id,
+        )
+        assert review.locales[0].publication_state == "PUBLISHED"
+        assert review.locales[0].next_action == "PUBLISHED"
 
         window_end = datetime.now(UTC)
         window_start = window_end - timedelta(days=7)
         first = await ingest_performance_snapshot(
             session,
             published_content_id=mapping2.id,
-            content_version_id=published_version.id,
+            content_version_id=fixture.version.id,
             provider="search_console",
             window_start=window_start,
             window_end=window_end,
@@ -650,7 +658,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         replay = await ingest_performance_snapshot(
             session,
             published_content_id=mapping2.id,
-            content_version_id=published_version.id,
+            content_version_id=fixture.version.id,
             provider="search_console",
             window_start=window_start,
             window_end=window_end,
@@ -678,7 +686,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         observation = await record_performance_observation(
             session,
             published_content_id=mapping2.id,
-            content_version_id=published_version.id,
+            content_version_id=fixture.version.id,
             observation_type="search_exposure",
             statement="The page has early search exposure; this does not prove the Need.",
             data_status="EARLY_SIGNAL",
@@ -691,7 +699,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
             session,
             published_content_id=mapping2.id,
         )
-        assert identity["content"]["content_version_id"] == str(published_version.id)
+        assert identity["content"]["content_version_id"] == str(fixture.version.id)
         assert identity["content"]["source_content_version_id"] == str(
             fixture.version.id
         )
@@ -994,22 +1002,17 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
             result=result,
         )
         assert mapping is not None
-        old_published = await session.get(
-            ContentVersion,
-            mapping.current_content_version_id,
-        )
-        assert old_published is not None
-        assert old_published.status == "published"
+        assert mapping.current_content_version_id == fixture.version.id
         assert fixture.version.status == "approved"
 
-        newer_payload = json.loads(json.dumps(old_published.content_json))
-        newer_payload["pm01_test_revision"] = "later-published-snapshot"
+        newer_payload = json.loads(json.dumps(fixture.version.content_json))
+        newer_payload["pm01_test_revision"] = "later-approved-version"
         newer = ContentVersion(
             content_item_id=fixture.item.id,
-            version_no=old_published.version_no + 1,
+            version_no=fixture.version.version_no + 1,
             final_artifact_id=fixture.final_artifact.id,
-            change_reason="Simulate a later immutable published version.",
-            status="published",
+            change_reason="Simulate a later immutable approved version.",
+            status="approved",
             content_json=newer_payload,
             created_by_run_id=fixture.source_run.id,
         )
@@ -1022,7 +1025,7 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
         ingested = await ingest_performance_snapshot(
             session,
             published_content_id=mapping.id,
-            content_version_id=old_published.id,
+            content_version_id=fixture.version.id,
             provider="search_console",
             window_start=now - timedelta(days=1),
             window_end=now,
@@ -1036,4 +1039,4 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
             ],
         )
         assert ingested.replayed is False
-        assert ingested.snapshot.content_version_id == old_published.id
+        assert ingested.snapshot.content_version_id == fixture.version.id
