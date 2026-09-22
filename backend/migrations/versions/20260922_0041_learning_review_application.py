@@ -838,6 +838,20 @@ def downgrade() -> None:
         "ON learning_candidate_reviews"
     )
     op.execute("DROP FUNCTION IF EXISTS validate_learning_candidate_review()")
+    op.execute(
+        "DROP TRIGGER IF EXISTS ll01c_customer_insight_project_lock "
+        "ON customer_insights"
+    )
+    op.execute("DROP FUNCTION IF EXISTS serialize_customer_insight_project()")
+    op.execute(
+        "DROP FUNCTION IF EXISTS learning_candidate_applied_signal_refs(uuid)"
+    )
+    op.execute(
+        "DROP FUNCTION IF EXISTS learning_candidate_snapshot_hash(uuid)"
+    )
+    op.execute(
+        "DROP FUNCTION IF EXISTS learning_candidate_target_snapshot(uuid)"
+    )
 
     op.drop_index(
         "ix_learning_applications_project_time",
