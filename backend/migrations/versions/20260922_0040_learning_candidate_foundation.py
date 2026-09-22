@@ -18,41 +18,24 @@ depends_on: str | Sequence[str] | None = None
 def _create_learning_guards() -> None:
     op.execute(
         """
-            CREATE FUNCTION protect_learning_assessment_artifact()
+            CREATE FUNCTION validate_learning_assessment_artifact_insert()
             RETURNS trigger AS $ll01b$
             DECLARE
                 run_project uuid;
             BEGIN
-                IF TG_OP = 'INSERT' THEN
-                    IF NEW.artifact_type = 'learning_assessment' THEN
-                        SELECT project_id INTO run_project
-                        FROM content_runs
-                        WHERE id = NEW.run_id;
+                IF NEW.artifact_type = 'learning_assessment' THEN
+                    SELECT project_id INTO run_project
+                    FROM content_runs
+                    WHERE id = NEW.run_id;
 
-                        IF run_project IS NULL
-                           OR NEW.content_json IS NULL
-                           OR NEW.content_json->>'project_id'
-                              IS DISTINCT FROM run_project::text
-                           OR NEW.step_run_id IS NOT NULL THEN
-                            RAISE EXCEPTION
-                                'learning_assessment_artifact_lineage_invalid';
-                        END IF;
-                    END IF;
-                    RETURN NEW;
-                END IF;
-
-                IF TG_OP = 'DELETE' THEN
-                    IF OLD.artifact_type = 'learning_assessment' THEN
+                    IF run_project IS NULL
+                       OR NEW.content_json IS NULL
+                       OR NEW.content_json->>'project_id'
+                          IS DISTINCT FROM run_project::text
+                       OR NEW.step_run_id IS NOT NULL THEN
                         RAISE EXCEPTION
-                            'learning_assessment_artifact_delete_forbidden';
+                            'learning_assessment_artifact_lineage_invalid';
                     END IF;
-                    RETURN OLD;
-                END IF;
-
-                IF OLD.artifact_type = 'learning_assessment'
-                   OR NEW.artifact_type = 'learning_assessment' THEN
-                    RAISE EXCEPTION
-                        'learning_assessment_artifact_update_forbidden';
                 END IF;
                 RETURN NEW;
             END;
@@ -61,10 +44,10 @@ def _create_learning_guards() -> None:
     )
     op.execute(
         """
-            CREATE TRIGGER learning_assessment_artifact_guard
-            BEFORE INSERT OR UPDATE OR DELETE ON artifacts
+            CREATE TRIGGER learning_assessment_artifact_insert_guard
+            BEFORE INSERT ON artifacts
             FOR EACH ROW
-            EXECUTE FUNCTION protect_learning_assessment_artifact()
+            EXECUTE FUNCTION validate_learning_assessment_artifact_insert()
         """
     )
 
@@ -612,12 +595,14 @@ def downgrade() -> None:
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_learning_candidate()"))
     op.execute(
         sa.text(
-            "DROP TRIGGER IF EXISTS learning_assessment_artifact_guard "
+            "DROP TRIGGER IF EXISTS learning_assessment_artifact_insert_guard "
             "ON artifacts"
         )
     )
     op.execute(
-        sa.text("DROP FUNCTION IF EXISTS protect_learning_assessment_artifact()")
+        sa.text(
+            "DROP FUNCTION IF EXISTS validate_learning_assessment_artifact_insert()"
+        )
     )
 
     op.drop_index(
