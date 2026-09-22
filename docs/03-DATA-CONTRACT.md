@@ -531,7 +531,7 @@ runtime trong PR-B; CE02 tạo schema mới và cập nhật mọi foreign key t
 - `content_case_id`
 - `locale_variant_id`
 - `content_item_id` nullable
-- `run_mode`: `create | update | refresh | localize | eval`
+- `run_mode`: `create | update | refresh | localize | eval | publish`
 
 Replay creates an `eval` ContentRun from frozen baseline inputs/context.
 
@@ -771,7 +771,9 @@ Giữ raw/aggregate payload của provider để audit.
 Các chỉ số lõi được chuẩn hóa để so giữa bài.
 
 - `id`
+- `snapshot_id`
 - `published_content_id`
+- `content_version_id`
 - `provider`
 - `metric_date`
 - `metric_name`
@@ -786,7 +788,7 @@ Một nhận xét có cấu trúc từ metrics, chưa phải learning rule.
 
 - `id`
 - `published_content_id`
-- `content_version_id` nullable
+- `content_version_id`
 - `observation_type`
 - `statement`
 - `metric_refs_json`
