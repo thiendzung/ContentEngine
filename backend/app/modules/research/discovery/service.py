@@ -421,3 +421,13 @@ class DiscoveryResearchWorkflow:
     ) -> ContentOpportunity:
         for opportunity in result.opportunities:
             if opportunity.id == opportunity_id:
+                return opportunity
+        raise ValueError("selected_opportunity_missing")
+
+    def _observation_is_present(self, observed_text: str, document_content: str) -> bool:
+        observed = re.sub(r"\s+", " ", observed_text).strip().casefold()
+        document = re.sub(r"\s+", " ", document_content).strip().casefold()
+        return bool(observed) and observed in document
+
+    def _url_key(self, url: str) -> str:
+        return url.strip().rstrip("/").casefold()
