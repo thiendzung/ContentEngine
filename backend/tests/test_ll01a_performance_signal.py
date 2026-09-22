@@ -209,7 +209,6 @@ async def test_ll01a_materializes_factual_idempotent_signal_without_truth_promot
         ) == 1
 
 
-
 @pytest.mark.asyncio
 async def test_ll01a_collapses_multiple_provider_observations_by_experiment(
     monkeypatch: pytest.MonkeyPatch,
