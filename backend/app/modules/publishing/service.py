@@ -24,6 +24,7 @@ from app.modules.content_engine.models import (
     LocaleVariant,
     NeedHypothesis,
 )
+from app.modules.content_engine.persistence import create_next_content_version
 from app.modules.harness.models import (
     Approval,
     Artifact,
@@ -313,7 +314,18 @@ async def _approved_lineage(
     if experiment.content_item_id not in {None, item.id}:
         raise PublishError("publish_experiment_content_item_conflict")
     if experiment.content_version_id not in {None, version.id}:
-        raise PublishError("publish_experiment_content_version_conflict")
+        bound_version = await session.get(
+            ContentVersion,
+            experiment.content_version_id,
+        )
+        if (
+            bound_version is None
+            or bound_version.content_item_id != item.id
+            or bound_version.status != "published"
+            or bound_version.final_artifact_id != version.final_artifact_id
+            or bound_version.content_json != version.content_json
+        ):
+            raise PublishError("publish_experiment_content_version_conflict")
 
     return (
         version,
@@ -1025,6 +1037,64 @@ def _require_requested_external_state(
         raise PublishError("publish_external_status_mismatch")
 
 
+async def _effective_published_version(
+    session: AsyncSession,
+    *,
+    source_version: ContentVersion,
+    item: ContentItem,
+    publish_run_id: UUID,
+) -> ContentVersion:
+    """Return/create the immutable published snapshot for exact approved bytes."""
+
+    if source_version.status == "published":
+        return source_version
+
+    locked_item = await session.scalar(
+        select(ContentItem)
+        .where(ContentItem.id == item.id)
+        .with_for_update()
+    )
+    if locked_item is None:
+        raise PublishError("publish_content_item_missing")
+
+    published_rows = list(
+        (
+            await session.scalars(
+                select(ContentVersion)
+                .where(
+                    ContentVersion.content_item_id == item.id,
+                    ContentVersion.status == "published",
+                    ContentVersion.final_artifact_id
+                    == source_version.final_artifact_id,
+                )
+                .order_by(ContentVersion.version_no, ContentVersion.id)
+            )
+        ).all()
+    )
+    exact = [
+        row
+        for row in published_rows
+        if row.content_json == source_version.content_json
+    ]
+    if len(exact) > 1:
+        raise PublishError("publish_version_snapshot_ambiguous")
+    if exact:
+        return exact[0]
+
+    return await create_next_content_version(
+        session,
+        content_item_id=item.id,
+        change_reason=(
+            "PM-01 confirmed WordPress publication from "
+            f"ContentVersion v{source_version.version_no}"
+        ),
+        content_json=source_version.content_json,
+        status="published",
+        created_by_run_id=publish_run_id,
+        final_artifact_id=source_version.final_artifact_id,
+    )
+
+
 async def _finalize_confirmed_publish(
     session: AsyncSession,
     *,
@@ -1056,6 +1126,17 @@ async def _finalize_confirmed_publish(
     ):
         raise PublishError("publish_identity_mismatch")
 
+    effective_version = (
+        await _effective_published_version(
+            session,
+            source_version=version,
+            item=item,
+            publish_run_id=dispatch.run.id,
+        )
+        if status == "publish"
+        else version
+    )
+
     mapping = await session.scalar(
         select(PublishedContent)
         .where(
@@ -1073,7 +1154,7 @@ async def _finalize_confirmed_publish(
             target="wordpress",
             external_id=external_id,
             canonical_url=url,
-            current_content_version_id=version.id,
+            current_content_version_id=effective_version.id,
             external_revision_id=revision,
             external_status=status,
             published_at=published_at if status == "publish" else None,
@@ -1084,7 +1165,7 @@ async def _finalize_confirmed_publish(
         if mapping.external_id != external_id:
             raise PublishError("publish_external_mapping_conflict")
         mapping.canonical_url = url
-        mapping.current_content_version_id = version.id
+        mapping.current_content_version_id = effective_version.id
         mapping.external_revision_id = revision
         mapping.external_status = status
         mapping.published_at = published_at if status == "publish" else None
@@ -1100,7 +1181,7 @@ async def _finalize_confirmed_publish(
     if existing_event is not None:
         if (
             existing_event.published_content_id != mapping.id
-            or existing_event.content_version_id != version.id
+            or existing_event.content_version_id != effective_version.id
             or existing_event.idempotency_key != dispatch.intent.idempotency_key
         ):
             raise PublishError("publish_event_replay_conflict")
@@ -1108,7 +1189,7 @@ async def _finalize_confirmed_publish(
 
     event = PublishEvent(
         published_content_id=mapping.id,
-        content_version_id=version.id,
+        content_version_id=effective_version.id,
         publish_package_artifact_id=dispatch.package.id,
         publish_approval_id=dispatch.approval.id,
         outbox_intent_id=dispatch.intent.id,
@@ -1128,25 +1209,11 @@ async def _finalize_confirmed_publish(
     session.add(event)
 
     experiment.content_item_id = item.id
-    experiment.content_version_id = version.id
+    experiment.content_version_id = effective_version.id
     experiment.published_content_id = mapping.id
     if status == "publish":
         experiment.status = "RUNNING"
-        version.status = "published"
         item.status = "published"
-        previous = list(
-            (
-                await session.scalars(
-                    select(ContentVersion).where(
-                        ContentVersion.content_item_id == item.id,
-                        ContentVersion.id != version.id,
-                        ContentVersion.status == "published",
-                    )
-                )
-            ).all()
-        )
-        for row in previous:
-            row.status = "superseded"
     await session.flush()
     return mapping, event
 
