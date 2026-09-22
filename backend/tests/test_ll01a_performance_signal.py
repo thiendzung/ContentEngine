@@ -172,8 +172,8 @@ async def test_ll01a_materializes_factual_idempotent_signal_without_truth_promot
         assert "synthetic private dimension" not in serialized
         assert observation.statement not in serialized
         assert signal.provenance_json["content_performance_observation"][
-            "statement_excluded"
-        ] is True
+            "interpretation_fields_excluded"
+        ] == ["statement", "observation_type", "data_status"]
         assert signal.provenance_json["customer"]["need_hypothesis_id"] == str(
             fixture.need.id
         )
@@ -409,7 +409,7 @@ async def test_ll01a_replay_conflict_fails_closed_if_source_observation_changes(
         )
         assert first.replayed is False
 
-        observation.observation_type = "changed_after_materialization"
+        observation.observed_at = observation.observed_at + timedelta(minutes=1)
         await session.flush()
         with pytest.raises(
             PerformanceSignalError,
