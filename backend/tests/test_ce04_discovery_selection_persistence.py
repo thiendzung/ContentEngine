@@ -179,6 +179,9 @@ async def test_persisted_human_selection_is_single_idempotent_and_pre_contentcas
             )
             assert result.selection_refs == first_refs
 
+            stable_selection = result.opportunity_map.human_selection
+            stable_selection_refs = result.selection_refs
+            stable_opportunities = list(result.opportunity_map.opportunities)
             with pytest.raises(
                 ValueError,
                 match="discovery_plan_already_has_different_selection",
@@ -190,6 +193,9 @@ async def test_persisted_human_selection_is_single_idempotent_and_pre_contentcas
                     selected_by="founder",
                     reason="A conflicting replacement decision.",
                 )
+            assert result.opportunity_map.human_selection == stable_selection
+            assert result.selection_refs == stable_selection_refs
+            assert result.opportunity_map.opportunities == stable_opportunities
 
             selection_count = await session.scalar(
                 select(func.count()).select_from(HumanSelection).where(
