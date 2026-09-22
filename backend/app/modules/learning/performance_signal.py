@@ -326,8 +326,7 @@ async def materialize_performance_signal(
         content.get("locale_variant_id"),
         "performance_signal_locale_variant_invalid",
     )
-    locale = _text(content.get("locale"), "performance_signal_locale_invalid")
-    intent = _text(content.get("intent"), "performance_signal_intent_invalid")
+    _text(content.get("locale"), "performance_signal_locale_invalid")
 
     need_id = _uuid(
         customer.get("need_hypothesis_id"),
@@ -394,6 +393,14 @@ async def materialize_performance_signal(
     package_identity = _dict(
         package.content_json.get("identity"),
         "performance_signal_publish_package_identity_invalid",
+    )
+    package_content = _dict(
+        package.content_json.get("content"),
+        "performance_signal_publish_package_content_invalid",
+    )
+    frozen_locale = _text(
+        package_content.get("locale"),
+        "performance_signal_publish_package_locale_invalid",
     )
     frozen_expected = {
         "project_id": str(mapping.project_id),
@@ -477,8 +484,7 @@ async def materialize_performance_signal(
             "content_item_id": str(content_item_id),
             "content_case_id": str(content_case_id),
             "locale_variant_id": str(locale_variant_id),
-            "locale": locale,
-            "intent": intent,
+            "locale": frozen_locale,
         },
         "customer": {
             "audience_hypothesis_id": (
@@ -541,7 +547,7 @@ async def materialize_performance_signal(
             observed_text=observed_text,
             source_url=source_url,
             external_id=external_id,
-            locale=locale,
+            locale=frozen_locale,
             captured_at=captured_at,
             observed_at=observed_at,
             fingerprint=fingerprint,
@@ -559,7 +565,7 @@ async def materialize_performance_signal(
         observed_text=observed_text,
         source_url=source_url,
         external_id=external_id,
-        locale=locale,
+        locale=frozen_locale,
         context=_SIGNAL_CONTEXT,
         captured_at=captured_at,
         observed_at=observed_at,
