@@ -358,7 +358,7 @@ def upgrade() -> None:
         sa.text(
             """
             CREATE TRIGGER content_experiment_binding_immutable
-            BEFORE UPDATE OF content_item_id, content_version_id, published_content_id
+            BEFORE UPDATE
             ON content_experiments
             FOR EACH ROW
             EXECUTE FUNCTION prevent_content_experiment_rebind()
