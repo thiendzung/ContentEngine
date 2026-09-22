@@ -392,7 +392,7 @@ async def link_customer_insight_signal(
 
     # Validate the whole duplicate ancestry before accepting durable evidence.
     # DB triggers enforce the same rule for direct writes.
-    await _signal_independence_key(session, signal, {})
+    await signal_independence_key(session, signal, {})
 
     existing = await session.get(
         CustomerInsightSignal, (customer_insight_id, signal_id)
@@ -412,7 +412,7 @@ async def link_customer_insight_signal(
     return link
 
 
-async def _signal_independence_key(
+async def signal_independence_key(
     session: AsyncSession,
     signal: Signal,
     cache: dict[UUID, str],
@@ -499,7 +499,7 @@ async def customer_insight_evidence_counts(
     for link, signal in rows:
         counts[link.relation] += 1
         independent[link.relation].add(
-            await _signal_independence_key(session, signal, cache)
+            await signal_independence_key(session, signal, cache)
         )
 
     return CustomerInsightEvidenceCounts(
@@ -523,4 +523,5 @@ __all__ = [
     "ensure_customer_insight",
     "link_customer_insight_signal",
     "review_customer_insight",
+    "signal_independence_key",
 ]
