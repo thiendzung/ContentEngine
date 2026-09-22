@@ -78,7 +78,8 @@ A style rewrite must never inherit the factual safety verdict of different bytes
 - [x] Stable evidence ID + source ref + exact text.
 - [x] Segment-level allowed claim refs.
 - [x] Segment-level allowed evidence refs.
-- [x] Explicit forbidden-invention list.
+- [x] Model input exposes only evidence allowed for each segment.
+- [x] Required forbidden-invention baseline cannot be weakened by the caller.
 
 ### HV-01B — Formulaic style markers
 - [x] Deterministic Vietnamese and English marker scan.
