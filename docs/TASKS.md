@@ -345,7 +345,26 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Move Memory Gap publish/freshness truth to PublishedContent + PublishEvent while retaining legacy ContentVersion fallback.
 - [x] Positive-test Search Console, Analytics, MOTGU conversion and INSUFFICIENT_DATA semantics.
 - [x] CI implementation proof PASS after final normal-path hardening — CI #1518 on `e2b75b6c288a5b85abd117d9b2cab42903a9b82d`: Ruff PASS; mypy 158 source files; rev-0038↔0039 round-trip PASS; backend 980 passed / 12 warnings; OpenAPI + frontend lint/typecheck/build PASS. Final docs-head CI still must be green before OCR freeze.
-- [ ] Exact-ref OpenCodeReview Delegation review and MG triage.
-- [ ] Agent Local bounded exact-head proof including disposable 0038↔0039 migration round-trip.
-- [ ] Founder merge.
+- [x] Exact-ref OpenCodeReview Delegation review and MG triage — OCR v1.12.8, 17/17 reviewable, 0 Critical/High/Medium.
+- [x] Agent Local bounded exact-head proof — combined exact-head evidence: migration round-trip PASS, CI-parity full backend 980 passed / 12 warnings, focused PM-01 16 passed on a clean seeded disposable DB.
+- [x] Founder merge — PR #179 merged as main `592146cc746b08b520e91d76f1fe9c980748c201`.
 - [ ] Operational migration remains separately authorized.
+
+### LL-01A immediate checklist
+
+- [x] Start from exact PM-01 merge main `592146cc746b08b520e91d76f1fe9c980748c201`.
+- [x] Reuse existing `Signal`; do not create a second truth/evidence store.
+- [x] Materialize a factual MOTGU/site Signal from one `ContentPerformanceObservation`.
+- [x] Revalidate exact PM-01 publication/content/experiment/customer identity.
+- [x] Bind Project / PublishedContent / PublishEvent / ContentVersion / ContentItem / ContentCase / Locale / Opportunity / Need / Audience / Journey / Lens / Experiment.
+- [x] Persist only normalized metric facts; exclude raw provider payload, metric dimensions and observation interpretation text.
+- [x] Use `experiment:<id>` as the independence group so multiple providers/windows do not inflate independent evidence.
+- [x] Preserve historical ContentVersion identity even after PublishedContent current version moves.
+- [x] Exact replay returns the same logical Signal; conflicting replay fails closed.
+- [x] Add focused tests for factual materialization, CT-01 independence collapse, historical identity, cross-content metric mismatch, replay conflict and INSUFFICIENT_DATA.
+- [x] No CustomerInsight/Need promotion, LearningCandidate, Opportunity creation, settings/prompt/workflow mutation or publication.
+- [ ] CI green on LL-01A PR head.
+- [ ] Exact-ref OpenCodeReview + MG triage.
+- [ ] Agent Local disposable proof.
+- [ ] Founder merge.
+- [ ] Operational DB remains untouched; LL-01A adds no migration.
