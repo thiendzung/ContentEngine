@@ -23,6 +23,14 @@ HumanVoiceEvidenceKind = Literal[
 ]
 
 _SUPPORTED_LOCALES = {"vi-VN", "en"}
+_REQUIRED_FORBIDDEN_INVENTIONS = {
+    "artist_intention",
+    "artist_memory",
+    "artist_motive",
+    "invented_dialogue",
+    "invented_sensory_observation",
+    "business_claim",
+}
 
 _HUMAN_VOICE_EVIDENCE_KINDS: set[str] = {
     "artist_quote",
@@ -158,6 +166,12 @@ class HumanVoiceInput:
         evidence_ids = [item.evidence_id for item in self.evidence]
         if len(set(evidence_ids)) != len(evidence_ids):
             raise HumanVoiceError("human_voice_evidence_id_duplicate")
+        missing_forbidden = _REQUIRED_FORBIDDEN_INVENTIONS - set(self.forbidden_inventions)
+        if missing_forbidden:
+            raise HumanVoiceError(
+                "human_voice_required_forbidden_invention_missing",
+                str(sorted(missing_forbidden)),
+            )
         evidence_set = set(evidence_ids)
         for segment in self.segments:
             unknown = set(segment.allowed_evidence_refs) - evidence_set
@@ -168,6 +182,14 @@ class HumanVoiceInput:
                 )
 
     def to_model_input(self) -> dict[str, object]:
+        evidence_by_id = {item.evidence_id: item for item in self.evidence}
+        scoped_segments = []
+        for segment in self.segments:
+            segment_payload = segment.to_dict()
+            segment_payload["allowed_evidence"] = [
+                evidence_by_id[ref].to_dict() for ref in segment.allowed_evidence_refs
+            ]
+            scoped_segments.append(segment_payload)
         return {
             "task": "rewrite_for_human_voice_without_adding_facts",
             "locale": self.locale,
@@ -184,8 +206,7 @@ class HumanVoiceInput:
                 "authorship_detection": "not_part_of_task",
                 "semantic_reaudit_required": True,
             },
-            "evidence": [item.to_dict() for item in self.evidence],
-            "segments": [segment.to_dict() for segment in self.segments],
+            "segments": scoped_segments,
             "output_contract": {
                 "locale": self.locale,
                 "segments": [
