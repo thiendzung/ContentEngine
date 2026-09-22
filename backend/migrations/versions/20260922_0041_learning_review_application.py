@@ -105,7 +105,11 @@ def _create_guards() -> None:
             v_candidate_key text;
             candidate_target_type text;
             candidate_target_id uuid;
+            candidate_scope jsonb;
             review_project uuid;
+            snapshot_project uuid;
+            snapshot_hash text;
+            snapshot_type text;
             review_candidate uuid;
             review_version integer;
             review_decision text;
@@ -119,9 +123,10 @@ def _create_guards() -> None:
             END IF;
 
             SELECT lc.project_id, lc.version, lc.status, lc.candidate_key,
-                   lc.target_type, lc.target_id
+                   lc.target_type, lc.target_id, lc.scope_json::jsonb
             INTO candidate_project, candidate_version, candidate_status,
-                 v_candidate_key, candidate_target_type, candidate_target_id
+                 v_candidate_key, candidate_target_type, candidate_target_id,
+                 candidate_scope
             FROM learning_candidates AS lc
             WHERE lc.id = NEW.learning_candidate_id;
 
@@ -162,6 +167,9 @@ def _create_guards() -> None:
                OR NEW.target_id IS DISTINCT FROM candidate_target_id THEN
                 RAISE EXCEPTION 'learning_application_target_mismatch';
             END IF;
+            IF NEW.frozen_scope_json::jsonb IS DISTINCT FROM candidate_scope THEN
+                RAISE EXCEPTION 'learning_application_scope_mismatch';
+            END IF;
             IF review_decision = 'NO_MAP_CHANGE'
                OR NEW.target_type = 'no_map_change' THEN
                 IF NEW.applied_action IS DISTINCT FROM 'no_map_change'
@@ -182,6 +190,22 @@ def _create_guards() -> None:
                    OR NEW.change_report_json IS NULL
                    OR json_array_length(NEW.applied_signal_refs_json) = 0 THEN
                     RAISE EXCEPTION 'learning_application_mutation_receipt_incomplete';
+                END IF;
+
+                SELECT run.project_id, artifact.content_hash,
+                       artifact.artifact_type
+                INTO snapshot_project, snapshot_hash, snapshot_type
+                FROM artifacts AS artifact
+                JOIN content_runs AS run ON run.id = artifact.run_id
+                WHERE artifact.id = NEW.customer_map_snapshot_artifact_id;
+
+                IF snapshot_project IS NULL
+                   OR snapshot_project IS DISTINCT FROM NEW.project_id
+                   OR snapshot_type IS DISTINCT FROM 'customer_map_snapshot'
+                   OR snapshot_hash IS DISTINCT FROM NEW.after_state_hash
+                   OR NEW.change_report_json->>'current_snapshot_hash'
+                      IS DISTINCT FROM NEW.after_state_hash THEN
+                    RAISE EXCEPTION 'learning_application_snapshot_mismatch';
                 END IF;
 
                 IF NEW.target_type = 'need_hypothesis'
