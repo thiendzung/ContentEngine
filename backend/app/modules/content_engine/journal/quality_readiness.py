@@ -245,13 +245,18 @@ def validate_quality_readiness_output(
                 "quality_readiness_output_criterion_repair_invalid"
             )
         repair_suggestion = raw_repair.strip()
+        criterion_result = _result(
+            item.get("result"),
+            "quality_readiness_output_criterion_result_invalid",
+        )
+        if criterion_result in {"warn", "fail"} and not repair_suggestion:
+            raise QualityReadinessError(
+                "quality_readiness_output_criterion_repair_required"
+            )
         parsed.append(
             ReadinessCriterion(
                 key=key,
-                result=_result(
-                    item.get("result"),
-                    "quality_readiness_output_criterion_result_invalid",
-                ),
+                result=criterion_result,
                 finding=_nonempty_text(
                     item.get("finding"),
                     "quality_readiness_output_criterion_finding_invalid",
