@@ -202,6 +202,43 @@ def test_input_rejects_unsupported_locale() -> None:
     assert exc.value.code == "human_voice_locale_unsupported"
 
 
+def test_input_requires_baseline_forbidden_inventions() -> None:
+    with pytest.raises(HumanVoiceError) as exc:
+        HumanVoiceInput(
+            locale="en",
+            evidence=(),
+            segments=(
+                HumanVoiceSegment(
+                    segment_id="lead",
+                    source_markdown="A paragraph.",
+                    allowed_claim_refs=(),
+                    allowed_evidence_refs=(),
+                ),
+            ),
+            forbidden_inventions=(),
+        )
+
+    assert exc.value.code == "human_voice_required_forbidden_invention_missing"
+
+
+def test_model_input_scopes_evidence_per_segment() -> None:
+    model_input = _input().to_model_input()
+    segments = model_input["segments"]
+    assert isinstance(segments, list)
+    lead = segments[0]
+    body = segments[1]
+    assert isinstance(lead, dict)
+    assert isinstance(body, dict)
+
+    lead_evidence = lead["allowed_evidence"]
+    body_evidence = body["allowed_evidence"]
+    assert isinstance(lead_evidence, list)
+    assert isinstance(body_evidence, list)
+    assert {item["evidence_id"] for item in lead_evidence} == {"ev-quote", "ev-studio"}
+    assert {item["evidence_id"] for item in body_evidence} == {"ev-quote"}
+    assert "evidence" not in model_input
+
+
 @pytest.mark.parametrize(
     ("field", "code"),
     [
