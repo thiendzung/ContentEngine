@@ -147,7 +147,10 @@ class ContentPerformanceObservation(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "data_status in ('INSUFFICIENT_DATA','EARLY_SIGNAL','REPEATED_PATTERN','LEARNING_CANDIDATE_READY')",
+            "data_status in ("
+            "'INSUFFICIENT_DATA','EARLY_SIGNAL','REPEATED_PATTERN',"
+            "'LEARNING_CANDIDATE_READY'"
+            ")",
             name="ck_content_performance_observation_status",
         ),
         Index(
