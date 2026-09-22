@@ -285,6 +285,7 @@ async def _fixture(
         canonical_key=f"journal:{content_case.id}:en",
     )
     session.add(item)
+    await session.flush()
     session.add(
         ContentItemJourneyStage(
             content_item_id=item.id,
