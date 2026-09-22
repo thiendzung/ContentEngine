@@ -1064,3 +1064,69 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
         assert historical_identity["experiment"]["id"] == str(
             fixture.experiment.id
         )
+
+@pytest.mark.asyncio
+async def test_pm01_reconciliation_validates_before_durable_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=package.run.id,
+            package_artifact_id=package.artifact.id,
+            worker_id="pm01-reconcile-validation-worker",
+        )
+        gateway = FakeWordPress(unknown_first=True)
+        prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-reconcile-validation-worker",
+        )
+        unknown = await execute_wordpress_call(
+            gateway=gateway,
+            request=prepared.request,
+        )
+        assert unknown.outcome == "unknown"
+        await record_wordpress_execution_result(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-reconcile-validation-worker",
+            result=unknown,
+        )
+        await session.refresh(dispatch.intent)
+        assert dispatch.intent.status == "needs_reconciliation"
+
+        invalid_success = WordPressReconciliation(
+            outcome="confirmed_success",
+            external_id="101",
+            canonical_url="https://motgu.com/journal/check-an-artwork",
+            external_revision_id="rev-invalid",
+            external_status="draft",
+            published_at=None,
+        )
+        with pytest.raises(PublishError, match="publish_external_status_mismatch"):
+            async with session.begin_nested():
+                await record_wordpress_reconciliation(
+                    session,
+                    job_id=claimed.id,
+                    worker_id="pm01-reconcile-validation-worker",
+                    result=invalid_success,
+                )
+
+        await session.refresh(dispatch.intent)
+        assert dispatch.intent.status == "needs_reconciliation"
+        assert int(
+            await session.scalar(select(func.count()).select_from(PublishedContent)) or 0
+        ) == 0
+        assert int(
+            await session.scalar(select(func.count()).select_from(PublishEvent)) or 0
+        ) == 0
+
