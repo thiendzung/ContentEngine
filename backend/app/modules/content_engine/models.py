@@ -298,10 +298,6 @@ class ContentExperiment(TimestampMixin, Base):
             "hypothesis_version > 0",
             name="ck_content_experiment_hypothesis_version",
         ),
-        UniqueConstraint(
-            "content_version_id",
-            name="uq_content_experiment_content_version",
-        ),
     )
 
 
