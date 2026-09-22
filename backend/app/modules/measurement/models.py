@@ -22,7 +22,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 from app.modules.content_engine.models import TimestampMixin, new_id
 
-
 CORE_METRICS = (
     "impressions",
     "clicks",
