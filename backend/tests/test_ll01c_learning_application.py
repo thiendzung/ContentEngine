@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
+from test_ll01a_performance_signal import _publish
 from test_ll01b_learning_candidate import _analytics_signal, _search_signal
 from test_pm01_publish_measurement import isolated_session
 
@@ -88,9 +89,7 @@ async def _new_insight_candidate(session, monkeypatch):
 
 
 async def _no_map_candidate(session, monkeypatch):
-    fixture, _mapping = await __import__(
-        "test_ll01a_performance_signal"
-    )._publish(
+    fixture, _mapping = await _publish(
         session,
         monkeypatch,
         worker_id=f"ll01c-no-map-{uuid4().hex[:8]}",
