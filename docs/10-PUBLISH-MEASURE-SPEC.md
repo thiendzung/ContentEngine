@@ -28,6 +28,12 @@ Mỗi package tối thiểu có:
 - approval reference;
 - content hypothesis ID.
 
+ContentVersion là immutable. PM-01 không UPDATE `approved → published`.
+Khi WordPress xác nhận trạng thái live, hệ thống tạo một ContentVersion mới
+`status=published` với đúng bytes + final artifact của bản đã duyệt. Publish Package
+giữ ref về approved source version; PublishedContent / PublishEvent / metrics bám published
+snapshot version. Nhờ vậy audit biết chính xác “đã duyệt bản nào” và “đã publish snapshot nào”.
+
 ## 3. WordPress adapter
 
 Adapter phải:
@@ -46,7 +52,7 @@ V1 ưu tiên handoff/draft an toàn trước full auto-publish.
 
 ```text
 Final Human Approval
-→ create approved ContentVersion
+→ create immutable approved ContentVersion
 → create immutable Publish Package
 → WAIT_HUMAN(publish_authorization)
 → Founder publish authorization
