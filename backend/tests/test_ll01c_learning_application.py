@@ -117,6 +117,45 @@ async def _no_map_candidate(session, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_ll01c_review_requires_human_actor_and_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, _mapping, _signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        with pytest.raises(
+            LearningApplicationError,
+            match="learning_review_reviewer_required",
+        ):
+            await review_learning_candidate(
+                session,
+                learning_candidate_id=candidate.id,
+                decision="APPROVE",
+                reviewed_by=" ",
+                reason="valid reason",
+            )
+        with pytest.raises(
+            LearningApplicationError,
+            match="learning_review_reason_required",
+        ):
+            await review_learning_candidate(
+                session,
+                learning_candidate_id=candidate.id,
+                decision="APPROVE",
+                reviewed_by="founder",
+                reason=" ",
+            )
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(LearningCandidateReview)
+            )
+            or 0
+        ) == 0
+
+
+@pytest.mark.asyncio
 async def test_ll01c_review_is_human_idempotent_and_does_not_mutate_truth(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -345,6 +384,70 @@ async def test_ll01c_apply_existing_insight_reuses_canonical_signal_link(
 
 
 @pytest.mark.asyncio
+async def test_ll01c_existing_insight_status_change_after_review_blocks_apply(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        insight = await ensure_customer_insight(
+            session,
+            project_id=fixture.project.id,
+            insight_type="question",
+            statement="How can I verify an artwork before buying?",
+            audience_hypothesis_id=fixture.need.audience_hypothesis_id,
+            situation="before purchase",
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="customer_insight",
+            target_id=insight.id,
+            statement="Measured evidence may support this exact insight.",
+            relation="supports",
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Approve only the exact reviewed target state.",
+        )
+        insight.status = "TESTING"
+        await session.flush()
+
+        with pytest.raises(
+            LearningApplicationError,
+            match="learning_review_stale",
+        ):
+            await apply_learning_candidate(
+                session,
+                review_id=review.review.id,
+                applied_by="founder",
+            )
+        assert await session.get(
+            CustomerInsightSignal,
+            (insight.id, signal.id),
+        ) is None
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(LearningApplication)
+            )
+            or 0
+        ) == 0
+
+
+@pytest.mark.asyncio
 async def test_ll01c_apply_new_insight_creates_candidate_and_need_link_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -475,6 +578,56 @@ async def test_ll01c_no_map_change_creates_receipt_without_snapshot_or_truth_mut
             )
             or 0
         ) == snapshot_count
+
+
+@pytest.mark.asyncio
+async def test_ll01c_superseded_candidate_cannot_be_newly_reviewed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, signal, _assessment, candidate_v1 = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        _analytics_observation, analytics_signal = await _analytics_signal(
+            session,
+            fixture=fixture,
+            mapping=mapping,
+        )
+        assessment_v2 = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={
+                signal.id: "supports",
+                analytics_signal.id: "supports",
+            },
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need an independent experiment."],
+        )
+        candidate_v2 = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment_v2.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Measured evidence may support this frozen Need.",
+            relation="supports",
+            expected_benefit="Preserve reviewed factual evidence on the Need.",
+            regression_risk="Do not promote the Need status automatically.",
+        )
+        assert candidate_v2.candidate.version == candidate_v1.version + 1
+
+        with pytest.raises(
+            LearningApplicationError,
+            match="learning_candidate_not_open",
+        ):
+            await review_learning_candidate(
+                session,
+                learning_candidate_id=candidate_v1.id,
+                decision="APPROVE",
+                reviewed_by="founder",
+                reason="A superseded candidate must not be approved.",
+            )
 
 
 @pytest.mark.asyncio
