@@ -451,6 +451,8 @@ def _create_guards() -> None:
             snapshot_project uuid;
             snapshot_hash text;
             snapshot_type text;
+            snapshot_created_at timestamptz;
+            expected_before_hash text;
             review_candidate uuid;
             review_version integer;
             review_decision text;
@@ -563,8 +565,9 @@ def _create_guards() -> None:
                 END IF;
 
                 SELECT run.project_id, artifact.content_hash,
-                       artifact.artifact_type
-                INTO snapshot_project, snapshot_hash, snapshot_type
+                       artifact.artifact_type, artifact.created_at
+                INTO snapshot_project, snapshot_hash, snapshot_type,
+                     snapshot_created_at
                 FROM artifacts AS artifact
                 JOIN content_runs AS run ON run.id = artifact.run_id
                 WHERE artifact.id = NEW.customer_map_snapshot_artifact_id;
@@ -580,16 +583,39 @@ def _create_guards() -> None:
                     RAISE EXCEPTION 'learning_application_snapshot_mismatch';
                 END IF;
 
-                IF NOT EXISTS (
-                    SELECT 1
+                IF NEW.before_state_hash IS DISTINCT FROM
+                   NEW.after_state_hash THEN
+                    SELECT before_artifact.content_hash
+                    INTO expected_before_hash
                     FROM artifacts AS before_artifact
                     JOIN content_runs AS before_run
                       ON before_run.id = before_artifact.run_id
                     WHERE before_run.project_id = NEW.project_id
-                      AND before_artifact.artifact_type = 'customer_map_snapshot'
-                      AND before_artifact.content_hash = NEW.before_state_hash
-                ) THEN
-                    RAISE EXCEPTION 'learning_application_before_snapshot_missing';
+                      AND before_artifact.artifact_type =
+                            'customer_map_snapshot'
+                      AND (
+                            before_artifact.created_at < snapshot_created_at
+                            OR (
+                                before_artifact.created_at = snapshot_created_at
+                                AND before_artifact.id <
+                                    NEW.customer_map_snapshot_artifact_id
+                            )
+                      )
+                    ORDER BY before_artifact.created_at DESC,
+                             before_artifact.id DESC
+                    LIMIT 1;
+
+                    IF expected_before_hash IS DISTINCT FROM
+                       NEW.before_state_hash THEN
+                        RAISE EXCEPTION
+                            'learning_application_before_snapshot_mismatch';
+                    END IF;
+                ELSIF COALESCE(
+                    jsonb_array_length(NEW.change_report_json->'events'),
+                    0
+                ) <> 0 THEN
+                    RAISE EXCEPTION
+                        'learning_application_no_delta_report_invalid';
                 END IF;
 
                 IF NEW.target_type = 'need_hypothesis' THEN
