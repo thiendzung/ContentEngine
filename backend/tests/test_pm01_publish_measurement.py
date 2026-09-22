@@ -9,7 +9,8 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
@@ -716,6 +717,13 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         assert int(
             await session.scalar(select(func.count()).select_from(PublishEvent)) or 0
         ) == 2
+        with pytest.raises(DBAPIError, match="pm01_publish_event_is_immutable"):
+            async with session.begin_nested():
+                await session.execute(
+                    update(PublishEvent)
+                    .where(PublishEvent.id == publish_event.id)
+                    .values(action="draft")
+                )
         assert int(
             await session.scalar(select(func.count()).select_from(PerformanceSnapshot)) or 0
         ) == 1
