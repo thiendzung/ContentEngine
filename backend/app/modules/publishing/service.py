@@ -489,6 +489,27 @@ async def _journey_stages(
     return values
 
 
+def _experiment_measurement_snapshot(
+    experiment: ContentExperiment,
+) -> dict[str, object]:
+    return {
+        "expected_behaviour": experiment.expected_behaviour,
+        "measurement_plan": list(experiment.measurement_plan_json),
+        "metric_definitions": list(experiment.metric_definitions_json),
+        "minimum_evidence": list(experiment.minimum_evidence_json),
+        "review_window_start": (
+            experiment.review_window_start.isoformat()
+            if experiment.review_window_start is not None
+            else None
+        ),
+        "review_window_end": (
+            experiment.review_window_end.isoformat()
+            if experiment.review_window_end is not None
+            else None
+        ),
+    }
+
+
 def _package_content(
     *,
     version: ContentVersion,
@@ -569,22 +590,7 @@ def _package_content(
             "quality": quality,
             "evidence_context": evidence_context,
         },
-        "measurement": {
-            "expected_behaviour": experiment.expected_behaviour,
-            "measurement_plan": list(experiment.measurement_plan_json),
-            "metric_definitions": list(experiment.metric_definitions_json),
-            "minimum_evidence": list(experiment.minimum_evidence_json),
-            "review_window_start": (
-                experiment.review_window_start.isoformat()
-                if experiment.review_window_start is not None
-                else None
-            ),
-            "review_window_end": (
-                experiment.review_window_end.isoformat()
-                if experiment.review_window_end is not None
-                else None
-            ),
-        },
+        "measurement": _experiment_measurement_snapshot(experiment),
     }
 
 
@@ -621,6 +627,12 @@ async def prepare_publish_package(
         content_version_id=content_version_id,
         experiment_id=experiment_id,
     )
+    if experiment.content_item_id is None:
+        experiment.content_item_id = item.id
+    if experiment.content_version_id is None:
+        experiment.content_version_id = version.id
+    await session.flush()
+
     quality = await _quality_refs(
         session,
         content_case_id=case.id,
@@ -933,22 +945,89 @@ async def prepare_wordpress_dispatch(
     )
 
 
+async def _runtime_package_binding(
+    session: AsyncSession,
+    *,
+    package: Artifact,
+) -> tuple[
+    dict[str, object],
+    dict[str, object],
+    dict[str, object],
+    ContentItem,
+    ContentVersion,
+    ContentExperiment,
+    PublishedContent | None,
+]:
+    identity, target, content = _package_identity(package)
+    payload = _dict(package.content_json, "publish_package_payload_invalid")
+    measurement = _dict(
+        payload.get("measurement"),
+        "publish_package_measurement_invalid",
+    )
+    try:
+        item_id = UUID(
+            _text(identity.get("content_item_id"), "publish_item_ref_invalid")
+        )
+        version_id = UUID(
+            _text(identity.get("content_version_id"), "publish_version_ref_invalid")
+        )
+        experiment_id = UUID(
+            _text(
+                identity.get("content_experiment_id"),
+                "publish_experiment_ref_invalid",
+            )
+        )
+    except ValueError as exc:
+        raise PublishError("publish_identity_uuid_invalid") from exc
+
+    item = await session.get(ContentItem, item_id)
+    version = await session.get(ContentVersion, version_id)
+    experiment = await session.get(ContentExperiment, experiment_id)
+    if (
+        item is None
+        or version is None
+        or experiment is None
+        or version.content_item_id != item.id
+        or version.status not in {"approved", "published"}
+        or experiment.content_item_id != item.id
+        or experiment.content_version_id != version.id
+        or experiment.status not in {"PLANNED", "RUNNING"}
+    ):
+        raise PublishError("publish_runtime_binding_stale")
+    if measurement != _experiment_measurement_snapshot(experiment):
+        raise PublishError("publish_experiment_snapshot_stale")
+
+    mapping = await session.scalar(
+        select(PublishedContent).where(
+            PublishedContent.project_id == item.project_id,
+            PublishedContent.content_item_id == item.id,
+            PublishedContent.target == "wordpress",
+        )
+    )
+    if experiment.published_content_id is not None and (
+        mapping is None or experiment.published_content_id != mapping.id
+    ):
+        raise PublishError("publish_experiment_publication_conflict")
+    return identity, target, content, item, version, experiment, mapping
+
+
 async def _request_for_package(
     session: AsyncSession,
     *,
     package: Artifact,
     intent: OutboxIntent,
 ) -> WordPressWriteRequest:
-    identity, target, content = _package_identity(package)
-    try:
-        item_id = UUID(_text(identity.get("content_item_id"), "publish_item_ref_invalid"))
-    except ValueError as exc:
-        raise PublishError("publish_item_ref_invalid") from exc
-    mapping = await session.scalar(
-        select(PublishedContent).where(
-            PublishedContent.content_item_id == item_id,
-            PublishedContent.target == "wordpress",
-        )
+    (
+        identity,
+        target,
+        content,
+        item,
+        _version,
+        _experiment,
+        mapping,
+    ) = await _runtime_package_binding(
+        session,
+        package=package,
     )
     raw_action = _text(target.get("action"), "publish_action_invalid")
     if raw_action not in {"draft", "publish"}:
@@ -961,7 +1040,7 @@ async def _request_for_package(
         raise PublishError("publish_live_post_draft_overwrite_forbidden")
     metadata = {
         "contentengine": {
-            "content_item_id": str(item_id),
+            "content_item_id": str(item.id),
             "content_version_id": _text(
                 identity.get("content_version_id"),
                 "publish_version_ref_invalid",
@@ -1053,6 +1132,8 @@ async def _finalize_confirmed_publish(
         or experiment is None
         or version.content_item_id != item.id
         or item.id != dispatch.run.content_item_id
+        or experiment.content_item_id != item.id
+        or experiment.content_version_id != version.id
     ):
         raise PublishError("publish_identity_mismatch")
     if version.status not in {"approved", "published"}:
@@ -1103,7 +1184,16 @@ async def _finalize_confirmed_publish(
         if (
             existing_event.published_content_id != mapping.id
             or existing_event.content_version_id != version.id
+            or existing_event.content_experiment_id != experiment.id
+            or existing_event.publish_package_artifact_id != dispatch.package.id
+            or existing_event.publish_approval_id != dispatch.approval.id
             or existing_event.idempotency_key != dispatch.intent.idempotency_key
+            or existing_event.external_revision_id != revision
+            or existing_event.external_status != status
+            or existing_event.canonical_url != url
+            or existing_event.published_at != (
+                published_at if status == "publish" else None
+            )
         ):
             raise PublishError("publish_event_replay_conflict")
         return mapping, existing_event
@@ -1111,6 +1201,7 @@ async def _finalize_confirmed_publish(
     event = PublishEvent(
         published_content_id=mapping.id,
         content_version_id=version.id,
+        content_experiment_id=experiment.id,
         publish_package_artifact_id=dispatch.package.id,
         publish_approval_id=dispatch.approval.id,
         outbox_intent_id=dispatch.intent.id,
@@ -1129,9 +1220,10 @@ async def _finalize_confirmed_publish(
     )
     session.add(event)
 
-    experiment.content_item_id = item.id
-    experiment.content_version_id = version.id
-    experiment.published_content_id = mapping.id
+    if experiment.published_content_id is None:
+        experiment.published_content_id = mapping.id
+    elif experiment.published_content_id != mapping.id:
+        raise PublishError("publish_experiment_publication_conflict")
     if status == "publish":
         experiment.status = "RUNNING"
         item.status = "published"
