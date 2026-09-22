@@ -475,7 +475,7 @@ async def recommend_memory_gap(
             and published_freshness_at < normalised_refresh_before
         ):
             recommendation = "REFRESH"
-            reasons = ["published_content_before_refresh_before"]
+            reasons = ["published_content_version_before_refresh_before"]
 
     if unresolved_refs:
         reasons.append("unresolved_explicit_refs")
@@ -508,7 +508,7 @@ async def recommend_memory_gap(
             and matched_items[0].latest_published_version is not None
             and matched_items[0].latest_published_version.published_at
             is not None
-            else "content_version_created_at_legacy"
+            else "content_version_created_at"
         ),
         requires_human_review=requires_human_review,
         planning_decision_mismatch=planning_decision_mismatch,
