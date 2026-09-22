@@ -172,6 +172,7 @@ async def _measurement_mapping(
         .where(
             PublishEvent.published_content_id == mapping.id,
             PublishEvent.content_version_id == version.id,
+            PublishEvent.external_status == mapping.external_status,
         )
         .order_by(PublishEvent.created_at.desc(), PublishEvent.id.desc())
         .limit(1)
