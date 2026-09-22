@@ -447,6 +447,42 @@ async def test_ll01c_need_change_report_marks_same_experiment_evidence_duplicate
 
 
 @pytest.mark.asyncio
+async def test_ll01c_existing_need_link_can_create_zero_delta_receipt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        session.add(
+            NeedHypothesisSignal(
+                need_hypothesis_id=fixture.need.id,
+                signal_id=signal.id,
+                relation="supports",
+            )
+        )
+        await session.flush()
+
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Apply an already-present exact factual link idempotently.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+
+        assert applied.application.before_state_hash == applied.application.after_state_hash
+        assert applied.change_report is not None
+        assert applied.change_report["events"] == []
+
+
+@pytest.mark.asyncio
 async def test_ll01c_stale_need_version_blocks_application_before_mutation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1067,6 +1103,187 @@ async def test_ll01c_database_application_guard_rejects_forged_receipt_details(
         ):
             async with session.begin_nested():
                 session.add(forged_before)
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_ll01c_database_need_receipt_rejects_opposite_relation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Create the canonical Need application first.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+        canonical = applied.application
+
+        session.add(
+            NeedHypothesisSignal(
+                need_hypothesis_id=fixture.need.id,
+                signal_id=signal.id,
+                relation="contradicts",
+            )
+        )
+        await session.flush()
+
+        forged = LearningApplication(
+            project_id=canonical.project_id,
+            learning_candidate_id=canonical.learning_candidate_id,
+            candidate_version=canonical.candidate_version,
+            review_id=canonical.review_id,
+            candidate_snapshot_hash=canonical.candidate_snapshot_hash,
+            target_type=canonical.target_type,
+            target_id=canonical.target_id,
+            resulting_target_id=canonical.resulting_target_id,
+            applied_action=canonical.applied_action,
+            applied_signal_refs_json=canonical.applied_signal_refs_json,
+            frozen_scope_json=canonical.frozen_scope_json,
+            before_state_hash=canonical.before_state_hash,
+            after_state_hash=canonical.after_state_hash,
+            customer_map_snapshot_artifact_id=(
+                canonical.customer_map_snapshot_artifact_id
+            ),
+            change_report_json=canonical.change_report_json,
+            applied_by="direct-sql-forgery",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_need_relation_conflict",
+        ):
+            async with session.begin_nested():
+                session.add(forged)
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_ll01c_database_new_insight_receipt_requires_exact_key_and_latest_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _signal, candidate = await _new_insight_candidate(
+            session,
+            monkeypatch,
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Create the canonical candidate Insight.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+        canonical = applied.application
+        insight = await session.get(CustomerInsight, canonical.resulting_target_id)
+        assert insight is not None
+
+        wrong_key = "f" * 64 if insight.insight_key != "f" * 64 else "e" * 64
+        alternate = CustomerInsight(
+            project_id=insight.project_id,
+            insight_key=wrong_key,
+            version=1,
+            audience_hypothesis_id=insight.audience_hypothesis_id,
+            insight_type=insight.insight_type,
+            statement=insight.statement,
+            situation=insight.situation,
+            status="CANDIDATE",
+            alternative_explanations_json=list(
+                insight.alternative_explanations_json
+            ),
+            missing_evidence_json=list(insight.missing_evidence_json),
+        )
+        session.add(alternate)
+        await session.flush()
+
+        forged_key = LearningApplication(
+            project_id=canonical.project_id,
+            learning_candidate_id=canonical.learning_candidate_id,
+            candidate_version=canonical.candidate_version,
+            review_id=canonical.review_id,
+            candidate_snapshot_hash=canonical.candidate_snapshot_hash,
+            target_type=canonical.target_type,
+            target_id=canonical.target_id,
+            resulting_target_id=alternate.id,
+            applied_action=canonical.applied_action,
+            applied_signal_refs_json=canonical.applied_signal_refs_json,
+            frozen_scope_json=canonical.frozen_scope_json,
+            before_state_hash=canonical.before_state_hash,
+            after_state_hash=canonical.after_state_hash,
+            customer_map_snapshot_artifact_id=(
+                canonical.customer_map_snapshot_artifact_id
+            ),
+            change_report_json=canonical.change_report_json,
+            applied_by="direct-sql-forgery",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_result_target_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged_key)
+                await session.flush()
+
+        newer = CustomerInsight(
+            project_id=insight.project_id,
+            insight_key=insight.insight_key,
+            version=2,
+            audience_hypothesis_id=insight.audience_hypothesis_id,
+            insight_type=insight.insight_type,
+            statement=insight.statement,
+            situation=insight.situation,
+            status="CANDIDATE",
+            alternative_explanations_json=list(
+                insight.alternative_explanations_json
+            ),
+            missing_evidence_json=list(insight.missing_evidence_json),
+        )
+        session.add(newer)
+        await session.flush()
+
+        forged_stale = LearningApplication(
+            project_id=canonical.project_id,
+            learning_candidate_id=canonical.learning_candidate_id,
+            candidate_version=canonical.candidate_version,
+            review_id=canonical.review_id,
+            candidate_snapshot_hash=canonical.candidate_snapshot_hash,
+            target_type=canonical.target_type,
+            target_id=canonical.target_id,
+            resulting_target_id=insight.id,
+            applied_action=canonical.applied_action,
+            applied_signal_refs_json=canonical.applied_signal_refs_json,
+            frozen_scope_json=canonical.frozen_scope_json,
+            before_state_hash=canonical.before_state_hash,
+            after_state_hash=canonical.after_state_hash,
+            customer_map_snapshot_artifact_id=(
+                canonical.customer_map_snapshot_artifact_id
+            ),
+            change_report_json=canonical.change_report_json,
+            applied_by="direct-sql-forgery",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_result_target_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged_stale)
                 await session.flush()
 
 
