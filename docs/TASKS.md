@@ -380,7 +380,7 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Candidate key is deterministic from project + target + normalized statement + frozen scope.
 - [x] Exact replay reuses current candidate version; changed evidence creates the next immutable version and supersedes the prior one.
 - [x] One experiment remains `EARLY_SIGNAL` even when multiple provider windows or an upstream maturity label say READY.
-- [x] Multiple independent experiments are required before `REPEATED_PATTERN` / `READY_FOR_REVIEW`.
+- [x] Multiple independent experiments are required before `REPEATED_PATTERN`; `READY_FOR_REVIEW` remains reserved until a typed/calibrated minimum-evidence policy exists, and PM-01 maturity labels are never sufficient authority.
 - [x] Contradicting evidence remains visible as `CONTESTED`.
 - [x] Candidate scope explicitly records that historical intent is not frozen in PM-01 instead of reading mutable current intent.
 - [x] Code migration `20260922_0040` adds candidate tables + database immutability/project-lineage guards.
