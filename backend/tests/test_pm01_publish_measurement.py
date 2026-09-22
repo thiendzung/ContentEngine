@@ -1040,3 +1040,19 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
         )
         assert ingested.replayed is False
         assert ingested.snapshot.content_version_id == fixture.version.id
+
+        historical_identity = await get_measurement_identity(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+        )
+        assert historical_identity["content"]["content_version_id"] == str(
+            fixture.version.id
+        )
+        assert (
+            historical_identity["content"]["is_current_published_content_version"]
+            is False
+        )
+        assert historical_identity["experiment"]["id"] == str(
+            fixture.experiment.id
+        )
