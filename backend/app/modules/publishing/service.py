@@ -373,19 +373,26 @@ async def _quality_refs(
 async def _lens_ref(
     session: AsyncSession,
     *,
-    source_run_id: UUID,
+    content_case_id: UUID,
+    locale_variant_id: UUID,
     locale: str,
 ) -> dict[str, object] | None:
     rows = list(
         (
             await session.scalars(
                 select(Artifact)
+                .join(ContentRun, ContentRun.id == Artifact.run_id)
                 .where(
-                    Artifact.run_id == source_run_id,
+                    ContentRun.content_case_id == content_case_id,
+                    ContentRun.locale_variant_id == locale_variant_id,
                     Artifact.artifact_type == "lens_selection",
                     Artifact.locale == locale,
                 )
-                .order_by(Artifact.version.desc(), Artifact.id.desc())
+                .order_by(
+                    Artifact.created_at.desc(),
+                    Artifact.version.desc(),
+                    Artifact.id.desc(),
+                )
             )
         ).all()
     )
@@ -396,12 +403,24 @@ async def _lens_ref(
         artifact.content_json
     ):
         raise PublishError("publish_lens_selection_invalid")
+    run_ref = artifact.content_json.get("run_ref")
+    if not isinstance(run_ref, dict):
+        raise PublishError("publish_lens_selection_invalid")
+    if (
+        run_ref.get("content_case_id") != str(content_case_id)
+        or run_ref.get("locale_variant_id") != str(locale_variant_id)
+        or run_ref.get("locale") != locale
+    ):
+        raise PublishError("publish_lens_selection_identity_mismatch")
     primary = artifact.content_json.get("primary_lens")
     if primary is not None and (not isinstance(primary, str) or not primary.strip()):
         raise PublishError("publish_lens_selection_invalid")
     return {
         "artifact": _ref(artifact),
         "primary_lens": primary,
+        "merged_lenses": list(
+            cast(list[object], artifact.content_json.get("merged_lenses", []))
+        ),
     }
 
 
@@ -599,7 +618,8 @@ async def prepare_publish_package(
         quality=quality,
         lens=await _lens_ref(
             session,
-            source_run_id=source_run.id,
+            content_case_id=case.id,
+            locale_variant_id=variant.id,
             locale=variant.locale,
         ),
         evidence_context=await _evidence_context(
@@ -987,6 +1007,7 @@ async def _finalize_confirmed_publish(
         )
         .with_for_update()
     )
+    mapping_existed = mapping is not None
     if mapping is None:
         mapping = PublishedContent(
             project_id=item.project_id,
@@ -1013,7 +1034,7 @@ async def _finalize_confirmed_publish(
         await session.flush()
 
     action = _text(target.get("action"), "publish_action_invalid")
-    event_action = action if mapping.current_content_version_id == version.id else f"update_{action}"
+    event_action = f"update_{action}" if mapping_existed else action
     existing_event = await session.scalar(
         select(PublishEvent).where(
             PublishEvent.outbox_intent_id == dispatch.intent.id
