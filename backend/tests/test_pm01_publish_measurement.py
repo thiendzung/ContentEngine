@@ -77,6 +77,7 @@ from app.modules.publishing.service import (
     prepare_wordpress_reconciliation,
     record_wordpress_execution_result,
     record_wordpress_reconciliation,
+    set_measurement_review_window,
     submit_publish_decision,
 )
 
@@ -1590,4 +1591,85 @@ async def test_pm01_externalized_version_blocks_different_experiment_before_disp
         await session.refresh(dispatch.intent)
         assert dispatch.intent.status == "pending"
         assert gateway.execute_count == 1
+
+
+@pytest.mark.asyncio
+async def test_pm01_review_window_is_explicit_and_frozen_by_publish_package(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        fixture.experiment.review_window_start = None
+        fixture.experiment.review_window_end = None
+        await session.flush()
+
+        with pytest.raises(PublishError, match="publish_experiment_not_ready"):
+            await prepare_publish_package(
+                session,
+                content_version_id=fixture.version.id,
+                experiment_id=fixture.experiment.id,
+                slug="check-an-artwork",
+                action="publish",
+            )
+
+        start = datetime.now(UTC)
+        end = start + timedelta(days=30)
+        configured = await set_measurement_review_window(
+            session,
+            experiment_id=fixture.experiment.id,
+            review_window_start=start,
+            review_window_end=end,
+        )
+        assert configured.review_window_start == start
+        assert configured.review_window_end == end
+
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        assert package.experiment.content_version_id == fixture.version.id
+
+        replay = await set_measurement_review_window(
+            session,
+            experiment_id=fixture.experiment.id,
+            review_window_start=start,
+            review_window_end=end,
+        )
+        assert replay.id == fixture.experiment.id
+
+        with pytest.raises(
+            PublishError,
+            match="publish_experiment_review_window_frozen",
+        ):
+            await set_measurement_review_window(
+                session,
+                experiment_id=fixture.experiment.id,
+                review_window_start=start,
+                review_window_end=end + timedelta(days=1),
+            )
+
+        with pytest.raises(
+            PublishError,
+            match="publish_experiment_review_window_invalid",
+        ):
+            await set_measurement_review_window(
+                session,
+                experiment_id=uuid4(),
+                review_window_start=end,
+                review_window_end=start,
+            )
+
+        with pytest.raises(
+            PublishError,
+            match="publish_experiment_review_window_timezone_required",
+        ):
+            await set_measurement_review_window(
+                session,
+                experiment_id=fixture.experiment.id,
+                review_window_start=datetime(2026, 9, 22, 12, 0),
+                review_window_end=datetime(2026, 10, 22, 12, 0),
+            )
 
