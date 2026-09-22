@@ -75,6 +75,7 @@ def _schema(stage: str, locale: str) -> dict[str, object]:
 _READER_BODY = (
     "Return JSON only. Audit the supplied immutable Journal draft for READER VALUE; do not rewrite it. "
     "Judge the exact intended audience, situation, need, primary question, desired action and reader_before to reader_after transformation supplied in the input. "
+    "Write summary, finding and repair_suggestion in the supplied locale: natural Vietnamese for vi-VN and natural English for en. "
     "Evaluate the criteria in the exact order given by evaluation_policy.criteria. "
     "primary_problem_answered: does the draft directly resolve the main reader problem/question rather than circle around it? "
     "reader_transformation: does the draft plausibly move this reader from reader_before toward reader_after without claiming behaviour that cannot be observed? "
@@ -90,6 +91,7 @@ _READER_BODY = (
 _SEARCH_BODY = (
     "Return JSON only. Audit the supplied immutable Journal draft for SEARCH AND AI READINESS; do not rewrite it and do not research. "
     "This stage is allowed only because Reader Value already passed or warned. It cannot override Reader Value. "
+    "Write summary, finding and repair_suggestion in the supplied locale: natural Vietnamese for vi-VN and natural English for en. "
     "Evaluate criteria in the exact order given by evaluation_policy.criteria. "
     "intent_match: the visible answer matches the primary intent/query without narrowing the article into keyword bait. "
     "title_heading_coherence: title and headings describe the actual answer clearly. "
