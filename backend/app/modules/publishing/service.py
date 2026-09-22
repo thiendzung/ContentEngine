@@ -1228,6 +1228,11 @@ async def begin_wordpress_dispatch(
         job_id=job_id,
         worker_id=worker_id,
     )
+    request = await _request_for_package(
+        session,
+        package=dispatch.package,
+        intent=dispatch.intent,
+    )
     processing = await prepare_outbox_dispatch(
         session,
         intent_id=dispatch.intent.id,
@@ -1236,11 +1241,6 @@ async def begin_wordpress_dispatch(
     )
     dispatch.run.current_step = WORDPRESS_STEP
     await session.flush()
-    request = await _request_for_package(
-        session,
-        package=dispatch.package,
-        intent=processing,
-    )
     return PreparedWordPressCall(
         dispatch=PublishDispatch(
             run=dispatch.run,
