@@ -1200,7 +1200,7 @@ async def test_f4_review_vi_pass_en_fail_retry_converges(
             ).all()
         )
         assert len(en_review_steps) == 2
-        assert en_review_steps[-1].attempt == 2
+        assert sorted(step.attempt for step in en_review_steps) == [1, 2]
 
         # VI review steps still 1
         vi_review_steps = list(
