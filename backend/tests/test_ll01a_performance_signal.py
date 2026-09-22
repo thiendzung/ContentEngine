@@ -7,6 +7,13 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from test_pm01_publish_measurement import (
+    FakeWordPress,
+    PMFixture,
+    _approve_and_claim,
+    _fixture,
+    isolated_session,
+)
 
 from app.modules.content_engine.models import ContentVersion, Signal
 from app.modules.customer_intelligence.insights import (
@@ -31,14 +38,6 @@ from app.modules.publishing.service import (
     prepare_publish_package,
     record_wordpress_execution_result,
 )
-from test_pm01_publish_measurement import (
-    FakeWordPress,
-    PMFixture,
-    _approve_and_claim,
-    _fixture,
-    isolated_session,
-)
-
 
 async def _publish(
     session: AsyncSession,
