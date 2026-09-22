@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Literal, Protocol, cast
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
@@ -42,7 +42,6 @@ from app.modules.harness.outbox import (
     create_outbox_intent,
     mark_outbox_needs_reconciliation,
     prepare_outbox_dispatch,
-    side_effect_request,
 )
 from app.modules.harness.persistence import (
     complete_job,
@@ -249,6 +248,8 @@ async def _approved_lineage(
 
     case = await session.get(ContentCase, item.content_case_id)
     variant = await session.get(LocaleVariant, item.locale_variant_id)
+    if item.content_type != "journal":
+        raise PublishError("publish_content_type_unsupported")
     if (
         case is None
         or variant is None
@@ -1001,6 +1002,18 @@ def _validated_success(
     return external_id, url, revision, status, published_at
 
 
+def _require_requested_external_state(
+    *,
+    package: Artifact,
+    result: WordPressWriteResult | WordPressReconciliation,
+) -> None:
+    _identity, target, _content = _package_identity(package)
+    action = _text(target.get("action"), "publish_action_invalid")
+    expected_status = "draft" if action == "draft" else "publish"
+    if result.external_status != expected_status:
+        raise PublishError("publish_external_status_mismatch")
+
+
 async def _finalize_confirmed_publish(
     session: AsyncSession,
     *,
@@ -1270,6 +1283,10 @@ async def record_wordpress_execution_result(
     external_id, _url, _revision, _status, _published_at = _validated_success(
         result=result
     )
+    _require_requested_external_state(
+        package=dispatch.package,
+        result=result,
+    )
     await complete_outbox_intent(
         session,
         intent_id=dispatch.intent.id,
@@ -1382,6 +1399,10 @@ async def record_wordpress_reconciliation(
             )
         return result.outcome, None, None
 
+    _require_requested_external_state(
+        package=dispatch.package,
+        result=result,
+    )
     mapping, event = await _finalize_confirmed_publish(
         session,
         dispatch=dispatch,
