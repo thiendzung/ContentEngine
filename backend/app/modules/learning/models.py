@@ -37,6 +37,9 @@ class LearningCandidate(TimestampMixin, Base):
     target_id: Mapped[UUID | None] = mapped_column(nullable=True)
     statement: Mapped[str] = mapped_column(Text, nullable=False)
     relation: Mapped[str] = mapped_column(String(16), nullable=False)
+    proposal_json: Mapped[dict[str, object]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
     scope_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     evidence_status: Mapped[str] = mapped_column(String(32), nullable=False)
     alternative_explanations_json: Mapped[list[str]] = mapped_column(
