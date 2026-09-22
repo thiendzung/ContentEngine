@@ -2479,4 +2479,3 @@ async def test_qa01_reader_value_retry_budget_ignores_unrelated_historical_run(
         refreshed_vi = next(lane for lane in final_progress.lanes if lane.locale == "vi-VN")
         assert refreshed_vi.reader_value.attempt == 1
         assert refreshed_vi.status == "execution_failed_retryable"
-
