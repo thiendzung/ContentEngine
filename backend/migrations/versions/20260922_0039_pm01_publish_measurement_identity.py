@@ -397,17 +397,24 @@ def upgrade() -> None:
             DECLARE
                 mapped_item uuid;
                 version_item uuid;
+                experiment_version uuid;
             BEGIN
                 SELECT content_item_id INTO mapped_item
                 FROM published_contents WHERE id = NEW.published_content_id;
                 SELECT content_item_id INTO version_item
                 FROM content_versions WHERE id = NEW.content_version_id;
+                SELECT content_version_id INTO experiment_version
+                FROM content_experiments WHERE id = NEW.content_experiment_id;
 
-                IF mapped_item IS NULL OR version_item IS NULL THEN
+                IF mapped_item IS NULL OR version_item IS NULL
+                   OR experiment_version IS NULL THEN
                     RAISE EXCEPTION 'pm01_publish_event_identity_missing';
                 END IF;
                 IF mapped_item IS DISTINCT FROM version_item THEN
                     RAISE EXCEPTION 'pm01_publish_event_version_mismatch';
+                END IF;
+                IF experiment_version IS DISTINCT FROM NEW.content_version_id THEN
+                    RAISE EXCEPTION 'pm01_publish_event_experiment_mismatch';
                 END IF;
                 RETURN NEW;
             END;
@@ -457,17 +464,27 @@ def upgrade() -> None:
             DECLARE
                 mapped_item uuid;
                 version_item uuid;
+                has_publish_event boolean;
             BEGIN
                 SELECT content_item_id INTO mapped_item
                 FROM published_contents WHERE id = NEW.published_content_id;
                 SELECT content_item_id INTO version_item
                 FROM content_versions WHERE id = NEW.content_version_id;
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM publish_events
+                    WHERE published_content_id = NEW.published_content_id
+                      AND content_version_id = NEW.content_version_id
+                ) INTO has_publish_event;
 
                 IF mapped_item IS NULL OR version_item IS NULL THEN
                     RAISE EXCEPTION 'pm01_measurement_identity_missing';
                 END IF;
                 IF mapped_item IS DISTINCT FROM version_item THEN
                     RAISE EXCEPTION 'pm01_measurement_version_mismatch';
+                END IF;
+                IF NOT has_publish_event THEN
+                    RAISE EXCEPTION 'pm01_measurement_publish_event_missing';
                 END IF;
                 RETURN NEW;
             END;
