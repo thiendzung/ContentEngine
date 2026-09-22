@@ -666,16 +666,16 @@ async def build_content_coverage(
                 raise ContentCoverageError(
                     "content_coverage_publication_ambiguous"
                 )
-            event = latest_event_by_publication.get(publication.id)
+            current_event = latest_event_by_publication.get(publication.id)
             if (
-                event is None
-                or event.content_version_id
+                current_event is None
+                or current_event.content_version_id
                 != publication.current_content_version_id
-                or event.external_status != publication.external_status
-                or event.external_revision_id
+                or current_event.external_status != publication.external_status
+                or current_event.external_revision_id
                 != publication.external_revision_id
-                or event.canonical_url != publication.canonical_url
-                or event.published_at != publication.published_at
+                or current_event.canonical_url != publication.canonical_url
+                or current_event.published_at != publication.published_at
             ):
                 raise ContentCoverageError(
                     "content_coverage_publication_event_mismatch"
