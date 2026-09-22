@@ -978,6 +978,31 @@ async def _candidate_evidence(
     return signal_relations, observation_relations, assessment_ids
 
 
+def _classify_candidate_evidence_status(
+    *,
+    support_groups: set[str],
+    contradict_groups: set[str],
+    assessment_statuses: list[str],
+    assessment_results: list[str],
+) -> str:
+    if support_groups and contradict_groups:
+        return "CONTESTED"
+    directional_groups = support_groups or contradict_groups
+    if not directional_groups:
+        return "NEEDS_EVIDENCE"
+    # One experiment is never enough to become a repeated/global learning rule,
+    # regardless of an upstream observation maturity label.
+    if len(directional_groups) == 1:
+        return "EARLY_SIGNAL"
+
+    return _classify_candidate_evidence_status(
+        support_groups=support_groups,
+        contradict_groups=contradict_groups,
+        assessment_statuses=assessment_statuses,
+        assessment_results=assessment_results,
+    )
+
+
 async def _candidate_evidence_status(
     session: AsyncSession,
     *,
@@ -994,14 +1019,6 @@ async def _candidate_evidence_status(
             support_groups.add(signal.independence_group)
         elif relation == "contradicts":
             contradict_groups.add(signal.independence_group)
-
-    if support_groups and contradict_groups:
-        return "CONTESTED"
-    directional_groups = support_groups or contradict_groups
-    if not directional_groups:
-        return "NEEDS_EVIDENCE"
-    if len(directional_groups) == 1:
-        return "EARLY_SIGNAL"
 
     assessment_statuses: list[str] = []
     assessment_results: list[str] = []
