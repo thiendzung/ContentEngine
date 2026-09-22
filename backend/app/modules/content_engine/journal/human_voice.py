@@ -21,6 +21,8 @@ HumanVoiceEvidenceKind = Literal[
     "personal_vocabulary",
 ]
 
+_SUPPORTED_LOCALES = {"vi-VN", "en"}
+
 _HUMAN_VOICE_EVIDENCE_KINDS: set[str] = {
     "artist_quote",
     "studio_observation",
@@ -145,6 +147,8 @@ class HumanVoiceInput:
     )
 
     def __post_init__(self) -> None:
+        if self.locale not in _SUPPORTED_LOCALES:
+            raise HumanVoiceError("human_voice_locale_unsupported", self.locale)
         if not self.segments:
             raise HumanVoiceError("human_voice_segments_required")
         segment_ids = [segment.segment_id for segment in self.segments]
@@ -177,6 +181,7 @@ class HumanVoiceInput:
                     "plain language, and natural restraint"
                 ),
                 "authorship_detection": "not_part_of_task",
+                "semantic_reaudit_required": True,
             },
             "evidence": [item.to_dict() for item in self.evidence],
             "segments": [segment.to_dict() for segment in self.segments],
@@ -230,6 +235,7 @@ class HumanVoiceRewriteResult:
     attempts: int
     before_style_findings: tuple[StyleFinding, ...]
     after_style_findings: tuple[StyleFinding, ...]
+    requires_semantic_reaudit: bool = True
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -238,6 +244,7 @@ class HumanVoiceRewriteResult:
             "attempts": self.attempts,
             "before_style_findings": [item.to_dict() for item in self.before_style_findings],
             "after_style_findings": [item.to_dict() for item in self.after_style_findings],
+            "requires_semantic_reaudit": self.requires_semantic_reaudit,
         }
 
 
@@ -300,17 +307,35 @@ def _validate_numeric_guard(
         )
 
 
+def _allowed_quote_spans(
+    *,
+    source_text: str,
+    evidence_items: tuple[HumanVoiceEvidence, ...],
+) -> set[str]:
+    allowed = set(_quoted_spans(source_text))
+    for evidence in evidence_items:
+        if evidence.kind != "artist_quote":
+            continue
+        explicit_spans = _quoted_spans(evidence.text)
+        if explicit_spans:
+            allowed.update(explicit_spans)
+        else:
+            allowed.add(_normalize_space(evidence.text))
+    return allowed
+
+
 def _validate_quote_guard(
     *,
     source_text: str,
     rewritten_text: str,
-    evidence_texts: tuple[str, ...],
+    evidence_items: tuple[HumanVoiceEvidence, ...],
     segment_id: str,
 ) -> None:
-    allowed_text = _normalize_space(" ".join((source_text, *evidence_texts)))
-    introduced = [
-        quote for quote in _quoted_spans(rewritten_text) if quote not in allowed_text
-    ]
+    allowed = _allowed_quote_spans(
+        source_text=source_text,
+        evidence_items=evidence_items,
+    )
+    introduced = [quote for quote in _quoted_spans(rewritten_text) if quote not in allowed]
     if introduced:
         raise HumanVoiceError(
             "human_voice_invented_quote",
@@ -355,6 +380,13 @@ def validate_human_voice_output(
         evidence_refs = _string_list(
             segment.get("evidence_refs"), "human_voice_output_evidence_refs_invalid"
         )
+        if len(set(claim_refs)) != len(claim_refs):
+            raise HumanVoiceError("human_voice_output_claim_ref_duplicate", expected.segment_id)
+        if len(set(evidence_refs)) != len(evidence_refs):
+            raise HumanVoiceError(
+                "human_voice_output_evidence_ref_duplicate",
+                expected.segment_id,
+            )
         new_claims = _string_list(
             segment.get("new_factual_claims"),
             "human_voice_output_new_factual_claims_invalid",
@@ -378,7 +410,8 @@ def validate_human_voice_output(
                 f"{expected.segment_id}: {list(new_claims)}",
             )
 
-        evidence_texts = tuple(evidence_by_id[ref].text for ref in evidence_refs)
+        evidence_items = tuple(evidence_by_id[ref] for ref in evidence_refs)
+        evidence_texts = tuple(item.text for item in evidence_items)
         _validate_numeric_guard(
             source_text=expected.source_markdown,
             rewritten_text=text,
@@ -388,7 +421,7 @@ def validate_human_voice_output(
         _validate_quote_guard(
             source_text=expected.source_markdown,
             rewritten_text=text,
-            evidence_texts=evidence_texts,
+            evidence_items=evidence_items,
             segment_id=expected.segment_id,
         )
         rewritten.append(
