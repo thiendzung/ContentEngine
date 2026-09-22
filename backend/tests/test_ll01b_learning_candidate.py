@@ -191,7 +191,7 @@ async def test_ll01b_assessment_is_factual_idempotent_and_does_not_mutate_truth(
 
         with pytest.raises(
             DBAPIError,
-            match="learning_assessment_artifact_update_forbidden",
+            match="artifact_is_immutable|learning_assessment_artifact_update_forbidden",
         ):
             async with session.begin_nested():
                 first.artifact.content_json = {"tampered": True}
