@@ -46,15 +46,24 @@ V1 ưu tiên handoff/draft an toàn trước full auto-publish.
 
 ```text
 Final Human Approval
-→ create ContentVersion
-→ persist publish intent + idempotency key
-→ worker sends to WordPress
-→ reconcile WordPress result
-→ save external ID/revision
-→ mark PublishEvent complete
+→ create approved ContentVersion
+→ create immutable Publish Package
+→ WAIT_HUMAN(publish_authorization)
+→ Founder publish authorization
+→ persist OutboxIntent + deterministic idempotency key
+→ mark intent processing and COMMIT DB state
+→ worker sends to WordPress outside that DB transaction
+→ record confirmed result OR needs_reconciliation
+→ reconcile before any resend when outcome is ambiguous
+→ save external ID / URL / revision / status
+→ append PublishEvent
 ```
 
 Nếu không biết WordPress đã nhận request hay chưa, phải reconcile trước khi gửi lại.
+
+Final editorial approval và publish authorization là hai quyết định khác nhau. Duyệt nội dung không tự động cấp quyền xuất bản.
+
+Ranh giới transaction là bắt buộc: trạng thái Outbox `processing` phải được commit trước khi gọi WordPress. Không được giữ một transaction chưa commit xuyên qua external write.
 
 ## 5. Rank Math
 
@@ -114,8 +123,10 @@ Raw provider payload vẫn được giữ khi cần audit/debug.
 ## 8. Measurement identity
 
 ContentExperiment nối ContentOpportunity → NeedHypothesis version → ContentItem/Version
-→ PublishedContent → metrics/Signal observations. Chốt expected behaviour và review window
-trước publish; thiếu dữ liệu = INCONCLUSIVE. Metrics không tự sửa hypothesis hoặc settings.
+→ PublishedContent → metrics/Signal observations. Chốt expected behaviour, metric definitions,
+minimum evidence và review window trước publish. Measurement status dùng
+`INSUFFICIENT_DATA / EARLY_SIGNAL / REPEATED_PATTERN / LEARNING_CANDIDATE_READY`.
+Metrics không tự sửa hypothesis hoặc settings.
 
 Mỗi published content map được:
 
