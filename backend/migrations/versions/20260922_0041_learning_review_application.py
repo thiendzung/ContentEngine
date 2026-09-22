@@ -25,6 +25,8 @@ def _create_guards() -> None:
             candidate_version integer;
             candidate_status text;
             candidate_key text;
+            candidate_target_type text;
+            candidate_evidence_status text;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_candidate_review_update_forbidden';
@@ -33,8 +35,10 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_candidate_review_delete_forbidden';
             END IF;
 
-            SELECT project_id, version, status, candidate_key
-            INTO candidate_project, candidate_version, candidate_status, candidate_key
+            SELECT project_id, version, status, candidate_key,
+                   target_type, evidence_status
+            INTO candidate_project, candidate_version, candidate_status,
+                 candidate_key, candidate_target_type, candidate_evidence_status
             FROM learning_candidates
             WHERE id = NEW.learning_candidate_id;
 
@@ -60,6 +64,21 @@ def _create_guards() -> None:
             IF length(btrim(NEW.reviewed_by)) = 0
                OR length(btrim(NEW.reason)) = 0 THEN
                 RAISE EXCEPTION 'learning_candidate_review_human_fields_required';
+            END IF;
+            IF NEW.decision = 'APPROVE'
+               AND candidate_target_type <> 'no_map_change'
+               AND candidate_evidence_status = 'NEEDS_EVIDENCE' THEN
+                RAISE EXCEPTION 'learning_candidate_review_evidence_required';
+            END IF;
+            IF NEW.decision = 'APPROVE'
+               AND candidate_target_type = 'need_hypothesis'
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM learning_candidate_signals evidence
+                   WHERE evidence.learning_candidate_id = NEW.learning_candidate_id
+                     AND evidence.relation IN ('supports','contradicts')
+               ) THEN
+                RAISE EXCEPTION 'learning_candidate_review_need_directional_evidence_required';
             END IF;
             RETURN NEW;
         END;
