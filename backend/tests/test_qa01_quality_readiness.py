@@ -73,6 +73,24 @@ def test_repair_suggestion_must_be_a_string() -> None:
         )
 
 
+def test_non_pass_criterion_requires_actionable_repair() -> None:
+    payload = _output("reader_value", result="warn")
+    criteria = payload["criteria"]
+    assert isinstance(criteria, list)
+    criterion = criteria[0]
+    assert isinstance(criterion, dict)
+    criterion["repair_suggestion"] = ""
+    with pytest.raises(
+        QualityReadinessError,
+        match="quality_readiness_output_criterion_repair_required",
+    ):
+        validate_quality_readiness_output(
+            payload,
+            stage="reader_value",
+            locale="en",
+        )
+
+
 def test_search_ai_criteria_order_is_fail_closed() -> None:
     payload = _output("search_ai")
     criteria = payload["criteria"]
