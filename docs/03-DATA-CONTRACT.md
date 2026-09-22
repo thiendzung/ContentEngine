@@ -462,8 +462,11 @@ tầng; PR-C normalize vào Signal với nguồn, scope và provenance, không t
 - `locale`, `context`, `captured_at`, `observed_at` nullable
 - `fingerprint`, `duplicate_of` nullable, `independence_group` nullable
 - `provenance`: provider/method, source/document/artifact ref, locator, hash/version
-- `published_content_id` / `content_version_id` nullable cho hành vi tại MOTGU
-- `metric_refs` nullable
+
+PM-01 không thêm measurement fields trực tiếp vào Signal. Nó dừng ở
+`ContentPerformanceObservation`. LL-01 mới định nghĩa bước Observation → Signal và
+cách giữ refs tới PublishedContent/ContentVersion/metrics mà không biến correlation
+thành customer truth.
 
 Source kind không phải cấp độ tin cậy. Search Console = SEARCH/motgu_site;
 PAA = SEARCH/market_web; review bên ngoài = MARKET/market_web;
