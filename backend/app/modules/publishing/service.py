@@ -109,7 +109,7 @@ class PublishDispatch:
 @dataclass(frozen=True, slots=True)
 class PreparedWordPressCall:
     dispatch: PublishDispatch
-    request: "WordPressWriteRequest"
+    request: WordPressWriteRequest
 
 
 @dataclass(frozen=True, slots=True)
@@ -794,7 +794,9 @@ async def submit_publish_decision(
     )
 
 
-def _package_identity(package: Artifact) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+def _package_identity(
+    package: Artifact,
+) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     payload = _dict(package.content_json, "publish_package_payload_invalid")
     if package.content_hash != _hash(payload):
         raise PublishError("publish_package_hash_mismatch")
