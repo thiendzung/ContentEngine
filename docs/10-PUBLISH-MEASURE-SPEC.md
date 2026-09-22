@@ -65,6 +65,15 @@ Final editorial approval và publish authorization là hai quyết định khác
 
 Ranh giới transaction là bắt buộc: trạng thái Outbox `processing` phải được commit trước khi gọi WordPress. Không được giữ một transaction chưa commit xuyên qua external write.
 
+Nếu một ContentItem đang ở trạng thái WordPress `publish`, PM-01 V1 không hạ trực tiếp
+bài live về `draft` để review update. Cách đó có thể làm bài biến mất khỏi site.
+Update bài live phải đi qua publish authorization riêng; staging/revision workflow là
+một nâng cấp khác nếu sau này cần.
+
+Metrics được gắn với đúng `ContentVersion` đã publish. Sau khi có version mới, dữ liệu
+muộn của version cũ vẫn được phép ingest nếu có PublishEvent chứng minh version đó từng
+được publish.
+
 ## 5. Rank Math
 
 Rank Math Pro dùng như nguồn kiểm tra phụ sau khi content lên WordPress.
@@ -178,13 +187,12 @@ Không tự biến một bài thắng/thua thành thay đổi strategy.
 
 ## 11. Learning output
 
-Measurement tạo:
+PM-01 tạo `ContentPerformanceObservation` có provenance tới metric/version đã publish.
 
-- `Signal`;
-- `ContentPerformanceObservation`;
-- `LearningCandidate`.
+Bước chuyển Observation → `Signal` → `LearningCandidate` thuộc LL-01. PM-01 không
+tự tạo customer truth hay learning rule.
 
-Human review + batch evidence + regression quyết định promote.
+Human review + batch evidence + regression quyết định promote ở Learning Loop.
 
 ## 12. Update vs new content
 
