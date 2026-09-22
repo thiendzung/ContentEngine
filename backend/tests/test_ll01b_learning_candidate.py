@@ -18,6 +18,7 @@ from app.modules.harness.models import Artifact
 from app.modules.learning.models import (
     LearningCandidate,
     LearningCandidateAssessment,
+    LearningCandidateObservation,
     LearningCandidateSignal,
 )
 from app.modules.learning.performance_signal import materialize_performance_signal
@@ -29,6 +30,7 @@ from app.modules.learning.service import (
 )
 from app.modules.measurement.service import (
     MetricInput,
+    get_measurement_identity as canonical_get_measurement_identity,
     ingest_performance_snapshot,
     record_performance_observation,
 )
@@ -120,6 +122,77 @@ async def _analytics_signal(
     )
     assert materialized.signal is not None
     return observation, materialized.signal
+
+
+@pytest.mark.asyncio
+async def test_ll01b_assessment_binds_canonical_publish_event_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping = await _publish(
+            session,
+            monkeypatch,
+            worker_id=f"ll01b-canonical-event-{uuid4().hex[:8]}",
+        )
+
+        async def mismatched_identity(*args, **kwargs):
+            identity = await canonical_get_measurement_identity(*args, **kwargs)
+            copied = json.loads(json.dumps(identity))
+            copied["publish_event"]["id"] = str(uuid4())
+            return copied
+
+        monkeypatch.setattr(
+            "app.modules.learning.service.get_measurement_identity",
+            mismatched_identity,
+        )
+        with pytest.raises(
+            LearningError,
+            match="learning_assessment_publish_event_mismatch",
+        ):
+            await create_learning_assessment(
+                session,
+                experiment_id=fixture.experiment.id,
+                proposed_result="INCONCLUSIVE",
+                signal_relations={},
+                alternative_explanations=[],
+                missing_evidence=["No normalized evidence yet."],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_no_map_change_still_revalidates_full_canonical_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping = await _publish(
+            session,
+            monkeypatch,
+            worker_id=f"ll01b-canonical-lineage-{uuid4().hex[:8]}",
+        )
+
+        async def stale_lineage_identity(*args, **kwargs):
+            identity = await canonical_get_measurement_identity(*args, **kwargs)
+            copied = json.loads(json.dumps(identity))
+            copied["content"]["locale_variant_id"] = str(uuid4())
+            copied["opportunity"]["id"] = str(uuid4())
+            return copied
+
+        monkeypatch.setattr(
+            "app.modules.learning.service.get_measurement_identity",
+            stale_lineage_identity,
+        )
+        with pytest.raises(
+            LearningError,
+            match="learning_assessment_canonical_identity_mismatch",
+        ):
+            await create_learning_assessment(
+                session,
+                experiment_id=fixture.experiment.id,
+                proposed_result="INCONCLUSIVE",
+                signal_relations={},
+                alternative_explanations=[],
+                missing_evidence=["No normalized evidence yet."],
+            )
 
 
 @pytest.mark.asyncio
@@ -605,6 +678,84 @@ async def test_ll01b_forged_assessment_observation_fails_closed(
                 statement="Forged observation lineage must never become learning.",
                 relation="supports",
             )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_database_guards_reject_forged_assessment_insert_and_link_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Keep direct database evidence links immutable.",
+            relation="supports",
+        )
+
+        forged_payload = json.loads(json.dumps(assessment.artifact.content_json))
+        forged_payload["project_id"] = str(uuid4())
+        forged = Artifact(
+            run_id=assessment.artifact.run_id,
+            step_run_id=None,
+            artifact_type="learning_assessment",
+            locale=assessment.artifact.locale,
+            version=assessment.artifact.version + 100,
+            content_json=forged_payload,
+            content_hash=_hash(forged_payload),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_assessment_artifact_lineage_invalid",
+        ):
+            async with session.begin_nested():
+                session.add(forged)
+                await session.flush()
+
+        signal_link = await session.scalar(
+            select(LearningCandidateSignal).where(
+                LearningCandidateSignal.learning_candidate_id
+                == candidate.candidate.id
+            )
+        )
+        observation_link = await session.scalar(
+            select(LearningCandidateObservation).where(
+                LearningCandidateObservation.learning_candidate_id
+                == candidate.candidate.id
+            )
+        )
+        assert signal_link is not None
+        assert observation_link is not None
+
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_signal_update_forbidden",
+        ):
+            async with session.begin_nested():
+                signal_link.relation = "context"
+                await session.flush()
+
+        await session.refresh(observation_link)
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_observation_update_forbidden",
+        ):
+            async with session.begin_nested():
+                observation_link.relation = "context"
+                await session.flush()
 
 
 @pytest.mark.asyncio
