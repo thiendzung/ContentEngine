@@ -156,12 +156,23 @@ def _lens_scope(value: object) -> tuple[str | None, list[str]]:
     primary_raw = lens.get("primary_lens")
     if primary_raw is not None and not isinstance(primary_raw, str):
         raise LearningError("learning_assessment_lens_invalid")
-    primary = primary_raw.strip() if isinstance(primary_raw, str) and primary_raw.strip() else None
+    primary = (
+        primary_raw.strip()
+        if isinstance(primary_raw, str) and primary_raw.strip()
+        else None
+    )
+    merged = _strings(
+        lens.get("merged_lenses", []),
+        "learning_assessment_lens_invalid",
+    )
     supporting = _strings(
         lens.get("supporting_lenses", []),
         "learning_assessment_lens_invalid",
     )
-    return primary, sorted(set(supporting))
+    if merged and supporting and sorted(set(merged)) != sorted(set(supporting)):
+        raise LearningError("learning_assessment_lens_alias_conflict")
+    resolved = merged or supporting
+    return primary, sorted(set(resolved))
 
 
 async def _assessment_context(
@@ -1098,8 +1109,3 @@ __all__ = [
     "AssessmentResult",
     "EvidenceRelation",
     "LearningAssessmentResult",
-    "LearningCandidateResult",
-    "LearningError",
-    "create_learning_assessment",
-    "create_learning_candidate",
-]
