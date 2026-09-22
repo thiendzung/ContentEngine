@@ -319,9 +319,12 @@ Current bounded PM-01 implementation:
 - WordPress handoff uses deterministic idempotency + existing OutboxIntent;
 - commit-before-side-effect boundary is explicit: Outbox `processing` state must be durable before external WordPress write;
 - ambiguous external outcome becomes `needs_reconciliation`; reconcile before any resend;
-- PublishedContent preserves one ContentItem ↔ WordPress identity while PublishEvent records draft/publish/update history by ContentVersion;
-- ContentVersion remains immutable after Founder approval; PM-01 does not mutate `approved → published` or create a duplicate publication-only ContentVersion. Canonical external publication state is PublishedContent/PublishEvent, and Content Coverage + Review Console read that state;
-- core measurement rows normalize impressions/clicks/sessions/engaged sessions/artwork/visit/workshop transitions/inquiry while retaining raw provider payload;
+- PublishedContent preserves one ContentItem ↔ WordPress identity while immutable PublishEvent records draft/publish/update history by exact ContentVersion + ContentExperiment;
+- ContentVersion remains immutable after Founder approval; PM-01 does not mutate `approved → published` or create a duplicate publication-only ContentVersion. Canonical external publication state is PublishedContent/PublishEvent;
+- after all package inputs validate, ContentExperiment is frozen to the exact ContentItem/ContentVersion; a new content version requires a new experiment instead of historical rebind;
+- immediately before external dispatch, the package/experiment measurement snapshot is revalidated; stale state fails before Outbox moves to processing;
+- Content Coverage + Review Console validate current PublishedContent against latest immutable PublishEvent and fail closed on mapping/history drift;
+- core measurement rows normalize impressions/clicks/sessions/engaged sessions/artwork/visit/workshop transitions/inquiry while retaining aggregate/raw audit payload;
 - measurement identity traces current external URL/version back to ContentCase, Audience, Need, Journey, Opportunity, Lens and ContentExperiment;
 - metrics/observations remain observations; PM-01 does not create/promote LearningCandidate rules;
 - no WordPress credential/network activation is performed by this GitHub-side implementation;
@@ -329,6 +332,15 @@ Current bounded PM-01 implementation:
 - no Antigravity activation and no publication against a real site.
 
 Operational database remains at the separately controlled release state. PM-01 does NOT authorize rev-0035 → rev-0039 operationally.
+
+PM-01 implementation proof before final docs sync:
+- CI #1491 PASS on `37cd2f0bd4e4851389239f1d6c2e861b93d2d9b5`;
+- Ruff PASS;
+- mypy PASS on 158 source files;
+- rev-0038↔0039 migration round-trip PASS;
+- full backend tests + OpenAPI + frontend lint/typecheck/build PASS.
+
+PM-01 still remains IN IMPLEMENTATION until exact final docs-head CI, exact-ref OpenCodeReview, Agent Local disposable proof and Founder merge.
 
 PM-01 review flow remains:
 `CI → exact-ref OpenCodeReview Delegation → MG triage → Agent Local disposable exact-head proof → Founder merge`.
