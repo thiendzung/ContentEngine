@@ -236,6 +236,15 @@ async def test_ll01b_assessment_is_factual_idempotent_and_does_not_mutate_truth(
         assert payload["candidate_scope"]["intent_scope_status"] == "NOT_FROZEN_IN_PM01"
         assert payload["candidate_scope"]["primary_lens"] == "SIGNALS"
         assert payload["candidate_scope"]["supporting_lenses"] == ["METHOD"]
+        assert payload["lineage"]["publish_event_id"] == signal.provenance_json[
+            "publication"
+        ]["publish_event_id"]
+        assert payload["lineage"]["locale_variant_id"] == signal.provenance_json[
+            "content"
+        ]["locale_variant_id"]
+        assert payload["lineage"]["content_opportunity_id"] == signal.provenance_json[
+            "opportunity"
+        ]["id"]
 
         serialized = json.dumps(payload, sort_keys=True)
         assert observation.statement not in serialized
