@@ -45,8 +45,9 @@ class PerformanceSignalError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class PerformanceSignalResult:
-    signal: Signal
+    signal: Signal | None
     replayed: bool
+    skipped_reason: str | None = None
 
 
 def _hash(value: object) -> str:
@@ -449,6 +450,13 @@ async def materialize_performance_signal(
         session,
         observation=observation,
     )
+
+    if not metrics:
+        return PerformanceSignalResult(
+            signal=None,
+            replayed=False,
+            skipped_reason="no_normalized_metrics",
+        )
 
     metric_payloads = [_metric_payload(metric) for metric in metrics]
     window_payloads = [_window_payload(snapshot) for snapshot in snapshots]
