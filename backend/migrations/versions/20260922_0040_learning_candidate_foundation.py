@@ -20,8 +20,28 @@ def _create_learning_guards() -> None:
         sa.text(
             """
             CREATE FUNCTION protect_learning_assessment_artifact()
-            RETURNS trigger AS $$
+            RETURNS trigger AS $
+            DECLARE
+                run_project uuid;
             BEGIN
+                IF TG_OP = 'INSERT' THEN
+                    IF NEW.artifact_type = 'learning_assessment' THEN
+                        SELECT project_id INTO run_project
+                        FROM content_runs
+                        WHERE id = NEW.run_id;
+
+                        IF run_project IS NULL
+                           OR NEW.content_json IS NULL
+                           OR NEW.content_json->>'project_id'
+                              IS DISTINCT FROM run_project::text
+                           OR NEW.step_run_id IS NOT NULL THEN
+                            RAISE EXCEPTION
+                                'learning_assessment_artifact_lineage_invalid';
+                        END IF;
+                    END IF;
+                    RETURN NEW;
+                END IF;
+
                 IF TG_OP = 'DELETE' THEN
                     IF OLD.artifact_type = 'learning_assessment' THEN
                         RAISE EXCEPTION
@@ -37,7 +57,7 @@ def _create_learning_guards() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $$ LANGUAGE plpgsql
+            $ LANGUAGE plpgsql
             """
         )
     )
@@ -45,7 +65,7 @@ def _create_learning_guards() -> None:
         sa.text(
             """
             CREATE TRIGGER learning_assessment_artifact_guard
-            BEFORE UPDATE OR DELETE ON artifacts
+            BEFORE INSERT OR UPDATE OR DELETE ON artifacts
             FOR EACH ROW
             EXECUTE FUNCTION protect_learning_assessment_artifact()
             """
