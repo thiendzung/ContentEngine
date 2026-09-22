@@ -184,6 +184,86 @@ def test_input_rejects_unknown_allowed_evidence() -> None:
     assert exc.value.code == "human_voice_input_unknown_evidence_ref"
 
 
+def test_input_rejects_unsupported_locale() -> None:
+    with pytest.raises(HumanVoiceError) as exc:
+        HumanVoiceInput(  # type: ignore[arg-type]
+            locale="fr",
+            evidence=(),
+            segments=(
+                HumanVoiceSegment(
+                    segment_id="lead",
+                    source_markdown="Un paragraphe.",
+                    allowed_claim_refs=(),
+                    allowed_evidence_refs=(),
+                ),
+            ),
+        )
+
+    assert exc.value.code == "human_voice_locale_unsupported"
+
+
+@pytest.mark.parametrize(
+    ("field", "code"),
+    [
+        ("claim_refs", "human_voice_output_claim_ref_duplicate"),
+        ("evidence_refs", "human_voice_output_evidence_ref_duplicate"),
+    ],
+)
+def test_output_rejects_duplicate_refs(field: str, code: str) -> None:
+    output = _valid_output()
+    segments = output["segments"]
+    assert isinstance(segments, list)
+    first = segments[0]
+    assert isinstance(first, dict)
+    values = first[field]
+    assert isinstance(values, list)
+    first[field] = [values[0], values[0]]
+
+    with pytest.raises(HumanVoiceError) as exc:
+        validate_human_voice_output(output, rewrite_input=_input())
+
+    assert exc.value.code == code
+
+
+def test_quote_guard_does_not_promote_non_quote_evidence_to_direct_speech() -> None:
+    rewrite_input = HumanVoiceInput(
+        locale="en",
+        evidence=(
+            HumanVoiceEvidence(
+                evidence_id="ev-observation",
+                kind="studio_observation",
+                source_ref="studio-note-2",
+                text="Blue is difficult today.",
+            ),
+        ),
+        segments=(
+            HumanVoiceSegment(
+                segment_id="lead",
+                source_markdown="The artist mixes paint.",
+                allowed_claim_refs=(),
+                allowed_evidence_refs=("ev-observation",),
+            ),
+        ),
+    )
+    output = {
+        "locale": "en",
+        "segments": [
+            {
+                "segment_id": "lead",
+                "rewritten_markdown": 'The artist says, "Blue is difficult today."',
+                "claim_refs": [],
+                "evidence_refs": ["ev-observation"],
+                "new_factual_claims": [],
+            }
+        ],
+    }
+
+    with pytest.raises(HumanVoiceError) as exc:
+        validate_human_voice_output(output, rewrite_input=rewrite_input)
+
+    assert exc.value.code == "human_voice_invented_quote"
+
+
 @pytest.mark.asyncio
 async def test_rewriter_retries_invalid_structured_output_then_passes() -> None:
     invalid = _valid_output()
@@ -202,6 +282,8 @@ async def test_rewriter_retries_invalid_structured_output_then_passes() -> None:
         for finding in result.before_style_findings
     )
     assert result.after_style_findings == ()
+    assert result.requires_semantic_reaudit is True
+    assert model.calls[0][1]["rules"]["semantic_reaudit_required"] is True
 
 
 @pytest.mark.asyncio
