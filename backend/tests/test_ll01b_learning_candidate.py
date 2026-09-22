@@ -624,7 +624,7 @@ def test_ll01b_candidate_maturity_requires_independent_experiments() -> None:
             assessment_statuses=["CANDIDATE_READY", "CANDIDATE_READY"],
             assessment_results=["SUPPORTS", "SUPPORTS"],
         )
-        == "READY_FOR_REVIEW"
+        == "REPEATED_PATTERN"
     )
     assert (
         _classify_candidate_evidence_status(
