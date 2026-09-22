@@ -1044,10 +1044,7 @@ async def _effective_published_version(
     item: ContentItem,
     publish_run_id: UUID,
 ) -> ContentVersion:
-    """Return/create the immutable published snapshot for exact approved bytes."""
-
-    if source_version.status == "published":
-        return source_version
+    """Create one immutable snapshot for one newly confirmed publish event."""
 
     locked_item = await session.scalar(
         select(ContentItem)
@@ -1056,30 +1053,6 @@ async def _effective_published_version(
     )
     if locked_item is None:
         raise PublishError("publish_content_item_missing")
-
-    published_rows = list(
-        (
-            await session.scalars(
-                select(ContentVersion)
-                .where(
-                    ContentVersion.content_item_id == item.id,
-                    ContentVersion.status == "published",
-                    ContentVersion.final_artifact_id
-                    == source_version.final_artifact_id,
-                )
-                .order_by(ContentVersion.version_no, ContentVersion.id)
-            )
-        ).all()
-    )
-    exact = [
-        row
-        for row in published_rows
-        if row.content_json == source_version.content_json
-    ]
-    if len(exact) > 1:
-        raise PublishError("publish_version_snapshot_ambiguous")
-    if exact:
-        return exact[0]
 
     return await create_next_content_version(
         session,
