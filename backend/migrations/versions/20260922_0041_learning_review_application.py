@@ -20,7 +20,7 @@ def _create_guards() -> None:
         """
         CREATE FUNCTION learning_candidate_target_snapshot(
             p_candidate_id uuid
-        ) RETURNS jsonb AS $
+        ) RETURNS jsonb AS $$
         DECLARE
             candidate learning_candidates%ROWTYPE;
             need need_hypotheses%ROWTYPE;
@@ -167,7 +167,7 @@ def _create_guards() -> None:
                 'current_target', current_target
             );
         END;
-        $ LANGUAGE plpgsql STABLE
+        $$ LANGUAGE plpgsql STABLE
         """
     )
 
@@ -175,7 +175,7 @@ def _create_guards() -> None:
         """
         CREATE FUNCTION learning_candidate_snapshot_hash(
             p_candidate_id uuid
-        ) RETURNS text AS $
+        ) RETURNS text AS $$
         DECLARE
             payload jsonb;
         BEGIN
@@ -283,7 +283,7 @@ def _create_guards() -> None:
                 'hex'
             );
         END;
-        $ LANGUAGE plpgsql STABLE
+        $$ LANGUAGE plpgsql STABLE
         """
     )
 
@@ -291,7 +291,7 @@ def _create_guards() -> None:
         """
         CREATE FUNCTION learning_candidate_applied_signal_refs(
             p_candidate_id uuid
-        ) RETURNS jsonb AS $
+        ) RETURNS jsonb AS $$
             SELECT COALESCE(
                 jsonb_agg(
                     jsonb_build_object(
@@ -311,14 +311,14 @@ def _create_guards() -> None:
                     lc.target_type <> 'need_hypothesis'
                     OR lcs.relation IN ('supports','contradicts')
               )
-        $ LANGUAGE sql STABLE
+        $$ LANGUAGE sql STABLE
         """
     )
 
     op.execute(
         """
         CREATE FUNCTION serialize_customer_insight_project()
-        RETURNS trigger AS $
+        RETURNS trigger AS $$
         BEGIN
             PERFORM 1
             FROM projects
@@ -330,7 +330,7 @@ def _create_guards() -> None:
             END IF;
             RETURN NEW;
         END;
-        $ LANGUAGE plpgsql
+        $$ LANGUAGE plpgsql
         """
     )
     op.execute(
