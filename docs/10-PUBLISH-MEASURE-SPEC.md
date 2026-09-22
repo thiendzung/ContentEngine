@@ -143,9 +143,13 @@ Raw provider payload vẫn được giữ khi cần audit/debug.
 ContentExperiment nối ContentOpportunity → NeedHypothesis version → ContentItem/Version
 → PublishedContent → metrics/observations. Chốt expected behaviour, metric definitions,
 minimum evidence và review window trước publish. Khi Publish Package được tạo,
-experiment được khóa vào đúng ContentItem/ContentVersion; không rebind lịch sử sang
-version khác. PublishEvent lưu trực tiếp content_experiment_id để measurement lịch sử
-không phụ thuộc vào trạng thái hiện tại. Measurement status dùng
+mỗi experiment candidate được khóa vào đúng ContentItem/ContentVersion và measurement
+contract của candidate đó. Nếu package bị bỏ trước external effect, pipeline có thể tạo
+replacement candidate cho cùng version khi measurement contract khác.
+
+Sau external effect, PublishEvent lưu trực tiếp `content_experiment_id`; version/target
+đó không được chuyển sang experiment candidate khác trước external dispatch. Measurement
+lịch sử vì vậy không phụ thuộc vào trạng thái hiện tại. Measurement status dùng
 `INSUFFICIENT_DATA / EARLY_SIGNAL / REPEATED_PATTERN / LEARNING_CANDIDATE_READY`.
 Metrics không tự sửa hypothesis hoặc settings.
 
@@ -217,6 +221,10 @@ Khi memory cho thấy nội dung cũ có intent giống bài dự kiến, hệ t
 - do not write.
 
 Mọi update tạo ContentVersion mới, không tạo danh tính bài mới tùy tiện.
+
+Memory Gap dùng PublishedContent + latest PublishEvent làm nguồn publish canonical.
+Khi có PM-01 identity, REFRESH tính freshness từ thời điểm publish thật; dữ liệu legacy
+chưa có mapping/event mới fallback về ContentVersion.created_at.
 
 ## 13. Definition of done
 
