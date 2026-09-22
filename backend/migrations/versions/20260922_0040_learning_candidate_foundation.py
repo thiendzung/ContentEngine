@@ -107,6 +107,18 @@ def _create_learning_guards() -> None:
                             'learning_candidate_assessment_project_mismatch';
                     END IF;
 
+                    IF NEW.target_type = 'new_customer_insight' THEN
+                        IF NEW.proposal_json::jsonb = '{}'::jsonb THEN
+                            RAISE EXCEPTION
+                                'learning_candidate_proposal_required';
+                        END IF;
+                    ELSE
+                        IF NEW.proposal_json::jsonb <> '{}'::jsonb THEN
+                            RAISE EXCEPTION
+                                'learning_candidate_proposal_unexpected';
+                        END IF;
+                    END IF;
+
                     IF NEW.target_type = 'need_hypothesis' THEN
                         IF NEW.target_id IS NULL THEN
                             RAISE EXCEPTION
@@ -174,6 +186,7 @@ def _create_learning_guards() -> None:
                    OR OLD.target_id IS DISTINCT FROM NEW.target_id
                    OR OLD.statement IS DISTINCT FROM NEW.statement
                    OR OLD.relation IS DISTINCT FROM NEW.relation
+                   OR OLD.proposal_json::jsonb IS DISTINCT FROM NEW.proposal_json::jsonb
                    OR OLD.scope_json::jsonb IS DISTINCT FROM NEW.scope_json::jsonb
                    OR OLD.evidence_status IS DISTINCT FROM NEW.evidence_status
                    OR OLD.alternative_explanations_json::jsonb
@@ -426,6 +439,7 @@ def upgrade() -> None:
         sa.Column("target_id", sa.Uuid(), nullable=True),
         sa.Column("statement", sa.Text(), nullable=False),
         sa.Column("relation", sa.String(length=16), nullable=False),
+        sa.Column("proposal_json", sa.JSON(), nullable=False),
         sa.Column("scope_json", sa.JSON(), nullable=False),
         sa.Column("evidence_status", sa.String(length=32), nullable=False),
         sa.Column("alternative_explanations_json", sa.JSON(), nullable=False),
