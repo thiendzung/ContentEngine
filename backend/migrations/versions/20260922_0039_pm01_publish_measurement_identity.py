@@ -306,11 +306,6 @@ def upgrade() -> None:
         ["published_content_id"],
         ["id"],
     )
-    op.create_unique_constraint(
-        "uq_content_experiment_content_version",
-        "content_experiments",
-        ["content_version_id"],
-    )
     op.execute(
         sa.text(
             """
@@ -439,6 +434,15 @@ def upgrade() -> None:
                 END IF;
                 IF experiment_version IS DISTINCT FROM NEW.content_version_id THEN
                     RAISE EXCEPTION 'pm01_publish_event_experiment_mismatch';
+                END IF;
+                IF EXISTS (
+                    SELECT 1
+                    FROM publish_events
+                    WHERE published_content_id = NEW.published_content_id
+                      AND content_version_id = NEW.content_version_id
+                      AND content_experiment_id <> NEW.content_experiment_id
+                ) THEN
+                    RAISE EXCEPTION 'pm01_publish_event_experiment_conflict';
                 END IF;
                 RETURN NEW;
             END;
@@ -572,11 +576,6 @@ def downgrade() -> None:
         )
     )
     op.execute(sa.text("DROP FUNCTION IF EXISTS prevent_content_experiment_rebind()"))
-    op.drop_constraint(
-        "uq_content_experiment_content_version",
-        "content_experiments",
-        type_="unique",
-    )
     op.drop_constraint(
         "fk_content_experiments_published_content",
         "content_experiments",
