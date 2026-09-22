@@ -516,6 +516,11 @@ UPDATE/REFRESH/MERGE/LINK_ONLY yêu cầu existing target refs. Human selection 
 - `observation_refs`, `alternative_explanations`, `reviewed_by`, `reviewed_at`
 
 Định nghĩa expected behaviour/cách đo trước publish; review gắn đúng version và cửa sổ.
+Khi Publish Package được tạo, `content_item_id + content_version_id` được khóa vào
+experiment đó. Một ContentVersion chỉ thuộc một ContentExperiment đo lường trong PM-01;
+binding đã có không được chuyển sang item/version/published-content khác. Nếu nội dung
+đổi thành version mới và cần đo lại, tạo experiment mới thay vì rebind lịch sử.
+
 Result bổ sung evidence qua Signal/ContentPerformanceObservation; không tự đổi hypothesis
 hoặc settings. Dwell time không tự chứng minh interest; shipping inquiry không tự chứng
 minh fear of fraud. Không có conversion khi traffic ít là INCONCLUSIVE.
@@ -725,9 +730,9 @@ Durable intent cho side effect quan trọng như publish.
 
 Mapping ContentItem với WordPress/external target.
 
-`current_content_version_id` là snapshot đang tương ứng với external object. Khi một
-approved ContentVersion được WordPress xác nhận live, PM-01 tạo một ContentVersion mới
-`status=published`; không mutate version đã approved.
+`current_content_version_id` là đúng immutable ContentVersion đang tương ứng với
+external object. PM-01 không tạo một bản sao ContentVersion chỉ để đổi nhãn
+`published` và không mutate approved version.
 
 - `id`
 - `project_id`
@@ -752,12 +757,14 @@ này.
 
 Lịch sử publish/update.
 
-`content_version_id` là effective external snapshot của event. Publish Package vẫn giữ
-source approved ContentVersion trong immutable package identity để truy ngược approval.
+`content_version_id` là exact immutable ContentVersion của event.
+`content_experiment_id` là experiment đã được khóa với version đó. Publish Package
+giữ cùng identity để truy ngược approval/measurement plan.
 
 - `id`
 - `published_content_id`
 - `content_version_id`
+- `content_experiment_id`
 - `publish_package_artifact_id`
 - `publish_approval_id`
 - `outbox_intent_id`
