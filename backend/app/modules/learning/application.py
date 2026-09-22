@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
@@ -80,17 +78,6 @@ class LearningApplicationResult:
     resulting_target_id: UUID | None
     customer_map_snapshot_artifact_id: UUID | None
     change_report: dict[str, object] | None
-
-
-def _hash(value: object) -> str:
-    encoded = json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-        default=str,
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _text(value: str, code: str) -> str:
@@ -367,7 +354,6 @@ async def _candidate_snapshot(
 
     expected_signals: dict[UUID, str] = {}
     expected_observations: dict[UUID, str] = {}
-    assessment_hashes: list[dict[str, str]] = []
     source_run_id: UUID | None = None
     for link in assessment_links:
         artifact = await session.get(Artifact, link.assessment_artifact_id)
@@ -443,12 +429,6 @@ async def _candidate_snapshot(
                     "learning_candidate_observation_relation_conflict"
                 )
             expected_observations[observation_id] = relation
-        assessment_hashes.append(
-            {
-                "id": str(artifact.id),
-                "content_hash": artifact.content_hash,
-            }
-        )
         if artifact.id == candidate.source_assessment_artifact_id:
             source_run_id = artifact.run_id
 
@@ -491,50 +471,14 @@ async def _candidate_snapshot(
         candidate=candidate,
         lock_target=lock_target,
     )
-    snapshot_payload: dict[str, object] = {
-        "candidate": {
-            "id": str(candidate.id),
-            "project_id": str(candidate.project_id),
-            "candidate_key": candidate.candidate_key,
-            "version": candidate.version,
-            "target_type": candidate.target_type,
-            "target_id": str(candidate.target_id) if candidate.target_id else None,
-            "statement": candidate.statement,
-            "relation": candidate.relation,
-            "proposal": candidate.proposal_json,
-            "scope": candidate.scope_json,
-            "evidence_status": candidate.evidence_status,
-            "alternative_explanations": candidate.alternative_explanations_json,
-            "missing_evidence": candidate.missing_evidence_json,
-            "expected_benefit": candidate.expected_benefit,
-            "regression_risk": candidate.regression_risk,
-            "source_assessment_artifact_id": str(
-                candidate.source_assessment_artifact_id
-            ),
-            "supersedes_id": (
-                str(candidate.supersedes_id)
-                if candidate.supersedes_id is not None
-                else None
-            ),
-            "status": candidate.status,
-        },
-        "assessments": assessment_hashes,
-        "signals": signal_snapshot,
-        "observations": [
-            {
-                "id": str(observation_id),
-                "relation": relation,
-            }
-            for observation_id, relation in sorted(
-                actual_observations.items(),
-                key=lambda item: str(item[0]),
-            )
-        ],
-        "target_snapshot": target_snapshot,
-    }
+    snapshot_hash = await session.scalar(
+        select(func.learning_candidate_snapshot_hash(candidate.id))
+    )
+    if not isinstance(snapshot_hash, str) or len(snapshot_hash) != 64:
+        raise LearningApplicationError("learning_candidate_snapshot_hash_invalid")
     return CandidateSnapshot(
         candidate=candidate,
-        snapshot_hash=_hash(snapshot_payload),
+        snapshot_hash=snapshot_hash,
         target_snapshot=target_snapshot,
         signal_links=tuple(
             sorted(actual_signals.items(), key=lambda item: str(item[0]))
