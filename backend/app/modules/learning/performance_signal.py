@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import ContentExperiment, Signal
+from app.modules.harness.models import Artifact
 from app.modules.measurement.models import (
     ContentPerformanceObservation,
     PerformanceMetric,
@@ -332,26 +333,10 @@ async def materialize_performance_signal(
         customer.get("need_hypothesis_id"),
         "performance_signal_need_invalid",
     )
-    need_version = customer.get("need_hypothesis_version")
-    if not isinstance(need_version, int) or need_version < 1:
-        raise PerformanceSignalError("performance_signal_need_version_invalid")
-    audience_id = _optional_uuid(
-        customer.get("audience_hypothesis_id"),
-        "performance_signal_audience_invalid",
-    )
-    journey_stages = _strings(
-        customer.get("journey_stages"),
-        "performance_signal_journey_invalid",
-    )
-
     opportunity_id = _uuid(
         opportunity.get("id"),
         "performance_signal_opportunity_invalid",
     )
-    opportunity_version = opportunity.get("version")
-    if not isinstance(opportunity_version, int) or opportunity_version < 1:
-        raise PerformanceSignalError("performance_signal_opportunity_version_invalid")
-
     experiment_id = _uuid(
         experiment_identity.get("id"),
         "performance_signal_experiment_invalid",
@@ -366,7 +351,6 @@ async def materialize_performance_signal(
         or experiment.content_version_id != content_version_id
         or experiment.content_opportunity_id != opportunity_id
         or experiment.need_hypothesis_id != need_id
-        or experiment.hypothesis_version != need_version
     ):
         raise PerformanceSignalError("performance_signal_experiment_lineage_mismatch")
     review_start = _aware(
@@ -400,18 +384,63 @@ async def materialize_performance_signal(
         "performance_signal_canonical_url_required",
     )
 
+    package = await session.get(Artifact, event.publish_package_artifact_id)
+    if (
+        package is None
+        or package.artifact_type != "publish_package"
+        or not isinstance(package.content_json, dict)
+    ):
+        raise PerformanceSignalError("performance_signal_publish_package_invalid")
+    package_identity = _dict(
+        package.content_json.get("identity"),
+        "performance_signal_publish_package_identity_invalid",
+    )
+    frozen_expected = {
+        "project_id": str(mapping.project_id),
+        "content_case_id": str(content_case_id),
+        "locale_variant_id": str(locale_variant_id),
+        "content_item_id": str(content_item_id),
+        "content_opportunity_id": str(opportunity_id),
+        "need_hypothesis_id": str(need_id),
+        "content_experiment_id": str(experiment.id),
+    }
+    for key, value in frozen_expected.items():
+        if package_identity.get(key) != value:
+            raise PerformanceSignalError(
+                "performance_signal_publish_package_identity_mismatch"
+            )
+
+    frozen_need_version = package_identity.get("need_hypothesis_version")
+    if not isinstance(frozen_need_version, int) or frozen_need_version < 1:
+        raise PerformanceSignalError(
+            "performance_signal_publish_package_need_version_invalid"
+        )
+    if experiment.hypothesis_version != frozen_need_version:
+        raise PerformanceSignalError(
+            "performance_signal_experiment_hypothesis_version_mismatch"
+        )
+    frozen_audience_id = _optional_uuid(
+        package_identity.get("audience_hypothesis_id"),
+        "performance_signal_publish_package_audience_invalid",
+    )
+    frozen_journey_stages = _strings(
+        package_identity.get("journey_stages"),
+        "performance_signal_publish_package_journey_invalid",
+    )
+    frozen_lens = package_identity.get("lens_selection")
+    if frozen_lens is not None and not isinstance(frozen_lens, dict):
+        raise PerformanceSignalError(
+            "performance_signal_publish_package_lens_invalid"
+        )
+    frozen_lens_payload: dict[str, object] | None = (
+        json.loads(json.dumps(frozen_lens, ensure_ascii=False, default=str))
+        if isinstance(frozen_lens, dict)
+        else None
+    )
+
     metrics, snapshots = await _load_metrics(
         session,
         observation=observation,
-    )
-
-    lens_selection = identity.get("lens_selection")
-    if lens_selection is not None and not isinstance(lens_selection, dict):
-        raise PerformanceSignalError("performance_signal_lens_identity_invalid")
-    lens_payload: dict[str, object] | None = (
-        json.loads(json.dumps(lens_selection, ensure_ascii=False, default=str))
-        if isinstance(lens_selection, dict)
-        else None
     )
 
     metric_payloads = [_metric_payload(metric) for metric in metrics]
@@ -453,17 +482,19 @@ async def materialize_performance_signal(
         },
         "customer": {
             "audience_hypothesis_id": (
-                str(audience_id) if audience_id is not None else None
+                str(frozen_audience_id)
+                if frozen_audience_id is not None
+                else None
             ),
             "need_hypothesis_id": str(need_id),
-            "need_hypothesis_version": need_version,
-            "journey_stages": journey_stages,
+            "need_hypothesis_version": frozen_need_version,
+            "journey_stages": frozen_journey_stages,
+            "identity_source": "publish_package",
         },
         "opportunity": {
             "id": str(opportunity_id),
-            "version": opportunity_version,
         },
-        "lens_selection": lens_payload,
+        "lens_selection": frozen_lens_payload,
         "experiment": {
             "id": str(experiment.id),
             "review_window_start": review_start.isoformat(),
