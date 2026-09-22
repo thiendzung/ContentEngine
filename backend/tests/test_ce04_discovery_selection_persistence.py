@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from uuid import UUID, uuid4
 
 import pytest
@@ -22,6 +23,7 @@ from app.modules.research.contracts import (
     SearchSignal,
 )
 from app.modules.research.discovery import DiscoveryResearchWorkflow, DiscoveryWorkflowRequest
+from app.modules.research.discovery.persistence import persist_discovery_selection
 from app.modules.research.keyword_plan.contracts import ContentDecision, NeedType
 from app.modules.research.keyword_plan.service import OpportunityMapRequest
 
@@ -201,6 +203,43 @@ async def test_persisted_human_selection_is_single_idempotent_and_pre_contentcas
             )
             assert selection_count == 1
             assert experiment_count == 1
+
+            original_experiment = result.opportunity_map.experiment_draft
+            assert original_experiment is not None
+            result.opportunity_map.experiment_draft = replace(
+                original_experiment,
+                id=f"{original_experiment.id}-replacement",
+                measurement_plan=(
+                    *original_experiment.measurement_plan,
+                    "replacement measurement window",
+                ),
+            )
+            replacement_refs = await persist_discovery_selection(
+                session,
+                result=result.opportunity_map,
+                planning_refs=result.planning_refs,
+            )
+            assert (
+                replacement_refs.content_experiment_id
+                != first_refs.content_experiment_id
+            )
+            replacement_experiment = await session.get(
+                ContentExperiment,
+                replacement_refs.content_experiment_id,
+            )
+            assert replacement_experiment is not None
+            assert replacement_experiment.expected_behaviour == (
+                db_experiment.expected_behaviour
+            )
+            assert replacement_experiment.measurement_plan_json != (
+                db_experiment.measurement_plan_json
+            )
+            experiment_count = await session.scalar(
+                select(func.count()).select_from(ContentExperiment).where(
+                    ContentExperiment.content_opportunity_id == db_opportunity.id
+                )
+            )
+            assert experiment_count == 2
         finally:
             await session.close()
             await transaction.rollback()
