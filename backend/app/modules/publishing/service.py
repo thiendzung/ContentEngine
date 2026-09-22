@@ -307,6 +307,9 @@ async def _approved_lineage(
         or not experiment.measurement_plan_json
         or not experiment.metric_definitions_json
         or not experiment.minimum_evidence_json
+        or experiment.review_window_start is None
+        or experiment.review_window_end is None
+        or experiment.review_window_end < experiment.review_window_start
     ):
         raise PublishError("publish_experiment_not_ready")
     if experiment.content_item_id not in {None, item.id}:
