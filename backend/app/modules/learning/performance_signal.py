@@ -106,7 +106,10 @@ def _aware(value: datetime | None, code: str) -> datetime:
 
 
 def _decimal_text(value: Decimal) -> str:
-    return format(value, "f")
+    normalized = value.normalize()
+    if normalized == 0:
+        return "0"
+    return format(normalized, "f")
 
 
 async def _load_metrics(
