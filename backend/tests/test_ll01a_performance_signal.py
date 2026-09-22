@@ -488,11 +488,16 @@ async def test_ll01a_can_materialize_insufficient_data_without_inventing_metrics
             observed_at=datetime.now(UTC),
             metric_refs=[],
         )
+        signal_count_before = int(
+            await session.scalar(select(func.count()).select_from(Signal)) or 0
+        )
         result = await materialize_performance_signal(
             session,
             observation_id=observation.id,
         )
-        assert result.signal.provenance_json["metrics"] == []
-        assert result.signal.provenance_json["measurement_windows"] == []
-        assert "no normalized metric rows" in result.signal.observed_text.lower()
-        assert observation.statement not in result.signal.observed_text
+        assert result.signal is None
+        assert result.replayed is False
+        assert result.skipped_reason == "no_normalized_metrics"
+        assert int(
+            await session.scalar(select(func.count()).select_from(Signal)) or 0
+        ) == signal_count_before
