@@ -612,6 +612,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         assert fixture.version.status == "approved"
         assert mapping2.current_content_version_id == fixture.version.id
         assert publish_event.content_version_id == fixture.version.id
+        assert publish_event.content_experiment_id == fixture.experiment.id
         assert fixture.item.status == "published"
         assert fixture.experiment.status == "RUNNING"
         assert fixture.experiment.content_version_id == fixture.version.id
@@ -708,6 +709,9 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         assert identity["customer"]["journey_stages"] == ["trust"]
         assert identity["lens_selection"]["primary_lens"] == "SIGNALS"
         assert identity["experiment"]["id"] == str(fixture.experiment.id)
+        assert identity["publish_event"]["content_experiment_id"] == str(
+            fixture.experiment.id
+        )
         assert identity["published_content"]["canonical_url"] == mapping2.canonical_url
 
         assert gateway.execute_count == 2
@@ -1065,6 +1069,7 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
             fixture.experiment.id
         )
 
+
 @pytest.mark.asyncio
 async def test_pm01_reconciliation_validates_before_durable_success(
     monkeypatch: pytest.MonkeyPatch,
@@ -1129,4 +1134,95 @@ async def test_pm01_reconciliation_validates_before_durable_success(
         assert int(
             await session.scalar(select(func.count()).select_from(PublishEvent)) or 0
         ) == 0
+
+
+@pytest.mark.asyncio
+async def test_pm01_experiment_binding_cannot_move_to_another_content_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        first = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        assert first.experiment.content_item_id == fixture.item.id
+        assert first.experiment.content_version_id == fixture.version.id
+
+        newer = ContentVersion(
+            content_item_id=fixture.item.id,
+            version_no=fixture.version.version_no + 1,
+            final_artifact_id=fixture.final_artifact.id,
+            change_reason="PM-01 binding-conflict fixture.",
+            status="approved",
+            content_json=fixture.version.content_json,
+            created_by_run_id=fixture.source_run.id,
+        )
+        session.add(newer)
+        await session.flush()
+
+        with pytest.raises(
+            PublishError,
+            match="publish_experiment_content_version_conflict",
+        ):
+            await prepare_publish_package(
+                session,
+                content_version_id=newer.id,
+                experiment_id=fixture.experiment.id,
+                slug="check-an-artwork-v2",
+                action="publish",
+            )
+
+        with pytest.raises(
+            DBAPIError,
+            match="pm01_content_experiment_binding_is_immutable",
+        ):
+            async with session.begin_nested():
+                await session.execute(
+                    update(ContentExperiment)
+                    .where(ContentExperiment.id == fixture.experiment.id)
+                    .values(content_version_id=newer.id)
+                )
+
+
+@pytest.mark.asyncio
+async def test_pm01_stale_experiment_snapshot_blocks_before_outbox_processing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=package.run.id,
+            package_artifact_id=package.artifact.id,
+            worker_id="pm01-stale-experiment-worker",
+        )
+
+        fixture.experiment.measurement_plan_json = [
+            *fixture.experiment.measurement_plan_json,
+            "new plan added after package approval",
+        ]
+        await session.flush()
+
+        with pytest.raises(
+            PublishError,
+            match="publish_experiment_snapshot_stale",
+        ):
+            await begin_wordpress_dispatch(
+                session,
+                job_id=claimed.id,
+                worker_id="pm01-stale-experiment-worker",
+            )
+        await session.refresh(dispatch.intent)
+        assert dispatch.intent.status == "pending"
 
