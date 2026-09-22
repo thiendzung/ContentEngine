@@ -11,7 +11,10 @@ from test_ll01b_learning_candidate import _analytics_signal, _search_signal
 from test_pm01_publish_measurement import isolated_session
 
 from app.modules.content_engine.models import NeedHypothesisSignal
-from app.modules.customer_intelligence.insights import ensure_customer_insight
+from app.modules.customer_intelligence.insights import (
+    ensure_customer_insight,
+    review_customer_insight,
+)
 from app.modules.customer_intelligence.models import (
     CustomerInsight,
     CustomerInsightNeedLink,
@@ -500,8 +503,13 @@ async def test_ll01c_existing_insight_status_change_after_review_blocks_apply(
             reviewed_by="founder",
             reason="Approve only the exact reviewed target state.",
         )
-        insight.status = "TESTING"
-        await session.flush()
+        await review_customer_insight(
+            session,
+            customer_insight_id=insight.id,
+            status="TESTING",
+            reviewed_by="founder",
+            reason="Create a legitimate post-review target-state change.",
+        )
 
         with pytest.raises(
             LearningApplicationError,
