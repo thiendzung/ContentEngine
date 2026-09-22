@@ -227,9 +227,15 @@ class CliQualityReadinessModelPort(QualityReadinessModelPort):
             "content_case",
             "content_opportunity",
             "locale_variant",
+            "approved_angle",
+            "originality_pack",
             "source_copy",
             "evaluation_policy",
         }
+        if self._config.stage == "search_ai":
+            required.add("reader_value")
+        elif "reader_value" in value:
+            raise QualityReadinessError("quality_readiness_model_input_reader_value_unexpected")
         if not required.issubset(value):
             raise QualityReadinessError("quality_readiness_model_input_incomplete")
         cloned = json.loads(json.dumps(value, ensure_ascii=False))
