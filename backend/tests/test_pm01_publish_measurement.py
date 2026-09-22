@@ -22,6 +22,7 @@ from app.modules.content_engine.journal.review_console import (
     ReviewConsoleError,
     get_review_case,
 )
+from app.modules.content_engine.memory_gap import recommend_memory_gap
 from app.modules.content_engine.models import (
     AudienceHypothesis,
     ContentCase,
@@ -636,6 +637,24 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         )
         assert review.locales[0].publication_state == "PUBLISHED"
         assert review.locales[0].next_action == "PUBLISHED"
+
+        assert mapping2.published_at is not None
+        memory = await recommend_memory_gap(
+            session,
+            content_opportunity_id=fixture.opportunity.id,
+            refresh_before=mapping2.published_at + timedelta(seconds=1),
+        )
+        assert memory.recommendation == "REFRESH"
+        assert memory.freshness_basis == "publish_event_published_at"
+        assert memory.matched_content_items[0].latest_published_version is not None
+        assert (
+            memory.matched_content_items[0].latest_published_version.id
+            == fixture.version.id
+        )
+        assert (
+            memory.matched_content_items[0].latest_published_version.published_at
+            == mapping2.published_at
+        )
 
         window_end = datetime.now(UTC)
         window_start = window_end - timedelta(days=7)
@@ -1429,4 +1448,3 @@ async def test_pm01_bound_experiment_measurement_contract_is_immutable(
                         )
                     )
                 )
-
