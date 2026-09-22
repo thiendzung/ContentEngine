@@ -48,6 +48,7 @@ from app.modules.harness.persistence import (
     complete_job,
     enqueue_job,
     fail_job_and_maybe_retry,
+    get_latest_checkpoint,
     pause_for_approval,
     resolve_approval,
     transition_run,
@@ -273,6 +274,20 @@ async def _approved_lineage(
     if len(approvals) != 1:
         raise PublishError("publish_final_approval_missing")
     approval = approvals[0]
+    checkpoint = await get_latest_checkpoint(session, run_id=source_run.id)
+    checkpoint_payload = checkpoint.content_json if checkpoint is not None else None
+    approval_ids = (
+        checkpoint_payload.get("approval_ids")
+        if isinstance(checkpoint_payload, dict)
+        else None
+    )
+    if (
+        source_run.status != "completed"
+        or not isinstance(approval_ids, list)
+        or str(approval.id) not in approval_ids
+        or checkpoint_payload.get("pending_approval") is not None
+    ):
+        raise PublishError("publish_final_approval_history_invalid")
 
     experiment = await session.get(ContentExperiment, experiment_id)
     opportunity = await session.get(ContentOpportunity, case.content_opportunity_id)
@@ -838,6 +853,19 @@ async def prepare_wordpress_dispatch(
     if len(approvals) != 1:
         raise PublishError("publish_authorization_missing")
     approval = approvals[0]
+    checkpoint = await get_latest_checkpoint(session, run_id=run.id)
+    checkpoint_payload = checkpoint.content_json if checkpoint is not None else None
+    approval_ids = (
+        checkpoint_payload.get("approval_ids")
+        if isinstance(checkpoint_payload, dict)
+        else None
+    )
+    if (
+        not isinstance(approval_ids, list)
+        or str(approval.id) not in approval_ids
+        or checkpoint_payload.get("pending_approval") is not None
+    ):
+        raise PublishError("publish_authorization_history_invalid")
 
     item_id = _text(identity.get("content_item_id"), "publish_item_ref_invalid")
     version_id = _text(identity.get("content_version_id"), "publish_version_ref_invalid")
