@@ -519,10 +519,14 @@ UPDATE/REFRESH/MERGE/LINK_ONLY yêu cầu existing target refs. Human selection 
 - `observation_refs`, `alternative_explanations`, `reviewed_by`, `reviewed_at`
 
 Định nghĩa expected behaviour/cách đo trước publish; review gắn đúng version và cửa sổ.
-Khi Publish Package được tạo, `content_item_id + content_version_id` được khóa vào
-experiment đó. Một ContentVersion chỉ thuộc một ContentExperiment đo lường trong PM-01;
-binding đã có không được chuyển sang item/version/published-content khác. Nếu nội dung
-đổi thành version mới và cần đo lại, tạo experiment mới thay vì rebind lịch sử.
+Khi Publish Package được tạo, mỗi ContentExperiment candidate được khóa vào đúng
+`content_item_id + content_version_id` và measurement contract của chính nó; không
+rebind candidate đó sang item/version khác.
+
+Trước khi có external effect, một ContentVersion có thể có replacement experiment
+candidate khác nếu kế hoạch đo phải sửa; dedupe chỉ tái dùng candidate khi measurement
+contract giống hệt. Khi một version đã externalize, PublishEvent khóa experiment
+canonical cho version/target đó và candidate khác bị chặn trước external dispatch.
 
 Result bổ sung evidence qua Signal/ContentPerformanceObservation; không tự đổi hypothesis
 hoặc settings. Dwell time không tự chứng minh interest; shipping inquiry không tự chứng
@@ -754,7 +758,9 @@ Unique recommendation: `(project_id, content_item_id, target)`.
 `current_content_version_id` trỏ thẳng tới đúng immutable ContentVersion đã được
 Founder duyệt và gửi ra target; không tạo thêm một ContentVersion chỉ để đổi nhãn
 `published`. Content Coverage/Review Console phải đọc publication state từ mapping
-này.
+này và đối chiếu latest PublishEvent. Memory Gap cũng dùng canonical mapping/event;
+freshness dùng `PublishEvent.published_at` khi có, chỉ fallback
+`ContentVersion.created_at` cho dữ liệu legacy chưa có PM-01 identity.
 
 ### PublishEvent
 
