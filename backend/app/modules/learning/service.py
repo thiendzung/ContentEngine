@@ -1320,7 +1320,7 @@ def _validate_candidate_relation_for_evidence(
         value == "contradicts" for value in signal_relations.values()
     )
     if target_type == "new_customer_insight":
-        if not has_support or has_contradiction:
+        if not has_support:
             raise LearningError("learning_candidate_new_insight_evidence_invalid")
         return
     if target_type not in {"need_hypothesis", "customer_insight"}:
@@ -1431,6 +1431,15 @@ async def create_learning_candidate(
     )
     if latest is not None and latest.status != "OPEN":
         raise LearningError("learning_candidate_latest_not_open")
+    if latest is not None and (
+        latest.target_type != target_type
+        or latest.target_id != target_id
+        or _normalized_statement(latest.statement)
+        != _normalized_statement(clean_statement)
+        or latest.proposal_json != normalized_proposal
+        or latest.scope_json != scope
+    ):
+        raise LearningError("learning_candidate_key_collision")
 
     signal_relations, observation_relations, assessment_ids = await _candidate_evidence(
         session,
