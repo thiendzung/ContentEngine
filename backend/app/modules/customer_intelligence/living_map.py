@@ -1156,9 +1156,9 @@ def _need_evidence_events(
             for signal_id in after
             if signal_id in relation_keys
         }
-        if len(after_independent_keys) != len(after):
+        if any(signal_id not in relation_keys for signal_id in after):
             raise CustomerMapError("customer_map_need_independence_invalid")
-        if len(before_independent_keys) != len(before):
+        if any(signal_id not in relation_keys for signal_id in before):
             raise CustomerMapError("customer_map_need_independence_invalid")
         event_kind: JourneyChangeKind
         detail: str
