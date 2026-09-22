@@ -63,7 +63,7 @@ class ContentRun(TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "run_mode in ('create','update','refresh','localize','eval')",
+            "run_mode in ('create','update','refresh','localize','eval','publish')",
             name="ck_content_run_mode",
         ),
         CheckConstraint(

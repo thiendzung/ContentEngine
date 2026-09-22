@@ -263,6 +263,13 @@ class ContentExperiment(TimestampMixin, Base):
         ForeignKey("need_hypotheses.id"), nullable=False
     )
     hypothesis_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_item_id: Mapped[UUID | None] = mapped_column(ForeignKey("content_items.id"))
+    content_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("content_versions.id")
+    )
+    published_content_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("published_contents.id")
+    )
     expected_behaviour: Mapped[str] = mapped_column(Text, nullable=False)
     measurement_plan_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     metric_definitions_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
@@ -561,3 +568,5 @@ def register_models() -> None:
     )
     from app.modules.harness import models as _harness_models  # noqa: F401
     from app.modules.knowledge import models as _knowledge_models  # noqa: F401
+    from app.modules.measurement import models as _measurement_models  # noqa: F401
+    from app.modules.publishing import models as _publishing_models  # noqa: F401

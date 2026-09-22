@@ -28,6 +28,11 @@ Mỗi package tối thiểu có:
 - approval reference;
 - content hypothesis ID.
 
+ContentVersion là immutable. PM-01 không UPDATE `approved → published` và không tạo
+một ContentVersion bản sao chỉ để biểu diễn trạng thái WordPress. Publish Package,
+PublishedContent, PublishEvent và metrics cùng trỏ về đúng version đã được duyệt.
+Trạng thái external nằm ở PublishedContent/PublishEvent.
+
 ## 3. WordPress adapter
 
 Adapter phải:
@@ -46,15 +51,38 @@ V1 ưu tiên handoff/draft an toàn trước full auto-publish.
 
 ```text
 Final Human Approval
-→ create ContentVersion
-→ persist publish intent + idempotency key
-→ worker sends to WordPress
-→ reconcile WordPress result
-→ save external ID/revision
-→ mark PublishEvent complete
+→ create immutable approved ContentVersion
+→ explicitly set measurement review window (timezone-aware; no inferred default)
+→ create immutable Publish Package
+→ WAIT_HUMAN(publish_authorization)
+→ Founder publish authorization
+→ persist OutboxIntent + deterministic idempotency key
+→ mark intent processing and COMMIT DB state
+→ worker sends to WordPress outside that DB transaction
+→ record confirmed result OR needs_reconciliation
+→ reconcile before any resend when outcome is ambiguous
+→ save external ID / URL / revision / status
+→ append PublishEvent
 ```
 
 Nếu không biết WordPress đã nhận request hay chưa, phải reconcile trước khi gửi lại.
+
+Final editorial approval và publish authorization là hai quyết định khác nhau. Duyệt nội dung không tự động cấp quyền xuất bản.
+
+`ContentVersion` đã duyệt là immutable. Khi WordPress xác nhận publish, PM-01 giữ
+nguyên version đó và ghi external state vào `PublishedContent/PublishEvent`; không
+tạo bản sao version chỉ để có `status=published`, và không UPDATE version cũ.
+
+Ranh giới transaction là bắt buộc: trạng thái Outbox `processing` phải được commit trước khi gọi WordPress. Không được giữ một transaction chưa commit xuyên qua external write.
+
+Nếu một ContentItem đang ở trạng thái WordPress `publish`, PM-01 V1 không hạ trực tiếp
+bài live về `draft` để review update. Cách đó có thể làm bài biến mất khỏi site.
+Update bài live phải đi qua publish authorization riêng; staging/revision workflow là
+một nâng cấp khác nếu sau này cần.
+
+Metrics được gắn với đúng `ContentVersion` đã publish. Sau khi có version mới, dữ liệu
+muộn của version cũ vẫn được phép ingest nếu có PublishEvent chứng minh version đó từng
+được publish.
 
 ## 5. Rank Math
 
@@ -114,8 +142,22 @@ Raw provider payload vẫn được giữ khi cần audit/debug.
 ## 8. Measurement identity
 
 ContentExperiment nối ContentOpportunity → NeedHypothesis version → ContentItem/Version
-→ PublishedContent → metrics/Signal observations. Chốt expected behaviour và review window
-trước publish; thiếu dữ liệu = INCONCLUSIVE. Metrics không tự sửa hypothesis hoặc settings.
+→ PublishedContent → metrics/observations. Discovery chỉ replay candidate còn
+`PLANNED/PENDING`, chưa bind và có full measurement draft giống hệt; candidate đã bind
+thuộc vòng thử cũ và không được rebind sang version mới.
+
+Expected behaviour, metric definitions, minimum evidence và review window phải chốt
+trước publish. Review window được set explicit bằng datetime có timezone; PM-01 không
+tự biến khuyến nghị 7/14/30 ngày thành dữ liệu. `end <= start` hoặc thiếu window làm
+Publish Package fail closed. Khi Publish Package được tạo, candidate được khóa vào đúng
+ContentItem/ContentVersion cùng measurement contract + review window. Nếu package bị bỏ
+trước external effect, pipeline có thể tạo replacement candidate cho cùng version.
+
+Sau external effect, PublishEvent lưu trực tiếp `content_experiment_id`; version/target
+đó không được chuyển sang experiment candidate khác trước external dispatch. Measurement
+lịch sử vì vậy không phụ thuộc vào trạng thái hiện tại. Measurement status dùng
+`INSUFFICIENT_DATA / EARLY_SIGNAL / REPEATED_PATTERN / LEARNING_CANDIDATE_READY`.
+Metrics không tự sửa hypothesis hoặc settings.
 
 Mỗi published content map được:
 
@@ -167,13 +209,12 @@ Không tự biến một bài thắng/thua thành thay đổi strategy.
 
 ## 11. Learning output
 
-Measurement tạo:
+PM-01 tạo `ContentPerformanceObservation` có provenance tới metric/version đã publish.
 
-- `Signal`;
-- `ContentPerformanceObservation`;
-- `LearningCandidate`.
+Bước chuyển Observation → `Signal` → `LearningCandidate` thuộc LL-01. PM-01 không
+tự tạo customer truth hay learning rule.
 
-Human review + batch evidence + regression quyết định promote.
+Human review + batch evidence + regression quyết định promote ở Learning Loop.
 
 ## 12. Update vs new content
 
@@ -187,12 +228,17 @@ Khi memory cho thấy nội dung cũ có intent giống bài dự kiến, hệ t
 
 Mọi update tạo ContentVersion mới, không tạo danh tính bài mới tùy tiện.
 
+Memory Gap dùng PublishedContent + latest PublishEvent làm nguồn publish canonical.
+Khi có PM-01 identity, REFRESH tính freshness từ thời điểm publish thật; dữ liệu legacy
+chưa có mapping/event mới fallback về ContentVersion.created_at.
+
 ## 13. Definition of done
 
 Publish/Measure V1 đạt khi:
 
 - ContentItem ↔ WordPress mapping idempotent;
 - ContentVersion publish history rõ;
+- review window được chốt explicit trước package, không suy diễn default;
 - final approval bắt buộc;
 - side-effect không tạo duplicate khi retry;
 - URL/content ID gắn được metrics;

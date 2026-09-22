@@ -25,6 +25,7 @@ from app.modules.content_engine.models import (
 )
 from app.modules.customer_intelligence.living_map import resolve_journey_config
 from app.modules.harness.models import Approval, ContentRun, QualityEvaluation
+from app.modules.publishing.models import PublishedContent, PublishEvent
 
 CoverageStatus = Literal[
     "MISSING",
@@ -197,6 +198,25 @@ def _latest_published(rows: list[ContentVersion]) -> ContentVersion | None:
         published,
         key=lambda row: (row.version_no, row.created_at, str(row.id)),
     )
+
+
+def _canonical_published_version(
+    rows: list[ContentVersion],
+    publication: PublishedContent | None,
+) -> ContentVersion | None:
+    if publication is None:
+        # Compatibility only for pre-PM-01 fixtures/imported state.
+        return _latest_published(rows)
+    if publication.external_status != "publish":
+        return None
+    matches = [
+        row for row in rows if row.id == publication.current_content_version_id
+    ]
+    if len(matches) != 1:
+        raise ContentCoverageError(
+            "content_coverage_publication_version_mismatch"
+        )
+    return matches[0]
 
 
 def _version_payload(version: ContentVersion | None) -> dict[str, object] | None:
@@ -600,6 +620,68 @@ async def build_content_coverage(
         for version in version_rows:
             versions_by_item[version.content_item_id].append(version)
 
+    publication_by_item: dict[UUID, PublishedContent] = {}
+    if item_ids:
+        publication_rows = list(
+            (
+                await session.scalars(
+                    select(PublishedContent)
+                    .where(
+                        PublishedContent.project_id == project.id,
+                        PublishedContent.content_item_id.in_(item_ids),
+                        PublishedContent.target == "wordpress",
+                    )
+                    .order_by(
+                        PublishedContent.content_item_id,
+                        PublishedContent.id,
+                    )
+                )
+            ).all()
+        )
+        publication_ids = {row.id for row in publication_rows}
+        latest_event_by_publication: dict[UUID, PublishEvent] = {}
+        if publication_ids:
+            event_rows = list(
+                (
+                    await session.scalars(
+                        select(PublishEvent)
+                        .where(
+                            PublishEvent.published_content_id.in_(
+                                publication_ids
+                            )
+                        )
+                        .order_by(
+                            PublishEvent.published_content_id,
+                            PublishEvent.created_at,
+                            PublishEvent.id,
+                        )
+                    )
+                ).all()
+            )
+            for event in event_rows:
+                latest_event_by_publication[event.published_content_id] = event
+
+        for publication in publication_rows:
+            if publication.content_item_id in publication_by_item:
+                raise ContentCoverageError(
+                    "content_coverage_publication_ambiguous"
+                )
+            current_event = latest_event_by_publication.get(publication.id)
+            if (
+                current_event is None
+                or current_event.content_version_id
+                != publication.current_content_version_id
+                or current_event.external_status != publication.external_status
+                or current_event.external_revision_id
+                != publication.external_revision_id
+                or current_event.canonical_url != publication.canonical_url
+                or current_event.published_at != publication.published_at
+            ):
+                raise ContentCoverageError(
+                    "content_coverage_publication_event_mismatch"
+                )
+            publication_by_item[publication.content_item_id] = publication
+
     journey_by_item: dict[UUID, list[ContentItemJourneyStage]] = defaultdict(list)
     if item_ids:
         journey_rows = list(
@@ -739,7 +821,10 @@ async def build_content_coverage(
                 versions = versions_by_item.get(item.id, [])
                 version_state = _VersionState(
                     latest=_latest_version(versions),
-                    latest_published=_latest_published(versions),
+                    latest_published=_canonical_published_version(
+                        versions,
+                        publication_by_item.get(item.id),
+                    ),
                 )
                 negative = _negative_final_decision(
                     approvals=approvals_by_item.get(item.id, []),
@@ -761,6 +846,25 @@ async def build_content_coverage(
                         ),
                         "latest_published_version": _version_payload(
                             version_state.latest_published
+                        ),
+                        "publication": (
+                            {
+                                "id": str(publication_by_item[item.id].id),
+                                "target": publication_by_item[item.id].target,
+                                "external_status": publication_by_item[
+                                    item.id
+                                ].external_status,
+                                "canonical_url": publication_by_item[
+                                    item.id
+                                ].canonical_url,
+                                "current_content_version_id": str(
+                                    publication_by_item[
+                                        item.id
+                                    ].current_content_version_id
+                                ),
+                            }
+                            if item.id in publication_by_item
+                            else None
                         ),
                         "journey_stages": [
                             {

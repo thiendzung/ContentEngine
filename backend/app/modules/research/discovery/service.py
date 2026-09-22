@@ -213,17 +213,20 @@ class DiscoveryResearchWorkflow:
     ) -> DiscoveryWorkflowResult:
         if result.planning_refs is None:
             raise ValueError("persisted_plan_required_before_persisted_selection")
-        self.select(
-            result,
+        candidate = replace(result.opportunity_map)
+        self._opportunity_service.select(
+            candidate,
             opportunity_id=opportunity_id,
             selected_by=selected_by,
             reason=reason,
         )
-        result.selection_refs = await persist_discovery_selection(
+        selection_refs = await persist_discovery_selection(
             session,
-            result=result.opportunity_map,
+            result=candidate,
             planning_refs=result.planning_refs,
         )
+        result.opportunity_map = candidate
+        result.selection_refs = selection_refs
         return result
 
     def handoff(self, result: DiscoveryWorkflowResult) -> OpportunityHandoff:

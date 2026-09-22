@@ -434,20 +434,41 @@ async def persist_discovery_selection(
         session.add(human_selection)
         await session.flush()
 
-    content_experiment = (
-        await session.execute(
-            select(DBContentExperiment)
-            .where(
-                DBContentExperiment.content_opportunity_id == opportunity.id,
-                DBContentExperiment.need_hypothesis_id
-                == planning_refs.need_hypothesis_id,
-                DBContentExperiment.hypothesis_version == experiment.hypothesis_version,
-                DBContentExperiment.expected_behaviour == experiment.expected_behaviour,
+    experiment_candidates = tuple(
+        (
+            await session.scalars(
+                select(DBContentExperiment)
+                .where(
+                    DBContentExperiment.content_opportunity_id == opportunity.id,
+                    DBContentExperiment.need_hypothesis_id
+                    == planning_refs.need_hypothesis_id,
+                    DBContentExperiment.hypothesis_version
+                    == experiment.hypothesis_version,
+                    DBContentExperiment.expected_behaviour
+                    == experiment.expected_behaviour,
+                )
+                .order_by(DBContentExperiment.created_at.asc())
             )
-            .order_by(DBContentExperiment.created_at.asc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+        ).all()
+    )
+    desired_measurement_plan = list(experiment.measurement_plan)
+    desired_metric_definitions = list(experiment.metric_definitions)
+    desired_minimum_evidence = list(experiment.minimum_evidence)
+    exact_experiments = [
+        row
+        for row in experiment_candidates
+        if row.content_item_id is None
+        and row.content_version_id is None
+        and row.published_content_id is None
+        and row.status == "PLANNED"
+        and row.result == "PENDING"
+        and list(row.measurement_plan_json) == desired_measurement_plan
+        and list(row.metric_definitions_json) == desired_metric_definitions
+        and list(row.minimum_evidence_json) == desired_minimum_evidence
+    ]
+    if len(exact_experiments) > 1:
+        raise ValueError("discovery_experiment_exact_duplicate")
+    content_experiment = exact_experiments[0] if exact_experiments else None
     if content_experiment is None:
         content_experiment = DBContentExperiment(
             project_id=opportunity.project_id,

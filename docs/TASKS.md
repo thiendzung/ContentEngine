@@ -182,8 +182,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | CC-01 | DONE / PR #175 MERGED | Content Coverage accepted with CI + exact-ref OCR + locale-quality re-verification. Operational rev-0035/0036/0037 remain separately authorized. |
 | LS-01 | DONE / PR #176 MERGED | Lens Selection accepted with exact evidence/authority guards, semantic revalidation, CI/OCR/local proof. |
 | AU-02 | DONE / PR #177 MERGED | Agent Bridge accepted with exact plan/policy/approval binding, durable budgets/recovery, independent review and bounded auto-next. |
-| QA-01 | IN IMPLEMENTATION / PR #178 | Reader Value hard gate + separate SEO/AI readiness before the existing Founder final-review gate. |
-| PM-01 | PLANNED | Publish/measurement identity and safe adapters. |
+| QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
+| PM-01 | IN IMPLEMENTATION | Safe publish package + separate publish authorization + Outbox/WordPress handoff + measurement identity. |
 | LL-01 | PLANNED | Measurement → Signal → LearningCandidate → reviewed map update. |
 | UX-01 | PLANNED | Control Center + Living Map dashboard + Needs Me + Daily Digest. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
@@ -312,7 +312,40 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Show Reader Value and SEO/AI results separately in the operator Quality UI, including actionable WARN/FAIL findings.
 - [x] Keep technical retry budget scoped to exact readiness handoff lineage.
 - [x] Add rev-0038 prompt/recipe registry migration with round-trip coverage; operational migration remains separately authorized.
-- [ ] Final CI PASS on exact final implementation/docs head.
+- [x] Final CI PASS on exact final implementation/docs head.
+- [x] Exact-ref OpenCodeReview Delegation review and MG triage.
+- [x] Agent Local bounded exact-head proof.
+- [x] Founder merge.
+
+### PM-01 immediate checklist
+
+- [x] Reuse existing Harness Outbox/reconciliation primitives; do not create a second side-effect engine.
+- [x] Add durable PublishedContent + PublishEvent identity.
+- [x] Add PerformanceSnapshot / PerformanceMetric / ContentPerformanceObservation.
+- [x] Bind ContentExperiment to ContentItem / ContentVersion / PublishedContent.
+- [x] Prepare immutable publish package only from exact approved ContentVersion + canonical final approval history + QA-01 non-failing lineage.
+- [x] Carry Audience / Need / Journey / Opportunity / Lens / content hypothesis / measurement plan into publish identity.
+- [x] Require a second explicit Founder publish authorization; final editorial approval alone cannot dispatch WordPress.
+- [x] Build deterministic idempotency key and reuse existing OutboxIntent.
+- [x] Separate DB commit-before-side-effect from external WordPress call and result recording.
+- [x] Unknown external result must reconcile before resend.
+- [x] Support draft-first then publish/update while preserving one PublishedContent identity.
+- [x] Normalize core Search Console / Analytics / MOTGU conversion metrics while retaining raw provider payload.
+- [x] Expose measurement identity back to exact ContentVersion / ContentCase / Audience / Need / Journey / Lens / Experiment.
+- [x] Preserve explicit INSUFFICIENT_DATA / EARLY_SIGNAL / REPEATED_PATTERN / LEARNING_CANDIDATE_READY states without auto-learning.
+- [x] Add rev-0039 schema and DB identity guards.
+- [x] Add focused tests for authorization, draft→publish, ambiguous reconciliation, idempotent measurement and identity trace.
+- [x] Keep approved ContentVersion immutable; external publish state lives in PublishedContent/PublishEvent.
+- [x] Freeze each ContentExperiment candidate to one ContentItem/ContentVersion + measurement contract; permit exact replacement candidate before external effect; persist canonical content_experiment_id on immutable PublishEvent.
+- [x] Discovery replay reuses only unbound `PLANNED/PENDING` exact-contract candidates; a bound prior cycle gets a fresh experiment candidate even when the draft contract is unchanged.
+- [x] Add explicit timezone-aware measurement review-window setup before Publish Package; no inferred 7/14/30 default, missing/zero/negative window fails closed, package binding freezes it.
+- [x] Persisted Discovery selection is in-memory atomic: a rejected/conflicting persistence attempt cannot mutate caller state.
+- [x] Revalidate experiment measurement snapshot before external dispatch; stale package fails before Outbox processing.
+- [x] Verify Content Coverage/Review Console against latest PublishEvent; mapping drift fails closed.
+- [x] Move Memory Gap publish/freshness truth to PublishedContent + PublishEvent while retaining legacy ContentVersion fallback.
+- [x] Positive-test Search Console, Analytics, MOTGU conversion and INSUFFICIENT_DATA semantics.
+- [x] CI implementation proof PASS after final normal-path hardening — CI #1518 on `e2b75b6c288a5b85abd117d9b2cab42903a9b82d`: Ruff PASS; mypy 158 source files; rev-0038↔0039 round-trip PASS; backend 980 passed / 12 warnings; OpenAPI + frontend lint/typecheck/build PASS. Final docs-head CI still must be green before OCR freeze.
 - [ ] Exact-ref OpenCodeReview Delegation review and MG triage.
-- [ ] Agent Local bounded exact-head proof.
+- [ ] Agent Local bounded exact-head proof including disposable 0038↔0039 migration round-trip.
 - [ ] Founder merge.
+- [ ] Operational migration remains separately authorized.

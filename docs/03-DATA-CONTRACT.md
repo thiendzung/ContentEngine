@@ -162,6 +162,11 @@ Một phiên bản cụ thể của ContentItem.
 - `change_reason`
 - `status`: `draft | approved | published | superseded`
 - `created_by_run_id`
+
+`ContentVersion` là snapshot bất biến. PM-01 không UPDATE một version `approved` thành
+`published`. Giá trị `published` được giữ để tương thích dữ liệu/fixture cũ; nguồn
+canonical cho trạng thái external publication từ PM-01 là `PublishedContent` +
+`PublishEvent`.
 - timestamps
 
 Unique recommendation: `(content_item_id, version_no)`.
@@ -457,8 +462,11 @@ tầng; PR-C normalize vào Signal với nguồn, scope và provenance, không t
 - `locale`, `context`, `captured_at`, `observed_at` nullable
 - `fingerprint`, `duplicate_of` nullable, `independence_group` nullable
 - `provenance`: provider/method, source/document/artifact ref, locator, hash/version
-- `published_content_id` / `content_version_id` nullable cho hành vi tại MOTGU
-- `metric_refs` nullable
+
+PM-01 không thêm measurement fields trực tiếp vào Signal. Nó dừng ở
+`ContentPerformanceObservation`. LL-01 mới định nghĩa bước Observation → Signal và
+cách giữ refs tới PublishedContent/ContentVersion/metrics mà không biến correlation
+thành customer truth.
 
 Source kind không phải cấp độ tin cậy. Search Console = SEARCH/motgu_site;
 PAA = SEARCH/market_web; review bên ngoài = MARKET/market_web;
@@ -511,6 +519,23 @@ UPDATE/REFRESH/MERGE/LINK_ONLY yêu cầu existing target refs. Human selection 
 - `observation_refs`, `alternative_explanations`, `reviewed_by`, `reviewed_at`
 
 Định nghĩa expected behaviour/cách đo trước publish; review gắn đúng version và cửa sổ.
+Khi Publish Package được tạo, mỗi ContentExperiment candidate được khóa vào đúng
+`content_item_id + content_version_id` và measurement contract của chính nó; không
+rebind candidate đó sang item/version khác.
+
+Discovery persistence chỉ tái dùng experiment candidate khi full measurement draft
+giống hệt, candidate vẫn `PLANNED/PENDING` và chưa bind vào ContentItem/ContentVersion/
+PublishedContent. Nếu candidate cũ đã bind, vòng content/version mới tạo candidate mới
+thay vì rebind lịch sử, kể cả measurement draft giống nhau.
+
+Trước khi có external effect, một ContentVersion có thể có replacement experiment
+candidate khác nếu kế hoạch đo phải sửa. `review_window_start/end` không được suy ra
+từ khuyến nghị 7/14/30 ngày: operator phải chốt hai datetime có timezone, với
+`end > start`, trước khi tạo Publish Package. Thiếu/sai window thì package fail closed.
+Khi package được tạo, candidate + measurement contract + review window bị đóng băng.
+Khi một version đã externalize, PublishEvent khóa experiment canonical cho version/target
+đó và candidate khác bị chặn trước external dispatch.
+
 Result bổ sung evidence qua Signal/ContentPerformanceObservation; không tự đổi hypothesis
 hoặc settings. Dwell time không tự chứng minh interest; shipping inquiry không tự chứng
 minh fear of fraud. Không có conversion khi traffic ít là INCONCLUSIVE.
@@ -531,7 +556,7 @@ runtime trong PR-B; CE02 tạo schema mới và cập nhật mọi foreign key t
 - `content_case_id`
 - `locale_variant_id`
 - `content_item_id` nullable
-- `run_mode`: `create | update | refresh | localize | eval`
+- `run_mode`: `create | update | refresh | localize | eval | publish`
 
 Replay creates an `eval` ContentRun from frozen baseline inputs/context.
 
@@ -720,6 +745,10 @@ Durable intent cho side effect quan trọng như publish.
 
 Mapping ContentItem với WordPress/external target.
 
+`current_content_version_id` là đúng immutable ContentVersion đang tương ứng với
+external object. PM-01 không tạo một bản sao ContentVersion chỉ để đổi nhãn
+`published` và không mutate approved version.
+
 - `id`
 - `project_id`
 - `content_item_id`
@@ -727,23 +756,42 @@ Mapping ContentItem với WordPress/external target.
 - `external_id`
 - `canonical_url`
 - `current_content_version_id`
-- `published_at`
+- `external_revision_id` nullable
+- `external_status`: `draft | publish | future | private`
+- `published_at` nullable
 - timestamps
 
 Unique recommendation: `(project_id, content_item_id, target)`.
+
+`current_content_version_id` trỏ thẳng tới đúng immutable ContentVersion đã được
+Founder duyệt và gửi ra target; không tạo thêm một ContentVersion chỉ để đổi nhãn
+`published`. Content Coverage/Review Console phải đọc publication state từ mapping
+này và đối chiếu latest PublishEvent. Memory Gap cũng dùng canonical mapping/event;
+freshness dùng `PublishEvent.published_at` khi có, chỉ fallback
+`ContentVersion.created_at` cho dữ liệu legacy chưa có PM-01 identity.
 
 ### PublishEvent
 
 Lịch sử publish/update.
 
+`content_version_id` là exact immutable ContentVersion của event.
+`content_experiment_id` là experiment đã được khóa với version đó. Publish Package
+giữ cùng identity để truy ngược approval/measurement plan.
+
 - `id`
 - `published_content_id`
 - `content_version_id`
+- `content_experiment_id`
+- `publish_package_artifact_id`
+- `publish_approval_id`
+- `outbox_intent_id`
 - `idempotency_key`
-- `status`
+- `action`: `draft | publish | update_draft | update_publish`
 - `external_revision_id` nullable
+- `external_status`
+- `canonical_url`
 - `published_at` nullable
-- `error_json` nullable
+- `result_json`
 
 ### PerformanceSnapshot
 
@@ -751,9 +799,11 @@ Giữ raw/aggregate payload của provider để audit.
 
 - `id`
 - `published_content_id`
+- `content_version_id`
 - `provider`
 - `window_start`
 - `window_end`
+- `payload_fingerprint`
 - `raw_metrics_json`
 - `imported_at`
 
@@ -762,7 +812,9 @@ Giữ raw/aggregate payload của provider để audit.
 Các chỉ số lõi được chuẩn hóa để so giữa bài.
 
 - `id`
+- `snapshot_id`
 - `published_content_id`
+- `content_version_id`
 - `provider`
 - `metric_date`
 - `metric_name`
@@ -777,11 +829,11 @@ Một nhận xét có cấu trúc từ metrics, chưa phải learning rule.
 
 - `id`
 - `published_content_id`
-- `content_version_id` nullable
+- `content_version_id`
 - `observation_type`
 - `statement`
 - `metric_refs_json`
-- `data_status`: `insufficient | early_signal | repeated_pattern`
+- `data_status`: `INSUFFICIENT_DATA | EARLY_SIGNAL | REPEATED_PATTERN | LEARNING_CANDIDATE_READY`
 - `observed_at`
 
 ### LearningCandidate

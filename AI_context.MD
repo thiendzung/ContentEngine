@@ -304,3 +304,47 @@ QA-01 review flow:
 
 Do not claim QA-01 DONE until final CI, OCR, local proof and Founder merge are all complete.
 
+## PM-01 implementation window — 2026-09-22
+
+QA-01 / PR #178 is merged. PM-01 starts from exact main:
+`5b8600de381a43e4282c93ee06767cb2b93cc62c`.
+
+Current bounded PM-01 implementation:
+- branch `feat/pm01-publish-measurement-identity`;
+- rev `20260922_0039` adds durable publication + measurement identity; this does NOT authorize operational migration;
+- reuse existing Harness Outbox/reconciliation primitives; no second side-effect/workflow engine;
+- final editorial approval creates the approved ContentVersion, but DOES NOT authorize external publication;
+- immutable Publish Package is built only from exact approved ContentVersion + canonical final approval history + non-failing QA-01 lineage + explicit ContentExperiment;
+- a second `WAIT_HUMAN(publish_authorization)` Founder decision is required before any WordPress dispatch;
+- WordPress handoff uses deterministic idempotency + existing OutboxIntent;
+- commit-before-side-effect boundary is explicit: Outbox `processing` state must be durable before external WordPress write;
+- ambiguous external outcome becomes `needs_reconciliation`; reconcile before any resend;
+- PublishedContent preserves one ContentItem ↔ WordPress identity while immutable PublishEvent records draft/publish/update history by exact ContentVersion + ContentExperiment;
+- ContentVersion remains immutable after Founder approval; PM-01 does not mutate `approved → published` or create a duplicate publication-only ContentVersion. Canonical external publication state is PublishedContent/PublishEvent;
+- Discovery reuses only an exact-contract experiment that is still PLANNED/PENDING and unbound; once a prior experiment is bound, a later content/version cycle gets a fresh candidate rather than reusing historical identity;
+- review_window_start/end must be set explicitly with timezone-aware datetimes and end > start before Publish Package; PM-01 does not infer a 7/14/30-day default;
+- after all package inputs validate, ContentExperiment is frozen to the exact ContentItem/ContentVersion + measurement contract + review window; replacement candidates remain possible before external effect, but historical bindings are not rewritten;
+- failed/conflicting persisted Discovery selection leaves the caller's in-memory OpportunityMap state unchanged;
+- immediately before external dispatch, the package/experiment measurement snapshot is revalidated; stale state fails before Outbox moves to processing;
+- Content Coverage + Review Console validate current PublishedContent against latest immutable PublishEvent and fail closed on mapping/history drift;
+- core measurement rows normalize impressions/clicks/sessions/engaged sessions/artwork/visit/workshop transitions/inquiry while retaining aggregate/raw audit payload;
+- measurement identity traces current external URL/version back to ContentCase, Audience, Need, Journey, Opportunity, Lens and ContentExperiment;
+- metrics/observations remain observations; PM-01 does not create/promote LearningCandidate rules;
+- no WordPress credential/network activation is performed by this GitHub-side implementation;
+- no Search Console/Analytics credential activation is performed here;
+- no Antigravity activation and no publication against a real site.
+
+Operational database remains at the separately controlled release state. PM-01 does NOT authorize rev-0035 → rev-0039 operationally.
+
+PM-01 implementation proof before final docs sync:
+- CI #1518 PASS on `e2b75b6c288a5b85abd117d9b2cab42903a9b82d`;
+- Ruff PASS;
+- mypy PASS on 158 source files;
+- rev-0038↔0039 migration round-trip PASS;
+- backend 980 passed / 12 warnings;
+- OpenAPI + frontend lint/typecheck/build PASS.
+
+PM-01 still remains IN IMPLEMENTATION until exact final docs-head CI, exact-ref OpenCodeReview, Agent Local disposable proof and Founder merge.
+
+PM-01 review flow remains:
+`CI → exact-ref OpenCodeReview Delegation → MG triage → Agent Local disposable exact-head proof → Founder merge`.

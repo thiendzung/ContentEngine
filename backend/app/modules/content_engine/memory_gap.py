@@ -17,6 +17,7 @@ from app.modules.content_engine.models import (
     ContentVersion,
     LocaleVariant,
 )
+from app.modules.publishing.models import PublishedContent, PublishEvent
 
 
 class MemoryGapError(ValueError):
@@ -33,6 +34,7 @@ class ContentVersionMemory:
     version: int
     status: str
     created_at: datetime
+    published_at: datetime | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -40,6 +42,11 @@ class ContentVersionMemory:
             "version": self.version,
             "status": self.status,
             "created_at": self.created_at.isoformat(),
+            "published_at": (
+                self.published_at.isoformat()
+                if self.published_at is not None
+                else None
+            ),
         }
 
 
@@ -127,6 +134,12 @@ class MemoryGapReport:
         }
 
     as_dict = to_dict
+
+
+@dataclass(frozen=True, slots=True)
+class _PublicationState:
+    mapping: PublishedContent
+    event: PublishEvent
 
 
 def _normalise_refresh_before(value: datetime | None) -> datetime | None:
@@ -248,12 +261,92 @@ async def _load_versions(
     return versions
 
 
-def _version_memory(version: ContentVersion) -> ContentVersionMemory:
+async def _load_publications(
+    session: AsyncSession,
+    *,
+    item_ids: set[UUID],
+) -> dict[UUID, _PublicationState]:
+    if not item_ids:
+        return {}
+
+    mappings = list(
+        (
+            await session.scalars(
+                select(PublishedContent)
+                .where(
+                    PublishedContent.content_item_id.in_(item_ids),
+                    PublishedContent.target == "wordpress",
+                )
+                .order_by(
+                    PublishedContent.content_item_id,
+                    PublishedContent.id,
+                )
+            )
+        ).all()
+    )
+    if not mappings:
+        return {}
+
+    mapping_by_item: dict[UUID, PublishedContent] = {}
+    for mapping in mappings:
+        if mapping.content_item_id in mapping_by_item:
+            raise MemoryGapError("memory_gap_publication_ambiguous")
+        mapping_by_item[mapping.content_item_id] = mapping
+
+    mapping_ids = {row.id for row in mappings}
+    events = list(
+        (
+            await session.scalars(
+                select(PublishEvent)
+                .where(PublishEvent.published_content_id.in_(mapping_ids))
+                .order_by(
+                    PublishEvent.published_content_id,
+                    PublishEvent.created_at,
+                    PublishEvent.id,
+                )
+            )
+        ).all()
+    )
+    latest_event_by_mapping: dict[UUID, PublishEvent] = {}
+    for event in events:
+        latest_event_by_mapping[event.published_content_id] = event
+
+    states: dict[UUID, _PublicationState] = {}
+    for item_id, mapping in mapping_by_item.items():
+        current_event = latest_event_by_mapping.get(mapping.id)
+        if (
+            current_event is None
+            or current_event.content_version_id
+            != mapping.current_content_version_id
+            or current_event.external_status != mapping.external_status
+            or current_event.external_revision_id
+            != mapping.external_revision_id
+            or current_event.canonical_url != mapping.canonical_url
+            or current_event.published_at != mapping.published_at
+            or (
+                mapping.external_status == "publish"
+                and mapping.published_at is None
+            )
+        ):
+            raise MemoryGapError("memory_gap_publication_event_mismatch")
+        states[item_id] = _PublicationState(
+            mapping=mapping,
+            event=current_event,
+        )
+    return states
+
+
+def _version_memory(
+    version: ContentVersion,
+    *,
+    published_at: datetime | None = None,
+) -> ContentVersionMemory:
     return ContentVersionMemory(
         id=version.id,
         version=version.version_no,
         status=version.status,
         created_at=version.created_at,
+        published_at=published_at,
     )
 
 
@@ -263,11 +356,30 @@ def _latest_version(versions: list[ContentVersion]) -> ContentVersion | None:
     return max(versions, key=lambda row: (row.version_no, row.created_at, str(row.id)))
 
 
-def _latest_published_version(versions: list[ContentVersion]) -> ContentVersion | None:
+def _latest_published_version(
+    versions: list[ContentVersion],
+    publication: _PublicationState | None,
+) -> ContentVersion | None:
+    if publication is not None:
+        if publication.mapping.external_status != "publish":
+            return None
+        matches = [
+            version
+            for version in versions
+            if version.id == publication.mapping.current_content_version_id
+        ]
+        if len(matches) != 1:
+            raise MemoryGapError("memory_gap_publication_version_mismatch")
+        return matches[0]
+
+    # Compatibility path for data created before PM-01 publication identity existed.
     published = [version for version in versions if version.status == "published"]
     if not published:
         return None
-    return max(published, key=lambda row: (row.created_at, row.version_no, str(row.id)))
+    return max(
+        published,
+        key=lambda row: (row.created_at, row.version_no, str(row.id)),
+    )
 
 
 async def recommend_memory_gap(
@@ -297,13 +409,28 @@ async def recommend_memory_gap(
         target_rows[item_id] = row
         basis_by_id.setdefault(item_id, set()).add("structural_match")
 
-    versions_by_item = await _load_versions(session, item_ids=set(target_rows))
+    item_ids = set(target_rows)
+    versions_by_item = await _load_versions(session, item_ids=item_ids)
+    publications_by_item = await _load_publications(
+        session,
+        item_ids=item_ids,
+    )
     matched_items: list[MatchedContentItem] = []
     for item_id in sorted(target_rows, key=str):
         item, content_case, _locale_variant = target_rows[item_id]
         versions = versions_by_item.get(item_id, [])
+        publication = publications_by_item.get(item_id)
         latest = _latest_version(versions)
-        latest_published = _latest_published_version(versions)
+        latest_published = _latest_published_version(
+            versions,
+            publication,
+        )
+        published_at = (
+            publication.event.published_at
+            if publication is not None
+            and publication.mapping.external_status == "publish"
+            else None
+        )
         matched_items.append(
             MatchedContentItem(
                 content_item_id=item.id,
@@ -312,7 +439,12 @@ async def recommend_memory_gap(
                 item_status=item.status,
                 latest_version=_version_memory(latest) if latest else None,
                 latest_published_version=(
-                    _version_memory(latest_published) if latest_published else None
+                    _version_memory(
+                        latest_published,
+                        published_at=published_at,
+                    )
+                    if latest_published
+                    else None
                 ),
                 match_basis=tuple(sorted(basis_by_id[item_id])),
             )
@@ -332,10 +464,15 @@ async def recommend_memory_gap(
         recommendation = "UPDATE"
         reasons = ["existing_content_item_target"]
         published = matched_items[0].latest_published_version
+        published_freshness_at = (
+            published.published_at or published.created_at
+            if published is not None
+            else None
+        )
         if (
-            published is not None
+            published_freshness_at is not None
             and normalised_refresh_before is not None
-            and published.created_at < normalised_refresh_before
+            and published_freshness_at < normalised_refresh_before
         ):
             recommendation = "REFRESH"
             reasons = ["published_content_version_before_refresh_before"]
@@ -365,7 +502,14 @@ async def recommend_memory_gap(
         material_gaps=tuple(opportunity.material_gaps_json),
         what_is_actually_new=opportunity.what_is_actually_new,
         refresh_before=normalised_refresh_before,
-        freshness_basis="content_version_created_at",
+        freshness_basis=(
+            "publish_event_published_at"
+            if len(matched_items) == 1
+            and matched_items[0].latest_published_version is not None
+            and matched_items[0].latest_published_version.published_at
+            is not None
+            else "content_version_created_at"
+        ),
         requires_human_review=requires_human_review,
         planning_decision_mismatch=planning_decision_mismatch,
     )
