@@ -943,3 +943,76 @@ async def test_pm01_live_post_cannot_be_downgraded_to_draft(
         await session.refresh(dispatch.intent)
         assert dispatch.intent.status == "pending"
 
+
+@pytest.mark.asyncio
+async def test_pm01_historical_published_version_can_still_receive_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, _dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=package.run.id,
+            package_artifact_id=package.artifact.id,
+            worker_id="pm01-history-worker",
+        )
+        gateway = FakeWordPress()
+        prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-history-worker",
+        )
+        result = await execute_wordpress_call(
+            gateway=gateway,
+            request=prepared.request,
+        )
+        mapping, _event = await record_wordpress_execution_result(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-history-worker",
+            result=result,
+        )
+        assert mapping is not None
+
+        newer = ContentVersion(
+            content_item_id=fixture.item.id,
+            version_no=2,
+            final_artifact_id=fixture.final_artifact.id,
+            change_reason="Simulate a later published version.",
+            status="published",
+            content_json=fixture.version.content_json,
+            created_by_run_id=fixture.source_run.id,
+        )
+        session.add(newer)
+        await session.flush()
+        fixture.version.status = "superseded"
+        mapping.current_content_version_id = newer.id
+        await session.flush()
+
+        now = datetime.now(UTC)
+        ingested = await ingest_performance_snapshot(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            provider="search_console",
+            window_start=now - timedelta(days=1),
+            window_end=now,
+            raw_metrics={"page": mapping.canonical_url},
+            metrics=[
+                MetricInput(
+                    metric_date=now,
+                    metric_name="impressions",
+                    metric_value=10,
+                )
+            ],
+        )
+        assert ingested.replayed is False
+        assert ingested.snapshot.content_version_id == fixture.version.id
+
