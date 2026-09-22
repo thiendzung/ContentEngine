@@ -229,6 +229,41 @@ def _create_learning_guards() -> None:
     op.execute(
         sa.text(
             """
+            CREATE FUNCTION supersede_prior_learning_candidate()
+            RETURNS trigger AS $
+            BEGIN
+                IF NEW.supersedes_id IS NOT NULL THEN
+                    UPDATE learning_candidates
+                    SET status = 'SUPERSEDED',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = NEW.supersedes_id
+                      AND status = 'OPEN';
+
+                    IF NOT FOUND THEN
+                        RAISE EXCEPTION
+                            'learning_candidate_prior_not_open';
+                    END IF;
+                END IF;
+                RETURN NEW;
+            END;
+            $ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER learning_candidate_auto_supersede
+            AFTER INSERT ON learning_candidates
+            FOR EACH ROW
+            EXECUTE FUNCTION supersede_prior_learning_candidate()
+            """
+        )
+    )
+
+    op.execute(
+        sa.text(
+            """
             CREATE FUNCTION validate_learning_candidate_assessment()
             RETURNS trigger AS $$
             DECLARE
@@ -568,6 +603,15 @@ def downgrade() -> None:
     )
     op.execute(
         sa.text("DROP FUNCTION IF EXISTS validate_learning_candidate_assessment()")
+    )
+    op.execute(
+        sa.text(
+            "DROP TRIGGER IF EXISTS learning_candidate_auto_supersede "
+            "ON learning_candidates"
+        )
+    )
+    op.execute(
+        sa.text("DROP FUNCTION IF EXISTS supersede_prior_learning_candidate()")
     )
     op.execute(
         sa.text(
