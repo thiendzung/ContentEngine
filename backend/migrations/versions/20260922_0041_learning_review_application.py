@@ -142,26 +142,38 @@ def _create_guards() -> None:
                OR NEW.target_id IS DISTINCT FROM candidate_target_id THEN
                 RAISE EXCEPTION 'learning_application_target_mismatch';
             END IF;
-            IF review_decision = 'NO_MAP_CHANGE' THEN
+            IF review_decision = 'NO_MAP_CHANGE'
+               OR NEW.target_type = 'no_map_change' THEN
                 IF NEW.applied_action IS DISTINCT FROM 'no_map_change'
                    OR NEW.resulting_target_id IS NOT NULL
                    OR NEW.customer_map_snapshot_artifact_id IS NOT NULL
                    OR NEW.before_state_hash IS NOT NULL
-                   OR NEW.after_state_hash IS NOT NULL THEN
+                   OR NEW.after_state_hash IS NOT NULL
+                   OR NEW.change_report_json IS NOT NULL
+                   OR json_array_length(NEW.applied_signal_refs_json) <> 0 THEN
                     RAISE EXCEPTION 'learning_application_no_map_change_invalid';
                 END IF;
-            ELSIF NEW.target_type = 'need_hypothesis'
-                  AND NEW.applied_action IS DISTINCT FROM 'link_need_signals' THEN
-                RAISE EXCEPTION 'learning_application_action_mismatch';
-            ELSIF NEW.target_type = 'customer_insight'
-                  AND NEW.applied_action IS DISTINCT FROM 'link_insight_signals' THEN
-                RAISE EXCEPTION 'learning_application_action_mismatch';
-            ELSIF NEW.target_type = 'new_customer_insight'
-                  AND NEW.applied_action IS DISTINCT FROM 'create_candidate_insight' THEN
-                RAISE EXCEPTION 'learning_application_action_mismatch';
-            ELSIF NEW.target_type = 'no_map_change'
-                  AND NEW.applied_action IS DISTINCT FROM 'no_map_change' THEN
-                RAISE EXCEPTION 'learning_application_action_mismatch';
+            ELSE
+                IF review_decision IS DISTINCT FROM 'APPROVE'
+                   OR NEW.resulting_target_id IS NULL
+                   OR NEW.customer_map_snapshot_artifact_id IS NULL
+                   OR NEW.before_state_hash IS NULL
+                   OR NEW.after_state_hash IS NULL
+                   OR NEW.change_report_json IS NULL
+                   OR json_array_length(NEW.applied_signal_refs_json) = 0 THEN
+                    RAISE EXCEPTION 'learning_application_mutation_receipt_incomplete';
+                END IF;
+
+                IF NEW.target_type = 'need_hypothesis'
+                   AND NEW.applied_action IS DISTINCT FROM 'link_need_signals' THEN
+                    RAISE EXCEPTION 'learning_application_action_mismatch';
+                ELSIF NEW.target_type = 'customer_insight'
+                      AND NEW.applied_action IS DISTINCT FROM 'link_insight_signals' THEN
+                    RAISE EXCEPTION 'learning_application_action_mismatch';
+                ELSIF NEW.target_type = 'new_customer_insight'
+                      AND NEW.applied_action IS DISTINCT FROM 'create_candidate_insight' THEN
+                    RAISE EXCEPTION 'learning_application_action_mismatch';
+                END IF;
             END IF;
             IF length(btrim(NEW.applied_by)) = 0 THEN
                 RAISE EXCEPTION 'learning_application_actor_required';
