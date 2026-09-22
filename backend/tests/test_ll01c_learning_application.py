@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -266,6 +267,14 @@ async def test_ll01c_apply_need_links_signal_without_status_or_version_promotion
         assert fixture.need.status == status_before
         assert fixture.need.version == version_before
 
+        snapshot_count_after_apply = int(
+            await session.scalar(
+                select(func.count())
+                .select_from(Artifact)
+                .where(Artifact.artifact_type == "customer_map_snapshot")
+            )
+            or 0
+        )
         replay = await apply_learning_candidate(
             session,
             review_id=review.review.id,
@@ -273,6 +282,14 @@ async def test_ll01c_apply_need_links_signal_without_status_or_version_promotion
         )
         assert replay.replayed is True
         assert replay.application.id == applied.application.id
+        assert int(
+            await session.scalar(
+                select(func.count())
+                .select_from(Artifact)
+                .where(Artifact.artifact_type == "customer_map_snapshot")
+            )
+            or 0
+        ) == snapshot_count_after_apply
         assert (
             int(
                 await session.scalar(
@@ -684,6 +701,81 @@ async def test_ll01c_superseded_candidate_cannot_apply_old_approval(
                 review_id=review.review.id,
                 applied_by="founder",
             )
+
+
+@pytest.mark.asyncio
+async def test_ll01c_database_review_guard_rejects_identity_forgery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        forged = LearningCandidateReview(
+            project_id=fixture.project.id,
+            learning_candidate_id=candidate.id,
+            candidate_version=candidate.version + 1,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Forged version must be rejected.",
+            candidate_snapshot_hash="0" * 64,
+            target_snapshot_json={},
+            reviewed_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_review_identity_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged)
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_ll01c_database_application_guard_rejects_incomplete_receipt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Approve exact factual linkage.",
+        )
+        forged = LearningApplication(
+            project_id=fixture.project.id,
+            learning_candidate_id=candidate.id,
+            candidate_version=candidate.version,
+            review_id=review.review.id,
+            candidate_snapshot_hash=review.review.candidate_snapshot_hash,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            resulting_target_id=fixture.need.id,
+            applied_action="link_need_signals",
+            applied_signal_refs_json=[
+                {"signal_id": str(signal.id), "relation": "supports"}
+            ],
+            frozen_scope_json=candidate.scope_json,
+            before_state_hash=None,
+            after_state_hash=None,
+            customer_map_snapshot_artifact_id=None,
+            change_report_json=None,
+            applied_by="founder",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_mutation_receipt_incomplete",
+        ):
+            async with session.begin_nested():
+                session.add(forged)
+                await session.flush()
 
 
 @pytest.mark.asyncio
