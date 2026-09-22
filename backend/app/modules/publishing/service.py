@@ -107,6 +107,12 @@ class PublishDispatch:
 
 
 @dataclass(frozen=True, slots=True)
+class PreparedWordPressCall:
+    dispatch: PublishDispatch
+    request: "WordPressWriteRequest"
+
+
+@dataclass(frozen=True, slots=True)
 class WordPressWriteRequest:
     idempotency_key: str
     action: PublishAction
@@ -1094,20 +1100,19 @@ async def _finalize_confirmed_publish(
     return mapping, event
 
 
-async def dispatch_wordpress_job(
+async def _bound_dispatch_from_job(
     session: AsyncSession,
     *,
     job_id: UUID,
     worker_id: str,
-    gateway: WordPressGateway,
-) -> tuple[PublishedContent | None, PublishEvent | None]:
-    """Execute once; ambiguous outcomes are frozen for reconciliation, never blind retried."""
-
+) -> PublishDispatch:
     job = await session.get(Job, job_id)
     if (
         job is None
         or job.status != "leased"
         or job.lease_owner != worker_id
+        or job.lease_expires_at is None
+        or job.lease_expires_at <= utc_now()
     ):
         raise PublishError("publish_job_lease_invalid")
     step = await session.get(StepRun, job.step_run_id)
@@ -1137,11 +1142,11 @@ async def dispatch_wordpress_job(
         or intent.run_id != run.id
         or approval.run_id != run.id
         or approval.artifact_id != package.id
+        or approval.step_key != PUBLISH_AUTHORIZATION_STEP
         or approval.decision != "approved"
     ):
         raise PublishError("publish_job_binding_invalid")
-
-    dispatch = PublishDispatch(
+    return PublishDispatch(
         run=run,
         step=step,
         job=job,
@@ -1150,23 +1155,85 @@ async def dispatch_wordpress_job(
         approval=approval,
         replayed=False,
     )
-    processing = await prepare_outbox_dispatch(
+
+
+async def begin_wordpress_dispatch(
+    session: AsyncSession,
+    *,
+    job_id: UUID,
+    worker_id: str,
+) -> PreparedWordPressCall:
+    """Move the durable intent to processing before any external request.
+
+    The caller MUST commit this DB transaction before calling WordPress. The returned
+    request contains only the bounded external payload. This phase never performs
+    network I/O.
+    """
+
+    dispatch = await _bound_dispatch_from_job(
         session,
-        intent_id=intent.id,
-        job_id=job.id,
+        job_id=job_id,
         worker_id=worker_id,
     )
+    processing = await prepare_outbox_dispatch(
+        session,
+        intent_id=dispatch.intent.id,
+        job_id=dispatch.job.id,
+        worker_id=worker_id,
+    )
+    dispatch.run.current_step = WORDPRESS_STEP
+    await session.flush()
     request = await _request_for_package(
         session,
-        package=package,
+        package=dispatch.package,
         intent=processing,
     )
-    result = await gateway.execute(request)
+    return PreparedWordPressCall(
+        dispatch=PublishDispatch(
+            run=dispatch.run,
+            step=dispatch.step,
+            job=dispatch.job,
+            intent=processing,
+            package=dispatch.package,
+            approval=dispatch.approval,
+            replayed=dispatch.replayed,
+        ),
+        request=request,
+    )
+
+
+async def execute_wordpress_call(
+    *,
+    gateway: WordPressGateway,
+    request: WordPressWriteRequest,
+) -> WordPressWriteResult:
+    """External-only phase. Call only after begin_wordpress_dispatch is committed."""
+
+    return await gateway.execute(request)
+
+
+async def record_wordpress_execution_result(
+    session: AsyncSession,
+    *,
+    job_id: UUID,
+    worker_id: str,
+    result: WordPressWriteResult,
+) -> tuple[PublishedContent | None, PublishEvent | None]:
+    """Persist the external result after the network phase completed."""
+
+    dispatch = await _bound_dispatch_from_job(
+        session,
+        job_id=job_id,
+        worker_id=worker_id,
+    )
+    if dispatch.intent.status != "processing":
+        raise PublishError("publish_outbox_not_processing")
+
     if result.outcome == "unknown":
         await mark_outbox_needs_reconciliation(
             session,
-            intent_id=intent.id,
-            job_id=job.id,
+            intent_id=dispatch.intent.id,
+            job_id=dispatch.job.id,
             worker_id=worker_id,
             error_class="ambiguous_side_effect",
             message=result.message or "WordPress outcome unknown",
@@ -1178,8 +1245,8 @@ async def dispatch_wordpress_job(
     )
     await complete_outbox_intent(
         session,
-        intent_id=intent.id,
-        job_id=job.id,
+        intent_id=dispatch.intent.id,
+        job_id=dispatch.job.id,
         worker_id=worker_id,
         result=SideEffectExecutionResult(
             external_ref=f"wordpress://post/{external_id}"
@@ -1192,50 +1259,65 @@ async def dispatch_wordpress_job(
     )
     await complete_job(
         session,
-        job_id=job.id,
+        job_id=dispatch.job.id,
         worker_id=worker_id,
     )
-    if run.status == "running":
-        await transition_run(session, run_id=run.id, status="completed")
+    if dispatch.run.status == "running":
+        await transition_run(
+            session,
+            run_id=dispatch.run.id,
+            status="completed",
+        )
     return mapping, event
 
 
-async def reconcile_wordpress_job(
+async def prepare_wordpress_reconciliation(
     session: AsyncSession,
     *,
     job_id: UUID,
     worker_id: str,
-    gateway: WordPressGateway,
-) -> tuple[str, PublishedContent | None, PublishEvent | None]:
-    """Reconcile an ambiguous side effect before any resend."""
+) -> PreparedWordPressCall:
+    """Build a read-only reconciliation request; never resend the write."""
 
-    job = await session.get(Job, job_id)
-    if (
-        job is None
-        or job.status != "leased"
-        or job.lease_owner != worker_id
-    ):
-        raise PublishError("publish_job_lease_invalid")
-    step = await session.get(StepRun, job.step_run_id)
-    run = await session.get(ContentRun, job.run_id)
-    if (
-        step is None
-        or run is None
-        or len(step.input_artifact_refs_json) != 3
-    ):
-        raise PublishError("publish_job_binding_invalid")
-    package = await session.get(Artifact, UUID(step.input_artifact_refs_json[0]))
-    intent = await session.get(OutboxIntent, UUID(step.input_artifact_refs_json[1]))
-    approval = await session.get(Approval, UUID(step.input_artifact_refs_json[2]))
-    if package is None or intent is None or approval is None:
-        raise PublishError("publish_job_binding_invalid")
-
+    dispatch = await _bound_dispatch_from_job(
+        session,
+        job_id=job_id,
+        worker_id=worker_id,
+    )
+    if dispatch.intent.status not in {"processing", "needs_reconciliation"}:
+        raise PublishError("publish_reconciliation_not_required")
     request = await _request_for_package(
         session,
-        package=package,
-        intent=intent,
+        package=dispatch.package,
+        intent=dispatch.intent,
     )
-    result = await gateway.reconcile(request)
+    return PreparedWordPressCall(dispatch=dispatch, request=request)
+
+
+async def execute_wordpress_reconciliation(
+    *,
+    gateway: WordPressGateway,
+    request: WordPressWriteRequest,
+) -> WordPressReconciliation:
+    """External-only reconciliation phase. It MUST NOT write/resend the post."""
+
+    return await gateway.reconcile(request)
+
+
+async def record_wordpress_reconciliation(
+    session: AsyncSession,
+    *,
+    job_id: UUID,
+    worker_id: str,
+    result: WordPressReconciliation,
+) -> tuple[str, PublishedContent | None, PublishEvent | None]:
+    """Apply reconciliation before any possible resend."""
+
+    dispatch = await _bound_dispatch_from_job(
+        session,
+        job_id=job_id,
+        worker_id=worker_id,
+    )
     outbox_result = ReconciliationResult(
         outcome=result.outcome,
         external_ref=(
@@ -1247,8 +1329,8 @@ async def reconcile_wordpress_job(
     )
     await apply_reconciliation_result(
         session,
-        intent_id=intent.id,
-        job_id=job.id,
+        intent_id=dispatch.intent.id,
+        job_id=dispatch.job.id,
         worker_id=worker_id,
         result=outbox_result,
     )
@@ -1259,25 +1341,20 @@ async def reconcile_wordpress_job(
     if result.outcome == "conflict":
         await fail_job_and_maybe_retry(
             session,
-            job_id=job.id,
+            job_id=dispatch.job.id,
             worker_id=worker_id,
             failure_class="publish_conflict",
             message=result.message or "WordPress reconciliation conflict",
             retry_policy=RetryPolicy(max_step_attempts=1),
         )
-        if run.status == "running":
-            await transition_run(session, run_id=run.id, status="failed")
+        if dispatch.run.status == "running":
+            await transition_run(
+                session,
+                run_id=dispatch.run.id,
+                status="failed",
+            )
         return result.outcome, None, None
 
-    dispatch = PublishDispatch(
-        run=run,
-        step=step,
-        job=job,
-        intent=intent,
-        package=package,
-        approval=approval,
-        replayed=False,
-    )
     mapping, event = await _finalize_confirmed_publish(
         session,
         dispatch=dispatch,
@@ -1285,11 +1362,15 @@ async def reconcile_wordpress_job(
     )
     await complete_job(
         session,
-        job_id=job.id,
+        job_id=dispatch.job.id,
         worker_id=worker_id,
     )
-    if run.status == "running":
-        await transition_run(session, run_id=run.id, status="completed")
+    if dispatch.run.status == "running":
+        await transition_run(
+            session,
+            run_id=dispatch.run.id,
+            status="completed",
+        )
     return result.outcome, mapping, event
 
 
@@ -1301,13 +1382,18 @@ __all__ = [
     "PublishDispatch",
     "PublishError",
     "PublishPackageResult",
+    "PreparedWordPressCall",
     "WordPressGateway",
     "WordPressReconciliation",
     "WordPressWriteRequest",
     "WordPressWriteResult",
-    "dispatch_wordpress_job",
+    "begin_wordpress_dispatch",
+    "execute_wordpress_call",
+    "execute_wordpress_reconciliation",
     "prepare_publish_package",
     "prepare_wordpress_dispatch",
-    "reconcile_wordpress_job",
+    "prepare_wordpress_reconciliation",
+    "record_wordpress_execution_result",
+    "record_wordpress_reconciliation",
     "submit_publish_decision",
 ]
