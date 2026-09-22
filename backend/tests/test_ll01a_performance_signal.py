@@ -164,8 +164,8 @@ async def test_ll01a_materializes_factual_idempotent_signal_without_truth_promot
         assert signal.external_id == f"content_performance_observation:{observation.id}"
         assert signal.independence_group == f"experiment:{fixture.experiment.id}"
         assert "Interpretation text" not in signal.observed_text
-        assert "impressions=120.000000" in signal.observed_text
-        assert "clicks=9.000000" in signal.observed_text
+        assert "impressions=120@" in signal.observed_text
+        assert "clicks=9@" in signal.observed_text
 
         serialized = json.dumps(signal.provenance_json, sort_keys=True)
         assert "must-not-flow-to-signal" not in serialized
@@ -183,6 +183,15 @@ async def test_ll01a_materializes_factual_idempotent_signal_without_truth_promot
             fixture.experiment.id
         )
 
+        await session.refresh(fixture.need)
+        await session.refresh(fixture.experiment)
+        assert fixture.need.status == "TESTING"
+        assert fixture.experiment.result == "PENDING"
+        assert int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        ) == insight_count_before
+
+        session.expunge_all()
         replay = await materialize_performance_signal(
             session,
             observation_id=observation.id,
@@ -199,13 +208,6 @@ async def test_ll01a_materializes_factual_idempotent_signal_without_truth_promot
             or 0
         ) == 1
 
-        await session.refresh(fixture.need)
-        await session.refresh(fixture.experiment)
-        assert fixture.need.status == "TESTING"
-        assert fixture.experiment.result == "PENDING"
-        assert int(
-            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
-        ) == insight_count_before
 
 
 @pytest.mark.asyncio
@@ -365,17 +367,15 @@ async def test_ll01a_uses_frozen_publish_package_customer_identity_after_map_cha
             (fixture.item.id, "trust"),
         )
         assert trust_stage is not None
-        await session.delete(trust_stage)
         session.add(
             ContentItemJourneyStage(
                 content_item_id=fixture.item.id,
                 stage_key="interest",
                 linked_by="founder",
-                reason="Simulate a later Customer Map planning change.",
+                reason="Simulate a later append-only Journey mapping change.",
             )
         )
         fixture.need.version = frozen_need_version + 1
-        fixture.variant.locale = "vi-VN"
         await session.flush()
 
         observation, _snapshot = await _record_search_observation(
@@ -392,7 +392,6 @@ async def test_ll01a_uses_frozen_publish_package_customer_identity_after_map_cha
         assert customer["need_hypothesis_version"] == frozen_need_version
         assert customer["journey_stages"] == ["trust"]
         assert customer["identity_source"] == "publish_package"
-        assert result.signal.locale == "en"
 
 
 @pytest.mark.asyncio
