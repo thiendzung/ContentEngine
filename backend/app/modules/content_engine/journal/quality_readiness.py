@@ -488,7 +488,11 @@ async def load_quality_readiness_input(
             "artifact": _ref(source_copy),
             "quality_evaluation": _quality_ref(source_copy_eval),
         }
-        if reader_artifact.content_json.get("source_copy") != expected_source_copy:
+        reader_payload = reader_artifact.content_json
+        if (
+            not isinstance(reader_payload, dict)
+            or reader_payload.get("source_copy") != expected_source_copy
+        ):
             raise QualityReadinessError(
                 "quality_readiness_reader_value_source_copy_mismatch"
             )
