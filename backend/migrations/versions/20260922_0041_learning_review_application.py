@@ -353,6 +353,8 @@ def _create_guards() -> None:
             v_candidate_key text;
             candidate_target_type text;
             candidate_evidence_status text;
+            canonical_snapshot_hash text;
+            canonical_target_snapshot jsonb;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_candidate_review_update_forbidden';
@@ -387,6 +389,19 @@ def _create_guards() -> None:
             ) THEN
                 RAISE EXCEPTION 'learning_candidate_review_candidate_stale';
             END IF;
+
+            canonical_snapshot_hash :=
+                learning_candidate_snapshot_hash(NEW.learning_candidate_id);
+            canonical_target_snapshot :=
+                learning_candidate_target_snapshot(NEW.learning_candidate_id);
+
+            IF NEW.candidate_snapshot_hash
+                   IS DISTINCT FROM canonical_snapshot_hash
+               OR NEW.target_snapshot_json::jsonb
+                   IS DISTINCT FROM canonical_target_snapshot THEN
+                RAISE EXCEPTION 'learning_candidate_review_snapshot_mismatch';
+            END IF;
+
             IF length(btrim(NEW.reviewed_by)) = 0
                OR length(btrim(NEW.reason)) = 0 THEN
                 RAISE EXCEPTION 'learning_candidate_review_human_fields_required';
@@ -440,6 +455,12 @@ def _create_guards() -> None:
             review_version integer;
             review_decision text;
             review_snapshot text;
+            review_target_snapshot jsonb;
+            canonical_snapshot_hash text;
+            canonical_target_snapshot jsonb;
+            expected_signal_refs jsonb;
+            candidate_statement text;
+            candidate_proposal jsonb;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_application_update_forbidden';
@@ -449,17 +470,19 @@ def _create_guards() -> None:
             END IF;
 
             SELECT lc.project_id, lc.version, lc.status, lc.candidate_key,
-                   lc.target_type, lc.target_id, lc.scope_json::jsonb
+                   lc.target_type, lc.target_id, lc.scope_json::jsonb,
+                   lc.statement, lc.proposal_json::jsonb
             INTO candidate_project, candidate_version, candidate_status,
                  v_candidate_key, candidate_target_type, candidate_target_id,
-                 candidate_scope
+                 candidate_scope, candidate_statement, candidate_proposal
             FROM learning_candidates AS lc
             WHERE lc.id = NEW.learning_candidate_id;
 
             SELECT r.project_id, r.learning_candidate_id, r.candidate_version,
-                   r.decision, r.candidate_snapshot_hash
+                   r.decision, r.candidate_snapshot_hash,
+                   r.target_snapshot_json::jsonb
             INTO review_project, review_candidate, review_version,
-                 review_decision, review_snapshot
+                 review_decision, review_snapshot, review_target_snapshot
             FROM learning_candidate_reviews AS r
             WHERE r.id = NEW.review_id;
 
@@ -486,6 +509,18 @@ def _create_guards() -> None:
             ) THEN
                 RAISE EXCEPTION 'learning_application_candidate_stale';
             END IF;
+
+            canonical_snapshot_hash :=
+                learning_candidate_snapshot_hash(NEW.learning_candidate_id);
+            canonical_target_snapshot :=
+                learning_candidate_target_snapshot(NEW.learning_candidate_id);
+
+            IF review_snapshot IS DISTINCT FROM canonical_snapshot_hash
+               OR review_target_snapshot
+                    IS DISTINCT FROM canonical_target_snapshot THEN
+                RAISE EXCEPTION 'learning_application_review_snapshot_stale';
+            END IF;
+
             IF review_decision NOT IN ('APPROVE','NO_MAP_CHANGE') THEN
                 RAISE EXCEPTION 'learning_application_review_not_applicable';
             END IF;
@@ -518,6 +553,15 @@ def _create_guards() -> None:
                     RAISE EXCEPTION 'learning_application_mutation_receipt_incomplete';
                 END IF;
 
+                expected_signal_refs :=
+                    learning_candidate_applied_signal_refs(
+                        NEW.learning_candidate_id
+                    );
+                IF NEW.applied_signal_refs_json::jsonb
+                     IS DISTINCT FROM expected_signal_refs THEN
+                    RAISE EXCEPTION 'learning_application_signal_refs_mismatch';
+                END IF;
+
                 SELECT run.project_id, artifact.content_hash,
                        artifact.artifact_type
                 INTO snapshot_project, snapshot_hash, snapshot_type
@@ -530,19 +574,117 @@ def _create_guards() -> None:
                    OR snapshot_type IS DISTINCT FROM 'customer_map_snapshot'
                    OR snapshot_hash IS DISTINCT FROM NEW.after_state_hash
                    OR NEW.change_report_json->>'current_snapshot_hash'
-                      IS DISTINCT FROM NEW.after_state_hash THEN
+                      IS DISTINCT FROM NEW.after_state_hash
+                   OR NEW.change_report_json->>'previous_snapshot_hash'
+                      IS DISTINCT FROM NEW.before_state_hash THEN
                     RAISE EXCEPTION 'learning_application_snapshot_mismatch';
                 END IF;
 
-                IF NEW.target_type = 'need_hypothesis'
-                   AND NEW.applied_action IS DISTINCT FROM 'link_need_signals' THEN
-                    RAISE EXCEPTION 'learning_application_action_mismatch';
-                ELSIF NEW.target_type = 'customer_insight'
-                      AND NEW.applied_action IS DISTINCT FROM 'link_insight_signals' THEN
-                    RAISE EXCEPTION 'learning_application_action_mismatch';
-                ELSIF NEW.target_type = 'new_customer_insight'
-                      AND NEW.applied_action IS DISTINCT FROM 'create_candidate_insight' THEN
-                    RAISE EXCEPTION 'learning_application_action_mismatch';
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM artifacts AS before_artifact
+                    JOIN content_runs AS before_run
+                      ON before_run.id = before_artifact.run_id
+                    WHERE before_run.project_id = NEW.project_id
+                      AND before_artifact.artifact_type = 'customer_map_snapshot'
+                      AND before_artifact.content_hash = NEW.before_state_hash
+                ) THEN
+                    RAISE EXCEPTION 'learning_application_before_snapshot_missing';
+                END IF;
+
+                IF NEW.target_type = 'need_hypothesis' THEN
+                    IF NEW.applied_action IS DISTINCT FROM 'link_need_signals'
+                       OR NEW.resulting_target_id
+                            IS DISTINCT FROM candidate_target_id THEN
+                        RAISE EXCEPTION 'learning_application_action_mismatch';
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(expected_signal_refs) AS ref
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM need_hypothesis_signals AS nhs
+                            WHERE nhs.need_hypothesis_id =
+                                      NEW.resulting_target_id
+                              AND nhs.signal_id =
+                                      (ref->>'signal_id')::uuid
+                              AND nhs.relation = ref->>'relation'
+                        )
+                    ) THEN
+                        RAISE EXCEPTION 'learning_application_truth_links_missing';
+                    END IF;
+                ELSIF NEW.target_type = 'customer_insight' THEN
+                    IF NEW.applied_action IS DISTINCT FROM 'link_insight_signals'
+                       OR NEW.resulting_target_id
+                            IS DISTINCT FROM candidate_target_id THEN
+                        RAISE EXCEPTION 'learning_application_action_mismatch';
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(expected_signal_refs) AS ref
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM customer_insight_signals AS cis
+                            WHERE cis.customer_insight_id =
+                                      NEW.resulting_target_id
+                              AND cis.signal_id =
+                                      (ref->>'signal_id')::uuid
+                              AND cis.relation = ref->>'relation'
+                        )
+                    ) THEN
+                        RAISE EXCEPTION 'learning_application_truth_links_missing';
+                    END IF;
+                ELSIF NEW.target_type = 'new_customer_insight' THEN
+                    IF NEW.applied_action
+                         IS DISTINCT FROM 'create_candidate_insight' THEN
+                        RAISE EXCEPTION 'learning_application_action_mismatch';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM customer_insights AS ci
+                        WHERE ci.id = NEW.resulting_target_id
+                          AND ci.project_id = NEW.project_id
+                          AND ci.status = 'CANDIDATE'
+                          AND ci.statement = candidate_statement
+                          AND ci.insight_type =
+                                candidate_proposal->>'insight_type'
+                          AND ci.situation IS NOT DISTINCT FROM
+                                candidate_proposal->>'situation'
+                          AND ci.audience_hypothesis_id IS NOT DISTINCT FROM
+                                NULLIF(
+                                    candidate_scope->>'audience_hypothesis_id',
+                                    ''
+                                )::uuid
+                    ) THEN
+                        RAISE EXCEPTION 'learning_application_result_target_mismatch';
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(expected_signal_refs) AS ref
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM customer_insight_signals AS cis
+                            WHERE cis.customer_insight_id =
+                                      NEW.resulting_target_id
+                              AND cis.signal_id =
+                                      (ref->>'signal_id')::uuid
+                              AND cis.relation = ref->>'relation'
+                        )
+                    ) THEN
+                        RAISE EXCEPTION 'learning_application_truth_links_missing';
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM customer_insight_need_links AS cinl
+                        WHERE cinl.customer_insight_id =
+                                  NEW.resulting_target_id
+                          AND cinl.need_hypothesis_id =
+                                (candidate_scope->>'need_hypothesis_id')::uuid
+                          AND cinl.relation =
+                                candidate_proposal->>'need_relation'
+                    ) THEN
+                        RAISE EXCEPTION 'learning_application_need_link_missing';
+                    END IF;
                 END IF;
             END IF;
             IF length(btrim(NEW.applied_by)) = 0 THEN
