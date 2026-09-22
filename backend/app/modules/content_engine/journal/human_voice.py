@@ -1,8 +1,9 @@
 """HV-01 isolated Human Voice rewrite contract.
 
 This module is intentionally pure: no database writes, provider routing, workflow
-activation, or external side effects. It validates that a style rewrite stays
-inside declared claim/evidence boundaries and does not introduce new facts.
+activation, or external side effects. It validates declared claim/evidence boundaries
+plus deterministic numeric/direct-quote constraints. Arbitrary semantic factual drift
+still requires a separate re-audit on the rewritten bytes.
 """
 
 from __future__ import annotations
@@ -438,7 +439,7 @@ def validate_human_voice_output(
 
 
 class HumanVoiceRewriter:
-    """Bounded structured rewrite; validation owns the safety boundary."""
+    """Bounded structured rewrite; contract validation precedes semantic re-audit."""
 
     def __init__(self, *, max_attempts: int = 2) -> None:
         if (
