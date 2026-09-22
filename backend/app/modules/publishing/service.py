@@ -669,16 +669,21 @@ async def prepare_publish_package(
                     Artifact.artifact_type == PUBLISH_PACKAGE_ARTIFACT_TYPE,
                     Artifact.content_hash == package_hash,
                 )
+                .order_by(Artifact.created_at.desc(), Artifact.id.desc())
             )
         ).all()
     )
-    if len(existing_packages) > 1:
-        raise PublishError("publish_package_duplicate")
-    if existing_packages:
-        artifact = existing_packages[0]
-        run = await session.get(ContentRun, artifact.run_id)
-        if run is None or artifact.content_json != package_payload:
+    reusable: list[tuple[Artifact, ContentRun]] = []
+    for existing in existing_packages:
+        run = await session.get(ContentRun, existing.run_id)
+        if run is None or existing.content_json != package_payload:
             raise PublishError("publish_package_replay_conflict")
+        if run.status in {"waiting_approval", "running", "completed"}:
+            reusable.append((existing, run))
+    if len(reusable) > 1:
+        raise PublishError("publish_package_active_duplicate")
+    if reusable:
+        artifact, run = reusable[0]
         return PublishPackageResult(
             run=run,
             artifact=artifact,
@@ -950,6 +955,12 @@ async def _request_for_package(
     raw_action = _text(target.get("action"), "publish_action_invalid")
     if raw_action not in {"draft", "publish"}:
         raise PublishError("publish_action_invalid")
+    if (
+        mapping is not None
+        and mapping.external_status == "publish"
+        and raw_action == "draft"
+    ):
+        raise PublishError("publish_live_post_draft_overwrite_forbidden")
     metadata = {
         "contentengine": {
             "content_item_id": str(item_id),
