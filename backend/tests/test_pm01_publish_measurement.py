@@ -842,3 +842,104 @@ async def test_pm01_measurement_rejects_metric_provider_mismatch(
                     )
                 ],
             )
+
+
+@pytest.mark.asyncio
+async def test_pm01_rejected_publish_can_be_reauthorized_fresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        first = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        rejected = await submit_publish_decision(
+            session,
+            publish_run_id=first.run.id,
+            package_artifact_id=first.artifact.id,
+            decision="rejected",
+            actor_id="founder",
+            comment="Do not publish yet.",
+        )
+        assert rejected.run.status == "cancelled"
+
+        second = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        assert second.replayed is False
+        assert second.run.id != first.run.id
+        assert second.artifact.id != first.artifact.id
+        assert second.run.status == "waiting_approval"
+
+
+@pytest.mark.asyncio
+async def test_pm01_live_post_cannot_be_downgraded_to_draft(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        live = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, _dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=live.run.id,
+            package_artifact_id=live.artifact.id,
+            worker_id="pm01-live-worker",
+        )
+        gateway = FakeWordPress()
+        prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-live-worker",
+        )
+        result = await execute_wordpress_call(
+            gateway=gateway,
+            request=prepared.request,
+        )
+        mapping, _event = await record_wordpress_execution_result(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-live-worker",
+            result=result,
+        )
+        assert mapping is not None
+        assert mapping.external_status == "publish"
+
+        draft = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="draft",
+        )
+        _decision, dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=draft.run.id,
+            package_artifact_id=draft.artifact.id,
+            worker_id="pm01-live-draft-worker",
+        )
+        with pytest.raises(
+            PublishError,
+            match="publish_live_post_draft_overwrite_forbidden",
+        ):
+            await begin_wordpress_dispatch(
+                session,
+                job_id=claimed.id,
+                worker_id="pm01-live-draft-worker",
+            )
+        await session.refresh(dispatch.intent)
+        assert dispatch.intent.status == "pending"
+
