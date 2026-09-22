@@ -365,6 +365,88 @@ async def test_ll01c_apply_need_preserves_contradict_relation(
 
 
 @pytest.mark.asyncio
+async def test_ll01c_need_change_report_marks_same_experiment_evidence_duplicate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, signal, _assessment, candidate_v1 = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        first_review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate_v1.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Apply the first factual signal.",
+        )
+        first = await apply_learning_candidate(
+            session,
+            review_id=first_review.review.id,
+            applied_by="founder",
+        )
+        assert any(
+            event["detail"] == "supports_evidence_added"
+            for event in first.change_report["events"]
+        )
+
+        _observation, analytics_signal = await _analytics_signal(
+            session,
+            fixture=fixture,
+            mapping=mapping,
+        )
+        assert analytics_signal.independence_group == signal.independence_group
+
+        assessment_v2 = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={
+                signal.id: "supports",
+                analytics_signal.id: "supports",
+            },
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need a genuinely independent experiment."],
+        )
+        candidate_v2 = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment_v2.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Measured evidence may support this frozen Need.",
+            relation="supports",
+            expected_benefit="Preserve reviewed factual evidence on the Need.",
+            regression_risk="Do not promote the Need status automatically.",
+        )
+        second_review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate_v2.candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Attach the second same-experiment signal without overstating it.",
+        )
+        second = await apply_learning_candidate(
+            session,
+            review_id=second_review.review.id,
+            applied_by="founder",
+        )
+        assert any(
+            event["entity_type"] == "need"
+            and event["entity_ref"] == str(fixture.need.id)
+            and event["detail"] == "supports_duplicate_evidence_added"
+            and str(analytics_signal.id) in event["signal_refs"]
+            for event in second.change_report["events"]
+        )
+        assert not any(
+            event["entity_type"] == "need"
+            and event["entity_ref"] == str(fixture.need.id)
+            and event["detail"] == "supports_evidence_added"
+            and str(analytics_signal.id) in event["signal_refs"]
+            for event in second.change_report["events"]
+        )
+
+
+@pytest.mark.asyncio
 async def test_ll01c_stale_need_version_blocks_application_before_mutation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -801,6 +883,35 @@ async def test_ll01c_database_review_guard_rejects_identity_forgery(
 
 
 @pytest.mark.asyncio
+async def test_ll01c_database_review_guard_rejects_forged_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        forged = LearningCandidateReview(
+            project_id=fixture.project.id,
+            learning_candidate_id=candidate.id,
+            candidate_version=candidate.version,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="A forged snapshot must never become a human approval.",
+            candidate_snapshot_hash="0" * 64,
+            target_snapshot_json={"forged": True},
+            reviewed_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_review_snapshot_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged)
+                await session.flush()
+
+
+@pytest.mark.asyncio
 async def test_ll01c_database_application_guard_rejects_incomplete_receipt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -843,6 +954,119 @@ async def test_ll01c_database_application_guard_rejects_incomplete_receipt(
         ):
             async with session.begin_nested():
                 session.add(forged)
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_ll01c_database_application_guard_rejects_forged_receipt_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, _mapping, _signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Create one canonical receipt for DB guard comparison.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+        canonical = applied.application
+
+        forged_refs = LearningApplication(
+            project_id=canonical.project_id,
+            learning_candidate_id=canonical.learning_candidate_id,
+            candidate_version=canonical.candidate_version,
+            review_id=canonical.review_id,
+            candidate_snapshot_hash=canonical.candidate_snapshot_hash,
+            target_type=canonical.target_type,
+            target_id=canonical.target_id,
+            resulting_target_id=canonical.resulting_target_id,
+            applied_action=canonical.applied_action,
+            applied_signal_refs_json=[
+                {"signal_id": str(uuid4()), "relation": "supports"}
+            ],
+            frozen_scope_json=canonical.frozen_scope_json,
+            before_state_hash=canonical.before_state_hash,
+            after_state_hash=canonical.after_state_hash,
+            customer_map_snapshot_artifact_id=(
+                canonical.customer_map_snapshot_artifact_id
+            ),
+            change_report_json=canonical.change_report_json,
+            applied_by="direct-sql-forgery",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_signal_refs_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged_refs)
+                await session.flush()
+
+        forged_target = LearningApplication(
+            project_id=canonical.project_id,
+            learning_candidate_id=canonical.learning_candidate_id,
+            candidate_version=canonical.candidate_version,
+            review_id=canonical.review_id,
+            candidate_snapshot_hash=canonical.candidate_snapshot_hash,
+            target_type=canonical.target_type,
+            target_id=canonical.target_id,
+            resulting_target_id=uuid4(),
+            applied_action=canonical.applied_action,
+            applied_signal_refs_json=canonical.applied_signal_refs_json,
+            frozen_scope_json=canonical.frozen_scope_json,
+            before_state_hash=canonical.before_state_hash,
+            after_state_hash=canonical.after_state_hash,
+            customer_map_snapshot_artifact_id=(
+                canonical.customer_map_snapshot_artifact_id
+            ),
+            change_report_json=canonical.change_report_json,
+            applied_by="direct-sql-forgery",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_action_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged_target)
+                await session.flush()
+
+        forged_before = LearningApplication(
+            project_id=canonical.project_id,
+            learning_candidate_id=canonical.learning_candidate_id,
+            candidate_version=canonical.candidate_version,
+            review_id=canonical.review_id,
+            candidate_snapshot_hash=canonical.candidate_snapshot_hash,
+            target_type=canonical.target_type,
+            target_id=canonical.target_id,
+            resulting_target_id=canonical.resulting_target_id,
+            applied_action=canonical.applied_action,
+            applied_signal_refs_json=canonical.applied_signal_refs_json,
+            frozen_scope_json=canonical.frozen_scope_json,
+            before_state_hash="0" * 64,
+            after_state_hash=canonical.after_state_hash,
+            customer_map_snapshot_artifact_id=(
+                canonical.customer_map_snapshot_artifact_id
+            ),
+            change_report_json=canonical.change_report_json,
+            applied_by="direct-sql-forgery",
+            applied_at=datetime.now(UTC),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_application_snapshot_mismatch",
+        ):
+            async with session.begin_nested():
+                session.add(forged_before)
                 await session.flush()
 
 
