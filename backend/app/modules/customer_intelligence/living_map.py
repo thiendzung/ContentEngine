@@ -435,13 +435,15 @@ async def build_customer_map_snapshot(
             need_signal_link.need_hypothesis_id,
             {"supports": set(), "contradicts": set()},
         )
-        independent[relation].add(
-            await signal_independence_key(
+        try:
+            independent_key = await signal_independence_key(
                 session,
                 signal,
                 independence_cache,
             )
-        )
+        except CustomerInsightError as exc:
+            raise CustomerMapError(exc.code) from exc
+        independent[relation].add(independent_key)
 
     insight_payloads: list[dict[str, object]] = []
     for insight in insights:
