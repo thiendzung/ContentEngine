@@ -379,11 +379,11 @@ def upgrade() -> None:
         sa.text(
             """
             CREATE FUNCTION prevent_publish_event_mutation()
-            RETURNS trigger AS $
+            RETURNS trigger AS $pm01$
             BEGIN
                 RAISE EXCEPTION 'pm01_publish_event_is_immutable';
             END;
-            $ LANGUAGE plpgsql
+            $pm01$ LANGUAGE plpgsql
             """
         )
     )
