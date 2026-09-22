@@ -320,6 +320,7 @@ Current bounded PM-01 implementation:
 - commit-before-side-effect boundary is explicit: Outbox `processing` state must be durable before external WordPress write;
 - ambiguous external outcome becomes `needs_reconciliation`; reconcile before any resend;
 - PublishedContent preserves one ContentItem ↔ WordPress identity while PublishEvent records draft/publish/update history by ContentVersion;
+- ContentVersion remains immutable after Founder approval; PM-01 does not mutate `approved → published` or create a duplicate publication-only ContentVersion. Canonical external publication state is PublishedContent/PublishEvent, and Content Coverage + Review Console read that state;
 - core measurement rows normalize impressions/clicks/sessions/engaged sessions/artwork/visit/workshop transitions/inquiry while retaining raw provider payload;
 - measurement identity traces current external URL/version back to ContentCase, Audience, Need, Journey, Opportunity, Lens and ContentExperiment;
 - metrics/observations remain observations; PM-01 does not create/promote LearningCandidate rules;
@@ -331,4 +332,3 @@ Operational database remains at the separately controlled release state. PM-01 d
 
 PM-01 review flow remains:
 `CI → exact-ref OpenCodeReview Delegation → MG triage → Agent Local disposable exact-head proof → Founder merge`.
-
