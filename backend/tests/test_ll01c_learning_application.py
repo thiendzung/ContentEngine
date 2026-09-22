@@ -16,12 +16,12 @@ from app.modules.customer_intelligence.models import (
     CustomerInsightNeedLink,
     CustomerInsightSignal,
 )
+from app.modules.harness.models import Artifact
 from app.modules.learning.application import (
     LearningApplicationError,
     apply_learning_candidate,
     review_learning_candidate,
 )
-from app.modules.harness.models import Artifact
 from app.modules.learning.models import (
     LearningApplication,
     LearningCandidateReview,
