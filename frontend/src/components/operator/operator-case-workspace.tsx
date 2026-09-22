@@ -67,6 +67,8 @@ function qualityStageLabel(status: string): string {
   if (normalized.includes("review")) return "Rà soát & chỉnh sửa";
   if (normalized.includes("audit")) return "Kiểm tra khẳng định";
   if (normalized.includes("source_copy")) return "Kiểm tra trùng nguồn";
+  if (normalized.includes("reader_value")) return "Kiểm tra giá trị cho người đọc";
+  if (normalized.includes("search_ai")) return "Kiểm tra SEO / AI";
   if (normalized.includes("failed")) return "Bị chặn";
   if (normalized.includes("queued")) return "Đang chờ worker";
   if (normalized.includes("running")) return "Đang kiểm tra";
@@ -80,6 +82,30 @@ function qualityResultLabel(value: string | null): string {
   if (normalized === "warn") return "Cảnh báo";
   if (normalized === "fail") return "Không đạt";
   return value;
+}
+
+type ReadinessFindingView = {
+  result: "warn" | "fail";
+  finding: string;
+  repairSuggestion: string | null;
+};
+
+function readinessFindings(values: unknown[]): ReadinessFindingView[] {
+  return values.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const row = value as Record<string, unknown>;
+    if (row.result !== "warn" && row.result !== "fail") return [];
+    if (typeof row.finding !== "string" || !row.finding.trim()) return [];
+    return [{
+      result: row.result,
+      finding: row.finding.trim(),
+      repairSuggestion: (
+        typeof row.repair_suggestion === "string" && row.repair_suggestion.trim()
+          ? row.repair_suggestion.trim()
+          : null
+      ),
+    }];
+  });
 }
 
 function exactFinalBindingMatches(
@@ -203,6 +229,9 @@ function AngleCard({
 }
 
 function QualityLaneCard({ lane }: { lane: QualityLane }) {
+  const readerIssues = readinessFindings(lane.reader_value_findings);
+  const searchIssues = readinessFindings(lane.search_ai_findings);
+
   return (
     <article className="quality-lane-card">
       <header>
@@ -222,9 +251,41 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <strong>{qualityResultLabel(lane.source_copy_result)}</strong>
           <small>lỗi {lane.fail_count} · cảnh báo {lane.warn_count}</small>
         </div>
+        <div>
+          <span>Giá trị cho người đọc</span>
+          <strong>{qualityResultLabel(lane.reader_value_result)}</strong>
+          <small>{lane.reader_value_findings.length} tiêu chí được kiểm tra</small>
+        </div>
+        <div>
+          <span>SEO / AI readiness</span>
+          <strong>{qualityResultLabel(lane.search_ai_result)}</strong>
+          <small>{lane.search_ai_findings.length} tiêu chí được kiểm tra</small>
+        </div>
       </div>
       {lane.warn_count > 0 && (
         <p className="quality-warning-note">Còn {lane.warn_count} cảnh báo cần đọc ở bản duyệt cuối.</p>
+      )}
+      {readerIssues.length > 0 && (
+        <section className="warnings">
+          <p className="label">Điểm cần sửa cho người đọc</p>
+          {readerIssues.map((issue, index) => (
+            <p key={`${lane.locale}-reader-value-${index}`}>
+              <strong>{qualityResultLabel(issue.result)}:</strong> {issue.finding}
+              {issue.repairSuggestion ? ` — ${issue.repairSuggestion}` : ""}
+            </p>
+          ))}
+        </section>
+      )}
+      {searchIssues.length > 0 && (
+        <section className="warnings">
+          <p className="label">Điểm cần sửa cho SEO / AI</p>
+          {searchIssues.map((issue, index) => (
+            <p key={`${lane.locale}-search-ai-${index}`}>
+              <strong>{qualityResultLabel(issue.result)}:</strong> {issue.finding}
+              {issue.repairSuggestion ? ` — ${issue.repairSuggestion}` : ""}
+            </p>
+          ))}
+        </section>
       )}
       <details className="operator-technical-details">
         <summary>Binding chất lượng</summary>
@@ -233,6 +294,8 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <div><dt>Revised draft</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
           <div><dt>Audit artifact</dt><dd>{lane.assertion_audit_artifact?.id ?? "—"}</dd></div>
           <div><dt>Source-copy artifact</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Reader Value</dt><dd>{lane.reader_value_artifact?.id ?? "—"}</dd></div>
+          <div><dt>SEO / AI readiness</dt><dd>{lane.search_ai_artifact?.id ?? "—"}</dd></div>
           <div><dt>Final content</dt><dd>{lane.final_content?.id ?? "—"}</dd></div>
           <div><dt>Final hash</dt><dd>{lane.final_content?.content_hash ?? "—"}</dd></div>
         </dl>

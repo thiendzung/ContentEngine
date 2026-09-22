@@ -479,7 +479,13 @@ async def _quality_state_overlay(
         progress.lanes[0],
     )
     focused_run = focused.writer.run
-    focused_step = focused.review.step or focused.audit.step or focused.source_copy.step
+    focused_step = (
+        focused.review.step
+        or focused.audit.step
+        or focused.source_copy.step
+        or focused.reader_value.step
+        or focused.search_ai.step
+    )
     common = {
         "state_version": state_version,
         "current_run_id": focused_run.id if focused_run is not None else state.current_run_id,
@@ -522,21 +528,34 @@ async def _quality_state_overlay(
             for lane in progress.lanes
             if any(
                 stage.job is not None and stage.job.status in {"queued", "leased"}
-                for stage in (lane.review, lane.audit, lane.source_copy)
+                for stage in (
+                    lane.review,
+                    lane.audit,
+                    lane.source_copy,
+                    lane.reader_value,
+                    lane.search_ai,
+                )
             )
         )
         active_stage = next(
             stage
-            for stage in (active_lane.review, active_lane.audit, active_lane.source_copy)
+            for stage in (
+                active_lane.review,
+                active_lane.audit,
+                active_lane.source_copy,
+                active_lane.reader_value,
+                active_lane.search_ai,
+            )
             if stage.job is not None and stage.job.status in {"queued", "leased"}
         )
+        active_run = active_stage.run or active_lane.writer.run
         return state.model_copy(
             update={
                 **common,
                 "status": "RUNNING"
                 if active_stage.job and active_stage.job.status == "leased"
                 else "QUEUED",
-                "current_run_id": active_lane.writer.run.id if active_lane.writer.run else None,
+                "current_run_id": active_run.id if active_run else None,
                 "current_step_run_id": active_stage.step.id if active_stage.step else None,
                 "current_worker": active_stage.job.lease_owner if active_stage.job else None,
                 "primary_intent": None,

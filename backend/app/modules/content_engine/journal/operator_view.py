@@ -138,6 +138,14 @@ class OperatorQualityLaneView(BaseModel):
     fail_count: int = 0
     max_overlap_tokens: int = 0
     source_copy_findings: list[object] = Field(default_factory=list)
+    reader_value_artifact: OperatorQualityRefView | None = None
+    reader_value_quality_evaluation_id: UUID | None = None
+    reader_value_result: str | None = None
+    reader_value_findings: list[object] = Field(default_factory=list)
+    search_ai_artifact: OperatorQualityRefView | None = None
+    search_ai_quality_evaluation_id: UUID | None = None
+    search_ai_result: str | None = None
+    search_ai_findings: list[object] = Field(default_factory=list)
     content_item_id: UUID | None = None
     final_content: OperatorQualityRefView | None = None
     final_review_step_run_id: UUID | None = None
@@ -395,6 +403,16 @@ async def get_operator_case_view(
                 if lane.source_copy.evaluation is not None
                 else {}
             )
+            reader_findings = (
+                lane.reader_value.evaluation.findings_json
+                if lane.reader_value.evaluation is not None
+                else {}
+            )
+            search_findings = (
+                lane.search_ai.evaluation.findings_json
+                if lane.search_ai.evaluation is not None
+                else {}
+            )
             source_ref = (
                 OperatorQualityRefView(
                     id=lane.source_draft.id,
@@ -479,6 +497,48 @@ async def get_operator_case_view(
                     source_copy_findings=(
                         cast(list[object], source_findings.get("findings", []))
                         if isinstance(source_findings.get("findings", []), list)
+                        else []
+                    ),
+                    reader_value_artifact=(
+                        OperatorQualityRefView(
+                            id=lane.reader_value.artifact.id,
+                            version=lane.reader_value.artifact.version,
+                            content_hash=lane.reader_value.artifact.content_hash,
+                        )
+                        if lane.reader_value.artifact is not None
+                        else None
+                    ),
+                    reader_value_quality_evaluation_id=(
+                        lane.reader_value.evaluation.id if lane.reader_value.evaluation else None
+                    ),
+                    reader_value_result=(
+                        lane.reader_value.evaluation.result
+                        if lane.reader_value.evaluation
+                        else None
+                    ),
+                    reader_value_findings=(
+                        cast(list[object], reader_findings.get("criteria", []))
+                        if isinstance(reader_findings.get("criteria", []), list)
+                        else []
+                    ),
+                    search_ai_artifact=(
+                        OperatorQualityRefView(
+                            id=lane.search_ai.artifact.id,
+                            version=lane.search_ai.artifact.version,
+                            content_hash=lane.search_ai.artifact.content_hash,
+                        )
+                        if lane.search_ai.artifact is not None
+                        else None
+                    ),
+                    search_ai_quality_evaluation_id=(
+                        lane.search_ai.evaluation.id if lane.search_ai.evaluation else None
+                    ),
+                    search_ai_result=(
+                        lane.search_ai.evaluation.result if lane.search_ai.evaluation else None
+                    ),
+                    search_ai_findings=(
+                        cast(list[object], search_findings.get("criteria", []))
+                        if isinstance(search_findings.get("criteria", []), list)
                         else []
                     ),
                     content_item_id=lane.final_item.id if lane.final_item else None,

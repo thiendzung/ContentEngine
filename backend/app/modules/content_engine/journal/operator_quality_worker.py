@@ -27,6 +27,21 @@ from app.modules.content_engine.journal.operator_quality import (
     prepare_final_gates,
     settle_quality_command,
 )
+from app.modules.content_engine.journal.quality_readiness import (
+    READER_VALUE_TASK_KEYS,
+    READINESS_HANDOFF_TYPES,
+    SEARCH_AI_TASK_KEYS,
+    QualityReadinessInput,
+    ensure_quality_readiness_run,
+    evaluate_quality_readiness,
+    load_quality_readiness_input,
+    load_quality_readiness_input_from_handoff,
+)
+from app.modules.content_engine.journal.quality_readiness_agent_bridge import (
+    QUALITY_READINESS_ROUTE_TASK_KEY,
+    create_cli_quality_readiness_model_port,
+    quality_readiness_registry_config,
+)
 from app.modules.content_engine.journal.review_revise import (
     ReviewReviseGenerator,
     ReviewReviseInput,
@@ -58,6 +73,8 @@ QUALITY_STEP_KEYS = tuple(
         *QUALITY_REVIEW_TASK_KEYS.values(),
         *QUALITY_AUDIT_TASK_KEYS.values(),
         *SOURCE_COPY_TASK_KEYS.values(),
+        *READER_VALUE_TASK_KEYS.values(),
+        *SEARCH_AI_TASK_KEYS.values(),
     }
 )
 
@@ -522,6 +539,166 @@ async def _execute_audit(
     )
 
 
+async def _enqueue_readiness(
+    session: AsyncSession,
+    *,
+    source_input: QualityReadinessInput,
+) -> None:
+    task_key = (
+        READER_VALUE_TASK_KEYS[source_input.writer_input.locale]
+        if source_input.stage == "reader_value"
+        else SEARCH_AI_TASK_KEYS[source_input.writer_input.locale]
+    )
+    run, handoff, _ = await ensure_quality_readiness_run(
+        session,
+        source_input=source_input,
+        task_key=task_key,
+    )
+    steps = list(
+        (
+            await session.scalars(
+                select(StepRun).where(
+                    StepRun.run_id == run.id,
+                    StepRun.step_key == task_key,
+                )
+            )
+        ).all()
+    )
+    if len(steps) > 1:
+        raise OperatorQualityWorkerError("operator_quality_readiness_step_conflict")
+    input_refs = [
+        str(handoff.id),
+        str(source_input.source_artifact.id),
+        str(source_input.source_copy_artifact.id),
+    ]
+    if source_input.reader_value_artifact is not None:
+        input_refs.append(str(source_input.reader_value_artifact.id))
+    step = steps[0] if steps else StepRun(
+        run_id=run.id,
+        step_key=task_key,
+        attempt=1,
+        status="pending",
+        input_artifact_refs_json=input_refs,
+        output_artifact_refs_json=[],
+    )
+    if not steps:
+        session.add(step)
+        await session.flush()
+    elif step.input_artifact_refs_json != input_refs:
+        raise OperatorQualityWorkerError("operator_quality_readiness_step_input_stale")
+    if run.status == "completed" and step.status == "completed":
+        return
+    if run.status in {"failed", "cancelled"} or step.status in {"failed", "skipped"}:
+        raise OperatorQualityWorkerError("operator_quality_readiness_terminal_state")
+    await enqueue_job(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        dedupe_key=f"operator:quality:{task_key}:{run.id}:{source_input.source_artifact.id}",
+    )
+
+
+async def _execute_readiness(
+    session: AsyncSession,
+    *,
+    job: Job,
+    step: StepRun,
+    run: ContentRun,
+    runner_registry: AgentRunnerRegistry,
+) -> None:
+    if not step.input_artifact_refs_json:
+        raise OperatorQualityWorkerError("operator_quality_readiness_input_refs_invalid")
+    handoff_id = UUID(step.input_artifact_refs_json[0])
+    source_input = await load_quality_readiness_input_from_handoff(
+        session,
+        handoff_artifact_id=handoff_id,
+    )
+    config = quality_readiness_registry_config(
+        source_input.stage,
+        source_input.writer_input.locale,
+    )
+    if config.task_key != step.step_key or run.current_step != step.step_key:
+        raise OperatorQualityWorkerError("operator_quality_readiness_task_mismatch")
+    snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+    if snapshot is None:
+        raise OperatorQualityWorkerError("operator_quality_settings_missing")
+    prompt = await active_prompt_definition(session, prompt_key=config.prompt_key)
+    recipe = await active_recipe_definition(
+        session,
+        recipe_key=config.recipe_key,
+        content_type="journal",
+        locale=source_input.writer_input.locale,
+        task_key=config.task_key,
+    )
+    bundle = source_input.writer_input.outline_input.bundle
+    manifest = await build_context_manifest(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        inputs=ContextInputs(
+            prompt_version=f"{prompt.prompt_key}:v{prompt.version}",
+            recipe_version=f"{recipe.recipe_key}:v{recipe.version}",
+            evidence_set_id=bundle.evidence_set_id,
+            originality_pack_id=bundle.originality_pack_id,
+        ),
+    )
+    route = (
+        SettingsModelRouter()
+        .resolve(task_key=QUALITY_READINESS_ROUTE_TASK_KEY, settings_snapshot=snapshot)
+        .primary
+    )
+    port = await create_cli_quality_readiness_model_port(
+        session,
+        run_id=run.id,
+        settings_snapshot=snapshot,
+        context_manifest_id=manifest.id,
+        runner_registry=runner_registry,
+        stage=source_input.stage,
+        locale=source_input.writer_input.locale,
+    )
+    result = await evaluate_quality_readiness(
+        session,
+        source_input=source_input,
+        eval_run_id=run.id,
+        step_run_id=step.id,
+        handoff_artifact_id=handoff_id,
+        model=port,
+        provider=route.provider,
+        model_name=route.model,
+        context_manifest_id=manifest.id,
+        prompt_version=f"{prompt.prompt_key}:v{prompt.version}",
+        recipe_version=f"{recipe.recipe_key}:v{recipe.version}",
+    )
+    step.output_artifact_refs_json = [
+        *step.output_artifact_refs_json,
+        str(result.artifact.id),
+    ]
+    if step.status == "running":
+        step.status = "completed"
+        step.completed_at = utc_now()
+    if run.status == "running":
+        await transition_run(session, run_id=run.id, status="completed")
+
+    if source_input.stage == "reader_value" and result.result in {"pass", "warn"}:
+        search_input = await load_quality_readiness_input(
+            session,
+            stage="search_ai",
+            writer_run_id=source_input.writer_input.writer_run.id,
+            source_draft_artifact_id=source_input.source_artifact.id,
+            expected_source_draft_version=source_input.source_artifact.version,
+            expected_source_draft_hash=source_input.source_artifact.content_hash,
+            outline_artifact_id=source_input.writer_input.outline_artifact.id,
+            expected_outline_version=source_input.writer_input.outline_artifact.version,
+            expected_outline_hash=source_input.writer_input.outline_artifact.content_hash,
+            source_copy_artifact_id=source_input.source_copy_artifact.id,
+            source_copy_quality_evaluation_id=source_input.source_copy_evaluation.id,
+            locale=source_input.writer_input.locale,
+            reader_value_artifact_id=result.artifact.id,
+            reader_value_quality_evaluation_id=result.evaluation.id,
+        )
+        await _enqueue_readiness(session, source_input=search_input)
+
+
 async def _execute_source_copy(
     session: AsyncSession,
     *,
@@ -582,10 +759,25 @@ async def _execute_source_copy(
     result = await execute_source_copy(
         session, source_input=source_input, task_key=SOURCE_COPY_TASK_KEYS[locale]
     )
-    # execute_source_copy owns deterministic evaluation and persistence.  Completing
+    if result.check.result != "fail":
+        reader_input = await load_quality_readiness_input(
+            session,
+            stage="reader_value",
+            writer_run_id=source_input.writer_input.writer_run.id,
+            source_draft_artifact_id=source_input.source_artifact.id,
+            expected_source_draft_version=source_input.source_artifact.version,
+            expected_source_draft_hash=source_input.source_artifact.content_hash,
+            outline_artifact_id=source_input.writer_input.outline_artifact.id,
+            expected_outline_version=source_input.writer_input.outline_artifact.version,
+            expected_outline_hash=source_input.writer_input.outline_artifact.content_hash,
+            source_copy_artifact_id=result.artifact.id,
+            source_copy_quality_evaluation_id=result.evaluation.id,
+            locale=locale,
+        )
+        await _enqueue_readiness(session, source_input=reader_input)
+    # execute_source_copy owns deterministic evaluation and persistence. Completing
     # the queue receipt is the worker's only additional side effect.
     await complete_job(session, job_id=job.id, worker_id=cast(str, job.lease_owner))
-    del result
 
 
 async def _settle_expired_quality_job(
@@ -676,7 +868,14 @@ async def fail_quality_job(
         handoff = await session.scalar(
             select(Artifact).where(
                 Artifact.run_id == run.id,
-                Artifact.artifact_type.in_(("assertion_audit_handoff", "source_copy_handoff")),
+                Artifact.artifact_type.in_(
+                    (
+                        "assertion_audit_handoff",
+                        "source_copy_handoff",
+                        READINESS_HANDOFF_TYPES["reader_value"],
+                        READINESS_HANDOFF_TYPES["search_ai"],
+                    )
+                ),
             )
         )
         if handoff is not None:
@@ -747,8 +946,17 @@ async def execute_quality_job(
     elif step.step_key in QUALITY_AUDIT_TASK_KEYS.values():
         await _execute_audit(session, job=job, step=step, run=run, runner_registry=runner_registry)
         await complete_job(session, job_id=job.id, worker_id=worker_id)
-    else:
+    elif step.step_key in SOURCE_COPY_TASK_KEYS.values():
         await _execute_source_copy(session, job=job, step=step, run=run)
+    else:
+        await _execute_readiness(
+            session,
+            job=job,
+            step=step,
+            run=run,
+            runner_registry=runner_registry,
+        )
+        await complete_job(session, job_id=job.id, worker_id=worker_id)
     if run.status == "failed":
         return
     progress = await get_quality_progress(

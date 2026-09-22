@@ -181,8 +181,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | CM-01 | DONE / PR #174 MERGED | Customer Living Map accepted with CI + exact-ref OCR + disposable local verification. Operational rev-0035/0036 remain separately authorized. |
 | CC-01 | DONE / PR #175 MERGED | Content Coverage accepted with CI + exact-ref OCR + locale-quality re-verification. Operational rev-0035/0036/0037 remain separately authorized. |
 | LS-01 | DONE / PR #176 MERGED | Lens Selection accepted with exact evidence/authority guards, semantic revalidation, CI/OCR/local proof. |
-| AU-02 | IN IMPLEMENTATION / PR #177 | Local Agent Bridge over existing Harness + real approval-before-execution + safe auto-next after independent review. |
-| QA-01 | PLANNED | Reader Value gate + separate SEO/AI readiness. |
+| AU-02 | DONE / PR #177 MERGED | Agent Bridge accepted with exact plan/policy/approval binding, durable budgets/recovery, independent review and bounded auto-next. |
+| QA-01 | IN IMPLEMENTATION / PR #178 | Reader Value hard gate + separate SEO/AI readiness before the existing Founder final-review gate. |
 | PM-01 | PLANNED | Publish/measurement identity and safe adapters. |
 | LL-01 | PLANNED | Measurement → Signal → LearningCandidate → reviewed map update. |
 | UX-01 | PLANNED | Control Center + Living Map dashboard + Needs Me + Daily Digest. |
@@ -293,6 +293,26 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Keep Antigravity activation outside AU-02 until a separate reviewed adapter/policy task exists.
 - [x] No new migration; code Alembic head remains rev-0037 and operational rev-0035→0037 remain separately authorized.
 - [x] Final CI on implementation/docs head before OCR freeze.
-- [ ] Exact-ref OpenCodeReview.
-- [ ] Agent Local verification on exact head.
+- [x] Exact-ref OpenCodeReview.
+- [x] Agent Local verification on exact head.
+- [x] Founder merge.
+
+### QA-01 immediate checklist
+
+- [x] Add separate Reader Value evaluator for the exact revised draft.
+- [x] Bind Reader Value to target reader/problem, Reader Transformation, approved Angle and concrete sanitized OriginalityPack.
+- [x] Hard-route Reader Value FAIL to BLOCKED; Search/AI must never rescue it.
+- [x] Run separate Search/AI readiness only after Reader Value PASS/WARN.
+- [x] Keep SEO/AI checks bounded to intent, structure, answer passage, entity clarity, links, metadata/structured-data fit, freshness, stuffing and fake-FAQ risk.
+- [x] Persist immutable handoff/evaluation lineage with exact draft, Source-copy, settings and upstream Reader Value binding.
+- [x] Use no aggregate numeric score for routing.
+- [x] Preserve the existing Founder final-review gate and publication lock.
+- [x] Keep model evaluation audit-only: no research, tools or rewrite.
+- [x] Add pairwise hard-route regression helper; human preference applies only after hard routes pass.
+- [x] Show Reader Value and SEO/AI results separately in the operator Quality UI, including actionable WARN/FAIL findings.
+- [x] Keep technical retry budget scoped to exact readiness handoff lineage.
+- [x] Add rev-0038 prompt/recipe registry migration with round-trip coverage; operational migration remains separately authorized.
+- [ ] Final CI PASS on exact final implementation/docs head.
+- [ ] Exact-ref OpenCodeReview Delegation review and MG triage.
+- [ ] Agent Local bounded exact-head proof.
 - [ ] Founder merge.

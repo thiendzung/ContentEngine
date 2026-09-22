@@ -36,6 +36,15 @@ from app.modules.content_engine.journal.operator_writers import (
     WriterLaneProgress,
     get_writer_lane_progress,
 )
+from app.modules.content_engine.journal.quality_readiness import (
+    READER_VALUE_TASK_KEYS,
+    READINESS_ARTIFACT_TYPES,
+    READINESS_HANDOFF_TYPES,
+    SEARCH_AI_TASK_KEYS,
+    QualityReadinessInput,
+    ensure_quality_readiness_run,
+    load_quality_readiness_input,
+)
 from app.modules.content_engine.journal.review_revise import load_review_revise_input
 from app.modules.content_engine.journal.review_revise_agent_bridge import (
     review_revise_registry_config,
@@ -145,6 +154,8 @@ class QualityLane:
     review: QualityStage
     audit: QualityStage
     source_copy: QualityStage
+    reader_value: QualityStage
+    search_ai: QualityStage
     final_item: ContentItem | None = None
     final_content: Artifact | None = None
     final_review: StepRun | None = None
@@ -168,13 +179,69 @@ class QualityLane:
             == {"step_key": "final_review", "artifact_id": str(self.final_content.id)}
         ):
             return "final_gate_ready"
+        search_eval = self.search_ai.evaluation
+        if search_eval is not None:
+            return "quality_blocked" if search_eval.result == "fail" else "qualified"
+        search_job = self.search_ai.job
+        if search_job is not None and search_job.status in {"queued", "leased"}:
+            return "search_ai_running" if search_job.status == "leased" else "search_ai_queued"
+        if (
+            (search_job is not None and search_job.status in {"failed", "cancelled"})
+            or (
+                self.search_ai.run is not None
+                and self.search_ai.run.status in {"failed", "cancelled"}
+            )
+        ):
+            if _stage_has_integrity_failure(self.search_ai):
+                return "quality_blocked"
+            is_exhausted = (
+                self.search_ai.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (search_job is not None and search_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
+                or (
+                    self.search_ai.run is not None
+                    and self.search_ai.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
+            return "execution_failed_exhausted" if is_exhausted else "execution_failed_retryable"
+
+        reader_eval = self.reader_value.evaluation
+        if reader_eval is not None:
+            if reader_eval.result == "fail":
+                return "quality_blocked"
+            return "reader_value_ready" if self.search_ai.run is None else "search_ai_queued"
+        reader_job = self.reader_value.job
+        if reader_job is not None and reader_job.status in {"queued", "leased"}:
+            return (
+                "reader_value_running"
+                if reader_job.status == "leased"
+                else "reader_value_queued"
+            )
+        if (
+            (reader_job is not None and reader_job.status in {"failed", "cancelled"})
+            or (
+                self.reader_value.run is not None
+                and self.reader_value.run.status in {"failed", "cancelled"}
+            )
+        ):
+            if _stage_has_integrity_failure(self.reader_value):
+                return "quality_blocked"
+            is_exhausted = (
+                self.reader_value.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (reader_job is not None and reader_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS)
+                or (
+                    self.reader_value.run is not None
+                    and self.reader_value.run.failure_code == "operator_quality_retry_exhausted"
+                )
+            )
+            return "execution_failed_exhausted" if is_exhausted else "execution_failed_retryable"
+
         if self.source_copy.evaluation is not None:
             result = self.source_copy.evaluation.result
             findings = self.source_copy.evaluation.findings_json
             fail_count = findings.get("fail_count", 0) if isinstance(findings, dict) else 0
             if result == "fail" or fail_count:
                 return "quality_blocked"
-            return "qualified"
+            return "source_copy_ready"
         source_job = self.source_copy.job
         if source_job is not None and source_job.status in {"queued", "leased"}:
             return "source_copy_running" if source_job.status == "leased" else "source_copy_queued"
@@ -271,6 +338,8 @@ class QualityProgress:
             lane.review.step is not None
             or lane.audit.run is not None
             or lane.source_copy.run is not None
+            or lane.reader_value.run is not None
+            or lane.search_ai.run is not None
             or lane.final_content is not None
             for lane in self.lanes
         )
@@ -290,7 +359,13 @@ class QualityProgress:
         return any(
             stage.job is not None and stage.job.status in {"queued", "leased"}
             for lane in self.lanes
-            for stage in (lane.review, lane.audit, lane.source_copy)
+            for stage in (
+                lane.review,
+                lane.audit,
+                lane.source_copy,
+                lane.reader_value,
+                lane.search_ai,
+            )
         )
 
     @property
@@ -336,6 +411,22 @@ class QualityProgress:
                         "jobs": [_job_payload(job) for job in lane.source_copy.jobs],
                         "artifact": _ref(lane.source_copy.artifact),
                         "evaluation": _evaluation_payload(lane.source_copy.evaluation),
+                    },
+                    "reader_value": {
+                        "run_id": str(lane.reader_value.run.id) if lane.reader_value.run else None,
+                        "handoff": _ref(lane.reader_value.handoff),
+                        "step": _step_payload(lane.reader_value.step),
+                        "jobs": [_job_payload(job) for job in lane.reader_value.jobs],
+                        "artifact": _ref(lane.reader_value.artifact),
+                        "evaluation": _evaluation_payload(lane.reader_value.evaluation),
+                    },
+                    "search_ai": {
+                        "run_id": str(lane.search_ai.run.id) if lane.search_ai.run else None,
+                        "handoff": _ref(lane.search_ai.handoff),
+                        "step": _step_payload(lane.search_ai.step),
+                        "jobs": [_job_payload(job) for job in lane.search_ai.jobs],
+                        "artifact": _ref(lane.search_ai.artifact),
+                        "evaluation": _evaluation_payload(lane.search_ai.evaluation),
                     },
                     "final": {
                         "content_item_id": str(lane.final_item.id) if lane.final_item else None,
@@ -406,6 +497,10 @@ async def _stage_for_handoff(
     task_key: str,
     audit_artifact: Artifact | None = None,
     audit_evaluation: QualityEvaluation | None = None,
+    source_copy_artifact: Artifact | None = None,
+    source_copy_evaluation: QualityEvaluation | None = None,
+    reader_value_artifact: Artifact | None = None,
+    reader_value_evaluation: QualityEvaluation | None = None,
 ) -> QualityStage:
     if writer.run is None or source_draft is None:
         return QualityStage()
@@ -437,7 +532,7 @@ async def _stage_for_handoff(
                 and source_ref is not None
                 and source_ref == _ref(source_draft)
             )
-        else:
+        elif handoff_type == "source_copy_handoff":
             if audit_artifact is None or audit_evaluation is None:
                 matches_source = False
             else:
@@ -459,6 +554,49 @@ async def _stage_for_handoff(
                     and isinstance(audit_ref, dict)
                     and audit_ref == _ref(audit_artifact)
                     and audit_eval_id == str(audit_evaluation.id)
+                )
+        else:
+            source_run_ref_text = _payload_id(payload, "source_writer_run_id")
+            source_ref = _payload_ref(payload, "source_draft")
+            source_copy_payload = payload.get("source_copy")
+            source_copy_ref = (
+                source_copy_payload.get("artifact")
+                if isinstance(source_copy_payload, dict)
+                else None
+            )
+            source_copy_eval_ref = (
+                source_copy_payload.get("quality_evaluation")
+                if isinstance(source_copy_payload, dict)
+                else None
+            )
+            matches_source = (
+                source_run_ref_text == str(writer.run.id)
+                and source_ref is not None
+                and source_ref == _ref(source_draft)
+                and source_copy_artifact is not None
+                and source_copy_evaluation is not None
+                and source_copy_ref == _ref(source_copy_artifact)
+                and isinstance(source_copy_eval_ref, dict)
+                and source_copy_eval_ref.get("id") == str(source_copy_evaluation.id)
+            )
+            if matches_source and handoff_type == READINESS_HANDOFF_TYPES["search_ai"]:
+                reader_payload = payload.get("reader_value")
+                reader_ref = (
+                    reader_payload.get("artifact")
+                    if isinstance(reader_payload, dict)
+                    else None
+                )
+                reader_eval_ref = (
+                    reader_payload.get("quality_evaluation")
+                    if isinstance(reader_payload, dict)
+                    else None
+                )
+                matches_source = (
+                    reader_value_artifact is not None
+                    and reader_value_evaluation is not None
+                    and reader_ref == _ref(reader_value_artifact)
+                    and isinstance(reader_eval_ref, dict)
+                    and reader_eval_ref.get("id") == str(reader_value_evaluation.id)
                 )
         if not matches_source:
             continue
@@ -515,7 +653,14 @@ async def _stage_for_handoff(
                     select(Artifact).where(
                         Artifact.run_id == run.id,
                         Artifact.step_run_id == step.id,
-                        Artifact.artifact_type.in_(("assertion_audit", "source_copy_check")),
+                        Artifact.artifact_type.in_(
+                            (
+                                "assertion_audit",
+                                "source_copy_check",
+                                READINESS_ARTIFACT_TYPES["reader_value"],
+                                READINESS_ARTIFACT_TYPES["search_ai"],
+                            )
+                        ),
                         Artifact.locale == locale,
                     )
                 )
@@ -663,6 +808,28 @@ async def get_quality_progress(
             audit_artifact=audit.artifact,
             audit_evaluation=audit.evaluation,
         )
+        reader_value = await _stage_for_handoff(
+            session,
+            handoff_type=READINESS_HANDOFF_TYPES["reader_value"],
+            locale=writer.required_locale,
+            writer=writer,
+            source_draft=audit_input_draft,
+            task_key=READER_VALUE_TASK_KEYS[writer.required_locale],
+            source_copy_artifact=source_copy.artifact,
+            source_copy_evaluation=source_copy.evaluation,
+        )
+        search_ai = await _stage_for_handoff(
+            session,
+            handoff_type=READINESS_HANDOFF_TYPES["search_ai"],
+            locale=writer.required_locale,
+            writer=writer,
+            source_draft=audit_input_draft,
+            task_key=SEARCH_AI_TASK_KEYS[writer.required_locale],
+            source_copy_artifact=source_copy.artifact,
+            source_copy_evaluation=source_copy.evaluation,
+            reader_value_artifact=reader_value.artifact,
+            reader_value_evaluation=reader_value.evaluation,
+        )
         item = None
         final_content = None
         final_review = None
@@ -728,6 +895,8 @@ async def get_quality_progress(
             review=review,
             audit=audit,
             source_copy=source_copy,
+            reader_value=reader_value,
+            search_ai=search_ai,
             final_item=item,
             final_content=final_content,
             final_review=final_review,
@@ -870,6 +1039,54 @@ async def _enqueue_source_copy_step(
         run_id=source_run.id,
         step_run_id=step.id,
         dedupe_key=f"operator:quality:source-copy:{dedupe_suffix}",
+    )
+
+
+async def _enqueue_readiness_retry(
+    session: AsyncSession,
+    *,
+    source_input: QualityReadinessInput,
+    dedupe_suffix: str,
+) -> None:
+    task_key = (
+        READER_VALUE_TASK_KEYS[source_input.writer_input.locale]
+        if source_input.stage == "reader_value"
+        else SEARCH_AI_TASK_KEYS[source_input.writer_input.locale]
+    )
+    run, handoff, _ = await ensure_quality_readiness_run(
+        session,
+        source_input=source_input,
+        task_key=task_key,
+    )
+    step = await session.scalar(
+        select(StepRun).where(
+            StepRun.run_id == run.id,
+            StepRun.step_key == task_key,
+        )
+    )
+    if step is None:
+        refs = [
+            str(handoff.id),
+            str(source_input.source_artifact.id),
+            str(source_input.source_copy_artifact.id),
+        ]
+        if source_input.reader_value_artifact is not None:
+            refs.append(str(source_input.reader_value_artifact.id))
+        step = StepRun(
+            run_id=run.id,
+            step_key=task_key,
+            attempt=1,
+            status="pending",
+            input_artifact_refs_json=refs,
+            output_artifact_refs_json=[],
+        )
+        session.add(step)
+        await session.flush()
+    await enqueue_job(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        dedupe_key=f"operator:quality:{task_key}:{dedupe_suffix}",
     )
 
 
@@ -1029,6 +1246,71 @@ async def _queue_quality_retry_lane(
             dedupe_suffix=f"retry:{command.id}:{lane.locale}",
         )
         return
+    if (
+        (
+            lane.reader_value.job is not None
+            and lane.reader_value.job.status in {"failed", "cancelled"}
+        )
+        or (
+            lane.reader_value.run is not None
+            and lane.reader_value.run.status in {"failed", "cancelled"}
+        )
+    ):
+        if lane.source_copy.artifact is None or lane.source_copy.evaluation is None:
+            raise OperatorControlError("operator_quality_retry_source_copy_missing")
+        readiness_input = await load_quality_readiness_input(
+            session,
+            stage="reader_value",
+            writer_run_id=lane.writer.run.id,
+            source_draft_artifact_id=revised.id,
+            expected_source_draft_version=revised.version,
+            expected_source_draft_hash=revised.content_hash,
+            outline_artifact_id=progress.writer_progress.outline_artifact.id,
+            expected_outline_version=progress.writer_progress.outline_artifact.version,
+            expected_outline_hash=progress.writer_progress.outline_artifact.content_hash,
+            source_copy_artifact_id=lane.source_copy.artifact.id,
+            source_copy_quality_evaluation_id=lane.source_copy.evaluation.id,
+            locale=lane.locale,
+        )
+        await _enqueue_readiness_retry(
+            session,
+            source_input=readiness_input,
+            dedupe_suffix=f"retry:{command.id}:{lane.locale}",
+        )
+        return
+    if (
+        (lane.search_ai.job is not None and lane.search_ai.job.status in {"failed", "cancelled"})
+        or (lane.search_ai.run is not None and lane.search_ai.run.status in {"failed", "cancelled"})
+    ):
+        if (
+            lane.source_copy.artifact is None
+            or lane.source_copy.evaluation is None
+            or lane.reader_value.artifact is None
+            or lane.reader_value.evaluation is None
+        ):
+            raise OperatorControlError("operator_quality_retry_readiness_missing")
+        readiness_input = await load_quality_readiness_input(
+            session,
+            stage="search_ai",
+            writer_run_id=lane.writer.run.id,
+            source_draft_artifact_id=revised.id,
+            expected_source_draft_version=revised.version,
+            expected_source_draft_hash=revised.content_hash,
+            outline_artifact_id=progress.writer_progress.outline_artifact.id,
+            expected_outline_version=progress.writer_progress.outline_artifact.version,
+            expected_outline_hash=progress.writer_progress.outline_artifact.content_hash,
+            source_copy_artifact_id=lane.source_copy.artifact.id,
+            source_copy_quality_evaluation_id=lane.source_copy.evaluation.id,
+            locale=lane.locale,
+            reader_value_artifact_id=lane.reader_value.artifact.id,
+            reader_value_quality_evaluation_id=lane.reader_value.evaluation.id,
+        )
+        await _enqueue_readiness_retry(
+            session,
+            source_input=readiness_input,
+            dedupe_suffix=f"retry:{command.id}:{lane.locale}",
+        )
+        return
     raise OperatorControlError("operator_quality_retry_stage_missing")
 
 
@@ -1134,7 +1416,13 @@ async def submit_writers_to_quality_command(
             raise OperatorControlError("operator_quality_cancel_requires_queued_job")
         now = utc_now()
         for lane in progress.lanes:
-            for stage in (lane.review, lane.audit, lane.source_copy):
+            for stage in (
+                lane.review,
+                lane.audit,
+                lane.source_copy,
+                lane.reader_value,
+                lane.search_ai,
+            ):
                 job = stage.job
                 if job is not None and job.status == "queued":
                     job.status = "cancelled"
@@ -1365,6 +1653,10 @@ async def prepare_final_gates(
             lane.audit.run.content_item_id = item.id
         if lane.source_copy.run is not None:
             lane.source_copy.run.content_item_id = item.id
+        if lane.reader_value.run is not None:
+            lane.reader_value.run.content_item_id = item.id
+        if lane.search_ai.run is not None:
+            lane.search_ai.run.content_item_id = item.id
         if lane.writer.run.status == "waiting_approval":
             await transition_run(session, run_id=lane.writer.run.id, status="running")
         elif lane.writer.run.status != "running":
@@ -1381,6 +1673,14 @@ async def prepare_final_gates(
         )
         if len(steps) > 1 or (steps and steps[0].attempt != 1):
             raise OperatorControlError("operator_quality_final_step_conflict", lane.locale)
+        if lane.reader_value.artifact is None or lane.search_ai.artifact is None:
+            raise OperatorControlError("operator_quality_final_readiness_missing", lane.locale)
+        expected_final_inputs = [
+            str(lane.revised_draft.id),
+            str(item.id),
+            str(lane.reader_value.artifact.id),
+            str(lane.search_ai.artifact.id),
+        ]
         step = (
             steps[0]
             if steps
@@ -1389,14 +1689,14 @@ async def prepare_final_gates(
                 step_key="final_review",
                 attempt=1,
                 status="pending",
-                input_artifact_refs_json=[str(lane.revised_draft.id), str(item.id)],
+                input_artifact_refs_json=expected_final_inputs,
                 output_artifact_refs_json=[],
             )
         )
         if not steps:
             session.add(step)
             await session.flush()
-        elif set([str(lane.revised_draft.id), str(item.id)]) - set(step.input_artifact_refs_json):
+        elif set(expected_final_inputs) - set(step.input_artifact_refs_json):
             raise OperatorControlError("operator_quality_final_step_input_stale", lane.locale)
         if step.status == "pending":
             await transition_step_run(session, step_run_id=step.id, status="running")
@@ -1447,6 +1747,8 @@ async def prepare_final_gates(
                 review=lane.review,
                 audit=lane.audit,
                 source_copy=lane.source_copy,
+                reader_value=lane.reader_value,
+                search_ai=lane.search_ai,
                 final_item=item,
                 final_content=final,
                 final_review=step,

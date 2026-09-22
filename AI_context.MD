@@ -279,3 +279,28 @@ AU-02 verification hardening:
 - output timestamp is strict: Artifact `created_at` must be greater than `StepRun.started_at`, not equal;
 - external-only output Artifacts fail closed until ContentEngine has a canonical external-object resolver/hash verifier; AU-02 does not treat an arbitrary stored hash as proof of external object integrity.
 
+## QA-01 implementation window — 2026-09-22
+
+PR #177 (AU-02) is merged. QA-01 starts from exact main `49f430f42b47fda1160bf27e096c7b6309d2e32f`.
+
+Current bounded QA-01 implementation:
+- branch `feat/qa01-reader-value-readiness`;
+- PR #178 remains draft until exact-ref review/proof is complete;
+- quality route is `Review/Revise → Assertion Audit → Source-copy → Reader Value → SEO/AI Readiness → existing Founder final_review`;
+- Reader Value is the prerequisite hard route: FAIL blocks the lane and Search/AI is not enqueued;
+- Search/AI readiness remains a separate discovery-hygiene evaluator and cannot override Reader Value;
+- no aggregate numeric score is used for routing;
+- Reader Value receives the exact revised draft plus target reader/problem, Reader Transformation, selected Angle and sanitized concrete OriginalityPack;
+- readiness handoffs/evaluations bind exact draft, Source-copy, settings and, for Search/AI, exact Reader Value lineage;
+- technical retry accounting is scoped to the exact readiness handoff rather than unrelated locale history;
+- evaluation calls are audit-only: no research, tools or rewrite;
+- UI shows Reader Value and SEO/AI separately and surfaces actionable WARN/FAIL findings;
+- the existing Founder final-review gate and publication lock remain unchanged;
+- rev `20260922_0038` only seeds the versioned QA prompt/recipe registry. Applying rev-0035→0038 to the operational DB is NOT authorized by this implementation work;
+- no Antigravity activation, no second workflow engine and no publication.
+
+QA-01 review flow:
+`CI → exact-ref OpenCodeReview Delegation → MG triage → Agent Local bounded exact-head proof → Founder merge`.
+
+Do not claim QA-01 DONE until final CI, OCR, local proof and Founder merge are all complete.
+

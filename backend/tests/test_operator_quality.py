@@ -31,6 +31,11 @@ from app.modules.content_engine.journal.operator_runtime import (
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_view import get_operator_case_view
+from app.modules.content_engine.journal.quality_readiness import (
+    READER_VALUE_TASK_KEYS,
+    READINESS_CRITERIA,
+    READINESS_HANDOFF_TYPES,
+)
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun, utc_now
@@ -48,6 +53,115 @@ class _CapturePort:
         del attempt
         self.inputs.append(copy.deepcopy(input_bundle))
         return copy.deepcopy(self.output)
+
+
+class _ReadinessCapturePort(_CapturePort):
+    def __init__(self, output: object, *, stage: str) -> None:
+        super().__init__(output)
+        self.stage = stage
+
+    async def generate(self, *, input_bundle: dict[str, object], attempt: int) -> object:
+        assert input_bundle.get("stage") == self.stage
+        assert isinstance(input_bundle.get("approved_angle"), dict)
+        originality_pack = input_bundle.get("originality_pack")
+        assert isinstance(originality_pack, dict)
+        assert isinstance(originality_pack.get("items"), list)
+        assert originality_pack["items"]
+        if self.stage == "search_ai":
+            assert isinstance(input_bundle.get("reader_value"), dict)
+        else:
+            assert "reader_value" not in input_bundle
+        return await super().generate(input_bundle=input_bundle, attempt=attempt)
+
+
+def _passing_readiness_output(stage: str, locale: str) -> dict[str, object]:
+    return {
+        "locale": locale,
+        "result": "pass",
+        "summary": f"{stage} passes in the bounded fixture.",
+        "criteria": [
+            {
+                "key": key,
+                "result": "pass",
+                "finding": f"{key} passes.",
+                "repair_suggestion": "",
+            }
+            for key in READINESS_CRITERIA[stage]
+        ],
+    }
+
+
+async def _install_passing_readiness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _fake_readiness_port(
+        _session: AsyncSession,
+        *,
+        stage: str,
+        locale: str,
+        **kwargs: object,
+    ) -> _CapturePort:
+        del _session, kwargs
+        return _ReadinessCapturePort(
+            _passing_readiness_output(stage, locale),
+            stage=stage,
+        )
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_quality_readiness_model_port",
+        _fake_readiness_port,
+    )
+
+
+async def _complete_readiness_lane(
+    session: AsyncSession,
+    *,
+    case_id: UUID,
+    locale: str,
+    monkeypatch: pytest.MonkeyPatch,
+    runner_registry: AgentRunnerRegistry,
+    worker_prefix: str,
+) -> None:
+    await _install_passing_readiness(monkeypatch)
+    for stage_name in ("reader_value", "search_ai"):
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        lane = next(candidate for candidate in progress.lanes if candidate.locale == locale)
+        stage = getattr(lane, stage_name)
+        assert stage.job is not None
+        job = await session.get(Job, stage.job.id)
+        assert job is not None
+        assert job.status == "queued"
+        step = await session.get(StepRun, job.step_run_id)
+        assert step is not None
+        expected_prefix = (
+            "reader_value_" if stage_name == "reader_value" else "search_ai_readiness_"
+        )
+        assert step.step_key.startswith(expected_prefix)
+        run = await session.get(ContentRun, job.run_id)
+        assert run is not None
+        now = utc_now()
+        step.status = "running"
+        step.started_at = now
+        if run.status == "pending":
+            run.status = "running"
+        worker_id = f"{worker_prefix}-{stage_name}"
+        job.status = "leased"
+        job.lease_owner = worker_id
+        job.lease_expires_at = now + timedelta(seconds=900)
+        job.updated_at = now
+        await session.flush()
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=job.id,
+            worker_id=worker_id,
+            runner_registry=runner_registry,
+        )
 
 
 async def _complete_f3_writers(
@@ -309,6 +423,15 @@ async def _complete_healthy_lane_from_audit(
             runner_registry=runner_registry,
         )
 
+    await _complete_readiness_lane(
+        session,
+        case_id=case_id,
+        locale=healthy_lane.locale,
+        monkeypatch=monkeypatch,
+        runner_registry=runner_registry,
+        worker_prefix=f"{worker_prefix}-readiness",
+    )
+
 
 @pytest.mark.asyncio
 async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
@@ -418,6 +541,23 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
                 worker_id=f"f4-source-copy-{_}",
                 runner_registry=registry,
             )
+
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="vi-VN",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="f4-readiness-vi",
+        )
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="en",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="f4-readiness-en",
+        )
 
         progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
         assert progress is not None
@@ -1060,7 +1200,7 @@ async def test_f4_review_vi_pass_en_fail_retry_converges(
             ).all()
         )
         assert len(en_review_steps) == 2
-        assert en_review_steps[-1].attempt == 2
+        assert sorted(step.attempt for step in en_review_steps) == [1, 2]
 
         # VI review steps still 1
         vi_review_steps = list(
@@ -1243,6 +1383,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             worker_id="worker-sc-vi",
             runner_registry=registry,
         )
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="vi-VN",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-sc-vi-readiness",
+        )
 
         # Now VI is qualified, EN Audit failed, no active jobs remain -> command failed
         parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
@@ -1298,6 +1446,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             job_id=en_source_job.id,
             worker_id="worker-en-sc",
             runner_registry=registry,
+        )
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="en",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-en-sc-readiness",
         )
 
         # 8. Verify both converge to final_gate_ready
@@ -2159,4 +2315,189 @@ async def test_f4_r2_source_copy_exact_lineage_budget_and_historical_isolation(
             "operator_quality_retry_exhausted",
         }
 
+@pytest.mark.asyncio
+async def test_qa01_reader_value_retry_budget_ignores_unrelated_historical_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reader Value retry budget is scoped to the exact handoff, not locale history."""
 
+    async with isolated_session() as session:
+        fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+        case_id = fixture.run.content_case_id
+        await _dispatch_quality(session, fixture=fixture)
+
+        review_ports = {
+            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+        }
+
+        async def fake_review_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            return review_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_review_revise_model_port",
+            fake_review_port,
+        )
+        registry = AgentRunnerRegistry()
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.review.job is not None
+
+        first_review = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-review-1",
+        )
+        second_review = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-review-2",
+        )
+        assert first_review is not None and second_review is not None
+        vi_review = (
+            first_review
+            if first_review.id == vi_lane.review.job.id
+            else second_review
+        )
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=vi_review.id,
+            worker_id=cast(str, vi_review.lease_owner),
+            runner_registry=registry,
+        )
+
+        async def fake_audit_port(
+            _session: AsyncSession, *, locale: str, **kwargs: object
+        ) -> _CapturePort:
+            del _session, kwargs
+            current = await get_quality_progress(
+                session,
+                content_case_id=case_id,
+                source_run_id=None,
+            )
+            assert current is not None
+            lane = next(item for item in current.lanes if item.locale == locale)
+            assert lane.writer.run is not None
+            assert lane.revised_draft is not None
+            audit_input = await load_assertion_audit_input(
+                session,
+                writer_run_id=lane.writer.run.id,
+                revised_draft_artifact_id=lane.revised_draft.id,
+                expected_revised_draft_version=lane.revised_draft.version,
+                expected_revised_draft_hash=lane.revised_draft.content_hash,
+                outline_artifact_id=outline_result.artifact.id,  # type: ignore[union-attr]
+                expected_outline_version=outline_result.artifact.version,  # type: ignore[union-attr]
+                expected_outline_hash=outline_result.artifact.content_hash,  # type: ignore[union-attr]
+                locale=lane.locale,
+            )
+            return _CapturePort(_passing_output(audit_input))
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_assertion_audit_model_port",
+            fake_audit_port,
+        )
+
+        audit_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-audit",
+        )
+        assert audit_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=audit_job.id,
+            worker_id="qa01-reader-audit",
+            runner_registry=registry,
+        )
+
+        source_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-source",
+        )
+        assert source_job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=source_job.id,
+            worker_id="qa01-reader-source",
+            runner_registry=registry,
+        )
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.reader_value.job is not None
+        assert vi_lane.reader_value.run is not None
+        reader_run = vi_lane.reader_value.run
+
+        historical_run = ContentRun(
+            project_id=reader_run.project_id,
+            content_case_id=reader_run.content_case_id,
+            locale_variant_id=reader_run.locale_variant_id,
+            run_mode="eval",
+            current_step=READER_VALUE_TASK_KEYS["vi-VN"],
+            status="failed",
+            failure_code="operator_quality_retry_exhausted",
+            settings_snapshot_id=reader_run.settings_snapshot_id,
+            started_at=utc_now() - timedelta(hours=4),
+            completed_at=utc_now() - timedelta(hours=4),
+        )
+        session.add(historical_run)
+        await session.flush()
+        session.add(
+            Artifact(
+                run_id=historical_run.id,
+                artifact_type=READINESS_HANDOFF_TYPES["reader_value"],
+                locale="vi-VN",
+                version=1,
+                content_json={
+                    "task_key": READER_VALUE_TASK_KEYS["vi-VN"],
+                    "source_writer_run_id": str(vi_lane.writer.run.id),  # type: ignore[union-attr]
+                    "source_draft": {
+                        "id": str(uuid4()),
+                        "version": 1,
+                        "content_hash": "a" * 64,
+                    },
+                },
+                content_hash="b" * 64,
+            )
+        )
+        await session.flush()
+
+        reader_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session,
+            worker_id="qa01-reader-value",
+        )
+        assert reader_job is not None
+        assert reader_job.id == vi_lane.reader_value.job.id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=reader_job.id,
+            worker_id="qa01-reader-value",
+            failure_class="network_timeout",
+            message="Reader Value attempt 1 timeout",
+        )
+
+        refreshed_run = await session.get(ContentRun, reader_run.id)
+        assert refreshed_run is not None
+        assert refreshed_run.failure_code == "network_timeout"
+
+        final_progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert final_progress is not None
+        refreshed_vi = next(lane for lane in final_progress.lanes if lane.locale == "vi-VN")
+        assert refreshed_vi.reader_value.attempt == 1
+        assert refreshed_vi.status == "execution_failed_retryable"
