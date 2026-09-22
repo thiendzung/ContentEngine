@@ -529,7 +529,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
 
         draft_package = await prepare_publish_package(
             session,
-            content_version_id=fixture.version.id,
+            content_version_id=published_version.id,
             experiment_id=fixture.experiment.id,
             slug="check-an-artwork",
             action="draft",
@@ -574,7 +574,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
 
         publish_package = await prepare_publish_package(
             session,
-            content_version_id=fixture.version.id,
+            content_version_id=published_version.id,
             experiment_id=fixture.experiment.id,
             slug="check-an-artwork",
             action="publish",
@@ -606,16 +606,27 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         assert publish_event.action == "update_publish"
         assert mapping2.external_status == "publish"
         assert mapping2.published_at is not None
-        assert fixture.version.status == "published"
+        assert fixture.version.status == "approved"
+        published_version = await session.get(
+            ContentVersion,
+            mapping2.current_content_version_id,
+        )
+        assert published_version is not None
+        assert published_version.id != fixture.version.id
+        assert published_version.status == "published"
+        assert published_version.content_json == fixture.version.content_json
+        assert published_version.final_artifact_id == fixture.final_artifact.id
+        assert publish_event.content_version_id == published_version.id
         assert fixture.item.status == "published"
         assert fixture.experiment.status == "RUNNING"
+        assert fixture.experiment.content_version_id == published_version.id
 
         window_end = datetime.now(UTC)
         window_start = window_end - timedelta(days=7)
         first = await ingest_performance_snapshot(
             session,
             published_content_id=mapping2.id,
-            content_version_id=fixture.version.id,
+            content_version_id=published_version.id,
             provider="search_console",
             window_start=window_start,
             window_end=window_end,
@@ -639,7 +650,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         replay = await ingest_performance_snapshot(
             session,
             published_content_id=mapping2.id,
-            content_version_id=fixture.version.id,
+            content_version_id=published_version.id,
             provider="search_console",
             window_start=window_start,
             window_end=window_end,
@@ -667,7 +678,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
         observation = await record_performance_observation(
             session,
             published_content_id=mapping2.id,
-            content_version_id=fixture.version.id,
+            content_version_id=published_version.id,
             observation_type="search_exposure",
             statement="The page has early search exposure; this does not prove the Need.",
             data_status="EARLY_SIGNAL",
@@ -680,7 +691,10 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
             session,
             published_content_id=mapping2.id,
         )
-        assert identity["content"]["content_version_id"] == str(fixture.version.id)
+        assert identity["content"]["content_version_id"] == str(published_version.id)
+        assert identity["content"]["source_content_version_id"] == str(
+            fixture.version.id
+        )
         assert identity["customer"]["need_hypothesis_id"] == str(fixture.need.id)
         assert identity["customer"]["journey_stages"] == ["trust"]
         assert identity["lens_selection"]["primary_lens"] == "SIGNALS"
@@ -829,7 +843,7 @@ async def test_pm01_measurement_rejects_metric_provider_mismatch(
             await ingest_performance_snapshot(
                 session,
                 published_content_id=mapping.id,
-                content_version_id=fixture.version.id,
+                content_version_id=mapping.current_content_version_id,
                 provider="search_console",
                 window_start=now - timedelta(days=1),
                 window_end=now,
@@ -980,19 +994,27 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
             result=result,
         )
         assert mapping is not None
+        old_published = await session.get(
+            ContentVersion,
+            mapping.current_content_version_id,
+        )
+        assert old_published is not None
+        assert old_published.status == "published"
+        assert fixture.version.status == "approved"
 
+        newer_payload = json.loads(json.dumps(old_published.content_json))
+        newer_payload["pm01_test_revision"] = "later-published-snapshot"
         newer = ContentVersion(
             content_item_id=fixture.item.id,
-            version_no=2,
+            version_no=old_published.version_no + 1,
             final_artifact_id=fixture.final_artifact.id,
-            change_reason="Simulate a later published version.",
+            change_reason="Simulate a later immutable published version.",
             status="published",
-            content_json=fixture.version.content_json,
+            content_json=newer_payload,
             created_by_run_id=fixture.source_run.id,
         )
         session.add(newer)
         await session.flush()
-        fixture.version.status = "superseded"
         mapping.current_content_version_id = newer.id
         await session.flush()
 
@@ -1000,7 +1022,7 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
         ingested = await ingest_performance_snapshot(
             session,
             published_content_id=mapping.id,
-            content_version_id=fixture.version.id,
+            content_version_id=old_published.id,
             provider="search_console",
             window_start=now - timedelta(days=1),
             window_end=now,
@@ -1014,5 +1036,4 @@ async def test_pm01_historical_published_version_can_still_receive_metrics(
             ],
         )
         assert ingested.replayed is False
-        assert ingested.snapshot.content_version_id == fixture.version.id
-
+        assert ingested.snapshot.content_version_id == old_published.id
