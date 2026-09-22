@@ -529,7 +529,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
 
         draft_package = await prepare_publish_package(
             session,
-            content_version_id=published_version.id,
+            content_version_id=fixture.version.id,
             experiment_id=fixture.experiment.id,
             slug="check-an-artwork",
             action="draft",
@@ -574,7 +574,7 @@ async def test_pm01_draft_then_publish_and_measurement_identity(
 
         publish_package = await prepare_publish_package(
             session,
-            content_version_id=published_version.id,
+            content_version_id=fixture.version.id,
             experiment_id=fixture.experiment.id,
             slug="check-an-artwork",
             action="publish",
