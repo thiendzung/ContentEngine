@@ -21,6 +21,7 @@ from app.modules.learning.application import (
     apply_learning_candidate,
     review_learning_candidate,
 )
+from app.modules.harness.models import Artifact
 from app.modules.learning.models import (
     LearningApplication,
     LearningCandidateReview,
@@ -212,7 +213,7 @@ async def test_ll01c_apply_need_links_signal_without_status_or_version_promotion
         events = applied.change_report["events"]
         assert any(
             event["entity_type"] == "need"
-            and event["entity_id"] == str(fixture.need.id)
+            and event["entity_ref"] == str(fixture.need.id)
             and event["detail"] == "supports_evidence_added"
             for event in events
         )
@@ -438,6 +439,14 @@ async def test_ll01c_no_map_change_creates_receipt_without_snapshot_or_truth_mut
             )
             or 0
         )
+        snapshot_count = int(
+            await session.scalar(
+                select(func.count())
+                .select_from(Artifact)
+                .where(Artifact.artifact_type == "customer_map_snapshot")
+            )
+            or 0
+        )
         applied = await apply_learning_candidate(
             session,
             review_id=review.review.id,
@@ -458,6 +467,14 @@ async def test_ll01c_no_map_change_creates_receipt_without_snapshot_or_truth_mut
             )
             or 0
         ) == need_link_count
+        assert int(
+            await session.scalar(
+                select(func.count())
+                .select_from(Artifact)
+                .where(Artifact.artifact_type == "customer_map_snapshot")
+            )
+            or 0
+        ) == snapshot_count
 
 
 @pytest.mark.asyncio
