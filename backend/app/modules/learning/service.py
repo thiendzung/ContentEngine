@@ -38,6 +38,7 @@ from app.modules.learning.performance_signal import (
     materialize_performance_signal,
 )
 from app.modules.measurement.models import ContentPerformanceObservation
+from app.modules.measurement.service import MeasurementError, get_measurement_identity
 from app.modules.publishing.models import PublishEvent
 
 AssessmentResult = Literal["SUPPORTS", "CONTRADICTS", "INCONCLUSIVE"]
@@ -97,6 +98,8 @@ class _AssessmentContext:
     content_version_id: UUID
     content_item_id: UUID
     content_case_id: UUID
+    locale_variant_id: UUID
+    content_opportunity_id: UUID
     published_content_id: UUID
     candidate_scope: dict[str, object]
 
@@ -287,25 +290,124 @@ async def _assessment_context(
     ):
         raise LearningError("learning_assessment_experiment_contract_incomplete")
 
-    events = list(
-        (
-            await session.scalars(
-                select(PublishEvent)
-                .where(
-                    PublishEvent.published_content_id == experiment.published_content_id,
-                    PublishEvent.content_version_id == experiment.content_version_id,
-                    PublishEvent.content_experiment_id == experiment.id,
-                    PublishEvent.external_status == "publish",
-                    PublishEvent.published_at.is_not(None),
-                )
-                .order_by(PublishEvent.created_at, PublishEvent.id)
-            )
-        ).all()
+    try:
+        canonical = await get_measurement_identity(
+            session,
+            published_content_id=experiment.published_content_id,
+            content_version_id=experiment.content_version_id,
+        )
+    except MeasurementError as exc:
+        raise LearningError(
+            f"learning_assessment_{exc.code}"
+        ) from exc
+
+    published_identity = _dict(
+        canonical.get("published_content"),
+        "learning_assessment_published_identity_invalid",
     )
-    if not events:
-        raise LearningError("learning_assessment_publish_event_missing")
-    publish_event = events[0]
-    package = await session.get(Artifact, publish_event.publish_package_artifact_id)
+    content_identity = _dict(
+        canonical.get("content"),
+        "learning_assessment_content_identity_invalid",
+    )
+    customer_identity = _dict(
+        canonical.get("customer"),
+        "learning_assessment_customer_identity_invalid",
+    )
+    opportunity_identity = _dict(
+        canonical.get("opportunity"),
+        "learning_assessment_opportunity_identity_invalid",
+    )
+    experiment_identity = _dict(
+        canonical.get("experiment"),
+        "learning_assessment_experiment_identity_invalid",
+    )
+    event_identity = _dict(
+        canonical.get("publish_event"),
+        "learning_assessment_publish_event_identity_invalid",
+    )
+
+    canonical_published_content_id = _uuid(
+        published_identity.get("id"),
+        "learning_assessment_published_identity_invalid",
+    )
+    canonical_content_version_id = _uuid(
+        content_identity.get("content_version_id"),
+        "learning_assessment_content_identity_invalid",
+    )
+    canonical_content_item_id = _uuid(
+        content_identity.get("content_item_id"),
+        "learning_assessment_content_identity_invalid",
+    )
+    canonical_content_case_id = _uuid(
+        content_identity.get("content_case_id"),
+        "learning_assessment_content_identity_invalid",
+    )
+    canonical_locale_variant_id = _uuid(
+        content_identity.get("locale_variant_id"),
+        "learning_assessment_content_identity_invalid",
+    )
+    canonical_locale = _text(
+        content_identity.get("locale"),
+        "learning_assessment_content_identity_invalid",
+    )
+    canonical_content_type = _text(
+        content_identity.get("content_type"),
+        "learning_assessment_content_identity_invalid",
+    )
+    canonical_opportunity_id = _uuid(
+        opportunity_identity.get("id"),
+        "learning_assessment_opportunity_identity_invalid",
+    )
+    canonical_need_id = _uuid(
+        customer_identity.get("need_hypothesis_id"),
+        "learning_assessment_customer_identity_invalid",
+    )
+    canonical_audience_id = _optional_uuid(
+        customer_identity.get("audience_hypothesis_id"),
+        "learning_assessment_customer_identity_invalid",
+    )
+    canonical_journey_stages = sorted(
+        set(
+            _strings(
+                customer_identity.get("journey_stages"),
+                "learning_assessment_customer_identity_invalid",
+            )
+        )
+    )
+    canonical_experiment_id = _uuid(
+        experiment_identity.get("id"),
+        "learning_assessment_experiment_identity_invalid",
+    )
+    canonical_event_id = _uuid(
+        event_identity.get("id"),
+        "learning_assessment_publish_event_identity_invalid",
+    )
+
+    if (
+        canonical_published_content_id != experiment.published_content_id
+        or canonical_content_version_id != experiment.content_version_id
+        or canonical_content_item_id != experiment.content_item_id
+        or canonical_opportunity_id != experiment.content_opportunity_id
+        or canonical_need_id != experiment.need_hypothesis_id
+        or canonical_experiment_id != experiment.id
+    ):
+        raise LearningError("learning_assessment_canonical_identity_mismatch")
+
+    publish_event = await session.get(PublishEvent, canonical_event_id)
+    if (
+        publish_event is None
+        or publish_event.published_content_id != canonical_published_content_id
+        or publish_event.content_version_id != canonical_content_version_id
+        or publish_event.content_experiment_id != experiment.id
+        or publish_event.external_status != "publish"
+        or publish_event.published_at is None
+    ):
+        raise LearningError("learning_assessment_publish_event_mismatch")
+
+    package = await session.get(
+        Artifact,
+        publish_event.publish_package_artifact_id,
+    )
     if (
         package is None
         or package.artifact_type != "publish_package"
@@ -342,6 +444,14 @@ async def _assessment_context(
         identity.get("content_case_id"),
         "learning_assessment_publish_identity_invalid",
     )
+    frozen_locale_variant = _uuid(
+        identity.get("locale_variant_id"),
+        "learning_assessment_publish_identity_invalid",
+    )
+    frozen_opportunity = _uuid(
+        identity.get("content_opportunity_id"),
+        "learning_assessment_publish_identity_invalid",
+    )
     frozen_need = _uuid(
         identity.get("need_hypothesis_id"),
         "learning_assessment_publish_identity_invalid",
@@ -376,10 +486,17 @@ async def _assessment_context(
     if (
         frozen_project != experiment.project_id
         or frozen_experiment != experiment.id
-        or frozen_version != experiment.content_version_id
-        or frozen_item != experiment.content_item_id
-        or frozen_need != experiment.need_hypothesis_id
+        or frozen_version != canonical_content_version_id
+        or frozen_item != canonical_content_item_id
+        or frozen_case != canonical_content_case_id
+        or frozen_locale_variant != canonical_locale_variant_id
+        or frozen_opportunity != canonical_opportunity_id
+        or frozen_need != canonical_need_id
         or frozen_need_version != experiment.hypothesis_version
+        or frozen_audience != canonical_audience_id
+        or journey_stages != canonical_journey_stages
+        or locale != canonical_locale
+        or content_type != canonical_content_type
     ):
         raise LearningError("learning_assessment_frozen_identity_mismatch")
 
@@ -408,7 +525,9 @@ async def _assessment_context(
         content_version_id=frozen_version,
         content_item_id=frozen_item,
         content_case_id=frozen_case,
-        published_content_id=experiment.published_content_id,
+        locale_variant_id=frozen_locale_variant,
+        content_opportunity_id=frozen_opportunity,
+        published_content_id=canonical_published_content_id,
         candidate_scope=candidate_scope,
     )
 
@@ -467,6 +586,16 @@ async def _validate_signal(
     )
     if experiment.get("id") != str(context.experiment.id):
         raise LearningError("learning_assessment_signal_experiment_mismatch")
+    publication = _dict(
+        provenance.get("publication"),
+        "learning_assessment_signal_provenance_invalid",
+    )
+    if (
+        publication.get("published_content_id")
+        != str(context.published_content_id)
+        or publication.get("publish_event_id") != str(context.publish_event.id)
+    ):
+        raise LearningError("learning_assessment_signal_publication_mismatch")
     content = _dict(
         provenance.get("content"),
         "learning_assessment_signal_provenance_invalid",
@@ -475,6 +604,7 @@ async def _validate_signal(
         content.get("content_version_id") != str(context.content_version_id)
         or content.get("content_item_id") != str(context.content_item_id)
         or content.get("content_case_id") != str(context.content_case_id)
+        or content.get("locale_variant_id") != str(context.locale_variant_id)
         or content.get("locale") != context.candidate_scope.get("locale")
         or signal.locale != context.candidate_scope.get("locale")
     ):
@@ -500,6 +630,12 @@ async def _validate_signal(
         or customer.get("identity_source") != "publish_package"
     ):
         raise LearningError("learning_assessment_signal_customer_mismatch")
+    opportunity = _dict(
+        provenance.get("opportunity"),
+        "learning_assessment_signal_provenance_invalid",
+    )
+    if opportunity.get("id") != str(context.content_opportunity_id):
+        raise LearningError("learning_assessment_signal_opportunity_mismatch")
     primary_lens, supporting_lenses = _lens_scope(
         provenance.get("lens_selection")
     )
@@ -697,6 +833,16 @@ async def create_learning_assessment(
     input_fingerprint = _hash(
         {
             "experiment_id": str(context.experiment.id),
+            "lineage": {
+                "published_content_id": str(context.published_content_id),
+                "publish_event_id": str(context.publish_event.id),
+                "publish_package_artifact_id": str(context.publish_package.id),
+                "content_version_id": str(context.content_version_id),
+                "content_item_id": str(context.content_item_id),
+                "content_case_id": str(context.content_case_id),
+                "locale_variant_id": str(context.locale_variant_id),
+                "content_opportunity_id": str(context.content_opportunity_id),
+            },
             "candidate_scope": context.candidate_scope,
             "signals": signal_rows,
             "observations": observation_rows,
@@ -728,6 +874,8 @@ async def create_learning_assessment(
             "content_version_id": str(context.content_version_id),
             "content_item_id": str(context.content_item_id),
             "content_case_id": str(context.content_case_id),
+            "locale_variant_id": str(context.locale_variant_id),
+            "content_opportunity_id": str(context.content_opportunity_id),
         },
         "candidate_scope": context.candidate_scope,
         "assessment": {
@@ -883,6 +1031,8 @@ async def _validated_assessment_payload(
         "content_version_id": str(context.content_version_id),
         "content_item_id": str(context.content_item_id),
         "content_case_id": str(context.content_case_id),
+        "locale_variant_id": str(context.locale_variant_id),
+        "content_opportunity_id": str(context.content_opportunity_id),
     }
     if lineage != expected_lineage:
         raise LearningError("learning_candidate_assessment_lineage_mismatch")
@@ -1075,6 +1225,16 @@ async def _validated_assessment_payload(
     expected_input_fingerprint = _hash(
         {
             "experiment_id": str(context.experiment.id),
+            "lineage": {
+                "published_content_id": str(context.published_content_id),
+                "publish_event_id": str(context.publish_event.id),
+                "publish_package_artifact_id": str(context.publish_package.id),
+                "content_version_id": str(context.content_version_id),
+                "content_item_id": str(context.content_item_id),
+                "content_case_id": str(context.content_case_id),
+                "locale_variant_id": str(context.locale_variant_id),
+                "content_opportunity_id": str(context.content_opportunity_id),
+            },
             "candidate_scope": context.candidate_scope,
             "signals": signal_rows,
             "observations": observation_rows,
