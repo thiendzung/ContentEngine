@@ -457,7 +457,12 @@ async def persist_discovery_selection(
     exact_experiments = [
         row
         for row in experiment_candidates
-        if list(row.measurement_plan_json) == desired_measurement_plan
+        if row.content_item_id is None
+        and row.content_version_id is None
+        and row.published_content_id is None
+        and row.status == "PLANNED"
+        and row.result == "PENDING"
+        and list(row.measurement_plan_json) == desired_measurement_plan
         and list(row.metric_definitions_json) == desired_metric_definitions
         and list(row.minimum_evidence_json) == desired_minimum_evidence
     ]
