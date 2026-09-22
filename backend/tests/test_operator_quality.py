@@ -1421,6 +1421,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             worker_id="worker-en-sc",
             runner_registry=registry,
         )
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale="en",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-en-sc-readiness",
+        )
 
         # 8. Verify both converge to final_gate_ready
         final_progress = await get_quality_progress(
