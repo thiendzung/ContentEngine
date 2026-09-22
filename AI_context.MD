@@ -304,3 +304,31 @@ QA-01 review flow:
 
 Do not claim QA-01 DONE until final CI, OCR, local proof and Founder merge are all complete.
 
+## PM-01 implementation window — 2026-09-22
+
+QA-01 / PR #178 is merged. PM-01 starts from exact main:
+`5b8600de381a43e4282c93ee06767cb2b93cc62c`.
+
+Current bounded PM-01 implementation:
+- branch `feat/pm01-publish-measurement-identity`;
+- rev `20260922_0039` adds durable publication + measurement identity; this does NOT authorize operational migration;
+- reuse existing Harness Outbox/reconciliation primitives; no second side-effect/workflow engine;
+- final editorial approval creates the approved ContentVersion, but DOES NOT authorize external publication;
+- immutable Publish Package is built only from exact approved ContentVersion + canonical final approval history + non-failing QA-01 lineage + explicit ContentExperiment;
+- a second `WAIT_HUMAN(publish_authorization)` Founder decision is required before any WordPress dispatch;
+- WordPress handoff uses deterministic idempotency + existing OutboxIntent;
+- commit-before-side-effect boundary is explicit: Outbox `processing` state must be durable before external WordPress write;
+- ambiguous external outcome becomes `needs_reconciliation`; reconcile before any resend;
+- PublishedContent preserves one ContentItem ↔ WordPress identity while PublishEvent records draft/publish/update history by ContentVersion;
+- core measurement rows normalize impressions/clicks/sessions/engaged sessions/artwork/visit/workshop transitions/inquiry while retaining raw provider payload;
+- measurement identity traces current external URL/version back to ContentCase, Audience, Need, Journey, Opportunity, Lens and ContentExperiment;
+- metrics/observations remain observations; PM-01 does not create/promote LearningCandidate rules;
+- no WordPress credential/network activation is performed by this GitHub-side implementation;
+- no Search Console/Analytics credential activation is performed here;
+- no Antigravity activation and no publication against a real site.
+
+Operational database remains at the separately controlled release state. PM-01 does NOT authorize rev-0035 → rev-0039 operationally.
+
+PM-01 review flow remains:
+`CI → exact-ref OpenCodeReview Delegation → MG triage → Agent Local disposable exact-head proof → Founder merge`.
+
