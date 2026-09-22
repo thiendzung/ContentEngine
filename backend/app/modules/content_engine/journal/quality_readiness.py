@@ -325,6 +325,17 @@ async def _validated_evaluation(
         or evaluation.result not in allowed_results
     ):
         raise QualityReadinessError("quality_readiness_prerequisite_invalid")
+    if artifact_type == "source_copy_check":
+        summary = artifact.content_json.get("summary")
+        if not isinstance(summary, dict) or summary.get("result") != evaluation.result:
+            raise QualityReadinessError("quality_readiness_prerequisite_result_mismatch")
+    elif artifact_type == READINESS_ARTIFACT_TYPES["reader_value"]:
+        if (
+            artifact.content_json.get("stage") != "reader_value"
+            or artifact.content_json.get("result") != evaluation.result
+        ):
+            raise QualityReadinessError("quality_readiness_prerequisite_result_mismatch")
+
     eval_run = await session.get(ContentRun, artifact.run_id)
     if (
         eval_run is None
@@ -473,6 +484,14 @@ async def load_quality_readiness_input(
             allowed_results={"pass", "warn"},
             evaluator_version=READER_VALUE_EVALUATOR_VERSION,
         )
+        expected_source_copy = {
+            "artifact": _ref(source_copy),
+            "quality_evaluation": _quality_ref(source_copy_eval),
+        }
+        if reader_artifact.content_json.get("source_copy") != expected_source_copy:
+            raise QualityReadinessError(
+                "quality_readiness_reader_value_source_copy_mismatch"
+            )
     elif reader_value_artifact_id is not None or reader_value_quality_evaluation_id is not None:
         raise QualityReadinessError("quality_readiness_reader_value_unexpected")
 
