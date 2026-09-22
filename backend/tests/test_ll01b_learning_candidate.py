@@ -472,6 +472,66 @@ async def test_ll01b_tampered_factual_signal_fails_closed(
 
 
 @pytest.mark.asyncio
+async def test_ll01b_new_customer_insight_is_explicit_proposal_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        insight_count_before = int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_new_insight_proposal_invalid",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=assessment.artifact.id,
+                target_type="new_customer_insight",
+                target_id=None,
+                statement="Readers may need a clearer provenance verification path.",
+                relation="proposes",
+            )
+
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="new_customer_insight",
+            target_id=None,
+            statement="Readers may need a clearer provenance verification path.",
+            relation="proposes",
+            proposal={
+                "insight_type": "question",
+                "situation": "before deciding whether to buy an artwork",
+                "need_relation": "supports",
+            },
+            expected_benefit="Preserve an explicit reviewable insight proposal.",
+            regression_risk="Do not create or promote CustomerInsight automatically.",
+        )
+        assert candidate.candidate.evidence_status == "EARLY_SIGNAL"
+        assert candidate.candidate.proposal_json == {
+            "insight_type": "question",
+            "situation": "before deciding whether to buy an artwork",
+            "need_relation": "supports",
+        }
+        assert int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        ) == insight_count_before
+
+
+@pytest.mark.asyncio
 async def test_ll01b_candidate_relation_must_match_directional_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
