@@ -30,9 +30,11 @@ from app.modules.learning.service import (
 )
 from app.modules.measurement.service import (
     MetricInput,
-    get_measurement_identity as canonical_get_measurement_identity,
     ingest_performance_snapshot,
     record_performance_observation,
+)
+from app.modules.measurement.service import (
+    get_measurement_identity as canonical_get_measurement_identity,
 )
 
 
