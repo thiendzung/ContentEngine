@@ -25,7 +25,7 @@ from app.modules.content_engine.models import (
 )
 from app.modules.customer_intelligence.living_map import resolve_journey_config
 from app.modules.harness.models import Approval, ContentRun, QualityEvaluation
-from app.modules.publishing.models import PublishedContent
+from app.modules.publishing.models import PublishedContent, PublishEvent
 
 CoverageStatus = Literal[
     "MISSING",
@@ -638,10 +638,47 @@ async def build_content_coverage(
                 )
             ).all()
         )
+        publication_ids = {row.id for row in publication_rows}
+        latest_event_by_publication: dict[UUID, PublishEvent] = {}
+        if publication_ids:
+            event_rows = list(
+                (
+                    await session.scalars(
+                        select(PublishEvent)
+                        .where(
+                            PublishEvent.published_content_id.in_(
+                                publication_ids
+                            )
+                        )
+                        .order_by(
+                            PublishEvent.published_content_id,
+                            PublishEvent.created_at,
+                            PublishEvent.id,
+                        )
+                    )
+                ).all()
+            )
+            for event in event_rows:
+                latest_event_by_publication[event.published_content_id] = event
+
         for publication in publication_rows:
             if publication.content_item_id in publication_by_item:
                 raise ContentCoverageError(
                     "content_coverage_publication_ambiguous"
+                )
+            event = latest_event_by_publication.get(publication.id)
+            if (
+                event is None
+                or event.content_version_id
+                != publication.current_content_version_id
+                or event.external_status != publication.external_status
+                or event.external_revision_id
+                != publication.external_revision_id
+                or event.canonical_url != publication.canonical_url
+                or event.published_at != publication.published_at
+            ):
+                raise ContentCoverageError(
+                    "content_coverage_publication_event_mismatch"
                 )
             publication_by_item[publication.content_item_id] = publication
 
