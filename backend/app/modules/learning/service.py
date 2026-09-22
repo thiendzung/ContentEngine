@@ -709,6 +709,123 @@ def _assessment_payload(artifact: Artifact) -> dict[str, object]:
     return payload
 
 
+async def _validated_assessment_payload(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+) -> dict[str, object]:
+    payload = _assessment_payload(artifact)
+    project_id = _uuid(
+        payload.get("project_id"),
+        "learning_candidate_project_invalid",
+    )
+    experiment_payload = _dict(
+        payload.get("experiment"),
+        "learning_candidate_assessment_experiment_invalid",
+    )
+    experiment_id = _uuid(
+        experiment_payload.get("id"),
+        "learning_candidate_assessment_experiment_invalid",
+    )
+    context = await _assessment_context(session, experiment_id=experiment_id)
+    if project_id != context.project_id:
+        raise LearningError("learning_candidate_assessment_project_mismatch")
+    scope = _dict(
+        payload.get("candidate_scope"),
+        "learning_candidate_scope_invalid",
+    )
+    if scope != context.candidate_scope:
+        raise LearningError("learning_candidate_assessment_scope_stale")
+    lineage = _dict(
+        payload.get("lineage"),
+        "learning_candidate_assessment_lineage_invalid",
+    )
+    expected_lineage = {
+        "published_content_id": str(context.published_content_id),
+        "publish_event_id": str(context.publish_event.id),
+        "publish_package_artifact_id": str(context.publish_package.id),
+        "content_version_id": str(context.content_version_id),
+        "content_item_id": str(context.content_item_id),
+        "content_case_id": str(context.content_case_id),
+    }
+    if lineage != expected_lineage:
+        raise LearningError("learning_candidate_assessment_lineage_mismatch")
+
+    assessment = _dict(
+        payload.get("assessment"),
+        "learning_candidate_assessment_invalid",
+    )
+    proposed_result = _text(
+        assessment.get("proposed_result"),
+        "learning_candidate_assessment_result_invalid",
+    )
+    if proposed_result not in {"SUPPORTS", "CONTRADICTS", "INCONCLUSIVE"}:
+        raise LearningError("learning_candidate_assessment_result_invalid")
+    if (
+        assessment.get("causal_claim_allowed") is not False
+        or assessment.get("minimum_evidence_interpreted") is not False
+    ):
+        raise LearningError("learning_candidate_assessment_guard_invalid")
+
+    evidence = _dict(
+        payload.get("evidence"),
+        "learning_candidate_assessment_evidence_invalid",
+    )
+    signal_relations: dict[UUID, EvidenceRelation] = {}
+    observations: dict[UUID, ContentPerformanceObservation] = {}
+    for record in _records(
+        evidence.get("signals", []),
+        "learning_candidate_assessment_signal_invalid",
+    ):
+        signal_id = _uuid(
+            record.get("id"),
+            "learning_candidate_assessment_signal_invalid",
+        )
+        relation_raw = _text(
+            record.get("relation"),
+            "learning_candidate_assessment_signal_invalid",
+        )
+        if relation_raw not in {"supports", "contradicts", "context"}:
+            raise LearningError("learning_candidate_assessment_signal_invalid")
+        relation: EvidenceRelation = relation_raw  # type: ignore[assignment]
+        signal, observation = await _validate_signal(
+            session,
+            context=context,
+            signal_id=signal_id,
+            relation=relation,
+        )
+        if (
+            record.get("fingerprint") != signal.fingerprint
+            or record.get("independence_group") != signal.independence_group
+            or record.get("observed_text") != signal.observed_text
+        ):
+            raise LearningError("learning_candidate_assessment_signal_stale")
+        signal_relations[signal_id] = relation
+        observations[observation.id] = observation
+
+    alternatives = _strings(
+        evidence.get("alternative_explanations", []),
+        "learning_candidate_alternatives_invalid",
+    )
+    missing = _strings(
+        evidence.get("missing_evidence", []),
+        "learning_candidate_missing_evidence_invalid",
+    )
+    _validate_assessment_direction(
+        proposed_result=proposed_result,  # type: ignore[arg-type]
+        relations=signal_relations,
+        alternatives=alternatives,
+        missing=missing,
+    )
+    expected_status = _assessment_evidence_status(
+        relations=signal_relations,
+        observations=observations,
+    )
+    if assessment.get("evidence_status") != expected_status:
+        raise LearningError("learning_candidate_assessment_status_stale")
+    return payload
+
+
 def _candidate_key(
     *,
     project_id: UUID,
@@ -892,7 +1009,10 @@ async def _candidate_evidence_status(
         artifact = await session.get(Artifact, artifact_id)
         if artifact is None:
             raise LearningError("learning_candidate_assessment_missing")
-        payload = _assessment_payload(artifact)
+        payload = await _validated_assessment_payload(
+            session,
+            artifact=artifact,
+        )
         assessment = _dict(
             payload.get("assessment"),
             "learning_candidate_assessment_invalid",
@@ -934,7 +1054,10 @@ async def _candidate_context_lists(
         artifact = await session.get(Artifact, artifact_id)
         if artifact is None:
             raise LearningError("learning_candidate_assessment_missing")
-        payload = _assessment_payload(artifact)
+        payload = await _validated_assessment_payload(
+            session,
+            artifact=artifact,
+        )
         evidence = _dict(
             payload.get("evidence"),
             "learning_candidate_assessment_evidence_invalid",
@@ -973,7 +1096,10 @@ async def create_learning_candidate(
     assessment_artifact = await session.get(Artifact, assessment_artifact_id)
     if assessment_artifact is None:
         raise LearningError("learning_candidate_assessment_missing")
-    payload = _assessment_payload(assessment_artifact)
+    payload = await _validated_assessment_payload(
+        session,
+        artifact=assessment_artifact,
+    )
     project_id = _uuid(
         payload.get("project_id"),
         "learning_candidate_project_invalid",
