@@ -1,0 +1,978 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import UTC, datetime, timedelta
+from typing import Literal
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError
+from test_ll01a_performance_signal import _publish, _record_search_observation
+from test_pm01_publish_measurement import (
+    FakeWordPress,
+    _approve_and_claim,
+    _fixture,
+    isolated_session,
+)
+
+from app.modules.content_engine.models import NeedHypothesis, Project, Signal
+from app.modules.customer_intelligence.models import CustomerInsight
+from app.modules.harness.models import Artifact
+from app.modules.learning.models import (
+    LearningCandidate,
+    LearningCandidateAssessment,
+    LearningCandidateObservation,
+    LearningCandidateSignal,
+)
+from app.modules.learning.performance_signal import materialize_performance_signal
+from app.modules.learning.service import (
+    LearningError,
+    _classify_candidate_evidence_status,
+    create_learning_assessment,
+    create_learning_candidate,
+)
+from app.modules.measurement.service import (
+    MetricInput,
+    ingest_performance_snapshot,
+    record_performance_observation,
+)
+from app.modules.measurement.service import (
+    get_measurement_identity as canonical_get_measurement_identity,
+)
+from app.modules.publishing.service import (
+    begin_wordpress_dispatch,
+    execute_wordpress_call,
+    prepare_publish_package,
+    record_wordpress_execution_result,
+)
+
+
+def _hash(value: object) -> str:
+    encoded = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+async def _search_signal(session, monkeypatch):
+    fixture, mapping = await _publish(
+        session,
+        monkeypatch,
+        worker_id=f"ll01b-search-{uuid4().hex[:8]}",
+    )
+    observation, _snapshot = await _record_search_observation(
+        session,
+        fixture=fixture,
+        mapping=mapping,
+    )
+    materialized = await materialize_performance_signal(
+        session,
+        observation_id=observation.id,
+    )
+    assert materialized.signal is not None
+    return fixture, mapping, observation, materialized.signal
+
+
+async def _analytics_signal(
+    session,
+    *,
+    fixture,
+    mapping,
+    data_status: Literal[
+        "EARLY_SIGNAL",
+        "REPEATED_PATTERN",
+        "LEARNING_CANDIDATE_READY",
+    ] = "EARLY_SIGNAL",
+):
+    now = datetime.now(UTC)
+    review_start = fixture.experiment.review_window_start
+    assert review_start is not None
+    snapshot = await ingest_performance_snapshot(
+        session,
+        published_content_id=mapping.id,
+        content_version_id=fixture.version.id,
+        provider="analytics",
+        window_start=max(review_start, now - timedelta(hours=1)),
+        window_end=now,
+        raw_metrics={
+            "aggregate": "synthetic",
+            "raw_session_like_value": "must-not-flow",
+        },
+        metrics=[
+            MetricInput(
+                metric_date=now,
+                metric_name="sessions",
+                metric_value=20,
+                dimensions={"channel": "synthetic private dimension"},
+            ),
+            MetricInput(
+                metric_date=now,
+                metric_name="engaged_sessions",
+                metric_value=11,
+                dimensions={"channel": "synthetic private dimension"},
+            ),
+        ],
+    )
+    observation = await record_performance_observation(
+        session,
+        published_content_id=mapping.id,
+        content_version_id=fixture.version.id,
+        observation_type="engagement",
+        statement="Engagement may be meaningful, but causality is not established.",
+        data_status=data_status,
+        observed_at=now,
+        metric_refs=[row.id for row in snapshot.metrics],
+    )
+    materialized = await materialize_performance_signal(
+        session,
+        observation_id=observation.id,
+    )
+    assert materialized.signal is not None
+    return observation, materialized.signal
+
+
+@pytest.mark.asyncio
+async def test_ll01b_uses_latest_publish_event_for_same_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        gateway = FakeWordPress()
+
+        first_package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug=f"ll01b-first-{uuid4().hex[:8]}",
+            action="publish",
+        )
+        _decision, _dispatch, first_claimed = await _approve_and_claim(
+            session,
+            package_run_id=first_package.run.id,
+            package_artifact_id=first_package.artifact.id,
+            worker_id="ll01b-first-publish",
+        )
+        first_prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=first_claimed.id,
+            worker_id="ll01b-first-publish",
+        )
+        first_external = await execute_wordpress_call(
+            gateway=gateway,
+            request=first_prepared.request,
+        )
+        mapping, first_event = await record_wordpress_execution_result(
+            session,
+            job_id=first_claimed.id,
+            worker_id="ll01b-first-publish",
+            result=first_external,
+        )
+        assert mapping is not None
+        assert first_event is not None
+        assert first_event.external_status == "publish"
+
+        second_package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug=f"ll01b-second-{uuid4().hex[:8]}",
+            action="publish",
+        )
+        _decision, _dispatch, second_claimed = await _approve_and_claim(
+            session,
+            package_run_id=second_package.run.id,
+            package_artifact_id=second_package.artifact.id,
+            worker_id="ll01b-second-publish",
+        )
+        second_prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=second_claimed.id,
+            worker_id="ll01b-second-publish",
+        )
+        second_external = await execute_wordpress_call(
+            gateway=gateway,
+            request=second_prepared.request,
+        )
+        mapping2, second_event = await record_wordpress_execution_result(
+            session,
+            job_id=second_claimed.id,
+            worker_id="ll01b-second-publish",
+            result=second_external,
+        )
+        assert mapping2 is not None
+        assert second_event is not None
+        assert mapping2.id == mapping.id
+        assert second_event.id != first_event.id
+        assert second_event.external_status == "publish"
+
+        observation, _snapshot = await _record_search_observation(
+            session,
+            fixture=fixture,
+            mapping=mapping2,
+        )
+        materialized = await materialize_performance_signal(
+            session,
+            observation_id=observation.id,
+        )
+        assert materialized.signal is not None
+        assert materialized.signal.provenance_json["publication"][
+            "publish_event_id"
+        ] == str(second_event.id)
+
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={materialized.signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        assert assessment.artifact.content_json["lineage"]["publish_event_id"] == str(
+            second_event.id
+        )
+        assert assessment.artifact.content_json["lineage"]["publish_event_id"] != str(
+            first_event.id
+        )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_assessment_binds_canonical_publish_event_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping = await _publish(
+            session,
+            monkeypatch,
+            worker_id=f"ll01b-canonical-event-{uuid4().hex[:8]}",
+        )
+
+        async def mismatched_identity(*args, **kwargs):
+            identity = await canonical_get_measurement_identity(*args, **kwargs)
+            copied = json.loads(json.dumps(identity))
+            copied["publish_event"]["id"] = str(uuid4())
+            return copied
+
+        monkeypatch.setattr(
+            "app.modules.learning.service.get_measurement_identity",
+            mismatched_identity,
+        )
+        with pytest.raises(
+            LearningError,
+            match="learning_assessment_publish_event_mismatch",
+        ):
+            await create_learning_assessment(
+                session,
+                experiment_id=fixture.experiment.id,
+                proposed_result="INCONCLUSIVE",
+                signal_relations={},
+                alternative_explanations=[],
+                missing_evidence=["No normalized evidence yet."],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_no_map_change_still_revalidates_full_canonical_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping = await _publish(
+            session,
+            monkeypatch,
+            worker_id=f"ll01b-canonical-lineage-{uuid4().hex[:8]}",
+        )
+
+        async def stale_lineage_identity(*args, **kwargs):
+            identity = await canonical_get_measurement_identity(*args, **kwargs)
+            copied = json.loads(json.dumps(identity))
+            copied["content"]["locale_variant_id"] = str(uuid4())
+            copied["opportunity"]["id"] = str(uuid4())
+            return copied
+
+        monkeypatch.setattr(
+            "app.modules.learning.service.get_measurement_identity",
+            stale_lineage_identity,
+        )
+        with pytest.raises(
+            LearningError,
+            match="learning_assessment_canonical_identity_mismatch",
+        ):
+            await create_learning_assessment(
+                session,
+                experiment_id=fixture.experiment.id,
+                proposed_result="INCONCLUSIVE",
+                signal_relations={},
+                alternative_explanations=[],
+                missing_evidence=["No normalized evidence yet."],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_assessment_is_factual_idempotent_and_does_not_mutate_truth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        insight_count_before = int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        )
+
+        first = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=[
+                "Distribution, ranking, timing, or execution may also affect the observed metrics."
+            ],
+            missing_evidence=["No purchase or repeat-purchase evidence is present."],
+        )
+        assert first.replayed is False
+        payload = first.artifact.content_json
+        assert isinstance(payload, dict)
+        assert payload["artifact_type"] == "learning_assessment"
+        assert payload["assessment"]["proposed_result"] == "SUPPORTS"
+        assert payload["assessment"]["evidence_status"] == "EARLY_SIGNAL"
+        assert payload["assessment"]["causal_claim_allowed"] is False
+        assert payload["assessment"]["minimum_evidence_interpreted"] is False
+        assert payload["measurement_contract"]["minimum_evidence_verbatim"] == [
+            "non-zero exposure",
+            "review window reached",
+        ]
+        assert payload["candidate_scope"]["intent"] is None
+        assert payload["candidate_scope"]["intent_scope_status"] == "NOT_FROZEN_IN_PM01"
+        assert payload["candidate_scope"]["primary_lens"] == "SIGNALS"
+        assert payload["candidate_scope"]["supporting_lenses"] == ["METHOD"]
+        assert payload["lineage"]["publish_event_id"] == signal.provenance_json[
+            "publication"
+        ]["publish_event_id"]
+        assert payload["lineage"]["locale_variant_id"] == signal.provenance_json[
+            "content"
+        ]["locale_variant_id"]
+        assert payload["lineage"]["content_opportunity_id"] == signal.provenance_json[
+            "opportunity"
+        ]["id"]
+
+        serialized = json.dumps(payload, sort_keys=True)
+        assert observation.statement not in serialized
+        assert "must-not-flow-to-signal" not in serialized
+        assert "synthetic private dimension" not in serialized
+        assert "raw_secret" not in serialized
+
+        replay = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=[
+                "Distribution, ranking, timing, or execution may also affect the observed metrics."
+            ],
+            missing_evidence=["No purchase or repeat-purchase evidence is present."],
+        )
+        assert replay.replayed is True
+        assert replay.artifact.id == first.artifact.id
+
+        await session.refresh(fixture.experiment)
+        await session.refresh(fixture.need)
+        assert fixture.experiment.result == "PENDING"
+        assert fixture.need.status == "TESTING"
+        assert int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        ) == insight_count_before
+
+        with pytest.raises(
+            DBAPIError,
+            match="artifact_is_immutable|learning_assessment_artifact_update_forbidden",
+        ):
+            async with session.begin_nested():
+                first.artifact.content_json = {"tampered": True}
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_ll01b_contested_assessment_must_be_inconclusive_and_candidate_is_contested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, _search_observation, search_signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        _analytics_observation, analytics_signal = await _analytics_signal(
+            session,
+            fixture=fixture,
+            mapping=mapping,
+        )
+
+        with pytest.raises(
+            LearningError,
+            match="learning_assessment_contested_must_be_inconclusive",
+        ):
+            await create_learning_assessment(
+                session,
+                experiment_id=fixture.experiment.id,
+                proposed_result="SUPPORTS",
+                signal_relations={
+                    search_signal.id: "supports",
+                    analytics_signal.id: "contradicts",
+                },
+                alternative_explanations=["The metrics point in different directions."],
+                missing_evidence=["Need another independent experiment."],
+            )
+
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="INCONCLUSIVE",
+            signal_relations={
+                search_signal.id: "supports",
+                analytics_signal.id: "contradicts",
+            },
+            alternative_explanations=["The metrics point in different directions."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        assert assessment.artifact.content_json["assessment"]["evidence_status"] == "CONTESTED"
+
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement=(
+                "The current content-performance evidence is mixed for this frozen Need scope."
+            ),
+            relation="context",
+            expected_benefit="Keep contradictory performance evidence visible for review.",
+            regression_risk="Do not infer that traffic alone proves or disproves the Need.",
+        )
+        assert candidate.candidate.version == 1
+        assert candidate.candidate.evidence_status == "CONTESTED"
+        assert candidate.candidate.relation == "context"
+        await session.refresh(fixture.need)
+        assert fixture.need.status == "TESTING"
+
+
+@pytest.mark.asyncio
+async def test_ll01b_candidate_replay_and_versioning_do_not_inflate_same_experiment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, _search_observation, search_signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment_v1 = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={search_signal.id: "supports"},
+            alternative_explanations=["Distribution remains an alternative explanation."],
+            missing_evidence=["Need repeated evidence from another experiment."],
+        )
+        candidate_v1 = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment_v1.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Performance evidence may support this Need in the frozen scope.",
+            relation="supports",
+            expected_benefit="Prioritize evidence collection without changing Customer Truth.",
+            regression_risk="Do not generalize one article to all buyers.",
+        )
+        assert candidate_v1.replayed is False
+        assert candidate_v1.candidate.version == 1
+        assert candidate_v1.candidate.evidence_status == "EARLY_SIGNAL"
+
+        replay = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment_v1.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Performance evidence may support this Need in the frozen scope.",
+            relation="supports",
+            expected_benefit="Prioritize evidence collection without changing Customer Truth.",
+            regression_risk="Do not generalize one article to all buyers.",
+        )
+        assert replay.replayed is True
+        assert replay.candidate.id == candidate_v1.candidate.id
+
+        _analytics_observation, analytics_signal = await _analytics_signal(
+            session,
+            fixture=fixture,
+            mapping=mapping,
+            data_status="LEARNING_CANDIDATE_READY",
+        )
+        assessment_v2 = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={
+                search_signal.id: "supports",
+                analytics_signal.id: "supports",
+            },
+            alternative_explanations=["Distribution remains an alternative explanation."],
+            missing_evidence=["Need an independent experiment, not another provider window."],
+        )
+        assert (
+            assessment_v2.artifact.content_json["assessment"]["evidence_status"]
+            == "CANDIDATE_READY"
+        )
+
+        candidate_v2 = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment_v2.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Performance evidence may support this Need in the frozen scope.",
+            relation="supports",
+            expected_benefit="Prioritize evidence collection without changing Customer Truth.",
+            regression_risk="Do not generalize one article to all buyers.",
+        )
+        assert candidate_v2.replayed is False
+        assert candidate_v2.candidate.version == 2
+        assert candidate_v2.candidate.supersedes_id == candidate_v1.candidate.id
+        # Two providers/windows from the same experiment remain one independent group.
+        assert candidate_v2.candidate.evidence_status == "EARLY_SIGNAL"
+
+        await session.refresh(candidate_v1.candidate)
+        assert candidate_v1.candidate.status == "SUPERSEDED"
+        assert candidate_v2.candidate.status == "OPEN"
+
+        versions = list(
+            (
+                await session.scalars(
+                    select(LearningCandidate)
+                    .where(
+                        LearningCandidate.project_id == fixture.project.id,
+                        LearningCandidate.candidate_key == candidate_v2.candidate.candidate_key,
+                    )
+                    .order_by(LearningCandidate.version)
+                )
+            ).all()
+        )
+        assert [row.version for row in versions] == [1, 2]
+
+        linked_signals = list(
+            (
+                await session.scalars(
+                    select(LearningCandidateSignal).where(
+                        LearningCandidateSignal.learning_candidate_id
+                        == candidate_v2.candidate.id
+                    )
+                )
+            ).all()
+        )
+        assert len(linked_signals) == 2
+        assert {
+            (await session.get(Signal, row.signal_id)).independence_group
+            for row in linked_signals
+        } == {f"experiment:{fixture.experiment.id}"}
+
+        linked_assessments = list(
+            (
+                await session.scalars(
+                    select(LearningCandidateAssessment).where(
+                        LearningCandidateAssessment.learning_candidate_id
+                        == candidate_v2.candidate.id
+                    )
+                )
+            ).all()
+        )
+        assert len(linked_assessments) == 2
+
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_version_content_immutable",
+        ):
+            async with session.begin_nested():
+                candidate_v1.candidate.statement = "Rewrite old candidate."
+                await session.flush()
+
+        await session.refresh(fixture.need)
+        assert fixture.need.status == "TESTING"
+
+
+@pytest.mark.asyncio
+async def test_ll01b_insufficient_assessment_can_exist_without_creating_customer_truth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping = await _publish(
+            session,
+            monkeypatch,
+            worker_id="ll01b-insufficient",
+        )
+        insight_count_before = int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="INCONCLUSIVE",
+            signal_relations={},
+            alternative_explanations=[],
+            missing_evidence=["No normalized performance Signal exists yet."],
+        )
+        assert (
+            assessment.artifact.content_json["assessment"]["evidence_status"]
+            == "INSUFFICIENT_DATA"
+        )
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="no_map_change",
+            target_id=None,
+            statement="Keep the Customer Map unchanged until measured evidence exists.",
+            relation="no_change",
+            expected_benefit="Avoid learning from absence of data.",
+            regression_risk="None; this proposal explicitly requests no map mutation.",
+        )
+        assert candidate.candidate.evidence_status == "NEEDS_EVIDENCE"
+        assert int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        ) == insight_count_before
+        await session.refresh(fixture.need)
+        assert fixture.need.status == "TESTING"
+
+
+@pytest.mark.asyncio
+async def test_ll01b_tampered_factual_signal_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        signal.provenance_json = {
+            **signal.provenance_json,
+            "raw_provider_payload": {"secret": "should-never-be-trusted"},
+        }
+        with pytest.raises(
+            LearningError,
+            match="learning_assessment_signal_fingerprint_mismatch",
+        ):
+            await create_learning_assessment(
+                session,
+                experiment_id=fixture.experiment.id,
+                proposed_result="SUPPORTS",
+                signal_relations={signal.id: "supports"},
+                alternative_explanations=["Distribution can affect the metric."],
+                missing_evidence=["Need another experiment."],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_new_customer_insight_is_explicit_proposal_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        insight_count_before = int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_new_insight_proposal_invalid",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=assessment.artifact.id,
+                target_type="new_customer_insight",
+                target_id=None,
+                statement="Readers may need a clearer provenance verification path.",
+                relation="proposes",
+            )
+
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="new_customer_insight",
+            target_id=None,
+            statement="Readers may need a clearer provenance verification path.",
+            relation="proposes",
+            proposal={
+                "insight_type": "question",
+                "situation": "before deciding whether to buy an artwork",
+                "need_relation": "supports",
+            },
+            expected_benefit="Preserve an explicit reviewable insight proposal.",
+            regression_risk="Do not create or promote CustomerInsight automatically.",
+        )
+        assert candidate.candidate.evidence_status == "EARLY_SIGNAL"
+        assert candidate.candidate.proposal_json == {
+            "insight_type": "question",
+            "situation": "before deciding whether to buy an artwork",
+            "need_relation": "supports",
+        }
+        assert int(
+            await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
+        ) == insight_count_before
+
+
+@pytest.mark.asyncio
+async def test_ll01b_candidate_relation_must_match_directional_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another experiment."],
+        )
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_relation_evidence_mismatch",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=assessment.artifact.id,
+                target_type="need_hypothesis",
+                target_id=fixture.need.id,
+                statement="Directional evidence must bind the candidate relation.",
+                relation="context",
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_forged_assessment_observation_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another experiment."],
+        )
+        forged_payload = json.loads(json.dumps(assessment.artifact.content_json))
+        forged_payload["evidence"]["observations"][0]["id"] = str(uuid4())
+        forged = Artifact(
+            run_id=assessment.artifact.run_id,
+            step_run_id=None,
+            artifact_type="learning_assessment",
+            locale=assessment.artifact.locale,
+            version=assessment.artifact.version + 1,
+            content_json=forged_payload,
+            content_hash=_hash(forged_payload),
+        )
+        session.add(forged)
+        await session.flush()
+
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_assessment_observation_set_mismatch",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=forged.id,
+                target_type="need_hypothesis",
+                target_id=fixture.need.id,
+                statement="Forged observation lineage must never become learning.",
+                relation="supports",
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_database_guards_reject_forged_assessment_insert_and_link_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Keep direct database evidence links immutable.",
+            relation="supports",
+        )
+
+        forged_payload = json.loads(json.dumps(assessment.artifact.content_json))
+        forged_payload["project_id"] = str(uuid4())
+        forged = Artifact(
+            run_id=assessment.artifact.run_id,
+            step_run_id=None,
+            artifact_type="learning_assessment",
+            locale=assessment.artifact.locale,
+            version=assessment.artifact.version + 100,
+            content_json=forged_payload,
+            content_hash=_hash(forged_payload),
+        )
+        with pytest.raises(
+            DBAPIError,
+            match="learning_assessment_artifact_lineage_invalid",
+        ):
+            async with session.begin_nested():
+                session.add(forged)
+                await session.flush()
+
+        signal_link = await session.scalar(
+            select(LearningCandidateSignal).where(
+                LearningCandidateSignal.learning_candidate_id
+                == candidate.candidate.id
+            )
+        )
+        observation_link = await session.scalar(
+            select(LearningCandidateObservation).where(
+                LearningCandidateObservation.learning_candidate_id
+                == candidate.candidate.id
+            )
+        )
+        assert signal_link is not None
+        assert observation_link is not None
+
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_signal_update_forbidden",
+        ):
+            async with session.begin_nested():
+                signal_link.relation = "context"
+                await session.flush()
+
+        await session.refresh(observation_link)
+        with pytest.raises(
+            DBAPIError,
+            match="learning_candidate_observation_update_forbidden",
+        ):
+            async with session.begin_nested():
+                observation_link.relation = "context"
+                await session.flush()
+
+
+@pytest.mark.asyncio
+async def test_ll01b_foreign_need_target_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another experiment."],
+        )
+        foreign_project = Project(
+            slug=f"foreign-{uuid4().hex[:8]}",
+            name="Foreign project",
+            default_locale="en",
+        )
+        session.add(foreign_project)
+        await session.flush()
+        foreign_need = NeedHypothesis(
+            project_id=foreign_project.id,
+            type="question",
+            statement="Foreign need",
+            audience_scope="foreign",
+            situation="foreign",
+            origin="founder_proposed",
+            status="TESTING",
+            version=1,
+        )
+        session.add(foreign_need)
+        await session.flush()
+
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_need_target_mismatch",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=assessment.artifact.id,
+                target_type="need_hypothesis",
+                target_id=foreign_need.id,
+                statement="Do not cross project boundaries.",
+                relation="supports",
+            )
+
+
+def test_ll01b_candidate_maturity_requires_independent_experiments() -> None:
+    assert (
+        _classify_candidate_evidence_status(
+            support_groups={"experiment:a"},
+            contradict_groups=set(),
+            assessment_results=["SUPPORTS"],
+        )
+        == "EARLY_SIGNAL"
+    )
+    assert (
+        _classify_candidate_evidence_status(
+            support_groups={"experiment:a", "experiment:b"},
+            contradict_groups=set(),
+            assessment_results=["SUPPORTS", "SUPPORTS"],
+        )
+        == "REPEATED_PATTERN"
+    )
+    assert (
+        _classify_candidate_evidence_status(
+            support_groups={"experiment:a", "experiment:b"},
+            contradict_groups=set(),
+            assessment_results=["SUPPORTS", "INCONCLUSIVE"],
+        )
+        == "EARLY_SIGNAL"
+    )
+    assert (
+        _classify_candidate_evidence_status(
+            support_groups={"experiment:a", "experiment:b"},
+            contradict_groups=set(),
+            assessment_results=["SUPPORTS", "SUPPORTS"],
+        )
+        == "REPEATED_PATTERN"
+    )
+    assert (
+        _classify_candidate_evidence_status(
+            support_groups={"experiment:a"},
+            contradict_groups={"experiment:b"},
+            assessment_results=["SUPPORTS", "CONTRADICTS"],
+        )
+        == "CONTESTED"
+    )

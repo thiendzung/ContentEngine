@@ -363,8 +363,31 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Exact replay returns the same logical Signal; conflicting replay fails closed.
 - [x] Add focused tests for factual materialization, CT-01 independence collapse, historical identity, cross-content metric mismatch, replay conflict and INSUFFICIENT_DATA.
 - [x] No CustomerInsight/Need promotion, LearningCandidate, Opportunity creation, settings/prompt/workflow mutation or publication.
-- [ ] CI green on LL-01A PR head.
+- [x] CI green on LL-01A exact PR head `951d3d27c999161f6fbbbdae84e725f610f8a918` — 987 passed / 12 warnings plus frontend/release-input checks.
+- [x] Exact-ref OpenCodeReview + MG triage — OCR v1.12.8, 4/4 reviewable, 0 Critical/High/Medium.
+- [x] Agent Local disposable proof — `PASS_LL01A_FINAL_LOCAL_VERIFICATION`, focused 36 passed, full backend 987 passed / 12 warnings.
+- [x] Founder merge — PR #182 merged as main `06748aaef4a1ff9a4a7a94d59291ac4e0caf6048`.
+- [x] Operational DB untouched; LL-01A added no migration.
+
+### LL-01B immediate checklist
+
+- [x] Start from exact merged LL-01A main `06748aaef4a1ff9a4a7a94d59291ac4e0caf6048`.
+- [x] Keep Observation / factual Signal / LearningAssessment / LearningCandidate / Customer Truth as separate layers.
+- [x] Persist immutable `learning_assessment` Artifact on exact publish lineage.
+- [x] Revalidate LL-01A Signal fingerprint, frozen Need/Audience/Journey/Lens/locale scope and normalized metric-only shape.
+- [x] Preserve `minimum_evidence_json` verbatim; do not invent numeric thresholds from free text.
+- [x] Add versioned `LearningCandidate` with explicit Assessment / Signal / PerformanceObservation evidence links.
+- [x] Candidate key is deterministic from project + target + normalized statement + frozen scope.
+- [x] Exact replay reuses current candidate version; changed evidence creates the next immutable version and supersedes the prior one.
+- [x] One experiment remains `EARLY_SIGNAL` even when multiple provider windows or an upstream maturity label say READY.
+- [x] Multiple independent experiments are required before `REPEATED_PATTERN`; `READY_FOR_REVIEW` remains reserved until a typed/calibrated minimum-evidence policy exists, and PM-01 maturity labels are never sufficient authority.
+- [x] Contradicting evidence remains visible as `CONTESTED`.
+- [x] Candidate scope explicitly records that historical intent is not frozen in PM-01 instead of reading mutable current intent.
+- [x] Code migration `20260922_0040` adds candidate tables + database immutability/project-lineage guards.
+- [x] No Need/CustomerInsight/Audience/Journey/Opportunity/settings/prompt/workflow/publication mutation.
+- [ ] Focused LL-01B tests green.
+- [ ] Full CI green on exact LL-01B PR head.
 - [ ] Exact-ref OpenCodeReview + MG triage.
-- [ ] Agent Local disposable proof.
+- [ ] Agent Local disposable 0039↔0040 proof.
 - [ ] Founder merge.
-- [ ] Operational DB remains untouched; LL-01A adds no migration.
+- [ ] Operational migration remains separately unauthorized.

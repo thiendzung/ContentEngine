@@ -568,5 +568,6 @@ def register_models() -> None:
     )
     from app.modules.harness import models as _harness_models  # noqa: F401
     from app.modules.knowledge import models as _knowledge_models  # noqa: F401
+    from app.modules.learning import models as _learning_models  # noqa: F401
     from app.modules.measurement import models as _measurement_models  # noqa: F401
     from app.modules.publishing import models as _publishing_models  # noqa: F401
