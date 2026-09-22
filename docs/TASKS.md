@@ -337,11 +337,14 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Add focused tests for authorization, draft→publish, ambiguous reconciliation, idempotent measurement and identity trace.
 - [x] Keep approved ContentVersion immutable; external publish state lives in PublishedContent/PublishEvent.
 - [x] Freeze each ContentExperiment candidate to one ContentItem/ContentVersion + measurement contract; permit exact replacement candidate before external effect; persist canonical content_experiment_id on immutable PublishEvent.
+- [x] Discovery replay reuses only unbound `PLANNED/PENDING` exact-contract candidates; a bound prior cycle gets a fresh experiment candidate even when the draft contract is unchanged.
+- [x] Add explicit timezone-aware measurement review-window setup before Publish Package; no inferred 7/14/30 default, missing/zero/negative window fails closed, package binding freezes it.
+- [x] Persisted Discovery selection is in-memory atomic: a rejected/conflicting persistence attempt cannot mutate caller state.
 - [x] Revalidate experiment measurement snapshot before external dispatch; stale package fails before Outbox processing.
 - [x] Verify Content Coverage/Review Console against latest PublishEvent; mapping drift fails closed.
 - [x] Move Memory Gap publish/freshness truth to PublishedContent + PublishEvent while retaining legacy ContentVersion fallback.
 - [x] Positive-test Search Console, Analytics, MOTGU conversion and INSUFFICIENT_DATA semantics.
-- [x] CI implementation proof PASS after identity/read-model hardening — CI #1491 on `37cd2f0bd4e4851389239f1d6c2e861b93d2d9b5`: Ruff PASS; mypy 158 source files; rev-0038↔0039 round-trip PASS; full backend + OpenAPI + frontend lint/typecheck/build all PASS. Final docs-head CI still must be green before OCR freeze.
+- [x] CI implementation proof PASS after final normal-path hardening — CI #1518 on `e2b75b6c288a5b85abd117d9b2cab42903a9b82d`: Ruff PASS; mypy 158 source files; rev-0038↔0039 round-trip PASS; backend 980 passed / 12 warnings; OpenAPI + frontend lint/typecheck/build PASS. Final docs-head CI still must be green before OCR freeze.
 - [ ] Exact-ref OpenCodeReview Delegation review and MG triage.
 - [ ] Agent Local bounded exact-head proof including disposable 0038↔0039 migration round-trip.
 - [ ] Founder merge.

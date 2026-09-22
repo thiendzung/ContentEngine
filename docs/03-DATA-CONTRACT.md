@@ -523,10 +523,18 @@ Khi Publish Package được tạo, mỗi ContentExperiment candidate được k
 `content_item_id + content_version_id` và measurement contract của chính nó; không
 rebind candidate đó sang item/version khác.
 
+Discovery persistence chỉ tái dùng experiment candidate khi full measurement draft
+giống hệt, candidate vẫn `PLANNED/PENDING` và chưa bind vào ContentItem/ContentVersion/
+PublishedContent. Nếu candidate cũ đã bind, vòng content/version mới tạo candidate mới
+thay vì rebind lịch sử, kể cả measurement draft giống nhau.
+
 Trước khi có external effect, một ContentVersion có thể có replacement experiment
-candidate khác nếu kế hoạch đo phải sửa; dedupe chỉ tái dùng candidate khi measurement
-contract giống hệt. Khi một version đã externalize, PublishEvent khóa experiment
-canonical cho version/target đó và candidate khác bị chặn trước external dispatch.
+candidate khác nếu kế hoạch đo phải sửa. `review_window_start/end` không được suy ra
+từ khuyến nghị 7/14/30 ngày: operator phải chốt hai datetime có timezone, với
+`end > start`, trước khi tạo Publish Package. Thiếu/sai window thì package fail closed.
+Khi package được tạo, candidate + measurement contract + review window bị đóng băng.
+Khi một version đã externalize, PublishEvent khóa experiment canonical cho version/target
+đó và candidate khác bị chặn trước external dispatch.
 
 Result bổ sung evidence qua Signal/ContentPerformanceObservation; không tự đổi hypothesis
 hoặc settings. Dwell time không tự chứng minh interest; shipping inquiry không tự chứng

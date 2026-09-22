@@ -52,6 +52,7 @@ V1 ưu tiên handoff/draft an toàn trước full auto-publish.
 ```text
 Final Human Approval
 → create immutable approved ContentVersion
+→ explicitly set measurement review window (timezone-aware; no inferred default)
 → create immutable Publish Package
 → WAIT_HUMAN(publish_authorization)
 → Founder publish authorization
@@ -141,11 +142,16 @@ Raw provider payload vẫn được giữ khi cần audit/debug.
 ## 8. Measurement identity
 
 ContentExperiment nối ContentOpportunity → NeedHypothesis version → ContentItem/Version
-→ PublishedContent → metrics/observations. Chốt expected behaviour, metric definitions,
-minimum evidence và review window trước publish. Khi Publish Package được tạo,
-mỗi experiment candidate được khóa vào đúng ContentItem/ContentVersion và measurement
-contract của candidate đó. Nếu package bị bỏ trước external effect, pipeline có thể tạo
-replacement candidate cho cùng version khi measurement contract khác.
+→ PublishedContent → metrics/observations. Discovery chỉ replay candidate còn
+`PLANNED/PENDING`, chưa bind và có full measurement draft giống hệt; candidate đã bind
+thuộc vòng thử cũ và không được rebind sang version mới.
+
+Expected behaviour, metric definitions, minimum evidence và review window phải chốt
+trước publish. Review window được set explicit bằng datetime có timezone; PM-01 không
+tự biến khuyến nghị 7/14/30 ngày thành dữ liệu. `end <= start` hoặc thiếu window làm
+Publish Package fail closed. Khi Publish Package được tạo, candidate được khóa vào đúng
+ContentItem/ContentVersion cùng measurement contract + review window. Nếu package bị bỏ
+trước external effect, pipeline có thể tạo replacement candidate cho cùng version.
 
 Sau external effect, PublishEvent lưu trực tiếp `content_experiment_id`; version/target
 đó không được chuyển sang experiment candidate khác trước external dispatch. Measurement
@@ -232,6 +238,7 @@ Publish/Measure V1 đạt khi:
 
 - ContentItem ↔ WordPress mapping idempotent;
 - ContentVersion publish history rõ;
+- review window được chốt explicit trước package, không suy diễn default;
 - final approval bắt buộc;
 - side-effect không tạo duplicate khi retry;
 - URL/content ID gắn được metrics;

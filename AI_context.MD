@@ -321,7 +321,10 @@ Current bounded PM-01 implementation:
 - ambiguous external outcome becomes `needs_reconciliation`; reconcile before any resend;
 - PublishedContent preserves one ContentItem ↔ WordPress identity while immutable PublishEvent records draft/publish/update history by exact ContentVersion + ContentExperiment;
 - ContentVersion remains immutable after Founder approval; PM-01 does not mutate `approved → published` or create a duplicate publication-only ContentVersion. Canonical external publication state is PublishedContent/PublishEvent;
-- after all package inputs validate, ContentExperiment is frozen to the exact ContentItem/ContentVersion; a new content version requires a new experiment instead of historical rebind;
+- Discovery reuses only an exact-contract experiment that is still PLANNED/PENDING and unbound; once a prior experiment is bound, a later content/version cycle gets a fresh candidate rather than reusing historical identity;
+- review_window_start/end must be set explicitly with timezone-aware datetimes and end > start before Publish Package; PM-01 does not infer a 7/14/30-day default;
+- after all package inputs validate, ContentExperiment is frozen to the exact ContentItem/ContentVersion + measurement contract + review window; replacement candidates remain possible before external effect, but historical bindings are not rewritten;
+- failed/conflicting persisted Discovery selection leaves the caller's in-memory OpportunityMap state unchanged;
 - immediately before external dispatch, the package/experiment measurement snapshot is revalidated; stale state fails before Outbox moves to processing;
 - Content Coverage + Review Console validate current PublishedContent against latest immutable PublishEvent and fail closed on mapping/history drift;
 - core measurement rows normalize impressions/clicks/sessions/engaged sessions/artwork/visit/workshop transitions/inquiry while retaining aggregate/raw audit payload;
@@ -334,11 +337,12 @@ Current bounded PM-01 implementation:
 Operational database remains at the separately controlled release state. PM-01 does NOT authorize rev-0035 → rev-0039 operationally.
 
 PM-01 implementation proof before final docs sync:
-- CI #1491 PASS on `37cd2f0bd4e4851389239f1d6c2e861b93d2d9b5`;
+- CI #1518 PASS on `e2b75b6c288a5b85abd117d9b2cab42903a9b82d`;
 - Ruff PASS;
 - mypy PASS on 158 source files;
 - rev-0038↔0039 migration round-trip PASS;
-- full backend tests + OpenAPI + frontend lint/typecheck/build PASS.
+- backend 980 passed / 12 warnings;
+- OpenAPI + frontend lint/typecheck/build PASS.
 
 PM-01 still remains IN IMPLEMENTATION until exact final docs-head CI, exact-ref OpenCodeReview, Agent Local disposable proof and Founder merge.
 
