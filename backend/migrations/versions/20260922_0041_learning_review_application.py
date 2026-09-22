@@ -24,7 +24,7 @@ def _create_guards() -> None:
             candidate_project uuid;
             candidate_version integer;
             candidate_status text;
-            candidate_key text;
+            v_candidate_key text;
             candidate_target_type text;
             candidate_evidence_status text;
         BEGIN
@@ -35,12 +35,12 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_candidate_review_delete_forbidden';
             END IF;
 
-            SELECT project_id, version, status, candidate_key,
-                   target_type, evidence_status
+            SELECT lc.project_id, lc.version, lc.status, lc.candidate_key,
+                   lc.target_type, lc.evidence_status
             INTO candidate_project, candidate_version, candidate_status,
-                 candidate_key, candidate_target_type, candidate_evidence_status
-            FROM learning_candidates
-            WHERE id = NEW.learning_candidate_id;
+                 v_candidate_key, candidate_target_type, candidate_evidence_status
+            FROM learning_candidates AS lc
+            WHERE lc.id = NEW.learning_candidate_id;
 
             IF candidate_project IS NULL THEN
                 RAISE EXCEPTION 'learning_candidate_review_candidate_not_found';
@@ -56,7 +56,7 @@ def _create_guards() -> None:
                 SELECT 1
                 FROM learning_candidates newer
                 WHERE newer.project_id = candidate_project
-                  AND newer.candidate_key = candidate_key
+                  AND newer.candidate_key = v_candidate_key
                   AND newer.version > candidate_version
             ) THEN
                 RAISE EXCEPTION 'learning_candidate_review_candidate_stale';
@@ -102,7 +102,7 @@ def _create_guards() -> None:
             candidate_project uuid;
             candidate_version integer;
             candidate_status text;
-            candidate_key text;
+            v_candidate_key text;
             candidate_target_type text;
             candidate_target_id uuid;
             review_project uuid;
@@ -118,11 +118,12 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_application_delete_forbidden';
             END IF;
 
-            SELECT project_id, version, status, candidate_key, target_type, target_id
+            SELECT lc.project_id, lc.version, lc.status, lc.candidate_key,
+                   lc.target_type, lc.target_id
             INTO candidate_project, candidate_version, candidate_status,
-                 candidate_key, candidate_target_type, candidate_target_id
-            FROM learning_candidates
-            WHERE id = NEW.learning_candidate_id;
+                 v_candidate_key, candidate_target_type, candidate_target_id
+            FROM learning_candidates AS lc
+            WHERE lc.id = NEW.learning_candidate_id;
 
             SELECT project_id, learning_candidate_id, candidate_version,
                    decision, candidate_snapshot_hash
@@ -149,7 +150,7 @@ def _create_guards() -> None:
                 SELECT 1
                 FROM learning_candidates newer
                 WHERE newer.project_id = candidate_project
-                  AND newer.candidate_key = candidate_key
+                  AND newer.candidate_key = v_candidate_key
                   AND newer.version > candidate_version
             ) THEN
                 RAISE EXCEPTION 'learning_application_candidate_stale';
