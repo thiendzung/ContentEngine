@@ -313,18 +313,7 @@ async def _approved_lineage(
     if experiment.content_item_id not in {None, item.id}:
         raise PublishError("publish_experiment_content_item_conflict")
     if experiment.content_version_id not in {None, version.id}:
-        bound_version = await session.get(
-            ContentVersion,
-            experiment.content_version_id,
-        )
-        if (
-            bound_version is None
-            or bound_version.content_item_id != item.id
-            or bound_version.status != "published"
-            or bound_version.final_artifact_id != version.final_artifact_id
-            or bound_version.content_json != version.content_json
-        ):
-            raise PublishError("publish_experiment_content_version_conflict")
+        raise PublishError("publish_experiment_content_version_conflict")
 
     return (
         version,
