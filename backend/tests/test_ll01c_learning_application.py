@@ -302,6 +302,66 @@ async def test_ll01c_apply_need_links_signal_without_status_or_version_promotion
 
 
 @pytest.mark.asyncio
+async def test_ll01c_apply_need_preserves_contradict_relation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="CONTRADICTS",
+            signal_relations={signal.id: "contradicts"},
+            alternative_explanations=["The observed metric may reflect distribution."],
+            missing_evidence=["Need another independent experiment."],
+        )
+        candidate = await create_learning_candidate(
+            session,
+            assessment_artifact_id=assessment.artifact.id,
+            target_type="need_hypothesis",
+            target_id=fixture.need.id,
+            statement="Measured evidence may contradict this frozen Need.",
+            relation="contradicts",
+            expected_benefit="Preserve reviewed contradictory evidence.",
+            regression_risk="Do not reject the Need automatically.",
+        )
+        status_before = fixture.need.status
+        version_before = fixture.need.version
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Attach contradictory factual evidence only.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+        link = await session.get(
+            NeedHypothesisSignal,
+            (fixture.need.id, signal.id, "contradicts"),
+        )
+        assert link is not None
+        await session.refresh(fixture.need)
+        assert fixture.need.status == status_before
+        assert fixture.need.version == version_before
+        assert applied.application.applied_signal_refs_json == [
+            {"signal_id": str(signal.id), "relation": "contradicts"}
+        ]
+        assert any(
+            event["entity_type"] == "need"
+            and event["entity_ref"] == str(fixture.need.id)
+            and event["detail"] == "contradicts_evidence_added"
+            for event in applied.change_report["events"]
+        )
+
+
+@pytest.mark.asyncio
 async def test_ll01c_stale_need_version_blocks_application_before_mutation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
