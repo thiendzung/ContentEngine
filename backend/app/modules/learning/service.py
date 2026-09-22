@@ -1060,6 +1060,27 @@ async def _candidate_evidence_status(
     return "REPEATED_PATTERN"
 
 
+def _validate_candidate_relation_for_evidence(
+    *,
+    target_type: str,
+    relation: str,
+    signal_relations: dict[UUID, EvidenceRelation],
+) -> None:
+    if target_type not in {"need_hypothesis", "customer_insight"}:
+        return
+    has_support = any(value == "supports" for value in signal_relations.values())
+    has_contradiction = any(
+        value == "contradicts" for value in signal_relations.values()
+    )
+    expected_relation = (
+        "context"
+        if has_support == has_contradiction
+        else ("supports" if has_support else "contradicts")
+    )
+    if relation != expected_relation:
+        raise LearningError("learning_candidate_relation_evidence_mismatch")
+
+
 async def _candidate_context_lists(
     session: AsyncSession,
     *,
@@ -1162,6 +1183,11 @@ async def create_learning_candidate(
         signal_relations=signal_relations,
         assessment_ids=assessment_ids,
     )
+    _validate_candidate_relation_for_evidence(
+        target_type=target_type,
+        relation=relation,
+        signal_relations=signal_relations,
+    )
     alternatives, missing = await _candidate_context_lists(
         session,
         assessment_ids=assessment_ids,
@@ -1252,3 +1278,8 @@ __all__ = [
     "AssessmentResult",
     "EvidenceRelation",
     "LearningAssessmentResult",
+    "LearningCandidateResult",
+    "LearningError",
+    "create_learning_assessment",
+    "create_learning_candidate",
+]
