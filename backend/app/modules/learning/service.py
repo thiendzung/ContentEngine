@@ -28,6 +28,10 @@ from app.modules.learning.models import (
     LearningCandidateObservation,
     LearningCandidateSignal,
 )
+from app.modules.learning.performance_signal import (
+    PerformanceSignalError,
+    materialize_performance_signal,
+)
 from app.modules.measurement.models import ContentPerformanceObservation
 from app.modules.publishing.models import PublishEvent
 
@@ -469,6 +473,25 @@ async def _validate_signal(
         raise LearningError("learning_assessment_observation_lineage_mismatch")
     if observation.data_status == "INSUFFICIENT_DATA":
         raise LearningError("learning_assessment_signal_from_insufficient_data")
+    expected_external_id = f"content_performance_observation:{observation.id}"
+    if signal.external_id != expected_external_id:
+        raise LearningError("learning_assessment_signal_external_id_mismatch")
+    try:
+        canonical = await materialize_performance_signal(
+            session,
+            observation_id=observation.id,
+        )
+    except PerformanceSignalError as exc:
+        raise LearningError(
+            f"learning_assessment_signal_replay_{exc.code}"
+        ) from exc
+    if (
+        canonical.signal is None
+        or canonical.signal.id != signal.id
+        or canonical.signal.fingerprint != signal.fingerprint
+        or not canonical.replayed
+    ):
+        raise LearningError("learning_assessment_signal_replay_mismatch")
     return signal, observation
 
 
