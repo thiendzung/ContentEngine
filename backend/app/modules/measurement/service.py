@@ -463,10 +463,12 @@ async def get_measurement_identity(
     if not isinstance(raw_experiment_id, str):
         raise MeasurementError("measurement_experiment_identity_missing")
     try:
-        experiment_id = UUID(raw_experiment_id)
+        package_experiment_id = UUID(raw_experiment_id)
     except ValueError as exc:
         raise MeasurementError("measurement_experiment_identity_invalid") from exc
-    experiment = await session.get(ContentExperiment, experiment_id)
+    if package_experiment_id != event.content_experiment_id:
+        raise MeasurementError("measurement_event_experiment_identity_mismatch")
+    experiment = await session.get(ContentExperiment, event.content_experiment_id)
     if (
         experiment is None
         or experiment.published_content_id != mapping.id
@@ -544,6 +546,7 @@ async def get_measurement_identity(
         },
         "publish_event": {
             "id": str(event.id),
+            "content_experiment_id": str(event.content_experiment_id),
             "idempotency_key": event.idempotency_key,
             "action": event.action,
             "external_status": event.external_status,
