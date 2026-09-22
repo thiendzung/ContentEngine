@@ -875,6 +875,17 @@ async def apply_learning_candidate(
     if review.decision not in {"APPROVE", "NO_MAP_CHANGE"}:
         raise LearningApplicationError("learning_review_not_applicable")
 
+    # Serialize Customer Truth / Customer Map mutation at project scope.
+    # LL-01B candidate creation also uses Project -> Candidate lock ordering,
+    # so keeping the same order avoids a cross-slice deadlock.
+    locked_project = await session.scalar(
+        select(Project)
+        .where(Project.id == review.project_id)
+        .with_for_update()
+    )
+    if locked_project is None:
+        raise LearningApplicationError("learning_apply_project_not_found")
+
     snapshot = await _candidate_snapshot(
         session,
         candidate_id=review.learning_candidate_id,
