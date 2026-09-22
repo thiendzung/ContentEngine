@@ -55,6 +55,24 @@ def test_declared_pass_cannot_override_failed_reader_criterion() -> None:
         )
 
 
+def test_repair_suggestion_must_be_a_string() -> None:
+    payload = _output("reader_value")
+    criteria = payload["criteria"]
+    assert isinstance(criteria, list)
+    criterion = criteria[0]
+    assert isinstance(criterion, dict)
+    criterion["repair_suggestion"] = None
+    with pytest.raises(
+        QualityReadinessError,
+        match="quality_readiness_output_criterion_repair_invalid",
+    ):
+        validate_quality_readiness_output(
+            payload,
+            stage="reader_value",
+            locale="en",
+        )
+
+
 def test_search_ai_criteria_order_is_fail_closed() -> None:
     payload = _output("search_ai")
     criteria = payload["criteria"]
