@@ -240,7 +240,12 @@ async def _target_snapshot(
                 "learning_review_new_insight_audience_stale"
             )
         proposal = candidate.proposal_json
-        if set(proposal) != {"insight_type", "situation", "need_relation"}:
+        if set(proposal) != {
+            "insight_type",
+            "situation",
+            "need_relation",
+            "insight_key",
+        }:
             raise LearningApplicationError(
                 "learning_review_new_insight_proposal_invalid"
             )
@@ -260,6 +265,15 @@ async def _target_snapshot(
             "contradicts",
             "context",
         }:
+            raise LearningApplicationError(
+                "learning_review_new_insight_proposal_invalid"
+            )
+        insight_key = proposal.get("insight_key")
+        if (
+            not isinstance(insight_key, str)
+            or len(insight_key) != 64
+            or any(ch not in "0123456789abcdef" for ch in insight_key)
+        ):
             raise LearningApplicationError(
                 "learning_review_new_insight_proposal_invalid"
             )
@@ -735,11 +749,17 @@ async def _apply_new_insight(
     candidate = snapshot.candidate
     need = await _require_need_scope_current(session, candidate=candidate)
     proposal = candidate.proposal_json
-    if set(proposal) != {"insight_type", "situation", "need_relation"}:
+    if set(proposal) != {
+        "insight_type",
+        "situation",
+        "need_relation",
+        "insight_key",
+    }:
         raise LearningApplicationError("learning_apply_new_insight_proposal_invalid")
     insight_type = proposal.get("insight_type")
     situation = proposal.get("situation")
     need_relation = proposal.get("need_relation")
+    insight_key = proposal.get("insight_key")
     if not isinstance(insight_type, str):
         raise LearningApplicationError("learning_apply_new_insight_type_invalid")
     if situation is not None and not isinstance(situation, str):
@@ -749,6 +769,14 @@ async def _apply_new_insight(
     if need_relation not in {"supports", "contradicts", "context"}:
         raise LearningApplicationError(
             "learning_apply_new_insight_need_relation_invalid"
+        )
+    if (
+        not isinstance(insight_key, str)
+        or len(insight_key) != 64
+        or any(ch not in "0123456789abcdef" for ch in insight_key)
+    ):
+        raise LearningApplicationError(
+            "learning_apply_new_insight_key_invalid"
         )
     frozen_audience = _optional_uuid_from_scope(
         candidate.scope_json.get("audience_hypothesis_id"),
@@ -764,6 +792,8 @@ async def _apply_new_insight(
             situation=situation,
             alternative_explanations=candidate.alternative_explanations_json,
             missing_evidence=candidate.missing_evidence_json,
+            insight_key=insight_key,
+            version=1,
         )
     except CustomerInsightError as exc:
         raise LearningApplicationError(
