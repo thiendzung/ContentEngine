@@ -162,6 +162,11 @@ Một phiên bản cụ thể của ContentItem.
 - `change_reason`
 - `status`: `draft | approved | published | superseded`
 - `created_by_run_id`
+
+`ContentVersion` là snapshot bất biến. PM-01 không UPDATE một version `approved` thành
+`published`. Giá trị `published` được giữ để tương thích dữ liệu/fixture cũ; nguồn
+canonical cho trạng thái external publication từ PM-01 là `PublishedContent` +
+`PublishEvent`.
 - timestamps
 
 Unique recommendation: `(content_item_id, version_no)`.
@@ -737,6 +742,11 @@ approved ContentVersion được WordPress xác nhận live, PM-01 tạo một C
 - timestamps
 
 Unique recommendation: `(project_id, content_item_id, target)`.
+
+`current_content_version_id` trỏ thẳng tới đúng immutable ContentVersion đã được
+Founder duyệt và gửi ra target; không tạo thêm một ContentVersion chỉ để đổi nhãn
+`published`. Content Coverage/Review Console phải đọc publication state từ mapping
+này.
 
 ### PublishEvent
 
