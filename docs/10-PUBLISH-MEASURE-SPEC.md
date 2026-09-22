@@ -28,11 +28,10 @@ Mỗi package tối thiểu có:
 - approval reference;
 - content hypothesis ID.
 
-ContentVersion là immutable. PM-01 không UPDATE `approved → published`.
-Khi WordPress xác nhận trạng thái live, hệ thống tạo một ContentVersion mới
-`status=published` với đúng bytes + final artifact của bản đã duyệt. Publish Package
-giữ ref về approved source version; PublishedContent / PublishEvent / metrics bám published
-snapshot version. Nhờ vậy audit biết chính xác “đã duyệt bản nào” và “đã publish snapshot nào”.
+ContentVersion là immutable. PM-01 không UPDATE `approved → published` và không tạo
+một ContentVersion bản sao chỉ để biểu diễn trạng thái WordPress. Publish Package,
+PublishedContent, PublishEvent và metrics cùng trỏ về đúng version đã được duyệt.
+Trạng thái external nằm ở PublishedContent/PublishEvent.
 
 ## 3. WordPress adapter
 
@@ -142,8 +141,11 @@ Raw provider payload vẫn được giữ khi cần audit/debug.
 ## 8. Measurement identity
 
 ContentExperiment nối ContentOpportunity → NeedHypothesis version → ContentItem/Version
-→ PublishedContent → metrics/Signal observations. Chốt expected behaviour, metric definitions,
-minimum evidence và review window trước publish. Measurement status dùng
+→ PublishedContent → metrics/observations. Chốt expected behaviour, metric definitions,
+minimum evidence và review window trước publish. Khi Publish Package được tạo,
+experiment được khóa vào đúng ContentItem/ContentVersion; không rebind lịch sử sang
+version khác. PublishEvent lưu trực tiếp content_experiment_id để measurement lịch sử
+không phụ thuộc vào trạng thái hiện tại. Measurement status dùng
 `INSUFFICIENT_DATA / EARLY_SIGNAL / REPEATED_PATTERN / LEARNING_CANDIDATE_READY`.
 Metrics không tự sửa hypothesis hoặc settings.
 
