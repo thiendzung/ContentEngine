@@ -145,6 +145,8 @@ def upgrade() -> None:
             "content_case",
             "content_opportunity",
             "locale_variant",
+            "approved_angle",
+            "originality_pack",
             "source_copy",
             "evaluation_policy",
         ]
