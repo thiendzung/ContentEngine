@@ -820,6 +820,8 @@ async def _validated_assessment_payload(
     observations: dict[UUID, ContentPerformanceObservation] = {}
     observation_relations: dict[UUID, EvidenceRelation] = {}
     observed_facts: list[str] = []
+    signal_records: list[dict[str, object]] = []
+    seen_signals: set[UUID] = set()
     for record in _records(
         evidence.get("signals", []),
         "learning_candidate_assessment_signal_invalid",
@@ -836,6 +838,9 @@ async def _validated_assessment_payload(
             record.get("id"),
             "learning_candidate_assessment_signal_invalid",
         )
+        if signal_id in seen_signals:
+            raise LearningError("learning_candidate_assessment_signal_duplicate")
+        seen_signals.add(signal_id)
         relation_raw = _text(
             record.get("relation"),
             "learning_candidate_assessment_signal_invalid",
@@ -856,6 +861,7 @@ async def _validated_assessment_payload(
         ):
             raise LearningError("learning_candidate_assessment_signal_stale")
         signal_relations[signal_id] = relation
+        signal_records.append(record)
         observations[observation.id] = observation
         existing_observation_relation = observation_relations.get(observation.id)
         if (
@@ -912,12 +918,7 @@ async def _validated_assessment_payload(
         evidence.get("observed_facts", []),
         "learning_candidate_assessment_facts_invalid",
     )
-    if facts != [
-        observations_fact
-        for observations_fact in sorted(
-            observed_facts,
-        )
-    ] and facts != observed_facts:
+    if facts != observed_facts:
         raise LearningError("learning_candidate_assessment_facts_stale")
 
     alternatives = _strings(
@@ -955,13 +956,10 @@ async def _validated_assessment_payload(
     if measurement_contract != expected_measurement_contract:
         raise LearningError("learning_candidate_assessment_measurement_contract_stale")
 
-    signal_rows = [
-        _signal_payload(
-            await session.get(Signal, signal_id),  # type: ignore[arg-type]
-            signal_relations[signal_id],
-        )
-        for signal_id in sorted(signal_relations, key=str)
-    ]
+    signal_rows = sorted(
+        signal_records,
+        key=lambda record: str(record["id"]),
+    )
     observation_rows = [
         {
             "id": str(observation_id),
