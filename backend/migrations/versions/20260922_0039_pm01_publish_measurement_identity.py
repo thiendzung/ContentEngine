@@ -329,6 +329,30 @@ def upgrade() -> None:
                    AND NEW.published_content_id IS DISTINCT FROM OLD.published_content_id THEN
                     RAISE EXCEPTION 'pm01_content_experiment_binding_is_immutable';
                 END IF;
+                IF OLD.content_version_id IS NOT NULL
+                   AND (
+                       NEW.project_id IS DISTINCT FROM OLD.project_id
+                       OR NEW.content_opportunity_id
+                          IS DISTINCT FROM OLD.content_opportunity_id
+                       OR NEW.need_hypothesis_id
+                          IS DISTINCT FROM OLD.need_hypothesis_id
+                       OR NEW.hypothesis_version
+                          IS DISTINCT FROM OLD.hypothesis_version
+                       OR NEW.expected_behaviour
+                          IS DISTINCT FROM OLD.expected_behaviour
+                       OR NEW.measurement_plan_json
+                          IS DISTINCT FROM OLD.measurement_plan_json
+                       OR NEW.metric_definitions_json
+                          IS DISTINCT FROM OLD.metric_definitions_json
+                       OR NEW.minimum_evidence_json
+                          IS DISTINCT FROM OLD.minimum_evidence_json
+                       OR NEW.review_window_start
+                          IS DISTINCT FROM OLD.review_window_start
+                       OR NEW.review_window_end
+                          IS DISTINCT FROM OLD.review_window_end
+                   ) THEN
+                    RAISE EXCEPTION 'pm01_content_experiment_contract_is_immutable';
+                END IF;
                 RETURN NEW;
             END;
             $pm01$ LANGUAGE plpgsql
