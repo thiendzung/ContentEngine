@@ -17,10 +17,9 @@ depends_on: str | Sequence[str] | None = None
 
 def _create_learning_guards() -> None:
     op.execute(
-        sa.text(
-            """
+        """
             CREATE FUNCTION protect_learning_assessment_artifact()
-            RETURNS trigger AS $
+            RETURNS trigger AS $ll01b$
             DECLARE
                 run_project uuid;
             BEGIN
@@ -57,26 +56,22 @@ def _create_learning_guards() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $ LANGUAGE plpgsql
-            """
-        )
+            $ll01b$ LANGUAGE plpgsql
+        """
     )
     op.execute(
-        sa.text(
-            """
+        """
             CREATE TRIGGER learning_assessment_artifact_guard
             BEFORE INSERT OR UPDATE OR DELETE ON artifacts
             FOR EACH ROW
             EXECUTE FUNCTION protect_learning_assessment_artifact()
-            """
-        )
+        """
     )
 
     op.execute(
-        sa.text(
-            """
+        """
             CREATE FUNCTION validate_learning_candidate()
-            RETURNS trigger AS $$
+            RETURNS trigger AS $ll01b$
             DECLARE
                 target_project uuid;
                 assessment_type text;
@@ -224,26 +219,22 @@ def _create_learning_guards() -> None:
 
                 RETURN NEW;
             END;
-            $$ LANGUAGE plpgsql
-            """
-        )
+            $ll01b$ LANGUAGE plpgsql
+        """
     )
     op.execute(
-        sa.text(
-            """
+        """
             CREATE TRIGGER learning_candidates_guard
             BEFORE INSERT OR UPDATE OR DELETE ON learning_candidates
             FOR EACH ROW
             EXECUTE FUNCTION validate_learning_candidate()
-            """
-        )
+        """
     )
 
     op.execute(
-        sa.text(
-            """
+        """
             CREATE FUNCTION supersede_prior_learning_candidate()
-            RETURNS trigger AS $
+            RETURNS trigger AS $ll01b$
             BEGIN
                 IF NEW.supersedes_id IS NOT NULL THEN
                     UPDATE learning_candidates
@@ -259,26 +250,22 @@ def _create_learning_guards() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $ LANGUAGE plpgsql
-            """
-        )
+            $ll01b$ LANGUAGE plpgsql
+        """
     )
     op.execute(
-        sa.text(
-            """
+        """
             CREATE TRIGGER learning_candidate_auto_supersede
             AFTER INSERT ON learning_candidates
             FOR EACH ROW
             EXECUTE FUNCTION supersede_prior_learning_candidate()
-            """
-        )
+        """
     )
 
     op.execute(
-        sa.text(
-            """
+        """
             CREATE FUNCTION validate_learning_candidate_assessment()
-            RETURNS trigger AS $$
+            RETURNS trigger AS $ll01b$
             DECLARE
                 candidate_project uuid;
                 assessment_type text;
@@ -309,26 +296,22 @@ def _create_learning_guards() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $$ LANGUAGE plpgsql
-            """
-        )
+            $ll01b$ LANGUAGE plpgsql
+        """
     )
     op.execute(
-        sa.text(
-            """
+        """
             CREATE TRIGGER learning_candidate_assessments_guard
             BEFORE INSERT OR UPDATE OR DELETE ON learning_candidate_assessments
             FOR EACH ROW
             EXECUTE FUNCTION validate_learning_candidate_assessment()
-            """
-        )
+        """
     )
 
     op.execute(
-        sa.text(
-            """
+        """
             CREATE FUNCTION validate_learning_candidate_signal()
-            RETURNS trigger AS $$
+            RETURNS trigger AS $ll01b$
             DECLARE
                 candidate_project uuid;
                 signal_project uuid;
@@ -359,26 +342,22 @@ def _create_learning_guards() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $$ LANGUAGE plpgsql
-            """
-        )
+            $ll01b$ LANGUAGE plpgsql
+        """
     )
     op.execute(
-        sa.text(
-            """
+        """
             CREATE TRIGGER learning_candidate_signals_guard
             BEFORE INSERT OR UPDATE OR DELETE ON learning_candidate_signals
             FOR EACH ROW
             EXECUTE FUNCTION validate_learning_candidate_signal()
-            """
-        )
+        """
     )
 
     op.execute(
-        sa.text(
-            """
+        """
             CREATE FUNCTION validate_learning_candidate_observation()
-            RETURNS trigger AS $$
+            RETURNS trigger AS $ll01b$
             DECLARE
                 candidate_project uuid;
                 observation_project uuid;
@@ -412,19 +391,16 @@ def _create_learning_guards() -> None:
                 END IF;
                 RETURN NEW;
             END;
-            $$ LANGUAGE plpgsql
-            """
-        )
+            $ll01b$ LANGUAGE plpgsql
+        """
     )
     op.execute(
-        sa.text(
-            """
+        """
             CREATE TRIGGER learning_candidate_observations_guard
             BEFORE INSERT OR UPDATE OR DELETE ON learning_candidate_observations
             FOR EACH ROW
             EXECUTE FUNCTION validate_learning_candidate_observation()
-            """
-        )
+        """
     )
 
 
