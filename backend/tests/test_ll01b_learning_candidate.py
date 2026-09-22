@@ -18,6 +18,7 @@ from test_pm01_publish_measurement import (
 )
 
 from app.modules.content_engine.models import NeedHypothesis, Project, Signal
+from app.modules.customer_intelligence.insights import derive_insight_key
 from app.modules.customer_intelligence.models import CustomerInsight
 from app.modules.harness.models import Artifact
 from app.modules.learning.models import (
@@ -724,6 +725,12 @@ async def test_ll01b_new_customer_insight_is_explicit_proposal_only(
             "insight_type": "question",
             "situation": "before deciding whether to buy an artwork",
             "need_relation": "supports",
+            "insight_key": derive_insight_key(
+                insight_type="question",
+                statement="Readers may need a clearer provenance verification path.",
+                audience_hypothesis_id=fixture.need.audience_hypothesis_id,
+                situation="before deciding whether to buy an artwork",
+            ),
         }
         assert int(
             await session.scalar(select(func.count()).select_from(CustomerInsight)) or 0
