@@ -375,6 +375,7 @@ async def test_ll01a_uses_frozen_publish_package_customer_identity_after_map_cha
             )
         )
         fixture.need.version = frozen_need_version + 1
+        fixture.variant.locale = "vi-VN"
         await session.flush()
 
         observation, _snapshot = await _record_search_observation(
@@ -391,6 +392,7 @@ async def test_ll01a_uses_frozen_publish_package_customer_identity_after_map_cha
         assert customer["need_hypothesis_version"] == frozen_need_version
         assert customer["journey_stages"] == ["trust"]
         assert customer["identity_source"] == "publish_package"
+        assert result.signal.locale == "en"
 
 
 @pytest.mark.asyncio
