@@ -1226,3 +1226,106 @@ async def test_pm01_stale_experiment_snapshot_blocks_before_outbox_processing(
         await session.refresh(dispatch.intent)
         assert dispatch.intent.status == "pending"
 
+
+@pytest.mark.asyncio
+async def test_pm01_analytics_conversion_and_insufficient_data_observations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, _dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=package.run.id,
+            package_artifact_id=package.artifact.id,
+            worker_id="pm01-measurement-worker",
+        )
+        gateway = FakeWordPress()
+        prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-measurement-worker",
+        )
+        result = await execute_wordpress_call(
+            gateway=gateway,
+            request=prepared.request,
+        )
+        mapping, _event = await record_wordpress_execution_result(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-measurement-worker",
+            result=result,
+        )
+        assert mapping is not None
+
+        now = datetime.now(UTC)
+        start = now - timedelta(days=1)
+
+        analytics = await ingest_performance_snapshot(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            provider="analytics",
+            window_start=start,
+            window_end=now,
+            raw_metrics={"page": mapping.canonical_url},
+            metrics=[
+                MetricInput(metric_date=now, metric_name="sessions", metric_value=12),
+                MetricInput(
+                    metric_date=now,
+                    metric_name="engaged_sessions",
+                    metric_value=8,
+                ),
+                MetricInput(
+                    metric_date=now,
+                    metric_name="artwork_transition",
+                    metric_value=3,
+                ),
+            ],
+        )
+        assert {row.metric_name for row in analytics.metrics} == {
+            "sessions",
+            "engaged_sessions",
+            "artwork_transition",
+        }
+
+        conversion = await ingest_performance_snapshot(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            provider="motgu_conversion",
+            window_start=start,
+            window_end=now,
+            raw_metrics={"source": "motgu_internal_aggregate"},
+            metrics=[
+                MetricInput(
+                    metric_date=now,
+                    metric_name="inquiry",
+                    metric_value=1,
+                )
+            ],
+        )
+        assert len(conversion.metrics) == 1
+        assert conversion.metrics[0].metric_name == "inquiry"
+
+        insufficient = await record_performance_observation(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            observation_type="conversion_evidence",
+            statement=(
+                "The current observation window is too small to support "
+                "a content-performance conclusion."
+            ),
+            data_status="INSUFFICIENT_DATA",
+            observed_at=now,
+            metric_refs=[conversion.metrics[0].id],
+        )
+        assert insufficient.data_status == "INSUFFICIENT_DATA"
+
