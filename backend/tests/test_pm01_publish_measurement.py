@@ -14,8 +14,14 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
-from app.modules.content_engine.content_coverage import build_content_coverage
-from app.modules.content_engine.journal.review_console import get_review_case
+from app.modules.content_engine.content_coverage import (
+    ContentCoverageError,
+    build_content_coverage,
+)
+from app.modules.content_engine.journal.review_console import (
+    ReviewConsoleError,
+    get_review_case,
+)
 from app.modules.content_engine.models import (
     AudienceHypothesis,
     ContentCase,
@@ -1328,4 +1334,65 @@ async def test_pm01_analytics_conversion_and_insufficient_data_observations(
             metric_refs=[conversion.metrics[0].id],
         )
         assert insufficient.data_status == "INSUFFICIENT_DATA"
+
+
+@pytest.mark.asyncio
+async def test_pm01_read_models_fail_closed_on_publication_mapping_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, _dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=package.run.id,
+            package_artifact_id=package.artifact.id,
+            worker_id="pm01-read-drift-worker",
+        )
+        gateway = FakeWordPress()
+        prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-read-drift-worker",
+        )
+        result = await execute_wordpress_call(
+            gateway=gateway,
+            request=prepared.request,
+        )
+        mapping, _event = await record_wordpress_execution_result(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-read-drift-worker",
+            result=result,
+        )
+        assert mapping is not None
+
+        mapping.canonical_url = "https://motgu.com/journal/tampered-without-event"
+        await session.flush()
+
+        with pytest.raises(
+            ContentCoverageError,
+            match="content_coverage_publication_event_mismatch",
+        ):
+            await build_content_coverage(
+                session,
+                project_id=fixture.project.id,
+                need_id=fixture.need.id,
+                locale="en",
+            )
+
+        with pytest.raises(
+            ReviewConsoleError,
+            match="journal_review_publication_event_mismatch",
+        ):
+            await get_review_case(
+                session,
+                content_case_id=fixture.content_case.id,
+            )
 
