@@ -1067,11 +1067,12 @@ async def _validate_candidate_target(
         if insight is None or insight.project_id != project_id:
             raise LearningError("learning_candidate_insight_target_mismatch")
         frozen_audience = scope.get("audience_hypothesis_id")
-        if (
-            insight.audience_hypothesis_id is not None
-            and frozen_audience is not None
-            and str(insight.audience_hypothesis_id) != frozen_audience
-        ):
+        insight_audience = (
+            str(insight.audience_hypothesis_id)
+            if insight.audience_hypothesis_id is not None
+            else None
+        )
+        if insight_audience != frozen_audience:
             raise LearningError("learning_candidate_insight_scope_mismatch")
     elif target_type == "new_customer_insight":
         if target_id is not None or relation != "proposes":
@@ -1242,11 +1243,10 @@ async def _candidate_evidence_status(
     }
     if len(directional_results) > 1:
         return "CONTESTED"
-    if (
-        assessment_statuses
-        and all(status == "CANDIDATE_READY" for status in assessment_statuses)
-    ):
-        return "READY_FOR_REVIEW"
+    # PM-01 observation maturity is an interpretation, not a deterministic
+    # readiness authority. Until minimum-evidence rules are typed and calibrated,
+    # LL-01B may auto-promote only to REPEATED_PATTERN.
+    del assessment_statuses
     return "REPEATED_PATTERN"
 
 
