@@ -335,7 +335,7 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Preserve explicit INSUFFICIENT_DATA / EARLY_SIGNAL / REPEATED_PATTERN / LEARNING_CANDIDATE_READY states without auto-learning.
 - [x] Add rev-0039 schema and DB identity guards.
 - [x] Add focused tests for authorization, draft→publish, ambiguous reconciliation, idempotent measurement and identity trace.
-- [ ] CI PASS on implementation head after self-review.
+- [x] CI PASS on implementation head after self-review — CI #1472 on `e09de57e0e595a66ec6770376e8feacf22ce3e37`: Ruff PASS; mypy 158 source files; 0038→0039→0038→0039 PASS; backend 971 passed, 12 warnings; frontend lint/typecheck/build PASS.
 - [ ] Exact-ref OpenCodeReview Delegation review and MG triage.
 - [ ] Agent Local bounded exact-head proof including disposable 0038↔0039 migration round-trip.
 - [ ] Founder merge.
