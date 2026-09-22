@@ -1244,7 +1244,6 @@ def _classify_candidate_evidence_status(
     *,
     support_groups: set[str],
     contradict_groups: set[str],
-    assessment_statuses: list[str],
     assessment_results: list[str],
 ) -> str:
     if support_groups and contradict_groups:
@@ -1252,17 +1251,23 @@ def _classify_candidate_evidence_status(
     directional_groups = support_groups or contradict_groups
     if not directional_groups:
         return "NEEDS_EVIDENCE"
-    # One experiment is never enough to become a repeated/global learning rule,
-    # regardless of an upstream observation maturity label.
     if len(directional_groups) == 1:
         return "EARLY_SIGNAL"
 
-    return _classify_candidate_evidence_status(
-        support_groups=support_groups,
-        contradict_groups=contradict_groups,
-        assessment_statuses=assessment_statuses,
-        assessment_results=assessment_results,
-    )
+    directional_results = {
+        result for result in assessment_results if result != "INCONCLUSIVE"
+    }
+    if len(directional_results) > 1:
+        return "CONTESTED"
+    if (
+        not directional_results
+        or any(result == "INCONCLUSIVE" for result in assessment_results)
+    ):
+        return "EARLY_SIGNAL"
+    # READY_FOR_REVIEW is intentionally not emitted in V1. Upstream maturity
+    # labels remain interpretation; typed/calibrated minimum-evidence policy is
+    # required before readiness can be machine-derived.
+    return "REPEATED_PATTERN"
 
 
 async def _candidate_evidence_status(
@@ -1282,7 +1287,6 @@ async def _candidate_evidence_status(
         elif relation == "contradicts":
             contradict_groups.add(signal.independence_group)
 
-    assessment_statuses: list[str] = []
     assessment_results: list[str] = []
     for artifact_id in sorted(assessment_ids, key=str):
         artifact = await session.get(Artifact, artifact_id)
@@ -1296,12 +1300,6 @@ async def _candidate_evidence_status(
             payload.get("assessment"),
             "learning_candidate_assessment_invalid",
         )
-        assessment_statuses.append(
-            _text(
-                assessment.get("evidence_status"),
-                "learning_candidate_assessment_status_invalid",
-            )
-        )
         assessment_results.append(
             _text(
                 assessment.get("proposed_result"),
@@ -1309,16 +1307,11 @@ async def _candidate_evidence_status(
             )
         )
 
-    directional_results = {
-        result for result in assessment_results if result != "INCONCLUSIVE"
-    }
-    if len(directional_results) > 1:
-        return "CONTESTED"
-    # PM-01 observation maturity is an interpretation, not a deterministic
-    # readiness authority. Until minimum-evidence rules are typed and calibrated,
-    # LL-01B may auto-promote only to REPEATED_PATTERN.
-    del assessment_statuses
-    return "REPEATED_PATTERN"
+    return _classify_candidate_evidence_status(
+        support_groups=support_groups,
+        contradict_groups=contradict_groups,
+        assessment_results=assessment_results,
+    )
 
 
 def _validate_candidate_relation_for_evidence(
