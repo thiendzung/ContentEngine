@@ -1361,6 +1361,12 @@ async def record_wordpress_reconciliation(
         job_id=job_id,
         worker_id=worker_id,
     )
+    if result.outcome == "confirmed_success":
+        _validated_success(result=result)
+        _require_requested_external_state(
+            package=dispatch.package,
+            result=result,
+        )
     outbox_result = ReconciliationResult(
         outcome=result.outcome,
         external_ref=(
@@ -1398,10 +1404,6 @@ async def record_wordpress_reconciliation(
             )
         return result.outcome, None, None
 
-    _require_requested_external_state(
-        package=dispatch.package,
-        result=result,
-    )
     mapping, event = await _finalize_confirmed_publish(
         session,
         dispatch=dispatch,
