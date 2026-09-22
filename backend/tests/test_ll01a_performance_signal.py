@@ -15,7 +15,7 @@ from test_pm01_publish_measurement import (
     isolated_session,
 )
 
-from app.modules.content_engine.models import ContentVersion, Signal
+from app.modules.content_engine.models import ContentItemJourneyStage, ContentVersion, Signal
 from app.modules.customer_intelligence.insights import (
     customer_insight_evidence_counts,
     ensure_customer_insight,
@@ -346,6 +346,51 @@ async def test_ll01a_historical_version_signal_remains_stable_after_current_vers
         assert replay.replayed is True
         assert replay.signal.id == result.signal.id
         assert replay.signal.fingerprint == result.signal.fingerprint
+
+
+@pytest.mark.asyncio
+async def test_ll01a_uses_frozen_publish_package_customer_identity_after_map_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping = await _publish(
+            session,
+            monkeypatch,
+            worker_id="ll01a-frozen-customer-identity",
+        )
+        frozen_need_version = fixture.need.version
+
+        trust_stage = await session.get(
+            ContentItemJourneyStage,
+            (fixture.item.id, "trust"),
+        )
+        assert trust_stage is not None
+        await session.delete(trust_stage)
+        session.add(
+            ContentItemJourneyStage(
+                content_item_id=fixture.item.id,
+                stage_key="interest",
+                linked_by="founder",
+                reason="Simulate a later Customer Map planning change.",
+            )
+        )
+        fixture.need.version = frozen_need_version + 1
+        await session.flush()
+
+        observation, _snapshot = await _record_search_observation(
+            session,
+            fixture=fixture,
+            mapping=mapping,
+            statement="Current map state must not rewrite frozen publish identity.",
+        )
+        result = await materialize_performance_signal(
+            session,
+            observation_id=observation.id,
+        )
+        customer = result.signal.provenance_json["customer"]
+        assert customer["need_hypothesis_version"] == frozen_need_version
+        assert customer["journey_stages"] == ["trust"]
+        assert customer["identity_source"] == "publish_package"
 
 
 @pytest.mark.asyncio
