@@ -190,7 +190,9 @@ class LearningApplication(TimestampMixin, Base):
     customer_map_snapshot_artifact_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("artifacts.id")
     )
-    change_report_json: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    change_report_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True)
+    )
     applied_by: Mapped[str] = mapped_column(String(200), nullable=False)
     applied_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
