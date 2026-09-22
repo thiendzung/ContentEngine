@@ -18,6 +18,332 @@ depends_on: str | Sequence[str] | None = None
 def _create_guards() -> None:
     op.execute(
         """
+        CREATE FUNCTION learning_candidate_target_snapshot(
+            p_candidate_id uuid
+        ) RETURNS jsonb AS $
+        DECLARE
+            candidate learning_candidates%ROWTYPE;
+            need need_hypotheses%ROWTYPE;
+            insight customer_insights%ROWTYPE;
+            frozen_need_id uuid;
+            frozen_need_version integer;
+            frozen_audience uuid;
+            latest_insight_version integer;
+            current_target jsonb;
+        BEGIN
+            SELECT * INTO candidate
+            FROM learning_candidates
+            WHERE id = p_candidate_id;
+
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'learning_candidate_snapshot_candidate_not_found';
+            END IF;
+
+            frozen_need_id := NULLIF(
+                candidate.scope_json->>'need_hypothesis_id',
+                ''
+            )::uuid;
+            frozen_need_version := NULLIF(
+                candidate.scope_json->>'need_hypothesis_version',
+                ''
+            )::integer;
+            frozen_audience := NULLIF(
+                candidate.scope_json->>'audience_hypothesis_id',
+                ''
+            )::uuid;
+
+            IF frozen_need_id IS NULL OR frozen_need_version IS NULL THEN
+                RAISE EXCEPTION 'learning_candidate_snapshot_scope_invalid';
+            END IF;
+
+            IF candidate.target_type = 'need_hypothesis' THEN
+                IF candidate.target_id IS DISTINCT FROM frozen_need_id THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_need_target_mismatch';
+                END IF;
+
+                SELECT * INTO need
+                FROM need_hypotheses
+                WHERE id = candidate.target_id;
+
+                IF NOT FOUND
+                   OR need.project_id IS DISTINCT FROM candidate.project_id
+                   OR need.version IS DISTINCT FROM frozen_need_version
+                   OR need.audience_hypothesis_id IS DISTINCT FROM frozen_audience THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_need_stale';
+                END IF;
+
+                current_target := jsonb_build_object(
+                    'id', need.id::text,
+                    'version', need.version,
+                    'status', need.status,
+                    'audience_hypothesis_id',
+                        CASE
+                            WHEN need.audience_hypothesis_id IS NULL THEN NULL
+                            ELSE need.audience_hypothesis_id::text
+                        END
+                );
+            ELSIF candidate.target_type = 'customer_insight' THEN
+                IF candidate.target_id IS NULL THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_insight_target_missing';
+                END IF;
+
+                SELECT * INTO insight
+                FROM customer_insights
+                WHERE id = candidate.target_id;
+
+                IF NOT FOUND
+                   OR insight.project_id IS DISTINCT FROM candidate.project_id
+                   OR insight.audience_hypothesis_id IS DISTINCT FROM frozen_audience THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_insight_stale';
+                END IF;
+
+                SELECT max(ci.version)
+                INTO latest_insight_version
+                FROM customer_insights AS ci
+                WHERE ci.project_id = insight.project_id
+                  AND ci.insight_key = insight.insight_key;
+
+                IF latest_insight_version IS DISTINCT FROM insight.version THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_insight_version_stale';
+                END IF;
+
+                current_target := jsonb_build_object(
+                    'id', insight.id::text,
+                    'insight_key', insight.insight_key,
+                    'version', insight.version,
+                    'status', insight.status,
+                    'audience_hypothesis_id',
+                        CASE
+                            WHEN insight.audience_hypothesis_id IS NULL THEN NULL
+                            ELSE insight.audience_hypothesis_id::text
+                        END
+                );
+            ELSIF candidate.target_type = 'new_customer_insight' THEN
+                IF candidate.target_id IS NOT NULL THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_new_insight_target_invalid';
+                END IF;
+
+                SELECT * INTO need
+                FROM need_hypotheses
+                WHERE id = frozen_need_id;
+
+                IF NOT FOUND
+                   OR need.project_id IS DISTINCT FROM candidate.project_id
+                   OR need.version IS DISTINCT FROM frozen_need_version
+                   OR need.audience_hypothesis_id IS DISTINCT FROM frozen_audience THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_new_insight_need_stale';
+                END IF;
+
+                current_target := jsonb_build_object(
+                    'need_hypothesis_id', need.id::text,
+                    'need_version', need.version,
+                    'need_status', need.status,
+                    'audience_hypothesis_id',
+                        CASE
+                            WHEN need.audience_hypothesis_id IS NULL THEN NULL
+                            ELSE need.audience_hypothesis_id::text
+                        END
+                );
+            ELSIF candidate.target_type = 'no_map_change' THEN
+                IF candidate.target_id IS NOT NULL THEN
+                    RAISE EXCEPTION 'learning_candidate_snapshot_no_map_target_invalid';
+                END IF;
+                current_target := 'null'::jsonb;
+            ELSE
+                RAISE EXCEPTION 'learning_candidate_snapshot_target_type_invalid';
+            END IF;
+
+            RETURN jsonb_build_object(
+                'target_type', candidate.target_type,
+                'target_id',
+                    CASE
+                        WHEN candidate.target_id IS NULL THEN NULL
+                        ELSE candidate.target_id::text
+                    END,
+                'relation', candidate.relation,
+                'proposal', candidate.proposal_json::jsonb,
+                'scope', candidate.scope_json::jsonb,
+                'evidence_status', candidate.evidence_status,
+                'current_target', current_target
+            );
+        END;
+        $ LANGUAGE plpgsql STABLE
+        """
+    )
+
+    op.execute(
+        """
+        CREATE FUNCTION learning_candidate_snapshot_hash(
+            p_candidate_id uuid
+        ) RETURNS text AS $
+        DECLARE
+            payload jsonb;
+        BEGIN
+            SELECT jsonb_build_object(
+                'candidate',
+                    jsonb_build_object(
+                        'id', lc.id::text,
+                        'project_id', lc.project_id::text,
+                        'candidate_key', lc.candidate_key,
+                        'version', lc.version,
+                        'target_type', lc.target_type,
+                        'target_id',
+                            CASE
+                                WHEN lc.target_id IS NULL THEN NULL
+                                ELSE lc.target_id::text
+                            END,
+                        'statement', lc.statement,
+                        'relation', lc.relation,
+                        'proposal', lc.proposal_json::jsonb,
+                        'scope', lc.scope_json::jsonb,
+                        'evidence_status', lc.evidence_status,
+                        'alternative_explanations',
+                            lc.alternative_explanations_json::jsonb,
+                        'missing_evidence', lc.missing_evidence_json::jsonb,
+                        'expected_benefit', lc.expected_benefit,
+                        'regression_risk', lc.regression_risk,
+                        'source_assessment_artifact_id',
+                            lc.source_assessment_artifact_id::text,
+                        'supersedes_id',
+                            CASE
+                                WHEN lc.supersedes_id IS NULL THEN NULL
+                                ELSE lc.supersedes_id::text
+                            END,
+                        'status', lc.status
+                    ),
+                'assessments',
+                    COALESCE(
+                        (
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'id', a.id::text,
+                                    'content_hash', a.content_hash
+                                )
+                                ORDER BY a.id::text
+                            )
+                            FROM learning_candidate_assessments AS lca
+                            JOIN artifacts AS a
+                              ON a.id = lca.assessment_artifact_id
+                            WHERE lca.learning_candidate_id = lc.id
+                        ),
+                        '[]'::jsonb
+                    ),
+                'signals',
+                    COALESCE(
+                        (
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'id', s.id::text,
+                                    'relation', lcs.relation,
+                                    'fingerprint', s.fingerprint,
+                                    'independence_group', s.independence_group,
+                                    'duplicate_of_id',
+                                        CASE
+                                            WHEN s.duplicate_of_id IS NULL THEN NULL
+                                            ELSE s.duplicate_of_id::text
+                                        END
+                                )
+                                ORDER BY s.id::text, lcs.relation
+                            )
+                            FROM learning_candidate_signals AS lcs
+                            JOIN signals AS s
+                              ON s.id = lcs.signal_id
+                            WHERE lcs.learning_candidate_id = lc.id
+                        ),
+                        '[]'::jsonb
+                    ),
+                'observations',
+                    COALESCE(
+                        (
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'id', lco.observation_id::text,
+                                    'relation', lco.relation
+                                )
+                                ORDER BY lco.observation_id::text, lco.relation
+                            )
+                            FROM learning_candidate_observations AS lco
+                            WHERE lco.learning_candidate_id = lc.id
+                        ),
+                        '[]'::jsonb
+                    ),
+                'target_snapshot',
+                    learning_candidate_target_snapshot(lc.id)
+            )
+            INTO payload
+            FROM learning_candidates AS lc
+            WHERE lc.id = p_candidate_id;
+
+            IF payload IS NULL THEN
+                RAISE EXCEPTION 'learning_candidate_snapshot_candidate_not_found';
+            END IF;
+
+            RETURN encode(
+                sha256(convert_to(payload::text, 'UTF8')),
+                'hex'
+            );
+        END;
+        $ LANGUAGE plpgsql STABLE
+        """
+    )
+
+    op.execute(
+        """
+        CREATE FUNCTION learning_candidate_applied_signal_refs(
+            p_candidate_id uuid
+        ) RETURNS jsonb AS $
+            SELECT COALESCE(
+                jsonb_agg(
+                    jsonb_build_object(
+                        'signal_id', lcs.signal_id::text,
+                        'relation', lcs.relation
+                    )
+                    ORDER BY lcs.signal_id::text, lcs.relation
+                ),
+                '[]'::jsonb
+            )
+            FROM learning_candidate_signals AS lcs
+            JOIN learning_candidates AS lc
+              ON lc.id = lcs.learning_candidate_id
+            WHERE lcs.learning_candidate_id = p_candidate_id
+              AND lc.target_type <> 'no_map_change'
+              AND (
+                    lc.target_type <> 'need_hypothesis'
+                    OR lcs.relation IN ('supports','contradicts')
+              )
+        $ LANGUAGE sql STABLE
+        """
+    )
+
+    op.execute(
+        """
+        CREATE FUNCTION serialize_customer_insight_project()
+        RETURNS trigger AS $
+        BEGIN
+            PERFORM 1
+            FROM projects
+            WHERE id = NEW.project_id
+            FOR UPDATE;
+
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'customer_insight_project_not_found';
+            END IF;
+            RETURN NEW;
+        END;
+        $ LANGUAGE plpgsql
+        """
+    )
+    op.execute(
+        """
+        CREATE TRIGGER ll01c_customer_insight_project_lock
+        BEFORE INSERT ON customer_insights
+        FOR EACH ROW
+        EXECUTE FUNCTION serialize_customer_insight_project()
+        """
+    )
+
+    op.execute(
+        """
         CREATE FUNCTION validate_learning_candidate_review()
         RETURNS trigger AS $$
         DECLARE
