@@ -277,11 +277,9 @@ async def _approved_lineage(
     approval = approvals[0]
     checkpoint = await get_latest_checkpoint(session, run_id=source_run.id)
     checkpoint_payload = checkpoint.content_json if checkpoint is not None else None
-    approval_ids = (
-        checkpoint_payload.get("approval_ids")
-        if isinstance(checkpoint_payload, dict)
-        else None
-    )
+    if not isinstance(checkpoint_payload, dict):
+        raise PublishError("publish_final_approval_history_invalid")
+    approval_ids = checkpoint_payload.get("approval_ids")
     if (
         source_run.status != "completed"
         or not isinstance(approval_ids, list)
@@ -348,8 +346,7 @@ async def _quality_refs(
     lanes = [
         lane
         for lane in progress.lanes
-        if lane.writer.locale_variant is not None
-        and lane.writer.locale_variant.id == locale_variant_id
+        if lane.variant.id == locale_variant_id
     ]
     if len(lanes) != 1:
         raise PublishError("publish_quality_lane_ambiguous")
@@ -866,11 +863,9 @@ async def prepare_wordpress_dispatch(
     approval = approvals[0]
     checkpoint = await get_latest_checkpoint(session, run_id=run.id)
     checkpoint_payload = checkpoint.content_json if checkpoint is not None else None
-    approval_ids = (
-        checkpoint_payload.get("approval_ids")
-        if isinstance(checkpoint_payload, dict)
-        else None
-    )
+    if not isinstance(checkpoint_payload, dict):
+        raise PublishError("publish_authorization_history_invalid")
+    approval_ids = checkpoint_payload.get("approval_ids")
     if (
         not isinstance(approval_ids, list)
         or str(approval.id) not in approval_ids
