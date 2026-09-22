@@ -39,8 +39,14 @@ _FORMULAIC_PATTERNS: dict[str, tuple[tuple[str, re.Pattern[str]], ...]] = {
     ),
     "en": (
         ("formula_not_only_but_also", re.compile(r"\bnot only\b.{0,120}\bbut also\b", re.I | re.S)),
-        ("formula_in_conclusion", re.compile(r"\b(in conclusion|overall|it is clear that)\b", re.I)),
-        ("formula_importantly", re.compile(r"\b(importantly|it is important to note that)\b", re.I)),
+        (
+            "formula_in_conclusion",
+            re.compile(r"\b(in conclusion|overall|it is clear that)\b", re.I),
+        ),
+        (
+            "formula_importantly",
+            re.compile(r"\b(importantly|it is important to note that)\b", re.I),
+        ),
         ("formula_journey", re.compile(r"\bjourney\b.{0,80}\bdiscover", re.I | re.S)),
     ),
 }
