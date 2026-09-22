@@ -463,6 +463,8 @@ def _create_guards() -> None:
             expected_signal_refs jsonb;
             candidate_statement text;
             candidate_proposal jsonb;
+            candidate_alternatives jsonb;
+            candidate_missing jsonb;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_application_update_forbidden';
@@ -473,10 +475,13 @@ def _create_guards() -> None:
 
             SELECT lc.project_id, lc.version, lc.status, lc.candidate_key,
                    lc.target_type, lc.target_id, lc.scope_json::jsonb,
-                   lc.statement, lc.proposal_json::jsonb
+                   lc.statement, lc.proposal_json::jsonb,
+                   lc.alternative_explanations_json::jsonb,
+                   lc.missing_evidence_json::jsonb
             INTO candidate_project, candidate_version, candidate_status,
                  v_candidate_key, candidate_target_type, candidate_target_id,
-                 candidate_scope, candidate_statement, candidate_proposal
+                 candidate_scope, candidate_statement, candidate_proposal,
+                 candidate_alternatives, candidate_missing
             FROM learning_candidates AS lc
             WHERE lc.id = NEW.learning_candidate_id;
 
@@ -611,7 +616,9 @@ def _create_guards() -> None:
                             'learning_application_before_snapshot_mismatch';
                     END IF;
                 ELSIF COALESCE(
-                    jsonb_array_length(NEW.change_report_json->'events'),
+                    jsonb_array_length(
+                        (NEW.change_report_json::jsonb)->'events'
+                    ),
                     0
                 ) <> 0 THEN
                     RAISE EXCEPTION
@@ -638,6 +645,18 @@ def _create_guards() -> None:
                         )
                     ) THEN
                         RAISE EXCEPTION 'learning_application_truth_links_missing';
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1
+                        FROM jsonb_array_elements(expected_signal_refs) AS ref
+                        JOIN need_hypothesis_signals AS nhs
+                          ON nhs.need_hypothesis_id =
+                                NEW.resulting_target_id
+                         AND nhs.signal_id = (ref->>'signal_id')::uuid
+                        WHERE nhs.relation IS DISTINCT FROM ref->>'relation'
+                    ) THEN
+                        RAISE EXCEPTION
+                            'learning_application_need_relation_conflict';
                     END IF;
                 ELSIF NEW.target_type = 'customer_insight' THEN
                     IF NEW.applied_action IS DISTINCT FROM 'link_insight_signals'
@@ -671,6 +690,9 @@ def _create_guards() -> None:
                         WHERE ci.id = NEW.resulting_target_id
                           AND ci.project_id = NEW.project_id
                           AND ci.status = 'CANDIDATE'
+                          AND ci.insight_key IS NOT DISTINCT FROM
+                                candidate_proposal->>'insight_key'
+                          AND ci.version = 1
                           AND ci.statement = candidate_statement
                           AND ci.insight_type =
                                 candidate_proposal->>'insight_type'
@@ -681,6 +703,17 @@ def _create_guards() -> None:
                                     candidate_scope->>'audience_hypothesis_id',
                                     ''
                                 )::uuid
+                          AND ci.alternative_explanations_json::jsonb
+                                IS NOT DISTINCT FROM candidate_alternatives
+                          AND ci.missing_evidence_json::jsonb
+                                IS NOT DISTINCT FROM candidate_missing
+                          AND NOT EXISTS (
+                              SELECT 1
+                              FROM customer_insights AS newer_ci
+                              WHERE newer_ci.project_id = ci.project_id
+                                AND newer_ci.insight_key = ci.insight_key
+                                AND newer_ci.version > ci.version
+                          )
                     ) THEN
                         RAISE EXCEPTION 'learning_application_result_target_mismatch';
                     END IF;
