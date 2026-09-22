@@ -627,12 +627,6 @@ async def prepare_publish_package(
         content_version_id=content_version_id,
         experiment_id=experiment_id,
     )
-    if experiment.content_item_id is None:
-        experiment.content_item_id = item.id
-    if experiment.content_version_id is None:
-        experiment.content_version_id = version.id
-    await session.flush()
-
     quality = await _quality_refs(
         session,
         content_case_id=case.id,
@@ -669,6 +663,12 @@ async def prepare_publish_package(
         slug=normalized_slug,
     )
     package_hash = _hash(package_payload)
+
+    if experiment.content_item_id is None:
+        experiment.content_item_id = item.id
+    if experiment.content_version_id is None:
+        experiment.content_version_id = version.id
+    await session.flush()
 
     existing_packages = list(
         (
