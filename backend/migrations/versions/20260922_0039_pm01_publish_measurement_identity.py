@@ -368,10 +368,32 @@ def upgrade() -> None:
         sa.text(
             """
             CREATE TRIGGER publish_event_scope_guard
-            BEFORE INSERT OR UPDATE OF published_content_id, content_version_id
+            BEFORE INSERT
             ON publish_events
             FOR EACH ROW
             EXECUTE FUNCTION validate_publish_event_scope()
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE FUNCTION prevent_publish_event_mutation()
+            RETURNS trigger AS $
+            BEGIN
+                RAISE EXCEPTION 'pm01_publish_event_is_immutable';
+            END;
+            $ LANGUAGE plpgsql
+            """
+        )
+    )
+    op.execute(
+        sa.text(
+            """
+            CREATE TRIGGER publish_events_immutable
+            BEFORE UPDATE OR DELETE ON publish_events
+            FOR EACH ROW
+            EXECUTE FUNCTION prevent_publish_event_mutation()
             """
         )
     )
@@ -432,6 +454,12 @@ def downgrade() -> None:
             )
         )
     op.execute(sa.text("DROP FUNCTION IF EXISTS validate_performance_identity()"))
+    op.execute(
+        sa.text(
+            "DROP TRIGGER IF EXISTS publish_events_immutable ON publish_events"
+        )
+    )
+    op.execute(sa.text("DROP FUNCTION IF EXISTS prevent_publish_event_mutation()"))
     op.execute(
         sa.text(
             "DROP TRIGGER IF EXISTS publish_event_scope_guard ON publish_events"
