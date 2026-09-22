@@ -7,7 +7,7 @@ Tracking: #185
 ## Goal
 
 Add a small reusable Human Voice layer that can make Journal prose less formulaic and
-more grounded in real artist/studio/artwork detail without inventing facts.
+more grounded in real artist/studio/artwork detail while constraining factual drift.
 
 This slice is deliberately parked outside the active Journal pipeline. It is safe to
 develop in parallel and integrate later after the current main-line work closes.
@@ -23,8 +23,9 @@ defeat AI detectors. Its job is narrower:
 1. identify deterministic formulaic style markers;
 2. give a rewrite model only approved source/evidence boundaries;
 3. require exact claim/evidence references in output;
-4. reject new factual claims, numbers or quoted speech;
-5. return style findings before/after for later quality review.
+4. reject declared new claims, new numeric facts and unsupported quoted speech;
+5. require a semantic factual re-audit on the rewritten bytes;
+6. return style findings before/after for later quality review.
 
 ## Architecture
 
@@ -46,7 +47,7 @@ HumanVoiceModelPort
   bounded structured rewrite only
         |
         v
-deterministic No-New-Fact guard
+deterministic rewrite-contract guard
   - segment identity/order
   - claim boundary
   - evidence boundary
@@ -64,8 +65,10 @@ HumanVoiceRewriteResult
 Founder final review
 ```
 
-The future re-audit after rewriting is intentional. A style rewrite must never inherit
-the factual safety verdict of different bytes.
+The semantic re-audit after rewriting is mandatory at integration time. The deterministic
+HV-01 guard cannot prove that arbitrary prose contains no new semantic fact; it only
+checks explicit contract boundaries plus new numeric facts and unsupported direct quotes.
+A style rewrite must never inherit the factual safety verdict of different bytes.
 
 ## Work checklist
 
@@ -90,12 +93,16 @@ the factual safety verdict of different bytes.
 - [x] Explicit claim refs and evidence refs in output.
 - [x] Explicit `new_factual_claims` field.
 
-### HV-01D — No-New-Fact guard
+### HV-01D — Rewrite-contract guard
 - [x] Unknown claim ref fails closed.
 - [x] Unknown/out-of-scope evidence ref fails closed.
 - [x] Non-empty `new_factual_claims` fails closed.
 - [x] Newly introduced numeric token fails unless present in source/cited evidence.
-- [x] Newly introduced quoted speech fails unless present in source/cited evidence.
+- [x] Newly introduced quoted speech fails unless present in source or cited `artist_quote` evidence.
+- [x] Non-quote evidence cannot be promoted into direct speech.
+- [x] Duplicate output claim/evidence refs fail closed.
+- [x] Unsupported locale fails closed.
+- [x] Rewrite result explicitly requires semantic re-audit.
 
 ### HV-01E — Bounded execution
 - [x] 1–3 validation attempts.
@@ -149,7 +156,7 @@ Writer
 -> Review/Revise
 -> Assertion Audit + Truth Boundary
 -> Human Voice rewrite
--> No-New-Fact validation
+-> Rewrite-contract validation
 -> Assertion Audit + Truth Boundary again on exact rewritten bytes
 -> Source-copy / Reader Value / SEO-AI readiness as applicable
 -> Founder final review
