@@ -410,6 +410,7 @@ async def build_customer_map_snapshot(
     need_signal_map: dict[UUID, dict[str, list[str]]] = {}
     need_evidence_totals: dict[UUID, dict[str, int]] = {}
     need_independence: dict[UUID, dict[str, set[str]]] = {}
+    need_independence_keys: dict[UUID, dict[str, dict[str, str]]] = {}
     independence_cache: dict[UUID, str] = {}
     need_project_by_id = {need.id: need.project_id for need in needs}
     for need_signal_link, signal in need_signal_rows:
@@ -444,6 +445,11 @@ async def build_customer_map_snapshot(
         except CustomerInsightError as exc:
             raise CustomerMapError(exc.code) from exc
         independent[relation].add(independent_key)
+        independence_keys = need_independence_keys.setdefault(
+            need_signal_link.need_hypothesis_id,
+            {"supports": {}, "contradicts": {}},
+        )
+        independence_keys[relation][str(signal.id)] = independent_key
 
     insight_payloads: list[dict[str, object]] = []
     for insight in insights:
@@ -515,6 +521,10 @@ async def build_customer_map_snapshot(
             need.id,
             {"supports": set(), "contradicts": set()},
         )
+        independence_keys = need_independence_keys.get(
+            need.id,
+            {"supports": {}, "contradicts": {}},
+        )
         need_payloads.append(
             {
                 "id": str(need.id),
@@ -546,6 +556,14 @@ async def build_customer_map_snapshot(
                     "independent_supports": len(independent["supports"]),
                     "independent_contradicts": len(
                         independent["contradicts"]
+                    ),
+                },
+                "independence_keys": {
+                    "supports": dict(
+                        sorted(independence_keys["supports"].items())
+                    ),
+                    "contradicts": dict(
+                        sorted(independence_keys["contradicts"].items())
                     ),
                 },
                 "insight_links": sorted(
@@ -1116,23 +1134,35 @@ def _need_evidence_events(
 ) -> list[dict[str, object]]:
     previous_refs = _dict_field(previous, "signal_refs")
     current_refs = _dict_field(current, "signal_refs")
-    previous_counts = _dict_field(previous, "evidence_counts")
-    current_counts = _dict_field(current, "evidence_counts")
+    current_independence = _dict_field(current, "independence_keys")
     events: list[dict[str, object]] = []
-    for relation, kind, count_key in (
-        ("supports", "SUPPORT", "independent_supports"),
-        ("contradicts", "CONTRADICT", "independent_contradicts"),
+    for relation, kind in (
+        ("supports", "SUPPORT"),
+        ("contradicts", "CONTRADICT"),
     ):
         before = set(_string_list_field(previous_refs, relation))
         after = set(_string_list_field(current_refs, relation))
         added = sorted(after - before)
         if not added:
             continue
-        before_independent = _int_field(previous_counts, count_key)
-        after_independent = _int_field(current_counts, count_key)
+        relation_keys = _dict_field(current_independence, relation)
+        before_independent_keys = {
+            _string_field(relation_keys, signal_id)
+            for signal_id in before
+            if signal_id in relation_keys
+        }
+        after_independent_keys = {
+            _string_field(relation_keys, signal_id)
+            for signal_id in after
+            if signal_id in relation_keys
+        }
+        if len(after_independent_keys) != len(after):
+            raise CustomerMapError("customer_map_need_independence_invalid")
+        if len(before_independent_keys) != len(before):
+            raise CustomerMapError("customer_map_need_independence_invalid")
         event_kind: JourneyChangeKind
         detail: str
-        if after_independent > before_independent:
+        if len(after_independent_keys) > len(before_independent_keys):
             event_kind = kind  # type: ignore[assignment]
             detail = f"{relation}_evidence_added"
         else:
