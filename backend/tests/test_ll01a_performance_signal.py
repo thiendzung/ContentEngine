@@ -39,6 +39,7 @@ from app.modules.publishing.service import (
     record_wordpress_execution_result,
 )
 
+
 async def _publish(
     session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
