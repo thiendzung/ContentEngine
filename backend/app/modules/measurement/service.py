@@ -434,13 +434,28 @@ async def get_measurement_identity(
         "content_case_id": str(case.id),
         "locale_variant_id": str(variant.id),
         "content_item_id": str(item.id),
-        "content_version_id": str(version.id),
         "content_opportunity_id": str(opportunity.id),
         "need_hypothesis_id": str(need.id),
     }
     for key, value in expected.items():
         if package_identity.get(key) != value:
             raise MeasurementError("measurement_package_identity_mismatch", key)
+
+    raw_source_version_id = package_identity.get("content_version_id")
+    if not isinstance(raw_source_version_id, str):
+        raise MeasurementError("measurement_source_version_identity_missing")
+    try:
+        source_version_id = UUID(raw_source_version_id)
+    except ValueError as exc:
+        raise MeasurementError("measurement_source_version_identity_invalid") from exc
+    source_version = await session.get(ContentVersion, source_version_id)
+    if (
+        source_version is None
+        or source_version.content_item_id != item.id
+        or source_version.final_artifact_id != version.final_artifact_id
+        or source_version.content_json != version.content_json
+    ):
+        raise MeasurementError("measurement_source_version_identity_mismatch")
 
     raw_experiment_id = package_identity.get("content_experiment_id")
     if not isinstance(raw_experiment_id, str):
@@ -486,6 +501,8 @@ async def get_measurement_identity(
         "content": {
             "content_version_id": str(version.id),
             "content_version_no": version.version_no,
+            "source_content_version_id": str(source_version.id),
+            "source_content_version_no": source_version.version_no,
             "content_item_id": str(item.id),
             "content_case_id": str(case.id),
             "locale_variant_id": str(variant.id),
