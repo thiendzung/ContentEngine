@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -13,6 +14,7 @@ from test_pm01_publish_measurement import isolated_session
 
 from app.modules.content_engine.models import NeedHypothesis, Project, Signal
 from app.modules.customer_intelligence.models import CustomerInsight
+from app.modules.harness.models import Artifact
 from app.modules.learning.models import (
     LearningCandidate,
     LearningCandidateAssessment,
@@ -30,6 +32,17 @@ from app.modules.measurement.service import (
     ingest_performance_snapshot,
     record_performance_observation,
 )
+
+
+def _hash(value: object) -> str:
+    encoded = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 async def _search_signal(session, monkeypatch):
@@ -455,6 +468,82 @@ async def test_ll01b_tampered_factual_signal_fails_closed(
                 signal_relations={signal.id: "supports"},
                 alternative_explanations=["Distribution can affect the metric."],
                 missing_evidence=["Need another experiment."],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_candidate_relation_must_match_directional_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another experiment."],
+        )
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_relation_evidence_mismatch",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=assessment.artifact.id,
+                target_type="need_hypothesis",
+                target_id=fixture.need.id,
+                statement="Directional evidence must bind the candidate relation.",
+                relation="context",
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01b_forged_assessment_observation_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _observation, signal = await _search_signal(
+            session,
+            monkeypatch,
+        )
+        assessment = await create_learning_assessment(
+            session,
+            experiment_id=fixture.experiment.id,
+            proposed_result="SUPPORTS",
+            signal_relations={signal.id: "supports"},
+            alternative_explanations=["Distribution can affect the metric."],
+            missing_evidence=["Need another experiment."],
+        )
+        forged_payload = json.loads(json.dumps(assessment.artifact.content_json))
+        forged_payload["evidence"]["observations"][0]["id"] = str(uuid4())
+        forged = Artifact(
+            run_id=assessment.artifact.run_id,
+            step_run_id=None,
+            artifact_type="learning_assessment",
+            locale=assessment.artifact.locale,
+            version=assessment.artifact.version + 1,
+            content_json=forged_payload,
+            content_hash=_hash(forged_payload),
+        )
+        session.add(forged)
+        await session.flush()
+
+        with pytest.raises(
+            LearningError,
+            match="learning_candidate_assessment_observation_set_mismatch",
+        ):
+            await create_learning_candidate(
+                session,
+                assessment_artifact_id=forged.id,
+                target_type="need_hypothesis",
+                target_id=fixture.need.id,
+                statement="Forged observation lineage must never become learning.",
+                relation="supports",
             )
 
 
