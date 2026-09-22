@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 from uuid import UUID
@@ -288,7 +288,7 @@ async def ingest_performance_snapshot(
         window_end=window_end,
         payload_fingerprint=fingerprint,
         raw_metrics_json=raw_copy,
-        imported_at=imported_at or datetime.now(window_end.tzinfo),
+        imported_at=imported_at or datetime.now(UTC),
     )
     session.add(snapshot)
     await session.flush()
@@ -330,6 +330,13 @@ async def record_performance_observation(
 
     if not observation_type.strip() or not statement.strip():
         raise MeasurementError("measurement_observation_text_required")
+    if data_status not in {
+        "INSUFFICIENT_DATA",
+        "EARLY_SIGNAL",
+        "REPEATED_PATTERN",
+        "LEARNING_CANDIDATE_READY",
+    }:
+        raise MeasurementError("measurement_observation_status_invalid")
     refs = metric_refs or []
     if data_status != "INSUFFICIENT_DATA" and not refs:
         raise MeasurementError("measurement_observation_metric_refs_required")
@@ -441,19 +448,23 @@ async def get_measurement_identity(
         if package_identity.get(key) != value:
             raise MeasurementError("measurement_package_identity_mismatch", key)
 
-    experiments = list(
-        (
-            await session.scalars(
-                select(ContentExperiment).where(
-                    ContentExperiment.published_content_id == mapping.id,
-                    ContentExperiment.content_version_id == version.id,
-                )
-            )
-        ).all()
-    )
-    if len(experiments) != 1:
-        raise MeasurementError("measurement_experiment_identity_ambiguous")
-    experiment = experiments[0]
+    raw_experiment_id = package_identity.get("content_experiment_id")
+    if not isinstance(raw_experiment_id, str):
+        raise MeasurementError("measurement_experiment_identity_missing")
+    try:
+        experiment_id = UUID(raw_experiment_id)
+    except ValueError as exc:
+        raise MeasurementError("measurement_experiment_identity_invalid") from exc
+    experiment = await session.get(ContentExperiment, experiment_id)
+    if (
+        experiment is None
+        or experiment.published_content_id != mapping.id
+        or experiment.content_version_id != version.id
+        or experiment.content_item_id != item.id
+        or experiment.content_opportunity_id != opportunity.id
+        or experiment.need_hypothesis_id != need.id
+    ):
+        raise MeasurementError("measurement_experiment_identity_mismatch")
     journey = list(
         (
             await session.scalars(
