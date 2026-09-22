@@ -7,11 +7,11 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
-    JSON,
     Numeric,
     String,
     Text,
