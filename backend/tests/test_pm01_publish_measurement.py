@@ -1214,21 +1214,25 @@ async def test_pm01_stale_experiment_snapshot_blocks_before_outbox_processing(
             worker_id="pm01-stale-experiment-worker",
         )
 
+        original_plan = list(fixture.experiment.measurement_plan_json)
         fixture.experiment.measurement_plan_json = [
-            *fixture.experiment.measurement_plan_json,
+            *original_plan,
             "new plan added after package approval",
         ]
-        await session.flush()
 
-        with pytest.raises(
-            PublishError,
-            match="publish_experiment_snapshot_stale",
-        ):
-            await begin_wordpress_dispatch(
-                session,
-                job_id=claimed.id,
-                worker_id="pm01-stale-experiment-worker",
-            )
+        with session.no_autoflush:
+            with pytest.raises(
+                PublishError,
+                match="publish_experiment_snapshot_stale",
+            ):
+                await begin_wordpress_dispatch(
+                    session,
+                    job_id=claimed.id,
+                    worker_id="pm01-stale-experiment-worker",
+                )
+
+        fixture.experiment.measurement_plan_json = original_plan
+        await session.flush()
         await session.refresh(dispatch.intent)
         assert dispatch.intent.status == "pending"
 
@@ -1395,4 +1399,34 @@ async def test_pm01_read_models_fail_closed_on_publication_mapping_drift(
                 session,
                 content_case_id=fixture.content_case.id,
             )
+
+
+@pytest.mark.asyncio
+async def test_pm01_bound_experiment_measurement_contract_is_immutable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+
+        with pytest.raises(
+            DBAPIError,
+            match="pm01_content_experiment_contract_is_immutable",
+        ):
+            async with session.begin_nested():
+                await session.execute(
+                    update(ContentExperiment)
+                    .where(ContentExperiment.id == fixture.experiment.id)
+                    .values(
+                        expected_behaviour=(
+                            "Changed after binding; this must be rejected."
+                        )
+                    )
+                )
 
