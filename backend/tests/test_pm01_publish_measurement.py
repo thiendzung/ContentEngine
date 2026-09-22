@@ -1457,3 +1457,137 @@ async def test_pm01_bound_experiment_measurement_contract_is_immutable(
                         )
                     )
                 )
+
+
+@pytest.mark.asyncio
+async def test_pm01_rejected_experiment_can_be_replaced_for_same_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        first = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        rejected = await submit_publish_decision(
+            session,
+            publish_run_id=first.run.id,
+            package_artifact_id=first.artifact.id,
+            decision="rejected",
+            actor_id="founder",
+            comment="Replace the measurement contract before publication.",
+        )
+        assert rejected.run.status == "cancelled"
+
+        replacement = ContentExperiment(
+            project_id=fixture.project.id,
+            content_opportunity_id=fixture.opportunity.id,
+            need_hypothesis_id=fixture.need.id,
+            hypothesis_version=fixture.need.version,
+            expected_behaviour="Reader reaches an artwork detail after verification.",
+            measurement_plan_json=["30d artwork transition"],
+            metric_definitions_json=["artwork_transition"],
+            minimum_evidence_json=["review window reached"],
+            review_window_start=datetime.now(UTC),
+            review_window_end=datetime.now(UTC) + timedelta(days=30),
+            status="PLANNED",
+        )
+        session.add(replacement)
+        await session.flush()
+
+        second = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=replacement.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        assert second.run.status == "waiting_approval"
+        assert replacement.content_version_id == fixture.version.id
+        assert replacement.id != fixture.experiment.id
+
+
+@pytest.mark.asyncio
+async def test_pm01_externalized_version_blocks_different_experiment_before_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _fixture(session, monkeypatch)
+        first = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, _dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=first.run.id,
+            package_artifact_id=first.artifact.id,
+            worker_id="pm01-first-experiment-worker",
+        )
+        gateway = FakeWordPress()
+        prepared = await begin_wordpress_dispatch(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-first-experiment-worker",
+        )
+        result = await execute_wordpress_call(
+            gateway=gateway,
+            request=prepared.request,
+        )
+        mapping, event = await record_wordpress_execution_result(
+            session,
+            job_id=claimed.id,
+            worker_id="pm01-first-experiment-worker",
+            result=result,
+        )
+        assert mapping is not None
+        assert event is not None
+        assert event.content_experiment_id == fixture.experiment.id
+
+        replacement = ContentExperiment(
+            project_id=fixture.project.id,
+            content_opportunity_id=fixture.opportunity.id,
+            need_hypothesis_id=fixture.need.id,
+            hypothesis_version=fixture.need.version,
+            expected_behaviour="A competing measurement contract.",
+            measurement_plan_json=["30d inquiry"],
+            metric_definitions_json=["inquiry"],
+            minimum_evidence_json=["review window reached"],
+            review_window_start=datetime.now(UTC),
+            review_window_end=datetime.now(UTC) + timedelta(days=30),
+            status="PLANNED",
+        )
+        session.add(replacement)
+        await session.flush()
+        second = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=replacement.id,
+            slug="check-an-artwork",
+            action="publish",
+        )
+        _decision, dispatch, claimed = await _approve_and_claim(
+            session,
+            package_run_id=second.run.id,
+            package_artifact_id=second.artifact.id,
+            worker_id="pm01-second-experiment-worker",
+        )
+
+        with pytest.raises(
+            PublishError,
+            match="publish_version_experiment_conflict",
+        ):
+            await begin_wordpress_dispatch(
+                session,
+                job_id=claimed.id,
+                worker_id="pm01-second-experiment-worker",
+            )
+        await session.refresh(dispatch.intent)
+        assert dispatch.intent.status == "pending"
+        assert gateway.execute_count == 1
+
