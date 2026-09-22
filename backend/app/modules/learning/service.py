@@ -19,9 +19,14 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.models import ContentExperiment, NeedHypothesis, Signal
+from app.modules.content_engine.models import (
+    ContentExperiment,
+    NeedHypothesis,
+    Project,
+    Signal,
+)
 from app.modules.customer_intelligence.models import CustomerInsight
-from app.modules.harness.models import Artifact
+from app.modules.harness.models import Artifact, ContentRun
 from app.modules.learning.models import (
     LearningCandidate,
     LearningCandidateAssessment,
@@ -606,6 +611,13 @@ async def create_learning_assessment(
     """Persist an immutable, idempotent experiment-level learning proposal."""
 
     context = await _assessment_context(session, experiment_id=experiment_id)
+    locked_run = await session.scalar(
+        select(ContentRun)
+        .where(ContentRun.id == context.publish_package.run_id)
+        .with_for_update()
+    )
+    if locked_run is None or locked_run.project_id != context.project_id:
+        raise LearningError("learning_assessment_publish_run_mismatch")
     alternatives = _clean_strings(
         alternative_explanations,
         "learning_assessment_alternative_duplicate",
@@ -1412,6 +1424,13 @@ async def create_learning_candidate(
         target_id=target_id,
         relation=relation,
     )
+    locked_project = await session.scalar(
+        select(Project)
+        .where(Project.id == project_id)
+        .with_for_update()
+    )
+    if locked_project is None:
+        raise LearningError("learning_candidate_project_not_found")
     candidate_key = _candidate_key(
         project_id=project_id,
         target_type=target_type,
