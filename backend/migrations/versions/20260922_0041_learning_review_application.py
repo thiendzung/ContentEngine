@@ -125,12 +125,12 @@ def _create_guards() -> None:
             FROM learning_candidates AS lc
             WHERE lc.id = NEW.learning_candidate_id;
 
-            SELECT project_id, learning_candidate_id, candidate_version,
-                   decision, candidate_snapshot_hash
+            SELECT r.project_id, r.learning_candidate_id, r.candidate_version,
+                   r.decision, r.candidate_snapshot_hash
             INTO review_project, review_candidate, review_version,
                  review_decision, review_snapshot
-            FROM learning_candidate_reviews
-            WHERE id = NEW.review_id;
+            FROM learning_candidate_reviews AS r
+            WHERE r.id = NEW.review_id;
 
             IF candidate_project IS NULL OR review_project IS NULL THEN
                 RAISE EXCEPTION 'learning_application_lineage_not_found';
