@@ -1435,8 +1435,9 @@ async def create_learning_candidate(
     await session.flush()
 
     if latest is not None:
-        latest.status = "SUPERSEDED"
-        await session.flush()
+        await session.refresh(latest)
+        if latest.status != "SUPERSEDED":
+            raise LearningError("learning_candidate_prior_not_superseded")
 
     return LearningCandidateResult(candidate=candidate, replayed=False)
 
