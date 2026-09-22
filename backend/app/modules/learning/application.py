@@ -165,6 +165,10 @@ async def _target_snapshot(
         need = await session.get(NeedHypothesis, candidate.target_id)
         if need is None or need.project_id != candidate.project_id:
             raise LearningApplicationError("learning_review_need_target_stale")
+        if need.version != frozen_need_version:
+            raise LearningApplicationError("learning_review_need_version_stale")
+        if need.audience_hypothesis_id != frozen_audience:
+            raise LearningApplicationError("learning_review_need_audience_stale")
         base["current_target"] = {
             "id": str(need.id),
             "version": need.version,
@@ -216,11 +220,39 @@ async def _target_snapshot(
             if need.audience_hypothesis_id is not None
             else None
         )
+        if need.version != frozen_need_version:
+            raise LearningApplicationError(
+                "learning_review_new_insight_need_version_stale"
+            )
         if need_audience != (
             str(frozen_audience) if frozen_audience is not None else None
         ):
             raise LearningApplicationError(
                 "learning_review_new_insight_audience_stale"
+            )
+        proposal = candidate.proposal_json
+        if set(proposal) != {"insight_type", "situation", "need_relation"}:
+            raise LearningApplicationError(
+                "learning_review_new_insight_proposal_invalid"
+            )
+        if not isinstance(proposal.get("insight_type"), str):
+            raise LearningApplicationError(
+                "learning_review_new_insight_proposal_invalid"
+            )
+        situation = proposal.get("situation")
+        if situation is not None and (
+            not isinstance(situation, str) or not situation.strip()
+        ):
+            raise LearningApplicationError(
+                "learning_review_new_insight_proposal_invalid"
+            )
+        if proposal.get("need_relation") not in {
+            "supports",
+            "contradicts",
+            "context",
+        }:
+            raise LearningApplicationError(
+                "learning_review_new_insight_proposal_invalid"
             )
         base["current_target"] = {
             "need_hypothesis_id": str(need.id),
@@ -533,6 +565,21 @@ async def review_learning_candidate(
 
     actor = _text(reviewed_by, "learning_review_reviewer_required")
     rationale = _text(reason, "learning_review_reason_required")
+    existing = await session.scalar(
+        select(LearningCandidateReview).where(
+            LearningCandidateReview.learning_candidate_id
+            == learning_candidate_id
+        )
+    )
+    if existing is not None:
+        if (
+            existing.decision != decision
+            or existing.reviewed_by != actor
+            or existing.reason != rationale
+        ):
+            raise LearningApplicationError("learning_review_replay_conflict")
+        return CandidateReviewResult(review=existing, replayed=True)
+
     snapshot = await _candidate_snapshot(
         session,
         candidate_id=learning_candidate_id,
@@ -540,6 +587,7 @@ async def review_learning_candidate(
     )
     _validate_review_decision(snapshot, decision)
 
+    # Re-check after taking the candidate row lock for concurrent review replay.
     existing = await session.scalar(
         select(LearningCandidateReview).where(
             LearningCandidateReview.learning_candidate_id
@@ -840,10 +888,23 @@ async def apply_learning_candidate(
     ):
         raise LearningApplicationError("learning_review_stale")
 
-    applied_signal_refs = [
-        {"signal_id": str(signal_id), "relation": relation}
-        for signal_id, relation in snapshot.signal_links
-    ]
+    # The candidate row lock serializes same-review applications. Re-check the
+    # immutable receipt after the lock so the second caller returns replay.
+    existing = await session.scalar(
+        select(LearningApplication).where(
+            LearningApplication.review_id == review.id
+        )
+    )
+    if existing is not None:
+        return LearningApplicationResult(
+            application=existing,
+            replayed=True,
+            resulting_target_id=existing.resulting_target_id,
+            customer_map_snapshot_artifact_id=(
+                existing.customer_map_snapshot_artifact_id
+            ),
+            change_report=existing.change_report_json,
+        )
 
     if (
         review.decision == "NO_MAP_CHANGE"
@@ -859,7 +920,7 @@ async def apply_learning_candidate(
             target_id=snapshot.candidate.target_id,
             resulting_target_id=None,
             applied_action="no_map_change",
-            applied_signal_refs_json=applied_signal_refs,
+            applied_signal_refs_json=[],
             frozen_scope_json=snapshot.candidate.scope_json,
             before_state_hash=None,
             after_state_hash=None,
@@ -911,6 +972,17 @@ async def apply_learning_candidate(
         run_id=snapshot.source_run_id,
         step_run_id=None,
     )
+    if snapshot.candidate.target_type == "need_hypothesis":
+        applied_signal_refs = [
+            {"signal_id": str(signal_id), "relation": relation}
+            for signal_id, relation in snapshot.signal_links
+            if relation in {"supports", "contradicts"}
+        ]
+    else:
+        applied_signal_refs = [
+            {"signal_id": str(signal_id), "relation": relation}
+            for signal_id, relation in snapshot.signal_links
+        ]
     application = LearningApplication(
         project_id=snapshot.candidate.project_id,
         learning_candidate_id=snapshot.candidate.id,
