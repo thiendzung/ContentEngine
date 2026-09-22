@@ -715,6 +715,20 @@ async def _validated_assessment_payload(
     artifact: Artifact,
 ) -> dict[str, object]:
     payload = _assessment_payload(artifact)
+    expected_top_level = {
+        "schema_version",
+        "artifact_type",
+        "project_id",
+        "experiment",
+        "lineage",
+        "candidate_scope",
+        "assessment",
+        "evidence",
+        "measurement_contract",
+        "input_fingerprint",
+    }
+    if set(payload) != expected_top_level or payload.get("schema_version") != 1:
+        raise LearningError("learning_candidate_assessment_shape_invalid")
     project_id = _uuid(
         payload.get("project_id"),
         "learning_candidate_project_invalid",
@@ -730,6 +744,22 @@ async def _validated_assessment_payload(
     context = await _assessment_context(session, experiment_id=experiment_id)
     if project_id != context.project_id:
         raise LearningError("learning_candidate_assessment_project_mismatch")
+    review_start = _aware(
+        context.experiment.review_window_start,
+        "learning_candidate_assessment_review_window_invalid",
+    )
+    review_end = _aware(
+        context.experiment.review_window_end,
+        "learning_candidate_assessment_review_window_invalid",
+    )
+    expected_experiment_payload = {
+        "id": str(context.experiment.id),
+        "expected_behaviour": context.experiment.expected_behaviour,
+        "review_window_start": review_start.isoformat(),
+        "review_window_end": review_end.isoformat(),
+    }
+    if experiment_payload != expected_experiment_payload:
+        raise LearningError("learning_candidate_assessment_experiment_stale")
     scope = _dict(
         payload.get("candidate_scope"),
         "learning_candidate_scope_invalid",
@@ -755,6 +785,13 @@ async def _validated_assessment_payload(
         payload.get("assessment"),
         "learning_candidate_assessment_invalid",
     )
+    if set(assessment) != {
+        "proposed_result",
+        "evidence_status",
+        "causal_claim_allowed",
+        "minimum_evidence_interpreted",
+    }:
+        raise LearningError("learning_candidate_assessment_shape_invalid")
     proposed_result = _text(
         assessment.get("proposed_result"),
         "learning_candidate_assessment_result_invalid",
@@ -771,12 +808,30 @@ async def _validated_assessment_payload(
         payload.get("evidence"),
         "learning_candidate_assessment_evidence_invalid",
     )
+    if set(evidence) != {
+        "signals",
+        "observations",
+        "observed_facts",
+        "alternative_explanations",
+        "missing_evidence",
+    }:
+        raise LearningError("learning_candidate_assessment_evidence_shape_invalid")
     signal_relations: dict[UUID, EvidenceRelation] = {}
     observations: dict[UUID, ContentPerformanceObservation] = {}
+    observation_relations: dict[UUID, EvidenceRelation] = {}
+    observed_facts: list[str] = []
     for record in _records(
         evidence.get("signals", []),
         "learning_candidate_assessment_signal_invalid",
     ):
+        if set(record) != {
+            "id",
+            "relation",
+            "fingerprint",
+            "independence_group",
+            "observed_text",
+        }:
+            raise LearningError("learning_candidate_assessment_signal_shape_invalid")
         signal_id = _uuid(
             record.get("id"),
             "learning_candidate_assessment_signal_invalid",
@@ -802,6 +857,68 @@ async def _validated_assessment_payload(
             raise LearningError("learning_candidate_assessment_signal_stale")
         signal_relations[signal_id] = relation
         observations[observation.id] = observation
+        existing_observation_relation = observation_relations.get(observation.id)
+        if (
+            existing_observation_relation is not None
+            and existing_observation_relation != relation
+        ):
+            raise LearningError(
+                "learning_candidate_assessment_observation_relation_conflict"
+            )
+        observation_relations[observation.id] = relation
+        observed_facts.append(signal.observed_text)
+
+    observation_records = _records(
+        evidence.get("observations", []),
+        "learning_candidate_assessment_observation_invalid",
+    )
+    if len(observation_records) != len(observations):
+        raise LearningError("learning_candidate_assessment_observation_set_mismatch")
+    seen_observations: set[UUID] = set()
+    for record in observation_records:
+        if set(record) != {
+            "id",
+            "relation",
+            "data_status",
+            "observed_at",
+            "metric_refs",
+            "statement_excluded",
+        }:
+            raise LearningError(
+                "learning_candidate_assessment_observation_shape_invalid"
+            )
+        observation_id = _uuid(
+            record.get("id"),
+            "learning_candidate_assessment_observation_invalid",
+        )
+        if observation_id in seen_observations or observation_id not in observations:
+            raise LearningError(
+                "learning_candidate_assessment_observation_set_mismatch"
+            )
+        seen_observations.add(observation_id)
+        observation = observations[observation_id]
+        relation = observation_relations[observation_id]
+        if (
+            record.get("relation") != relation
+            or record.get("data_status") != observation.data_status
+            or record.get("observed_at") != observation.observed_at.isoformat()
+            or record.get("metric_refs")
+            != sorted(observation.metric_refs_json)
+            or record.get("statement_excluded") is not True
+        ):
+            raise LearningError("learning_candidate_assessment_observation_stale")
+
+    facts = _strings(
+        evidence.get("observed_facts", []),
+        "learning_candidate_assessment_facts_invalid",
+    )
+    if facts != [
+        observations_fact
+        for observations_fact in sorted(
+            observed_facts,
+        )
+    ] and facts != observed_facts:
+        raise LearningError("learning_candidate_assessment_facts_stale")
 
     alternatives = _strings(
         evidence.get("alternative_explanations", []),
@@ -823,6 +940,58 @@ async def _validated_assessment_payload(
     )
     if assessment.get("evidence_status") != expected_status:
         raise LearningError("learning_candidate_assessment_status_stale")
+
+    measurement_contract = _dict(
+        payload.get("measurement_contract"),
+        "learning_candidate_assessment_measurement_contract_invalid",
+    )
+    expected_measurement_contract = {
+        "measurement_plan": list(context.experiment.measurement_plan_json),
+        "metric_definitions": list(context.experiment.metric_definitions_json),
+        "minimum_evidence_verbatim": list(
+            context.experiment.minimum_evidence_json
+        ),
+    }
+    if measurement_contract != expected_measurement_contract:
+        raise LearningError("learning_candidate_assessment_measurement_contract_stale")
+
+    signal_rows = [
+        _signal_payload(
+            await session.get(Signal, signal_id),  # type: ignore[arg-type]
+            signal_relations[signal_id],
+        )
+        for signal_id in sorted(signal_relations, key=str)
+    ]
+    observation_rows = [
+        {
+            "id": str(observation_id),
+            "relation": observation_relations[observation_id],
+            "data_status": observations[observation_id].data_status,
+            "observed_at": observations[observation_id].observed_at.isoformat(),
+            "metric_refs": sorted(observations[observation_id].metric_refs_json),
+            "statement_excluded": True,
+        }
+        for observation_id in sorted(observations, key=str)
+    ]
+    expected_input_fingerprint = _hash(
+        {
+            "experiment_id": str(context.experiment.id),
+            "candidate_scope": context.candidate_scope,
+            "signals": signal_rows,
+            "observations": observation_rows,
+            "proposed_result": proposed_result,
+            "alternative_explanations": alternatives,
+            "missing_evidence": missing,
+            "expected_behaviour": context.experiment.expected_behaviour,
+            "measurement_plan": list(context.experiment.measurement_plan_json),
+            "metric_definitions": list(context.experiment.metric_definitions_json),
+            "minimum_evidence": list(context.experiment.minimum_evidence_json),
+            "review_window_start": review_start.isoformat(),
+            "review_window_end": review_end.isoformat(),
+        }
+    )
+    if payload.get("input_fingerprint") != expected_input_fingerprint:
+        raise LearningError("learning_candidate_assessment_fingerprint_mismatch")
     return payload
 
 
