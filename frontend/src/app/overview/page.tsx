@@ -1,0 +1,373 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import {
+  type ControlCenterSummary,
+  type NeedsMeItem,
+  loadControlCenterSummary,
+  loadNeedsMe,
+} from "../../lib/api/control-center";
+import styles from "./control-center.module.css";
+
+const PROJECT_SLUG = "motgu";
+const FALLBACK_TIMEZONE = "Asia/Ho_Chi_Minh";
+
+type OverviewState = {
+  summary: ControlCenterSummary;
+  needsMe: NeedsMeItem[];
+};
+
+function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_TIMEZONE;
+  } catch {
+    return FALLBACK_TIMEZONE;
+  }
+}
+
+function typeLabel(type: NeedsMeItem["type"]): string {
+  const labels: Record<NeedsMeItem["type"], string> = {
+    content_approval: "Duyệt nội dung",
+    publish_authorization: "Cho phép xuất bản",
+    policy_gate: "Cổng chính sách",
+    learning_candidate_review: "Duyệt learning candidate",
+    learning_resolution: "Xử lý learning validation",
+  };
+  return labels[type];
+}
+
+function statusClass(status: string): string {
+  if (
+    status === "REGRESSED" ||
+    status === "CONTESTED" ||
+    status === "BLOCKED"
+  ) {
+    return styles.badgeDanger;
+  }
+  if (
+    status === "AWAITING_APPROVAL" ||
+    status === "WAITING_APPROVAL" ||
+    status === "READY_FOR_REVIEW" ||
+    status === "VALIDATED"
+  ) {
+    return styles.badgeWarn;
+  }
+  return styles.badge;
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString("vi-VN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+}
+
+async function loadOverview(timezone: string): Promise<OverviewState> {
+  const [summary, needsMe] = await Promise.all([
+    loadControlCenterSummary(timezone, PROJECT_SLUG),
+    loadNeedsMe(timezone, PROJECT_SLUG),
+  ]);
+
+  if (summary.counts.needs_human !== needsMe.length) {
+    throw new Error("control_center_needs_me_count_changed_during_read");
+  }
+
+  return { summary, needsMe };
+}
+
+function NeedsMeCard({ item }: { item: NeedsMeItem }) {
+  return (
+    <article className={styles.card}>
+      <div className={styles.cardTop}>
+        <div>
+          <p className="eyebrow">{typeLabel(item.type)}</p>
+          <h3>{item.reason}</h3>
+        </div>
+        <span className={statusClass(item.canonical_status)}>
+          {item.canonical_status}
+        </span>
+      </div>
+
+      <p className={styles.meta}>
+        Cập nhật {formatDate(item.updated_at)} · entity{" "}
+        {item.destination.entity_id}
+      </p>
+
+      {item.destination.href ? (
+        <Link className={styles.needsLink} href={item.destination.href}>
+          Mở đúng màn hình xử lý
+        </Link>
+      ) : (
+        <p className={styles.noDestination}>
+          Chưa có màn hình hành động riêng trong contract hiện tại. Không tạo
+          deep-link giả.
+        </p>
+      )}
+
+      <details className={styles.disclosure}>
+        <summary>Vì sao việc này xuất hiện?</summary>
+        <p className={styles.meta}>
+          Action ref: {item.destination.action_ref}
+        </p>
+        <div className={styles.refs}>
+          {item.why_refs.length > 0 ? (
+            item.why_refs.map((ref) => <span key={ref}>Why · {ref}</span>)
+          ) : (
+            <span>Không có why ref.</span>
+          )}
+          {item.evidence_refs.length > 0 ? (
+            item.evidence_refs.map((ref) => (
+              <span key={ref}>Evidence · {ref}</span>
+            ))
+          ) : (
+            <span>Không có evidence ref.</span>
+          )}
+        </div>
+      </details>
+    </article>
+  );
+}
+
+export default function OverviewPage() {
+  const [timezone, setTimezone] = useState(FALLBACK_TIMEZONE);
+  const [state, setState] = useState<OverviewState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [stale, setStale] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const zone = browserTimezone();
+    setTimezone(zone);
+
+    async function initialLoad() {
+      setLoading(true);
+      setError("");
+      try {
+        const next = await loadOverview(zone);
+        if (!cancelled) setState(next);
+      } catch (nextError) {
+        if (!cancelled) {
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Không thể tải Control Center.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void initialLoad();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function refresh() {
+    if (loading) return;
+    setLoading(true);
+    setError("");
+    setStale("");
+    try {
+      setState(await loadOverview(timezone));
+    } catch (nextError) {
+      const message =
+        nextError instanceof Error
+          ? nextError.message
+          : "Không thể làm mới Control Center.";
+      if (state) {
+        setStale(
+          `Lần làm mới thất bại (${message}). Đang giữ snapshot hiển thị thành công gần nhất.`,
+        );
+      } else {
+        setError(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const counts = state?.summary.counts;
+
+  return (
+    <main className={styles.page} aria-busy={loading}>
+      <header className={styles.header}>
+        <div>
+          <p className="eyebrow">ContentEngine · Control Center</p>
+          <h1>Tổng quan</h1>
+          <p className="intro">
+            Làm việc theo exception: ưu tiên những việc hệ thống thực sự cần
+            Founder xử lý, sau đó mới xem telemetry vận hành.
+          </p>
+        </div>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => void refresh()}
+            disabled={loading}
+          >
+            {loading ? "Đang tải…" : "Làm mới"}
+          </button>
+        </div>
+      </header>
+
+      <section className={styles.autopilot} aria-label="Controlled Autopilot">
+        <div>
+          <p className="eyebrow">Controlled Autopilot</p>
+          <strong>Không suy diễn trạng thái bật/tắt</strong>
+          <p>
+            Control Center contract hiện chưa công bố một field Autopilot
+            enabled/disabled. Màn hình chỉ hiển thị canonical runtime counts và
+            issues bên dưới.
+          </p>
+        </div>
+        <div className={styles.runtimeLabel}>
+          <strong>{state ? "Read model đã tải" : "Chưa có read model"}</strong>
+          <span>Timezone: {state?.summary.timezone ?? timezone}</span>
+        </div>
+      </section>
+
+      {loading && !state ? (
+        <div className={styles.notice} role="status" aria-live="polite">
+          Đang tải Control Center…
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className={styles.error} role="alert">
+          Không thể đọc Control Center: {error}
+        </div>
+      ) : null}
+
+      {stale ? (
+        <div className={styles.stale} role="status" aria-live="polite">
+          {stale}
+        </div>
+      ) : null}
+
+      {state ? (
+        <>
+          <section className={`${styles.section} ${styles.prioritySection}`}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className="eyebrow">Needs Me</p>
+                <h2>Cần tôi xử lý</h2>
+                <p>
+                  Chỉ các human gate/action do canonical Control Center trả về
+                  mới xuất hiện ở đây.
+                </p>
+              </div>
+              <span className={styles.badgeWarn}>
+                {state.needsMe.length} việc
+              </span>
+            </div>
+
+            {state.needsMe.length === 0 ? (
+              <div className={styles.empty} role="status">
+                Hiện không có human gate/action nào cần Founder xử lý.
+              </div>
+            ) : (
+              <div className={styles.needsList}>
+                {state.needsMe.map((item) => (
+                  <NeedsMeCard key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className="eyebrow">Operational telemetry</p>
+                <h2>Trạng thái vận hành canonical</h2>
+              </div>
+              <span className={styles.meta}>
+                As of {formatDate(state.summary.as_of)}
+              </span>
+            </div>
+
+            <div className={styles.countGrid}>
+              <div className={styles.countCard}>
+                <span>Đang chạy</span>
+                <strong>{counts?.running ?? 0}</strong>
+              </div>
+              <div className={styles.countCard}>
+                <span>Đã vào hàng đợi</span>
+                <strong>{counts?.queued ?? 0}</strong>
+              </div>
+              <div className={styles.countCard}>
+                <span>Bị chặn</span>
+                <strong>{counts?.blocked ?? 0}</strong>
+              </div>
+              <div className={styles.countCard}>
+                <span>Cần người xử lý</span>
+                <strong>{counts?.needs_human ?? 0}</strong>
+              </div>
+              <div className={styles.countCard}>
+                <span>Hoàn thành hôm nay</span>
+                <strong>{counts?.completed_today ?? 0}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className="eyebrow">Fail-closed issues</p>
+                <h2>Điểm đang bị chặn hoặc không nhất quán</h2>
+              </div>
+              <span
+                className={
+                  state.summary.issues.length > 0
+                    ? styles.badgeDanger
+                    : styles.badge
+                }
+              >
+                {state.summary.issues.length}
+              </span>
+            </div>
+
+            {state.summary.issues.length === 0 ? (
+              <div className={styles.empty}>
+                Control Center không báo issue fail-closed tại thời điểm đọc.
+              </div>
+            ) : (
+              <div className={styles.issueList}>
+                {state.summary.issues.map((issue) => (
+                  <article
+                    className={styles.card}
+                    key={`${issue.code}:${issue.entity_type}:${issue.entity_id}`}
+                  >
+                    <h3>{issue.message}</h3>
+                    <details className={styles.disclosure}>
+                      <summary>Chi tiết kỹ thuật</summary>
+                      <div className={styles.refs}>
+                        <span>Code · {issue.code}</span>
+                        <span>Entity type · {issue.entity_type}</span>
+                        <span>Entity id · {issue.entity_id}</span>
+                      </div>
+                    </details>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className={styles.section}>
+            <Link className={styles.linkButton} href="/production">
+              Mở Production Board nâng cao
+            </Link>
+          </section>
+        </>
+      ) : null}
+    </main>
+  );
+}
