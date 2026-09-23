@@ -715,7 +715,7 @@ async def _pending_learning_items(
                     kind="learning_candidate_review",
                     action_ref=f"learning_candidate:{candidate.id}:v{candidate.version}",
                     entity_id=str(candidate.id),
-                    href=None,
+                    href=f"/learning?candidate={candidate.id}",
                 ),
                 why_refs=[
                     f"learning_candidate:{candidate.id}:v{candidate.version}",
@@ -795,7 +795,9 @@ async def _pending_learning_items(
                     kind="learning_resolution",
                     action_ref=f"learning_validation:{validation.id}:v{validation.version}",
                     entity_id=str(validation.id),
-                    href=None,
+                    href=(
+                        f"/learning?candidate={validation.learning_candidate_id}"
+                    ),
                 ),
                 why_refs=[
                     f"learning_validation:{validation.id}:v{validation.version}",
