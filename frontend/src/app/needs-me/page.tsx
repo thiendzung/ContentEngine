@@ -146,7 +146,10 @@ export default function NeedsMePage() {
                 {item.destination.href ? (
                   <div className={styles.inlineActions}>
                     <Link className={styles.linkButton} href={item.destination.href}>
-                      Mở canonical action surface
+                      {item.type === "learning_candidate_review" ||
+                      item.type === "learning_resolution"
+                        ? "Mở Learning để xem bằng chứng"
+                        : "Mở canonical action surface"}
                     </Link>
                   </div>
                 ) : (
