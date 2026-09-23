@@ -183,7 +183,7 @@ async def test_ux01d_daily_digest_uses_explicit_bounded_window_and_current_cover
         project = await session.get(Project, fixture.writer_run.project_id)
         assert project is not None
         before = await _counts(session)
-        local_date = datetime.now(UTC).date()
+        local_date = fixture.writer_run.updated_at.astimezone(UTC).date()
 
         digest = await build_daily_digest(
             session,
