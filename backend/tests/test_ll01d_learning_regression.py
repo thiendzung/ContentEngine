@@ -606,6 +606,14 @@ async def test_ll01d_regressed_new_insight_uses_compensating_review_not_delete(
         await session.refresh(insight)
         assert insight.status == "REJECTED"
         assert applied.application.applied_action == "review_insight"
+        assert (
+            applied.application.before_target_snapshot_json["current_target"]["status"]
+            == "CANDIDATE"
+        )
+        assert (
+            applied.application.after_target_snapshot_json["current_target"]["status"]
+            == "REJECTED"
+        )
         assert applied.application.before_state_hash != applied.application.after_state_hash
         assert applied.change_report is not None
         assert (
