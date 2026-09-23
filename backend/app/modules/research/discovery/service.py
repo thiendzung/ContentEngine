@@ -22,7 +22,6 @@ from app.modules.research.discovery.persistence import (
     PersistedDiscoveryPlan,
     PersistedDiscoverySelection,
     persist_discovery_plan,
-    persist_discovery_read_documents,
     persist_discovery_selection,
 )
 from app.modules.research.keyword_plan.contracts import (
@@ -172,15 +171,10 @@ class DiscoveryResearchWorkflow:
             research_gaps=combined_gaps,
         )
         if persist_plan:
-            page_refs = await persist_discovery_read_documents(
-                session,
-                production=production,
-            )
             result.planning_refs = await persist_discovery_plan(
                 session,
                 project_id=production.request.project_id,
                 result=opportunity_map,
-                page_refs=page_refs,
             )
         if run_id is not None and step_run_id is not None:
             artifact = await persist_discovery_artifact(
