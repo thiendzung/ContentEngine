@@ -671,33 +671,18 @@ async def create_learning_validation(
     return LearningValidationResult(validation=validation, replayed=False)
 
 
-def _validation_snapshot_hash(validation: LearningValidation) -> str:
-    return _hash(
-        {
-            "id": str(validation.id),
-            "project_id": str(validation.project_id),
-            "learning_application_id": str(validation.learning_application_id),
-            "learning_candidate_id": str(validation.learning_candidate_id),
-            "candidate_version": validation.candidate_version,
-            "version": validation.version,
-            "validation_fingerprint": validation.validation_fingerprint,
-            "validation_status": validation.validation_status,
-            "target_type": validation.target_type,
-            "resulting_target_id": (
-                str(validation.resulting_target_id)
-                if validation.resulting_target_id is not None
-                else None
-            ),
-            "target_snapshot": validation.target_snapshot_json,
-            "baseline_signal_refs": validation.baseline_signal_refs_json,
-            "validation_signal_refs": validation.validation_signal_refs_json,
-            "independent_evidence_groups": validation.independent_evidence_groups_json,
-            "metric_comparisons": validation.metric_comparisons_json,
-            "frozen_scope": validation.frozen_scope_json,
-            "alternative_explanations": validation.alternative_explanations_json,
-            "missing_evidence": validation.missing_evidence_json,
-        }
+async def _validation_snapshot_hash(
+    session: AsyncSession,
+    validation: LearningValidation,
+) -> str:
+    snapshot_hash = await session.scalar(
+        select(func.learning_validation_snapshot_hash(validation.id))
     )
+    if not isinstance(snapshot_hash, str) or len(snapshot_hash) != 64:
+        raise LearningRegressionError(
+            "learning_validation_snapshot_hash_invalid"
+        )
+    return snapshot_hash
 
 
 def _validate_resolution_decision(
@@ -780,7 +765,7 @@ async def review_learning_validation(
             LearningResolution.learning_validation_id == validation.id
         )
     )
-    snapshot_hash = _validation_snapshot_hash(validation)
+    snapshot_hash = await _validation_snapshot_hash(session, validation)
     if existing is not None:
         if (
             existing.project_id != validation.project_id
@@ -975,7 +960,8 @@ async def apply_learning_resolution(
         raise LearningRegressionError("learning_resolution_validation_stale")
     if (
         resolution.validation_version != validation.version
-        or resolution.validation_snapshot_hash != _validation_snapshot_hash(validation)
+        or resolution.validation_snapshot_hash
+        != await _validation_snapshot_hash(session, validation)
     ):
         raise LearningRegressionError("learning_resolution_snapshot_stale")
 
