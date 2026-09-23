@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from sqlalchemy import func, select
@@ -58,7 +59,7 @@ from app.modules.publishing.service import prepare_publish_package
 
 
 async def _read_only_counts(session) -> dict[str, int]:
-    async def count(model: object) -> int:
+    async def count(model: Any) -> int:
         return int(
             await session.scalar(select(func.count()).select_from(model)) or 0
         )
