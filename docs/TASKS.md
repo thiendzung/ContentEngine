@@ -185,7 +185,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
-| UX-01 | IN IMPLEMENTATION / UX-01A NEXT | Build exception-driven Control Center/Living Map UI in bounded slices; backend remains source of truth. |
+| UX-01 | IN IMPLEMENTATION / UX-01B ACTIVE | UX-01A merged; Customers + Content Map UI is the active bounded slice. Backend remains source of truth. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
 ### CT-01 immediate checklist
@@ -459,23 +459,27 @@ Do not redesign the whole product in one PR. The UI must consume canonical backe
 - [x] Read paths create no ModelCall, ToolCall, research job, approval, publication or Customer Truth mutation.
 - [x] Add read-only `GET /control-center/summary` and `GET /control-center/needs-me` plus focused tests.
 - [x] No new migration; UX-01A remains a derived projection over canonical durable state.
-- [ ] Exact-head CI green after self-review.
-- [ ] Exact-ref OpenCodeReview + MG triage.
-- [ ] Agent Local bounded exact-head proof.
-- [ ] Founder merge PR #193 / close #192.
+- [x] Exact-head CI #1700 green after self-review.
+- [x] Exact-ref OpenCodeReview v1.12.9 + MG triage — 10/10 reviewed, zero findings.
+- [x] Agent Local bounded exact-head proof — `PASS_UX01A_EXACT_REF_LOCAL_VERIFICATION`.
+- [x] Founder merge PR #193 / close #192 — main `98021ed2fc447ddfe40a1eb91b99381166844120`.
 
 Exit: the backend can answer “what is running, blocked, and what genuinely needs Founder action?” without the frontend reconstructing workflow truth.
 
 #### UX-01B — Customers + Content Map UI
 
-- [ ] Add `/customers` using existing Customer Living Map read APIs.
-- [ ] Show audience → Need → Insight/Journey with observed/inferred/review status clearly separated.
-- [ ] Drill-down shows supporting/contradicting evidence, missing evidence, alternatives and recent changes.
-- [ ] Add `/content-map` using canonical Content Coverage API.
-- [ ] Show Need × Journey/locale coverage states without fake numeric scores.
-- [ ] Existing content, gaps, weak/update/insufficient-data states remain distinct.
-- [ ] UI does not run research or create content from a cell click in this slice.
-- [ ] Loading/empty/error/stale states are explicit and accessible.
+- [x] Add `/customers` using existing Customer Living Map read APIs.
+- [x] Show Audience → Need → CustomerInsight and configured Journey without inventing a persisted Need→Journey relation; expose canonical review state and explicitly mark observed/inferred classification unavailable because the current CustomerInsight contract has no such field.
+- [x] Drill-down shows supporting/contradicting/context Signal refs and independent counts, Need↔Insight relations, missing evidence, alternatives, reviewer/reason and recent snapshot changes.
+- [x] Bind Customer Map summary/changes/audience/need reads to one exact `snapshot_hash`; mixed-snapshot reads fail closed and retain the last coherent view.
+- [x] Prevent async audience/need/refresh races from overwriting a newer user selection.
+- [x] Add `/content-map` using canonical Content Coverage API.
+- [x] Show only canonical Need-level coverage plus persisted ContentItem journey/locale links; do not synthesize fake Need × Journey × locale cell status or numeric scores.
+- [x] Existing MISSING / PLANNED / IN_PROGRESS / PUBLISHED / NEEDS_UPDATE / WEAK / INSUFFICIENT_DATA states remain distinct, with canonical reason codes.
+- [x] Surface selected ContentOpportunity evidence, HumanSelection refs, publication state, invalid update refs and backend duplicate-candidate evidence without converting them into scores.
+- [x] Enforce Content Coverage schema/semantics/count contract fail-closed so the UI cannot silently reinterpret changed backend semantics.
+- [x] UI does not run research or create content from a cell click in this slice.
+- [x] Loading/empty/error/stale states are explicit and accessible; refresh/detail busy states use `aria-busy`/live status, errors use alerts, controls expose keyboard focus, empty states are explicit, and navigation/layout remains usable on narrow screens.
 
 Exit: Founder can inspect who the system understands and what content coverage exists without reading backend artifacts.
 
