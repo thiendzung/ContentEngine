@@ -189,7 +189,12 @@ async def _pending_harness_items(
     *,
     project_id: UUID,
     board_by_case: dict[UUID, ProductionBoardCase],
-) -> tuple[list[NeedsMeItem], list[ControlCenterIssue], set[UUID]]:
+) -> tuple[
+    list[NeedsMeItem],
+    list[ControlCenterIssue],
+    set[UUID],
+    set[UUID],
+]:
     runs = list(
         (
             await session.scalars(
@@ -205,6 +210,7 @@ async def _pending_harness_items(
     items: list[NeedsMeItem] = []
     issues: list[ControlCenterIssue] = []
     blocked_cases: set[UUID] = set()
+    human_cases: set[UUID] = set()
 
     for run in runs:
         checkpoint = await get_latest_checkpoint(session, run_id=run.id)
@@ -305,6 +311,7 @@ async def _pending_harness_items(
         checkpoint_ref = (
             f"artifact:{checkpoint.id}" if checkpoint is not None else f"run:{run.id}"
         )
+        human_cases.add(run.content_case_id)
         items.append(
             NeedsMeItem(
                 id=f"approval:{run.id}:{step_key}:{artifact.id}",
@@ -328,7 +335,7 @@ async def _pending_harness_items(
             )
         )
 
-    return items, issues, blocked_cases
+    return items, issues, blocked_cases, human_cases
 
 
 async def _pending_learning_items(
@@ -479,7 +486,12 @@ async def build_control_center(
     board = await list_production_board_cases(session, project_id=project.id)
     board_by_case = {row.id: row for row in board}
 
-    harness_items, issues, approval_blocked_cases = await _pending_harness_items(
+    (
+        harness_items,
+        issues,
+        approval_blocked_cases,
+        human_case_ids,
+    ) = await _pending_harness_items(
         session,
         project_id=project.id,
         board_by_case=board_by_case,
@@ -493,27 +505,47 @@ async def build_control_center(
         key=lambda row: (row.created_at, row.id),
     )
 
-    completed_case_ids = set(
+    completed_runs = list(
         (
             await session.scalars(
-                select(ContentRun.content_case_id)
+                select(ContentRun)
                 .where(
                     ContentRun.project_id == project.id,
+                    ContentRun.status == "completed",
                     ContentRun.completed_at.is_not(None),
-                    ContentRun.completed_at >= day_start,
-                    ContentRun.completed_at < day_end,
                 )
-                .distinct()
+                .order_by(ContentRun.completed_at, ContentRun.id)
             )
         ).all()
     )
+    latest_completed_at: dict[UUID, datetime] = {}
+    for run in completed_runs:
+        if run.completed_at is not None:
+            latest_completed_at[run.content_case_id] = run.completed_at
+    completed_case_ids = {
+        case_id
+        for case_id, completed_at in latest_completed_at.items()
+        if day_start <= completed_at < day_end
+    }
 
     blocked_case_ids = {
         row.id for row in board if row.status_group == "BLOCKED"
     } | approval_blocked_cases
     counts = ControlCenterCounts(
-        running=sum(1 for row in board if row.status_group == "RUNNING"),
-        queued=sum(1 for row in board if row.status_group == "QUEUED"),
+        running=sum(
+            1
+            for row in board
+            if row.status_group == "RUNNING"
+            and row.id not in blocked_case_ids
+            and row.id not in human_case_ids
+        ),
+        queued=sum(
+            1
+            for row in board
+            if row.status_group == "QUEUED"
+            and row.id not in blocked_case_ids
+            and row.id not in human_case_ids
+        ),
         blocked=len(blocked_case_ids),
         needs_human=len(needs_me),
         completed_today=sum(
