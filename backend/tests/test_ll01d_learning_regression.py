@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
-
 from test_ll01b_learning_candidate import _analytics_signal
 from test_ll01c_learning_application import (
     _need_candidate,
@@ -41,6 +40,11 @@ from app.modules.learning.regression import (
     apply_learning_resolution,
     create_learning_validation,
     review_learning_validation,
+)
+from app.modules.measurement.service import (
+    MetricInput,
+    ingest_performance_snapshot,
+    record_performance_observation,
 )
 from app.modules.publishing.service import (
     begin_wordpress_dispatch,
@@ -166,12 +170,6 @@ async def _second_experiment_search_signal(
     assert event.content_experiment_id == experiment2.id
 
     snapshot_time = datetime.now(UTC)
-    from app.modules.measurement.service import (
-        MetricInput,
-        ingest_performance_snapshot,
-        record_performance_observation,
-    )
-
     snapshot = await ingest_performance_snapshot(
         session,
         published_content_id=mapping.id,
