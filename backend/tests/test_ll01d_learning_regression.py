@@ -430,11 +430,56 @@ async def test_ll01d_same_experiment_provider_signal_is_not_independent_validati
             session,
             monkeypatch,
         )
-        _observation, same_group_signal = await _analytics_signal(
-            session,
-            fixture=fixture,
-            mapping=mapping,
+        observed_at = max(
+            datetime.now(UTC),
+            application.applied_at + timedelta(seconds=1),
         )
+        snapshot = await ingest_performance_snapshot(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            provider="analytics",
+            window_start=application.applied_at,
+            window_end=observed_at,
+            raw_metrics={"aggregate": "synthetic-same-experiment"},
+            metrics=[
+                MetricInput(
+                    metric_date=observed_at,
+                    metric_name="sessions",
+                    metric_value=20,
+                    dimensions={"channel": "synthetic private dimension"},
+                ),
+                MetricInput(
+                    metric_date=observed_at,
+                    metric_name="engaged_sessions",
+                    metric_value=11,
+                    dimensions={"channel": "synthetic private dimension"},
+                ),
+            ],
+        )
+        observation = await record_performance_observation(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            observation_type="engagement",
+            statement=(
+                "Later same-experiment evidence must still not count as independent."
+            ),
+            data_status="EARLY_SIGNAL",
+            observed_at=observed_at,
+            metric_refs=[row.id for row in snapshot.metrics],
+        )
+        materialized = await materialize_performance_signal(
+            session,
+            observation_id=observation.id,
+        )
+        assert materialized.signal is not None
+        same_group_signal = materialized.signal
+        assert (
+            same_group_signal.independence_group
+            == f"experiment:{fixture.experiment.id}"
+        )
+
         with pytest.raises(
             LearningRegressionError,
             match="learning_validation_validated_evidence_invalid",
