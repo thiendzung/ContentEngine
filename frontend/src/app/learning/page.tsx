@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+
 import {
   type LearningCandidate,
   type LearningEvidenceItem,
@@ -11,6 +12,41 @@ import {
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
+
+type LearningFilter = "all" | "needs_review" | "validating" | "resolved" | "rejected";
+
+const FILTERS: Array<{ key: LearningFilter; label: string }> = [
+  { key: "all", label: "Tất cả" },
+  { key: "needs_review", label: "Cần duyệt" },
+  { key: "validating", label: "Đang kiểm chứng" },
+  { key: "resolved", label: "Đã có resolution" },
+  { key: "rejected", label: "Bị bác bỏ / rollback" },
+];
+
+function matchesFilter(candidate: LearningCandidate, filter: LearningFilter): boolean {
+  if (filter === "all") return true;
+
+  const resolutions = candidate.validations
+    .map((validation) => validation.resolution)
+    .filter((resolution) => resolution !== null);
+
+  const rejected =
+    candidate.review?.decision === "REJECT" ||
+    resolutions.some((resolution) =>
+      ["REJECT", "ROLLBACK", "ARCHIVE_CANDIDATE"].includes(resolution.decision),
+    );
+
+  if (filter === "rejected") return rejected;
+  if (rejected) return false;
+
+  if (filter === "needs_review") {
+    return candidate.review === null && candidate.evidence_status === "READY_FOR_REVIEW";
+  }
+  if (filter === "resolved") {
+    return resolutions.length > 0;
+  }
+  return candidate.review !== null && resolutions.length === 0;
+}
 
 function formatDate(value: string | null): string {
   if (!value) return "Chưa có";
@@ -259,6 +295,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
 export default function LearningPage() {
   const [overview, setOverview] = useState<LearningOverview | null>(null);
   const [selectedId, setSelectedId] = useState("");
+  const [filter, setFilter] = useState<LearningFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stale, setStale] = useState("");
@@ -311,7 +348,13 @@ export default function LearningPage() {
     }
   }
 
-  const selected = overview?.candidates.find((item) => item.id === selectedId) ?? null;
+  const visibleCandidates =
+    overview?.candidates.filter((candidate) => matchesFilter(candidate, filter)) ?? [];
+  const effectiveSelectedId = visibleCandidates.some((item) => item.id === selectedId)
+    ? selectedId
+    : (visibleCandidates[0]?.id ?? "");
+  const selected =
+    visibleCandidates.find((item) => item.id === effectiveSelectedId) ?? null;
   const counts = overview?.counts ?? {};
 
   return (
@@ -366,28 +409,64 @@ export default function LearningPage() {
           {overview.candidates.length === 0 ? (
             <div className={styles.empty} role="status">Chưa có LearningCandidate cho project này.</div>
           ) : (
-            <div className={styles.masterDetail}>
-              <aside className={styles.sidebar}>
-                <p className="eyebrow">Candidates</p>
-                <div className={styles.list}>
-                  {overview.candidates.map((candidate) => (
-                    <button
-                      type="button"
-                      className={styles.listButton + " " + (candidate.id === selectedId ? styles.listButtonActive : "")}
-                      aria-pressed={candidate.id === selectedId}
-                      onClick={() => setSelectedId(candidate.id)}
-                      key={candidate.id}
-                    >
-                      <strong>{candidate.statement}</strong>
-                      <small>
-                        {candidate.evidence_status + " · " + candidate.target_type + " · v" + candidate.version}
-                      </small>
-                    </button>
-                  ))}
+            <>
+              <div className={styles.filters} aria-label="Lọc Learning Candidate">
+                {FILTERS.map((item) => (
+                  <button
+                    type="button"
+                    className={
+                      styles.filterButton +
+                      " " +
+                      (filter === item.key ? styles.listButtonActive : "")
+                    }
+                    aria-pressed={filter === item.key}
+                    onClick={() => setFilter(item.key)}
+                    key={item.key}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {visibleCandidates.length === 0 ? (
+                <div className={styles.empty} role="status">
+                  Không có LearningCandidate phù hợp bộ lọc này.
                 </div>
-              </aside>
-              {selected ? <CandidateDetail candidate={selected} /> : null}
-            </div>
+              ) : (
+                <div className={styles.masterDetail}>
+                  <aside className={styles.sidebar}>
+                    <p className="eyebrow">Candidates · {visibleCandidates.length}</p>
+                    <div className={styles.list}>
+                      {visibleCandidates.map((candidate) => (
+                        <button
+                          type="button"
+                          className={
+                            styles.listButton +
+                            " " +
+                            (candidate.id === effectiveSelectedId
+                              ? styles.listButtonActive
+                              : "")
+                          }
+                          aria-pressed={candidate.id === effectiveSelectedId}
+                          onClick={() => setSelectedId(candidate.id)}
+                          key={candidate.id}
+                        >
+                          <strong>{candidate.statement}</strong>
+                          <small>
+                            {candidate.evidence_status +
+                              " · " +
+                              candidate.target_type +
+                              " · v" +
+                              candidate.version}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  </aside>
+                  {selected ? <CandidateDetail candidate={selected} /> : null}
+                </div>
+              )}
+            </>
           )}
         </>
       ) : null}
