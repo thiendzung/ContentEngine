@@ -38,16 +38,16 @@ export type CustomerMapSummary = {
 export type EvidenceRefs = {
   supports: string[];
   contradicts: string[];
-  context?: string[];
+  context: string[];
 };
 
 export type EvidenceCounts = {
   supports: number;
   contradicts: number;
-  context?: number;
+  context: number;
   independent_supports: number;
   independent_contradicts: number;
-  independent_context?: number;
+  independent_context: number;
 };
 
 export type CustomerInsight = {
@@ -115,7 +115,7 @@ export type CustomerAudienceDetail = {
     description: string | null;
     status: string;
     evidence_summary: string | null;
-    confidence: number | null;
+    confidence: string | null;
     insights: Array<Record<string, unknown>>;
     needs: Array<Record<string, unknown>>;
   };
