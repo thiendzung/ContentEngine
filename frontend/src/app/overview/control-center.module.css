@@ -154,6 +154,12 @@
   gap: 10px;
 }
 
+.digestGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .countCard {
   border: 1px solid #c8c0b4;
   background: rgba(255, 252, 246, .72);
@@ -259,7 +265,8 @@
 }
 
 @media (max-width: 920px) {
-  .countGrid {
+  .countGrid,
+  .digestGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -303,7 +310,8 @@
     min-height: 44px;
   }
 
-  .countGrid {
+  .countGrid,
+  .digestGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -18,9 +18,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Link href="/overview">Tổng quan</Link>
           <Link href="/customers">Khách hàng</Link>
           <Link href="/content-map">Bản đồ nội dung</Link>
-          <Link href="/operator">Điều hành</Link>
           <Link href="/production">Sản xuất</Link>
-          <Link href="/">Duyệt bài</Link>
+          <Link href="/needs-me">Cần tôi xử lý</Link>
+          <Link href="/learning">Learning</Link>
+          <Link href="/system">System</Link>
         </nav>
         {children}
       </body>
