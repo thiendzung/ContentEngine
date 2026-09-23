@@ -238,7 +238,13 @@ export type ContentCoverage = {
         selected_at: string;
       }>;
     }>;
-    duplicate_candidates: Array<Record<string, unknown>>;
+    duplicate_candidates: Array<{
+      locale: string;
+      primary_intent: string;
+      normalized_primary_question: string;
+      content_item_ids: string[];
+      reason: "same_primary_need_locale_intent_question";
+    }>;
     invalid_update_target_refs: string[];
   }>;
   semantics: {
