@@ -232,12 +232,17 @@
   margin-bottom: 12px;
 }
 
+.sectionHeader > div {
+  min-width: 0;
+}
+
 .sectionHeader h2,
 .sectionHeader h3,
 .card h3,
 .systemCard h3,
 .timelineCard h3 {
   margin-top: 0;
+  overflow-wrap: anywhere;
 }
 
 .cardGrid,
