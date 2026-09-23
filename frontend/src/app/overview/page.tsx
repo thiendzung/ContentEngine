@@ -169,7 +169,10 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
 
       {item.destination.href ? (
         <Link className={styles.needsLink} href={item.destination.href}>
-          Mở đúng màn hình xử lý
+          {item.type === "learning_candidate_review" ||
+          item.type === "learning_resolution"
+            ? "Mở Learning để xem bằng chứng"
+            : "Mở đúng màn hình xử lý"}
         </Link>
       ) : (
         <p className={styles.noDestination}>
