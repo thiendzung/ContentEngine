@@ -508,7 +508,7 @@ export default function CustomersPage() {
     ) ?? null;
 
   async function selectAudience(audienceId: string) {
-    if (!view) return;
+    if (!view || loading || detailLoading) return;
 
     const requestId = ++requestVersion.current;
     setDetailLoading(true);
@@ -564,7 +564,7 @@ export default function CustomersPage() {
   }
 
   async function selectNeed(needId: string) {
-    if (!view) return;
+    if (!view || loading || detailLoading) return;
 
     const requestId = ++requestVersion.current;
     setDetailLoading(true);
@@ -602,6 +602,8 @@ export default function CustomersPage() {
   }
 
   async function refresh() {
+    if (loading || detailLoading) return;
+
     const requestId = ++requestVersion.current;
     setLoading(true);
     setError("");
@@ -655,9 +657,9 @@ export default function CustomersPage() {
             type="button"
             className={styles.buttonSecondary}
             onClick={() => void refresh()}
-            disabled={loading}
+            disabled={loading || detailLoading}
           >
-            {loading ? "Đang làm mới…" : "Làm mới"}
+            {loading || detailLoading ? "Đang tải…" : "Làm mới"}
           </button>
         </div>
       </header>
@@ -777,7 +779,7 @@ export default function CustomersPage() {
                       }
                       onClick={() => void selectAudience(item.id)}
                       aria-pressed={view.selectedAudienceId === item.id}
-                      disabled={detailLoading}
+                      disabled={loading || detailLoading}
                     >
                       <strong>{item.name}</strong>
                       <small>
@@ -857,7 +859,7 @@ export default function CustomersPage() {
                           key={need.id}
                           need={need}
                           active={view.selectedNeedId === need.id}
-                          disabled={detailLoading}
+                          disabled={loading || detailLoading}
                           onSelect={() => void selectNeed(need.id)}
                         />
                       ))}
