@@ -7,6 +7,9 @@ from app.modules.content_engine.content_coverage_router import (
     router as content_coverage_router,
 )
 from app.modules.content_engine.journal.router import router as journal_router
+from app.modules.control_center.daily_digest_router import (
+    router as daily_digest_router,
+)
 from app.modules.control_center.router import router as control_center_router
 from app.modules.customer_intelligence.router import router as customer_map_router
 from app.modules.learning.router import router as learning_router
@@ -27,6 +30,7 @@ app.add_middleware(
 app.include_router(system_router)
 app.include_router(journal_router)
 app.include_router(control_center_router)
+app.include_router(daily_digest_router)
 app.include_router(customer_map_router)
 app.include_router(content_coverage_router)
 app.include_router(learning_router)
