@@ -188,6 +188,10 @@ def _create_guards() -> None:
             comparison jsonb;
             baseline_metric performance_metrics%ROWTYPE;
             candidate_metric performance_metrics%ROWTYPE;
+            baseline_signal_provenance jsonb;
+            candidate_signal_provenance jsonb;
+            baseline_metric_definitions jsonb;
+            candidate_metric_definitions jsonb;
             expected_delta numeric;
             expected_direction text;
             new_support_groups integer;
@@ -628,6 +632,56 @@ def _create_guards() -> None:
                 FROM performance_metrics
                 WHERE id = (comparison->>'candidate_metric_id')::uuid;
 
+                SELECT s.provenance_json::jsonb
+                INTO baseline_signal_provenance
+                FROM jsonb_array_elements(
+                    NEW.baseline_signal_refs_json::jsonb
+                ) AS baseline_ref
+                JOIN signals AS s
+                  ON s.id = (baseline_ref->>'signal_id')::uuid
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements(
+                        s.provenance_json::jsonb->'metrics'
+                    ) AS metric_ref
+                    WHERE metric_ref->>'id'
+                          = comparison->>'baseline_metric_id'
+                )
+                LIMIT 1;
+
+                SELECT s.provenance_json::jsonb
+                INTO candidate_signal_provenance
+                FROM jsonb_array_elements(
+                    NEW.validation_signal_refs_json::jsonb
+                ) AS validation_ref
+                JOIN signals AS s
+                  ON s.id = (validation_ref->>'signal_id')::uuid
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements(
+                        s.provenance_json::jsonb->'metrics'
+                    ) AS metric_ref
+                    WHERE metric_ref->>'id'
+                          = comparison->>'candidate_metric_id'
+                )
+                LIMIT 1;
+
+                SELECT metric_definitions_json::jsonb
+                INTO baseline_metric_definitions
+                FROM content_experiments
+                WHERE id = (
+                    baseline_signal_provenance
+                        ->'experiment'->>'id'
+                )::uuid;
+
+                SELECT metric_definitions_json::jsonb
+                INTO candidate_metric_definitions
+                FROM content_experiments
+                WHERE id = (
+                    candidate_signal_provenance
+                        ->'experiment'->>'id'
+                )::uuid;
+
                 IF baseline_metric.id IS NULL
                    OR candidate_metric.id IS NULL
                    OR baseline_metric.metric_name
@@ -651,7 +705,43 @@ def _create_guards() -> None:
                             trailing '.' FROM trim(
                                 trailing '0' FROM candidate_metric.metric_value::text
                             )
-                        ) THEN
+                        )
+                   OR baseline_signal_provenance IS NULL
+                   OR candidate_signal_provenance IS NULL
+                   OR comparison->>'baseline_experiment_id'
+                        IS DISTINCT FROM
+                            baseline_signal_provenance
+                                ->'experiment'->>'id'
+                   OR comparison->>'candidate_experiment_id'
+                        IS DISTINCT FROM
+                            candidate_signal_provenance
+                                ->'experiment'->>'id'
+                   OR comparison
+                        ->'baseline_review_window'->>'start'
+                        IS DISTINCT FROM
+                            baseline_signal_provenance
+                                ->'experiment'->>'review_window_start'
+                   OR comparison
+                        ->'baseline_review_window'->>'end'
+                        IS DISTINCT FROM
+                            baseline_signal_provenance
+                                ->'experiment'->>'review_window_end'
+                   OR comparison
+                        ->'candidate_review_window'->>'start'
+                        IS DISTINCT FROM
+                            candidate_signal_provenance
+                                ->'experiment'->>'review_window_start'
+                   OR comparison
+                        ->'candidate_review_window'->>'end'
+                        IS DISTINCT FROM
+                            candidate_signal_provenance
+                                ->'experiment'->>'review_window_end'
+                   OR baseline_metric_definitions IS NULL
+                   OR candidate_metric_definitions IS NULL
+                   OR baseline_metric_definitions
+                        IS DISTINCT FROM candidate_metric_definitions
+                   OR comparison->'metric_definitions_verbatim'
+                        IS DISTINCT FROM baseline_metric_definitions THEN
                     RAISE EXCEPTION 'learning_validation_metric_mismatch';
                 END IF;
 
