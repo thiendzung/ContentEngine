@@ -9,6 +9,10 @@ import {
   loadControlCenterSummary,
   loadNeedsMe,
 } from "../../lib/api/control-center";
+import {
+  type DailyDigest,
+  loadDailyDigest,
+} from "../../lib/api/ux-closeout";
 import styles from "./control-center.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -17,6 +21,7 @@ const FALLBACK_TIMEZONE = "Asia/Ho_Chi_Minh";
 type OverviewState = {
   summary: ControlCenterSummary;
   needsMe: NeedsMeItem[];
+  digest: DailyDigest;
 };
 
 function browserTimezone(): string {
@@ -25,6 +30,19 @@ function browserTimezone(): string {
   } catch {
     return FALLBACK_TIMEZONE;
   }
+}
+
+function todayForZone(timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
 }
 
 function typeLabel(type: NeedsMeItem["type"]): string {
@@ -111,16 +129,21 @@ function issuePresentation(code: string): {
 }
 
 async function loadOverview(timezone: string): Promise<OverviewState> {
-  const [summary, needsMe] = await Promise.all([
+  const localDate = todayForZone(timezone);
+  const [summary, needsMe, digest] = await Promise.all([
     loadControlCenterSummary(timezone, PROJECT_SLUG),
     loadNeedsMe(timezone, PROJECT_SLUG),
+    loadDailyDigest(localDate, timezone, PROJECT_SLUG),
   ]);
 
   if (summary.counts.needs_human !== needsMe.length) {
     throw new Error("control_center_needs_me_count_changed_during_read");
   }
+  if (digest.timezone !== timezone || digest.local_date !== localDate) {
+    throw new Error("daily_digest_window_changed_during_overview_read");
+  }
 
-  return { summary, needsMe };
+  return { summary, needsMe, digest };
 }
 
 function NeedsMeCard({ item }: { item: NeedsMeItem }) {
@@ -328,6 +351,42 @@ export default function OverviewPage() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className="eyebrow">Daily Digest</p>
+                <h2>Hôm nay có gì thay đổi?</h2>
+                <p>
+                  Các số dưới đây là durable events trong ngày theo timezone hiện tại.
+                  Coverage không được suy thành lịch sử thay đổi nếu backend không có event tương ứng.
+                </p>
+              </div>
+              <Link className={styles.linkButton} href="/daily-digest">
+                Xem chi tiết
+              </Link>
+            </div>
+
+            <div className={styles.digestGrid}>
+              {[
+                ["Khách hàng", state.digest.event_counts.customer ?? 0],
+                ["Nội dung", state.digest.event_counts.content ?? 0],
+                ["Sản xuất", state.digest.event_counts.production ?? 0],
+                ["Xuất bản", state.digest.event_counts.publication ?? 0],
+                ["Đo lường", state.digest.event_counts.measurement ?? 0],
+                ["Learning", state.digest.event_counts.learning ?? 0],
+              ].map(([label, value]) => (
+                <div className={styles.countCard} key={String(label)}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <p className={styles.meta}>
+              Window {formatDate(state.digest.window_start)} →{" "}
+              {formatDate(state.digest.window_end)} · measurement không phải causal proof.
+            </p>
           </section>
 
           <section className={styles.section}>
