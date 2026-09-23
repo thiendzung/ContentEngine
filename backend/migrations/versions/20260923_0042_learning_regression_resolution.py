@@ -672,6 +672,14 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_validation_missing_evidence_required';
             END IF;
 
+            IF NEW.validation_status IN ('VALIDATED','REGRESSED')
+               AND jsonb_array_length(
+                   NEW.alternative_explanations_json::jsonb
+               ) = 0 THEN
+                RAISE EXCEPTION
+                    'learning_validation_alternative_explanation_required';
+            END IF;
+
             IF jsonb_array_length(NEW.validation_signal_refs_json::jsonb)
                IS DISTINCT FROM (
                    SELECT count(DISTINCT validation_ref->>'signal_id')
