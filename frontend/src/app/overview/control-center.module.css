@@ -67,6 +67,9 @@
 
 .button,
 .linkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #312f2a;
   background: transparent;
   color: #312f2a;
@@ -304,7 +307,4 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .runtimeLabel {
-    text-align: left;
-  }
 }
