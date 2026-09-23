@@ -10,6 +10,7 @@ from test_ce05_review_actions import _pending_fixture
 from test_ce05_review_console import isolated_session
 from test_ll01c_learning_application import _need_candidate
 
+from app.main import app
 from app.modules.content_engine.models import Project, SettingsVersion
 from app.modules.control_center.daily_digest import build_daily_digest
 from app.modules.harness.models import Artifact, ModelCall
@@ -216,3 +217,12 @@ async def test_ux01d_daily_digest_uses_explicit_bounded_window_and_current_cover
         assert any(event.domain == "content" for event in digest.events)
         assert any(event.domain == "production" for event in digest.events)
         assert sum(digest.current_coverage_counts.values()) >= 1
+
+def test_ux01d_read_only_routes_are_registered() -> None:
+    paths = app.openapi()["paths"]
+    assert "/learning" in paths
+    assert "/system/summary" in paths
+    assert "/daily-digest" in paths
+    assert set(paths["/learning"]) == {"get"}
+    assert set(paths["/system/summary"]) == {"get"}
+    assert set(paths["/daily-digest"]) == {"get"}
