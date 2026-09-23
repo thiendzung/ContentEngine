@@ -336,7 +336,9 @@ async def build_learning_overview(
     for items in evidence_by_candidate.values():
         items.sort(
             key=lambda item: (
-                item.occurred_at or datetime.min.replace(tzinfo=None),
+                item.occurred_at.timestamp()
+                if item.occurred_at is not None
+                else float("-inf"),
                 str(item.id),
             ),
             reverse=True,
