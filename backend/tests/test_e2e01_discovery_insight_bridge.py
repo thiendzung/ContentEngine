@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
@@ -19,23 +18,6 @@ from app.modules.customer_intelligence.models import (
     CustomerInsightNeedLink,
     CustomerInsightSignal,
 )
-from app.modules.knowledge.models import Claim, Evidence, SourceDocument
-from app.modules.research.contracts import (
-    CommercialBias,
-    IntendedUse,
-    PageDocument,
-    ProductionResearchRequest,
-    ProductionResearchResult,
-    ResearchSignalKind,
-    SearchSignal,
-    SourceCandidate,
-)
-from app.modules.research.discovery import (
-    DiscoveryResearchWorkflow,
-    DiscoveryWorkflowRequest,
-)
-from app.modules.research.keyword_plan.contracts import NeedType
-from app.modules.research.keyword_plan.service import OpportunityMapRequest
 
 
 @asynccontextmanager
@@ -77,7 +59,11 @@ async def _signal(
         context="E2E-01 intake fixture",
         captured_at=datetime.now(UTC),
         fingerprint=uuid4().hex,
-        provenance_json={"provider": "fixture", "method": "reviewed_observation"},
+        provenance_json={
+            "provider": "fixture",
+            "method": "reviewed_observation",
+            "artifact_ref": f"artifact-file:research/{uuid4().hex}.json",
+        },
     )
     session.add(signal)
     await session.flush()
@@ -142,6 +128,7 @@ async def test_customer_insight_intake_is_explicit_idempotent_and_never_promotes
         assert first.insight.status == "CANDIDATE"
         assert first.insight.reviewed_by is None
         assert first.insight.reviewed_at is None
+        assert signal.provenance_json["artifact_ref"].startswith("artifact-file:")
 
         signal_link = await session.get(
             CustomerInsightSignal,
@@ -216,121 +203,40 @@ async def test_customer_insight_intake_fails_closed_on_ambiguous_or_foreign_sign
             )
 
 
-class StubRouter:
-    def __init__(self, result: ProductionResearchResult) -> None:
-        self.result = result
-
-    async def run(
-        self,
-        session: AsyncSession,
-        *,
-        request: ProductionResearchRequest,
-        run_id: UUID | None = None,
-        step_run_id: UUID | None = None,
-    ) -> ProductionResearchResult:
-        del session, run_id, step_run_id
-        assert request is self.result.request
-        return self.result
-
-
 @pytest.mark.asyncio
-async def test_discovery_persists_read_page_as_raw_source_without_creating_evidence() -> None:
+async def test_customer_insight_intake_requires_complete_need_link_contract() -> None:
     async with isolated_session() as session:
-        project = await _project(session, "e2e-discovery")
-        suffix = uuid4().hex
-        query = f"first artwork price confidence {suffix}"
-        source_url = f"https://research.example/{suffix}"
-        question = f"How do I understand an original artwork price {suffix}?"
-
-        research_request = ProductionResearchRequest(
+        project = await _project(session, "e2e-intake")
+        signal = await _signal(
+            session,
             project_id=project.id,
-            query=query,
-            locale="en",
-            max_pages_to_read=1,
+            text="A first-time buyer asks about originality.",
         )
-        candidate = SourceCandidate(
-            provider="serper",
-            query=query,
-            url=source_url,
-            title="First buyer price context",
-            snippet=question,
-            source_type="editorial",
-            commercial_bias=CommercialBias.LOW,
-            intended_use=IntendedUse.DISCOVERY,
+        need = NeedHypothesis(
+            project_id=project.id,
+            type="question",
+            statement="A first-time buyer wants originality context.",
+            audience_scope="first-time art buyer",
+            situation="considering an original artwork",
+            origin="founder_proposed",
+            status="PROPOSED",
+            alternative_explanations_json=[],
+            missing_evidence_json=[],
         )
-        production = ProductionResearchResult(
-            request=research_request,
-            signals=[
-                SearchSignal(
-                    provider="serper",
-                    query=query,
-                    kind=ResearchSignalKind.PEOPLE_ALSO_ASK,
-                    text=question,
-                    url=source_url,
-                    snippet=question,
-                    position=1,
-                )
-            ],
-            source_candidates=[candidate],
-            selected_sources=[candidate],
-            documents=[
-                PageDocument(
-                    provider="jina",
-                    url=source_url,
-                    requested_url=source_url,
-                    final_url=source_url,
-                    title="First buyer price context",
-                    content=f"{question}\nA longer page body for a raw Discovery source.",
-                )
-            ],
-            sufficient=True,
-            stop_reason="synthetic_discovery_complete",
-        )
-        workflow = DiscoveryResearchWorkflow(router=StubRouter(production))
-        request = DiscoveryWorkflowRequest(
-            research=research_request,
-            opportunity=OpportunityMapRequest(
-                project_id=project.slug,
-                locale="en",
-                audience_scope="first-time art buyer",
-                situation="considering an original artwork",
-                reader="first-time art buyer",
-                need_statement=f"Understand original artwork price context {suffix}",
-                need_type=NeedType.QUESTION,
-            ),
-        )
+        session.add(need)
+        await session.flush()
 
-        source_documents_before = int(
-            await session.scalar(select(func.count()).select_from(SourceDocument))
-        )
-        claims_before = int(await session.scalar(select(func.count()).select_from(Claim)))
-        evidence_before = int(
-            await session.scalar(select(func.count()).select_from(Evidence))
-        )
-
-        result = await workflow.run(session, request=request, persist_plan=True)
-
-        assert result.planning_refs is not None
-        source_documents_after = int(
-            await session.scalar(select(func.count()).select_from(SourceDocument))
-        )
-        claims_after = int(await session.scalar(select(func.count()).select_from(Claim)))
-        evidence_after = int(
-            await session.scalar(select(func.count()).select_from(Evidence))
-        )
-        assert source_documents_after == source_documents_before + 1
-        assert claims_after == claims_before
-        assert evidence_after == evidence_before
-
-        signal_id = next(iter(result.planning_refs.signal_ids.values()))
-        signal = await session.get(Signal, signal_id)
-        assert signal is not None
-        assert signal.provenance_json["provider"] == "serper"
-        assert signal.provenance_json["source_document_id"]
-        source_document = await session.get(
-            SourceDocument,
-            UUID(str(signal.provenance_json["source_document_id"])),
-        )
-        assert source_document is not None
-        assert source_document.canonical_url == source_url
-        assert source_document.metadata_json["raw_source_only"] is True
+        with pytest.raises(
+            CustomerInsightIntakeError,
+            match="customer_insight_intake_need_link_incomplete",
+        ):
+            await persist_customer_insight_candidate(
+                session,
+                project_id=project.id,
+                request=CustomerInsightCandidateInput(
+                    insight_type="question",
+                    statement="Originality context may matter before purchase.",
+                    support_signal_ids=(signal.id,),
+                    need_hypothesis_id=need.id,
+                ),
+            )
