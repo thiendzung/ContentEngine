@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal, cast
 from uuid import UUID
@@ -413,6 +414,7 @@ async def _signal_metric_records(
     signal: Signal,
     *,
     scope: dict[str, object],
+    not_before: datetime | None = None,
 ) -> list[dict[str, object]]:
     if (
         signal.source_kind != "MOTGU"
@@ -500,6 +502,18 @@ async def _signal_metric_records(
         raise LearningRegressionError(
             "learning_validation_signal_experiment_mismatch"
         )
+    if not_before is not None:
+        if signal.observed_at is None or signal.observed_at <= not_before:
+            raise LearningRegressionError(
+                "learning_validation_signal_not_later"
+            )
+        if (
+            experiment.review_window_start is None
+            or experiment.review_window_start < not_before
+        ):
+            raise LearningRegressionError(
+                "learning_validation_experiment_not_later"
+            )
     customer = _dict(
         provenance.get("customer"),
         "learning_validation_signal_provenance_invalid",
@@ -552,6 +566,7 @@ async def _load_signal_set(
     *,
     application: LearningApplication,
     signal_relations: dict[UUID, EvidenceRelation],
+    not_before: datetime | None = None,
 ) -> tuple[
     list[dict[str, object]],
     set[str],
@@ -572,6 +587,7 @@ async def _load_signal_set(
             session,
             signal,
             scope=scope,
+            not_before=not_before,
         )
         independence_key = await _canonical_independence_key(
             session,
@@ -787,6 +803,7 @@ async def create_learning_validation(
         session,
         application=application,
         signal_relations=signal_relations,
+        not_before=application.applied_at,
     )
     alternatives = _clean_strings(
         alternative_explanations,
