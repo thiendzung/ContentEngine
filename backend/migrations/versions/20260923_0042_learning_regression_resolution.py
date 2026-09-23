@@ -214,6 +214,7 @@ def _create_guards() -> None:
             app_resulting_target uuid;
             app_scope jsonb;
             app_signal_refs jsonb;
+            app_applied_at timestamptz;
             candidate_status text;
             locked_candidate_key text;
             latest_candidate_version integer;
@@ -224,6 +225,8 @@ def _create_guards() -> None:
             signal_group text;
             signal_provenance jsonb;
             signal_content_type text;
+            signal_observed_at timestamptz;
+            signal_review_window_start timestamptz;
             actual_journey jsonb;
             expected_journey jsonb;
             actual_supporting_lenses jsonb;
@@ -251,10 +254,10 @@ def _create_guards() -> None:
 
             SELECT project_id, learning_candidate_id, candidate_version,
                    target_type, resulting_target_id, frozen_scope_json::jsonb,
-                   applied_signal_refs_json::jsonb
+                   applied_signal_refs_json::jsonb, applied_at
             INTO app_project, app_candidate, app_candidate_version,
                  app_target_type, app_resulting_target, app_scope,
-                 app_signal_refs
+                 app_signal_refs, app_applied_at
             FROM learning_applications
             WHERE id = NEW.learning_application_id;
 
@@ -345,14 +348,22 @@ def _create_guards() -> None:
                            NEW.project_id
                        ),
                        s.provenance_json::jsonb,
-                       ci.content_type
+                       ci.content_type,
+                       s.observed_at,
+                       ce.review_window_start
                 INTO signal_project, signal_fingerprint, signal_group,
-                     signal_provenance, signal_content_type
+                     signal_provenance, signal_content_type,
+                     signal_observed_at, signal_review_window_start
                 FROM signals AS s
                 LEFT JOIN content_items AS ci
                   ON ci.id = (
                       s.provenance_json::jsonb
                       ->'content'->>'content_item_id'
+                  )::uuid
+                LEFT JOIN content_experiments AS ce
+                  ON ce.id = (
+                      s.provenance_json::jsonb
+                      ->'experiment'->>'id'
                   )::uuid
                 WHERE s.id = (signal_ref->>'signal_id')::uuid
                   AND s.source_kind = 'MOTGU'
@@ -473,14 +484,22 @@ def _create_guards() -> None:
                            NEW.project_id
                        ),
                        s.provenance_json::jsonb,
-                       ci.content_type
+                       ci.content_type,
+                       s.observed_at,
+                       ce.review_window_start
                 INTO signal_project, signal_fingerprint, signal_group,
-                     signal_provenance, signal_content_type
+                     signal_provenance, signal_content_type,
+                     signal_observed_at, signal_review_window_start
                 FROM signals AS s
                 LEFT JOIN content_items AS ci
                   ON ci.id = (
                       s.provenance_json::jsonb
                       ->'content'->>'content_item_id'
+                  )::uuid
+                LEFT JOIN content_experiments AS ce
+                  ON ce.id = (
+                      s.provenance_json::jsonb
+                      ->'experiment'->>'id'
                   )::uuid
                 WHERE s.id = (signal_ref->>'signal_id')::uuid
                   AND s.source_kind = 'MOTGU'
@@ -539,6 +558,10 @@ def _create_guards() -> None:
                 ) AS lens(value);
 
                 IF signal_project IS NULL
+                   OR signal_observed_at IS NULL
+                   OR signal_observed_at <= app_applied_at
+                   OR signal_review_window_start IS NULL
+                   OR signal_review_window_start < app_applied_at
                    OR signal_project IS DISTINCT FROM NEW.project_id
                    OR signal_ref->>'fingerprint'
                         IS DISTINCT FROM signal_fingerprint
