@@ -385,9 +385,33 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Candidate scope explicitly records that historical intent is not frozen in PM-01 instead of reading mutable current intent.
 - [x] Code migration `20260922_0040` adds candidate tables + database immutability/project-lineage guards.
 - [x] No Need/CustomerInsight/Audience/Journey/Opportunity/settings/prompt/workflow/publication mutation.
-- [ ] Focused LL-01B tests green.
-- [ ] Full CI green on exact LL-01B PR head.
-- [ ] Exact-ref OpenCodeReview + MG triage.
-- [ ] Agent Local disposable 0039↔0040 proof.
+- [x] Focused LL-01B tests green — Agent Local focused regression 50 passed.
+- [x] Full CI green on exact LL-01B verified head `3f8c5bf455ac911f15a44c0e7357968362184f65` — backend 1001 passed / 12 warnings.
+- [x] Exact-ref OpenCodeReview + MG triage — remediation rerun 7/7 reviewable, 0 Critical/High/Medium/Low.
+- [x] Agent Local disposable 0039↔0040 proof + true two-session concurrency proof PASS.
+- [x] Founder merge — PR #184 merged as main `295c64088e7143adeaa3f637b3d6e777c626321e`.
+- [x] Operational migration remained separately unauthorized.
+
+
+### LL-01C immediate checklist
+
+- [x] Start from exact merged LL-01B main `295c64088e7143adeaa3f637b3d6e777c626321e`.
+- [x] Separate immutable human review from application receipt.
+- [x] Rebuild candidate snapshot from immutable Assessment / Signal / Observation evidence before review and apply.
+- [x] Bind review to exact candidate version + target snapshot + candidate snapshot hash.
+- [x] Fail closed on superseded candidate or stale Need/CustomerInsight target identity.
+- [x] Re-check receipt after candidate row lock to make concurrent application replay idempotent.
+- [x] Need application adds/replays factual Signal links only; Need status/version remain unchanged.
+- [x] Existing CustomerInsight application reuses canonical Signal-link service; Insight status remains unchanged.
+- [x] New CustomerInsight application creates/replays CANDIDATE only, links frozen Need + factual Signals, never auto-supports/rejects.
+- [x] NO_MAP_CHANGE creates receipt only; no fake Customer Map snapshot.
+- [x] Mutating application refreshes canonical Customer Living Map before/after mutation and records exact snapshot/change report.
+- [x] Living Map now emits Need evidence change events instead of silently changing Need signal refs.
+- [x] Code migration `20260922_0041` adds immutable review/application receipts and DB identity guards.
+- [ ] Focused LL-01C tests green.
+- [ ] Full CI green on exact LL-01C PR head.
+- [ ] MG exact-head review.
+- [ ] Exact-ref OpenCodeReview.
+- [ ] Agent Local disposable 0040↔0041 + focused/full/concurrency proof.
 - [ ] Founder merge.
 - [ ] Operational migration remains separately unauthorized.

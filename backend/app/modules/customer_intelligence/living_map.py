@@ -18,10 +18,12 @@ from app.modules.content_engine.models import (
     NeedHypothesisSignal,
     Project,
     SettingsVersion,
+    Signal,
 )
 from app.modules.customer_intelligence.insights import (
     CustomerInsightError,
     customer_insight_evidence_counts,
+    signal_independence_key,
 )
 from app.modules.customer_intelligence.models import (
     CustomerInsight,
@@ -344,12 +346,14 @@ async def build_customer_map_snapshot(
                 )
             ).scalars()
         )
-    need_signal_rows = []
+    need_signal_rows: list[tuple[NeedHypothesisSignal, Signal]] = []
     if need_ids:
-        need_signal_rows = list(
-            (
+        need_signal_rows = [
+            (link, signal)
+            for link, signal in (
                 await session.execute(
-                    select(NeedHypothesisSignal)
+                    select(NeedHypothesisSignal, Signal)
+                    .join(Signal, Signal.id == NeedHypothesisSignal.signal_id)
                     .where(NeedHypothesisSignal.need_hypothesis_id.in_(need_ids))
                     .order_by(
                         NeedHypothesisSignal.need_hypothesis_id,
@@ -357,8 +361,8 @@ async def build_customer_map_snapshot(
                         NeedHypothesisSignal.signal_id,
                     )
                 )
-            ).scalars()
-        )
+            ).all()
+        ]
 
     insight_signal_map: dict[UUID, dict[str, list[str]]] = {}
     for insight_signal_link in insight_signal_rows:
@@ -404,7 +408,17 @@ async def build_customer_map_snapshot(
         )
 
     need_signal_map: dict[UUID, dict[str, list[str]]] = {}
-    for need_signal_link in need_signal_rows:
+    need_evidence_totals: dict[UUID, dict[str, int]] = {}
+    need_independence: dict[UUID, dict[str, set[str]]] = {}
+    need_independence_keys: dict[UUID, dict[str, dict[str, str]]] = {}
+    independence_cache: dict[UUID, str] = {}
+    need_project_by_id = {need.id: need.project_id for need in needs}
+    for need_signal_link, signal in need_signal_rows:
+        need_project_id = need_project_by_id.get(
+            need_signal_link.need_hypothesis_id
+        )
+        if need_project_id is None or signal.project_id != need_project_id:
+            raise CustomerMapError("customer_map_need_signal_project_mismatch")
         refs = need_signal_map.setdefault(
             need_signal_link.need_hypothesis_id,
             {"supports": [], "contradicts": []},
@@ -412,6 +426,30 @@ async def build_customer_map_snapshot(
         refs[need_signal_link.relation].append(
             str(need_signal_link.signal_id)
         )
+        totals = need_evidence_totals.setdefault(
+            need_signal_link.need_hypothesis_id,
+            {"supports": 0, "contradicts": 0},
+        )
+        relation = need_signal_link.relation
+        totals[relation] += 1
+        independent = need_independence.setdefault(
+            need_signal_link.need_hypothesis_id,
+            {"supports": set(), "contradicts": set()},
+        )
+        try:
+            independent_key = await signal_independence_key(
+                session,
+                signal,
+                independence_cache,
+            )
+        except CustomerInsightError as exc:
+            raise CustomerMapError(exc.code) from exc
+        independent[relation].add(independent_key)
+        independence_keys = need_independence_keys.setdefault(
+            need_signal_link.need_hypothesis_id,
+            {"supports": {}, "contradicts": {}},
+        )
+        independence_keys[relation][str(signal.id)] = independent_key
 
     insight_payloads: list[dict[str, object]] = []
     for insight in insights:
@@ -475,6 +513,18 @@ async def build_customer_map_snapshot(
             need.id,
             {"supports": [], "contradicts": []},
         )
+        need_totals = need_evidence_totals.get(
+            need.id,
+            {"supports": 0, "contradicts": 0},
+        )
+        independent = need_independence.get(
+            need.id,
+            {"supports": set(), "contradicts": set()},
+        )
+        independence_keys = need_independence_keys.get(
+            need.id,
+            {"supports": {}, "contradicts": {}},
+        )
         need_payloads.append(
             {
                 "id": str(need.id),
@@ -499,6 +549,22 @@ async def build_customer_map_snapshot(
                 "signal_refs": {
                     "supports": sorted(refs["supports"]),
                     "contradicts": sorted(refs["contradicts"]),
+                },
+                "evidence_counts": {
+                    "supports": need_totals["supports"],
+                    "contradicts": need_totals["contradicts"],
+                    "independent_supports": len(independent["supports"]),
+                    "independent_contradicts": len(
+                        independent["contradicts"]
+                    ),
+                },
+                "independence_keys": {
+                    "supports": dict(
+                        sorted(independence_keys["supports"].items())
+                    ),
+                    "contradicts": dict(
+                        sorted(independence_keys["contradicts"].items())
+                    ),
                 },
                 "insight_links": sorted(
                     need_insight_map.get(need.id, []),
@@ -770,6 +836,14 @@ def compare_customer_map_snapshots(
     current_needs = _by_id(_records(current_map, "needs"), "id")
     for need_id in sorted(set(current_needs) - set(previous_needs)):
         events.append(_event("NEW", "need", need_id, "need_added"))
+    for need_id in sorted(set(current_needs) & set(previous_needs)):
+        events.extend(
+            _need_evidence_events(
+                need_id=need_id,
+                previous=previous_needs[need_id],
+                current=current_needs[need_id],
+            )
+        )
 
     previous_insights = _by_id(
         _records(previous_map, "insights"),
@@ -1050,6 +1124,60 @@ def _parse_journey_stages(value: object) -> tuple[dict[str, str | None], ...]:
             }
         )
     return tuple(stages)
+
+
+def _need_evidence_events(
+    *,
+    need_id: str,
+    previous: dict[str, object],
+    current: dict[str, object],
+) -> list[dict[str, object]]:
+    previous_refs = _dict_field(previous, "signal_refs")
+    current_refs = _dict_field(current, "signal_refs")
+    current_independence = _dict_field(current, "independence_keys")
+    events: list[dict[str, object]] = []
+    for relation, kind in (
+        ("supports", "SUPPORT"),
+        ("contradicts", "CONTRADICT"),
+    ):
+        before = set(_string_list_field(previous_refs, relation))
+        after = set(_string_list_field(current_refs, relation))
+        added = sorted(after - before)
+        if not added:
+            continue
+        relation_keys = _dict_field(current_independence, relation)
+        before_independent_keys = {
+            _string_field(relation_keys, signal_id)
+            for signal_id in before
+            if signal_id in relation_keys
+        }
+        after_independent_keys = {
+            _string_field(relation_keys, signal_id)
+            for signal_id in after
+            if signal_id in relation_keys
+        }
+        if any(signal_id not in relation_keys for signal_id in after):
+            raise CustomerMapError("customer_map_need_independence_invalid")
+        if any(signal_id not in relation_keys for signal_id in before):
+            raise CustomerMapError("customer_map_need_independence_invalid")
+        event_kind: JourneyChangeKind
+        detail: str
+        if len(after_independent_keys) > len(before_independent_keys):
+            event_kind = kind  # type: ignore[assignment]
+            detail = f"{relation}_evidence_added"
+        else:
+            event_kind = "DUPLICATE"
+            detail = f"{relation}_duplicate_evidence_added"
+        events.append(
+            _event(
+                event_kind,
+                "need",
+                need_id,
+                detail,
+                signal_refs=added,
+            )
+        )
+    return events
 
 
 def _insight_evidence_events(
