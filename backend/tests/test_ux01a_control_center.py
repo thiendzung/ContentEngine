@@ -58,27 +58,26 @@ from app.modules.publishing.service import prepare_publish_package
 
 
 async def _read_only_counts(session) -> dict[str, int]:
-    models = (
-        ContentRun,
-        Job,
-        ModelCall,
-        ToolCall,
-        Approval,
-        Artifact,
-        LearningCandidateReview,
-        LearningValidation,
-        LearningResolution,
-        PublishedContent,
-        PublishEvent,
-        CustomerInsight,
-        NeedHypothesis,
-        Signal,
-    )
-    return {
-        model.__tablename__: int(
+    async def count(model: object) -> int:
+        return int(
             await session.scalar(select(func.count()).select_from(model)) or 0
         )
-        for model in models
+
+    return {
+        "content_runs": await count(ContentRun),
+        "jobs": await count(Job),
+        "model_calls": await count(ModelCall),
+        "tool_calls": await count(ToolCall),
+        "approvals": await count(Approval),
+        "artifacts": await count(Artifact),
+        "learning_candidate_reviews": await count(LearningCandidateReview),
+        "learning_validations": await count(LearningValidation),
+        "learning_resolutions": await count(LearningResolution),
+        "published_content": await count(PublishedContent),
+        "publish_events": await count(PublishEvent),
+        "customer_insights": await count(CustomerInsight),
+        "need_hypotheses": await count(NeedHypothesis),
+        "signals": await count(Signal),
     }
 
 
