@@ -17,6 +17,7 @@ from test_operator_start_to_angle import (
     _intake_kwargs,
     _ready_preflight,
 )
+from test_pm01_publish_measurement import _fixture as _pm_fixture
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.main import app
@@ -39,6 +40,7 @@ from app.modules.control_center.read_model import (
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, ModelCall, ToolCall
 from app.modules.learning.regression import create_learning_validation
+from app.modules.publishing.service import prepare_publish_package
 
 
 async def _read_only_counts(session) -> tuple[int, int, int, int]:
@@ -77,6 +79,45 @@ async def test_ux01a_needs_me_is_project_scoped_and_read_only() -> None:
         assert item.destination.entity_id == str(target.content_case_id)
         assert str(other.content_case_id) not in item.id
         assert any(ref.startswith("artifact:") for ref in item.evidence_refs)
+
+
+@pytest.mark.asyncio
+async def test_ux01a_surfaces_publish_authorization_without_fake_href(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _pm_fixture(session, monkeypatch)
+        package = await prepare_publish_package(
+            session,
+            content_version_id=fixture.version.id,
+            experiment_id=fixture.experiment.id,
+            slug="ux01a-publish-gate",
+        )
+        before = await _read_only_counts(session)
+
+        snapshot = await build_control_center(
+            session,
+            project_slug=fixture.project.slug,
+            timezone_name="UTC",
+        )
+
+        assert await _read_only_counts(session) == before
+        publish_items = [
+            item
+            for item in snapshot.needs_me
+            if item.type == "publish_authorization"
+        ]
+        assert len(publish_items) == 1
+        item = publish_items[0]
+        assert item.destination.entity_id == str(package.run.id)
+        assert item.destination.action_ref == (
+            f"publish_authorization:{package.run.id}:{package.artifact.id}"
+        )
+        assert item.destination.href is None
+        assert item.evidence_refs == [
+            f"artifact:{package.artifact.id}:{package.artifact.content_hash}"
+        ]
+        assert snapshot.summary.counts.needs_human == 1
 
 
 @pytest.mark.asyncio
