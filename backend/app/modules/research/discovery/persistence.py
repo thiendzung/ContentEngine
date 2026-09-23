@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy import select
@@ -20,6 +22,7 @@ from app.modules.content_engine.models import (
     NeedHypothesis as DBNeedHypothesis,
 )
 from app.modules.content_engine.models import Signal as DBSignal
+from app.modules.research.evidence.contracts import PersistedPageRef
 from app.modules.research.keyword_plan.contracts import OpportunityMapResult, Signal
 
 
@@ -41,13 +44,39 @@ def _parse_datetime(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _signal_provenance(signal: Signal) -> dict[str, object]:
+def _normalize_url(url: str) -> str:
+    candidate = url.strip()
+    parts = urlsplit(candidate)
+    if not parts.scheme or not parts.netloc:
+        return candidate.rstrip("/").casefold()
+    path = parts.path or "/"
+    if path != "/":
+        path = path.rstrip("/")
+    return urlunsplit(
+        (parts.scheme.lower(), parts.netloc.lower(), path, parts.query, "")
+    ).casefold()
+
+
+def _signal_provenance(
+    signal: Signal,
+    page_refs: Mapping[str, PersistedPageRef] | None = None,
+) -> dict[str, object]:
     provenance = {
         key: value
         for key, value in asdict(signal.provenance).items()
         if value is not None
     }
     provenance["planning_signal_id"] = signal.id
+    if signal.source_url and page_refs:
+        page_ref = page_refs.get(_normalize_url(signal.source_url))
+        if page_ref is not None:
+            provenance.update(
+                {
+                    "source_id": str(page_ref.source_id),
+                    "source_document_id": str(page_ref.source_document_id),
+                    "source_document_canonical_url": page_ref.canonical_url,
+                }
+            )
     return provenance
 
 
@@ -56,6 +85,7 @@ async def _find_existing_signal(
     *,
     project_id: UUID,
     signal: Signal,
+    page_refs: Mapping[str, PersistedPageRef] | None = None,
 ) -> DBSignal | None:
     candidates = tuple(
         (
@@ -75,7 +105,7 @@ async def _find_existing_signal(
         .scalars()
         .all()
     )
-    desired = _signal_provenance(signal)
+    desired = _signal_provenance(signal, page_refs)
     for row in candidates:
         provenance = row.provenance_json or {}
         if provenance.get("planning_signal_id") == signal.id:
@@ -103,6 +133,7 @@ async def _persist_signals(
     *,
     project_id: UUID,
     result: OpportunityMapResult,
+    page_refs: Mapping[str, PersistedPageRef] | None = None,
 ) -> dict[str, UUID]:
     signal_ids: dict[str, UUID] = {}
     rows_by_planning_id: dict[str, DBSignal] = {}
@@ -112,6 +143,7 @@ async def _persist_signals(
             session,
             project_id=project_id,
             signal=signal,
+            page_refs=page_refs,
         )
         if existing is None:
             existing = DBSignal(
@@ -131,7 +163,7 @@ async def _persist_signals(
                 ),
                 fingerprint=signal.fingerprint,
                 independence_group=signal.independence_group,
-                provenance_json=_signal_provenance(signal),
+                provenance_json=_signal_provenance(signal, page_refs),
             )
             session.add(existing)
             await session.flush()
@@ -329,6 +361,7 @@ async def persist_discovery_plan(
     *,
     project_id: UUID,
     result: OpportunityMapResult,
+    page_refs: Mapping[str, PersistedPageRef] | None = None,
 ) -> PersistedDiscoveryPlan:
     """Persist pre-ContentCase planning objects without creating a ContentRun."""
 
@@ -336,6 +369,7 @@ async def persist_discovery_plan(
         session,
         project_id=project_id,
         result=result,
+        page_refs=page_refs,
     )
     hypothesis = await _persist_hypothesis(
         session,
