@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,9 +18,9 @@ router = APIRouter(prefix="/daily-digest", tags=["daily-digest"])
 
 @router.get("", response_model=DailyDigest)
 async def get_daily_digest(
-    digest_date: date = Query(alias="date"),
-    timezone: str = Query(min_length=1, max_length=100),
-    project_slug: str = Query(default="motgu", min_length=1, max_length=100),
+    digest_date: Annotated[date, Query(alias="date")],
+    timezone: Annotated[str, Query(min_length=1, max_length=100)],
+    project_slug: Annotated[str, Query(min_length=1, max_length=100)] = "motgu",
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> DailyDigest:
     try:
