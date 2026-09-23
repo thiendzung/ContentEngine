@@ -1,0 +1,272 @@
+.page {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 48px 28px 88px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.button,
+.linkButton {
+  border: 1px solid #312f2a;
+  background: transparent;
+  color: #312f2a;
+  padding: 9px 12px;
+  min-height: 40px;
+  font: 700 .72rem Arial, sans-serif;
+  letter-spacing: .04em;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:focus-visible,
+.linkButton:focus-visible,
+.needsLink:focus-visible,
+.disclosure summary:focus-visible {
+  outline: 3px solid #2e5367;
+  outline-offset: 3px;
+}
+
+.button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.notice,
+.error,
+.empty,
+.stale {
+  border: 1px solid #c8c0b4;
+  background: rgba(255, 252, 246, .75);
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+
+.notice {
+  border-left: 3px solid #7c766d;
+  color: #625d55;
+}
+
+.error {
+  border-color: #c48e7e;
+  background: #f8e9e4;
+  color: #7d382a;
+}
+
+.stale {
+  border-color: #caa977;
+  background: #fbf2e3;
+  color: #674b20;
+}
+
+.section {
+  margin-top: 22px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.sectionHeader h2,
+.card h3 {
+  margin-top: 0;
+}
+
+.prioritySection {
+  border: 1px solid #aaa196;
+  background: rgba(255, 252, 246, .9);
+  padding: 20px;
+}
+
+.prioritySection h2 {
+  margin-top: 0;
+}
+
+.countGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.countCard {
+  border: 1px solid #c8c0b4;
+  background: rgba(255, 252, 246, .72);
+  padding: 15px;
+}
+
+.countCard span {
+  display: block;
+  color: #756e64;
+  font: 700 .62rem Arial, sans-serif;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.countCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.75rem;
+  font-weight: 500;
+}
+
+.needsList,
+.issueList {
+  display: grid;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid #c8c0b4;
+  background: #fffdf8;
+  padding: 16px;
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.badge,
+.badgeWarn,
+.badgeDanger {
+  display: inline-flex;
+  border: 1px solid #aaa196;
+  padding: 5px 8px;
+  font: 700 .64rem Arial, sans-serif;
+  letter-spacing: .05em;
+  background: #ece8e1;
+  color: #5e5a54;
+}
+
+.badgeWarn {
+  border-color: #a88145;
+  background: #f5ead6;
+  color: #674b20;
+}
+
+.badgeDanger {
+  border-color: #a35e4e;
+  background: #f6e5df;
+  color: #71382d;
+}
+
+.needsLink {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #2e5367;
+  font-weight: 700;
+}
+
+.noDestination {
+  margin-top: 12px;
+  color: #766e64;
+  font-size: .88rem;
+}
+
+.meta {
+  color: #756e64;
+  font: .74rem Arial, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.refs {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font: .74rem Arial, sans-serif;
+  color: #655f56;
+  overflow-wrap: anywhere;
+}
+
+.disclosure {
+  border-top: 1px solid #ddd4c8;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.autopilot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #c8c0b4;
+  background: rgba(255, 252, 246, .72);
+  padding: 16px;
+}
+
+.autopilot p {
+  margin: 5px 0 0;
+}
+
+.runtimeLabel {
+  text-align: right;
+}
+
+.runtimeLabel strong {
+  display: block;
+}
+
+.runtimeLabel span {
+  color: #756e64;
+  font: .72rem Arial, sans-serif;
+}
+
+@media (max-width: 920px) {
+  .countGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 34px 16px 64px;
+  }
+
+  .header,
+  .sectionHeader,
+  .cardTop,
+  .autopilot {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .button,
+  .linkButton {
+    min-height: 44px;
+  }
+
+  .countGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .runtimeLabel {
+    text-align: left;
+  }
+}
