@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.modules.content_engine.content_coverage import (
@@ -100,7 +101,7 @@ def _window(
 
 
 def _in_window(
-    column: ColumnElement[datetime],
+    column: InstrumentedAttribute[datetime],
     start: datetime,
     end: datetime,
 ) -> tuple[ColumnElement[bool], ColumnElement[bool]]:
