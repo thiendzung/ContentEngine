@@ -468,11 +468,13 @@ Exit: the backend can answer “what is running, blocked, and what genuinely nee
 
 #### UX-01B — Customers + Content Map UI
 
-- [ ] Add `/customers` using existing Customer Living Map read APIs.
-- [ ] Show audience → Need → Insight/Journey with observed/inferred/review status clearly separated.
-- [ ] Drill-down shows supporting/contradicting evidence, missing evidence, alternatives and recent changes.
+- [x] Add `/customers` using existing Customer Living Map read APIs.
+- [x] Show Audience → Need → CustomerInsight and configured Journey without inventing a persisted Need→Journey relation; expose canonical review state and explicitly mark observed/inferred classification unavailable because the current CustomerInsight contract has no such field.
+- [x] Drill-down shows supporting/contradicting/context Signal refs and independent counts, Need↔Insight relations, missing evidence, alternatives, reviewer/reason and recent snapshot changes.
+- [x] Bind Customer Map summary/changes/audience/need reads to one exact `snapshot_hash`; mixed-snapshot reads fail closed and retain the last coherent view.
+- [x] Prevent async audience/need/refresh races from overwriting a newer user selection.
 - [ ] Add `/content-map` using canonical Content Coverage API.
-- [ ] Show Need × Journey/locale coverage states without fake numeric scores.
+- [ ] Show only canonical Need-level coverage plus persisted ContentItem journey/locale links; do not synthesize fake Need × Journey × locale cell status or numeric scores.
 - [ ] Existing content, gaps, weak/update/insufficient-data states remain distinct.
 - [ ] UI does not run research or create content from a cell click in this slice.
 - [ ] Loading/empty/error/stale states are explicit and accessible.
