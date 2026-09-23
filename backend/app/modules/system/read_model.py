@@ -194,14 +194,14 @@ async def build_system_overview(
     ).scalars().all()
 
     model_groups: dict[tuple[str, str, str], ModelUsageGroup] = {}
-    for row in model_rows:
-        key = (row.provider, row.model, row.status)
+    for model_call in model_rows:
+        key = (model_call.provider, model_call.model, model_call.status)
         group = model_groups.get(key)
         if group is None:
             group = ModelUsageGroup(
-                provider=row.provider,
-                model=row.model,
-                status=row.status,
+                provider=model_call.provider,
+                model=model_call.model,
+                status=model_call.status,
                 calls=0,
                 input_tokens=0,
                 output_tokens=0,
@@ -209,9 +209,9 @@ async def build_system_overview(
             )
             model_groups[key] = group
         group.calls += 1
-        group.input_tokens += row.input_tokens or 0
-        group.output_tokens += row.output_tokens or 0
-        group.cost += row.cost or Decimal("0")
+        group.input_tokens += model_call.input_tokens or 0
+        group.output_tokens += model_call.output_tokens or 0
+        group.cost += model_call.cost or Decimal("0")
 
     tool_rows = (
         await session.execute(
@@ -221,8 +221,8 @@ async def build_system_overview(
         )
     ).scalars().all()
     tool_counts: dict[tuple[str, str], int] = {}
-    for row in tool_rows:
-        key = (row.tool_key, row.status)
+    for tool_call in tool_rows:
+        key = (tool_call.tool_key, tool_call.status)
         tool_counts[key] = tool_counts.get(key, 0) + 1
 
     delegation_rows = (
@@ -233,8 +233,8 @@ async def build_system_overview(
         )
     ).scalars().all()
     delegation_counts: dict[tuple[str, str], int] = {}
-    for row in delegation_rows:
-        key = (f"{row.worker_kind}:{row.worker_key}", row.status)
+    for delegation in delegation_rows:
+        key = (f"{delegation.worker_kind}:{delegation.worker_key}", delegation.status)
         delegation_counts[key] = delegation_counts.get(key, 0) + 1
 
     route_rows = (
