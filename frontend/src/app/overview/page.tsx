@@ -21,7 +21,6 @@ const FALLBACK_TIMEZONE = "Asia/Ho_Chi_Minh";
 type OverviewState = {
   summary: ControlCenterSummary;
   needsMe: NeedsMeItem[];
-  digest: DailyDigest;
 };
 
 function browserTimezone(): string {
@@ -129,21 +128,25 @@ function issuePresentation(code: string): {
 }
 
 async function loadOverview(timezone: string): Promise<OverviewState> {
-  const localDate = todayForZone(timezone);
-  const [summary, needsMe, digest] = await Promise.all([
+  const [summary, needsMe] = await Promise.all([
     loadControlCenterSummary(timezone, PROJECT_SLUG),
     loadNeedsMe(timezone, PROJECT_SLUG),
-    loadDailyDigest(localDate, timezone, PROJECT_SLUG),
   ]);
 
   if (summary.counts.needs_human !== needsMe.length) {
     throw new Error("control_center_needs_me_count_changed_during_read");
   }
+
+  return { summary, needsMe };
+}
+
+async function loadOverviewDigest(timezone: string): Promise<DailyDigest> {
+  const localDate = todayForZone(timezone);
+  const digest = await loadDailyDigest(localDate, timezone, PROJECT_SLUG);
   if (digest.timezone !== timezone || digest.local_date !== localDate) {
     throw new Error("daily_digest_window_changed_during_overview_read");
   }
-
-  return { summary, needsMe, digest };
+  return digest;
 }
 
 function NeedsMeCard({ item }: { item: NeedsMeItem }) {
@@ -204,6 +207,9 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stale, setStale] = useState("");
+  const [digest, setDigest] = useState<DailyDigest | null>(null);
+  const [digestError, setDigestError] = useState("");
+  const [digestStale, setDigestStale] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -224,6 +230,19 @@ export default function OverviewPage() {
       } finally {
         if (!cancelled) setLoading(false);
       }
+
+      try {
+        const nextDigest = await loadOverviewDigest(zone);
+        if (!cancelled) setDigest(nextDigest);
+      } catch (nextError) {
+        if (!cancelled) {
+          setDigestError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Không thể tải Daily Digest.",
+          );
+        }
+      }
     }
 
     void initialLoad();
@@ -237,8 +256,11 @@ export default function OverviewPage() {
     setLoading(true);
     setError("");
     setStale("");
+    setDigestError("");
+    setDigestStale("");
+    const zone = state?.summary.timezone ?? browserTimezone();
+
     try {
-      const zone = state?.summary.timezone ?? browserTimezone();
       setState(await loadOverview(zone));
     } catch (nextError) {
       const message =
@@ -254,6 +276,22 @@ export default function OverviewPage() {
       }
     } finally {
       setLoading(false);
+    }
+
+    try {
+      setDigest(await loadOverviewDigest(zone));
+    } catch (nextError) {
+      const message =
+        nextError instanceof Error
+          ? nextError.message
+          : "Không thể làm mới Daily Digest.";
+      if (digest) {
+        setDigestStale(
+          `Daily Digest làm mới thất bại (${message}). Đang giữ digest gần nhất.`,
+        );
+      } else {
+        setDigestError(message);
+      }
     }
   }
 
@@ -368,25 +406,44 @@ export default function OverviewPage() {
               </Link>
             </div>
 
-            <div className={styles.digestGrid}>
-              {[
-                ["Khách hàng", state.digest.event_counts.customer ?? 0],
-                ["Nội dung", state.digest.event_counts.content ?? 0],
-                ["Sản xuất", state.digest.event_counts.production ?? 0],
-                ["Xuất bản", state.digest.event_counts.publication ?? 0],
-                ["Đo lường", state.digest.event_counts.measurement ?? 0],
-                ["Learning", state.digest.event_counts.learning ?? 0],
-              ].map(([label, value]) => (
-                <div className={styles.countCard} key={String(label)}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
+            {digestError ? (
+              <div className={styles.error} role="alert">
+                Daily Digest chưa khả dụng: {digestError}. Control Center vẫn giữ nguyên.
+              </div>
+            ) : null}
+            {digestStale ? (
+              <div className={styles.stale} role="status" aria-live="polite">
+                {digestStale}
+              </div>
+            ) : null}
+
+            {digest ? (
+              <>
+                <div className={styles.digestGrid}>
+                  {[
+                    ["Khách hàng", digest.event_counts.customer ?? 0],
+                    ["Nội dung", digest.event_counts.content ?? 0],
+                    ["Sản xuất", digest.event_counts.production ?? 0],
+                    ["Xuất bản", digest.event_counts.publication ?? 0],
+                    ["Đo lường", digest.event_counts.measurement ?? 0],
+                    ["Learning", digest.event_counts.learning ?? 0],
+                  ].map(([label, value]) => (
+                    <div className={styles.countCard} key={String(label)}>
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className={styles.meta}>
-              Window {formatDate(state.digest.window_start)} →{" "}
-              {formatDate(state.digest.window_end)} · measurement không phải causal proof.
-            </p>
+                <p className={styles.meta}>
+                  Window {formatDate(digest.window_start)} →{" "}
+                  {formatDate(digest.window_end)} · measurement không phải causal proof.
+                </p>
+              </>
+            ) : digestError ? null : (
+              <div className={styles.notice} role="status" aria-live="polite">
+                Đang tải Daily Digest…
+              </div>
+            )}
           </section>
 
           <section className={styles.section}>
