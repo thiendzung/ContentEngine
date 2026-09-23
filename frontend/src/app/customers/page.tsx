@@ -556,6 +556,26 @@ export default function CustomersPage() {
             Snapshot hash: {summary.snapshot_hash}
           </p>
 
+          <section className={styles.panel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className="eyebrow">Customer journey</p>
+                <h2>Journey model đang áp dụng</h2>
+              </div>
+            </div>
+            <div className={styles.journeyChips}>
+              {summary.journey.stages.map((stage) => (
+                <span className={styles.badge} key={stage.key}>
+                  {stage.label}
+                </span>
+              ))}
+            </div>
+            <p className={styles.meta}>
+              Journey là cấu hình/derived model. Customer Living Map hiện không
+              persist quan hệ Need→Journey; UI không tự gán Need vào stage.
+            </p>
+          </section>
+
           {summary.audiences.length === 0 ? (
             <div className={styles.empty}>
               Chưa có AudienceHypothesis trong Customer Living Map.
