@@ -313,7 +313,8 @@ export default function ContentMapPage() {
         Need trong scope API hiện tại. Locale và Journey bên dưới chỉ là link
         canonical của từng ContentItem; UI không tạo trạng thái ô
         Need × Journey × locale. PUBLISHED cũng không có nghĩa vấn đề khách hàng
-        đã được giải quyết, và “working” vẫn cần measurement riêng.
+        đã được giải quyết, “working” vẫn cần measurement riêng, và cùng Need
+        không tự động được coi là duplicate.
       </div>
 
       {loading && !coverage ? (
