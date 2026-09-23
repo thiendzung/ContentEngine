@@ -3,6 +3,7 @@
   top: 0;
   z-index: 20;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
   max-width: 1540px;
@@ -26,8 +27,20 @@
   background: #ece5da;
 }
 
+.global-nav a:focus-visible {
+  outline: 3px solid #2e5367;
+  outline-offset: 3px;
+}
+
 @media (max-width: 780px) {
   .global-nav {
+    justify-content: flex-start;
     padding: 9px 16px 0;
+  }
+
+  .global-nav a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }
