@@ -74,6 +74,7 @@ class DigestEvent(BaseModel):
 
 
 class DailyDigest(BaseModel):
+    schema_version: Literal[1] = 1
     project_id: UUID
     project_slug: str
     local_date: date
