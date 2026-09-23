@@ -37,9 +37,23 @@
   color: #312f2a;
 }
 
-.button:disabled {
+.button:disabled,
+.buttonSecondary:disabled,
+.listButton:disabled,
+.filterButton:disabled,
+.filterButtonActive:disabled {
   opacity: .45;
   cursor: default;
+}
+
+.button:focus-visible,
+.buttonSecondary:focus-visible,
+.listButton:focus-visible,
+.filterButton:focus-visible,
+.filterButtonActive:focus-visible,
+.contentItem a:focus-visible {
+  outline: 3px solid #2e5367;
+  outline-offset: 3px;
 }
 
 .stats {
@@ -152,7 +166,7 @@
   cursor: pointer;
 }
 
-.listButton:hover,
+.listButton:hover:not(:disabled),
 .listButtonActive {
   border-color: #312f2a;
   background: #ece5da;
@@ -319,6 +333,8 @@
 
 .coverageLane {
   padding: 16px;
+  content-visibility: auto;
+  contain-intrinsic-size: 420px;
 }
 
 .coverageLaneHeader {
@@ -409,6 +425,21 @@
     align-items: stretch;
   }
 
+  .headerActions {
+    width: 100%;
+  }
+
+  .button,
+  .buttonSecondary {
+    min-height: 44px;
+  }
+
+  .listButton,
+  .filterButton,
+  .filterButtonActive {
+    min-height: 44px;
+  }
+
   .stats,
   .coverageSummary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -428,5 +459,14 @@
 
   .definition {
     grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .buttonSecondary,
+  .listButton,
+  .filterButton,
+  .filterButtonActive {
+    scroll-behavior: auto;
   }
 }
