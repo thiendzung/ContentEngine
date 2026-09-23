@@ -269,6 +269,17 @@ async def _application_context(
         or application.candidate_snapshot_hash == ""
     ):
         raise LearningRegressionError("learning_validation_application_identity_invalid")
+    latest_candidate_version = await session.scalar(
+        select(func.max(LearningCandidate.version)).where(
+            LearningCandidate.project_id == candidate.project_id,
+            LearningCandidate.candidate_key == candidate.candidate_key,
+        )
+    )
+    if (
+        latest_candidate_version != candidate.version
+        or candidate.status != "OPEN"
+    ):
+        raise LearningRegressionError("learning_validation_candidate_stale")
     return application, candidate
 
 
