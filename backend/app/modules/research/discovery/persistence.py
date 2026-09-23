@@ -22,6 +22,13 @@ from app.modules.content_engine.models import (
     NeedHypothesis as DBNeedHypothesis,
 )
 from app.modules.content_engine.models import Signal as DBSignal
+from app.modules.knowledge.ingest import ingest_source_document, register_source
+from app.modules.research.contracts import (
+    CommercialBias,
+    PageDocument,
+    ProductionResearchResult,
+    SourceCandidate,
+)
 from app.modules.research.evidence.contracts import PersistedPageRef
 from app.modules.research.keyword_plan.contracts import OpportunityMapResult, Signal
 
@@ -55,6 +62,111 @@ def _normalize_url(url: str) -> str:
     return urlunsplit(
         (parts.scheme.lower(), parts.netloc.lower(), path, parts.query, "")
     ).casefold()
+
+
+def _candidate_for_document(
+    production: ProductionResearchResult,
+    document: PageDocument,
+) -> SourceCandidate | None:
+    document_urls = {
+        _normalize_url(url)
+        for url in (document.url, document.requested_url, document.final_url)
+        if url
+    }
+    for candidate in production.source_candidates:
+        if _normalize_url(candidate.url) in document_urls:
+            return candidate
+    return None
+
+
+def _authority_hint(candidate: SourceCandidate | None) -> str | None:
+    if candidate is None:
+        return None
+    if candidate.source_type == "institutional":
+        return "institutional_candidate"
+    if candidate.source_type == "community_or_review":
+        return "audience_observation_candidate"
+    if candidate.source_type == "editorial":
+        return "secondary_editorial_context"
+    if candidate.source_type == "commercial":
+        return "commercial_context_only"
+    return None
+
+
+async def persist_discovery_read_documents(
+    session: AsyncSession,
+    *,
+    production: ProductionResearchResult,
+) -> dict[str, PersistedPageRef]:
+    """Persist already-read Discovery pages as raw sources, never factual Evidence."""
+
+    refs: dict[str, PersistedPageRef] = {}
+    for document in production.documents:
+        candidate = _candidate_for_document(production, document)
+        canonical_url = document.final_url or document.url or document.requested_url
+        if not canonical_url:
+            raise ValueError("discovery_read_document_url_required")
+
+        source_type = candidate.source_type if candidate is not None else "web"
+        commercial_bias = (
+            candidate.commercial_bias.value if candidate is not None else None
+        )
+        provenance: dict[str, object] = {
+            "method": "discovery_read",
+            "provider": document.provider,
+            "query": production.request.query,
+            "source_ref": canonical_url,
+            "raw_source_only": True,
+        }
+        if candidate is not None:
+            provenance.update(
+                {
+                    "discovered_by": candidate.provider,
+                    "found_via": candidate.found_via,
+                    "relation": candidate.relation.value,
+                    "intended_use": candidate.intended_use.value,
+                    "parent_url": candidate.parent_url,
+                }
+            )
+
+        registered = await register_source(
+            session,
+            project_id=production.request.project_id,
+            source_type=source_type,
+            title=document.title or (candidate.title if candidate is not None else None),
+            canonical_url=canonical_url,
+            locale=production.request.locale,
+            commercial_bias=commercial_bias,
+            authority_hint=_authority_hint(candidate),
+            captured_at=_parse_datetime(document.captured_at),
+            provenance_json=provenance,
+        )
+        ingested = await ingest_source_document(
+            session,
+            source_id=registered.source.id,
+            content_markdown=document.content,
+            fetched_at=_parse_datetime(document.captured_at),
+            canonical_url=canonical_url,
+            reader=document.provider,
+            provider=document.provider,
+            metadata_json={
+                "discovery_research_query": production.request.query,
+                "raw_source_only": True,
+                "content_truncated": document.content_truncated,
+                "links_truncated": document.links_truncated,
+            },
+        )
+        page_ref = PersistedPageRef(
+            source_id=registered.source.id,
+            source_document_id=ingested.document.id,
+            chunk_ids=tuple(chunk.id for chunk in ingested.chunks),
+            canonical_url=canonical_url,
+        )
+        for url in (document.url, document.requested_url, document.final_url, canonical_url):
+            if url:
+                refs[_normalize_url(url)] = page_ref
+
+    return refs
 
 
 def _signal_provenance(
