@@ -1,11 +1,5 @@
 """Customer intelligence domain primitives."""
 
-from app.modules.customer_intelligence.intake import (
-    CustomerInsightCandidateInput,
-    CustomerInsightCandidateResult,
-    CustomerInsightIntakeError,
-    persist_customer_insight_candidate,
-)
 from app.modules.customer_intelligence.insights import (
     CustomerInsightError,
     CustomerInsightEvidenceCounts,
@@ -14,6 +8,12 @@ from app.modules.customer_intelligence.insights import (
     ensure_customer_insight,
     link_customer_insight_signal,
     review_customer_insight,
+)
+from app.modules.customer_intelligence.intake import (
+    CustomerInsightCandidateInput,
+    CustomerInsightCandidateResult,
+    CustomerInsightIntakeError,
+    persist_customer_insight_candidate,
 )
 
 __all__ = [
