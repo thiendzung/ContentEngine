@@ -10,6 +10,7 @@ import {
 import styles from "../intelligence.module.css";
 
 const PROJECT_SLUG = "motgu";
+const COVERAGE_SCHEMA_VERSION = 1;
 const STATUS_ORDER: CoverageStatus[] = [
   "MISSING",
   "PLANNED",
@@ -19,6 +20,26 @@ const STATUS_ORDER: CoverageStatus[] = [
   "WEAK",
   "INSUFFICIENT_DATA",
 ];
+
+function assertCoverageContract(coverage: ContentCoverage) {
+  if (coverage.schema_version !== COVERAGE_SCHEMA_VERSION) {
+    throw new Error("content_coverage_schema_version_unsupported");
+  }
+  if (
+    !coverage.semantics.published_does_not_mean_customer_problem_solved ||
+    !coverage.semantics.working_status_requires_measurement ||
+    !coverage.semantics.same_need_does_not_imply_duplicate_content
+  ) {
+    throw new Error("content_coverage_semantics_contract_changed");
+  }
+  const countedNeeds = STATUS_ORDER.reduce(
+    (total, status) => total + (coverage.counts[status] ?? 0),
+    0,
+  );
+  if (countedNeeds !== coverage.needs.length) {
+    throw new Error("content_coverage_count_mismatch");
+  }
+}
 
 function coverageLabel(value: CoverageStatus): string {
   const labels: Record<CoverageStatus, string> = {
@@ -121,8 +142,14 @@ function ContentItemCard({
           <span className={styles.badge}>Chưa gán journey stage</span>
         ) : (
           item.journey_stages.map((stage) => (
-            <span className={styles.badge} key={stage.stage_key}>
+            <span
+              className={styles.badge}
+              key={stage.stage_key}
+              title={stage.reason}
+            >
               {stageLabels.get(stage.stage_key) ?? stage.stage_key}
+              {" · "}
+              {stage.linked_by}
             </span>
           ))
         )}
@@ -149,16 +176,29 @@ function ContentItemCard({
             : ""}
         </div>
       ) : null}
-      {item.publication?.canonical_url ? (
-        <p>
-          <a
-            href={item.publication.canonical_url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Mở URL đang xuất bản
-          </a>
-        </p>
+      {item.publication ? (
+        <div className={styles.evidenceBlock}>
+          <strong>Publication</strong>
+          <p>
+            {item.publication.target} · {item.publication.external_status}
+          </p>
+          <p className={styles.meta}>
+            ContentVersion: {item.publication.current_content_version_id}
+          </p>
+          {item.publication.canonical_url ? (
+            <p>
+              <a
+                href={item.publication.canonical_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Mở URL canonical
+              </a>
+            </p>
+          ) : (
+            <p className={styles.meta}>Canonical URL chưa có.</p>
+          )}
+        </div>
       ) : null}
     </article>
   );
@@ -179,6 +219,7 @@ export default function ContentMapPage() {
       setError("");
       try {
         const nextCoverage = await loadContentCoverage(PROJECT_SLUG);
+        assertCoverageContract(nextCoverage);
         if (!cancelled) setCoverage(nextCoverage);
       } catch (nextError) {
         if (!cancelled) {
@@ -221,7 +262,9 @@ export default function ContentMapPage() {
     setError("");
     setStaleMessage("");
     try {
-      setCoverage(await loadContentCoverage(PROJECT_SLUG));
+      const nextCoverage = await loadContentCoverage(PROJECT_SLUG);
+      assertCoverageContract(nextCoverage);
+      setCoverage(nextCoverage);
     } catch (nextError) {
       const message =
         nextError instanceof Error
@@ -266,9 +309,11 @@ export default function ContentMapPage() {
       </header>
 
       <div className={styles.notice}>
-        Coverage là trạng thái nội dung, không phải bằng chứng hiệu quả với khách
-        hàng. Backend yêu cầu measurement riêng trước khi kết luận nội dung
-        “working”.
+        <strong>Giới hạn contract:</strong> coverage badge là trạng thái ở cấp
+        Need trong scope API hiện tại. Locale và Journey bên dưới chỉ là link
+        canonical của từng ContentItem; UI không tạo trạng thái ô
+        Need × Journey × locale. PUBLISHED cũng không có nghĩa vấn đề khách hàng
+        đã được giải quyết, và “working” vẫn cần measurement riêng.
       </div>
 
       {loading && !coverage ? (
@@ -342,7 +387,8 @@ export default function ContentMapPage() {
                   <div className={styles.coverageLaneHeader}>
                     <div>
                       <p className="eyebrow">
-                        Need · {lane.need.type} · {needStatusLabel(lane.need.status)}
+                        Need-level coverage · {lane.need.type} ·{" "}
+                        {needStatusLabel(lane.need.status)}
                       </p>
                       <h2>{lane.need.statement}</h2>
                     </div>
@@ -365,12 +411,37 @@ export default function ContentMapPage() {
                           <div className={styles.card} key={opportunity.id}>
                             <p>
                               <strong>{formatLocale(opportunity.locale)}</strong>{" "}
-                              · {opportunity.decision}
+                              · {opportunity.decision} · {opportunity.priority}
                             </p>
                             <p>{opportunity.question}</p>
-                            <small className={styles.meta}>
+                            <p className={styles.meta}>
                               Intent: {opportunity.intent}
-                            </small>
+                            </p>
+                            {opportunity.existing_content_refs.length > 0 ? (
+                              <div className={styles.signalList}>
+                                {opportunity.existing_content_refs.map((ref) => (
+                                  <span key={ref}>
+                                    Existing target · {ref}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            {opportunity.selection_refs.length > 0 ? (
+                              <div className={styles.evidenceBlock}>
+                                <strong>Human selection</strong>
+                                <ul>
+                                  {opportunity.selection_refs.map((selection) => (
+                                    <li key={selection.id}>
+                                      {selection.selected_by} · {selection.reason}
+                                      <span className={styles.meta}>
+                                        {" "}
+                                        ({selection.selected_at})
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
                           </div>
                         ))}
                       </div>
@@ -399,10 +470,40 @@ export default function ContentMapPage() {
                     <div className={styles.evidenceBlock}>
                       <strong>Điểm cần kiểm tra</strong>
                       {lane.duplicate_candidates.length > 0 ? (
-                        <p>
-                          Có {lane.duplicate_candidates.length} nhóm ứng viên
-                          trùng được backend đánh dấu.
-                        </p>
+                        <div className={styles.cards}>
+                          {lane.duplicate_candidates.map((duplicate) => (
+                            <div
+                              className={styles.card}
+                              key={
+                                duplicate.locale +
+                                ":" +
+                                duplicate.primary_intent +
+                                ":" +
+                                duplicate.normalized_primary_question
+                              }
+                            >
+                              <p>
+                                <strong>Duplicate candidate</strong> ·{" "}
+                                {formatLocale(duplicate.locale)}
+                              </p>
+                              <p>
+                                Intent: {duplicate.primary_intent}
+                              </p>
+                              <p>
+                                Question normalized:{" "}
+                                {duplicate.normalized_primary_question}
+                              </p>
+                              <div className={styles.signalList}>
+                                {duplicate.content_item_ids.map((id) => (
+                                  <span key={id}>ContentItem · {id}</span>
+                                ))}
+                              </div>
+                              <small className={styles.meta}>
+                                Reason: {duplicate.reason}
+                              </small>
+                            </div>
+                          ))}
+                        </div>
                       ) : null}
                       {lane.invalid_update_target_refs.length > 0 ? (
                         <div className={styles.signalList}>
