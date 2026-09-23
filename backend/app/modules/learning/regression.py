@@ -158,6 +158,18 @@ def _uuid(value: object, code: str) -> UUID:
         raise LearningRegressionError(code) from exc
 
 
+def _iso_datetime(value: object, code: str) -> datetime:
+    if not isinstance(value, str):
+        raise LearningRegressionError(code)
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise LearningRegressionError(code) from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise LearningRegressionError(code)
+    return parsed
+
+
 def _decimal_text(value: Decimal) -> str:
     normalized = value.normalize()
     if normalized == normalized.to_integral():
@@ -507,13 +519,32 @@ async def _signal_metric_records(
             raise LearningRegressionError(
                 "learning_validation_signal_not_later"
             )
-        if (
-            experiment.review_window_start is None
-            or experiment.review_window_start < not_before
-        ):
+        measurement_windows = provenance.get("measurement_windows")
+        if not isinstance(measurement_windows, list) or not measurement_windows:
             raise LearningRegressionError(
-                "learning_validation_experiment_not_later"
+                "learning_validation_measurement_window_invalid"
             )
+        for window_raw in measurement_windows:
+            window = _dict(
+                window_raw,
+                "learning_validation_measurement_window_invalid",
+            )
+            window_start = _iso_datetime(
+                window.get("window_start"),
+                "learning_validation_measurement_window_invalid",
+            )
+            window_end = _iso_datetime(
+                window.get("window_end"),
+                "learning_validation_measurement_window_invalid",
+            )
+            if window_start < not_before:
+                raise LearningRegressionError(
+                    "learning_validation_measurement_window_not_later"
+                )
+            if window_end < window_start:
+                raise LearningRegressionError(
+                    "learning_validation_measurement_window_invalid"
+                )
     customer = _dict(
         provenance.get("customer"),
         "learning_validation_signal_provenance_invalid",
