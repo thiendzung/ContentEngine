@@ -183,6 +183,19 @@ def _lens_scope(value: object) -> tuple[str | None, list[str]]:
     return primary, supporting
 
 
+async def _canonical_independence_key(
+    session: AsyncSession,
+    signal: Signal,
+    cache: dict[UUID, str],
+) -> str:
+    try:
+        return await signal_independence_key(session, signal, cache)
+    except CustomerInsightError as exc:
+        raise LearningRegressionError(
+            f"learning_validation_{exc.code}"
+        ) from exc
+
+
 async def _target_evidence_snapshot(
     session: AsyncSession,
     *,
@@ -245,7 +258,7 @@ async def _target_evidence_snapshot(
                 "signal_id": str(signal.id),
                 "relation": relation,
                 "fingerprint": signal.fingerprint,
-                "independence_key": await signal_independence_key(
+                "independence_key": await _canonical_independence_key(
                     session,
                     signal,
                     cache,
@@ -560,7 +573,11 @@ async def _load_signal_set(
             signal,
             scope=scope,
         )
-        independence_key = await signal_independence_key(session, signal, cache)
+        independence_key = await _canonical_independence_key(
+            session,
+            signal,
+            cache,
+        )
         groups.add(independence_key)
         rows.append(
             {
