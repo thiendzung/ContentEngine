@@ -284,7 +284,6 @@ async def _pending_harness_items(
     *,
     project_id: UUID,
     board_by_case: dict[UUID, ProductionBoardCase],
-    operator_gate_cases: set[UUID],
 ) -> tuple[
     list[NeedsMeItem],
     list[ControlCenterIssue],
@@ -659,7 +658,6 @@ async def build_control_center(
         session,
         project_id=project.id,
         board_by_case=board_by_case,
-        operator_gate_cases=operator_gate_cases,
     )
     issues = operator_issues + issues
     human_case_ids = operator_gate_cases | harness_human_case_ids
