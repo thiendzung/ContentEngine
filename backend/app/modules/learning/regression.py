@@ -30,16 +30,16 @@ from app.modules.customer_intelligence.living_map import (
 )
 from app.modules.customer_intelligence.models import CustomerInsight
 from app.modules.harness.models import Artifact
-from app.modules.learning.performance_signal import (
-    PerformanceSignalError,
-    materialize_performance_signal,
-)
 from app.modules.learning.models import (
     LearningApplication,
     LearningCandidate,
     LearningResolution,
     LearningResolutionApplication,
     LearningValidation,
+)
+from app.modules.learning.performance_signal import (
+    PerformanceSignalError,
+    materialize_performance_signal,
 )
 from app.modules.measurement.models import PerformanceMetric
 
