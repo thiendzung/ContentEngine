@@ -18,11 +18,11 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.modules.content_engine.models import Project
+from app.modules.customer_intelligence.insights import InsightType
 from app.modules.customer_intelligence.intake import (
     CustomerInsightCandidateInput,
     persist_customer_insight_candidate,
 )
-from app.modules.customer_intelligence.insights import InsightType
 from app.modules.customer_intelligence.living_map import InsightNeedRelation
 
 _INSIGHT_TYPES = (
