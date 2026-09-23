@@ -18,18 +18,21 @@
   align-items: center;
 }
 
-.button {
+.button,
+.buttonSecondary {
   border: 1px solid #312f2a;
-  background: #312f2a;
-  color: #fffdf7;
   padding: 8px 12px;
   cursor: pointer;
   font: 700 .73rem Arial, sans-serif;
   letter-spacing: .04em;
 }
 
+.button {
+  background: #312f2a;
+  color: #fffdf7;
+}
+
 .buttonSecondary {
-  composes: button;
   background: transparent;
   color: #312f2a;
 }
@@ -177,7 +180,10 @@
   gap: 6px;
 }
 
-.badge {
+.badge,
+.badgePositive,
+.badgeWarn,
+.badgeNegative {
   display: inline-flex;
   align-items: center;
   border: 1px solid #a69f94;
@@ -189,21 +195,18 @@
 }
 
 .badgePositive {
-  composes: badge;
   border-color: #72806b;
   background: #e8eee4;
   color: #34412f;
 }
 
 .badgeWarn {
-  composes: badge;
   border-color: #a88145;
   background: #f5ead6;
   color: #674b20;
 }
 
 .badgeNegative {
-  composes: badge;
   border-color: #a35e4e;
   background: #f6e5df;
   color: #71382d;
@@ -358,7 +361,8 @@
   color: #655f56;
 }
 
-.filterButton {
+.filterButton,
+.filterButtonActive {
   border: 1px solid #aaa196;
   background: transparent;
   color: #312f2a;
@@ -368,7 +372,6 @@
 }
 
 .filterButtonActive {
-  composes: filterButton;
   border-color: #312f2a;
   background: #312f2a;
   color: #fffdf7;
