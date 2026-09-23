@@ -285,7 +285,7 @@ export default function ContentMapPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div>
           <p className="eyebrow">ContentEngine · Content Coverage</p>
@@ -303,7 +303,7 @@ export default function ContentMapPage() {
             onClick={() => void refresh()}
             disabled={loading}
           >
-            Làm mới
+            {loading ? "Đang làm mới…" : "Làm mới"}
           </button>
         </div>
       </header>
@@ -318,17 +318,27 @@ export default function ContentMapPage() {
       </div>
 
       {loading && !coverage ? (
-        <div className={styles.loading} role="status">
+        <div
+          className={styles.loading}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           Đang tải Content Coverage…
         </div>
       ) : null}
       {error ? (
-        <div className={styles.error} role="alert">
+        <div className={styles.error} role="alert" aria-atomic="true">
           Không thể đọc Content Coverage: {error}
         </div>
       ) : null}
       {staleMessage ? (
-        <div className={styles.notice + " " + styles.stale} role="status">
+        <div
+          className={styles.notice + " " + styles.stale}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {staleMessage}
         </div>
       ) : null}
@@ -347,7 +357,11 @@ export default function ContentMapPage() {
             ))}
           </section>
 
-          <div className={styles.filters} aria-label="Lọc trạng thái coverage">
+          <div
+            className={styles.filters}
+            role="group"
+            aria-label="Lọc trạng thái coverage"
+          >
             <button
               type="button"
               className={
@@ -378,7 +392,7 @@ export default function ContentMapPage() {
           </div>
 
           {visibleNeeds.length === 0 ? (
-            <div className={styles.empty}>
+            <div className={styles.empty} role="status">
               Không có Need nào trong bộ lọc hiện tại.
             </div>
           ) : (
@@ -452,7 +466,7 @@ export default function ContentMapPage() {
                   <div className={styles.evidenceBlock}>
                     <strong>Nội dung hiện có</strong>
                     {lane.content_items.length === 0 ? (
-                      <p>Chưa có ContentItem trong lane này.</p>
+                      <p role="status">Chưa có ContentItem trong lane này.</p>
                     ) : (
                       <div className={styles.contentItems}>
                         {lane.content_items.map((item) => (
