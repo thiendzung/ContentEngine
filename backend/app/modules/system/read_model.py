@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -72,6 +73,7 @@ class RouteDecisionView(BaseModel):
 
 
 class SystemOverview(BaseModel):
+    schema_version: Literal[1] = 1
     project_id: UUID
     project_slug: str
     automation_policy_sources: list[AutomationPolicySource] = Field(
