@@ -578,6 +578,21 @@ async def _pending_harness_items(
             f"artifact:{checkpoint.id}" if checkpoint is not None else f"run:{run.id}"
         )
         human_cases.add(run.content_case_id)
+        action_ref = (
+            f"publish_authorization:{run.id}:{artifact.id}"
+            if item_type == "publish_authorization"
+            else f"approval:{run.id}:{step_key}:{artifact.id}"
+        )
+        destination_entity_id = (
+            str(run.id)
+            if item_type in {"publish_authorization", "policy_gate"}
+            else str(run.content_case_id)
+        )
+        destination_href = (
+            _operator_href(board, run.content_case_id)
+            if item_type == "content_approval"
+            else None
+        )
         items.append(
             NeedsMeItem(
                 id=f"approval:{run.id}:{step_key}:{artifact.id}",
@@ -588,9 +603,9 @@ async def _pending_harness_items(
                 updated_at=run.updated_at,
                 destination=ControlCenterActionDestination(
                     kind=item_type,
-                    action_ref=f"approval:{run.id}:{step_key}:{artifact.id}",
-                    entity_id=str(run.content_case_id),
-                    href=_operator_href(board, run.content_case_id),
+                    action_ref=action_ref,
+                    entity_id=destination_entity_id,
+                    href=destination_href,
                 ),
                 why_refs=[
                     f"run:{run.id}",
