@@ -177,6 +177,12 @@ def _create_guards() -> None:
             signal_project uuid;
             signal_fingerprint text;
             signal_group text;
+            signal_provenance jsonb;
+            signal_content_type text;
+            actual_journey jsonb;
+            expected_journey jsonb;
+            actual_supporting_lenses jsonb;
+            expected_supporting_lenses jsonb;
             expected_groups jsonb;
             baseline_groups text[];
             comparison jsonb;
@@ -284,18 +290,110 @@ def _create_guards() -> None:
                         'learning_validation_baseline_signal_mismatch';
                 END IF;
 
-                SELECT project_id, fingerprint, independence_group
-                INTO signal_project, signal_fingerprint, signal_group
-                FROM signals
-                WHERE id = (signal_ref->>'signal_id')::uuid
-                  AND source_kind = 'MOTGU'
-                  AND scope = 'motgu_site';
+                SELECT s.project_id, s.fingerprint,
+                       s.independence_group, s.provenance_json::jsonb,
+                       ci.content_type
+                INTO signal_project, signal_fingerprint, signal_group,
+                     signal_provenance, signal_content_type
+                FROM signals AS s
+                LEFT JOIN content_items AS ci
+                  ON ci.id = (
+                      s.provenance_json::jsonb
+                      ->'content'->>'content_item_id'
+                  )::uuid
+                WHERE s.id = (signal_ref->>'signal_id')::uuid
+                  AND s.source_kind = 'MOTGU'
+                  AND s.scope = 'motgu_site';
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO actual_journey
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        signal_provenance
+                            ->'customer'->'journey_stages',
+                        '[]'::jsonb
+                    )
+                ) AS journey(value);
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO expected_journey
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        app_scope->'journey_stages',
+                        '[]'::jsonb
+                    )
+                ) AS journey(value);
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO actual_supporting_lenses
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        signal_provenance
+                            ->'lens_selection'->'merged_lenses',
+                        signal_provenance
+                            ->'lens_selection'->'supporting_lenses',
+                        '[]'::jsonb
+                    )
+                ) AS lens(value);
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO expected_supporting_lenses
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        app_scope->'supporting_lenses',
+                        '[]'::jsonb
+                    )
+                ) AS lens(value);
 
                 IF signal_project IS NULL
                    OR signal_project IS DISTINCT FROM NEW.project_id
                    OR signal_ref->>'fingerprint'
                         IS DISTINCT FROM signal_fingerprint
                    OR signal_ref->>'independence_key'
+                        IS DISTINCT FROM signal_group
+                   OR signal_provenance->>'kind'
+                        IS DISTINCT FROM 'content_performance_signal'
+                   OR signal_provenance->'content'->>'locale'
+                        IS DISTINCT FROM app_scope->>'locale'
+                   OR signal_content_type
+                        IS DISTINCT FROM app_scope->>'content_type'
+                   OR signal_provenance
+                        ->'customer'->'audience_hypothesis_id'
+                        IS DISTINCT FROM
+                            app_scope->'audience_hypothesis_id'
+                   OR signal_provenance
+                        ->'customer'->>'need_hypothesis_id'
+                        IS DISTINCT FROM app_scope->>'need_hypothesis_id'
+                   OR signal_provenance
+                        ->'customer'->'need_hypothesis_version'
+                        IS DISTINCT FROM app_scope->'need_hypothesis_version'
+                   OR signal_provenance
+                        ->'customer'->>'identity_source'
+                        IS DISTINCT FROM 'publish_package'
+                   OR actual_journey IS DISTINCT FROM expected_journey
+                   OR signal_provenance
+                        ->'lens_selection'->>'primary_lens'
+                        IS DISTINCT FROM app_scope->>'primary_lens'
+                   OR actual_supporting_lenses
+                        IS DISTINCT FROM expected_supporting_lenses
+                   OR signal_group IS DISTINCT FROM (
+                       'experiment:'
+                       || signal_provenance->'experiment'->>'id'
+                   )
+                   OR signal_provenance
+                        ->'experiment'->>'independence_group'
                         IS DISTINCT FROM signal_group THEN
                     RAISE EXCEPTION
                         'learning_validation_baseline_signal_mismatch';
@@ -313,20 +411,113 @@ def _create_guards() -> None:
                     RAISE EXCEPTION 'learning_validation_signal_relation_invalid';
                 END IF;
 
-                SELECT project_id, fingerprint, independence_group
-                INTO signal_project, signal_fingerprint, signal_group
-                FROM signals
-                WHERE id = (signal_ref->>'signal_id')::uuid
-                  AND source_kind = 'MOTGU'
-                  AND scope = 'motgu_site';
+                SELECT s.project_id, s.fingerprint,
+                       s.independence_group, s.provenance_json::jsonb,
+                       ci.content_type
+                INTO signal_project, signal_fingerprint, signal_group,
+                     signal_provenance, signal_content_type
+                FROM signals AS s
+                LEFT JOIN content_items AS ci
+                  ON ci.id = (
+                      s.provenance_json::jsonb
+                      ->'content'->>'content_item_id'
+                  )::uuid
+                WHERE s.id = (signal_ref->>'signal_id')::uuid
+                  AND s.source_kind = 'MOTGU'
+                  AND s.scope = 'motgu_site';
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO actual_journey
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        signal_provenance
+                            ->'customer'->'journey_stages',
+                        '[]'::jsonb
+                    )
+                ) AS journey(value);
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO expected_journey
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        app_scope->'journey_stages',
+                        '[]'::jsonb
+                    )
+                ) AS journey(value);
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO actual_supporting_lenses
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        signal_provenance
+                            ->'lens_selection'->'merged_lenses',
+                        signal_provenance
+                            ->'lens_selection'->'supporting_lenses',
+                        '[]'::jsonb
+                    )
+                ) AS lens(value);
+
+                SELECT COALESCE(
+                    jsonb_agg(value ORDER BY value),
+                    '[]'::jsonb
+                )
+                INTO expected_supporting_lenses
+                FROM jsonb_array_elements_text(
+                    COALESCE(
+                        app_scope->'supporting_lenses',
+                        '[]'::jsonb
+                    )
+                ) AS lens(value);
 
                 IF signal_project IS NULL
                    OR signal_project IS DISTINCT FROM NEW.project_id
                    OR signal_ref->>'fingerprint'
                         IS DISTINCT FROM signal_fingerprint
                    OR signal_ref->>'independence_key'
+                        IS DISTINCT FROM signal_group
+                   OR signal_provenance->>'kind'
+                        IS DISTINCT FROM 'content_performance_signal'
+                   OR signal_provenance->'content'->>'locale'
+                        IS DISTINCT FROM app_scope->>'locale'
+                   OR signal_content_type
+                        IS DISTINCT FROM app_scope->>'content_type'
+                   OR signal_provenance
+                        ->'customer'->'audience_hypothesis_id'
+                        IS DISTINCT FROM
+                            app_scope->'audience_hypothesis_id'
+                   OR signal_provenance
+                        ->'customer'->>'need_hypothesis_id'
+                        IS DISTINCT FROM app_scope->>'need_hypothesis_id'
+                   OR signal_provenance
+                        ->'customer'->'need_hypothesis_version'
+                        IS DISTINCT FROM app_scope->'need_hypothesis_version'
+                   OR signal_provenance
+                        ->'customer'->>'identity_source'
+                        IS DISTINCT FROM 'publish_package'
+                   OR actual_journey IS DISTINCT FROM expected_journey
+                   OR signal_provenance
+                        ->'lens_selection'->>'primary_lens'
+                        IS DISTINCT FROM app_scope->>'primary_lens'
+                   OR actual_supporting_lenses
+                        IS DISTINCT FROM expected_supporting_lenses
+                   OR signal_group IS DISTINCT FROM (
+                       'experiment:'
+                       || signal_provenance->'experiment'->>'id'
+                   )
+                   OR signal_provenance
+                        ->'experiment'->>'independence_group'
                         IS DISTINCT FROM signal_group THEN
-                    RAISE EXCEPTION 'learning_validation_signal_project_mismatch';
+                    RAISE EXCEPTION
+                        'learning_validation_signal_scope_mismatch';
                 END IF;
             END LOOP;
 
