@@ -867,6 +867,28 @@ async def _validation_snapshot_hash(
     return snapshot_hash
 
 
+def _reviewed_target_status(
+    validation: LearningValidation,
+) -> str | None:
+    snapshot = _dict(
+        validation.target_snapshot_json,
+        "learning_resolution_target_snapshot_invalid",
+    )
+    current = snapshot.get("current_target")
+    if current is None:
+        return None
+    current_target = _dict(
+        current,
+        "learning_resolution_target_snapshot_invalid",
+    )
+    status = current_target.get("status")
+    if not isinstance(status, str) or not status.strip():
+        raise LearningRegressionError(
+            "learning_resolution_target_snapshot_invalid"
+        )
+    return status.strip()
+
+
 def _validate_resolution_decision(
     validation: LearningValidation,
     decision: ResolutionDecision,
@@ -889,18 +911,57 @@ def _validate_resolution_decision(
             "learning_resolution_no_map_mutation_invalid"
         )
 
+    current_status = _reviewed_target_status(validation)
+
     if decision == "PROMOTE":
         if validation.validation_status != "VALIDATED":
-            raise LearningRegressionError("learning_resolution_promote_validation_invalid")
+            raise LearningRegressionError(
+                "learning_resolution_promote_validation_invalid"
+            )
         if target_status not in {"TESTING", "SUPPORTED"}:
-            raise LearningRegressionError("learning_resolution_promote_status_invalid")
+            raise LearningRegressionError(
+                "learning_resolution_promote_status_invalid"
+            )
+        if current_status == target_status:
+            raise LearningRegressionError(
+                "learning_resolution_target_status_noop"
+            )
+        if validation.target_type == "need_hypothesis":
+            allowed = {
+                ("PROPOSED", "TESTING"),
+                ("TESTING", "SUPPORTED"),
+            }
+            if (current_status, target_status) not in allowed:
+                raise LearningRegressionError(
+                    "learning_resolution_need_transition_invalid"
+                )
+        elif target_status == "TESTING" and current_status == "SUPPORTED":
+            raise LearningRegressionError(
+                "learning_resolution_insight_transition_invalid"
+            )
         return
 
     if decision in {"ROLLBACK", "REJECT"}:
         if validation.validation_status != "REGRESSED":
-            raise LearningRegressionError("learning_resolution_rollback_validation_invalid")
+            raise LearningRegressionError(
+                "learning_resolution_rollback_validation_invalid"
+            )
         if target_status not in {"REJECTED", "INSUFFICIENT_EVIDENCE"}:
-            raise LearningRegressionError("learning_resolution_rollback_status_invalid")
+            raise LearningRegressionError(
+                "learning_resolution_rollback_status_invalid"
+            )
+        if current_status == target_status:
+            raise LearningRegressionError(
+                "learning_resolution_target_status_noop"
+            )
+        if (
+            validation.target_type == "need_hypothesis"
+            and target_status == "REJECTED"
+            and current_status != "TESTING"
+        ):
+            raise LearningRegressionError(
+                "learning_resolution_need_transition_invalid"
+            )
         return
 
     if target_status is not None:
