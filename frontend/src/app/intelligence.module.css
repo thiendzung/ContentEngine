@@ -333,8 +333,6 @@
 
 .coverageLane {
   padding: 16px;
-  content-visibility: auto;
-  contain-intrinsic-size: 420px;
 }
 
 .coverageLaneHeader {
