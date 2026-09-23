@@ -655,17 +655,23 @@ async def create_learning_validation(
 ) -> LearningValidationResult:
     """Create one immutable validation version; never mutate Customer Truth."""
 
-    application, candidate = await _application_context(
-        session,
-        application_id=learning_application_id,
+    seed_application = await session.get(
+        LearningApplication,
+        learning_application_id,
     )
+    if seed_application is None:
+        raise LearningRegressionError("learning_application_not_found")
     project = await session.scalar(
         select(Project)
-        .where(Project.id == application.project_id)
+        .where(Project.id == seed_application.project_id)
         .with_for_update()
     )
     if project is None:
         raise LearningRegressionError("learning_validation_project_not_found")
+    application, candidate = await _application_context(
+        session,
+        application_id=learning_application_id,
+    )
 
     baseline_relations = _baseline_relations(application)
     baseline_rows, baseline_groups, baseline_metrics = await _load_signal_set(
@@ -701,7 +707,7 @@ async def create_learning_validation(
     target_snapshot = await _target_snapshot(
         session,
         application=application,
-        lock=False,
+        lock=True,
     )
     fingerprint_payload: dict[str, object] = {
         "application_id": str(application.id),
@@ -834,10 +840,24 @@ async def review_learning_validation(
 
     actor = _text(reviewed_by, "learning_resolution_reviewer_required")
     rationale = _text(reason, "learning_resolution_reason_required")
+    seed_validation = await session.get(
+        LearningValidation,
+        learning_validation_id,
+    )
+    if seed_validation is None:
+        raise LearningRegressionError("learning_validation_not_found")
+    project = await session.scalar(
+        select(Project)
+        .where(Project.id == seed_validation.project_id)
+        .with_for_update()
+    )
+    if project is None:
+        raise LearningRegressionError("learning_resolution_project_not_found")
     validation = await session.scalar(
         select(LearningValidation)
         .where(LearningValidation.id == learning_validation_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if validation is None:
         raise LearningRegressionError("learning_validation_not_found")
@@ -858,7 +878,7 @@ async def review_learning_validation(
     current_target = await _target_snapshot(
         session,
         application=application,
-        lock=False,
+        lock=True,
     )
     if current_target != validation.target_snapshot_json:
         raise LearningRegressionError("learning_resolution_target_stale")
