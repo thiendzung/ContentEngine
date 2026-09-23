@@ -184,8 +184,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | AU-02 | DONE / PR #177 MERGED | Agent Bridge accepted with exact plan/policy/approval binding, durable budgets/recovery, independent review and bounded auto-next. |
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
-| LL-01 | IN IMPLEMENTATION | LL-01A/B/C merged; LL-01D closes regression validation + reviewed compensating rollback. |
-| UX-01 | PLANNED | Control Center + Living Map dashboard + Needs Me + Daily Digest. |
+| LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
+| UX-01 | IN IMPLEMENTATION / UX-01A NEXT | Build exception-driven Control Center/Living Map UI in bounded slices; backend remains source of truth. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
 ### CT-01 immediate checklist
@@ -434,10 +434,67 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Reviewed Customer Truth transitions refresh only the canonical Customer Living Map.
 - [x] Code migration `20260923_0042` adds validation/resolution/application receipts and immutability/lineage guards.
 - [x] Add focused LL-01D regression tests for validation, independence, metric compatibility, promotion, rollback, stale target, no-op and immutability.
-- [ ] First CI green on implementation head.
-- [ ] Self-review + remediation until exact-head CI green.
-- [ ] MG exact-head review.
-- [ ] Exact-ref OpenCodeReview.
-- [ ] Agent Local disposable 0041↔0042 + focused/full/concurrency proof.
-- [ ] Founder merge PR #190.
-- [ ] Operational migration remains separately unauthorized.
+- [x] First CI green on implementation head; later remediations re-ran CI until the frozen exact head was green.
+- [x] Self-review + remediation complete on exact verified head `cb81982f9d40a5f08207bb27f6f78a0c0c2caba9`.
+- [x] MG exact-head review complete.
+- [x] Exact-ref OpenCodeReview v1.12.9 — 5/5 reviewed, zero findings.
+- [x] Agent Local disposable 0041↔0042 + focused/full/concurrency proof — `PASS_LL01D_EXACT_REF_LOCAL_VERIFICATION`.
+- [x] Founder merge PR #190 — main `d46ddbc3536d4acef5525044270795de98a2c92c`.
+- [x] Operational DB remained untouched at verified rev-0034; rev-0035→0042 remains separately unauthorized.
+
+### UX-01 decomposition
+
+Do not redesign the whole product in one PR. The UI must consume canonical backend read models and never infer customer truth, approval state, worker liveness or publication state from presentation-only heuristics.
+
+#### UX-01A — Control Center read model + Needs Me contract
+
+- [ ] Start from exact LL-01 merge main `d46ddbc3536d4acef5525044270795de98a2c92c`.
+- [ ] Reuse existing Customer Map, Content Coverage, Harness/Approval, production-board, publication and learning state; no second state store.
+- [ ] Add one project-scoped Control Center read model for canonical counts: RUNNING / QUEUED / BLOCKED / NEEDS_HUMAN / COMPLETED_TODAY.
+- [ ] Add `Needs Me` projection that surfaces only real pending human decisions: content approvals, publish authorization, reviewed learning resolution/promotion/rollback, and explicit policy/config gates that already exist.
+- [ ] Every Needs Me item includes stable entity id/type, reason, canonical status, created/updated time, exact action destination, and Why/evidence refs where available.
+- [ ] Unknown/stale/inconsistent state fails closed; never fabricate a recommended action.
+- [ ] Read paths create no ModelCall, ToolCall, research job, approval, publication or Customer Truth mutation.
+- [ ] Add read-only API endpoints and focused tests.
+- [ ] No new migration unless the read model proves persistence is necessary; prefer derived query/projection first.
+- [ ] CI → exact-ref OCR → bounded Agent Local proof → Founder merge.
+
+Exit: the backend can answer “what is running, blocked, and what genuinely needs Founder action?” without the frontend reconstructing workflow truth.
+
+#### UX-01B — Customers + Content Map UI
+
+- [ ] Add `/customers` using existing Customer Living Map read APIs.
+- [ ] Show audience → Need → Insight/Journey with observed/inferred/review status clearly separated.
+- [ ] Drill-down shows supporting/contradicting evidence, missing evidence, alternatives and recent changes.
+- [ ] Add `/content-map` using canonical Content Coverage API.
+- [ ] Show Need × Journey/locale coverage states without fake numeric scores.
+- [ ] Existing content, gaps, weak/update/insufficient-data states remain distinct.
+- [ ] UI does not run research or create content from a cell click in this slice.
+- [ ] Loading/empty/error/stale states are explicit and accessible.
+
+Exit: Founder can inspect who the system understands and what content coverage exists without reading backend artifacts.
+
+#### UX-01C — Overview + Needs Me UI
+
+- [ ] Add default `/overview` Control Center.
+- [ ] Show Autopilot state and canonical counts from UX-01A.
+- [ ] Put `Cần tôi xử lý` above operational telemetry.
+- [ ] Each item deep-links to the existing exact approval/review surface; do not duplicate mutation logic.
+- [ ] Keep Production Board as advanced operations view, not the default homepage.
+- [ ] Add human-readable blocked/recovery reason with technical detail behind disclosure.
+- [ ] Important automated decisions expose Why/evidence refs.
+
+Exit: normal operation becomes exception-driven rather than run-by-run supervision.
+
+#### UX-01D — Learning + System + Daily Digest + navigation closeout
+
+- [ ] Add Learning view for Candidate → Assessment/Application → Validation → Resolution lifecycle.
+- [ ] Separate observation/evidence from interpreted learning and promoted truth.
+- [ ] Add System view for automation policy, provider/worker capability state, health and usage only where canonical data exists.
+- [ ] Add deterministic Daily Digest read model: what changed in Customer Map, Coverage, production, publication/measurement and learning since the prior bounded window.
+- [ ] Daily Digest reports changes; it does not trigger blind external Deep Research.
+- [ ] Final navigation: Overview / Customers / Content Map / Production / Needs Me / Learning / System.
+- [ ] Responsive/accessibility/browser verification on real local UI.
+- [ ] No operational migration or production activation is implied by UX completion.
+
+Exit: UX-01 closes with a coherent exception-driven command center backed by canonical read models.
