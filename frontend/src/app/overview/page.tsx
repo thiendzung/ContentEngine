@@ -67,6 +67,49 @@ function formatDate(value: string): string {
       });
 }
 
+function issuePresentation(code: string): {
+  title: string;
+  recovery: string;
+} {
+  if (code.includes("pending_approval")) {
+    return {
+      title: "Cổng duyệt không còn khớp trạng thái canonical hiện tại.",
+      recovery:
+        "Không ghi quyết định từ Overview. Kiểm tra run/case gốc và chỉ xử lý qua màn hình canonical khi có destination hợp lệ.",
+    };
+  }
+  if (code.includes("operator_")) {
+    return {
+      title: "Journal Operator đang bị chặn hoặc binding không nhất quán.",
+      recovery:
+        "Mở Production Board hoặc Journal Operator để kiểm tra case gốc; Overview không tự sửa Operator state.",
+    };
+  }
+  if (code.includes("canonical_gate_missing")) {
+    return {
+      title: "Production state đang chờ người nhưng thiếu binding duyệt canonical.",
+      recovery:
+        "Giữ fail-closed và kiểm tra durable approval/checkpoint trước khi tiếp tục.",
+    };
+  }
+  if (
+    code.includes("learning_") ||
+    code.includes("candidate_") ||
+    code.includes("validation_")
+  ) {
+    return {
+      title: "Learning state chưa đủ nhất quán để mở human action.",
+      recovery:
+        "Không promote/rollback từ Overview. Giữ fail-closed cho tới khi canonical Learning state được xử lý.",
+    };
+  }
+  return {
+    title: "Canonical state đang bị chặn hoặc không nhất quán.",
+    recovery:
+      "Không suy diễn cách sửa từ Overview. Kiểm tra entity và backend code trong chi tiết kỹ thuật trước khi hành động.",
+  };
+}
+
 async function loadOverview(timezone: string): Promise<OverviewState> {
   const [summary, needsMe] = await Promise.all([
     loadControlCenterSummary(timezone, PROJECT_SLUG),
@@ -341,22 +384,27 @@ export default function OverviewPage() {
               </div>
             ) : (
               <div className={styles.issueList}>
-                {state.summary.issues.map((issue) => (
-                  <article
-                    className={styles.card}
-                    key={`${issue.code}:${issue.entity_type}:${issue.entity_id}`}
-                  >
-                    <h3>{issue.message}</h3>
-                    <details className={styles.disclosure}>
-                      <summary>Chi tiết kỹ thuật</summary>
-                      <div className={styles.refs}>
-                        <span>Code · {issue.code}</span>
-                        <span>Entity type · {issue.entity_type}</span>
-                        <span>Entity id · {issue.entity_id}</span>
-                      </div>
-                    </details>
-                  </article>
-                ))}
+                {state.summary.issues.map((issue) => {
+                  const presentation = issuePresentation(issue.code);
+                  return (
+                    <article
+                      className={styles.card}
+                      key={`${issue.code}:${issue.entity_type}:${issue.entity_id}`}
+                    >
+                      <h3>{presentation.title}</h3>
+                      <p>{presentation.recovery}</p>
+                      <details className={styles.disclosure}>
+                        <summary>Chi tiết kỹ thuật</summary>
+                        <div className={styles.refs}>
+                          <span>Backend message · {issue.message}</span>
+                          <span>Code · {issue.code}</span>
+                          <span>Entity type · {issue.entity_type}</span>
+                          <span>Entity id · {issue.entity_id}</span>
+                        </div>
+                      </details>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
