@@ -1126,6 +1126,10 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_resolution_application_identity_mismatch';
             END IF;
 
+            IF length(btrim(NEW.applied_by)) = 0 THEN
+                RAISE EXCEPTION 'learning_resolution_application_actor_required';
+            END IF;
+
             current_target_snapshot :=
                 learning_application_current_target_snapshot(
                     NEW.learning_application_id
@@ -1204,10 +1208,6 @@ def _create_guards() -> None:
                      AND prior_artifact.content_hash = NEW.before_state_hash
                ) THEN
                 RAISE EXCEPTION 'learning_resolution_application_map_mismatch';
-            END IF;
-
-            IF length(btrim(NEW.applied_by)) = 0 THEN
-                RAISE EXCEPTION 'learning_resolution_application_actor_required';
             END IF;
 
             IF NEW.target_type = 'need_hypothesis' THEN
