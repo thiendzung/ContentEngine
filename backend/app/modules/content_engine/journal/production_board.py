@@ -253,7 +253,10 @@ async def list_production_board_cases(
     *,
     project_id: UUID | None = None,
 ) -> list[ProductionBoardCase]:
-    summaries = await list_action_aware_review_cases(session)
+    summaries = await list_action_aware_review_cases(
+        session,
+        project_id=project_id,
+    )
     if not summaries:
         return []
 
