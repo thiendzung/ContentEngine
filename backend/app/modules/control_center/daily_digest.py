@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Literal
 from uuid import UUID
@@ -706,7 +705,14 @@ async def build_daily_digest(
         ),
         reverse=True,
     )
-    counts = Counter(event.domain for event in events)
+    domains: tuple[DigestDomain, ...] = (
+        "customer",
+        "content",
+        "production",
+        "publication",
+        "measurement",
+        "learning",
+    )
 
     return DailyDigest(
         project_id=project.id,
@@ -716,15 +722,8 @@ async def build_daily_digest(
         window_start=window_start,
         window_end=window_end,
         event_counts={
-            domain: counts.get(domain, 0)
-            for domain in (
-                "customer",
-                "content",
-                "production",
-                "publication",
-                "measurement",
-                "learning",
-            )
+            domain: sum(1 for event in events if event.domain == domain)
+            for domain in domains
         },
         events=events,
         current_coverage_counts=coverage_counts,
