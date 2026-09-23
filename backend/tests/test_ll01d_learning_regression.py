@@ -220,6 +220,51 @@ async def _second_experiment_search_signal(
 
 
 @pytest.mark.asyncio
+async def test_ll01d_validation_rejects_evidence_observed_before_application(
+    isolated_session,
+    monkeypatch,
+):
+    async with isolated_session() as session:
+        fixture, _mapping, _baseline_signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        early_signal = await _second_experiment_search_signal(
+            session,
+            fixture=fixture,
+            worker_id="ll01d-early-evidence-worker",
+            impressions=150,
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="APPROVE",
+            reviewed_by="founder",
+            reason="Apply baseline before validating later evidence.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+
+        with pytest.raises(LearningRegressionError) as exc_info:
+            await create_learning_validation(
+                session,
+                learning_application_id=applied.application.id,
+                validation_status="VALIDATED",
+                signal_relations={early_signal.id: "supports"},
+                metric_comparisons=[],
+                alternative_explanations=[
+                    "A later experiment is required before validation."
+                ],
+                missing_evidence=[],
+            )
+
+        assert exc_info.value.code == "learning_validation_signal_not_later"
+
+
+@pytest.mark.asyncio
 async def test_ll01d_validated_need_requires_independent_evidence_and_human_promote(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
