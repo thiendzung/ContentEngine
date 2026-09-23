@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import engine, get_db
@@ -40,8 +41,8 @@ async def operational_preflight() -> dict[str, object]:
 
 @router.get("/system/summary", response_model=SystemOverview)
 async def system_summary(
-    project_slug: str = "motgu",
-    session=Depends(get_db),  # noqa: B008
+    project_slug: str = Query(default="motgu", min_length=1, max_length=100),
+    session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> SystemOverview:
     try:
         return await build_system_overview(
