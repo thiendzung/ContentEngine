@@ -34,7 +34,7 @@ def _http_error(exc: ControlCenterError) -> HTTPException:
 @router.get("/summary", response_model=ControlCenterSummary)
 async def get_control_center_summary(
     project_slug: str = Query(default="motgu", min_length=1, max_length=100),
-    timezone: str = Query(default="UTC", min_length=1, max_length=100),
+    timezone: str = Query(min_length=1, max_length=100),
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ControlCenterSummary:
     try:
@@ -51,7 +51,7 @@ async def get_control_center_summary(
 @router.get("/needs-me", response_model=list[NeedsMeItem])
 async def get_control_center_needs_me(
     project_slug: str = Query(default="motgu", min_length=1, max_length=100),
-    timezone: str = Query(default="UTC", min_length=1, max_length=100),
+    timezone: str = Query(min_length=1, max_length=100),
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> list[NeedsMeItem]:
     try:
