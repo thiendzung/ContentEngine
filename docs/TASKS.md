@@ -185,7 +185,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
-| UX-01 | IN IMPLEMENTATION / UX-01B ACTIVE | UX-01A merged; Customers + Content Map UI is the active bounded slice. Backend remains source of truth. |
+| UX-01 | IN IMPLEMENTATION / UX-01C ACTIVE | UX-01A/B merged; Overview + Needs Me is the active bounded slice. Backend remains source of truth. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
 ### CT-01 immediate checklist
@@ -485,13 +485,18 @@ Exit: Founder can inspect who the system understands and what content coverage e
 
 #### UX-01C — Overview + Needs Me UI
 
-- [ ] Add default `/overview` Control Center.
-- [ ] Show Autopilot state and canonical counts from UX-01A.
-- [ ] Put `Cần tôi xử lý` above operational telemetry.
-- [ ] Each item deep-links to the existing exact approval/review surface; do not duplicate mutation logic.
-- [ ] Keep Production Board as advanced operations view, not the default homepage.
-- [ ] Add human-readable blocked/recovery reason with technical detail behind disclosure.
-- [ ] Important automated decisions expose Why/evidence refs.
+- [x] Add `/overview` Control Center from exact post-UX-01B main.
+- [x] Render canonical UX-01A counts and issues; do not invent an Autopilot enabled/disabled runtime state because the current Control Center contract does not expose one.
+- [x] Put `Cần tôi xử lý` above operational telemetry.
+- [x] Deep-link only when canonical `destination.href` exists; preserve `href=null` for publish/policy/learning items rather than fabricating routes or mutation logic.
+- [x] Keep Production Board as the advanced operations view; make Overview the first Control Center navigation destination while preserving `/?case=...` as the existing non-operator review surface.
+- [x] Add human-readable blocked/recovery guidance with backend message/code/entity behind technical disclosure.
+- [x] Important human/automated decisions expose canonical Why/evidence refs.
+- [x] Fail closed when separate summary/Needs-Me reads disagree on `needs_human`; preserve last coherent view on refresh failure.
+- [ ] Exact-head CI green after self-review.
+- [ ] Browser/accessibility proof on real local UI.
+- [ ] Exact-ref OpenCodeReview + Agent Local bounded proof.
+- [ ] Founder merge UX-01C / close #196.
 
 Exit: normal operation becomes exception-driven rather than run-by-run supervision.
 
