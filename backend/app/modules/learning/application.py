@@ -505,6 +505,25 @@ async def _candidate_snapshot(
     )
 
 
+async def validate_learning_candidate_review_readiness(
+    session: AsyncSession,
+    *,
+    learning_candidate_id: UUID,
+) -> LearningCandidate:
+    """Revalidate the exact candidate snapshot before exposing a human review."""
+
+    snapshot = await _candidate_snapshot(
+        session,
+        candidate_id=learning_candidate_id,
+        lock=False,
+    )
+    if snapshot.candidate.evidence_status != "READY_FOR_REVIEW":
+        raise LearningApplicationError(
+            "learning_candidate_not_ready_for_review"
+        )
+    return snapshot.candidate
+
+
 def _validate_review_decision(
     snapshot: CandidateSnapshot,
     decision: ReviewDecision,
@@ -1030,4 +1049,5 @@ __all__ = [
     "ReviewDecision",
     "apply_learning_candidate",
     "review_learning_candidate",
+    "validate_learning_candidate_review_readiness",
 ]

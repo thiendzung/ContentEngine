@@ -159,13 +159,16 @@ async def get_action_aware_review_case(
 
 async def list_action_aware_review_cases(
     session: AsyncSession,
+    *,
+    project_id: UUID | None = None,
 ) -> list[ReviewCaseSummary]:
+    case_query = select(ContentCase.id).where(ContentCase.content_type == "journal")
+    if project_id is not None:
+        case_query = case_query.where(ContentCase.project_id == project_id)
     case_ids = list(
         (
             await session.scalars(
-                select(ContentCase.id)
-                .where(ContentCase.content_type == "journal")
-                .order_by(ContentCase.created_at, ContentCase.id)
+                case_query.order_by(ContentCase.created_at, ContentCase.id)
             )
         ).all()
     )

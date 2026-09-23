@@ -250,22 +250,32 @@ def _execution_events(
 
 async def list_production_board_cases(
     session: AsyncSession,
+    *,
+    project_id: UUID | None = None,
 ) -> list[ProductionBoardCase]:
-    summaries = await list_action_aware_review_cases(session)
+    summaries = await list_action_aware_review_cases(
+        session,
+        project_id=project_id,
+    )
     if not summaries:
         return []
 
     case_ids = [row.id for row in summaries]
+    case_query = select(ContentCase).where(ContentCase.id.in_(case_ids))
+    if project_id is not None:
+        case_query = case_query.where(ContentCase.project_id == project_id)
     cases = list(
         (
             await session.scalars(
-                select(ContentCase)
-                .where(ContentCase.id.in_(case_ids))
-                .order_by(ContentCase.created_at, ContentCase.id)
+                case_query.order_by(ContentCase.created_at, ContentCase.id)
             )
         ).all()
     )
     case_by_id = {row.id: row for row in cases}
+    summaries = [row for row in summaries if row.id in case_by_id]
+    if not summaries:
+        return []
+    case_ids = [row.id for row in summaries]
     operator_case_ids = set(
         (
             await session.scalars(
