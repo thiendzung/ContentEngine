@@ -239,7 +239,7 @@ export default function OverviewPage() {
   return (
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
-        <div>
+        <div className={styles.headerCopy}>
           <p className="eyebrow">ContentEngine · Control Center</p>
           <h1>Tổng quan</h1>
           <p className="intro">
@@ -247,35 +247,40 @@ export default function OverviewPage() {
             Founder xử lý, sau đó mới xem telemetry vận hành.
           </p>
         </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => void refresh()}
-            disabled={loading}
-          >
-            {loading ? "Đang tải…" : "Làm mới"}
-          </button>
-        </div>
-      </header>
 
-      <section className={styles.autopilot} aria-label="Controlled Autopilot">
-        <div>
-          <p className="eyebrow">Controlled Autopilot</p>
-          <strong>Không suy diễn trạng thái bật/tắt</strong>
-          <p>
-            Control Center contract hiện chưa công bố một field Autopilot
-            enabled/disabled. Màn hình chỉ hiển thị canonical runtime counts và
-            issues bên dưới.
+        <aside className={styles.commandPanel} aria-label="Control Center status">
+          <div className={styles.commandMeta}>
+            <div>
+              <span>Read model</span>
+              <strong>{state ? "Đã tải" : loading ? "Đang tải" : "Chưa có"}</strong>
+            </div>
+            <div>
+              <span>Timezone</span>
+              <strong>{state?.summary.timezone ?? "đang xác định"}</strong>
+            </div>
+            <div>
+              <span>Controlled Autopilot</span>
+              <strong>Chưa có canonical on/off</strong>
+            </div>
+          </div>
+          <p className={styles.commandNote}>
+            Overview không tự suy diễn trạng thái Autopilot bật/tắt.
           </p>
-        </div>
-        <div className={styles.runtimeLabel}>
-          <strong>{state ? "Read model đã tải" : "Chưa có read model"}</strong>
-          <span>
-            Timezone: {state?.summary.timezone ?? "đang xác định"}
-          </span>
-        </div>
-      </section>
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void refresh()}
+              disabled={loading}
+            >
+              {loading ? "Đang tải…" : "Làm mới"}
+            </button>
+            <Link className={styles.linkButton} href="/production">
+              Production nâng cao
+            </Link>
+          </div>
+        </aside>
+      </header>
 
       {loading && !state ? (
         <div className={styles.notice} role="status" aria-live="polite">
@@ -408,11 +413,6 @@ export default function OverviewPage() {
             )}
           </section>
 
-          <section className={styles.section}>
-            <Link className={styles.linkButton} href="/production">
-              Mở Production Board nâng cao
-            </Link>
-          </section>
         </>
       ) : null}
     </main>
