@@ -26,11 +26,14 @@ from app.modules.customer_intelligence.insights import (
     signal_independence_key,
 )
 from app.modules.customer_intelligence.living_map import (
-    CustomerMapError,
     refresh_customer_map_snapshot_artifact,
 )
 from app.modules.customer_intelligence.models import CustomerInsight
 from app.modules.harness.models import Artifact
+from app.modules.learning.performance_signal import (
+    PerformanceSignalError,
+    materialize_performance_signal,
+)
 from app.modules.learning.models import (
     LearningApplication,
     LearningCandidate,
@@ -287,7 +290,8 @@ def _expected_scope(application: LearningApplication) -> dict[str, object]:
     return scope
 
 
-def _signal_metric_records(
+async def _signal_metric_records(
+    session: AsyncSession,
     signal: Signal,
     *,
     scope: dict[str, object],
@@ -304,6 +308,25 @@ def _signal_metric_records(
     )
     if provenance.get("kind") != "content_performance_signal":
         raise LearningRegressionError("learning_validation_signal_kind_invalid")
+    observation_payload = _dict(
+        provenance.get("content_performance_observation"),
+        "learning_validation_signal_provenance_invalid",
+    )
+    observation_id = _uuid(
+        observation_payload.get("id"),
+        "learning_validation_signal_observation_invalid",
+    )
+    try:
+        rematerialized = await materialize_performance_signal(
+            session,
+            observation_id=observation_id,
+        )
+    except PerformanceSignalError as exc:
+        raise LearningRegressionError(
+            f"learning_validation_{exc.code}"
+        ) from exc
+    if rematerialized.signal is None or rematerialized.signal.id != signal.id:
+        raise LearningRegressionError("learning_validation_signal_replay_mismatch")
     if signal.fingerprint != _hash(
         {
             "external_id": signal.external_id,
@@ -377,7 +400,11 @@ async def _load_signal_set(
         signal = await session.get(Signal, signal_id)
         if signal is None or signal.project_id != application.project_id:
             raise LearningRegressionError("learning_validation_signal_not_found")
-        metric_rows = _signal_metric_records(signal, scope=scope)
+        metric_rows = await _signal_metric_records(
+            session,
+            signal,
+            scope=scope,
+        )
         independence_key = await signal_independence_key(session, signal, cache)
         groups.add(independence_key)
         rows.append(
