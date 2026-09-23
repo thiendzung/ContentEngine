@@ -24,7 +24,6 @@ from app.modules.content_engine.models import (
 from app.modules.content_engine.models import Signal as DBSignal
 from app.modules.knowledge.ingest import ingest_source_document, register_source
 from app.modules.research.contracts import (
-    CommercialBias,
     PageDocument,
     ProductionResearchResult,
     SourceCandidate,
