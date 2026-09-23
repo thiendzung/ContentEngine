@@ -118,6 +118,7 @@ export type LearningCandidate = {
 };
 
 export type LearningOverview = {
+  schema_version: 1;
   project_id: string;
   project_slug: string;
   counts: Record<string, number>;
@@ -135,6 +136,7 @@ export async function loadLearningOverview(projectSlug = "motgu") {
     `/learning?${projectQuery(projectSlug)}`,
   );
   if (
+    value.schema_version !== 1 ||
     !value.semantics.candidate_is_not_customer_truth ||
     !value.semantics.evidence_is_not_learning_rule ||
     !value.semantics.application_receipt_required_for_truth_change ||
@@ -197,6 +199,7 @@ export type RouteDecision = {
 };
 
 export type SystemOverview = {
+  schema_version: 1;
   project_id: string;
   project_slug: string;
   automation_policy_sources: AutomationPolicySource[];
@@ -241,6 +244,7 @@ export async function loadSystemDashboard(projectSlug = "motgu") {
     getJson<SystemPreflight>("/system/preflight"),
   ]);
   if (
+    summary.schema_version !== 1 ||
     !summary.semantics.configured_policy_is_not_runtime_state ||
     !summary.semantics.historical_usage_is_not_provider_health ||
     !summary.semantics.delegation_history_is_not_worker_health ||
@@ -269,6 +273,7 @@ export type DigestEvent = {
 };
 
 export type DailyDigest = {
+  schema_version: 1;
   project_id: string;
   project_slug: string;
   local_date: string;
@@ -301,6 +306,7 @@ export async function loadDailyDigest(
     `/daily-digest?${params.toString()}`,
   );
   if (
+    value.schema_version !== 1 ||
     !value.semantics.events_are_durable_facts ||
     !value.semantics.current_coverage_is_not_historical_change ||
     !value.semantics.measurement_observation_is_not_causal_proof ||
