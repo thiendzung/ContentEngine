@@ -448,16 +448,21 @@ Do not redesign the whole product in one PR. The UI must consume canonical backe
 
 #### UX-01A — Control Center read model + Needs Me contract
 
-- [ ] Start from exact LL-01 merge main `d46ddbc3536d4acef5525044270795de98a2c92c`.
-- [ ] Reuse existing Customer Map, Content Coverage, Harness/Approval, production-board, publication and learning state; no second state store.
-- [ ] Add one project-scoped Control Center read model for canonical counts: RUNNING / QUEUED / BLOCKED / NEEDS_HUMAN / COMPLETED_TODAY.
-- [ ] Add `Needs Me` projection that surfaces only real pending human decisions: content approvals, publish authorization, reviewed learning resolution/promotion/rollback, and explicit policy/config gates that already exist.
-- [ ] Every Needs Me item includes stable entity id/type, reason, canonical status, created/updated time, exact action destination, and Why/evidence refs where available.
-- [ ] Unknown/stale/inconsistent state fails closed; never fabricate a recommended action.
-- [ ] Read paths create no ModelCall, ToolCall, research job, approval, publication or Customer Truth mutation.
-- [ ] Add read-only API endpoints and focused tests.
-- [ ] No new migration unless the read model proves persistence is necessary; prefer derived query/projection first.
-- [ ] CI → exact-ref OCR → bounded Agent Local proof → Founder merge.
+- [x] Start from exact post-LL-01 planning main `65e8a80119d94102c2487e4e9188b642ae0d3e86` (PR #191 merged).
+- [x] Reuse existing Harness/Approval/checkpoint, production-board/review projection, publication gate and LL-01 learning state; no second state store.
+- [x] Add one project-scoped Control Center read model for canonical counts: RUNNING / QUEUED / BLOCKED / NEEDS_HUMAN / COMPLETED_TODAY.
+- [x] Add `Needs Me` projection for real pending human decisions: content approvals, publish authorization, explicit existing policy gates, READY_FOR_REVIEW learning candidates and actionable unresolved learning validation/resolution.
+- [x] Keep `INCONCLUSIVE` / `NEEDS_MORE_EVIDENCE` out of Founder exceptions; missing evidence alone is not a human task.
+- [x] Every Needs Me item includes stable entity id/type, reason, canonical status, created/updated time, typed action destination, and Why/evidence refs where available.
+- [x] Unknown/stale/inconsistent approval or learning state fails closed into Control Center issues/BLOCKED; never fabricate a recommended action.
+- [x] Apply project scope before expensive/per-case review projection so another project's bad state cannot poison the target Control Center.
+- [x] Read paths create no ModelCall, ToolCall, research job, approval, publication or Customer Truth mutation.
+- [x] Add read-only `GET /control-center/summary` and `GET /control-center/needs-me` plus focused tests.
+- [x] No new migration; UX-01A remains a derived projection over canonical durable state.
+- [ ] Exact-head CI green after self-review.
+- [ ] Exact-ref OpenCodeReview + MG triage.
+- [ ] Agent Local bounded exact-head proof.
+- [ ] Founder merge PR #193 / close #192.
 
 Exit: the backend can answer “what is running, blocked, and what genuinely needs Founder action?” without the frontend reconstructing workflow truth.
 
