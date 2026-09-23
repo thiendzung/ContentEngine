@@ -210,7 +210,6 @@ def _create_guards() -> None:
                OR NEW.target_type IS DISTINCT FROM app_target_type
                OR NEW.resulting_target_id IS DISTINCT FROM app_resulting_target
                OR NEW.frozen_scope_json::jsonb IS DISTINCT FROM app_scope
-               OR NEW.baseline_signal_refs_json::jsonb IS DISTINCT FROM app_signal_refs
                OR NEW.target_snapshot_json::jsonb IS DISTINCT FROM
                     learning_application_current_target_snapshot(
                         NEW.learning_application_id
@@ -252,6 +251,56 @@ def _create_guards() -> None:
                AND NEW.validation_status IN ('VALIDATED','REGRESSED','CONTESTED') THEN
                 RAISE EXCEPTION 'learning_validation_evidence_required';
             END IF;
+
+            IF jsonb_array_length(NEW.baseline_signal_refs_json::jsonb)
+               IS DISTINCT FROM jsonb_array_length(app_signal_refs)
+               OR jsonb_array_length(NEW.baseline_signal_refs_json::jsonb)
+               IS DISTINCT FROM (
+                   SELECT count(DISTINCT baseline_ref->>'signal_id')
+                   FROM jsonb_array_elements(
+                       NEW.baseline_signal_refs_json::jsonb
+                   ) AS baseline_ref
+               ) THEN
+                RAISE EXCEPTION 'learning_validation_baseline_signal_mismatch';
+            END IF;
+
+            FOR signal_ref IN
+                SELECT value
+                FROM jsonb_array_elements(
+                    NEW.baseline_signal_refs_json::jsonb
+                )
+            LOOP
+                IF signal_ref->>'relation' NOT IN
+                   ('supports','contradicts','context')
+                   OR NOT EXISTS (
+                       SELECT 1
+                       FROM jsonb_array_elements(app_signal_refs) AS app_ref
+                       WHERE app_ref->>'signal_id'
+                             = signal_ref->>'signal_id'
+                         AND app_ref->>'relation'
+                             = signal_ref->>'relation'
+                   ) THEN
+                    RAISE EXCEPTION
+                        'learning_validation_baseline_signal_mismatch';
+                END IF;
+
+                SELECT project_id, fingerprint, independence_group
+                INTO signal_project, signal_fingerprint, signal_group
+                FROM signals
+                WHERE id = (signal_ref->>'signal_id')::uuid
+                  AND source_kind = 'MOTGU'
+                  AND scope = 'motgu_site';
+
+                IF signal_project IS NULL
+                   OR signal_project IS DISTINCT FROM NEW.project_id
+                   OR signal_ref->>'fingerprint'
+                        IS DISTINCT FROM signal_fingerprint
+                   OR signal_ref->>'independence_key'
+                        IS DISTINCT FROM signal_group THEN
+                    RAISE EXCEPTION
+                        'learning_validation_baseline_signal_mismatch';
+                END IF;
+            END LOOP;
 
             FOR signal_ref IN
                 SELECT value
