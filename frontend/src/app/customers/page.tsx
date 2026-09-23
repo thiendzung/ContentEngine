@@ -18,6 +18,16 @@ import styles from "../intelligence.module.css";
 
 const PROJECT_SLUG = "motgu";
 
+function assertSnapshotHash(
+  expected: string,
+  actual: string,
+  scope: string,
+) {
+  if (expected !== actual) {
+    throw new Error("customer_map_snapshot_changed_during_read:" + scope);
+  }
+}
+
 function statusLabel(value: string): string {
   const labels: Record<string, string> = {
     PROPOSED: "Đề xuất",
@@ -272,25 +282,42 @@ export default function CustomersPage() {
           loadCustomerMapChanges(PROJECT_SLUG),
         ]);
         if (cancelled) return;
+        assertSnapshotHash(
+          nextSummary.snapshot_hash,
+          nextChanges.current_snapshot_hash,
+          "changes",
+        );
+
+        const firstAudience = nextSummary.audiences[0] ?? null;
+        const nextAudience = firstAudience
+          ? await loadCustomerAudience(firstAudience.id, PROJECT_SLUG)
+          : null;
+        if (nextAudience) {
+          assertSnapshotHash(
+            nextSummary.snapshot_hash,
+            nextAudience.snapshot_hash,
+            "audience",
+          );
+        }
+
+        const firstNeed = nextAudience?.needs[0] ?? null;
+        const nextNeed = firstNeed
+          ? await loadCustomerNeed(firstNeed.id, PROJECT_SLUG)
+          : null;
+        if (nextNeed) {
+          assertSnapshotHash(
+            nextSummary.snapshot_hash,
+            nextNeed.snapshot_hash,
+            "need",
+          );
+        }
+        if (cancelled) return;
+
         setSummary(nextSummary);
         setChanges(nextChanges);
-
-        const firstAudience = nextSummary.audiences[0];
-        if (!firstAudience) return;
-
-        const nextAudience = await loadCustomerAudience(
-          firstAudience.id,
-          PROJECT_SLUG,
-        );
-        if (cancelled) return;
-        setSelectedAudienceId(firstAudience.id);
+        setSelectedAudienceId(firstAudience?.id ?? "");
         setAudience(nextAudience);
-
-        const firstNeed = nextAudience.needs[0];
-        if (!firstNeed) return;
-        const nextNeed = await loadCustomerNeed(firstNeed.id, PROJECT_SLUG);
-        if (cancelled) return;
-        setSelectedNeedId(firstNeed.id);
+        setSelectedNeedId(firstNeed?.id ?? "");
         setNeedDetail(nextNeed);
       } catch (nextError) {
         if (cancelled) return;
@@ -320,13 +347,28 @@ export default function CustomersPage() {
     setError("");
     try {
       const nextAudience = await loadCustomerAudience(audienceId, PROJECT_SLUG);
+      if (summary) {
+        assertSnapshotHash(
+          summary.snapshot_hash,
+          nextAudience.snapshot_hash,
+          "audience",
+        );
+      }
+      const firstNeed = nextAudience.needs[0] ?? null;
+      const nextNeed = firstNeed
+        ? await loadCustomerNeed(firstNeed.id, PROJECT_SLUG)
+        : null;
+      if (summary && nextNeed) {
+        assertSnapshotHash(
+          summary.snapshot_hash,
+          nextNeed.snapshot_hash,
+          "need",
+        );
+      }
       setSelectedAudienceId(audienceId);
       setAudience(nextAudience);
-      const firstNeed = nextAudience.needs[0] ?? null;
       setSelectedNeedId(firstNeed?.id ?? "");
-      setNeedDetail(
-        firstNeed ? await loadCustomerNeed(firstNeed.id, PROJECT_SLUG) : null,
-      );
+      setNeedDetail(nextNeed);
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -343,6 +385,13 @@ export default function CustomersPage() {
     setError("");
     try {
       const nextNeed = await loadCustomerNeed(needId, PROJECT_SLUG);
+      if (summary) {
+        assertSnapshotHash(
+          summary.snapshot_hash,
+          nextNeed.snapshot_hash,
+          "need",
+        );
+      }
       setSelectedNeedId(needId);
       setNeedDetail(nextNeed);
     } catch (nextError) {
@@ -363,8 +412,11 @@ export default function CustomersPage() {
         loadCustomerMapSummary(PROJECT_SLUG),
         loadCustomerMapChanges(PROJECT_SLUG),
       ]);
-      setSummary(nextSummary);
-      setChanges(nextChanges);
+      assertSnapshotHash(
+        nextSummary.snapshot_hash,
+        nextChanges.current_snapshot_hash,
+        "changes",
+      );
 
       const audienceId =
         selectedAudienceId &&
@@ -372,27 +424,40 @@ export default function CustomersPage() {
           ? selectedAudienceId
           : nextSummary.audiences[0]?.id ?? "";
 
-      if (!audienceId) {
-        setAudience(null);
-        setNeedDetail(null);
-        setSelectedAudienceId("");
-        setSelectedNeedId("");
-        return;
+      const nextAudience = audienceId
+        ? await loadCustomerAudience(audienceId, PROJECT_SLUG)
+        : null;
+      if (nextAudience) {
+        assertSnapshotHash(
+          nextSummary.snapshot_hash,
+          nextAudience.snapshot_hash,
+          "audience",
+        );
       }
 
-      const nextAudience = await loadCustomerAudience(audienceId, PROJECT_SLUG);
-      setAudience(nextAudience);
-      setSelectedAudienceId(audienceId);
-
       const needId =
+        nextAudience &&
         selectedNeedId &&
         nextAudience.needs.some((item) => item.id === selectedNeedId)
           ? selectedNeedId
-          : nextAudience.needs[0]?.id ?? "";
+          : nextAudience?.needs[0]?.id ?? "";
+      const nextNeed = needId
+        ? await loadCustomerNeed(needId, PROJECT_SLUG)
+        : null;
+      if (nextNeed) {
+        assertSnapshotHash(
+          nextSummary.snapshot_hash,
+          nextNeed.snapshot_hash,
+          "need",
+        );
+      }
+
+      setSummary(nextSummary);
+      setChanges(nextChanges);
+      setAudience(nextAudience);
+      setSelectedAudienceId(audienceId);
       setSelectedNeedId(needId);
-      setNeedDetail(
-        needId ? await loadCustomerNeed(needId, PROJECT_SLUG) : null,
-      );
+      setNeedDetail(nextNeed);
     } catch (nextError) {
       const message =
         nextError instanceof Error
