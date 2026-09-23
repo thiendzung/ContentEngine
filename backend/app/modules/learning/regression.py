@@ -13,6 +13,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import (
+    ContentExperiment,
+    ContentItem,
     NeedHypothesis,
     NeedHypothesisReview,
     NeedHypothesisSignal,
@@ -340,6 +342,48 @@ async def _signal_metric_records(
         provenance.get("content"),
         "learning_validation_signal_provenance_invalid",
     )
+    content_item_id = _uuid(
+        content.get("content_item_id"),
+        "learning_validation_signal_content_item_invalid",
+    )
+    content_item = await session.get(ContentItem, content_item_id)
+    if (
+        content_item is None
+        or content_item.project_id != signal.project_id
+        or content_item.content_type != scope.get("content_type")
+    ):
+        raise LearningRegressionError(
+            "learning_validation_signal_content_type_mismatch"
+        )
+    experiment_payload = _dict(
+        provenance.get("experiment"),
+        "learning_validation_signal_provenance_invalid",
+    )
+    experiment_id = _uuid(
+        experiment_payload.get("id"),
+        "learning_validation_signal_experiment_invalid",
+    )
+    experiment = await session.get(ContentExperiment, experiment_id)
+    if (
+        experiment is None
+        or experiment.project_id != signal.project_id
+        or experiment.content_item_id != content_item.id
+        or experiment_payload.get("review_window_start")
+            != (
+                experiment.review_window_start.isoformat()
+                if experiment.review_window_start is not None
+                else None
+            )
+        or experiment_payload.get("review_window_end")
+            != (
+                experiment.review_window_end.isoformat()
+                if experiment.review_window_end is not None
+                else None
+            )
+    ):
+        raise LearningRegressionError(
+            "learning_validation_signal_experiment_mismatch"
+        )
     customer = _dict(
         provenance.get("customer"),
         "learning_validation_signal_provenance_invalid",
@@ -373,10 +417,18 @@ async def _signal_metric_records(
     metrics = provenance.get("metrics")
     if not isinstance(metrics, list):
         raise LearningRegressionError("learning_validation_signal_metrics_invalid")
-    return [
-        _dict(row, "learning_validation_signal_metrics_invalid")
-        for row in metrics
-    ]
+    contract = {
+        "experiment_id": str(experiment.id),
+        "review_window_start": experiment_payload.get("review_window_start"),
+        "review_window_end": experiment_payload.get("review_window_end"),
+        "metric_definitions": list(experiment.metric_definitions_json),
+    }
+    result: list[dict[str, object]] = []
+    for row in metrics:
+        metric = _dict(row, "learning_validation_signal_metrics_invalid")
+        metric["_experiment_contract"] = contract
+        result.append(metric)
+    return result
 
 
 async def _load_signal_set(
@@ -472,6 +524,21 @@ async def _metric_comparisons(
             raise LearningRegressionError("learning_validation_metric_definition_mismatch")
         baseline_payload = baseline_metrics[baseline.id]
         candidate_payload = candidate_metrics[candidate.id]
+        baseline_contract = _dict(
+            baseline_payload.get("_experiment_contract"),
+            "learning_validation_metric_contract_invalid",
+        )
+        candidate_contract = _dict(
+            candidate_payload.get("_experiment_contract"),
+            "learning_validation_metric_contract_invalid",
+        )
+        if (
+            baseline_contract.get("metric_definitions")
+            != candidate_contract.get("metric_definitions")
+        ):
+            raise LearningRegressionError(
+                "learning_validation_metric_contract_mismatch"
+            )
         if (
             baseline_payload.get("metric_name") != baseline.metric_name
             or baseline_payload.get("provider") != baseline.provider
@@ -499,6 +566,19 @@ async def _metric_comparisons(
                 "candidate_value": _decimal_text(candidate.metric_value),
                 "delta": _decimal_text(delta),
                 "direction": direction,
+                "baseline_experiment_id": baseline_contract["experiment_id"],
+                "candidate_experiment_id": candidate_contract["experiment_id"],
+                "baseline_review_window": {
+                    "start": baseline_contract["review_window_start"],
+                    "end": baseline_contract["review_window_end"],
+                },
+                "candidate_review_window": {
+                    "start": candidate_contract["review_window_start"],
+                    "end": candidate_contract["review_window_end"],
+                },
+                "metric_definitions_verbatim": baseline_contract[
+                    "metric_definitions"
+                ],
                 "causal_claim_allowed": False,
             }
         )
@@ -699,6 +779,13 @@ def _validate_resolution_decision(
         "ARCHIVE_CANDIDATE",
     }:
         raise LearningRegressionError("learning_resolution_decision_invalid")
+    if (
+        validation.target_type == "no_map_change"
+        and decision in {"PROMOTE", "ROLLBACK", "REJECT"}
+    ):
+        raise LearningRegressionError(
+            "learning_resolution_no_map_mutation_invalid"
+        )
 
     if decision == "PROMOTE":
         if validation.validation_status != "VALIDATED":
