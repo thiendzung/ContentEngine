@@ -15,6 +15,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="vi">
       <body>
         <nav className="global-nav" aria-label="Điều hướng ContentEngine">
+          <Link href="/overview">Tổng quan</Link>
           <Link href="/customers">Khách hàng</Link>
           <Link href="/content-map">Bản đồ nội dung</Link>
           <Link href="/operator">Điều hành</Link>
