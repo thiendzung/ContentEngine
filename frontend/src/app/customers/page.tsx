@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   type CustomerAudienceDetail,
@@ -17,6 +17,16 @@ import {
 import styles from "../intelligence.module.css";
 
 const PROJECT_SLUG = "motgu";
+const SNAPSHOT_DRIFT_PREFIX = "customer_map_snapshot_changed_during_read:";
+
+type CustomerViewState = {
+  summary: CustomerMapSummary;
+  changes: CustomerMapChanges;
+  audience: CustomerAudienceDetail | null;
+  needDetail: CustomerNeedDetail | null;
+  selectedAudienceId: string;
+  selectedNeedId: string;
+};
 
 function assertSnapshotHash(
   expected: string,
@@ -24,8 +34,19 @@ function assertSnapshotHash(
   scope: string,
 ) {
   if (expected !== actual) {
-    throw new Error("customer_map_snapshot_changed_during_read:" + scope);
+    throw new Error(SNAPSHOT_DRIFT_PREFIX + scope);
   }
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isSnapshotDrift(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith(SNAPSHOT_DRIFT_PREFIX)
+  );
 }
 
 function statusLabel(value: string): string {
@@ -42,7 +63,9 @@ function statusLabel(value: string): string {
 }
 
 function statusClass(value: string): string {
-  if (value === "SUPPORTED" || value === "ACTIVE") return styles.badgePositive;
+  if (value === "SUPPORTED" || value === "ACTIVE") {
+    return styles.badgePositive;
+  }
   if (value === "REJECTED") return styles.badgeNegative;
   if (
     value === "PROPOSED" ||
@@ -78,11 +101,15 @@ function EvidenceSummary({
   contradicts,
   independentSupports,
   independentContradicts,
+  context,
+  independentContext,
 }: {
   supports: number;
   contradicts: number;
   independentSupports: number;
   independentContradicts: number;
+  context?: number;
+  independentContext?: number;
 }) {
   return (
     <div className={styles.evidence}>
@@ -92,6 +119,46 @@ function EvidenceSummary({
       <span className={contradicts > 0 ? styles.badgeNegative : styles.badge}>
         Mâu thuẫn {contradicts} · độc lập {independentContradicts}
       </span>
+      {context !== undefined ? (
+        <span className={styles.badge}>
+          Bối cảnh {context} · độc lập {independentContext ?? 0}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function SignalRefs({
+  insight,
+}: {
+  insight: CustomerInsight;
+}) {
+  const refs = [
+    ...insight.signal_refs.supports.map((id) => ({
+      id,
+      relation: "supports",
+    })),
+    ...insight.signal_refs.contradicts.map((id) => ({
+      id,
+      relation: "contradicts",
+    })),
+    ...(insight.signal_refs.context ?? []).map((id) => ({
+      id,
+      relation: "context",
+    })),
+  ];
+
+  return (
+    <div className={styles.signalList}>
+      {refs.length === 0 ? (
+        <span>Chưa có Signal được liên kết.</span>
+      ) : (
+        refs.map((ref) => (
+          <span key={ref.relation + ":" + ref.id}>
+            {relationLabel(ref.relation)} · {ref.id}
+          </span>
+        ))
+      )}
     </div>
   );
 }
@@ -108,7 +175,9 @@ function NeedCard({
   return (
     <button
       type="button"
-      className={`${styles.listButton} ${active ? styles.listButtonActive : ""}`}
+      className={
+        styles.listButton + " " + (active ? styles.listButtonActive : "")
+      }
       onClick={onSelect}
       aria-pressed={active}
     >
@@ -132,21 +201,36 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
           {statusLabel(insight.status)}
         </span>
       </div>
+
       {insight.situation ? <p>{insight.situation}</p> : null}
+
       <EvidenceSummary
         supports={insight.evidence_counts.supports}
         contradicts={insight.evidence_counts.contradicts}
         independentSupports={insight.evidence_counts.independent_supports}
         independentContradicts={insight.evidence_counts.independent_contradicts}
+        context={insight.evidence_counts.context}
+        independentContext={insight.evidence_counts.independent_context}
       />
+
       <dl className={styles.definition}>
         <dt>Phiên bản</dt>
         <dd>v{insight.version}</dd>
+        <dt>Trạng thái review</dt>
+        <dd>{statusLabel(insight.status)}</dd>
         <dt>Người duyệt</dt>
         <dd>{insight.reviewed_by ?? "Chưa có"}</dd>
         <dt>Lý do duyệt</dt>
         <dd>{insight.review_reason ?? "Chưa có"}</dd>
+        <dt>Observed / inferred</dt>
+        <dd>Không có field canonical trong contract hiện tại.</dd>
       </dl>
+
+      <div className={styles.evidenceBlock}>
+        <strong>Signal refs</strong>
+        <SignalRefs insight={insight} />
+      </div>
+
       {insight.need_links.length > 0 ? (
         <div className={styles.evidenceBlock}>
           <strong>Liên kết Need</strong>
@@ -171,6 +255,7 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
           </ul>
         </div>
       ) : null}
+
       {insight.alternative_explanations.length > 0 ? (
         <div className={styles.evidenceBlock}>
           <strong>Giải thích thay thế</strong>
@@ -181,6 +266,7 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
           </ul>
         </div>
       ) : null}
+
       {insight.missing_evidence.length > 0 ? (
         <div className={styles.evidenceBlock}>
           <strong>Bằng chứng còn thiếu</strong>
@@ -197,6 +283,7 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
 
 function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
   const need = detail.need;
+
   return (
     <section className={styles.panel}>
       <div className={styles.sectionHeader}>
@@ -204,7 +291,9 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
           <p className="eyebrow">Need · {need.type}</p>
           <h2>{need.statement}</h2>
         </div>
-        <span className={statusClass(need.status)}>{statusLabel(need.status)}</span>
+        <span className={statusClass(need.status)}>
+          {statusLabel(need.status)}
+        </span>
       </div>
 
       <dl className={styles.definition}>
@@ -216,6 +305,8 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
         <dd>{need.situation ?? "Không có giá trị riêng"}</dd>
         <dt>Phiên bản</dt>
         <dd>v{need.version}</dd>
+        <dt>Trạng thái review</dt>
+        <dd>{statusLabel(need.status)}</dd>
         <dt>Người duyệt</dt>
         <dd>{need.reviewed_by ?? "Chưa có"}</dd>
         <dt>Lý do duyệt</dt>
@@ -232,10 +323,10 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
         />
         <div className={styles.signalList}>
           {need.signal_refs.supports.map((id) => (
-            <span key={id}>Ủng hộ · {id}</span>
+            <span key={"supports:" + id}>Ủng hộ · {id}</span>
           ))}
           {need.signal_refs.contradicts.map((id) => (
-            <span key={id}>Mâu thuẫn · {id}</span>
+            <span key={"contradicts:" + id}>Mâu thuẫn · {id}</span>
           ))}
           {need.signal_refs.supports.length === 0 &&
           need.signal_refs.contradicts.length === 0 ? (
@@ -243,6 +334,31 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
           ) : null}
         </div>
       </div>
+
+      {need.insight_links.length > 0 ? (
+        <div className={styles.evidenceBlock}>
+          <strong>Quan hệ Need ↔ CustomerInsight</strong>
+          <ul>
+            {need.insight_links.map((link) => (
+              <li
+                key={
+                  link.customer_insight_id +
+                  ":" +
+                  link.relation +
+                  ":" +
+                  link.linked_by
+                }
+              >
+                {relationLabel(link.relation)} · {link.reason}
+                <span className={styles.meta}>
+                  {" "}
+                  ({link.customer_insight_id})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {need.alternative_explanations.length > 0 ? (
         <div className={styles.evidenceBlock}>
@@ -282,220 +398,238 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
   );
 }
 
+async function loadCustomerView(
+  preferredAudienceId = "",
+  preferredNeedId = "",
+): Promise<CustomerViewState> {
+  const [summary, changes] = await Promise.all([
+    loadCustomerMapSummary(PROJECT_SLUG),
+    loadCustomerMapChanges(PROJECT_SLUG),
+  ]);
+
+  assertSnapshotHash(
+    summary.snapshot_hash,
+    changes.current_snapshot_hash,
+    "changes",
+  );
+
+  const selectedAudienceId =
+    preferredAudienceId &&
+    summary.audiences.some((item) => item.id === preferredAudienceId)
+      ? preferredAudienceId
+      : summary.audiences[0]?.id ?? "";
+
+  const audience = selectedAudienceId
+    ? await loadCustomerAudience(selectedAudienceId, PROJECT_SLUG)
+    : null;
+
+  if (audience) {
+    assertSnapshotHash(
+      summary.snapshot_hash,
+      audience.snapshot_hash,
+      "audience",
+    );
+  }
+
+  const selectedNeedId =
+    audience &&
+    preferredNeedId &&
+    audience.needs.some((item) => item.id === preferredNeedId)
+      ? preferredNeedId
+      : audience?.needs[0]?.id ?? "";
+
+  const needDetail = selectedNeedId
+    ? await loadCustomerNeed(selectedNeedId, PROJECT_SLUG)
+    : null;
+
+  if (needDetail) {
+    assertSnapshotHash(
+      summary.snapshot_hash,
+      needDetail.snapshot_hash,
+      "need",
+    );
+  }
+
+  return {
+    summary,
+    changes,
+    audience,
+    needDetail,
+    selectedAudienceId,
+    selectedNeedId,
+  };
+}
+
 export default function CustomersPage() {
-  const [summary, setSummary] = useState<CustomerMapSummary | null>(null);
-  const [changes, setChanges] = useState<CustomerMapChanges | null>(null);
-  const [audience, setAudience] = useState<CustomerAudienceDetail | null>(null);
-  const [needDetail, setNeedDetail] = useState<CustomerNeedDetail | null>(null);
-  const [selectedAudienceId, setSelectedAudienceId] = useState("");
-  const [selectedNeedId, setSelectedNeedId] = useState("");
+  const [view, setView] = useState<CustomerViewState | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
   const [staleMessage, setStaleMessage] = useState("");
+  const requestVersion = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestVersion.current;
     let cancelled = false;
 
     async function loadInitial() {
       setLoading(true);
       setError("");
       try {
-        const [nextSummary, nextChanges] = await Promise.all([
-          loadCustomerMapSummary(PROJECT_SLUG),
-          loadCustomerMapChanges(PROJECT_SLUG),
-        ]);
-        if (cancelled) return;
-        assertSnapshotHash(
-          nextSummary.snapshot_hash,
-          nextChanges.current_snapshot_hash,
-          "changes",
-        );
-
-        const firstAudience = nextSummary.audiences[0] ?? null;
-        const nextAudience = firstAudience
-          ? await loadCustomerAudience(firstAudience.id, PROJECT_SLUG)
-          : null;
-        if (nextAudience) {
-          assertSnapshotHash(
-            nextSummary.snapshot_hash,
-            nextAudience.snapshot_hash,
-            "audience",
-          );
-        }
-
-        const firstNeed = nextAudience?.needs[0] ?? null;
-        const nextNeed = firstNeed
-          ? await loadCustomerNeed(firstNeed.id, PROJECT_SLUG)
-          : null;
-        if (nextNeed) {
-          assertSnapshotHash(
-            nextSummary.snapshot_hash,
-            nextNeed.snapshot_hash,
-            "need",
-          );
-        }
-        if (cancelled) return;
-
-        setSummary(nextSummary);
-        setChanges(nextChanges);
-        setSelectedAudienceId(firstAudience?.id ?? "");
-        setAudience(nextAudience);
-        setSelectedNeedId(firstNeed?.id ?? "");
-        setNeedDetail(nextNeed);
+        const nextView = await loadCustomerView();
+        if (cancelled || requestId !== requestVersion.current) return;
+        setView(nextView);
       } catch (nextError) {
-        if (cancelled) return;
+        if (cancelled || requestId !== requestVersion.current) return;
         setError(
-          nextError instanceof Error
-            ? nextError.message
-            : "Không thể tải Customer Living Map.",
+          errorMessage(nextError, "Không thể tải Customer Living Map."),
         );
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && requestId === requestVersion.current) {
+          setLoading(false);
+        }
       }
     }
 
     void loadInitial();
+
     return () => {
       cancelled = true;
+      requestVersion.current += 1;
     };
   }, []);
 
-  const selectedAudienceSummary = useMemo(
-    () => summary?.audiences.find((item) => item.id === selectedAudienceId) ?? null,
-    [selectedAudienceId, summary],
-  );
+  const selectedAudienceSummary =
+    view?.summary.audiences.find(
+      (item) => item.id === view.selectedAudienceId,
+    ) ?? null;
 
   async function selectAudience(audienceId: string) {
+    if (!view) return;
+
+    const requestId = ++requestVersion.current;
     setDetailLoading(true);
     setError("");
+
     try {
-      const nextAudience = await loadCustomerAudience(audienceId, PROJECT_SLUG);
-      if (summary) {
-        assertSnapshotHash(
-          summary.snapshot_hash,
-          nextAudience.snapshot_hash,
-          "audience",
-        );
-      }
+      const nextAudience = await loadCustomerAudience(
+        audienceId,
+        PROJECT_SLUG,
+      );
+      assertSnapshotHash(
+        view.summary.snapshot_hash,
+        nextAudience.snapshot_hash,
+        "audience",
+      );
+
       const firstNeed = nextAudience.needs[0] ?? null;
       const nextNeed = firstNeed
         ? await loadCustomerNeed(firstNeed.id, PROJECT_SLUG)
         : null;
-      if (summary && nextNeed) {
+
+      if (nextNeed) {
         assertSnapshotHash(
-          summary.snapshot_hash,
+          view.summary.snapshot_hash,
           nextNeed.snapshot_hash,
           "need",
         );
       }
-      setSelectedAudienceId(audienceId);
-      setAudience(nextAudience);
-      setSelectedNeedId(firstNeed?.id ?? "");
-      setNeedDetail(nextNeed);
+
+      if (requestId !== requestVersion.current) return;
+
+      setView({
+        ...view,
+        audience: nextAudience,
+        needDetail: nextNeed,
+        selectedAudienceId: audienceId,
+        selectedNeedId: firstNeed?.id ?? "",
+      });
     } catch (nextError) {
-      setError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Không thể tải audience.",
-      );
+      if (requestId !== requestVersion.current) return;
+      if (isSnapshotDrift(nextError)) {
+        setStaleMessage(
+          "Customer Map đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một snapshot nhất quán.",
+        );
+      } else {
+        setError(errorMessage(nextError, "Không thể tải audience."));
+      }
     } finally {
-      setDetailLoading(false);
+      if (requestId === requestVersion.current) {
+        setDetailLoading(false);
+      }
     }
   }
 
   async function selectNeed(needId: string) {
+    if (!view) return;
+
+    const requestId = ++requestVersion.current;
     setDetailLoading(true);
     setError("");
+
     try {
       const nextNeed = await loadCustomerNeed(needId, PROJECT_SLUG);
-      if (summary) {
-        assertSnapshotHash(
-          summary.snapshot_hash,
-          nextNeed.snapshot_hash,
-          "need",
-        );
-      }
-      setSelectedNeedId(needId);
-      setNeedDetail(nextNeed);
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error ? nextError.message : "Không thể tải Need.",
+      assertSnapshotHash(
+        view.summary.snapshot_hash,
+        nextNeed.snapshot_hash,
+        "need",
       );
+
+      if (requestId !== requestVersion.current) return;
+
+      setView({
+        ...view,
+        needDetail: nextNeed,
+        selectedNeedId: needId,
+      });
+    } catch (nextError) {
+      if (requestId !== requestVersion.current) return;
+      if (isSnapshotDrift(nextError)) {
+        setStaleMessage(
+          "Customer Map đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một snapshot nhất quán.",
+        );
+      } else {
+        setError(errorMessage(nextError, "Không thể tải Need."));
+      }
     } finally {
-      setDetailLoading(false);
+      if (requestId === requestVersion.current) {
+        setDetailLoading(false);
+      }
     }
   }
 
   async function refresh() {
+    const requestId = ++requestVersion.current;
     setLoading(true);
     setError("");
     setStaleMessage("");
+
     try {
-      const [nextSummary, nextChanges] = await Promise.all([
-        loadCustomerMapSummary(PROJECT_SLUG),
-        loadCustomerMapChanges(PROJECT_SLUG),
-      ]);
-      assertSnapshotHash(
-        nextSummary.snapshot_hash,
-        nextChanges.current_snapshot_hash,
-        "changes",
+      const nextView = await loadCustomerView(
+        view?.selectedAudienceId ?? "",
+        view?.selectedNeedId ?? "",
       );
-
-      const audienceId =
-        selectedAudienceId &&
-        nextSummary.audiences.some((item) => item.id === selectedAudienceId)
-          ? selectedAudienceId
-          : nextSummary.audiences[0]?.id ?? "";
-
-      const nextAudience = audienceId
-        ? await loadCustomerAudience(audienceId, PROJECT_SLUG)
-        : null;
-      if (nextAudience) {
-        assertSnapshotHash(
-          nextSummary.snapshot_hash,
-          nextAudience.snapshot_hash,
-          "audience",
-        );
-      }
-
-      const needId =
-        nextAudience &&
-        selectedNeedId &&
-        nextAudience.needs.some((item) => item.id === selectedNeedId)
-          ? selectedNeedId
-          : nextAudience?.needs[0]?.id ?? "";
-      const nextNeed = needId
-        ? await loadCustomerNeed(needId, PROJECT_SLUG)
-        : null;
-      if (nextNeed) {
-        assertSnapshotHash(
-          nextSummary.snapshot_hash,
-          nextNeed.snapshot_hash,
-          "need",
-        );
-      }
-
-      setSummary(nextSummary);
-      setChanges(nextChanges);
-      setAudience(nextAudience);
-      setSelectedAudienceId(audienceId);
-      setSelectedNeedId(needId);
-      setNeedDetail(nextNeed);
+      if (requestId !== requestVersion.current) return;
+      setView(nextView);
     } catch (nextError) {
-      const message =
-        nextError instanceof Error
-          ? nextError.message
-          : "Không thể làm mới Customer Living Map.";
-      if (summary) {
+      if (requestId !== requestVersion.current) return;
+      const message = errorMessage(
+        nextError,
+        "Không thể làm mới Customer Living Map.",
+      );
+      if (view) {
         setStaleMessage(
-          `Lần làm mới thất bại (${message}). Dữ liệu đang hiển thị là lần tải thành công gần nhất.`,
+          "Lần làm mới thất bại (" +
+            message +
+            "). Dữ liệu đang hiển thị là snapshot thành công gần nhất.",
         );
       } else {
         setError(message);
       }
     } finally {
-      setLoading(false);
+      if (requestId === requestVersion.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -524,60 +658,68 @@ export default function CustomersPage() {
 
       <div className={styles.notice}>
         API hiện không cung cấp cờ <strong>observed/inferred</strong> riêng cho
-        CustomerInsight. UI không tự suy diễn; nó hiển thị riêng trạng thái duyệt,
-        Need.origin, reviewer và bằng chứng mà backend thực sự cung cấp.
+        CustomerInsight. UI không tự suy diễn; nó hiển thị riêng trạng thái
+        review, Need.origin, reviewer và bằng chứng mà backend thực sự cung cấp.
       </div>
 
-      {loading && !summary ? (
+      {loading && !view ? (
         <div className={styles.loading} role="status">
           Đang tải Customer Living Map…
         </div>
       ) : null}
+
       {error ? (
         <div className={styles.error} role="alert">
           Không thể đọc Customer Living Map: {error}
         </div>
       ) : null}
+
       {staleMessage ? (
-        <div className={`${styles.notice} ${styles.stale}`} role="status">
+        <div
+          className={styles.notice + " " + styles.stale}
+          role="status"
+        >
           {staleMessage}
         </div>
       ) : null}
 
-      {summary ? (
+      {view ? (
         <>
-          <section className={styles.stats} aria-label="Tổng quan Customer Map">
+          <section
+            className={styles.stats}
+            aria-label="Tổng quan Customer Map"
+          >
             <div className={styles.stat}>
               <span>Audience</span>
-              <strong>{summary.counts.audiences}</strong>
+              <strong>{view.summary.counts.audiences}</strong>
             </div>
             <div className={styles.stat}>
               <span>Need</span>
-              <strong>{summary.counts.needs}</strong>
+              <strong>{view.summary.counts.needs}</strong>
             </div>
             <div className={styles.stat}>
               <span>Insight</span>
-              <strong>{summary.counts.insights}</strong>
+              <strong>{view.summary.counts.insights}</strong>
             </div>
             <div className={styles.stat}>
               <span>Need supported</span>
-              <strong>{summary.counts.supported_needs}</strong>
+              <strong>{view.summary.counts.supported_needs}</strong>
             </div>
             <div className={styles.stat}>
               <span>Insight supported</span>
-              <strong>{summary.counts.supported_insights}</strong>
+              <strong>{view.summary.counts.supported_insights}</strong>
             </div>
             <div className={styles.stat}>
               <span>Chưa gán</span>
               <strong>
-                {summary.counts.unassigned_needs +
-                  summary.counts.unassigned_insights}
+                {view.summary.counts.unassigned_needs +
+                  view.summary.counts.unassigned_insights}
               </strong>
             </div>
           </section>
 
           <p className={styles.hash}>
-            Snapshot hash: {summary.snapshot_hash}
+            Snapshot hash: {view.summary.snapshot_hash}
           </p>
 
           <section className={styles.panel}>
@@ -588,7 +730,7 @@ export default function CustomersPage() {
               </div>
             </div>
             <div className={styles.journeyChips}>
-              {summary.journey.stages.map((stage) => (
+              {view.summary.journey.stages.map((stage) => (
                 <span className={styles.badge} key={stage.key}>
                   {stage.label}
                 </span>
@@ -600,7 +742,7 @@ export default function CustomersPage() {
             </p>
           </section>
 
-          {summary.audiences.length === 0 ? (
+          {view.summary.audiences.length === 0 ? (
             <div className={styles.empty}>
               Chưa có AudienceHypothesis trong Customer Living Map.
             </div>
@@ -609,17 +751,20 @@ export default function CustomersPage() {
               <aside className={styles.sidebar}>
                 <p className="label">Audience</p>
                 <div className={styles.list}>
-                  {summary.audiences.map((item) => (
+                  {view.summary.audiences.map((item) => (
                     <button
                       type="button"
                       key={item.id}
-                      className={`${styles.listButton} ${
-                        selectedAudienceId === item.id
+                      className={
+                        styles.listButton +
+                        " " +
+                        (view.selectedAudienceId === item.id
                           ? styles.listButtonActive
-                          : ""
-                      }`}
+                          : "")
+                      }
                       onClick={() => void selectAudience(item.id)}
-                      aria-pressed={selectedAudienceId === item.id}
+                      aria-pressed={view.selectedAudienceId === item.id}
+                      disabled={detailLoading}
                     >
                       <strong>{item.name}</strong>
                       <small>
@@ -638,55 +783,62 @@ export default function CustomersPage() {
                   </div>
                 ) : null}
 
-                {audience ? (
+                {view.audience ? (
                   <section className={styles.panel}>
                     <div className={styles.sectionHeader}>
                       <div>
                         <p className="eyebrow">AudienceHypothesis</p>
-                        <h2>{audience.audience.name}</h2>
+                        <h2>{view.audience.audience.name}</h2>
                       </div>
-                      <span className={statusClass(audience.audience.status)}>
-                        {statusLabel(audience.audience.status)}
+                      <span
+                        className={statusClass(view.audience.audience.status)}
+                      >
+                        {statusLabel(view.audience.audience.status)}
                       </span>
                     </div>
                     <p>
-                      {audience.audience.description ??
+                      {view.audience.audience.description ??
                         "Backend chưa lưu mô tả riêng cho audience này."}
                     </p>
                     <dl className={styles.definition}>
+                      <dt>Trạng thái</dt>
+                      <dd>{statusLabel(view.audience.audience.status)}</dd>
                       <dt>Confidence</dt>
                       <dd>
-                        {audience.audience.confidence === null
+                        {view.audience.audience.confidence === null
                           ? "Chưa có"
-                          : String(audience.audience.confidence)}
+                          : String(view.audience.audience.confidence)}
                       </dd>
                       <dt>Evidence summary</dt>
                       <dd>
-                        {audience.audience.evidence_summary ??
+                        {view.audience.audience.evidence_summary ??
                           "Chưa có tóm tắt bằng chứng."}
                       </dd>
                       <dt>Need</dt>
-                      <dd>{audience.needs.length}</dd>
+                      <dd>{view.audience.needs.length}</dd>
                       <dt>Insight</dt>
-                      <dd>{audience.insights.length}</dd>
+                      <dd>{view.audience.insights.length}</dd>
                     </dl>
                   </section>
                 ) : null}
 
-                {audience && audience.needs.length > 0 ? (
+                {view.audience && view.audience.needs.length > 0 ? (
                   <section className={styles.panel}>
                     <div className={styles.sectionHeader}>
                       <div>
                         <p className="eyebrow">Need map</p>
-                        <h2>Need của {selectedAudienceSummary?.name ?? "audience"}</h2>
+                        <h2>
+                          Need của{" "}
+                          {selectedAudienceSummary?.name ?? "audience"}
+                        </h2>
                       </div>
                     </div>
                     <div className={styles.list}>
-                      {audience.needs.map((need) => (
+                      {view.audience.needs.map((need) => (
                         <NeedCard
                           key={need.id}
                           need={need}
-                          active={selectedNeedId === need.id}
+                          active={view.selectedNeedId === need.id}
                           onSelect={() => void selectNeed(need.id)}
                         />
                       ))}
@@ -694,69 +846,87 @@ export default function CustomersPage() {
                   </section>
                 ) : null}
 
-                {needDetail ? <NeedDetail detail={needDetail} /> : null}
+                {view.needDetail ? (
+                  <NeedDetail detail={view.needDetail} />
+                ) : null}
 
-                {audience && audience.insights.length > 0 ? (
+                {view.audience && view.audience.insights.length > 0 ? (
                   <section className={styles.panel}>
                     <p className="eyebrow">Audience insights</p>
                     <h2>Insight được gán trực tiếp</h2>
                     <div className={styles.cards}>
-                      {audience.insights.map((insight) => (
+                      {view.audience.insights.map((insight) => (
                         <InsightCard key={insight.id} insight={insight} />
                       ))}
                     </div>
                   </section>
                 ) : null}
 
-                {changes ? (
-                  <section className={styles.panel}>
-                    <div className={styles.sectionHeader}>
-                      <div>
-                        <p className="eyebrow">Recent map change</p>
-                        <h2>Thay đổi so với snapshot trước</h2>
-                      </div>
-                      <div className={styles.badges}>
-                        <span className={styles.badge}>
-                          NEW {changes.counts.NEW}
-                        </span>
-                        <span className={styles.badgePositive}>
-                          SUPPORT {changes.counts.SUPPORT}
-                        </span>
-                        <span className={styles.badgeNegative}>
-                          CONTRADICT {changes.counts.CONTRADICT}
-                        </span>
-                        <span className={styles.badge}>
-                          DUPLICATE {changes.counts.DUPLICATE}
-                        </span>
-                      </div>
+                <section className={styles.panel}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <p className="eyebrow">Recent map change</p>
+                      <h2>Thay đổi so với snapshot trước</h2>
                     </div>
-                    {changes.baseline ? (
-                      <p>
-                        Chưa có snapshot trước; đây là baseline đầu tiên, không
-                        được diễn giải như thay đổi hành vi khách hàng.
-                      </p>
-                    ) : changes.events.length === 0 ? (
-                      <p>Không có thay đổi giữa hai snapshot được so sánh.</p>
-                    ) : (
-                      <div className={styles.changeList}>
-                        {changes.events.slice(0, 20).map((event, index) => (
-                          <div
-                            className={styles.change}
-                            key={`${event.kind}:${event.entity_type}:${event.entity_ref}:${index}`}
-                          >
-                            <strong>
-                              {event.kind} · {event.entity_type}
-                            </strong>
-                            <p>{event.detail}</p>
-                            <small className={styles.meta}>
-                              {event.entity_ref}
-                            </small>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                ) : null}
+                    <div className={styles.badges}>
+                      <span className={styles.badge}>
+                        NEW {view.changes.counts.NEW}
+                      </span>
+                      <span className={styles.badgePositive}>
+                        SUPPORT {view.changes.counts.SUPPORT}
+                      </span>
+                      <span className={styles.badgeNegative}>
+                        CONTRADICT {view.changes.counts.CONTRADICT}
+                      </span>
+                      <span className={styles.badge}>
+                        DUPLICATE {view.changes.counts.DUPLICATE}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className={styles.definition}>
+                    <dt>Snapshot trước</dt>
+                    <dd>
+                      {view.changes.previous_snapshot_hash ?? "Không có"}
+                    </dd>
+                    <dt>Snapshot hiện tại</dt>
+                    <dd>{view.changes.current_snapshot_hash}</dd>
+                  </dl>
+
+                  {view.changes.baseline ? (
+                    <p>
+                      Chưa có snapshot trước; đây là baseline đầu tiên, không
+                      được diễn giải như thay đổi hành vi khách hàng.
+                    </p>
+                  ) : view.changes.events.length === 0 ? (
+                    <p>Không có thay đổi giữa hai snapshot được so sánh.</p>
+                  ) : (
+                    <div className={styles.changeList}>
+                      {view.changes.events.slice(0, 20).map((event, index) => (
+                        <div
+                          className={styles.change}
+                          key={
+                            event.kind +
+                            ":" +
+                            event.entity_type +
+                            ":" +
+                            event.entity_ref +
+                            ":" +
+                            index
+                          }
+                        >
+                          <strong>
+                            {event.kind} · {event.entity_type}
+                          </strong>
+                          <p>{event.detail}</p>
+                          <small className={styles.meta}>
+                            {event.entity_ref}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
               </div>
             </div>
           )}
