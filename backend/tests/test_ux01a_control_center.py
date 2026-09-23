@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy import func, select
 from test_ce05_review_actions import _pending_fixture
@@ -129,6 +130,42 @@ async def test_ux01a_surfaces_only_actionable_learning_validation(
         assert item.destination.entity_id == str(validation.validation.id)
         assert item.canonical_status == "VALIDATED"
         assert f"signal:{later_signal.id}" in item.evidence_refs
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "validation_status",
+    ["NEEDS_MORE_EVIDENCE", "INCONCLUSIVE"],
+)
+async def test_ux01a_does_not_escalate_non_actionable_learning_states(
+    monkeypatch: pytest.MonkeyPatch,
+    validation_status: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _baseline_signal, _candidate, application = await _applied_need(
+            session,
+            monkeypatch,
+        )
+        await create_learning_validation(
+            session,
+            learning_application_id=application.id,
+            validation_status=validation_status,
+            signal_relations={},
+            metric_comparisons=[],
+            alternative_explanations=[],
+            missing_evidence=["Need later independent evidence."],
+        )
+
+        snapshot = await build_control_center(
+            session,
+            project_slug=fixture.project.slug,
+            timezone_name="UTC",
+        )
+
+        assert all(
+            item.type != "learning_resolution"
+            for item in snapshot.needs_me
+        )
 
 
 @pytest.mark.asyncio
