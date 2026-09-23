@@ -185,30 +185,30 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
-| UX-01 | IN IMPLEMENTATION / UX-01C ACTIVE | UX-01A/B merged; Overview + Needs Me is the active bounded slice. Backend remains source of truth. |
+| UX-01 | IN IMPLEMENTATION / UX-01D D6-D7 ACTIVE / PR #199 | UX-01A/B/C merged. D0-D5 of UX-01D are implemented; CI/browser/OCR/local closeout remain before Founder merge. Backend remains source of truth. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
 ### CT-01 immediate checklist
 
-- [ ] Add CustomerInsight contract/model with bounded taxonomy.
-- [ ] Add CustomerInsight ↔ Signal relation with supports/contradicts/context semantics.
-- [ ] Preserve provenance, version, missing evidence and alternative explanations.
-- [ ] Dedupe cannot count reposts as independent support.
-- [ ] Add migration and disposable-DB upgrade/round-trip proof.
-- [ ] Add focused unit/persistence/replay tests.
-- [ ] Do not change Journal Angle/Outline/Writer behaviour.
-- [ ] No operational DB migration until Founder separately authorizes it.
-- [ ] Code-bearing PR follows CI → exact-ref OpenCodeReview → MG triage → bounded Agent Local proof when needed → Founder merge.
+- [x] Add CustomerInsight contract/model with bounded taxonomy.
+- [x] Add CustomerInsight ↔ Signal relation with supports/contradicts/context semantics.
+- [x] Preserve provenance, version, missing evidence and alternative explanations.
+- [x] Dedupe cannot count reposts as independent support.
+- [x] Add migration and disposable-DB upgrade/round-trip proof.
+- [x] Add focused unit/persistence/replay tests.
+- [x] Do not change Journal Angle/Outline/Writer behaviour.
+- [x] No operational DB migration until Founder separately authorizes it.
+- [x] Code-bearing PR follows CI → exact-ref OpenCodeReview → MG triage → bounded Agent Local proof when needed → Founder merge.
 
 ### AU-01 immediate checklist
 
-- [ ] Define immutable ExecutionPlan artifact schema.
-- [ ] Bind goal/input/output/tool/action/forbidden-action contract.
-- [ ] Add max attempts, timeout, budget and stop conditions.
-- [ ] Use versioned capability policy through existing SettingsSnapshot machinery.
-- [ ] Worker/plan/policy mismatch fails closed.
-- [ ] Add duplicate/stale/replay tests.
-- [ ] Do not add a second workflow engine or free-form agent permission system.
+- [x] Define immutable ExecutionPlan artifact schema.
+- [x] Bind goal/input/output/tool/action/forbidden-action contract.
+- [x] Add max attempts, timeout, budget and stop conditions.
+- [x] Use versioned capability policy through existing SettingsSnapshot machinery.
+- [x] Worker/plan/policy mismatch fails closed.
+- [x] Add duplicate/stale/replay tests.
+- [x] Do not add a second workflow engine or free-form agent permission system.
 
 Remaining milestone checklists are canonical in spec 21 and become exact tasks one bounded slice at a time.
 
@@ -503,10 +503,10 @@ Exit: normal operation becomes exception-driven rather than run-by-run supervisi
 #### UX-01D — Learning + System + Daily Digest + navigation closeout
 
 - [x] D0 audit canonical API gaps; no frontend reconstruction of missing truth.
-- [x] Add read-only Learning projection/API + desktop Learning view for Candidate → Review/Application → Validation → Resolution lifecycle.
+- [x] Add read-only Learning projection/API + desktop Learning view for Candidate → Review/Application → Validation → Resolution lifecycle, including explicit lifecycle filters without inventing a truth score.
 - [x] Separate factual Signal/measurement/artifact evidence from interpreted learning and reviewed application/resolution receipts.
-- [x] Add read-only System projection + System view: configured automation policy, live preflight and persisted model/tool/delegation/routing telemetry; history is not provider/worker health.
-- [x] Add deterministic Daily Digest read model for an explicit local-day bounded window across Customer, content, production, publication/measurement and learning.
+- [x] Add read-only System projection + System view: configured automation policy, live preflight and persisted model/tool/delegation/routing telemetry; history is not provider/worker health; technical preflight detail stays behind disclosure.
+- [x] Add deterministic Daily Digest read model for an explicit local-day bounded window across Customer, content, production, publication/measurement and learning; surface a compact current-day digest on Overview and keep full detail on `/daily-digest`.
 - [x] Keep current Need-level Content Coverage snapshot separate from historical digest events; do not fabricate coverage transition history.
 - [x] Daily Digest reports durable facts; it does not trigger blind external Deep Research or causal effectiveness claims.
 - [x] Add dedicated read-only `/needs-me` from canonical Control Center projection.
