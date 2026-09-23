@@ -169,6 +169,9 @@ def _create_guards() -> None:
             app_resulting_target uuid;
             app_scope jsonb;
             app_signal_refs jsonb;
+            candidate_status text;
+            locked_candidate_key text;
+            latest_candidate_version integer;
             expected_version integer;
             signal_ref jsonb;
             signal_project uuid;
@@ -213,6 +216,22 @@ def _create_guards() -> None:
                         NEW.learning_application_id
                     ) THEN
                 RAISE EXCEPTION 'learning_validation_identity_mismatch';
+            END IF;
+
+            SELECT status, candidate_key
+            INTO candidate_status, locked_candidate_key
+            FROM learning_candidates
+            WHERE id = NEW.learning_candidate_id;
+
+            SELECT max(version)
+            INTO latest_candidate_version
+            FROM learning_candidates
+            WHERE project_id = NEW.project_id
+              AND learning_candidates.candidate_key = locked_candidate_key;
+
+            IF candidate_status IS DISTINCT FROM 'OPEN'
+               OR latest_candidate_version IS DISTINCT FROM NEW.candidate_version THEN
+                RAISE EXCEPTION 'learning_validation_candidate_stale';
             END IF;
 
             SELECT coalesce(max(v.version), 0) + 1
