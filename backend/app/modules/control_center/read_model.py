@@ -28,6 +28,10 @@ from app.modules.content_engine.journal.production_board import (
 from app.modules.content_engine.models import Project
 from app.modules.harness.models import Approval, Artifact, ContentRun
 from app.modules.harness.persistence import get_latest_checkpoint
+from app.modules.learning.application import (
+    LearningApplicationError,
+    validate_learning_candidate_review_readiness,
+)
 from app.modules.learning.models import (
     LearningCandidate,
     LearningCandidateReview,
@@ -673,6 +677,24 @@ async def _pending_learning_items(
     for candidate in candidates:
         if candidate.id in reviewed_candidate_ids:
             continue
+        try:
+            await validate_learning_candidate_review_readiness(
+                session,
+                learning_candidate_id=candidate.id,
+            )
+        except LearningApplicationError as exc:
+            issues.append(
+                ControlCenterIssue(
+                    code=f"control_center_{exc.code}",
+                    entity_type="learning_candidate",
+                    entity_id=str(candidate.id),
+                    message=(
+                        "Learning candidate is stale or inconsistent; "
+                        "no human action is exposed."
+                    ),
+                )
+            )
+            continue
         evidence_refs = [f"artifact:{candidate.source_assessment_artifact_id}"]
         if candidate.target_id is not None:
             evidence_refs.append(f"{candidate.target_type}:{candidate.target_id}")
@@ -898,28 +920,3 @@ async def build_control_center(
             if operational_group(row) == "COMPLETED"
             and row.id in completed_case_ids
         ),
-    )
-    return ControlCenterSnapshot(
-        summary=ControlCenterSummary(
-            project_id=project.id,
-            project_slug=project.slug,
-            as_of=now,
-            timezone=zone.key,
-            counts=counts,
-            issues=issues,
-        ),
-        needs_me=needs_me,
-    )
-
-
-__all__ = [
-    "ControlCenterActionDestination",
-    "ControlCenterCounts",
-    "ControlCenterError",
-    "ControlCenterIssue",
-    "ControlCenterSnapshot",
-    "ControlCenterSummary",
-    "NeedsMeItem",
-    "build_control_center",
-    "resolve_project",
-]
