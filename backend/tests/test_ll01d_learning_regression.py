@@ -320,6 +320,17 @@ async def test_ll01d_validated_need_requires_independent_evidence_and_human_prom
             or 0
         ) == 1
 
+        review_replay = await review_learning_validation(
+            session,
+            learning_validation_id=validation.validation.id,
+            decision="PROMOTE",
+            target_status="SUPPORTED",
+            reviewed_by="founder",
+            reason="Independent later evidence supports promotion.",
+        )
+        assert review_replay.replayed is True
+        assert review_replay.resolution.id == resolution.resolution.id
+
 
 @pytest.mark.asyncio
 async def test_ll01d_same_experiment_provider_signal_is_not_independent_validation(
