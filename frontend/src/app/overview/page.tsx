@@ -177,7 +177,6 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
 }
 
 export default function OverviewPage() {
-  const [timezone, setTimezone] = useState(FALLBACK_TIMEZONE);
   const [state, setState] = useState<OverviewState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -186,11 +185,8 @@ export default function OverviewPage() {
   useEffect(() => {
     let cancelled = false;
     const zone = browserTimezone();
-    setTimezone(zone);
 
     async function initialLoad() {
-      setLoading(true);
-      setError("");
       try {
         const next = await loadOverview(zone);
         if (!cancelled) setState(next);
@@ -219,7 +215,8 @@ export default function OverviewPage() {
     setError("");
     setStale("");
     try {
-      setState(await loadOverview(timezone));
+      const zone = state?.summary.timezone ?? browserTimezone();
+      setState(await loadOverview(zone));
     } catch (nextError) {
       const message =
         nextError instanceof Error
@@ -274,7 +271,9 @@ export default function OverviewPage() {
         </div>
         <div className={styles.runtimeLabel}>
           <strong>{state ? "Read model đã tải" : "Chưa có read model"}</strong>
-          <span>Timezone: {state?.summary.timezone ?? timezone}</span>
+          <span>
+            Timezone: {state?.summary.timezone ?? "đang xác định"}
+          </span>
         </div>
       </section>
 
