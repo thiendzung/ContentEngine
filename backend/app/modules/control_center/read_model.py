@@ -249,6 +249,21 @@ async def _pending_operator_items(
         if action.status in {"BLOCKED", "NOT_READY"}:
             status_by_case[row.id] = "BLOCKED"
             blocked_cases.add(row.id)
+            issues.append(
+                ControlCenterIssue(
+                    code=(
+                        f"control_center_{action.blocker_code}"
+                        if action.blocker_code
+                        else "control_center_operator_blocked"
+                    ),
+                    entity_type="content_case",
+                    entity_id=str(row.id),
+                    message=(
+                        "Canonical Operator Runtime reports this case as blocked "
+                        "or not executable."
+                    ),
+                )
+            )
         elif action.status == "RUNNING":
             status_by_case[row.id] = "RUNNING"
         elif action.status in {"QUEUED", "READY"}:
@@ -332,6 +347,7 @@ async def _pending_operator_items(
                     )
                 )
                 blocked_cases.add(row.id)
+                status_by_case[row.id] = "BLOCKED"
                 continue
             evidence_refs.append(
                 f"artifact:{pending_gate.artifact.id}:"
