@@ -226,7 +226,6 @@ def _create_guards() -> None:
             signal_provenance jsonb;
             signal_content_type text;
             signal_observed_at timestamptz;
-            signal_review_window_start timestamptz;
             actual_journey jsonb;
             expected_journey jsonb;
             actual_supporting_lenses jsonb;
@@ -349,21 +348,15 @@ def _create_guards() -> None:
                        ),
                        s.provenance_json::jsonb,
                        ci.content_type,
-                       s.observed_at,
-                       ce.review_window_start
+                       s.observed_at
                 INTO signal_project, signal_fingerprint, signal_group,
                      signal_provenance, signal_content_type,
-                     signal_observed_at, signal_review_window_start
+                     signal_observed_at
                 FROM signals AS s
                 LEFT JOIN content_items AS ci
                   ON ci.id = (
                       s.provenance_json::jsonb
                       ->'content'->>'content_item_id'
-                  )::uuid
-                LEFT JOIN content_experiments AS ce
-                  ON ce.id = (
-                      s.provenance_json::jsonb
-                      ->'experiment'->>'id'
                   )::uuid
                 WHERE s.id = (signal_ref->>'signal_id')::uuid
                   AND s.source_kind = 'MOTGU'
@@ -485,21 +478,15 @@ def _create_guards() -> None:
                        ),
                        s.provenance_json::jsonb,
                        ci.content_type,
-                       s.observed_at,
-                       ce.review_window_start
+                       s.observed_at
                 INTO signal_project, signal_fingerprint, signal_group,
                      signal_provenance, signal_content_type,
-                     signal_observed_at, signal_review_window_start
+                     signal_observed_at
                 FROM signals AS s
                 LEFT JOIN content_items AS ci
                   ON ci.id = (
                       s.provenance_json::jsonb
                       ->'content'->>'content_item_id'
-                  )::uuid
-                LEFT JOIN content_experiments AS ce
-                  ON ce.id = (
-                      s.provenance_json::jsonb
-                      ->'experiment'->>'id'
                   )::uuid
                 WHERE s.id = (signal_ref->>'signal_id')::uuid
                   AND s.source_kind = 'MOTGU'
@@ -560,8 +547,28 @@ def _create_guards() -> None:
                 IF signal_project IS NULL
                    OR signal_observed_at IS NULL
                    OR signal_observed_at <= app_applied_at
-                   OR signal_review_window_start IS NULL
-                   OR signal_review_window_start < app_applied_at
+                   OR jsonb_typeof(
+                        signal_provenance->'measurement_windows'
+                      ) IS DISTINCT FROM 'array'
+                   OR jsonb_array_length(
+                        signal_provenance->'measurement_windows'
+                      ) = 0
+                   OR EXISTS (
+                       SELECT 1
+                       FROM jsonb_array_elements(
+                           signal_provenance->'measurement_windows'
+                       ) AS measurement_window
+                       WHERE NOT (measurement_window ? 'window_start')
+                          OR NOT (measurement_window ? 'window_end')
+                          OR (
+                              measurement_window->>'window_start'
+                          )::timestamptz < app_applied_at
+                          OR (
+                              measurement_window->>'window_end'
+                          )::timestamptz < (
+                              measurement_window->>'window_start'
+                          )::timestamptz
+                   )
                    OR signal_project IS DISTINCT FROM NEW.project_id
                    OR signal_ref->>'fingerprint'
                         IS DISTINCT FROM signal_fingerprint
