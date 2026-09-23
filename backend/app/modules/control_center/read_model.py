@@ -20,6 +20,7 @@ from app.modules.content_engine.journal.operator_control import OperatorControlE
 from app.modules.content_engine.journal.operator_runtime import (
     resolve_next_operator_action,
 )
+from app.modules.content_engine.journal.operator_view import get_operator_case_view
 from app.modules.content_engine.journal.production_board import (
     ProductionBoardCase,
     list_production_board_cases,
@@ -242,9 +243,106 @@ async def _pending_operator_items(
             blocked_cases.add(row.id)
             continue
         if action.status != "AWAITING_APPROVAL" or action.human_gate is None:
+            if row.status_group == "AWAITING_APPROVAL":
+                issues.append(
+                    ControlCenterIssue(
+                        code="control_center_operator_gate_missing",
+                        entity_type="content_case",
+                        entity_id=str(row.id),
+                        message=(
+                            "Production board expects a human gate but canonical "
+                            "Operator Runtime does not expose one."
+                        ),
+                    )
+                )
+                blocked_cases.add(row.id)
             continue
 
         gate = action.human_gate
+        try:
+            operator_view = await get_operator_case_view(
+                session,
+                content_case_id=row.id,
+            )
+        except OperatorControlError as exc:
+            issues.append(
+                ControlCenterIssue(
+                    code=f"control_center_{exc.code}",
+                    entity_type="content_case",
+                    entity_id=str(row.id),
+                    message=(
+                        "Operator approval binding is stale or inconsistent; "
+                        "no human action is exposed."
+                    ),
+                )
+            )
+            blocked_cases.add(row.id)
+            continue
+        if (
+            operator_view.state.state_version != action.state_version
+            or operator_view.state.status != "AWAITING_APPROVAL"
+            or operator_view.state.human_gate != gate
+        ):
+            issues.append(
+                ControlCenterIssue(
+                    code="control_center_operator_gate_stale",
+                    entity_type="content_case",
+                    entity_id=str(row.id),
+                    message=(
+                        "Operator approval projection changed during read; "
+                        "no human action is exposed."
+                    ),
+                )
+            )
+            blocked_cases.add(row.id)
+            continue
+
+        evidence_refs: list[str] = []
+        pending_gate = operator_view.pending_gate
+        if gate in {"angle", "outline"}:
+            if pending_gate is None or pending_gate.type != gate:
+                issues.append(
+                    ControlCenterIssue(
+                        code="control_center_operator_gate_binding_missing",
+                        entity_type="content_case",
+                        entity_id=str(row.id),
+                        message=(
+                            "Operator gate has no exact pending artifact binding; "
+                            "no human action is exposed."
+                        ),
+                    )
+                )
+                blocked_cases.add(row.id)
+                continue
+            evidence_refs.append(
+                f"artifact:{pending_gate.artifact.id}:"
+                f"{pending_gate.artifact.content_hash}"
+            )
+        elif gate == "final_review":
+            for lane in operator_view.quality_lanes:
+                if not lane.pending_approval_ready or lane.final_content is None:
+                    continue
+                if lane.final_content.id is None or lane.final_content.content_hash is None:
+                    continue
+                evidence_refs.append(
+                    f"artifact:{lane.final_content.id}:"
+                    f"{lane.final_content.content_hash}"
+                )
+            if not evidence_refs:
+                issues.append(
+                    ControlCenterIssue(
+                        code="control_center_operator_final_binding_missing",
+                        entity_type="content_case",
+                        entity_id=str(row.id),
+                        message=(
+                            "Final review gate has no exact final-content binding; "
+                            "no human action is exposed."
+                        ),
+                    )
+                )
+                blocked_cases.add(row.id)
+                continue
+
         gate_cases.add(row.id)
         why_refs = [
             f"operator_state:{action.state_version}",
@@ -272,7 +370,7 @@ async def _pending_operator_items(
                     href=f"/operator/journal/{row.id}",
                 ),
                 why_refs=why_refs,
-                evidence_refs=[],
+                evidence_refs=sorted(set(evidence_refs)),
             )
         )
 
@@ -466,6 +564,24 @@ async def _pending_harness_items(
                 evidence_refs=[f"artifact:{artifact.id}:{artifact.content_hash}"],
             )
         )
+
+    for case_id, board in board_by_case.items():
+        if board.operator_managed or board.status_group != "AWAITING_APPROVAL":
+            continue
+        if case_id in human_cases or case_id in blocked_cases:
+            continue
+        issues.append(
+            ControlCenterIssue(
+                code="control_center_canonical_gate_missing",
+                entity_type="content_case",
+                entity_id=str(case_id),
+                message=(
+                    "Canonical production state expects a human gate but no "
+                    "matching durable approval binding exists."
+                ),
+            )
+        )
+        blocked_cases.add(case_id)
 
     return items, issues, blocked_cases, human_cases
 
