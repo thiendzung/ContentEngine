@@ -755,6 +755,62 @@ async def test_ll01d_request_more_evidence_is_noop_receipt(
 
 
 @pytest.mark.asyncio
+async def test_ll01d_noop_receipt_db_guard_requires_applied_actor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        _fixture, _mapping, _signal, _candidate, application = await _applied_need(
+            session,
+            monkeypatch,
+        )
+        validation = await create_learning_validation(
+            session,
+            learning_application_id=application.id,
+            validation_status="NEEDS_MORE_EVIDENCE",
+            signal_relations={},
+            metric_comparisons=[],
+            alternative_explanations=[],
+            missing_evidence=["Need later evidence."],
+        )
+        resolution = await review_learning_validation(
+            session,
+            learning_validation_id=validation.validation.id,
+            decision="KEEP",
+            target_status=None,
+            reviewed_by="founder",
+            reason="Keep current truth while evidence is incomplete.",
+        )
+
+        invalid = LearningResolutionApplication(
+            project_id=resolution.resolution.project_id,
+            learning_resolution_id=resolution.resolution.id,
+            learning_validation_id=validation.validation.id,
+            learning_application_id=application.id,
+            decision="KEEP",
+            target_type=application.target_type,
+            resulting_target_id=application.resulting_target_id,
+            resulting_status=None,
+            applied_action="no_map_change",
+            before_target_snapshot_json=resolution.resolution.target_snapshot_json,
+            after_target_snapshot_json=resolution.resolution.target_snapshot_json,
+            before_state_hash=None,
+            after_state_hash=None,
+            customer_map_snapshot_artifact_id=None,
+            change_report_json=None,
+            applied_by=" ",
+            applied_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(
+            DBAPIError,
+            match="learning_resolution_application_actor_required",
+        ):
+            async with session.begin_nested():
+                session.add(invalid)
+                await session.flush()
+
+
+@pytest.mark.asyncio
 async def test_ll01d_validation_resolution_and_receipt_are_immutable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
