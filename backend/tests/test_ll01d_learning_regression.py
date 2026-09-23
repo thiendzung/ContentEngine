@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
-from test_ll01b_learning_candidate import _analytics_signal
 from test_ll01c_learning_application import (
     _need_candidate,
     _new_insight_candidate,
