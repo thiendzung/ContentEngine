@@ -846,6 +846,38 @@ async def review_learning_validation(
     )
     if seed_validation is None:
         raise LearningRegressionError("learning_validation_not_found")
+
+    # Exact retries must remain replayable even after the reviewed resolution
+    # has already changed target/candidate state.
+    existing = await session.scalar(
+        select(LearningResolution).where(
+            LearningResolution.learning_validation_id == seed_validation.id
+        )
+    )
+    if existing is not None:
+        snapshot_hash = await _validation_snapshot_hash(
+            session,
+            seed_validation,
+        )
+        if (
+            existing.project_id != seed_validation.project_id
+            or existing.learning_application_id
+            != seed_validation.learning_application_id
+            or existing.validation_version != seed_validation.version
+            or existing.decision != decision
+            or existing.target_status != target_status
+            or existing.reviewed_by != actor
+            or existing.reason != rationale
+            or existing.validation_snapshot_hash != snapshot_hash
+            or existing.target_snapshot_json
+            != seed_validation.target_snapshot_json
+        ):
+            raise LearningRegressionError("learning_resolution_replay_conflict")
+        return LearningResolutionResult(
+            resolution=existing,
+            replayed=True,
+        )
+
     project = await session.scalar(
         select(Project)
         .where(Project.id == seed_validation.project_id)
@@ -892,7 +924,8 @@ async def review_learning_validation(
     if existing is not None:
         if (
             existing.project_id != validation.project_id
-            or existing.learning_application_id != validation.learning_application_id
+            or existing.learning_application_id
+            != validation.learning_application_id
             or existing.validation_version != validation.version
             or existing.decision != decision
             or existing.target_status != target_status
@@ -902,7 +935,10 @@ async def review_learning_validation(
             or existing.target_snapshot_json != current_target
         ):
             raise LearningRegressionError("learning_resolution_replay_conflict")
-        return LearningResolutionResult(resolution=existing, replayed=True)
+        return LearningResolutionResult(
+            resolution=existing,
+            replayed=True,
+        )
 
     resolution = LearningResolution(
         project_id=validation.project_id,
