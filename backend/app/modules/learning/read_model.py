@@ -125,6 +125,7 @@ class LearningCandidateView(BaseModel):
 
 
 class LearningOverview(BaseModel):
+    schema_version: Literal[1] = 1
     project_id: UUID
     project_slug: str
     counts: dict[str, int]
