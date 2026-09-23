@@ -185,7 +185,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
-| UX-01 | IN IMPLEMENTATION / UX-01D D6-D7 ACTIVE / PR #199 | UX-01A/B/C merged. D0-D5 of UX-01D are implemented; CI/browser/OCR/local closeout remain before Founder merge. Backend remains source of truth. |
+| UX-01 | DONE / PR #199 MERGED | UX-01A/B/C/D are merged. Exception-driven desktop command center, canonical Learning/System/Daily Digest views, and final navigation are accepted with CI/browser/OCR/local proof. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
 ### CT-01 immediate checklist
@@ -511,10 +511,10 @@ Exit: normal operation becomes exception-driven rather than run-by-run supervisi
 - [x] Daily Digest reports durable facts; it does not trigger blind external Deep Research or causal effectiveness claims.
 - [x] Add dedicated read-only `/needs-me` from canonical Control Center projection.
 - [x] Final navigation: Overview / Customers / Content Map / Production / Needs Me / Learning / System; legacy `/` and `/operator` routes remain functional for exact deep links.
-- [ ] Exact-head CI green after full D1–D5 self-review.
-- [ ] Desktop-first responsive/accessibility/browser verification on real local UI.
-- [ ] Exact-ref OpenCodeReview + Agent Local bounded proof.
-- [ ] Founder merge UX-01D / close #198.
+- [x] Exact-head CI #1765 green on final UX-01D head `2f3ad34a73f8a8094c46e0feb8a8ebdb4c8d4a2b`.
+- [x] Desktop-first browser/accessibility verification PASS at 1440×900 and 1920×1080; mobile overflow remains a documented non-blocking limitation outside UX-01 acceptance.
+- [x] Exact-ref OpenCodeReview v1.12.9 — 20/20 reviewed, zero findings — plus `PASS_UX01D_EXACT_REF_LOCAL_VERIFICATION`.
+- [x] Founder merge PR #199 — main `6c6e7b43aaabfd9d4cc005227557c4bb5abaddd2`; issue #198 closed.
 - [x] No operational migration or production activation is implied by UX completion.
 
 Exit: UX-01 closes with a coherent exception-driven command center backed by canonical read models.
