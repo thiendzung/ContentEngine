@@ -493,6 +493,8 @@ def _create_guards() -> None:
             map_type text;
             candidate_id uuid;
             candidate_status text;
+            resolution_target_snapshot jsonb;
+            current_target_snapshot jsonb;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_resolution_application_update_forbidden';
@@ -503,10 +505,11 @@ def _create_guards() -> None:
 
             SELECT project_id, learning_validation_id,
                    learning_application_id, decision, target_status,
-                   reviewed_by, reason
+                   reviewed_by, reason, target_snapshot_json::jsonb
             INTO resolution_project, resolution_validation,
                  resolution_application, resolution_decision,
-                 resolution_status, resolution_reviewer, resolution_reason
+                 resolution_status, resolution_reviewer, resolution_reason,
+                 resolution_target_snapshot
             FROM learning_resolutions
             WHERE id = NEW.learning_resolution_id;
 
@@ -521,9 +524,16 @@ def _create_guards() -> None:
                OR NEW.learning_application_id IS DISTINCT FROM resolution_application
                OR NEW.decision IS DISTINCT FROM resolution_decision
                OR NEW.target_type IS DISTINCT FROM validation_target_type
-               OR NEW.resulting_target_id IS DISTINCT FROM validation_target_id THEN
+               OR NEW.resulting_target_id IS DISTINCT FROM validation_target_id
+               OR NEW.before_target_snapshot_json::jsonb
+                    IS DISTINCT FROM resolution_target_snapshot THEN
                 RAISE EXCEPTION 'learning_resolution_application_identity_mismatch';
             END IF;
+
+            current_target_snapshot :=
+                learning_application_current_target_snapshot(
+                    NEW.learning_application_id
+                );
 
             IF resolution_decision IN ('KEEP','REQUEST_MORE_EVIDENCE') THEN
                 IF NEW.applied_action IS DISTINCT FROM 'no_map_change'
@@ -531,7 +541,11 @@ def _create_guards() -> None:
                    OR NEW.before_state_hash IS NOT NULL
                    OR NEW.after_state_hash IS NOT NULL
                    OR NEW.customer_map_snapshot_artifact_id IS NOT NULL
-                   OR NEW.change_report_json IS NOT NULL THEN
+                   OR NEW.change_report_json IS NOT NULL
+                   OR NEW.after_target_snapshot_json::jsonb
+                        IS DISTINCT FROM resolution_target_snapshot
+                   OR current_target_snapshot
+                        IS DISTINCT FROM resolution_target_snapshot THEN
                     RAISE EXCEPTION 'learning_resolution_application_noop_invalid';
                 END IF;
                 RETURN NEW;
@@ -552,7 +566,11 @@ def _create_guards() -> None:
                    OR NEW.before_state_hash IS NOT NULL
                    OR NEW.after_state_hash IS NOT NULL
                    OR NEW.customer_map_snapshot_artifact_id IS NOT NULL
-                   OR NEW.change_report_json IS NOT NULL THEN
+                   OR NEW.change_report_json IS NOT NULL
+                   OR NEW.after_target_snapshot_json::jsonb
+                        IS DISTINCT FROM resolution_target_snapshot
+                   OR current_target_snapshot
+                        IS DISTINCT FROM resolution_target_snapshot THEN
                     RAISE EXCEPTION 'learning_resolution_application_archive_invalid';
                 END IF;
                 RETURN NEW;
@@ -562,7 +580,9 @@ def _create_guards() -> None:
                OR NEW.before_state_hash IS NULL
                OR NEW.after_state_hash IS NULL
                OR NEW.customer_map_snapshot_artifact_id IS NULL
-               OR NEW.change_report_json IS NULL THEN
+               OR NEW.change_report_json IS NULL
+               OR NEW.after_target_snapshot_json::jsonb
+                    IS DISTINCT FROM current_target_snapshot THEN
                 RAISE EXCEPTION 'learning_resolution_application_receipt_incomplete';
             END IF;
 
