@@ -385,6 +385,9 @@ async def test_ux01a_surfaces_only_actionable_learning_validation(
         assert len(learning_items) == 1
         item = learning_items[0]
         assert item.destination.entity_id == str(validation.validation.id)
+        assert item.destination.href == (
+            f"/learning?candidate={application.learning_candidate_id}"
+        )
         assert item.canonical_status == "VALIDATED"
         assert f"signal:{later_signal.id}" in item.evidence_refs
 
