@@ -879,6 +879,8 @@ def _create_guards() -> None:
             latest_version integer;
             expected_hash text;
             current_target jsonb;
+            current_target_status text;
+            validation_target_type text;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_resolution_update_forbidden';
@@ -888,9 +890,10 @@ def _create_guards() -> None:
             END IF;
 
             SELECT project_id, learning_application_id, version,
-                   validation_status
+                   validation_status, target_type
             INTO validation_project, validation_application,
-                 validation_version, validation_status
+                 validation_version, validation_status,
+                 validation_target_type
             FROM learning_validations
             WHERE id = NEW.learning_validation_id;
 
@@ -921,6 +924,10 @@ def _create_guards() -> None:
                OR NEW.target_snapshot_json::jsonb IS DISTINCT FROM current_target THEN
                 RAISE EXCEPTION 'learning_resolution_snapshot_mismatch';
             END IF;
+
+            current_target_status :=
+                NEW.target_snapshot_json::jsonb
+                    ->'current_target'->>'status';
 
             IF length(btrim(NEW.reviewed_by)) = 0
                OR length(btrim(NEW.reason)) = 0 THEN
@@ -969,11 +976,43 @@ def _create_guards() -> None:
                    OR NEW.target_status NOT IN ('TESTING','SUPPORTED') THEN
                     RAISE EXCEPTION 'learning_resolution_promote_invalid';
                 END IF;
+                IF current_target_status IS NOT NULL
+                   AND current_target_status = NEW.target_status THEN
+                    RAISE EXCEPTION 'learning_resolution_target_status_noop';
+                END IF;
+                IF validation_target_type = 'need_hypothesis'
+                   AND NOT (
+                       (current_target_status = 'PROPOSED'
+                        AND NEW.target_status = 'TESTING')
+                       OR
+                       (current_target_status = 'TESTING'
+                        AND NEW.target_status = 'SUPPORTED')
+                   ) THEN
+                    RAISE EXCEPTION
+                        'learning_resolution_need_transition_invalid';
+                END IF;
+                IF validation_target_type IN
+                   ('customer_insight','new_customer_insight')
+                   AND current_target_status = 'SUPPORTED'
+                   AND NEW.target_status = 'TESTING' THEN
+                    RAISE EXCEPTION
+                        'learning_resolution_insight_transition_invalid';
+                END IF;
             ELSIF NEW.decision IN ('ROLLBACK','REJECT') THEN
                 IF validation_status IS DISTINCT FROM 'REGRESSED'
                    OR NEW.target_status NOT IN
                       ('REJECTED','INSUFFICIENT_EVIDENCE') THEN
                     RAISE EXCEPTION 'learning_resolution_rollback_invalid';
+                END IF;
+                IF current_target_status IS NOT NULL
+                   AND current_target_status = NEW.target_status THEN
+                    RAISE EXCEPTION 'learning_resolution_target_status_noop';
+                END IF;
+                IF validation_target_type = 'need_hypothesis'
+                   AND NEW.target_status = 'REJECTED'
+                   AND current_target_status <> 'TESTING' THEN
+                    RAISE EXCEPTION
+                        'learning_resolution_need_transition_invalid';
                 END IF;
             ELSIF NEW.target_status IS NOT NULL THEN
                 RAISE EXCEPTION 'learning_resolution_target_status_unexpected';
