@@ -1178,6 +1178,38 @@ async def review_learning_validation(
     return LearningResolutionResult(resolution=resolution, replayed=False)
 
 
+async def validate_learning_resolution_readiness(
+    session: AsyncSession,
+    *,
+    learning_validation_id: UUID,
+) -> LearningValidation:
+    """Revalidate the read-only preconditions for a future human resolution."""
+
+    validation = await session.get(LearningValidation, learning_validation_id)
+    if validation is None:
+        raise LearningRegressionError("learning_validation_not_found")
+    latest_version = await session.scalar(
+        select(func.max(LearningValidation.version)).where(
+            LearningValidation.learning_application_id
+            == validation.learning_application_id
+        )
+    )
+    if latest_version != validation.version:
+        raise LearningRegressionError("learning_validation_stale")
+    application, _candidate = await _application_context(
+        session,
+        application_id=validation.learning_application_id,
+    )
+    current_target = await _target_snapshot(
+        session,
+        application=application,
+        lock=False,
+    )
+    if current_target != validation.target_snapshot_json:
+        raise LearningRegressionError("learning_resolution_target_stale")
+    return validation
+
+
 def _validation_signal_relations(
     validation: LearningValidation,
 ) -> dict[UUID, EvidenceRelation]:
@@ -1625,4 +1657,5 @@ __all__ = [
     "apply_learning_resolution",
     "create_learning_validation",
     "review_learning_validation",
+    "validate_learning_resolution_readiness",
 ]
