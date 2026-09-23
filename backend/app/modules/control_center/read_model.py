@@ -136,7 +136,13 @@ def _operator_href(board: ProductionBoardCase | None, case_id: UUID) -> str:
     return f"/?case={case_id}"
 
 
-def _approval_kind(run: ContentRun, step_key: str) -> tuple[str, str]:
+def _approval_kind(
+    run: ContentRun,
+    step_key: str,
+) -> tuple[
+    Literal["content_approval", "publish_authorization", "policy_gate"],
+    str,
+]:
     if run.run_mode == "publish" or step_key == "publish_authorization":
         return "publish_authorization", "Authorize external publication"
     if step_key in {
@@ -464,9 +470,10 @@ async def build_control_center(
     now = as_of or datetime.now(UTC)
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
+    zone = _zone(timezone_name)
     day_start, day_end = _local_day_bounds(
         as_of=now,
-        timezone_name=timezone_name,
+        timezone_name=zone.key,
     )
 
     board = await list_production_board_cases(session, project_id=project.id)
@@ -520,7 +527,7 @@ async def build_control_center(
             project_id=project.id,
             project_slug=project.slug,
             as_of=now,
-            timezone=timezone_name,
+            timezone=zone.key,
             counts=counts,
             issues=issues,
         ),
