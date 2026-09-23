@@ -443,13 +443,13 @@ def _create_guards() -> None:
                         IS DISTINCT FROM expected_supporting_lenses
                    OR signal_group IS DISTINCT FROM (
                        'group:experiment:'
-                       || signal_provenance->'experiment'->>'id'
+                       || (signal_provenance->'experiment'->>'id')
                    )
                    OR signal_provenance
                         ->'experiment'->>'independence_group'
                         IS DISTINCT FROM (
                             'experiment:'
-                            || signal_provenance->'experiment'->>'id'
+                            || (signal_provenance->'experiment'->>'id')
                         ) THEN
                     RAISE EXCEPTION
                         'learning_validation_baseline_signal_mismatch';
@@ -571,13 +571,13 @@ def _create_guards() -> None:
                         IS DISTINCT FROM expected_supporting_lenses
                    OR signal_group IS DISTINCT FROM (
                        'group:experiment:'
-                       || signal_provenance->'experiment'->>'id'
+                       || (signal_provenance->'experiment'->>'id')
                    )
                    OR signal_provenance
                         ->'experiment'->>'independence_group'
                         IS DISTINCT FROM (
                             'experiment:'
-                            || signal_provenance->'experiment'->>'id'
+                            || (signal_provenance->'experiment'->>'id')
                         ) THEN
                     RAISE EXCEPTION
                         'learning_validation_signal_scope_mismatch';
