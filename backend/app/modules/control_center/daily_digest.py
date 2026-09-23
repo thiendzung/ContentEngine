@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.modules.content_engine.content_coverage import (
     ContentCoverageError,
@@ -98,7 +99,11 @@ def _window(
     return zone, local_start.astimezone(UTC), local_end.astimezone(UTC)
 
 
-def _in_window(column, start: datetime, end: datetime):
+def _in_window(
+    column: ColumnElement[datetime],
+    start: datetime,
+    end: datetime,
+) -> tuple[ColumnElement[bool], ColumnElement[bool]]:
     return column >= start, column < end
 
 
@@ -750,7 +755,7 @@ async def build_daily_digest(
         project_id=project.id,
         project_slug=project.slug,
         local_date=local_date,
-        timezone=getattr(zone, "key", timezone_name),
+        timezone=zone.key,
         window_start=window_start,
         window_end=window_end,
         event_counts={
