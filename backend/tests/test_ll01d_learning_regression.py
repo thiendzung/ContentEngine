@@ -485,7 +485,9 @@ async def test_ll01d_no_map_change_cannot_be_promoted_into_truth(
             validation_status="VALIDATED",
             signal_relations={later_signal.id: "supports"},
             metric_comparisons=[],
-            alternative_explanations=[],
+            alternative_explanations=[
+                "Distribution may still explain the observed support."
+            ],
             missing_evidence=[],
         )
         with pytest.raises(
@@ -619,7 +621,9 @@ async def test_ll01d_review_is_separate_and_stale_target_blocks_apply(
             validation_status="VALIDATED",
             signal_relations={later_signal.id: "supports"},
             metric_comparisons=[],
-            alternative_explanations=[],
+            alternative_explanations=[
+                "Distribution may still explain the observed support."
+            ],
             missing_evidence=[],
         )
         resolution = await review_learning_validation(
