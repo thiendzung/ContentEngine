@@ -26,6 +26,7 @@ def _create_guards() -> None:
             need need_hypotheses%ROWTYPE;
             insight customer_insights%ROWTYPE;
             latest_version integer;
+            evidence jsonb;
         BEGIN
             SELECT * INTO app
             FROM learning_applications
@@ -52,6 +53,27 @@ def _create_guards() -> None:
                     RAISE EXCEPTION 'learning_validation_need_target_stale';
                 END IF;
 
+                SELECT COALESCE(
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'signal_id', s.id::text,
+                            'relation', nhs.relation,
+                            'fingerprint', s.fingerprint,
+                            'independence_key',
+                                validate_customer_insight_signal_lineage(
+                                    s.id,
+                                    app.project_id
+                                )
+                        )
+                        ORDER BY nhs.relation, s.id::text
+                    ),
+                    '[]'::jsonb
+                )
+                INTO evidence
+                FROM need_hypothesis_signals AS nhs
+                JOIN signals AS s ON s.id = nhs.signal_id
+                WHERE nhs.need_hypothesis_id = need.id;
+
                 RETURN jsonb_build_object(
                     'target_type', app.target_type,
                     'current_target', jsonb_build_object(
@@ -62,7 +84,8 @@ def _create_guards() -> None:
                             CASE
                                 WHEN need.audience_hypothesis_id IS NULL THEN NULL
                                 ELSE need.audience_hypothesis_id::text
-                            END
+                            END,
+                        'evidence', evidence
                     )
                 );
             ELSIF app.target_type IN ('customer_insight','new_customer_insight') THEN
@@ -84,6 +107,27 @@ def _create_guards() -> None:
                     RAISE EXCEPTION 'learning_validation_insight_version_stale';
                 END IF;
 
+                SELECT COALESCE(
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'signal_id', s.id::text,
+                            'relation', cis.relation,
+                            'fingerprint', s.fingerprint,
+                            'independence_key',
+                                validate_customer_insight_signal_lineage(
+                                    s.id,
+                                    app.project_id
+                                )
+                        )
+                        ORDER BY cis.relation, s.id::text
+                    ),
+                    '[]'::jsonb
+                )
+                INTO evidence
+                FROM customer_insight_signals AS cis
+                JOIN signals AS s ON s.id = cis.signal_id
+                WHERE cis.customer_insight_id = insight.id;
+
                 RETURN jsonb_build_object(
                     'target_type', app.target_type,
                     'current_target', jsonb_build_object(
@@ -95,7 +139,8 @@ def _create_guards() -> None:
                             CASE
                                 WHEN insight.audience_hypothesis_id IS NULL THEN NULL
                                 ELSE insight.audience_hypothesis_id::text
-                            END
+                            END,
+                        'evidence', evidence
                     )
                 );
             END IF;
