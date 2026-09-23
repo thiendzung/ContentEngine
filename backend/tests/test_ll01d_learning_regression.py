@@ -10,6 +10,7 @@ from test_ll01b_learning_candidate import _analytics_signal
 from test_ll01c_learning_application import (
     _need_candidate,
     _new_insight_candidate,
+    _no_map_candidate,
 )
 from test_pm01_publish_measurement import (
     FakeWordPress,
@@ -108,6 +109,7 @@ async def _second_experiment_search_signal(
     fixture,
     worker_id: str,
     impressions: int,
+    metric_definitions: list[str] | None = None,
 ):
     version2 = ContentVersion(
         content_item_id=fixture.item.id,
@@ -127,7 +129,11 @@ async def _second_experiment_search_signal(
         hypothesis_version=fixture.need.version,
         expected_behaviour=fixture.experiment.expected_behaviour,
         measurement_plan_json=list(fixture.experiment.measurement_plan_json),
-        metric_definitions_json=list(fixture.experiment.metric_definitions_json),
+        metric_definitions_json=(
+            list(metric_definitions)
+            if metric_definitions is not None
+            else list(fixture.experiment.metric_definitions_json)
+        ),
         minimum_evidence_json=list(fixture.experiment.minimum_evidence_json),
         review_window_start=now,
         review_window_end=now + timedelta(days=30),
@@ -393,6 +399,106 @@ async def test_ll01d_metric_comparison_requires_exact_metric_definition(
                 ],
                 alternative_explanations=[],
                 missing_evidence=[],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01d_metric_contract_mismatch_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, baseline_signal, _candidate, application = await _applied_need(
+            session,
+            monkeypatch,
+        )
+        later_signal = await _second_experiment_search_signal(
+            session,
+            fixture=fixture,
+            worker_id="ll01d-contract-mismatch",
+            impressions=150,
+            metric_definitions=[
+                "impressions",
+                "clicks",
+                "sessions",
+                "engaged_sessions",
+                "artwork_transition",
+                "inquiry",
+                "changed-contract",
+            ],
+        )
+        with pytest.raises(
+            LearningRegressionError,
+            match="learning_validation_metric_contract_mismatch",
+        ):
+            await create_learning_validation(
+                session,
+                learning_application_id=application.id,
+                validation_status="VALIDATED",
+                signal_relations={later_signal.id: "supports"},
+                metric_comparisons=[
+                    MetricComparisonInput(
+                        baseline_metric_id=_metric_id(
+                            baseline_signal,
+                            "impressions",
+                        ),
+                        candidate_metric_id=_metric_id(
+                            later_signal,
+                            "impressions",
+                        ),
+                    )
+                ],
+                alternative_explanations=[],
+                missing_evidence=[],
+            )
+
+
+@pytest.mark.asyncio
+async def test_ll01d_no_map_change_cannot_be_promoted_into_truth(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, candidate = await _no_map_candidate(
+            session,
+            monkeypatch,
+        )
+        review = await review_learning_candidate(
+            session,
+            learning_candidate_id=candidate.id,
+            decision="NO_MAP_CHANGE",
+            reviewed_by="founder",
+            reason="Keep Customer Truth unchanged.",
+        )
+        applied = await apply_learning_candidate(
+            session,
+            review_id=review.review.id,
+            applied_by="founder",
+        )
+        later_signal = await _second_experiment_search_signal(
+            session,
+            fixture=fixture,
+            worker_id="ll01d-no-map",
+            impressions=150,
+        )
+        validation = await create_learning_validation(
+            session,
+            learning_application_id=applied.application.id,
+            validation_status="VALIDATED",
+            signal_relations={later_signal.id: "supports"},
+            metric_comparisons=[],
+            alternative_explanations=[],
+            missing_evidence=[],
+        )
+        with pytest.raises(
+            LearningRegressionError,
+            match="learning_resolution_no_map_mutation_invalid",
+        ):
+            await review_learning_validation(
+                session,
+                learning_validation_id=validation.validation.id,
+                decision="PROMOTE",
+                target_status="SUPPORTED",
+                reviewed_by="founder",
+                reason="A no-map application must never become a truth mutation.",
             )
 
 
