@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
 
-from test_ll01a_performance_signal import _record_search_observation
 from test_ll01b_learning_candidate import _analytics_signal
 from test_ll01c_learning_application import (
     _need_candidate,
@@ -34,11 +33,7 @@ from app.modules.learning.application import (
     apply_learning_candidate,
     review_learning_candidate,
 )
-from app.modules.learning.models import (
-    LearningResolution,
-    LearningResolutionApplication,
-    LearningValidation,
-)
+from app.modules.learning.models import LearningResolutionApplication
 from app.modules.learning.performance_signal import materialize_performance_signal
 from app.modules.learning.regression import (
     LearningRegressionError,
@@ -55,11 +50,9 @@ from app.modules.publishing.service import (
 )
 
 
-def _metric_id(signal, metric_name: str):
+def _metric_id(signal, metric_name: str) -> UUID:
     for row in signal.provenance_json["metrics"]:
         if row["metric_name"] == metric_name:
-            from uuid import UUID
-
             return UUID(row["id"])
     raise AssertionError(metric_name)
 
