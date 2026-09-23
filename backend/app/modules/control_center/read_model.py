@@ -270,8 +270,10 @@ async def _pending_operator_items(
             )
         elif action.status == "RUNNING":
             status_by_case[row.id] = "RUNNING"
-        elif action.status in {"QUEUED", "READY"}:
+        elif action.status == "QUEUED":
             status_by_case[row.id] = "QUEUED"
+        elif action.status == "READY":
+            status_by_case[row.id] = "READY"
         elif action.status == "COMPLETE":
             status_by_case[row.id] = "COMPLETED"
         elif action.status == "AWAITING_APPROVAL":
