@@ -16,6 +16,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.operator_control import OperatorControlError
+from app.modules.content_engine.journal.operator_runtime import (
+    resolve_next_operator_action,
+)
 from app.modules.content_engine.journal.production_board import (
     ProductionBoardCase,
     list_production_board_cases,
@@ -191,11 +195,96 @@ def _signal_refs(rows: list[object]) -> list[str]:
     return sorted(set(refs))
 
 
+def _operator_gate_reason(gate: str) -> str:
+    labels = {
+        "angle": "Approve selected content angle",
+        "outline": "Approve content outline",
+        "final_review": "Approve final content",
+    }
+    return labels.get(gate, f"Explicit human approval required for {gate}")
+
+
+async def _pending_operator_items(
+    session: AsyncSession,
+    *,
+    board: list[ProductionBoardCase],
+) -> tuple[
+    list[NeedsMeItem],
+    list[ControlCenterIssue],
+    set[UUID],
+    set[UUID],
+]:
+    items: list[NeedsMeItem] = []
+    issues: list[ControlCenterIssue] = []
+    blocked_cases: set[UUID] = set()
+    gate_cases: set[UUID] = set()
+
+    for row in board:
+        if not row.operator_managed:
+            continue
+        try:
+            action = await resolve_next_operator_action(
+                session,
+                content_case_id=row.id,
+            )
+        except OperatorControlError as exc:
+            issues.append(
+                ControlCenterIssue(
+                    code=f"control_center_{exc.code}",
+                    entity_type="content_case",
+                    entity_id=str(row.id),
+                    message=(
+                        "Operator state is inconsistent; "
+                        "no human action is exposed."
+                    ),
+                )
+            )
+            blocked_cases.add(row.id)
+            continue
+        if action.status != "AWAITING_APPROVAL" or action.human_gate is None:
+            continue
+
+        gate = action.human_gate
+        gate_cases.add(row.id)
+        why_refs = [
+            f"operator_state:{action.state_version}",
+            f"content_case:{row.id}",
+        ]
+        if action.current_run_id is not None:
+            why_refs.append(f"run:{action.current_run_id}")
+        if action.current_step_run_id is not None:
+            why_refs.append(f"step_run:{action.current_step_run_id}")
+        items.append(
+            NeedsMeItem(
+                id=f"operator-gate:{row.id}:{gate}:{action.state_version}",
+                type="content_approval",
+                reason=_operator_gate_reason(gate),
+                canonical_status="AWAITING_APPROVAL",
+                created_at=row.updated_at,
+                updated_at=row.updated_at,
+                destination=ControlCenterActionDestination(
+                    kind="content_approval",
+                    action_ref=(
+                        f"operator_decision:{row.id}:{gate}:"
+                        f"{action.state_version}"
+                    ),
+                    entity_id=str(row.id),
+                    href=f"/operator/journal/{row.id}",
+                ),
+                why_refs=why_refs,
+                evidence_refs=[],
+            )
+        )
+
+    return items, issues, blocked_cases, gate_cases
+
+
 async def _pending_harness_items(
     session: AsyncSession,
     *,
     project_id: UUID,
     board_by_case: dict[UUID, ProductionBoardCase],
+    operator_gate_cases: set[UUID],
 ) -> tuple[
     list[NeedsMeItem],
     list[ControlCenterIssue],
@@ -321,6 +410,22 @@ async def _pending_harness_items(
 
         item_type, reason = _approval_kind(run, step_key)
         board = board_by_case.get(run.content_case_id)
+        if item_type == "content_approval" and board is not None and board.operator_managed:
+            if run.content_case_id in operator_gate_cases:
+                continue
+            issues.append(
+                ControlCenterIssue(
+                    code="control_center_operator_gate_mismatch",
+                    entity_type="content_run",
+                    entity_id=str(run.id),
+                    message=(
+                        "Harness approval and canonical Operator gate disagree; "
+                        "no action is exposed."
+                    ),
+                )
+            )
+            blocked_cases.add(run.content_case_id)
+            continue
         checkpoint_ref = (
             f"artifact:{checkpoint.id}" if checkpoint is not None else f"run:{run.id}"
         )
@@ -522,22 +627,34 @@ async def build_control_center(
     board_by_case = {row.id: row for row in board}
 
     (
+        operator_items,
+        operator_issues,
+        operator_blocked_cases,
+        operator_gate_cases,
+    ) = await _pending_operator_items(
+        session,
+        board=board,
+    )
+    (
         harness_items,
         issues,
         approval_blocked_cases,
-        human_case_ids,
+        harness_human_case_ids,
     ) = await _pending_harness_items(
         session,
         project_id=project.id,
         board_by_case=board_by_case,
+        operator_gate_cases=operator_gate_cases,
     )
+    issues = operator_issues + issues
+    human_case_ids = operator_gate_cases | harness_human_case_ids
     learning_items, learning_issues = await _pending_learning_items(
         session,
         project_id=project.id,
     )
     issues.extend(learning_issues)
     needs_me = sorted(
-        harness_items + learning_items,
+        operator_items + harness_items + learning_items,
         key=lambda row: (row.created_at, row.id),
     )
 
@@ -564,9 +681,11 @@ async def build_control_center(
         if day_start <= completed_at < day_end
     }
 
-    blocked_case_ids = {
-        row.id for row in board if row.status_group == "BLOCKED"
-    } | approval_blocked_cases
+    blocked_case_ids = (
+        {row.id for row in board if row.status_group == "BLOCKED"}
+        | operator_blocked_cases
+        | approval_blocked_cases
+    )
     counts = ControlCenterCounts(
         running=sum(
             1
