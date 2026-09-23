@@ -5,16 +5,64 @@
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  align-items: start;
+  gap: 32px;
   margin-bottom: 24px;
+}
+
+.headerCopy {
+  min-width: 0;
+}
+
+.commandPanel {
+  border: 1px solid #c8c0b4;
+  background: rgba(255, 252, 246, .78);
+  padding: 16px;
+}
+
+.commandMeta {
+  display: grid;
+  gap: 10px;
+}
+
+.commandMeta > div {
+  display: grid;
+  grid-template-columns: minmax(120px, .8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  align-items: baseline;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0d8cd;
+}
+
+.commandMeta > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.commandMeta span {
+  color: #756e64;
+  font: 700 .62rem Arial, sans-serif;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.commandMeta strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.commandNote {
+  margin: 12px 0 0;
+  color: #756e64;
+  font-size: .82rem;
 }
 
 .headerActions {
   display: flex;
   gap: 8px;
+  margin-top: 14px;
 }
 
 .button,
@@ -127,6 +175,7 @@
 .needsList,
 .issueList {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   gap: 10px;
 }
 
@@ -206,33 +255,6 @@
   font-weight: 700;
 }
 
-.autopilot {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: center;
-  border: 1px solid #c8c0b4;
-  background: rgba(255, 252, 246, .72);
-  padding: 16px;
-}
-
-.autopilot p {
-  margin: 5px 0 0;
-}
-
-.runtimeLabel {
-  text-align: right;
-}
-
-.runtimeLabel strong {
-  display: block;
-}
-
-.runtimeLabel span {
-  color: #756e64;
-  font: .72rem Arial, sans-serif;
-}
-
 @media (max-width: 920px) {
   .countGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -244,17 +266,33 @@
     padding: 34px 16px 64px;
   }
 
-  .header,
-  .sectionHeader,
-  .cardTop,
-  .autopilot {
+  .header {
     grid-template-columns: 1fr;
+  }
+
+  .sectionHeader,
+  .cardTop {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .commandMeta > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .commandMeta strong {
+    text-align: left;
+  }
+
   .headerActions {
     width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .needsList,
+  .issueList {
+    grid-template-columns: 1fr;
   }
 
   .button,
