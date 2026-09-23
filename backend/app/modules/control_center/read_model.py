@@ -214,11 +214,13 @@ async def _pending_operator_items(
     list[ControlCenterIssue],
     set[UUID],
     set[UUID],
+    dict[UUID, str],
 ]:
     items: list[NeedsMeItem] = []
     issues: list[ControlCenterIssue] = []
     blocked_cases: set[UUID] = set()
     gate_cases: set[UUID] = set()
+    status_by_case: dict[UUID, str] = {}
 
     for row in board:
         if not row.operator_managed:
@@ -241,7 +243,21 @@ async def _pending_operator_items(
                 )
             )
             blocked_cases.add(row.id)
+            status_by_case[row.id] = "BLOCKED"
             continue
+
+        if action.status in {"BLOCKED", "NOT_READY"}:
+            status_by_case[row.id] = "BLOCKED"
+            blocked_cases.add(row.id)
+        elif action.status == "RUNNING":
+            status_by_case[row.id] = "RUNNING"
+        elif action.status in {"QUEUED", "READY"}:
+            status_by_case[row.id] = "QUEUED"
+        elif action.status == "COMPLETE":
+            status_by_case[row.id] = "COMPLETED"
+        elif action.status == "AWAITING_APPROVAL":
+            status_by_case[row.id] = "NEEDS_HUMAN"
+
         if action.status != "AWAITING_APPROVAL" or action.human_gate is None:
             if row.status_group == "AWAITING_APPROVAL":
                 issues.append(
@@ -256,6 +272,7 @@ async def _pending_operator_items(
                     )
                 )
                 blocked_cases.add(row.id)
+                status_by_case[row.id] = "BLOCKED"
             continue
 
         gate = action.human_gate
@@ -277,6 +294,7 @@ async def _pending_operator_items(
                 )
             )
             blocked_cases.add(row.id)
+            status_by_case[row.id] = "BLOCKED"
             continue
         if (
             operator_view.state.state_version != action.state_version
@@ -295,6 +313,7 @@ async def _pending_operator_items(
                 )
             )
             blocked_cases.add(row.id)
+            status_by_case[row.id] = "BLOCKED"
             continue
 
         evidence_refs: list[str] = []
@@ -341,6 +360,7 @@ async def _pending_operator_items(
                     )
                 )
                 blocked_cases.add(row.id)
+                status_by_case[row.id] = "BLOCKED"
                 continue
 
         gate_cases.add(row.id)
@@ -374,7 +394,7 @@ async def _pending_operator_items(
             )
         )
 
-    return items, issues, blocked_cases, gate_cases
+    return items, issues, blocked_cases, gate_cases, status_by_case
 
 
 async def _pending_harness_items(
@@ -761,6 +781,7 @@ async def build_control_center(
         operator_issues,
         operator_blocked_cases,
         operator_gate_cases,
+        operator_status_by_case,
     ) = await _pending_operator_items(
         session,
         board=board,
@@ -811,31 +832,40 @@ async def build_control_center(
     }
 
     blocked_case_ids = (
-        {row.id for row in board if row.status_group == "BLOCKED"}
+        {
+            row.id
+            for row in board
+            if not row.operator_managed and row.status_group == "BLOCKED"
+        }
         | operator_blocked_cases
         | approval_blocked_cases
     )
+
+    def operational_group(row: ProductionBoardCase) -> str:
+        if row.id in blocked_case_ids:
+            return "BLOCKED"
+        if row.id in human_case_ids:
+            return "NEEDS_HUMAN"
+        if row.operator_managed:
+            return operator_status_by_case.get(row.id, "BLOCKED")
+        return row.status_group
+
     counts = ControlCenterCounts(
         running=sum(
-            1
-            for row in board
-            if row.status_group == "RUNNING"
-            and row.id not in blocked_case_ids
-            and row.id not in human_case_ids
+            1 for row in board if operational_group(row) == "RUNNING"
         ),
         queued=sum(
-            1
-            for row in board
-            if row.status_group == "QUEUED"
-            and row.id not in blocked_case_ids
-            and row.id not in human_case_ids
+            1 for row in board if operational_group(row) == "QUEUED"
         ),
-        blocked=len(blocked_case_ids),
+        blocked=sum(
+            1 for row in board if operational_group(row) == "BLOCKED"
+        ),
         needs_human=len(needs_me),
         completed_today=sum(
             1
             for row in board
-            if row.status_group == "COMPLETED" and row.id in completed_case_ids
+            if operational_group(row) == "COMPLETED"
+            and row.id in completed_case_ids
         ),
     )
     return ControlCenterSnapshot(
