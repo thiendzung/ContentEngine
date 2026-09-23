@@ -171,7 +171,10 @@ def _validation_reason(status: str) -> str | None:
     if status == "VALIDATED":
         return "Later independent evidence is ready for a human promotion/keep decision."
     if status == "REGRESSED":
-        return "Later evidence indicates regression; a human rollback/reject/keep decision is required."
+        return (
+            "Later evidence indicates regression; "
+            "a human rollback/reject/keep decision is required."
+        )
     if status == "CONTESTED":
         return "Independent support and contradiction coexist; a human resolution is required."
     return None
@@ -226,7 +229,10 @@ async def _pending_harness_items(
                     code="control_center_pending_approval_missing",
                     entity_type="content_run",
                     entity_id=str(run.id),
-                    message="Run is waiting for approval but has no canonical pending-approval checkpoint.",
+                    message=(
+                        "Run is waiting for approval but has no canonical "
+                        "pending-approval checkpoint."
+                    ),
                 )
             )
             blocked_cases.add(run.content_case_id)
@@ -304,7 +310,10 @@ async def _pending_harness_items(
                     code="control_center_pending_approval_stale",
                     entity_type="content_run",
                     entity_id=str(run.id),
-                    message="Waiting approval state is stale or inconsistent; no action is exposed.",
+                    message=(
+                        "Waiting approval state is stale or inconsistent; "
+                        "no action is exposed."
+                    ),
                 )
             )
             blocked_cases.add(run.content_case_id)
@@ -385,7 +394,10 @@ async def _pending_learning_items(
             NeedsMeItem(
                 id=f"learning-candidate:{candidate.id}:v{candidate.version}",
                 type="learning_candidate_review",
-                reason="Learning candidate reached reviewed-evidence readiness and requires a human decision.",
+                reason=(
+                    "Learning candidate reached reviewed-evidence readiness "
+                    "and requires a human decision."
+                ),
                 canonical_status="READY_FOR_REVIEW",
                 created_at=candidate.created_at,
                 updated_at=candidate.updated_at,
