@@ -180,7 +180,7 @@ export default function DailyDigestPage() {
             {DOMAINS.map((item) => (
               <button
                 type="button"
-                className={styles.listButton + " " + (domain === item ? styles.listButtonActive : "")}
+                className={styles.filterButton + " " + (domain === item ? styles.listButtonActive : "")}
                 aria-pressed={domain === item}
                 onClick={() => setDomain(item)}
                 key={item}
@@ -216,7 +216,7 @@ export default function DailyDigestPage() {
                         <div className={styles.refList}>
                           <span>{event.entity_type + " · " + event.entity_id}</span>
                           {event.status ? <span>{"Status · " + event.status}</span> : null}
-                          {event.refs.map((ref) => <span key={ref}>{ref}</span>)}
+                          {event.refs.map((ref, index) => <span key={ref + ":" + index}>{ref}</span>)}
                         </div>
                       </div>
                       <div className={styles.digestTime}>{formatDate(event.occurred_at)}</div>
