@@ -24,7 +24,8 @@
 
 .button,
 .linkButton,
-.listButton {
+.listButton,
+.filterButton {
   border: 1px solid #312f2a;
   background: transparent;
   color: #312f2a;
@@ -36,12 +37,14 @@
 }
 
 .button,
-.listButton {
+.listButton,
+.filterButton {
   cursor: pointer;
 }
 
 .button:disabled,
-.listButton:disabled {
+.listButton:disabled,
+.filterButton:disabled {
   opacity: .45;
   cursor: default;
 }
@@ -49,6 +52,7 @@
 .button:focus-visible,
 .linkButton:focus-visible,
 .listButton:focus-visible,
+.filterButton:focus-visible,
 .disclosure summary:focus-visible,
 .dateInput:focus-visible {
   outline: 3px solid #2e5367;
@@ -186,7 +190,8 @@
 }
 
 .listButtonActive,
-.listButton:hover:not(:disabled) {
+.listButton:hover:not(:disabled),
+.filterButton:hover:not(:disabled) {
   border-color: #312f2a;
   background: #ece5da;
 }
@@ -537,6 +542,7 @@
   .button,
   .linkButton,
   .listButton,
+  .filterButton,
   .dateInput {
     min-height: 44px;
   }
