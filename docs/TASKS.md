@@ -493,22 +493,28 @@ Exit: Founder can inspect who the system understands and what content coverage e
 - [x] Add human-readable blocked/recovery guidance with backend message/code/entity behind technical disclosure.
 - [x] Important human/automated decisions expose canonical Why/evidence refs.
 - [x] Fail closed when separate summary/Needs-Me reads disagree on `needs_human`; preserve last coherent view on refresh failure.
-- [ ] Exact-head CI green after self-review.
-- [ ] Browser/accessibility proof on real local UI.
-- [ ] Exact-ref OpenCodeReview + Agent Local bounded proof.
-- [ ] Founder merge UX-01C / close #196.
+- [x] Exact-head CI #1723 green after desktop-first refinement.
+- [x] Desktop browser proof 1440×900 + 1920×1080 — `PASS_UX01C_DESKTOP_RECHECK`.
+- [x] Exact-ref OpenCodeReview 5/5 zero findings + Agent Local — `PASS_UX01C_EXACT_REF_LOCAL_VERIFICATION`.
+- [x] Founder merge PR #197 / close #196 — main `3a7d4ea5c65ae4d8ce1a079f40cdff45c8918554`.
 
 Exit: normal operation becomes exception-driven rather than run-by-run supervision.
 
 #### UX-01D — Learning + System + Daily Digest + navigation closeout
 
-- [ ] Add Learning view for Candidate → Assessment/Application → Validation → Resolution lifecycle.
-- [ ] Separate observation/evidence from interpreted learning and promoted truth.
-- [ ] Add System view for automation policy, provider/worker capability state, health and usage only where canonical data exists.
-- [ ] Add deterministic Daily Digest read model: what changed in Customer Map, Coverage, production, publication/measurement and learning since the prior bounded window.
-- [ ] Daily Digest reports changes; it does not trigger blind external Deep Research.
-- [ ] Final navigation: Overview / Customers / Content Map / Production / Needs Me / Learning / System.
-- [ ] Responsive/accessibility/browser verification on real local UI.
-- [ ] No operational migration or production activation is implied by UX completion.
+- [x] D0 audit canonical API gaps; no frontend reconstruction of missing truth.
+- [x] Add read-only Learning projection/API + desktop Learning view for Candidate → Review/Application → Validation → Resolution lifecycle.
+- [x] Separate factual Signal/measurement/artifact evidence from interpreted learning and reviewed application/resolution receipts.
+- [x] Add read-only System projection + System view: configured automation policy, live preflight and persisted model/tool/delegation/routing telemetry; history is not provider/worker health.
+- [x] Add deterministic Daily Digest read model for an explicit local-day bounded window across Customer, content, production, publication/measurement and learning.
+- [x] Keep current Need-level Content Coverage snapshot separate from historical digest events; do not fabricate coverage transition history.
+- [x] Daily Digest reports durable facts; it does not trigger blind external Deep Research or causal effectiveness claims.
+- [x] Add dedicated read-only `/needs-me` from canonical Control Center projection.
+- [x] Final navigation: Overview / Customers / Content Map / Production / Needs Me / Learning / System; legacy `/` and `/operator` routes remain functional for exact deep links.
+- [ ] Exact-head CI green after full D1–D5 self-review.
+- [ ] Desktop-first responsive/accessibility/browser verification on real local UI.
+- [ ] Exact-ref OpenCodeReview + Agent Local bounded proof.
+- [ ] Founder merge UX-01D / close #198.
+- [x] No operational migration or production activation is implied by UX completion.
 
 Exit: UX-01 closes with a coherent exception-driven command center backed by canonical read models.
