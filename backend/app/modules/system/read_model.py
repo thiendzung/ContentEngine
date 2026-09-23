@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -67,7 +68,7 @@ class RouteDecisionView(BaseModel):
     max_model_calls_per_step: int
     provider: str
     model: str
-    created_at: object
+    created_at: datetime
 
 
 class SystemOverview(BaseModel):
