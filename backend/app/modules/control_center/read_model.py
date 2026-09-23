@@ -920,3 +920,28 @@ async def build_control_center(
             if operational_group(row) == "COMPLETED"
             and row.id in completed_case_ids
         ),
+    )
+    return ControlCenterSnapshot(
+        summary=ControlCenterSummary(
+            project_id=project.id,
+            project_slug=project.slug,
+            as_of=now,
+            timezone=zone.key,
+            counts=counts,
+            issues=issues,
+        ),
+        needs_me=needs_me,
+    )
+
+
+__all__ = [
+    "ControlCenterActionDestination",
+    "ControlCenterCounts",
+    "ControlCenterError",
+    "ControlCenterIssue",
+    "ControlCenterSnapshot",
+    "ControlCenterSummary",
+    "NeedsMeItem",
+    "build_control_center",
+    "resolve_project",
+]
