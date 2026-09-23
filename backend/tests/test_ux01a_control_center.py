@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import func, select
 from test_ce05_review_actions import _pending_fixture
 from test_ce05_review_console import isolated_session
+from test_ll01c_learning_application import _need_candidate
 from test_ll01d_learning_regression import (
     _applied_need,
     _second_experiment_search_signal,
@@ -285,6 +286,31 @@ async def test_ux01a_stale_waiting_approval_fails_closed() -> None:
         assert any(
             issue.code == "control_center_pending_approval_stale"
             for issue in snapshot.summary.issues
+        )
+
+
+@pytest.mark.asyncio
+async def test_ux01a_does_not_escalate_unready_learning_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _signal, _assessment, candidate = await _need_candidate(
+            session,
+            monkeypatch,
+        )
+        assert candidate.evidence_status != "READY_FOR_REVIEW"
+        before = await _read_only_counts(session)
+
+        snapshot = await build_control_center(
+            session,
+            project_slug=fixture.project.slug,
+            timezone_name="UTC",
+        )
+
+        assert await _read_only_counts(session) == before
+        assert all(
+            item.type != "learning_candidate_review"
+            for item in snapshot.needs_me
         )
 
 
