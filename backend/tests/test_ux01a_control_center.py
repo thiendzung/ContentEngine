@@ -32,24 +32,54 @@ from app.modules.content_engine.journal.operator_worker import (
     claim_next_operator_job,
     execute_start_to_angle_job,
 )
-from app.modules.content_engine.models import Project
+from app.modules.content_engine.models import NeedHypothesis, Project, Signal
 from app.modules.control_center.read_model import (
     ControlCenterError,
     build_control_center,
 )
+from app.modules.customer_intelligence.models import CustomerInsight
 from app.modules.harness.agent_runner import AgentRunnerRegistry
-from app.modules.harness.models import Approval, Artifact, ModelCall, ToolCall
+from app.modules.harness.models import (
+    Approval,
+    Artifact,
+    ContentRun,
+    Job,
+    ModelCall,
+    ToolCall,
+)
+from app.modules.learning.models import (
+    LearningCandidateReview,
+    LearningResolution,
+    LearningValidation,
+)
 from app.modules.learning.regression import create_learning_validation
+from app.modules.publishing.models import PublishedContent, PublishEvent
 from app.modules.publishing.service import prepare_publish_package
 
 
-async def _read_only_counts(session) -> tuple[int, int, int, int]:
-    return (
-        int(await session.scalar(select(func.count()).select_from(ModelCall)) or 0),
-        int(await session.scalar(select(func.count()).select_from(ToolCall)) or 0),
-        int(await session.scalar(select(func.count()).select_from(Approval)) or 0),
-        int(await session.scalar(select(func.count()).select_from(Artifact)) or 0),
+async def _read_only_counts(session) -> dict[str, int]:
+    models = (
+        ContentRun,
+        Job,
+        ModelCall,
+        ToolCall,
+        Approval,
+        Artifact,
+        LearningCandidateReview,
+        LearningValidation,
+        LearningResolution,
+        PublishedContent,
+        PublishEvent,
+        CustomerInsight,
+        NeedHypothesis,
+        Signal,
     )
+    return {
+        model.__tablename__: int(
+            await session.scalar(select(func.count()).select_from(model)) or 0
+        )
+        for model in models
+    }
 
 
 @pytest.mark.asyncio
