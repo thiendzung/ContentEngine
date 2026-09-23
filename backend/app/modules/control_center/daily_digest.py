@@ -42,7 +42,6 @@ from app.modules.measurement.models import (
 )
 from app.modules.publishing.models import PublishedContent, PublishEvent
 
-
 DigestDomain = Literal[
     "customer",
     "content",
