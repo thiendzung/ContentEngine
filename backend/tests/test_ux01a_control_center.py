@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import UUID
-
 import pytest
 from sqlalchemy import func, select
 from test_ce05_review_actions import _pending_fixture
@@ -18,14 +16,16 @@ from app.modules.control_center.read_model import (
     ControlCenterError,
     build_control_center,
 )
-from app.modules.harness.models import Approval, ModelCall, ToolCall
+from app.modules.harness.models import Approval, Artifact, ModelCall, ToolCall
 from app.modules.learning.regression import create_learning_validation
 
 
-async def _execution_counts(session) -> tuple[int, int]:
+async def _read_only_counts(session) -> tuple[int, int, int, int]:
     return (
         int(await session.scalar(select(func.count()).select_from(ModelCall)) or 0),
         int(await session.scalar(select(func.count()).select_from(ToolCall)) or 0),
+        int(await session.scalar(select(func.count()).select_from(Approval)) or 0),
+        int(await session.scalar(select(func.count()).select_from(Artifact)) or 0),
     )
 
 
@@ -36,7 +36,7 @@ async def test_ux01a_needs_me_is_project_scoped_and_read_only() -> None:
         other = await _pending_fixture(session)
         target_project = await session.get(Project, target.writer_run.project_id)
         assert target_project is not None
-        before = await _execution_counts(session)
+        before = await _read_only_counts(session)
 
         snapshot = await build_control_center(
             session,
@@ -45,7 +45,7 @@ async def test_ux01a_needs_me_is_project_scoped_and_read_only() -> None:
             as_of=datetime.now(UTC),
         )
 
-        assert await _execution_counts(session) == before
+        assert await _read_only_counts(session) == before
         assert snapshot.summary.project_id == target_project.id
         assert snapshot.summary.counts.needs_human == 1
         assert snapshot.summary.counts.blocked == 0
@@ -91,11 +91,13 @@ async def test_ux01a_stale_waiting_approval_fails_closed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ux01a_surfaces_only_actionable_learning_validation() -> None:
+async def test_ux01a_surfaces_only_actionable_learning_validation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
         fixture, _mapping, _baseline_signal, _candidate, application = await _applied_need(
             session,
-            pytest.MonkeyPatch(),
+            monkeypatch,
         )
         later_signal = await _second_experiment_search_signal(
             session,
