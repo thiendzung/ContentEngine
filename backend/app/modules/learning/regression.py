@@ -31,7 +31,10 @@ from app.modules.customer_intelligence.insights import (
 from app.modules.customer_intelligence.living_map import (
     refresh_customer_map_snapshot_artifact,
 )
-from app.modules.customer_intelligence.models import CustomerInsight
+from app.modules.customer_intelligence.models import (
+    CustomerInsight,
+    CustomerInsightSignal,
+)
 from app.modules.harness.models import Artifact
 from app.modules.learning.application import (
     LearningApplicationError,
@@ -180,6 +183,71 @@ def _lens_scope(value: object) -> tuple[str | None, list[str]]:
     return primary, supporting
 
 
+async def _target_evidence_snapshot(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    target_type: str,
+    target_id: UUID,
+) -> list[dict[str, object]]:
+    if target_type == "need_hypothesis":
+        rows = list(
+            (
+                await session.scalars(
+                    select(NeedHypothesisSignal)
+                    .where(
+                        NeedHypothesisSignal.need_hypothesis_id == target_id
+                    )
+                    .order_by(
+                        NeedHypothesisSignal.relation,
+                        NeedHypothesisSignal.signal_id,
+                    )
+                )
+            ).all()
+        )
+    elif target_type in {"customer_insight", "new_customer_insight"}:
+        rows = list(
+            (
+                await session.scalars(
+                    select(CustomerInsightSignal)
+                    .where(
+                        CustomerInsightSignal.customer_insight_id == target_id
+                    )
+                    .order_by(
+                        CustomerInsightSignal.relation,
+                        CustomerInsightSignal.signal_id,
+                    )
+                )
+            ).all()
+        )
+    else:
+        raise LearningRegressionError(
+            "learning_validation_target_type_invalid"
+        )
+
+    cache: dict[UUID, str] = {}
+    result: list[dict[str, object]] = []
+    for row in rows:
+        signal = await session.get(Signal, row.signal_id)
+        if signal is None or signal.project_id != project_id:
+            raise LearningRegressionError(
+                "learning_validation_target_evidence_stale"
+            )
+        result.append(
+            {
+                "signal_id": str(signal.id),
+                "relation": row.relation,
+                "fingerprint": signal.fingerprint,
+                "independence_key": await signal_independence_key(
+                    session,
+                    signal,
+                    cache,
+                ),
+            }
+        )
+    return result
+
+
 async def _target_snapshot(
     session: AsyncSession,
     *,
@@ -216,6 +284,12 @@ async def _target_snapshot(
                     if need.audience_hypothesis_id is not None
                     else None
                 ),
+                "evidence": await _target_evidence_snapshot(
+                    session,
+                    project_id=application.project_id,
+                    target_type=application.target_type,
+                    target_id=need.id,
+                ),
             },
         }
 
@@ -249,6 +323,12 @@ async def _target_snapshot(
                     str(insight.audience_hypothesis_id)
                     if insight.audience_hypothesis_id is not None
                     else None
+                ),
+                "evidence": await _target_evidence_snapshot(
+                    session,
+                    project_id=application.project_id,
+                    target_type=application.target_type,
+                    target_id=insight.id,
                 ),
             },
         }
