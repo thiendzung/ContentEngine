@@ -130,8 +130,19 @@ export type LearningOverview = {
   candidates: LearningCandidate[];
 };
 
-export function loadLearningOverview(projectSlug = "motgu") {
-  return getJson<LearningOverview>(`/learning?${projectQuery(projectSlug)}`);
+export async function loadLearningOverview(projectSlug = "motgu") {
+  const value = await getJson<LearningOverview>(
+    `/learning?${projectQuery(projectSlug)}`,
+  );
+  if (
+    !value.semantics.candidate_is_not_customer_truth ||
+    !value.semantics.evidence_is_not_learning_rule ||
+    !value.semantics.application_receipt_required_for_truth_change ||
+    !value.semantics.validation_does_not_auto_promote
+  ) {
+    throw new Error("learning_semantics_contract_changed");
+  }
+  return value;
 }
 
 export type AutomationWorkerPolicy = {
@@ -229,6 +240,14 @@ export async function loadSystemDashboard(projectSlug = "motgu") {
     getJson<SystemHealth>("/health/db"),
     getJson<SystemPreflight>("/system/preflight"),
   ]);
+  if (
+    !summary.semantics.configured_policy_is_not_runtime_state ||
+    !summary.semantics.historical_usage_is_not_provider_health ||
+    !summary.semantics.delegation_history_is_not_worker_health ||
+    !summary.semantics.preflight_is_separate_live_capability_evidence
+  ) {
+    throw new Error("system_semantics_contract_changed");
+  }
   return { summary, health, version, database, preflight };
 }
 
@@ -268,7 +287,7 @@ export type DailyDigest = {
   };
 };
 
-export function loadDailyDigest(
+export async function loadDailyDigest(
   localDate: string,
   timezone: string,
   projectSlug = "motgu",
@@ -278,5 +297,17 @@ export function loadDailyDigest(
     timezone,
     project_slug: projectSlug,
   });
-  return getJson<DailyDigest>(`/daily-digest?${params.toString()}`);
+  const value = await getJson<DailyDigest>(
+    `/daily-digest?${params.toString()}`,
+  );
+  if (
+    !value.semantics.events_are_durable_facts ||
+    !value.semantics.current_coverage_is_not_historical_change ||
+    !value.semantics.measurement_observation_is_not_causal_proof ||
+    !value.semantics.digest_does_not_trigger_research ||
+    !value.semantics.learning_validation_does_not_auto_promote
+  ) {
+    throw new Error("daily_digest_semantics_contract_changed");
+  }
+  return value;
 }
