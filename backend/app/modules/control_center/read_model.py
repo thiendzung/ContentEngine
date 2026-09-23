@@ -29,6 +29,10 @@ from app.modules.learning.models import (
     LearningResolution,
     LearningValidation,
 )
+from app.modules.learning.regression import (
+    LearningRegressionError,
+    validate_learning_resolution_readiness,
+)
 
 
 class ControlCenterError(ValueError):
@@ -342,8 +346,9 @@ async def _pending_learning_items(
     session: AsyncSession,
     *,
     project_id: UUID,
-) -> list[NeedsMeItem]:
+) -> tuple[list[NeedsMeItem], list[ControlCenterIssue]]:
     items: list[NeedsMeItem] = []
+    issues: list[ControlCenterIssue] = []
 
     candidates = list(
         (
@@ -438,6 +443,24 @@ async def _pending_learning_items(
         reason = _validation_reason(validation.validation_status)
         if reason is None:
             continue
+        try:
+            await validate_learning_resolution_readiness(
+                session,
+                learning_validation_id=validation.id,
+            )
+        except LearningRegressionError as exc:
+            issues.append(
+                ControlCenterIssue(
+                    code=f"control_center_{exc.code}",
+                    entity_type="learning_validation",
+                    entity_id=str(validation.id),
+                    message=(
+                        "Learning validation is stale or inconsistent; "
+                        "no human action is exposed."
+                    ),
+                )
+            )
+            continue
         items.append(
             NeedsMeItem(
                 id=f"learning-validation:{validation.id}:v{validation.version}",
@@ -463,7 +486,7 @@ async def _pending_learning_items(
                 ),
             )
         )
-    return items
+    return items, issues
 
 
 async def build_control_center(
@@ -496,10 +519,11 @@ async def build_control_center(
         project_id=project.id,
         board_by_case=board_by_case,
     )
-    learning_items = await _pending_learning_items(
+    learning_items, learning_issues = await _pending_learning_items(
         session,
         project_id=project.id,
     )
+    issues.extend(learning_issues)
     needs_me = sorted(
         harness_items + learning_items,
         key=lambda row: (row.created_at, row.id),
