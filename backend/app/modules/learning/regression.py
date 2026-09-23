@@ -791,6 +791,13 @@ async def create_learning_validation(
         baseline_metrics=baseline_metrics,
         candidate_metrics=validation_metrics,
     )
+    if (
+        validation_status in {"VALIDATED", "REGRESSED"}
+        and not alternatives
+    ):
+        raise LearningRegressionError(
+            "learning_validation_alternative_explanation_required"
+        )
     target_snapshot = await _target_snapshot(
         session,
         application=application,
