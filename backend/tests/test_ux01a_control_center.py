@@ -80,6 +80,47 @@ async def test_ux01a_needs_me_is_project_scoped_and_read_only() -> None:
 
 
 @pytest.mark.asyncio
+async def test_ux01a_uses_operator_runtime_for_queued_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="ux01a-queued-count"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="ux01a-queued-count-start",
+        )
+        assert queued.job_id is not None
+        before = await _read_only_counts(session)
+
+        snapshot = await build_control_center(
+            session,
+            project_slug="motgu",
+            timezone_name="UTC",
+        )
+
+        assert await _read_only_counts(session) == before
+        assert snapshot.summary.counts.queued == 1
+        assert snapshot.summary.counts.running == 0
+        assert snapshot.summary.counts.needs_human == 0
+
+
+@pytest.mark.asyncio
 async def test_ux01a_uses_operator_runtime_for_angle_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
