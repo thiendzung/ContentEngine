@@ -309,6 +309,32 @@ async def _pending_harness_items(
     human_cases: set[UUID] = set()
 
     for run in runs:
+        board = board_by_case.get(run.content_case_id)
+        is_publish_gate = (
+            run.run_mode == "publish"
+            or run.current_step == "publish_authorization"
+        )
+
+        # Journal operator state is authoritative for editorial gates. Generic
+        # Harness approval rows on those cases are only used for the separate
+        # publish authorization.
+        if (
+            not is_publish_gate
+            and board is not None
+            and board.operator_managed
+        ):
+            continue
+
+        # A ContentCase may retain historical waiting_approval runs after a
+        # later gate becomes canonical. Only the gate selected by the current
+        # production-board projection is actionable; superseded runs are not
+        # errors and must not create false BLOCKED work.
+        if not is_publish_gate and board is not None:
+            if board.status_group != "AWAITING_APPROVAL":
+                continue
+            if run.current_step is not None and run.current_step != board.stage_key:
+                continue
+
         checkpoint = await get_latest_checkpoint(session, run_id=run.id)
         payload = checkpoint.content_json if checkpoint is not None else None
         pending = payload.get("pending_approval") if isinstance(payload, dict) else None
@@ -409,22 +435,11 @@ async def _pending_harness_items(
             continue
 
         item_type, reason = _approval_kind(run, step_key)
-        board = board_by_case.get(run.content_case_id)
-        if item_type == "content_approval" and board is not None and board.operator_managed:
-            if run.content_case_id in operator_gate_cases:
-                continue
-            issues.append(
-                ControlCenterIssue(
-                    code="control_center_operator_gate_mismatch",
-                    entity_type="content_run",
-                    entity_id=str(run.id),
-                    message=(
-                        "Harness approval and canonical Operator gate disagree; "
-                        "no action is exposed."
-                    ),
-                )
-            )
-            blocked_cases.add(run.content_case_id)
+        if (
+            item_type == "content_approval"
+            and board is not None
+            and step_key != board.stage_key
+        ):
             continue
         checkpoint_ref = (
             f"artifact:{checkpoint.id}" if checkpoint is not None else f"run:{run.id}"
