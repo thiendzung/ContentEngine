@@ -152,6 +152,40 @@ async def test_ux01a_surfaces_publish_authorization_without_fake_href(
 
 
 @pytest.mark.asyncio
+async def test_ux01a_ready_operator_work_is_not_counted_as_queued(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="ux01a-ready-not-queued"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        assert state.status == "READY"
+        before = await _read_only_counts(session)
+
+        snapshot = await build_control_center(
+            session,
+            project_slug="motgu",
+            timezone_name="UTC",
+        )
+
+        assert await _read_only_counts(session) == before
+        assert snapshot.summary.counts.queued == 0
+        assert snapshot.summary.counts.running == 0
+        assert snapshot.summary.counts.needs_human == 0
+
+
+@pytest.mark.asyncio
 async def test_ux01a_uses_operator_runtime_for_queued_count(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
