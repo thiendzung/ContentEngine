@@ -110,6 +110,7 @@ async def _second_experiment_search_signal(
     worker_id: str,
     impressions: int,
     metric_definitions: list[str] | None = None,
+    measurement_window_start: datetime | None = None,
 ):
     version2 = ContentVersion(
         content_item_id=fixture.item.id,
@@ -181,7 +182,11 @@ async def _second_experiment_search_signal(
         published_content_id=mapping.id,
         content_version_id=version2.id,
         provider="search_console",
-        window_start=max(now, snapshot_time - timedelta(hours=1)),
+        window_start=(
+            measurement_window_start
+            if measurement_window_start is not None
+            else max(now, snapshot_time - timedelta(hours=1))
+        ),
         window_end=snapshot_time,
         raw_metrics={"cycle": "ll01d-independent"},
         metrics=[
@@ -261,6 +266,40 @@ async def test_ll01d_validation_rejects_evidence_observed_before_application(
             )
 
         assert exc_info.value.code == "learning_validation_signal_not_later"
+
+
+@pytest.mark.asyncio
+async def test_ll01d_validation_rejects_measurement_window_before_application(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _mapping, _baseline_signal, _candidate, application = await _applied_need(
+            session,
+            monkeypatch,
+        )
+        later_signal = await _second_experiment_search_signal(
+            session,
+            fixture=fixture,
+            worker_id="ll01d-overlapping-window",
+            impressions=160,
+            measurement_window_start=application.applied_at - timedelta(minutes=1),
+        )
+
+        with pytest.raises(
+            LearningRegressionError,
+            match="learning_validation_measurement_window_not_later",
+        ):
+            await create_learning_validation(
+                session,
+                learning_application_id=application.id,
+                validation_status="VALIDATED",
+                signal_relations={later_signal.id: "supports"},
+                metric_comparisons=[],
+                alternative_explanations=[
+                    "Part of the measured window predates the applied learning."
+                ],
+                missing_evidence=[],
+            )
 
 
 @pytest.mark.asyncio
@@ -398,7 +437,7 @@ async def test_ll01d_same_experiment_provider_signal_is_not_independent_validati
         )
         with pytest.raises(
             LearningRegressionError,
-            match="learning_validation_experiment_not_later",
+            match="learning_validation_validated_evidence_invalid",
         ):
             await create_learning_validation(
                 session,
