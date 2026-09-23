@@ -10,13 +10,33 @@ from test_ll01d_learning_regression import (
     _applied_need,
     _second_experiment_search_signal,
 )
+from test_operator_start_to_angle import (
+    ControlledCodexRunner,
+    ControlledEvidenceWorkflow,
+    _activate_seeded_angle_runtime,
+    _intake_kwargs,
+    _ready_preflight,
+)
 
+import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.main import app
+from app.modules.content_engine.journal.operator_manual_intake import (
+    create_founder_journal_intake,
+)
+from app.modules.content_engine.journal.operator_vertical_slice import (
+    get_operator_state_v45,
+    submit_operator_command_v45,
+)
+from app.modules.content_engine.journal.operator_worker import (
+    claim_next_operator_job,
+    execute_start_to_angle_job,
+)
 from app.modules.content_engine.models import Project
 from app.modules.control_center.read_model import (
     ControlCenterError,
     build_control_center,
 )
+from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, ModelCall, ToolCall
 from app.modules.learning.regression import create_learning_validation
 
@@ -57,6 +77,69 @@ async def test_ux01a_needs_me_is_project_scoped_and_read_only() -> None:
         assert item.destination.entity_id == str(target.content_case_id)
         assert str(other.content_case_id) not in item.id
         assert any(ref.startswith("artifact:") for ref in item.evidence_refs)
+
+
+@pytest.mark.asyncio
+async def test_ux01a_uses_operator_runtime_for_angle_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="ux01a-angle-gate"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="ux01a-angle-gate-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-ux01a-angle",
+        )
+        assert leased is not None
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", ControlledCodexRunner())
+        await execute_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-ux01a-angle",
+            evidence_workflow=ControlledEvidenceWorkflow(),  # type: ignore[arg-type]
+            runner_registry=registry,
+        )
+        before = await _read_only_counts(session)
+
+        snapshot = await build_control_center(
+            session,
+            project_slug="motgu",
+            timezone_name="UTC",
+        )
+
+        assert await _read_only_counts(session) == before
+        angle_items = [
+            item
+            for item in snapshot.needs_me
+            if item.type == "content_approval"
+            and item.destination.entity_id == str(created.content_case_id)
+        ]
+        assert len(angle_items) == 1
+        item = angle_items[0]
+        assert item.canonical_status == "AWAITING_APPROVAL"
+        assert ":angle:" in item.destination.action_ref
+        assert item.destination.href == f"/operator/journal/{created.content_case_id}"
 
 
 @pytest.mark.asyncio
