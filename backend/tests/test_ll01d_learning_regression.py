@@ -221,9 +221,8 @@ async def _second_experiment_search_signal(
 
 @pytest.mark.asyncio
 async def test_ll01d_validation_rejects_evidence_observed_before_application(
-    isolated_session,
-    monkeypatch,
-):
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async with isolated_session() as session:
         fixture, _mapping, _baseline_signal, _assessment, candidate = await _need_candidate(
             session,
@@ -399,7 +398,7 @@ async def test_ll01d_same_experiment_provider_signal_is_not_independent_validati
         )
         with pytest.raises(
             LearningRegressionError,
-            match="learning_validation_validated_evidence_invalid",
+            match="learning_validation_experiment_not_later",
         ):
             await create_learning_validation(
                 session,
