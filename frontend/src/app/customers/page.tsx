@@ -166,10 +166,12 @@ function SignalRefs({
 function NeedCard({
   need,
   active,
+  disabled,
   onSelect,
 }: {
   need: CustomerNeed;
   active: boolean;
+  disabled: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -180,6 +182,7 @@ function NeedCard({
       }
       onClick={onSelect}
       aria-pressed={active}
+      disabled={disabled}
     >
       <strong>{need.statement}</strong>
       <small>
@@ -634,7 +637,10 @@ export default function CustomersPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      aria-busy={loading || detailLoading}
+    >
       <header className={styles.header}>
         <div>
           <p className="eyebrow">ContentEngine · Customer Living Map</p>
@@ -651,7 +657,7 @@ export default function CustomersPage() {
             onClick={() => void refresh()}
             disabled={loading}
           >
-            Làm mới
+            {loading ? "Đang làm mới…" : "Làm mới"}
           </button>
         </div>
       </header>
@@ -663,13 +669,18 @@ export default function CustomersPage() {
       </div>
 
       {loading && !view ? (
-        <div className={styles.loading} role="status">
+        <div
+          className={styles.loading}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           Đang tải Customer Living Map…
         </div>
       ) : null}
 
       {error ? (
-        <div className={styles.error} role="alert">
+        <div className={styles.error} role="alert" aria-atomic="true">
           Không thể đọc Customer Living Map: {error}
         </div>
       ) : null}
@@ -678,6 +689,8 @@ export default function CustomersPage() {
         <div
           className={styles.notice + " " + styles.stale}
           role="status"
+          aria-live="polite"
+          aria-atomic="true"
         >
           {staleMessage}
         </div>
@@ -743,7 +756,7 @@ export default function CustomersPage() {
           </section>
 
           {view.summary.audiences.length === 0 ? (
-            <div className={styles.empty}>
+            <div className={styles.empty} role="status">
               Chưa có AudienceHypothesis trong Customer Living Map.
             </div>
           ) : (
@@ -778,7 +791,12 @@ export default function CustomersPage() {
 
               <div className={styles.cards}>
                 {detailLoading ? (
-                  <div className={styles.loading} role="status">
+                  <div
+                    className={styles.loading}
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
                     Đang tải chi tiết…
                   </div>
                 ) : null}
@@ -839,11 +857,16 @@ export default function CustomersPage() {
                           key={need.id}
                           need={need}
                           active={view.selectedNeedId === need.id}
+                          disabled={detailLoading}
                           onSelect={() => void selectNeed(need.id)}
                         />
                       ))}
                     </div>
                   </section>
+                ) : view.audience ? (
+                  <div className={styles.empty} role="status">
+                    Audience này chưa có NeedHypothesis được gán.
+                  </div>
                 ) : null}
 
                 {view.needDetail ? (
@@ -860,6 +883,10 @@ export default function CustomersPage() {
                       ))}
                     </div>
                   </section>
+                ) : view.audience ? (
+                  <div className={styles.empty} role="status">
+                    Audience này chưa có CustomerInsight được gán trực tiếp.
+                  </div>
                 ) : null}
 
                 <section className={styles.panel}>
