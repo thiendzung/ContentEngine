@@ -183,8 +183,8 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | LS-01 | DONE / PR #176 MERGED | Lens Selection accepted with exact evidence/authority guards, semantic revalidation, CI/OCR/local proof. |
 | AU-02 | DONE / PR #177 MERGED | Agent Bridge accepted with exact plan/policy/approval binding, durable budgets/recovery, independent review and bounded auto-next. |
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
-| PM-01 | IN IMPLEMENTATION | Safe publish package + separate publish authorization + Outbox/WordPress handoff + measurement identity. |
-| LL-01 | PLANNED | Measurement → Signal → LearningCandidate → reviewed map update. |
+| PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
+| LL-01 | IN IMPLEMENTATION | LL-01A/B/C merged; LL-01D closes regression validation + reviewed compensating rollback. |
 | UX-01 | PLANNED | Control Center + Living Map dashboard + Needs Me + Daily Digest. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
@@ -408,10 +408,36 @@ Remaining milestone checklists are canonical in spec 21 and become exact tasks o
 - [x] Mutating application refreshes canonical Customer Living Map before/after mutation and records exact snapshot/change report.
 - [x] Living Map now emits Need evidence change events instead of silently changing Need signal refs.
 - [x] Code migration `20260922_0041` adds immutable review/application receipts and DB identity guards.
-- [ ] Focused LL-01C tests green.
-- [ ] Full CI green on exact LL-01C PR head.
+- [x] Focused LL-01C tests green — final disposable focused regression 80 passed / 0 failed.
+- [x] Full CI green on exact LL-01C head `10efce05c61e8d5c875cde71cd13b5a14e5eb07e` — backend 1021 passed / 12 warnings.
+- [x] MG exact-head review.
+- [x] Exact-ref OpenCodeReview remediation R2 — 9/9 reviewed, 0 Critical/High/Medium/Low/Info.
+- [x] Agent Local disposable 0040↔0041 + focused/full + true multi-session concurrency proof PASS.
+- [x] Founder merge — PR #188 merged as main `4ef1f0314d89746f3fe67b88eb7434ae67f552e5`.
+- [x] Operational migration remained separately unauthorized.
+
+
+### LL-01D immediate checklist
+
+- [x] Start from exact merged LL-01C main `4ef1f0314d89746f3fe67b88eb7434ae67f552e5`.
+- [x] Add immutable versioned LearningValidation bound to one exact LearningApplication.
+- [x] Revalidate later factual Signals through LL-01A materialization authority.
+- [x] Reuse canonical duplicate ancestry / independence semantics; same experiment cannot inflate independent evidence.
+- [x] Add exact baseline-vs-candidate normalized metric comparisons without interpreting free-text minimum evidence.
+- [x] Keep metric delta descriptive only; causal claim remains forbidden.
+- [x] Separate human LearningResolution from resolution application receipt.
+- [x] PROMOTE/ROLLBACK/REJECT require explicit human reviewer, reason and explicit target status.
+- [x] Need reviewed transition writes NeedHypothesisReview and increments Need version explicitly.
+- [x] CustomerInsight reviewed transition reuses canonical review_customer_insight().
+- [x] Rollback is compensating state; never delete Signal/evidence/candidate/application/map history.
+- [x] KEEP / REQUEST_MORE_EVIDENCE create no fake Customer Map change.
+- [x] Reviewed Customer Truth transitions refresh only the canonical Customer Living Map.
+- [x] Code migration `20260923_0042` adds validation/resolution/application receipts and immutability/lineage guards.
+- [x] Add focused LL-01D regression tests for validation, independence, metric compatibility, promotion, rollback, stale target, no-op and immutability.
+- [ ] First CI green on implementation head.
+- [ ] Self-review + remediation until exact-head CI green.
 - [ ] MG exact-head review.
 - [ ] Exact-ref OpenCodeReview.
-- [ ] Agent Local disposable 0040↔0041 + focused/full/concurrency proof.
-- [ ] Founder merge.
+- [ ] Agent Local disposable 0041↔0042 + focused/full/concurrency proof.
+- [ ] Founder merge PR #190.
 - [ ] Operational migration remains separately unauthorized.

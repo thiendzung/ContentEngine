@@ -235,6 +235,220 @@ class LearningApplication(TimestampMixin, Base):
     )
 
 
+class LearningValidation(TimestampMixin, Base):
+    """Immutable post-application validation/regression evidence snapshot."""
+
+    __tablename__ = "learning_validations"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id"), nullable=False
+    )
+    learning_application_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_applications.id"), nullable=False
+    )
+    learning_candidate_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_candidates.id"), nullable=False
+    )
+    candidate_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    validation_fingerprint: Mapped[str] = mapped_column(
+        String(64), nullable=False
+    )
+    validation_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    resulting_target_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    target_snapshot_json: Mapped[dict[str, object]] = mapped_column(
+        JSON, nullable=False
+    )
+    baseline_signal_refs_json: Mapped[list[object]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    validation_signal_refs_json: Mapped[list[object]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    independent_evidence_groups_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    metric_comparisons_json: Mapped[list[object]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    frozen_scope_json: Mapped[dict[str, object]] = mapped_column(
+        JSON, nullable=False
+    )
+    alternative_explanations_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    missing_evidence_json: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    evaluated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "candidate_version > 0 and version > 0",
+            name="ck_learning_validations_versions",
+        ),
+        CheckConstraint(
+            "validation_fingerprint ~ '^[0-9a-f]{64}$'",
+            name="ck_learning_validations_fingerprint",
+        ),
+        CheckConstraint(
+            "validation_status in "
+            "('NEEDS_MORE_EVIDENCE','INCONCLUSIVE','VALIDATED','REGRESSED','CONTESTED')",
+            name="ck_learning_validations_status",
+        ),
+        CheckConstraint(
+            "target_type in "
+            "('customer_insight','need_hypothesis','new_customer_insight','no_map_change')",
+            name="ck_learning_validations_target_type",
+        ),
+        UniqueConstraint(
+            "learning_application_id",
+            "version",
+            name="uq_learning_validation_application_version",
+        ),
+        UniqueConstraint(
+            "learning_application_id",
+            "validation_fingerprint",
+            name="uq_learning_validation_application_fingerprint",
+        ),
+        Index(
+            "ix_learning_validations_project_time",
+            "project_id",
+            "evaluated_at",
+        ),
+    )
+
+
+class LearningResolution(TimestampMixin, Base):
+    """Immutable human resolution for one exact LearningValidation."""
+
+    __tablename__ = "learning_resolutions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id"), nullable=False
+    )
+    learning_validation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_validations.id"), nullable=False
+    )
+    learning_application_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_applications.id"), nullable=False
+    )
+    validation_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_status: Mapped[str | None] = mapped_column(String(32))
+    reviewed_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    validation_snapshot_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False
+    )
+    target_snapshot_json: Mapped[dict[str, object]] = mapped_column(
+        JSON, nullable=False
+    )
+    reviewed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "validation_version > 0",
+            name="ck_learning_resolutions_version",
+        ),
+        CheckConstraint(
+            "decision in "
+            "('PROMOTE','KEEP','ROLLBACK','REJECT','REQUEST_MORE_EVIDENCE','ARCHIVE_CANDIDATE')",
+            name="ck_learning_resolutions_decision",
+        ),
+        CheckConstraint(
+            "validation_snapshot_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_learning_resolutions_snapshot_hash",
+        ),
+        UniqueConstraint(
+            "learning_validation_id",
+            name="uq_learning_resolution_validation",
+        ),
+        Index(
+            "ix_learning_resolutions_project_time",
+            "project_id",
+            "reviewed_at",
+        ),
+    )
+
+
+class LearningResolutionApplication(TimestampMixin, Base):
+    """Immutable receipt for one reviewed LL-01D resolution application."""
+
+    __tablename__ = "learning_resolution_applications"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=new_id)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id"), nullable=False
+    )
+    learning_resolution_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_resolutions.id"), nullable=False
+    )
+    learning_validation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_validations.id"), nullable=False
+    )
+    learning_application_id: Mapped[UUID] = mapped_column(
+        ForeignKey("learning_applications.id"), nullable=False
+    )
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    resulting_target_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    resulting_status: Mapped[str | None] = mapped_column(String(32))
+    applied_action: Mapped[str] = mapped_column(String(32), nullable=False)
+    before_target_snapshot_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True)
+    )
+    after_target_snapshot_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True)
+    )
+    before_state_hash: Mapped[str | None] = mapped_column(String(64))
+    after_state_hash: Mapped[str | None] = mapped_column(String(64))
+    customer_map_snapshot_artifact_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("artifacts.id")
+    )
+    change_report_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True)
+    )
+    applied_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "decision in "
+            "('PROMOTE','KEEP','ROLLBACK','REJECT','REQUEST_MORE_EVIDENCE','ARCHIVE_CANDIDATE')",
+            name="ck_learning_resolution_applications_decision",
+        ),
+        CheckConstraint(
+            "target_type in "
+            "('customer_insight','need_hypothesis','new_customer_insight','no_map_change')",
+            name="ck_learning_resolution_applications_target_type",
+        ),
+        CheckConstraint(
+            "applied_action in "
+            "('review_need','review_insight','archive_candidate','no_map_change')",
+            name="ck_learning_resolution_applications_action",
+        ),
+        UniqueConstraint(
+            "learning_resolution_id",
+            name="uq_learning_resolution_application_resolution",
+        ),
+        Index(
+            "ix_learning_resolution_applications_project_time",
+            "project_id",
+            "applied_at",
+        ),
+    )
+
+
 class LearningCandidateAssessment(Base):
     """Immutable assessment evidence bound to one candidate version."""
 
@@ -321,4 +535,7 @@ __all__ = [
     "LearningCandidateObservation",
     "LearningCandidateReview",
     "LearningCandidateSignal",
+    "LearningResolution",
+    "LearningResolutionApplication",
+    "LearningValidation",
 ]
