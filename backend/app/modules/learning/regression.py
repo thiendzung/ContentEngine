@@ -190,14 +190,14 @@ async def _target_snapshot(
         raise LearningRegressionError("learning_validation_target_missing")
 
     if application.target_type == "need_hypothesis":
-        stmt = (
+        need_stmt = (
             select(NeedHypothesis)
             .where(NeedHypothesis.id == application.resulting_target_id)
             .execution_options(populate_existing=True)
         )
         if lock:
-            stmt = stmt.with_for_update()
-        need = await session.scalar(stmt)
+            need_stmt = need_stmt.with_for_update()
+        need = await session.scalar(need_stmt)
         if need is None or need.project_id != application.project_id:
             raise LearningRegressionError("learning_validation_need_target_stale")
         return {
@@ -215,14 +215,14 @@ async def _target_snapshot(
         }
 
     if application.target_type in {"customer_insight", "new_customer_insight"}:
-        stmt = (
+        insight_stmt = (
             select(CustomerInsight)
             .where(CustomerInsight.id == application.resulting_target_id)
             .execution_options(populate_existing=True)
         )
         if lock:
-            stmt = stmt.with_for_update()
-        insight = await session.scalar(stmt)
+            insight_stmt = insight_stmt.with_for_update()
+        insight = await session.scalar(insight_stmt)
         if insight is None or insight.project_id != application.project_id:
             raise LearningRegressionError("learning_validation_insight_target_stale")
         latest_version = await session.scalar(
