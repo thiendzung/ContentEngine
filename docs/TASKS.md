@@ -185,7 +185,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | QA-01 | DONE / PR #178 MERGED | Reader Value hard gate + separate SEO/AI readiness accepted with exact-head CI/OCR/local proof. |
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
-| UX-01 | IN IMPLEMENTATION / UX-01A NEXT | Build exception-driven Control Center/Living Map UI in bounded slices; backend remains source of truth. |
+| UX-01 | IN IMPLEMENTATION / UX-01B ACTIVE | UX-01A merged; Customers + Content Map UI is the active bounded slice. Backend remains source of truth. |
 | E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
 
 ### CT-01 immediate checklist
@@ -459,10 +459,10 @@ Do not redesign the whole product in one PR. The UI must consume canonical backe
 - [x] Read paths create no ModelCall, ToolCall, research job, approval, publication or Customer Truth mutation.
 - [x] Add read-only `GET /control-center/summary` and `GET /control-center/needs-me` plus focused tests.
 - [x] No new migration; UX-01A remains a derived projection over canonical durable state.
-- [ ] Exact-head CI green after self-review.
-- [ ] Exact-ref OpenCodeReview + MG triage.
-- [ ] Agent Local bounded exact-head proof.
-- [ ] Founder merge PR #193 / close #192.
+- [x] Exact-head CI #1700 green after self-review.
+- [x] Exact-ref OpenCodeReview v1.12.9 + MG triage — 10/10 reviewed, zero findings.
+- [x] Agent Local bounded exact-head proof — `PASS_UX01A_EXACT_REF_LOCAL_VERIFICATION`.
+- [x] Founder merge PR #193 / close #192 — main `98021ed2fc447ddfe40a1eb91b99381166844120`.
 
 Exit: the backend can answer “what is running, blocked, and what genuinely needs Founder action?” without the frontend reconstructing workflow truth.
 
