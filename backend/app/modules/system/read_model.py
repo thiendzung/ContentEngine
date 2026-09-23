@@ -195,8 +195,12 @@ async def build_system_overview(
 
     model_groups: dict[tuple[str, str, str], ModelUsageGroup] = {}
     for model_call in model_rows:
-        key = (model_call.provider, model_call.model, model_call.status)
-        group = model_groups.get(key)
+        model_group_key = (
+            model_call.provider,
+            model_call.model,
+            model_call.status,
+        )
+        group = model_groups.get(model_group_key)
         if group is None:
             group = ModelUsageGroup(
                 provider=model_call.provider,
@@ -207,7 +211,7 @@ async def build_system_overview(
                 output_tokens=0,
                 cost=Decimal("0"),
             )
-            model_groups[key] = group
+            model_groups[model_group_key] = group
         group.calls += 1
         group.input_tokens += model_call.input_tokens or 0
         group.output_tokens += model_call.output_tokens or 0
@@ -222,8 +226,8 @@ async def build_system_overview(
     ).scalars().all()
     tool_counts: dict[tuple[str, str], int] = {}
     for tool_call in tool_rows:
-        key = (tool_call.tool_key, tool_call.status)
-        tool_counts[key] = tool_counts.get(key, 0) + 1
+        tool_group_key = (tool_call.tool_key, tool_call.status)
+        tool_counts[tool_group_key] = tool_counts.get(tool_group_key, 0) + 1
 
     delegation_rows = (
         await session.execute(
@@ -234,8 +238,13 @@ async def build_system_overview(
     ).scalars().all()
     delegation_counts: dict[tuple[str, str], int] = {}
     for delegation in delegation_rows:
-        key = (f"{delegation.worker_kind}:{delegation.worker_key}", delegation.status)
-        delegation_counts[key] = delegation_counts.get(key, 0) + 1
+        delegation_group_key = (
+            f"{delegation.worker_kind}:{delegation.worker_key}",
+            delegation.status,
+        )
+        delegation_counts[delegation_group_key] = (
+            delegation_counts.get(delegation_group_key, 0) + 1
+        )
 
     route_rows = (
         await session.execute(
