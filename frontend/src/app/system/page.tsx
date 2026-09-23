@@ -155,7 +155,10 @@ export default function SystemPage() {
                     <h3>{check.key}</h3>
                     <span className={statusClass(check.status)}>{check.status}</span>
                   </div>
-                  <div className={styles.codeText}>{check.detail}</div>
+                  <details className={styles.disclosure}>
+                    <summary>Chi tiết kỹ thuật</summary>
+                    <div className={styles.codeText}>{check.detail}</div>
+                  </details>
                 </article>
               ))}
             </div>
