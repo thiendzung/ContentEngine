@@ -181,6 +181,8 @@ def _create_guards() -> None:
             candidate_metric performance_metrics%ROWTYPE;
             expected_delta numeric;
             expected_direction text;
+            new_support_groups integer;
+            new_contradict_groups integer;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_validation_update_forbidden';
@@ -284,6 +286,68 @@ def _create_guards() -> None:
             IF NEW.independent_evidence_groups_json::jsonb
                  IS DISTINCT FROM expected_groups THEN
                 RAISE EXCEPTION 'learning_validation_independence_mismatch';
+            END IF;
+
+            SELECT
+                count(DISTINCT validation_ref->>'independence_key')
+                    FILTER (
+                        WHERE validation_ref->>'relation' = 'supports'
+                          AND NOT (
+                              validation_ref->>'independence_key'
+                              = ANY(COALESCE(baseline_groups, ARRAY[]::text[]))
+                          )
+                    ),
+                count(DISTINCT validation_ref->>'independence_key')
+                    FILTER (
+                        WHERE validation_ref->>'relation' = 'contradicts'
+                          AND NOT (
+                              validation_ref->>'independence_key'
+                              = ANY(COALESCE(baseline_groups, ARRAY[]::text[]))
+                          )
+                    )
+            INTO new_support_groups, new_contradict_groups
+            FROM jsonb_array_elements(
+                NEW.validation_signal_refs_json::jsonb
+            ) AS validation_ref;
+
+            IF NEW.validation_status = 'VALIDATED'
+               AND (
+                   new_support_groups < 1
+                   OR new_contradict_groups > 0
+               ) THEN
+                RAISE EXCEPTION 'learning_validation_validated_evidence_invalid';
+            ELSIF NEW.validation_status = 'REGRESSED'
+               AND (
+                   new_contradict_groups < 1
+                   OR new_support_groups > 0
+               ) THEN
+                RAISE EXCEPTION 'learning_validation_regressed_evidence_invalid';
+            ELSIF NEW.validation_status = 'CONTESTED'
+               AND (
+                   new_support_groups < 1
+                   OR new_contradict_groups < 1
+               ) THEN
+                RAISE EXCEPTION 'learning_validation_contested_evidence_invalid';
+            ELSIF NEW.validation_status = 'NEEDS_MORE_EVIDENCE'
+               AND (
+                   new_support_groups > 0
+                   OR new_contradict_groups > 0
+                   OR jsonb_array_length(NEW.missing_evidence_json::jsonb) = 0
+               ) THEN
+                RAISE EXCEPTION 'learning_validation_more_evidence_status_invalid';
+            ELSIF NEW.validation_status = 'INCONCLUSIVE'
+               AND jsonb_array_length(NEW.missing_evidence_json::jsonb) = 0 THEN
+                RAISE EXCEPTION 'learning_validation_missing_evidence_required';
+            END IF;
+
+            IF jsonb_array_length(NEW.validation_signal_refs_json::jsonb)
+               IS DISTINCT FROM (
+                   SELECT count(DISTINCT validation_ref->>'signal_id')
+                   FROM jsonb_array_elements(
+                       NEW.validation_signal_refs_json::jsonb
+                   ) AS validation_ref
+               ) THEN
+                RAISE EXCEPTION 'learning_validation_signal_duplicate';
             END IF;
 
             FOR comparison IN
@@ -445,6 +509,16 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_resolution_human_fields_required';
             END IF;
 
+            IF NEW.decision IN ('PROMOTE','ROLLBACK','REJECT')
+               AND EXISTS (
+                   SELECT 1
+                   FROM learning_validations AS v
+                   WHERE v.id = NEW.learning_validation_id
+                     AND v.target_type = 'no_map_change'
+               ) THEN
+                RAISE EXCEPTION 'learning_resolution_no_map_mutation_invalid';
+            END IF;
+
             IF NEW.decision = 'PROMOTE' THEN
                 IF validation_status IS DISTINCT FROM 'VALIDATED'
                    OR NEW.target_status NOT IN ('TESTING','SUPPORTED') THEN
@@ -491,6 +565,7 @@ def _create_guards() -> None:
             map_project uuid;
             map_hash text;
             map_type text;
+            map_run_id uuid;
             candidate_id uuid;
             candidate_status text;
             resolution_target_snapshot jsonb;
@@ -586,8 +661,9 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_resolution_application_receipt_incomplete';
             END IF;
 
-            SELECT run.project_id, artifact.content_hash, artifact.artifact_type
-            INTO map_project, map_hash, map_type
+            SELECT run.project_id, artifact.content_hash,
+                   artifact.artifact_type, artifact.run_id
+            INTO map_project, map_hash, map_type, map_run_id
             FROM artifacts AS artifact
             JOIN content_runs AS run ON run.id = artifact.run_id
             WHERE artifact.id = NEW.customer_map_snapshot_artifact_id;
@@ -598,8 +674,19 @@ def _create_guards() -> None:
                OR NEW.change_report_json->>'current_snapshot_hash'
                     IS DISTINCT FROM NEW.after_state_hash
                OR NEW.change_report_json->>'previous_snapshot_hash'
-                    IS DISTINCT FROM NEW.before_state_hash THEN
+                    IS DISTINCT FROM NEW.before_state_hash
+               OR NOT EXISTS (
+                   SELECT 1
+                   FROM artifacts AS prior_artifact
+                   WHERE prior_artifact.run_id = map_run_id
+                     AND prior_artifact.artifact_type = 'customer_map_snapshot'
+                     AND prior_artifact.content_hash = NEW.before_state_hash
+               ) THEN
                 RAISE EXCEPTION 'learning_resolution_application_map_mismatch';
+            END IF;
+
+            IF length(btrim(NEW.applied_by)) = 0 THEN
+                RAISE EXCEPTION 'learning_resolution_application_actor_required';
             END IF;
 
             IF NEW.target_type = 'need_hypothesis' THEN
@@ -614,7 +701,10 @@ def _create_guards() -> None:
                    OR NOT EXISTS (
                        SELECT 1
                        FROM need_hypothesis_reviews AS nhr
+                       JOIN need_hypotheses AS nh
+                         ON nh.id = nhr.need_hypothesis_id
                        WHERE nhr.need_hypothesis_id = NEW.resulting_target_id
+                         AND nhr.version = nh.version - 1
                          AND nhr.status = resolution_status
                          AND nhr.reviewed_by = resolution_reviewer
                          AND nhr.reason = resolution_reason
@@ -633,10 +723,15 @@ def _create_guards() -> None:
                    OR NOT EXISTS (
                        SELECT 1
                        FROM customer_insight_reviews AS cir
+                       JOIN customer_insights AS ci
+                         ON ci.id = cir.customer_insight_id
                        WHERE cir.customer_insight_id = NEW.resulting_target_id
                          AND cir.status = resolution_status
                          AND cir.reviewed_by = resolution_reviewer
                          AND cir.reason = resolution_reason
+                         AND ci.reviewed_by = resolution_reviewer
+                         AND ci.review_reason = resolution_reason
+                         AND ci.reviewed_at = cir.reviewed_at
                    ) THEN
                     RAISE EXCEPTION 'learning_resolution_application_insight_review_missing';
                 END IF;
