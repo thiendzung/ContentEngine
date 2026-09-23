@@ -883,7 +883,7 @@ def _create_guards() -> None:
             validation_project uuid;
             validation_application uuid;
             validation_version integer;
-            validation_status text;
+            v_validation_status text;
             latest_version integer;
             expected_hash text;
             current_target jsonb;
@@ -897,13 +897,13 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_resolution_delete_forbidden';
             END IF;
 
-            SELECT project_id, learning_application_id, version,
-                   validation_status, target_type
+            SELECT lv.project_id, lv.learning_application_id, lv.version,
+                   lv.validation_status, lv.target_type
             INTO validation_project, validation_application,
-                 validation_version, validation_status,
+                 validation_version, v_validation_status,
                  validation_target_type
-            FROM learning_validations
-            WHERE id = NEW.learning_validation_id;
+            FROM learning_validations AS lv
+            WHERE lv.id = NEW.learning_validation_id;
 
             IF validation_project IS NULL
                OR NEW.project_id IS DISTINCT FROM validation_project
@@ -980,7 +980,7 @@ def _create_guards() -> None:
             END IF;
 
             IF NEW.decision = 'PROMOTE' THEN
-                IF validation_status IS DISTINCT FROM 'VALIDATED'
+                IF v_validation_status IS DISTINCT FROM 'VALIDATED'
                    OR NEW.target_status NOT IN ('TESTING','SUPPORTED') THEN
                     RAISE EXCEPTION 'learning_resolution_promote_invalid';
                 END IF;
@@ -1007,7 +1007,7 @@ def _create_guards() -> None:
                         'learning_resolution_insight_transition_invalid';
                 END IF;
             ELSIF NEW.decision IN ('ROLLBACK','REJECT') THEN
-                IF validation_status IS DISTINCT FROM 'REGRESSED'
+                IF v_validation_status IS DISTINCT FROM 'REGRESSED'
                    OR NEW.target_status NOT IN
                       ('REJECTED','INSUFFICIENT_EVIDENCE') THEN
                     RAISE EXCEPTION 'learning_resolution_rollback_invalid';
