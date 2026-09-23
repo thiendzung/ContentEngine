@@ -607,6 +607,19 @@ async def test_ll01d_regressed_new_insight_uses_compensating_review_not_delete(
         assert insight.status == "REJECTED"
         assert applied.application.applied_action == "review_insight"
         assert applied.application.before_state_hash != applied.application.after_state_hash
+        assert applied.change_report is not None
+        assert (
+            applied.change_report["previous_snapshot_hash"]
+            == applied.application.before_state_hash
+        )
+        assert (
+            applied.change_report["current_snapshot_hash"]
+            == applied.application.after_state_hash
+        )
+        assert (
+            applied.application.customer_map_snapshot_artifact_id
+            == applied.customer_map_snapshot_artifact_id
+        )
         assert (
             await session.scalar(
                 select(func.count()).select_from(CustomerInsightReview).where(
