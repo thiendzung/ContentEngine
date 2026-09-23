@@ -218,6 +218,11 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_validation_identity_mismatch';
             END IF;
 
+            PERFORM 1
+            FROM projects
+            WHERE id = NEW.project_id
+            FOR UPDATE;
+
             SELECT status, candidate_key
             INTO candidate_status, locked_candidate_key
             FROM learning_candidates
@@ -528,6 +533,33 @@ def _create_guards() -> None:
                 RAISE EXCEPTION 'learning_resolution_human_fields_required';
             END IF;
 
+            PERFORM 1
+            FROM projects
+            WHERE id = NEW.project_id
+            FOR UPDATE;
+
+            IF EXISTS (
+                SELECT 1
+                FROM learning_validations AS v
+                JOIN learning_applications AS la
+                  ON la.id = v.learning_application_id
+                JOIN learning_candidates AS lc
+                  ON lc.id = la.learning_candidate_id
+                WHERE v.id = NEW.learning_validation_id
+                  AND (
+                      lc.status <> 'OPEN'
+                      OR EXISTS (
+                          SELECT 1
+                          FROM learning_candidates AS newer
+                          WHERE newer.project_id = lc.project_id
+                            AND newer.candidate_key = lc.candidate_key
+                            AND newer.version > lc.version
+                      )
+                  )
+            ) THEN
+                RAISE EXCEPTION 'learning_resolution_candidate_stale';
+            END IF;
+
             IF NEW.decision IN ('PROMOTE','ROLLBACK','REJECT')
                AND EXISTS (
                    SELECT 1
@@ -597,6 +629,11 @@ def _create_guards() -> None:
             IF TG_OP = 'DELETE' THEN
                 RAISE EXCEPTION 'learning_resolution_application_delete_forbidden';
             END IF;
+
+            PERFORM 1
+            FROM projects
+            WHERE id = NEW.project_id
+            FOR UPDATE;
 
             SELECT project_id, learning_validation_id,
                    learning_application_id, decision, target_status,
