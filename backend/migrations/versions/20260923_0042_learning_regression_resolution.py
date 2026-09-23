@@ -295,7 +295,11 @@ def _create_guards() -> None:
                 END IF;
 
                 SELECT s.project_id, s.fingerprint,
-                       s.independence_group, s.provenance_json::jsonb,
+                       validate_customer_insight_signal_lineage(
+                           s.id,
+                           NEW.project_id
+                       ),
+                       s.provenance_json::jsonb,
                        ci.content_type
                 INTO signal_project, signal_fingerprint, signal_group,
                      signal_provenance, signal_content_type
@@ -393,12 +397,15 @@ def _create_guards() -> None:
                    OR actual_supporting_lenses
                         IS DISTINCT FROM expected_supporting_lenses
                    OR signal_group IS DISTINCT FROM (
-                       'experiment:'
+                       'group:experiment:'
                        || signal_provenance->'experiment'->>'id'
                    )
                    OR signal_provenance
                         ->'experiment'->>'independence_group'
-                        IS DISTINCT FROM signal_group THEN
+                        IS DISTINCT FROM (
+                            'experiment:'
+                            || signal_provenance->'experiment'->>'id'
+                        ) THEN
                     RAISE EXCEPTION
                         'learning_validation_baseline_signal_mismatch';
                 END IF;
@@ -416,7 +423,11 @@ def _create_guards() -> None:
                 END IF;
 
                 SELECT s.project_id, s.fingerprint,
-                       s.independence_group, s.provenance_json::jsonb,
+                       validate_customer_insight_signal_lineage(
+                           s.id,
+                           NEW.project_id
+                       ),
+                       s.provenance_json::jsonb,
                        ci.content_type
                 INTO signal_project, signal_fingerprint, signal_group,
                      signal_provenance, signal_content_type
@@ -514,18 +525,26 @@ def _create_guards() -> None:
                    OR actual_supporting_lenses
                         IS DISTINCT FROM expected_supporting_lenses
                    OR signal_group IS DISTINCT FROM (
-                       'experiment:'
+                       'group:experiment:'
                        || signal_provenance->'experiment'->>'id'
                    )
                    OR signal_provenance
                         ->'experiment'->>'independence_group'
-                        IS DISTINCT FROM signal_group THEN
+                        IS DISTINCT FROM (
+                            'experiment:'
+                            || signal_provenance->'experiment'->>'id'
+                        ) THEN
                     RAISE EXCEPTION
                         'learning_validation_signal_scope_mismatch';
                 END IF;
             END LOOP;
 
-            SELECT array_agg(DISTINCT s.independence_group)
+            SELECT array_agg(
+                       DISTINCT validate_customer_insight_signal_lineage(
+                           s.id,
+                           NEW.project_id
+                       )
+                   )
             INTO baseline_groups
             FROM jsonb_array_elements(
                 NEW.baseline_signal_refs_json::jsonb
