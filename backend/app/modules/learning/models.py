@@ -252,7 +252,9 @@ class LearningValidation(TimestampMixin, Base):
     )
     candidate_version: Mapped[int] = mapped_column(Integer, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
-    validation_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    validation_fingerprint: Mapped[str] = mapped_column(
+        String(64), nullable=False
+    )
     validation_status: Mapped[str] = mapped_column(String(32), nullable=False)
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
     resulting_target_id: Mapped[UUID | None] = mapped_column(nullable=True)
@@ -290,97 +292,7 @@ class LearningValidation(TimestampMixin, Base):
             name="ck_learning_validations_versions",
         ),
         CheckConstraint(
-            "validation_fingerprint ~ '^[0-9a-f]{64}
-    """Immutable assessment evidence bound to one candidate version."""
-
-    __tablename__ = "learning_candidate_assessments"
-
-    learning_candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learning_candidates.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    assessment_artifact_id: Mapped[UUID] = mapped_column(
-        ForeignKey("artifacts.id"),
-        primary_key=True,
-    )
-
-    __table_args__ = (
-        Index(
-            "ix_learning_candidate_assessments_artifact",
-            "assessment_artifact_id",
-            "learning_candidate_id",
-        ),
-    )
-
-
-class LearningCandidateSignal(Base):
-    """Immutable factual Signal evidence for one candidate version."""
-
-    __tablename__ = "learning_candidate_signals"
-
-    learning_candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learning_candidates.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    signal_id: Mapped[UUID] = mapped_column(
-        ForeignKey("signals.id"),
-        primary_key=True,
-    )
-    relation: Mapped[str] = mapped_column(String(16), nullable=False)
-
-    __table_args__ = (
-        CheckConstraint(
-            "relation in ('supports','contradicts','context')",
-            name="ck_learning_candidate_signals_relation",
-        ),
-        Index(
-            "ix_learning_candidate_signals_signal",
-            "signal_id",
-            "relation",
-        ),
-    )
-
-
-class LearningCandidateObservation(Base):
-    """Immutable measurement-observation evidence for one candidate version."""
-
-    __tablename__ = "learning_candidate_observations"
-
-    learning_candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learning_candidates.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    observation_id: Mapped[UUID] = mapped_column(
-        ForeignKey("content_performance_observations.id"),
-        primary_key=True,
-    )
-    relation: Mapped[str] = mapped_column(String(16), nullable=False)
-
-    __table_args__ = (
-        CheckConstraint(
-            "relation in ('supports','contradicts','context')",
-            name="ck_learning_candidate_observations_relation",
-        ),
-        Index(
-            "ix_learning_candidate_observations_observation",
-            "observation_id",
-            "relation",
-        ),
-    )
-
-
-__all__ = [
-    "LearningApplication",
-    "LearningCandidate",
-    "LearningCandidateAssessment",
-    "LearningCandidateObservation",
-    "LearningCandidateReview",
-    "LearningCandidateSignal",
-    "LearningResolution",
-    "LearningResolutionApplication",
-    "LearningValidation",
-]
-",
+            "validation_fingerprint ~ '^[0-9a-f]{64}$'",
             name="ck_learning_validations_fingerprint",
         ),
         CheckConstraint(
@@ -452,94 +364,7 @@ class LearningResolution(TimestampMixin, Base):
             name="ck_learning_resolutions_decision",
         ),
         CheckConstraint(
-            "validation_snapshot_hash ~ '^[0-9a-f]{64}
-    """Immutable assessment evidence bound to one candidate version."""
-
-    __tablename__ = "learning_candidate_assessments"
-
-    learning_candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learning_candidates.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    assessment_artifact_id: Mapped[UUID] = mapped_column(
-        ForeignKey("artifacts.id"),
-        primary_key=True,
-    )
-
-    __table_args__ = (
-        Index(
-            "ix_learning_candidate_assessments_artifact",
-            "assessment_artifact_id",
-            "learning_candidate_id",
-        ),
-    )
-
-
-class LearningCandidateSignal(Base):
-    """Immutable factual Signal evidence for one candidate version."""
-
-    __tablename__ = "learning_candidate_signals"
-
-    learning_candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learning_candidates.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    signal_id: Mapped[UUID] = mapped_column(
-        ForeignKey("signals.id"),
-        primary_key=True,
-    )
-    relation: Mapped[str] = mapped_column(String(16), nullable=False)
-
-    __table_args__ = (
-        CheckConstraint(
-            "relation in ('supports','contradicts','context')",
-            name="ck_learning_candidate_signals_relation",
-        ),
-        Index(
-            "ix_learning_candidate_signals_signal",
-            "signal_id",
-            "relation",
-        ),
-    )
-
-
-class LearningCandidateObservation(Base):
-    """Immutable measurement-observation evidence for one candidate version."""
-
-    __tablename__ = "learning_candidate_observations"
-
-    learning_candidate_id: Mapped[UUID] = mapped_column(
-        ForeignKey("learning_candidates.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    observation_id: Mapped[UUID] = mapped_column(
-        ForeignKey("content_performance_observations.id"),
-        primary_key=True,
-    )
-    relation: Mapped[str] = mapped_column(String(16), nullable=False)
-
-    __table_args__ = (
-        CheckConstraint(
-            "relation in ('supports','contradicts','context')",
-            name="ck_learning_candidate_observations_relation",
-        ),
-        Index(
-            "ix_learning_candidate_observations_observation",
-            "observation_id",
-            "relation",
-        ),
-    )
-
-
-__all__ = [
-    "LearningApplication",
-    "LearningCandidate",
-    "LearningCandidateAssessment",
-    "LearningCandidateObservation",
-    "LearningCandidateReview",
-    "LearningCandidateSignal",
-]
-",
+            "validation_snapshot_hash ~ '^[0-9a-f]{64}$'",
             name="ck_learning_resolutions_snapshot_hash",
         ),
         UniqueConstraint(
@@ -710,4 +535,7 @@ __all__ = [
     "LearningCandidateObservation",
     "LearningCandidateReview",
     "LearningCandidateSignal",
+    "LearningResolution",
+    "LearningResolutionApplication",
+    "LearningValidation",
 ]
