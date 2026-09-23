@@ -24,6 +24,7 @@ from app.modules.content_engine.models import (
 )
 from app.modules.customer_intelligence.insights import (
     CustomerInsightError,
+    link_customer_insight_signal,
     review_customer_insight,
     signal_independence_key,
 )
@@ -32,6 +33,10 @@ from app.modules.customer_intelligence.living_map import (
 )
 from app.modules.customer_intelligence.models import CustomerInsight
 from app.modules.harness.models import Artifact
+from app.modules.learning.application import (
+    LearningApplicationError,
+    _ensure_need_signal_link,
+)
 from app.modules.learning.models import (
     LearningApplication,
     LearningCandidate,
@@ -897,6 +902,31 @@ async def review_learning_validation(
     return LearningResolutionResult(resolution=resolution, replayed=False)
 
 
+def _validation_signal_relations(
+    validation: LearningValidation,
+) -> dict[UUID, EvidenceRelation]:
+    result: dict[UUID, EvidenceRelation] = {}
+    for raw in validation.validation_signal_refs_json:
+        row = _dict(raw, "learning_resolution_validation_signal_invalid")
+        signal_id = _uuid(
+            row.get("signal_id"),
+            "learning_resolution_validation_signal_invalid",
+        )
+        relation = row.get("relation")
+        if relation not in {"supports", "contradicts", "context"}:
+            raise LearningRegressionError(
+                "learning_resolution_validation_signal_invalid"
+            )
+        typed_relation = cast(EvidenceRelation, relation)
+        previous = result.get(signal_id)
+        if previous is not None and previous != typed_relation:
+            raise LearningRegressionError(
+                "learning_resolution_validation_signal_conflict"
+            )
+        result[signal_id] = typed_relation
+    return result
+
+
 async def _need_evidence_refs(
     session: AsyncSession,
     *,
@@ -1180,9 +1210,34 @@ async def apply_learning_resolution(
     )
     before_target = current_target
 
+    validation_relations = _validation_signal_relations(validation)
+
     if application.target_type == "need_hypothesis":
         if application.resulting_target_id is None:
             raise LearningRegressionError("learning_resolution_need_target_missing")
+        need_target = await session.get(
+            NeedHypothesis,
+            application.resulting_target_id,
+        )
+        if (
+            need_target is None
+            or need_target.project_id != application.project_id
+        ):
+            raise LearningRegressionError("learning_resolution_need_not_found")
+        for signal_id, relation in validation_relations.items():
+            if relation not in {"supports", "contradicts"}:
+                continue
+            try:
+                await _ensure_need_signal_link(
+                    session,
+                    need=need_target,
+                    signal_id=signal_id,
+                    relation=relation,
+                )
+            except LearningApplicationError as exc:
+                raise LearningRegressionError(
+                    f"learning_resolution_{exc.code}"
+                ) from exc
         need = await _review_need_hypothesis(
             session,
             need_id=application.resulting_target_id,
@@ -1196,6 +1251,13 @@ async def apply_learning_resolution(
         if application.resulting_target_id is None:
             raise LearningRegressionError("learning_resolution_insight_target_missing")
         try:
+            for signal_id, relation in validation_relations.items():
+                await link_customer_insight_signal(
+                    session,
+                    customer_insight_id=application.resulting_target_id,
+                    signal_id=signal_id,
+                    relation=relation,
+                )
             insight = await review_customer_insight(
                 session,
                 customer_insight_id=application.resulting_target_id,
