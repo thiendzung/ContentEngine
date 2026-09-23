@@ -172,6 +172,15 @@ def _create_guards() -> None:
             expected_version integer;
             signal_ref jsonb;
             signal_project uuid;
+            signal_fingerprint text;
+            signal_group text;
+            expected_groups jsonb;
+            baseline_groups text[];
+            comparison jsonb;
+            baseline_metric performance_metrics%ROWTYPE;
+            candidate_metric performance_metrics%ROWTYPE;
+            expected_delta numeric;
+            expected_direction text;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_validation_update_forbidden';
@@ -229,13 +238,136 @@ def _create_guards() -> None:
                     RAISE EXCEPTION 'learning_validation_signal_relation_invalid';
                 END IF;
 
-                SELECT project_id INTO signal_project
+                SELECT project_id, fingerprint, independence_group
+                INTO signal_project, signal_fingerprint, signal_group
                 FROM signals
-                WHERE id = (signal_ref->>'signal_id')::uuid;
+                WHERE id = (signal_ref->>'signal_id')::uuid
+                  AND source_kind = 'MOTGU'
+                  AND scope = 'motgu_site';
 
                 IF signal_project IS NULL
-                   OR signal_project IS DISTINCT FROM NEW.project_id THEN
+                   OR signal_project IS DISTINCT FROM NEW.project_id
+                   OR signal_ref->>'fingerprint'
+                        IS DISTINCT FROM signal_fingerprint
+                   OR signal_ref->>'independence_key'
+                        IS DISTINCT FROM signal_group THEN
                     RAISE EXCEPTION 'learning_validation_signal_project_mismatch';
+                END IF;
+            END LOOP;
+
+            SELECT array_agg(DISTINCT s.independence_group)
+            INTO baseline_groups
+            FROM jsonb_array_elements(
+                NEW.baseline_signal_refs_json::jsonb
+            ) AS baseline_ref
+            JOIN signals AS s
+              ON s.id = (baseline_ref->>'signal_id')::uuid;
+
+            SELECT COALESCE(
+                jsonb_agg(group_key ORDER BY group_key),
+                '[]'::jsonb
+            )
+            INTO expected_groups
+            FROM (
+                SELECT DISTINCT
+                    validation_ref->>'independence_key' AS group_key
+                FROM jsonb_array_elements(
+                    NEW.validation_signal_refs_json::jsonb
+                ) AS validation_ref
+                WHERE validation_ref->>'relation' IN ('supports','contradicts')
+                  AND NOT (
+                      validation_ref->>'independence_key'
+                      = ANY(COALESCE(baseline_groups, ARRAY[]::text[]))
+                  )
+            ) AS groups;
+
+            IF NEW.independent_evidence_groups_json::jsonb
+                 IS DISTINCT FROM expected_groups THEN
+                RAISE EXCEPTION 'learning_validation_independence_mismatch';
+            END IF;
+
+            FOR comparison IN
+                SELECT value
+                FROM jsonb_array_elements(
+                    NEW.metric_comparisons_json::jsonb
+                )
+            LOOP
+                SELECT * INTO baseline_metric
+                FROM performance_metrics
+                WHERE id = (comparison->>'baseline_metric_id')::uuid;
+
+                SELECT * INTO candidate_metric
+                FROM performance_metrics
+                WHERE id = (comparison->>'candidate_metric_id')::uuid;
+
+                IF baseline_metric.id IS NULL
+                   OR candidate_metric.id IS NULL
+                   OR baseline_metric.metric_name
+                        IS DISTINCT FROM candidate_metric.metric_name
+                   OR baseline_metric.provider
+                        IS DISTINCT FROM candidate_metric.provider
+                   OR baseline_metric.dimensions_json::jsonb
+                        IS DISTINCT FROM candidate_metric.dimensions_json::jsonb
+                   OR comparison->>'metric_name'
+                        IS DISTINCT FROM baseline_metric.metric_name
+                   OR comparison->>'provider'
+                        IS DISTINCT FROM baseline_metric.provider
+                   OR comparison->>'baseline_value'
+                        IS DISTINCT FROM trim(
+                            trailing '.' FROM trim(
+                                trailing '0' FROM baseline_metric.metric_value::text
+                            )
+                        )
+                   OR comparison->>'candidate_value'
+                        IS DISTINCT FROM trim(
+                            trailing '.' FROM trim(
+                                trailing '0' FROM candidate_metric.metric_value::text
+                            )
+                        ) THEN
+                    RAISE EXCEPTION 'learning_validation_metric_mismatch';
+                END IF;
+
+                expected_delta :=
+                    candidate_metric.metric_value - baseline_metric.metric_value;
+                expected_direction := CASE
+                    WHEN expected_delta > 0 THEN 'INCREASE'
+                    WHEN expected_delta < 0 THEN 'DECREASE'
+                    ELSE 'UNCHANGED'
+                END;
+
+                IF (comparison->>'delta')::numeric
+                        IS DISTINCT FROM expected_delta
+                   OR comparison->>'direction'
+                        IS DISTINCT FROM expected_direction
+                   OR comparison->>'causal_claim_allowed'
+                        IS DISTINCT FROM 'false'
+                   OR NOT EXISTS (
+                       SELECT 1
+                       FROM jsonb_array_elements(
+                           NEW.baseline_signal_refs_json::jsonb
+                       ) AS baseline_ref
+                       JOIN signals AS s
+                         ON s.id = (baseline_ref->>'signal_id')::uuid
+                       CROSS JOIN LATERAL jsonb_array_elements(
+                           s.provenance_json::jsonb->'metrics'
+                       ) AS metric_ref
+                       WHERE metric_ref->>'id'
+                             = comparison->>'baseline_metric_id'
+                   )
+                   OR NOT EXISTS (
+                       SELECT 1
+                       FROM jsonb_array_elements(
+                           NEW.validation_signal_refs_json::jsonb
+                       ) AS validation_ref
+                       JOIN signals AS s
+                         ON s.id = (validation_ref->>'signal_id')::uuid
+                       CROSS JOIN LATERAL jsonb_array_elements(
+                           s.provenance_json::jsonb->'metrics'
+                       ) AS metric_ref
+                       WHERE metric_ref->>'id'
+                             = comparison->>'candidate_metric_id'
+                   ) THEN
+                    RAISE EXCEPTION 'learning_validation_metric_mismatch';
                 END IF;
             END LOOP;
 
