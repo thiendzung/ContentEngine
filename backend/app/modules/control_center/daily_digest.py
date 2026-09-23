@@ -9,8 +9,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import InstrumentedAttribute
-from sqlalchemy.sql.elements import ColumnElement
 
 from app.modules.content_engine.content_coverage import (
     ContentCoverageError,
@@ -101,14 +99,6 @@ def _window(
     return zone, local_start.astimezone(UTC), local_end.astimezone(UTC)
 
 
-def _in_window(
-    column: InstrumentedAttribute[datetime],
-    start: datetime,
-    end: datetime,
-) -> tuple[ColumnElement[bool], ColumnElement[bool]]:
-    return column >= start, column < end
-
-
 async def build_daily_digest(
     session: AsyncSession,
     *,
@@ -134,7 +124,8 @@ async def build_daily_digest(
                 select(Signal)
                 .where(
                     Signal.project_id == project.id,
-                    *_in_window(Signal.captured_at, window_start, window_end),
+                    Signal.captured_at >= window_start,
+                    Signal.captured_at < window_end,
                 )
                 .order_by(Signal.captured_at, Signal.id)
             )
@@ -170,11 +161,8 @@ async def build_daily_digest(
             )
             .where(
                 NeedHypothesis.project_id == project.id,
-                *_in_window(
-                    NeedHypothesisReview.reviewed_at,
-                    window_start,
-                    window_end,
-                ),
+                NeedHypothesisReview.reviewed_at >= window_start,
+                    NeedHypothesisReview.reviewed_at < window_end,
             )
             .order_by(NeedHypothesisReview.reviewed_at, NeedHypothesisReview.id)
         )
@@ -203,11 +191,8 @@ async def build_daily_digest(
             )
             .where(
                 CustomerInsight.project_id == project.id,
-                *_in_window(
-                    CustomerInsightReview.reviewed_at,
-                    window_start,
-                    window_end,
-                ),
+                CustomerInsightReview.reviewed_at >= window_start,
+                    CustomerInsightReview.reviewed_at < window_end,
             )
             .order_by(
                 CustomerInsightReview.reviewed_at,
@@ -235,11 +220,8 @@ async def build_daily_digest(
                 select(ContentOpportunity)
                 .where(
                     ContentOpportunity.project_id == project.id,
-                    *_in_window(
-                        ContentOpportunity.created_at,
-                        window_start,
-                        window_end,
-                    ),
+                    ContentOpportunity.created_at >= window_start,
+                    ContentOpportunity.created_at < window_end,
                 )
                 .order_by(ContentOpportunity.created_at, ContentOpportunity.id)
             )
@@ -268,11 +250,8 @@ async def build_daily_digest(
             )
             .where(
                 ContentOpportunity.project_id == project.id,
-                *_in_window(
-                    HumanSelection.selected_at,
-                    window_start,
-                    window_end,
-                ),
+                HumanSelection.selected_at >= window_start,
+                    HumanSelection.selected_at < window_end,
             )
             .order_by(HumanSelection.selected_at, HumanSelection.id)
         )
@@ -300,7 +279,8 @@ async def build_daily_digest(
                 select(ContentItem)
                 .where(
                     ContentItem.project_id == project.id,
-                    *_in_window(ContentItem.created_at, window_start, window_end),
+                    ContentItem.created_at >= window_start,
+                    ContentItem.created_at < window_end,
                 )
                 .order_by(ContentItem.created_at, ContentItem.id)
             )
@@ -326,11 +306,8 @@ async def build_daily_digest(
             .join(ContentItem, ContentItem.id == ContentVersion.content_item_id)
             .where(
                 ContentItem.project_id == project.id,
-                *_in_window(
-                    ContentVersion.created_at,
-                    window_start,
-                    window_end,
-                ),
+                ContentVersion.created_at >= window_start,
+                    ContentVersion.created_at < window_end,
             )
             .order_by(ContentVersion.created_at, ContentVersion.id)
         )
@@ -358,7 +335,8 @@ async def build_daily_digest(
                 select(ContentRun)
                 .where(
                     ContentRun.project_id == project.id,
-                    *_in_window(ContentRun.updated_at, window_start, window_end),
+                    ContentRun.updated_at >= window_start,
+                    ContentRun.updated_at < window_end,
                 )
                 .order_by(ContentRun.updated_at, ContentRun.id)
             )
@@ -397,7 +375,8 @@ async def build_daily_digest(
             )
             .where(
                 PublishedContent.project_id == project.id,
-                *_in_window(PublishEvent.created_at, window_start, window_end),
+                PublishEvent.created_at >= window_start,
+                    PublishEvent.created_at < window_end,
             )
             .order_by(PublishEvent.created_at, PublishEvent.id)
         )
@@ -428,11 +407,8 @@ async def build_daily_digest(
             )
             .where(
                 PublishedContent.project_id == project.id,
-                *_in_window(
-                    PerformanceSnapshot.imported_at,
-                    window_start,
-                    window_end,
-                ),
+                PerformanceSnapshot.imported_at >= window_start,
+                    PerformanceSnapshot.imported_at < window_end,
             )
             .order_by(PerformanceSnapshot.imported_at, PerformanceSnapshot.id)
         )
@@ -468,11 +444,8 @@ async def build_daily_digest(
             )
             .where(
                 PublishedContent.project_id == project.id,
-                *_in_window(
-                    ContentPerformanceObservation.observed_at,
-                    window_start,
-                    window_end,
-                ),
+                ContentPerformanceObservation.observed_at >= window_start,
+                    ContentPerformanceObservation.observed_at < window_end,
             )
             .order_by(
                 ContentPerformanceObservation.observed_at,
@@ -503,11 +476,8 @@ async def build_daily_digest(
                 select(LearningCandidate)
                 .where(
                     LearningCandidate.project_id == project.id,
-                    *_in_window(
-                        LearningCandidate.created_at,
-                        window_start,
-                        window_end,
-                    ),
+                    LearningCandidate.created_at >= window_start,
+                    LearningCandidate.created_at < window_end,
                 )
                 .order_by(LearningCandidate.created_at, LearningCandidate.id)
             )
@@ -544,11 +514,8 @@ async def build_daily_digest(
             )
             .where(
                 LearningCandidate.project_id == project.id,
-                *_in_window(
-                    LearningCandidateReview.reviewed_at,
-                    window_start,
-                    window_end,
-                ),
+                LearningCandidateReview.reviewed_at >= window_start,
+                    LearningCandidateReview.reviewed_at < window_end,
             )
             .order_by(
                 LearningCandidateReview.reviewed_at,
@@ -576,11 +543,8 @@ async def build_daily_digest(
                 select(LearningApplication)
                 .where(
                     LearningApplication.project_id == project.id,
-                    *_in_window(
-                        LearningApplication.applied_at,
-                        window_start,
-                        window_end,
-                    ),
+                    LearningApplication.applied_at >= window_start,
+                    LearningApplication.applied_at < window_end,
                 )
                 .order_by(LearningApplication.applied_at, LearningApplication.id)
             )
@@ -614,11 +578,8 @@ async def build_daily_digest(
                 select(LearningValidation)
                 .where(
                     LearningValidation.project_id == project.id,
-                    *_in_window(
-                        LearningValidation.evaluated_at,
-                        window_start,
-                        window_end,
-                    ),
+                    LearningValidation.evaluated_at >= window_start,
+                    LearningValidation.evaluated_at < window_end,
                 )
                 .order_by(
                     LearningValidation.evaluated_at,
@@ -653,11 +614,8 @@ async def build_daily_digest(
                 select(LearningResolution)
                 .where(
                     LearningResolution.project_id == project.id,
-                    *_in_window(
-                        LearningResolution.reviewed_at,
-                        window_start,
-                        window_end,
-                    ),
+                    LearningResolution.reviewed_at >= window_start,
+                    LearningResolution.reviewed_at < window_end,
                 )
                 .order_by(
                     LearningResolution.reviewed_at,
@@ -689,11 +647,8 @@ async def build_daily_digest(
                 select(LearningResolutionApplication)
                 .where(
                     LearningResolutionApplication.project_id == project.id,
-                    *_in_window(
-                        LearningResolutionApplication.applied_at,
-                        window_start,
-                        window_end,
-                    ),
+                    LearningResolutionApplication.applied_at >= window_start,
+                    LearningResolutionApplication.applied_at < window_end,
                 )
                 .order_by(
                     LearningResolutionApplication.applied_at,
