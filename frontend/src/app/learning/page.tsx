@@ -305,8 +305,15 @@ export default function LearningPage() {
       try {
         const next = await loadLearningOverview(PROJECT_SLUG);
         if (!cancelled) {
+          const requestedId = new URLSearchParams(window.location.search).get(
+            "candidate",
+          );
           setOverview(next);
-          setSelectedId(next.candidates[0]?.id ?? "");
+          setSelectedId(
+            requestedId && next.candidates.some((item) => item.id === requestedId)
+              ? requestedId
+              : (next.candidates[0]?.id ?? ""),
+          );
         }
       } catch (nextError) {
         if (!cancelled) {
