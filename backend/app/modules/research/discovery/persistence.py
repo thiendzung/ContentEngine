@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy import select
@@ -22,13 +20,6 @@ from app.modules.content_engine.models import (
     NeedHypothesis as DBNeedHypothesis,
 )
 from app.modules.content_engine.models import Signal as DBSignal
-from app.modules.knowledge.ingest import ingest_source_document, register_source
-from app.modules.research.contracts import (
-    PageDocument,
-    ProductionResearchResult,
-    SourceCandidate,
-)
-from app.modules.research.evidence.contracts import PersistedPageRef
 from app.modules.research.keyword_plan.contracts import OpportunityMapResult, Signal
 
 
@@ -50,144 +41,13 @@ def _parse_datetime(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _normalize_url(url: str) -> str:
-    candidate = url.strip()
-    parts = urlsplit(candidate)
-    if not parts.scheme or not parts.netloc:
-        return candidate.rstrip("/").casefold()
-    path = parts.path or "/"
-    if path != "/":
-        path = path.rstrip("/")
-    return urlunsplit(
-        (parts.scheme.lower(), parts.netloc.lower(), path, parts.query, "")
-    ).casefold()
-
-
-def _candidate_for_document(
-    production: ProductionResearchResult,
-    document: PageDocument,
-) -> SourceCandidate | None:
-    document_urls = {
-        _normalize_url(url)
-        for url in (document.url, document.requested_url, document.final_url)
-        if url
-    }
-    for candidate in production.source_candidates:
-        if _normalize_url(candidate.url) in document_urls:
-            return candidate
-    return None
-
-
-def _authority_hint(candidate: SourceCandidate | None) -> str | None:
-    if candidate is None:
-        return None
-    if candidate.source_type == "institutional":
-        return "institutional_candidate"
-    if candidate.source_type == "community_or_review":
-        return "audience_observation_candidate"
-    if candidate.source_type == "editorial":
-        return "secondary_editorial_context"
-    if candidate.source_type == "commercial":
-        return "commercial_context_only"
-    return None
-
-
-async def persist_discovery_read_documents(
-    session: AsyncSession,
-    *,
-    production: ProductionResearchResult,
-) -> dict[str, PersistedPageRef]:
-    """Persist already-read Discovery pages as raw sources, never factual Evidence."""
-
-    refs: dict[str, PersistedPageRef] = {}
-    for document in production.documents:
-        candidate = _candidate_for_document(production, document)
-        canonical_url = document.final_url or document.url or document.requested_url
-        if not canonical_url:
-            raise ValueError("discovery_read_document_url_required")
-
-        source_type = candidate.source_type if candidate is not None else "web"
-        commercial_bias = (
-            candidate.commercial_bias.value if candidate is not None else None
-        )
-        provenance: dict[str, object] = {
-            "method": "discovery_read",
-            "provider": document.provider,
-            "query": production.request.query,
-            "source_ref": canonical_url,
-            "raw_source_only": True,
-        }
-        if candidate is not None:
-            provenance.update(
-                {
-                    "discovered_by": candidate.provider,
-                    "found_via": candidate.found_via,
-                    "relation": candidate.relation.value,
-                    "intended_use": candidate.intended_use.value,
-                    "parent_url": candidate.parent_url,
-                }
-            )
-
-        registered = await register_source(
-            session,
-            project_id=production.request.project_id,
-            source_type=source_type,
-            title=document.title or (candidate.title if candidate is not None else None),
-            canonical_url=canonical_url,
-            locale=production.request.locale,
-            commercial_bias=commercial_bias,
-            authority_hint=_authority_hint(candidate),
-            captured_at=_parse_datetime(document.captured_at),
-            provenance_json=provenance,
-        )
-        ingested = await ingest_source_document(
-            session,
-            source_id=registered.source.id,
-            content_markdown=document.content,
-            fetched_at=_parse_datetime(document.captured_at),
-            canonical_url=canonical_url,
-            reader=document.provider,
-            provider=document.provider,
-            metadata_json={
-                "discovery_research_query": production.request.query,
-                "raw_source_only": True,
-                "content_truncated": document.content_truncated,
-                "links_truncated": document.links_truncated,
-            },
-        )
-        page_ref = PersistedPageRef(
-            source_id=registered.source.id,
-            source_document_id=ingested.document.id,
-            chunk_ids=tuple(chunk.id for chunk in ingested.chunks),
-            canonical_url=canonical_url,
-        )
-        for url in (document.url, document.requested_url, document.final_url, canonical_url):
-            if url:
-                refs[_normalize_url(url)] = page_ref
-
-    return refs
-
-
-def _signal_provenance(
-    signal: Signal,
-    page_refs: Mapping[str, PersistedPageRef] | None = None,
-) -> dict[str, object]:
+def _signal_provenance(signal: Signal) -> dict[str, object]:
     provenance = {
         key: value
         for key, value in asdict(signal.provenance).items()
         if value is not None
     }
     provenance["planning_signal_id"] = signal.id
-    if signal.source_url and page_refs:
-        page_ref = page_refs.get(_normalize_url(signal.source_url))
-        if page_ref is not None:
-            provenance.update(
-                {
-                    "source_id": str(page_ref.source_id),
-                    "source_document_id": str(page_ref.source_document_id),
-                    "source_document_canonical_url": page_ref.canonical_url,
-                }
-            )
     return provenance
 
 
@@ -196,7 +56,6 @@ async def _find_existing_signal(
     *,
     project_id: UUID,
     signal: Signal,
-    page_refs: Mapping[str, PersistedPageRef] | None = None,
 ) -> DBSignal | None:
     candidates = tuple(
         (
@@ -216,7 +75,7 @@ async def _find_existing_signal(
         .scalars()
         .all()
     )
-    desired = _signal_provenance(signal, page_refs)
+    desired = _signal_provenance(signal)
     for row in candidates:
         provenance = row.provenance_json or {}
         if provenance.get("planning_signal_id") == signal.id:
@@ -244,7 +103,6 @@ async def _persist_signals(
     *,
     project_id: UUID,
     result: OpportunityMapResult,
-    page_refs: Mapping[str, PersistedPageRef] | None = None,
 ) -> dict[str, UUID]:
     signal_ids: dict[str, UUID] = {}
     rows_by_planning_id: dict[str, DBSignal] = {}
@@ -254,7 +112,6 @@ async def _persist_signals(
             session,
             project_id=project_id,
             signal=signal,
-            page_refs=page_refs,
         )
         if existing is None:
             existing = DBSignal(
@@ -274,7 +131,7 @@ async def _persist_signals(
                 ),
                 fingerprint=signal.fingerprint,
                 independence_group=signal.independence_group,
-                provenance_json=_signal_provenance(signal, page_refs),
+                provenance_json=_signal_provenance(signal),
             )
             session.add(existing)
             await session.flush()
@@ -472,7 +329,6 @@ async def persist_discovery_plan(
     *,
     project_id: UUID,
     result: OpportunityMapResult,
-    page_refs: Mapping[str, PersistedPageRef] | None = None,
 ) -> PersistedDiscoveryPlan:
     """Persist pre-ContentCase planning objects without creating a ContentRun."""
 
@@ -480,7 +336,6 @@ async def persist_discovery_plan(
         session,
         project_id=project_id,
         result=result,
-        page_refs=page_refs,
     )
     hypothesis = await _persist_hypothesis(
         session,
