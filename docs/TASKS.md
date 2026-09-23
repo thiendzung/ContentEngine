@@ -479,7 +479,7 @@ Exit: the backend can answer “what is running, blocked, and what genuinely nee
 - [x] Surface selected ContentOpportunity evidence, HumanSelection refs, publication state, invalid update refs and backend duplicate-candidate evidence without converting them into scores.
 - [x] Enforce Content Coverage schema/semantics/count contract fail-closed so the UI cannot silently reinterpret changed backend semantics.
 - [x] UI does not run research or create content from a cell click in this slice.
-- [ ] Loading/empty/error/stale states are explicit and accessible.
+- [x] Loading/empty/error/stale states are explicit and accessible; refresh/detail busy states use `aria-busy`/live status, errors use alerts, controls expose keyboard focus, empty states are explicit, and navigation/layout remains usable on narrow screens.
 
 Exit: Founder can inspect who the system understands and what content coverage exists without reading backend artifacts.
 
