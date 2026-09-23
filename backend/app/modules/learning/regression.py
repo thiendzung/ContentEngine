@@ -1316,6 +1316,25 @@ async def apply_learning_resolution(
     if project is None:
         raise LearningRegressionError("learning_resolution_project_not_found")
 
+    # A concurrent exact replay may have observed no receipt before waiting on
+    # the project lock. Re-check immediately after the lock, before stale-target
+    # validation, because the first caller may already have applied the reviewed
+    # state transition while the second caller was blocked.
+    existing = await session.scalar(
+        select(LearningResolutionApplication).where(
+            LearningResolutionApplication.learning_resolution_id == resolution.id
+        )
+    )
+    if existing is not None:
+        return LearningResolutionApplicationResult(
+            application=existing,
+            replayed=True,
+            customer_map_snapshot_artifact_id=(
+                existing.customer_map_snapshot_artifact_id
+            ),
+            change_report=existing.change_report_json,
+        )
+
     validation = await session.scalar(
         select(LearningValidation)
         .where(LearningValidation.id == resolution.learning_validation_id)
