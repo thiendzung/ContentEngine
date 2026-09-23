@@ -147,6 +147,30 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
         <dt>Lý do duyệt</dt>
         <dd>{insight.review_reason ?? "Chưa có"}</dd>
       </dl>
+      {insight.need_links.length > 0 ? (
+        <div className={styles.evidenceBlock}>
+          <strong>Liên kết Need</strong>
+          <ul>
+            {insight.need_links.map((link) => (
+              <li
+                key={
+                  link.need_hypothesis_id +
+                  ":" +
+                  link.relation +
+                  ":" +
+                  link.linked_by
+                }
+              >
+                {relationLabel(link.relation)} · {link.reason}
+                <span className={styles.meta}>
+                  {" "}
+                  ({link.need_hypothesis_id})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {insight.alternative_explanations.length > 0 ? (
         <div className={styles.evidenceBlock}>
           <strong>Giải thích thay thế</strong>
