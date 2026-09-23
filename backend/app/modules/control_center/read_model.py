@@ -610,7 +610,7 @@ async def build_control_center(
     session: AsyncSession,
     *,
     project_slug: str,
-    timezone_name: str = "UTC",
+    timezone_name: str,
     as_of: datetime | None = None,
 ) -> ControlCenterSnapshot:
     project = await resolve_project(session, project_slug=project_slug)
