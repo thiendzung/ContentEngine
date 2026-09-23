@@ -473,10 +473,12 @@ Exit: the backend can answer “what is running, blocked, and what genuinely nee
 - [x] Drill-down shows supporting/contradicting/context Signal refs and independent counts, Need↔Insight relations, missing evidence, alternatives, reviewer/reason and recent snapshot changes.
 - [x] Bind Customer Map summary/changes/audience/need reads to one exact `snapshot_hash`; mixed-snapshot reads fail closed and retain the last coherent view.
 - [x] Prevent async audience/need/refresh races from overwriting a newer user selection.
-- [ ] Add `/content-map` using canonical Content Coverage API.
-- [ ] Show only canonical Need-level coverage plus persisted ContentItem journey/locale links; do not synthesize fake Need × Journey × locale cell status or numeric scores.
-- [ ] Existing content, gaps, weak/update/insufficient-data states remain distinct.
-- [ ] UI does not run research or create content from a cell click in this slice.
+- [x] Add `/content-map` using canonical Content Coverage API.
+- [x] Show only canonical Need-level coverage plus persisted ContentItem journey/locale links; do not synthesize fake Need × Journey × locale cell status or numeric scores.
+- [x] Existing MISSING / PLANNED / IN_PROGRESS / PUBLISHED / NEEDS_UPDATE / WEAK / INSUFFICIENT_DATA states remain distinct, with canonical reason codes.
+- [x] Surface selected ContentOpportunity evidence, HumanSelection refs, publication state, invalid update refs and backend duplicate-candidate evidence without converting them into scores.
+- [x] Enforce Content Coverage schema/semantics/count contract fail-closed so the UI cannot silently reinterpret changed backend semantics.
+- [x] UI does not run research or create content from a cell click in this slice.
 - [ ] Loading/empty/error/stale states are explicit and accessible.
 
 Exit: Founder can inspect who the system understands and what content coverage exists without reading backend artifacts.
