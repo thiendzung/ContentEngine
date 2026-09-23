@@ -190,8 +190,9 @@ async def _target_evidence_snapshot(
     target_type: str,
     target_id: UUID,
 ) -> list[dict[str, object]]:
+    evidence_rows: list[tuple[UUID, str]]
     if target_type == "need_hypothesis":
-        rows = list(
+        need_rows = list(
             (
                 await session.scalars(
                     select(NeedHypothesisSignal)
@@ -205,8 +206,11 @@ async def _target_evidence_snapshot(
                 )
             ).all()
         )
+        evidence_rows = [
+            (row.signal_id, row.relation) for row in need_rows
+        ]
     elif target_type in {"customer_insight", "new_customer_insight"}:
-        rows = list(
+        insight_rows = list(
             (
                 await session.scalars(
                     select(CustomerInsightSignal)
@@ -220,6 +224,9 @@ async def _target_evidence_snapshot(
                 )
             ).all()
         )
+        evidence_rows = [
+            (row.signal_id, row.relation) for row in insight_rows
+        ]
     else:
         raise LearningRegressionError(
             "learning_validation_target_type_invalid"
@@ -227,8 +234,8 @@ async def _target_evidence_snapshot(
 
     cache: dict[UUID, str] = {}
     result: list[dict[str, object]] = []
-    for row in rows:
-        signal = await session.get(Signal, row.signal_id)
+    for signal_id, relation in evidence_rows:
+        signal = await session.get(Signal, signal_id)
         if signal is None or signal.project_id != project_id:
             raise LearningRegressionError(
                 "learning_validation_target_evidence_stale"
@@ -236,7 +243,7 @@ async def _target_evidence_snapshot(
         result.append(
             {
                 "signal_id": str(signal.id),
-                "relation": row.relation,
+                "relation": relation,
                 "fingerprint": signal.fingerprint,
                 "independence_key": await signal_independence_key(
                     session,
