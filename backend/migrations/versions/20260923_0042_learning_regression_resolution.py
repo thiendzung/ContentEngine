@@ -589,6 +589,7 @@ def _create_guards() -> None:
             candidate_status text;
             resolution_target_snapshot jsonb;
             current_target_snapshot jsonb;
+            validation_ref jsonb;
         BEGIN
             IF TG_OP = 'UPDATE' THEN
                 RAISE EXCEPTION 'learning_resolution_application_update_forbidden';
@@ -730,6 +731,36 @@ def _create_guards() -> None:
                    ) THEN
                     RAISE EXCEPTION 'learning_resolution_application_need_review_missing';
                 END IF;
+
+                FOR validation_ref IN
+                    SELECT value
+                    FROM learning_validations AS lv,
+                         LATERAL jsonb_array_elements(
+                             lv.validation_signal_refs_json::jsonb
+                         )
+                    WHERE lv.id = NEW.learning_validation_id
+                      AND value->>'relation' IN ('supports','contradicts')
+                LOOP
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM need_hypothesis_signals AS nhs
+                        WHERE nhs.need_hypothesis_id = NEW.resulting_target_id
+                          AND nhs.signal_id =
+                              (validation_ref->>'signal_id')::uuid
+                          AND nhs.relation = validation_ref->>'relation'
+                    )
+                       OR EXISTS (
+                        SELECT 1
+                        FROM need_hypothesis_signals AS nhs
+                        WHERE nhs.need_hypothesis_id = NEW.resulting_target_id
+                          AND nhs.signal_id =
+                              (validation_ref->>'signal_id')::uuid
+                          AND nhs.relation <> validation_ref->>'relation'
+                    ) THEN
+                        RAISE EXCEPTION
+                            'learning_resolution_application_need_evidence_missing';
+                    END IF;
+                END LOOP;
             ELSIF NEW.target_type IN ('customer_insight','new_customer_insight') THEN
                 IF NEW.applied_action IS DISTINCT FROM 'review_insight'
                    OR NOT EXISTS (
@@ -754,6 +785,27 @@ def _create_guards() -> None:
                    ) THEN
                     RAISE EXCEPTION 'learning_resolution_application_insight_review_missing';
                 END IF;
+
+                FOR validation_ref IN
+                    SELECT value
+                    FROM learning_validations AS lv,
+                         LATERAL jsonb_array_elements(
+                             lv.validation_signal_refs_json::jsonb
+                         )
+                    WHERE lv.id = NEW.learning_validation_id
+                LOOP
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM customer_insight_signals AS cis
+                        WHERE cis.customer_insight_id = NEW.resulting_target_id
+                          AND cis.signal_id =
+                              (validation_ref->>'signal_id')::uuid
+                          AND cis.relation = validation_ref->>'relation'
+                    ) THEN
+                        RAISE EXCEPTION
+                            'learning_resolution_application_insight_evidence_missing';
+                    END IF;
+                END LOOP;
             ELSE
                 RAISE EXCEPTION 'learning_resolution_application_target_invalid';
             END IF;
