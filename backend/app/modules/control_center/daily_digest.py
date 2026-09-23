@@ -6,7 +6,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.content_coverage import (
@@ -333,36 +333,59 @@ async def build_daily_digest(
                 select(ContentRun)
                 .where(
                     ContentRun.project_id == project.id,
-                    ContentRun.updated_at >= window_start,
-                    ContentRun.updated_at < window_end,
+                    or_(
+                        (
+                            (ContentRun.started_at >= window_start)
+                            & (ContentRun.started_at < window_end)
+                        ),
+                        (
+                            ContentRun.completed_at.is_not(None)
+                            & (ContentRun.completed_at >= window_start)
+                            & (ContentRun.completed_at < window_end)
+                        ),
+                    ),
                 )
-                .order_by(ContentRun.updated_at, ContentRun.id)
+                .order_by(ContentRun.started_at, ContentRun.id)
             )
         ).all()
     )
-    events.extend(
-        DigestEvent(
-            domain="production",
-            kind="content_run_state_updated",
-            occurred_at=row.updated_at,
-            entity_type="content_run",
-            entity_id=row.id,
-            summary=(
-                f"Run mode {row.run_mode}; current step "
-                f"{row.current_step or 'none'}."
-            ),
-            status=row.status,
-            refs=[
-                f"content_case:{row.content_case_id}",
-                *(
-                    [f"failure_code:{row.failure_code}"]
-                    if row.failure_code
-                    else []
-                ),
-            ],
-        )
-        for row in run_rows
-    )
+    for row in run_rows:
+        if window_start <= row.started_at < window_end:
+            events.append(
+                DigestEvent(
+                    domain="production",
+                    kind="content_run_started",
+                    occurred_at=row.started_at,
+                    entity_type="content_run",
+                    entity_id=row.id,
+                    summary=f"Run mode {row.run_mode} started.",
+                    status="STARTED",
+                    refs=[f"content_case:{row.content_case_id}"],
+                )
+            )
+        if (
+            row.completed_at is not None
+            and window_start <= row.completed_at < window_end
+        ):
+            events.append(
+                DigestEvent(
+                    domain="production",
+                    kind="content_run_completed",
+                    occurred_at=row.completed_at,
+                    entity_type="content_run",
+                    entity_id=row.id,
+                    summary=f"Run mode {row.run_mode} reached terminal state.",
+                    status=row.status,
+                    refs=[
+                        f"content_case:{row.content_case_id}",
+                        *(
+                            [f"failure_code:{row.failure_code}"]
+                            if row.failure_code
+                            else []
+                        ),
+                    ],
+                )
+            )
 
     publish_rows = (
         await session.execute(
