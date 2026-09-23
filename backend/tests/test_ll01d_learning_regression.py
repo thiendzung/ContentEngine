@@ -308,7 +308,17 @@ async def test_ll01d_validated_need_requires_independent_evidence_and_human_prom
                 )
             )
             or 0
-        ) >= 1
+        ) >= 2
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(NeedHypothesisSignal).where(
+                    NeedHypothesisSignal.need_hypothesis_id == fixture.need.id,
+                    NeedHypothesisSignal.signal_id == later_signal.id,
+                    NeedHypothesisSignal.relation == "supports",
+                )
+            )
+            or 0
+        ) == 1
 
 
 @pytest.mark.asyncio
@@ -450,7 +460,17 @@ async def test_ll01d_regressed_new_insight_uses_compensating_review_not_delete(
                 )
             )
             or 0
-        ) == signal_links_before
+        ) == signal_links_before + 1
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(CustomerInsightSignal).where(
+                    CustomerInsightSignal.customer_insight_id == insight.id,
+                    CustomerInsightSignal.signal_id == later_signal.id,
+                    CustomerInsightSignal.relation == "contradicts",
+                )
+            )
+            or 0
+        ) == 1
 
         replay = await apply_learning_resolution(
             session,
