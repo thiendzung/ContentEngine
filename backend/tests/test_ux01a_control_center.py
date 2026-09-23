@@ -140,6 +140,8 @@ async def test_ux01a_uses_operator_runtime_for_angle_gate(
         assert item.canonical_status == "AWAITING_APPROVAL"
         assert ":angle:" in item.destination.action_ref
         assert item.destination.href == f"/operator/journal/{created.content_case_id}"
+        assert len(item.evidence_refs) == 1
+        assert item.evidence_refs[0].startswith("artifact:")
 
 
 @pytest.mark.asyncio
