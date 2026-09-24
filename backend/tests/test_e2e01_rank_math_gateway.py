@@ -318,15 +318,17 @@ async def test_rank_math_gateway_rejects_unknown_or_sensitive_safe_data() -> Non
             _config(),
             transport=httpx.MockTransport(handler),
         ) as gateway:
+            capability = payload["capability"]
             with pytest.raises(
                 RankMathBridgeError,
                 match="rank_math_bridge_safe_data_invalid",
             ):
-                await gateway.get_post_seo_meta(42) if payload["capability"] == "rank-math/get-post-seo-meta" else (
+                if capability == "rank-math/get-post-seo-meta":
+                    await gateway.get_post_seo_meta(42)
+                elif capability == "rank-math/get-post-schema":
                     await gateway.get_post_schema(42)
-                    if payload["capability"] == "rank-math/get-post-schema"
-                    else await gateway.get_post_links(42)
-                )
+                else:
+                    await gateway.get_post_links(42)
 
 
 @pytest.mark.asyncio
