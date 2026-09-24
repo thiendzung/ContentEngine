@@ -186,7 +186,22 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
 | UX-01 | DONE / PR #199 MERGED | UX-01A/B/C/D are merged. Exception-driven desktop command center, canonical Learning/System/Daily Digest views, and final navigation are accepted with CI/browser/OCR/local proof. |
-| E2E-01 | PLANNED | One real closed-loop pilot with safe restart/replay. |
+| E2E-01 | ACTIVE | One real closed-loop pilot. Current bounded implementation is P2C2 Rank Math read-only SEO intelligence; operational migration, production bridge activation, publication and real Google credential activation remain separately authorized. |
+
+### E2E-01 / P2C2 immediate checklist
+
+- [x] P2C2.0 audit proved local Rank Math capability/provenance and selected a MOTGU-owned read-only bridge.
+- [x] P2C2.1 source ownership lives under `wordpress/motgu-rank-math-bridge/`.
+- [x] Expose only fixed GET routes for post SEO meta, post schema and post links; no arbitrary ability-name route.
+- [x] Require short-lived HMAC authentication with secret/config outside Git.
+- [x] Re-check live Rank Math annotations and reject non-readonly/destructive/non-idempotent capability drift.
+- [x] Allowlist output fields, reject secret-shaped nested Schema keys and bound links/payload size.
+- [x] Include WordPress post/revision/status identity plus Rank Math Free/PRO versions.
+- [x] Add deterministic PHP contract tests covering write-ability denial, runtime annotation drift, HMAC failure and output stripping.
+- [ ] P2C2.1 candidate must pass CI, exact-ref OCR and Agent Local local-WordPress verification before Founder merge.
+- [ ] P2C2.2 ContentEngine gateway remains separate.
+- [ ] P2C2.3 exact PublishedContent/PublishEvent/version guard + immutable Artifact capture remains separate.
+- [ ] No `motgu.com` activation without Founder authorization and production-readiness validation.
 
 ### CT-01 immediate checklist
 
