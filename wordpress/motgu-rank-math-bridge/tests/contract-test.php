@@ -143,7 +143,7 @@ function get_permalink( $id ) {
 	return 'https://motgu.test/post-' . $id . '/';
 }
 function get_post_modified_time( $format, $gmt, $id ) {
-	return '2026-09-24T06:00:00Z';
+	return '2026-09-24T06:00:00';
 }
 function get_post_status( $id ) {
 	return 'publish';
@@ -303,6 +303,10 @@ expect_true(
 	'capability identity mismatch'
 );
 expect_true( $response->data['wordpress_post_id'] === '5', 'post identity mismatch' );
+expect_true(
+	$response->data['wordpress_modified_gmt'] === '2026-09-24T06:00:00',
+	'WordPress revision must match REST modified_gmt format'
+);
 expect_true(
 	! array_key_exists( 'access_token', $response->data['safe_data'] ),
 	'secret-shaped unknown field leaked'
