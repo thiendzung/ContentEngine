@@ -266,7 +266,7 @@ class SearchConsoleGateway:
         settings: Settings,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
-    ) -> "SearchConsoleGateway":
+    ) -> SearchConsoleGateway:
         site_url = settings.search_console_site_url or ""
         secret = (
             settings.search_console_service_account_json.get_secret_value()
@@ -280,7 +280,7 @@ class SearchConsoleGateway:
             transport=transport,
         )
 
-    async def __aenter__(self) -> "SearchConsoleGateway":
+    async def __aenter__(self) -> SearchConsoleGateway:
         return self
 
     async def __aexit__(
