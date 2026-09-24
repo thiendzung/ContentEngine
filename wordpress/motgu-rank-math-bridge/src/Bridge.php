@@ -212,6 +212,11 @@ final class Bridge {
 			return self::error( 'ability_unavailable', 503 );
 		}
 
+		$tracking_error = self::rank_math_tracking_error();
+		if ( $tracking_error instanceof WP_Error ) {
+			return $tracking_error;
+		}
+
 		$meta        = $ability->get_meta();
 		$annotations = is_array( $meta ) && isset( $meta['annotations'] ) && is_array( $meta['annotations'] )
 			? $meta['annotations']
@@ -459,6 +464,29 @@ final class Bridge {
 			$clean[ $key ] = $child;
 		}
 		return $clean;
+	}
+
+	/**
+	 * Rank Math read abilities emit usage telemetry when its usage tracking is opted in.
+	 * Refuse execution instead of silently turning a read inspection into a third-party
+	 * network side effect. The bridge never changes that preference.
+	 *
+	 * @return true|WP_Error
+	 */
+	private static function rank_math_tracking_error() {
+		if ( ! function_exists( 'rank_math' ) ) {
+			return self::error( 'rank_math_runtime_unavailable', 503 );
+		}
+
+		$rank_math = rank_math();
+		if ( ! is_object( $rank_math ) || ! isset( $rank_math->tracking ) || ! is_object( $rank_math->tracking ) || ! method_exists( $rank_math->tracking, 'is_opted_in' ) ) {
+			return self::error( 'rank_math_tracking_state_unknown', 503 );
+		}
+		if ( true === $rank_math->tracking->is_opted_in() ) {
+			return self::error( 'rank_math_tracking_enabled', 503 );
+		}
+
+		return true;
 	}
 
 	/**
