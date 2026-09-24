@@ -11,6 +11,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
+
+from pydantic import SecretStr
 from urllib.parse import urlsplit
 
 import httpx
@@ -91,7 +93,7 @@ class RankMathBridgeError(ValueError):
 @dataclass(frozen=True, slots=True)
 class RankMathBridgeConfig:
     base_url: str
-    secret: str
+    secret: SecretStr
     timeout_seconds: float = 20.0
 
 
@@ -113,7 +115,7 @@ class RankMathInspection:
 
 def _validated_config(config: RankMathBridgeConfig) -> RankMathBridgeConfig:
     base_url = config.base_url.strip().rstrip("/")
-    secret = config.secret
+    secret = config.secret.get_secret_value()
     if not base_url or len(secret) < 32:
         raise RankMathBridgeError("rank_math_bridge_configuration_incomplete")
     if config.timeout_seconds <= 0:
@@ -136,7 +138,7 @@ def _validated_config(config: RankMathBridgeConfig) -> RankMathBridgeConfig:
 
     return RankMathBridgeConfig(
         base_url=base_url,
-        secret=secret,
+        secret=SecretStr(secret),
         timeout_seconds=config.timeout_seconds,
     )
 
@@ -473,7 +475,7 @@ class RankMathBridgeGateway:
         return cls(
             RankMathBridgeConfig(
                 base_url=settings.rank_math_bridge_base_url or "",
-                secret=secret,
+                secret=SecretStr(secret),
                 timeout_seconds=settings.rank_math_bridge_request_timeout_seconds,
             ),
             transport=transport,
@@ -520,7 +522,7 @@ class RankMathBridgeGateway:
         timestamp = str(int(self._clock()))
         message = f"GET\n{route}\n{timestamp}".encode()
         signature = hmac.new(
-            self._config.secret.encode(),
+            self._config.secret.get_secret_value().encode(),
             message,
             hashlib.sha256,
         ).hexdigest()
