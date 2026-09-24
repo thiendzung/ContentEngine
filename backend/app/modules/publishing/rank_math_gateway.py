@@ -319,7 +319,11 @@ def _validate_links(data: dict[str, object], post_id: str) -> dict[str, object]:
     internal = data["internal"]
     external = data["external"]
     counts = data["counts"]
-    if not isinstance(internal, list) or not isinstance(external, list) or not isinstance(counts, dict):
+    if (
+        not isinstance(internal, list)
+        or not isinstance(external, list)
+        or not isinstance(counts, dict)
+    ):
         raise RankMathBridgeError("rank_math_bridge_safe_data_invalid")
     if len(internal) + len(external) > _MAX_LINK_ITEMS:
         raise RankMathBridgeError("rank_math_bridge_safe_data_invalid")
