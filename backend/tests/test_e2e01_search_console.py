@@ -24,7 +24,7 @@ class _TokenProvider:
 
 def _window() -> tuple[datetime, datetime]:
     return (
-        datetime(2026, 9, 1, tzinfo=UTC),
+        datetime(2026, 9, 1, 12, tzinfo=UTC),
         datetime(2026, 9, 3, 23, 59, tzinfo=UTC),
     )
 
@@ -102,7 +102,7 @@ async def test_search_console_acquires_exact_page_daily_metrics() -> None:
         for row in result.metrics
     ] == [
         (
-            datetime(2026, 9, 1, tzinfo=UTC),
+            datetime(2026, 9, 1, 12, tzinfo=UTC),
             "clicks",
             "3",
             {
@@ -111,7 +111,7 @@ async def test_search_console_acquires_exact_page_daily_metrics() -> None:
             },
         ),
         (
-            datetime(2026, 9, 1, tzinfo=UTC),
+            datetime(2026, 9, 1, 12, tzinfo=UTC),
             "impressions",
             "21",
             {
@@ -120,7 +120,7 @@ async def test_search_console_acquires_exact_page_daily_metrics() -> None:
             },
         ),
         (
-            datetime(2026, 9, 3, tzinfo=UTC),
+            datetime(2026, 9, 3, 12, tzinfo=UTC),
             "clicks",
             "0",
             {
@@ -129,7 +129,7 @@ async def test_search_console_acquires_exact_page_daily_metrics() -> None:
             },
         ),
         (
-            datetime(2026, 9, 3, tzinfo=UTC),
+            datetime(2026, 9, 3, 12, tzinfo=UTC),
             "impressions",
             "4",
             {
@@ -256,7 +256,7 @@ async def test_search_console_rejects_invalid_property_page_and_window() -> None
         with pytest.raises(SearchConsoleError, match="search_console_page_url_invalid"):
             await gateway.acquire_page(
                 canonical_url="not-a-url",
-                window_start=datetime(2026, 9, 1, tzinfo=UTC),
+                window_start=datetime(2026, 9, 1, 12, tzinfo=UTC),
                 window_end=datetime(2026, 9, 2, tzinfo=UTC),
             )
         with pytest.raises(
@@ -268,3 +268,34 @@ async def test_search_console_rejects_invalid_property_page_and_window() -> None
                 window_start=datetime(2026, 9, 1),
                 window_end=datetime(2026, 9, 2),
             )
+
+@pytest.mark.asyncio
+async def test_search_console_metric_timestamps_are_bounded_by_partial_review_window() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "rows": [
+                    {"keys": ["2026-09-01"], "clicks": 1, "impressions": 2},
+                    {"keys": ["2026-09-02"], "clicks": 3, "impressions": 4},
+                ]
+            },
+            request=request,
+        )
+
+    window_start = datetime(2026, 9, 1, 18, tzinfo=UTC)
+    window_end = datetime(2026, 9, 2, 8, tzinfo=UTC)
+    async with SearchConsoleGateway(
+        site_url="sc-domain:motgu.com",
+        token_provider=_TokenProvider(),
+        transport=httpx.MockTransport(handler),
+    ) as gateway:
+        result = await gateway.acquire_page(
+            canonical_url="https://motgu.com/example/",
+            window_start=window_start,
+            window_end=window_end,
+        )
+
+    timestamps = {metric.metric_date for metric in result.metrics}
+    assert timestamps == {window_start, window_end}
+    assert all(window_start <= value <= window_end for value in timestamps)
