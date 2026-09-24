@@ -148,30 +148,23 @@ async def _current_binding(
     ):
         raise RankMathCaptureError("rank_math_capture_identity_mismatch")
 
-    events = list(
-        (
-            await session.scalars(
-                select(PublishEvent)
-                .where(
-                    PublishEvent.published_content_id == mapping.id,
-                    PublishEvent.content_version_id == version.id,
-                )
-                .order_by(PublishEvent.created_at.desc(), PublishEvent.id.desc())
-            )
-        ).all()
+    event = await session.scalar(
+        select(PublishEvent)
+        .where(
+            PublishEvent.published_content_id == mapping.id,
+            PublishEvent.content_version_id == version.id,
+        )
+        .order_by(PublishEvent.created_at.desc(), PublishEvent.id.desc())
+        .limit(1)
     )
-    event = next(
-        (
-            row
-            for row in events
-            if row.canonical_url == mapping.canonical_url
-            and row.external_status == mapping.external_status
-            and row.external_revision_id == mapping.external_revision_id
-            and row.published_at == mapping.published_at
-        ),
-        None,
-    )
-    if event is None:
+    if (
+        event is None
+        or event.canonical_url != mapping.canonical_url
+        or event.external_status != mapping.external_status
+        or event.external_revision_id != mapping.external_revision_id
+        or event.published_at != mapping.published_at
+        or event.result_json.get("external_id") != mapping.external_id
+    ):
         raise RankMathCaptureError("rank_math_capture_publish_event_mismatch")
 
     package = await session.get(Artifact, event.publish_package_artifact_id)
@@ -183,12 +176,16 @@ async def _current_binding(
         run is None
         or run.run_mode != "publish"
         or run.project_id != mapping.project_id
+        or run.content_case_id != item.content_case_id
+        or run.locale_variant_id != item.locale_variant_id
         or run.content_item_id != item.id
     ):
         raise RankMathCaptureError("rank_math_capture_publish_lineage_mismatch")
 
     expected_identity = {
         "project_id": str(mapping.project_id),
+        "content_case_id": str(item.content_case_id),
+        "locale_variant_id": str(item.locale_variant_id),
         "content_item_id": str(item.id),
         "content_version_id": str(version.id),
         "content_experiment_id": str(event.content_experiment_id),
