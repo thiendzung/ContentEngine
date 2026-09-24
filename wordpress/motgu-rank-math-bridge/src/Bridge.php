@@ -449,7 +449,7 @@ final class Bridge {
 
 		$clean = [];
 		foreach ( $value as $key => $item ) {
-			if ( is_string( $key ) && 1 === preg_match( '/(token|secret|password|authorization|cookie|credential)/i', $key ) ) {
+			if ( is_string( $key ) && self::is_sensitive_key( $key ) ) {
 				return self::error( 'sensitive_payload_rejected', 502 );
 			}
 			$child = self::sanitize_json_value( $item, $depth + 1 );
@@ -459,6 +459,34 @@ final class Bridge {
 			$clean[ $key ] = $child;
 		}
 		return $clean;
+	}
+
+	/**
+	 * Reject exact secret-bearing field names without blocking legitimate Schema.org
+	 * fields such as credentialCategory.
+	 */
+	private static function is_sensitive_key( string $key ): bool {
+		$normalized = strtolower( str_replace( '-', '_', trim( $key ) ) );
+		return in_array(
+			$normalized,
+			[
+				'access_token',
+				'refresh_token',
+				'auth_token',
+				'id_token',
+				'api_key',
+				'apikey',
+				'client_secret',
+				'private_key',
+				'secret',
+				'password',
+				'authorization',
+				'cookie',
+				'credential',
+				'credentials',
+			],
+			true
+		);
 	}
 
 	/**
