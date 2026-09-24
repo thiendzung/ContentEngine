@@ -105,6 +105,7 @@ async def test_rank_math_gateway_signs_exact_get_route_and_parses_seo_meta() -> 
         assert request.url.path == f"/wp-json{route}"
         assert request.headers["x-motgu-bridge-timestamp"] == str(clock_value)
         assert request.headers["x-motgu-bridge-signature"] == expected_signature
+        assert request.headers["cache-control"] == "no-store"
         assert "authorization" not in request.headers
         return httpx.Response(
             200,
@@ -190,6 +191,22 @@ def test_rank_math_gateway_rejects_incomplete_or_insecure_configuration() -> Non
         )
     )
     assert gateway is not None
+
+
+def test_rank_math_gateway_config_repr_does_not_expose_secret() -> None:
+    config = _config()
+    assert "a" * 64 not in repr(config)
+
+    with pytest.raises(
+        RankMathBridgeError,
+        match="rank_math_bridge_configuration_incomplete",
+    ):
+        RankMathBridgeGateway(
+            RankMathBridgeConfig(
+                base_url="https://motgu.example",
+                secret="a" * 64,  # type: ignore[arg-type]
+            )
+        )
 
 
 def test_rank_math_gateway_from_settings_uses_secretstr() -> None:
@@ -376,6 +393,24 @@ async def test_rank_math_gateway_rejects_non_finite_schema_value() -> None:
             match="rank_math_bridge_safe_data_invalid",
         ):
             await gateway.get_post_schema(42)
+
+
+@pytest.mark.asyncio
+async def test_rank_math_gateway_rejects_oversized_response_before_parsing() -> None:
+    oversized = b"x" * (600 * 1024 + 1)
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=oversized, request=request)
+
+    async with RankMathBridgeGateway(
+        _config(),
+        transport=httpx.MockTransport(handler),
+    ) as gateway:
+        with pytest.raises(
+            RankMathBridgeError,
+            match="rank_math_bridge_response_too_large",
+        ):
+            await gateway.get_post_seo_meta(42)
 
 
 @pytest.mark.asyncio
