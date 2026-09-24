@@ -73,6 +73,8 @@ Top-level Rank Math output is allowlisted per ability. Unknown top-level fields 
 
 The bridge never returns OAuth/access/refresh tokens, cookies, authorization headers, passwords, credentials or raw settings blobs.
 
+Successful bridge responses also set `Cache-Control: no-store, private`. This is explicit because the bridge authenticates with custom HMAC headers rather than a normal logged-in WordPress REST session, so cache safety must not depend on WordPress's logged-in-user no-cache behavior.
+
 ## Non-goals
 
 P2C2.1 does not:
@@ -85,7 +87,7 @@ P2C2.1 does not:
 - persist a ContentEngine Artifact;
 - activate production configuration.
 
-ContentEngine identity/version validation and immutable Artifact capture belong to P2C2.2/P2C2.3.
+P2C2.2 provides only the bounded ContentEngine HTTP gateway/parser. Exact publication identity/version validation and immutable Artifact capture belong to P2C2.3.
 
 ## Local contract test
 
