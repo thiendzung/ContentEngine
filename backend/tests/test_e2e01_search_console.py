@@ -269,6 +269,7 @@ async def test_search_console_rejects_invalid_property_page_and_window() -> None
                 window_end=datetime(2026, 9, 2),
             )
 
+
 @pytest.mark.asyncio
 async def test_search_console_metric_timestamps_are_bounded_by_partial_review_window() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
