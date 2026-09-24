@@ -131,6 +131,18 @@ allowlist `safe_data`; unknown/malformed/sensitive output fail closed. P2C2.2 ch
 transport/parser: chưa được tự gắn snapshot vào ContentVersion hay persist Artifact.
 Exact PublishedContent/PublishEvent/version/revision guard thuộc P2C2.3.
 
+P2C2.3 chỉ capture Rank Math state cho `PublishedContent.current_content_version_id`.
+Trước khi persist phải xác minh exact WordPress post ID, canonical URL, external status,
+revision khi có, matching immutable PublishEvent và publish-package Artifact/run lineage.
+Nếu mapping đã drift khỏi event thì fail closed; slice này không tự reconcile WordPress.
+
+Validated Rank Math state được lưu trong immutable Harness Artifact của exact publish run,
+không tạo bảng Rank Math mới. Snapshot fingerprint được tính từ publication identity +
+capability/version + safe data và không lấy `captured_at` làm identity, nên exact replay
+reuse Artifact cũ; safe state đổi thì tạo Artifact version kế tiếp. Historical
+ContentVersion chỉ được đọc từ Artifact đã capture trước đó; thiếu snapshot historical
+phải fail closed, không gọi live Rank Math rồi gắn ngược vào version cũ.
+
 ## 6. Measurement sources
 
 ### Search Console

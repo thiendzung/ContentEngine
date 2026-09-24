@@ -64,6 +64,12 @@ from app.modules.measurement.service import (
 )
 from app.modules.publishing import service as publishing_service
 from app.modules.publishing.models import PublishedContent, PublishEvent
+from app.modules.publishing.rank_math_capture import (
+    RankMathCaptureError,
+    capture_rank_math_inspection,
+    get_captured_rank_math_inspection,
+)
+from app.modules.publishing.rank_math_gateway import RankMathInspection
 from app.modules.publishing.service import (
     PublishError,
     WordPressReconciliation,
@@ -1671,5 +1677,265 @@ async def test_pm01_review_window_is_explicit_and_frozen_by_publish_package(
                 experiment_id=fixture.experiment.id,
                 review_window_start=datetime(2026, 9, 22, 12, 0),
                 review_window_end=datetime(2026, 10, 22, 12, 0),
+            )
+
+async def _published_rank_math_fixture(
+    session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[PMFixture, PublishedContent, PublishEvent]:
+    fixture = await _fixture(session, monkeypatch)
+    package = await prepare_publish_package(
+        session,
+        content_version_id=fixture.version.id,
+        experiment_id=fixture.experiment.id,
+        slug="check-an-artwork",
+        action="publish",
+    )
+    worker_id = f"p2c23-{uuid4().hex[:8]}"
+    _decision, _dispatch, claimed = await _approve_and_claim(
+        session,
+        package_run_id=package.run.id,
+        package_artifact_id=package.artifact.id,
+        worker_id=worker_id,
+    )
+    prepared = await begin_wordpress_dispatch(
+        session,
+        job_id=claimed.id,
+        worker_id=worker_id,
+    )
+    result = await execute_wordpress_call(
+        gateway=FakeWordPress(),
+        request=prepared.request,
+    )
+    mapping, event = await record_wordpress_execution_result(
+        session,
+        job_id=claimed.id,
+        worker_id=worker_id,
+        result=result,
+    )
+    assert mapping is not None
+    assert event is not None
+    return fixture, mapping, event
+
+
+def _rank_math_inspection(
+    mapping: PublishedContent,
+    *,
+    title: str = "Certificate of Authenticity",
+    captured_at: datetime | None = None,
+    wordpress_post_id: str | None = None,
+    wordpress_url: str | None = None,
+    wordpress_modified_gmt: str | None = None,
+    wordpress_status: str | None = None,
+) -> RankMathInspection:
+    return RankMathInspection(
+        payload_schema_version="1",
+        source="rank_math",
+        upstream_source="rank_math_native",
+        capability="rank-math/get-post-seo-meta",
+        wordpress_post_id=wordpress_post_id or mapping.external_id,
+        wordpress_url=wordpress_url or mapping.canonical_url,
+        wordpress_modified_gmt=(
+            wordpress_modified_gmt
+            if wordpress_modified_gmt is not None
+            else mapping.external_revision_id or "2026-09-24T06:00:00"
+        ),
+        wordpress_status=wordpress_status or mapping.external_status,
+        rank_math_free_version="1.0.279",
+        rank_math_pro_version="3.0.119",
+        captured_at=captured_at or datetime.now(UTC),
+        safe_data={
+            "post_id": int(mapping.external_id),
+            "title": title,
+            "robots": ["index", "follow"],
+            "seo_score": 82,
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_p2c23_rank_math_capture_is_immutable_idempotent_and_versioned(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, event = await _published_rank_math_fixture(
+            session,
+            monkeypatch,
+        )
+        first_time = datetime.now(UTC)
+        first = await capture_rank_math_inspection(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            inspection=_rank_math_inspection(
+                mapping,
+                title="First snapshot",
+                captured_at=first_time,
+            ),
+        )
+        assert first.replayed is False
+        assert first.publish_event.id == event.id
+        assert first.artifact.artifact_type == "rank_math_seo_meta"
+        assert first.artifact.version == 1
+        assert isinstance(first.artifact.content_json, dict)
+        assert first.artifact.content_json["identity"]["content_version_id"] == str(
+            fixture.version.id
+        )
+        assert first.artifact.content_json["identity"]["publish_event_id"] == str(
+            event.id
+        )
+
+        replay = await capture_rank_math_inspection(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            inspection=_rank_math_inspection(
+                mapping,
+                title="First snapshot",
+                captured_at=first_time + timedelta(minutes=5),
+            ),
+        )
+        assert replay.replayed is True
+        assert replay.artifact.id == first.artifact.id
+
+        changed = await capture_rank_math_inspection(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            inspection=_rank_math_inspection(
+                mapping,
+                title="Changed snapshot",
+                captured_at=first_time + timedelta(minutes=10),
+            ),
+        )
+        assert changed.replayed is False
+        assert changed.artifact.id != first.artifact.id
+        assert changed.artifact.version == 2
+        assert changed.artifact.content_hash != first.artifact.content_hash
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "value", "error_code"),
+    [
+        ("wordpress_post_id", "999", "rank_math_capture_post_id_mismatch"),
+        (
+            "wordpress_url",
+            "https://motgu.com/different",
+            "rank_math_capture_canonical_drift",
+        ),
+        ("wordpress_status", "draft", "rank_math_capture_status_drift"),
+        (
+            "wordpress_modified_gmt",
+            "different-revision",
+            "rank_math_capture_revision_drift",
+        ),
+    ],
+)
+async def test_p2c23_rank_math_capture_rejects_external_identity_drift(
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: str,
+    error_code: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, _event = await _published_rank_math_fixture(
+            session,
+            monkeypatch,
+        )
+        kwargs = {field: value}
+        with pytest.raises(RankMathCaptureError, match=error_code):
+            await capture_rank_math_inspection(
+                session,
+                published_content_id=mapping.id,
+                content_version_id=fixture.version.id,
+                inspection=_rank_math_inspection(mapping, **kwargs),
+            )
+
+
+@pytest.mark.asyncio
+async def test_p2c23_rank_math_capture_requires_matching_publish_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, _event = await _published_rank_math_fixture(
+            session,
+            monkeypatch,
+        )
+        mapping.external_revision_id = "revision-without-event"
+        await session.flush()
+
+        with pytest.raises(
+            RankMathCaptureError,
+            match="rank_math_capture_publish_event_mismatch",
+        ):
+            await capture_rank_math_inspection(
+                session,
+                published_content_id=mapping.id,
+                content_version_id=fixture.version.id,
+                inspection=_rank_math_inspection(mapping),
+            )
+
+
+@pytest.mark.asyncio
+async def test_p2c23_historical_rank_math_state_requires_exact_captured_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, mapping, _event = await _published_rank_math_fixture(
+            session,
+            monkeypatch,
+        )
+        captured = await capture_rank_math_inspection(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            inspection=_rank_math_inspection(mapping),
+        )
+
+        newer_payload = json.loads(json.dumps(fixture.version.content_json))
+        newer_payload["p2c23_revision"] = "new-current-version"
+        newer = ContentVersion(
+            content_item_id=fixture.item.id,
+            version_no=fixture.version.version_no + 1,
+            final_artifact_id=fixture.final_artifact.id,
+            change_reason="P2C2.3 historical capture guard.",
+            status="approved",
+            content_json=newer_payload,
+            created_by_run_id=fixture.source_run.id,
+        )
+        session.add(newer)
+        await session.flush()
+        mapping.current_content_version_id = newer.id
+        await session.flush()
+
+        historical = await get_captured_rank_math_inspection(
+            session,
+            published_content_id=mapping.id,
+            content_version_id=fixture.version.id,
+            capability="rank-math/get-post-seo-meta",
+        )
+        assert historical.id == captured.artifact.id
+
+        with pytest.raises(
+            RankMathCaptureError,
+            match="rank_math_capture_current_version_required",
+        ):
+            await capture_rank_math_inspection(
+                session,
+                published_content_id=mapping.id,
+                content_version_id=fixture.version.id,
+                inspection=_rank_math_inspection(mapping),
+            )
+
+        with pytest.raises(
+            RankMathCaptureError,
+            match="rank_math_capture_historical_snapshot_missing",
+        ):
+            await get_captured_rank_math_inspection(
+                session,
+                published_content_id=mapping.id,
+                content_version_id=fixture.version.id,
+                capability="rank-math/get-post-schema",
             )
 

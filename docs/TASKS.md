@@ -199,10 +199,14 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 - [x] Include WordPress post/revision/status identity plus Rank Math Free/PRO versions.
 - [x] Add deterministic PHP contract tests covering write-ability denial, runtime annotation drift, HMAC failure and output stripping.
 - [x] P2C2.1 passed CI + exact-ref review + real local WordPress verification and merged via PR #212.
-- [x] P2C2.2 bounded ContentEngine gateway implementation exists on the active branch: SecretStr HMAC config, three fixed GET methods, HTTPS/timeout/no-redirect/no-retry guards, strict provenance/identity/schema parsing and stable errors.
-- [x] P2C2.2 also hardens the bridge response with `Cache-Control: no-store, private` because custom HMAC auth does not make WordPress core treat the request as a logged-in REST request for cache headers.
-- [ ] P2C2.2 candidate must pass CI, exact-ref review and Agent Local local integration proof before Founder merge.
-- [ ] P2C2.3 exact PublishedContent/PublishEvent/version guard + immutable Artifact capture remains separate.
+- [x] P2C2.2 bounded ContentEngine gateway uses SecretStr HMAC config, three fixed GET methods, HTTPS/timeout/no-redirect/no-retry guards, strict provenance/identity/schema parsing and stable errors.
+- [x] P2C2.2 hardens bridge responses with `Cache-Control: no-store, private`.
+- [x] P2C2.2 passed CI + exact-ref review + real `motgu.test` ContentEngine gateway integration and merged via PR #213.
+- [x] P2C2.3 implementation validates exact current PublishedContent + ContentVersion + matching PublishEvent + publish-package lineage before persistence.
+- [x] P2C2.3 persists validated Rank Math state only as immutable Harness Artifact; no new SEO/Rank Math table or migration.
+- [x] Deterministic snapshot fingerprint ignores capture time for exact replay, while changed safe state creates the next immutable Artifact version.
+- [x] Historical ContentVersion reads require a previously captured exact Artifact; live Rank Math state is never retroactively attributed.
+- [ ] P2C2.3 candidate must pass CI, exact-ref review and Agent Local disposable/local integration proof before Founder merge.
 - [ ] No `motgu.com` activation without Founder authorization and production-readiness validation.
 
 ### CT-01 immediate checklist
