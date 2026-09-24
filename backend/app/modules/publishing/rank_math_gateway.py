@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import re
 import time
 from collections.abc import Callable
@@ -207,7 +208,11 @@ def _is_sensitive_key(key: str) -> bool:
 def _validate_json_value(value: object, *, depth: int = 0) -> object:
     if depth > _MAX_SCHEMA_DEPTH:
         raise RankMathBridgeError("rank_math_bridge_safe_data_invalid")
-    if value is None or isinstance(value, (str, int, float, bool)):
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise RankMathBridgeError("rank_math_bridge_safe_data_invalid")
         return value
     if isinstance(value, list):
         return [_validate_json_value(item, depth=depth + 1) for item in value]
