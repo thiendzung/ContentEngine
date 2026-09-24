@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     jina_api_key: SecretStr | None = None
     brave_search_api_key: SecretStr | None = None
 
+    wordpress_base_url: str | None = None
+    wordpress_username: str | None = None
+    wordpress_application_password: SecretStr | None = None
+    wordpress_request_timeout_seconds: float = Field(default=20.0, gt=0)
+
     research_request_timeout_seconds: float = 20.0
     research_max_provider_calls: int = 8
     research_max_selected_urls: int = 3
