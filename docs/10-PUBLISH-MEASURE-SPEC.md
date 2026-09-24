@@ -108,7 +108,9 @@ post ID:
 Bridge phải fail closed nếu capability live không còn `readonly=true`, nếu trở thành
 destructive/non-idempotent, nếu post ID không hợp lệ, hoặc nếu output không khớp schema
 allowlist. Secret/auth nằm ngoài Git; response không được chứa token, cookie,
-Authorization header, raw settings hay arbitrary ability output.
+Authorization header, raw settings hay arbitrary ability output. Nếu Rank Math usage
+tracking đang opt-in, bridge V1 cũng fail closed thay vì biến một read inspection thành
+third-party telemetry; bridge không tự đổi preference đó.
 
 Rank Math chỉ là lớp SEO intelligence. Dữ liệu có upstream là Search Console hoặc Google
 Analytics giữ nguyên provenance tương ứng và không được ingest lần hai dưới provider
