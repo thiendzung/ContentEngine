@@ -384,7 +384,13 @@ async def test_rank_math_gateway_rejects_non_finite_schema_value() -> None:
     )
 
     async def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=payload, request=request)
+        body = json.dumps(payload, allow_nan=True).encode()
+        return httpx.Response(
+            200,
+            content=body,
+            headers={"content-type": "application/json"},
+            request=request,
+        )
 
     async with RankMathBridgeGateway(
         _config(),
