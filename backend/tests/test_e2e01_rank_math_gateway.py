@@ -164,7 +164,8 @@ async def test_rank_math_gateway_supports_schema_and_links_fixed_routes() -> Non
     assert links.safe_data["counts"] == {"internal": 1, "external": 0}
 
 
-def test_rank_math_gateway_rejects_incomplete_or_insecure_configuration() -> None:
+@pytest.mark.asyncio
+async def test_rank_math_gateway_rejects_incomplete_or_insecure_configuration() -> None:
     with pytest.raises(
         RankMathBridgeError,
         match="rank_math_bridge_configuration_incomplete",
@@ -184,13 +185,13 @@ def test_rank_math_gateway_rejects_incomplete_or_insecure_configuration() -> Non
             )
         )
 
-    gateway = RankMathBridgeGateway(
+    async with RankMathBridgeGateway(
         RankMathBridgeConfig(
             base_url="http://127.0.0.1:8080",
             secret=SecretStr("a" * 64),
         )
-    )
-    assert gateway is not None
+    ) as gateway:
+        assert gateway is not None
 
 
 def test_rank_math_gateway_config_repr_does_not_expose_secret() -> None:
@@ -209,15 +210,16 @@ def test_rank_math_gateway_config_repr_does_not_expose_secret() -> None:
         )
 
 
-def test_rank_math_gateway_from_settings_uses_secretstr() -> None:
+@pytest.mark.asyncio
+async def test_rank_math_gateway_from_settings_uses_secretstr() -> None:
     settings = Settings(
         _env_file=None,
         rank_math_bridge_base_url="https://motgu.example",
         rank_math_bridge_secret=SecretStr("b" * 64),
         rank_math_bridge_request_timeout_seconds=7.0,
     )
-    gateway = RankMathBridgeGateway.from_settings(settings)
-    assert gateway is not None
+    async with RankMathBridgeGateway.from_settings(settings) as gateway:
+        assert gateway is not None
 
 
 @pytest.mark.asyncio
