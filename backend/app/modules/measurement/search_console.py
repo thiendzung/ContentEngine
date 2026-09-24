@@ -12,7 +12,9 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 from google.auth.exceptions import GoogleAuthError  # type: ignore[import-untyped]
-from google.auth.transport.requests import Request as GoogleAuthRequest  # type: ignore[import-untyped]
+from google.auth.transport.requests import (  # type: ignore[import-untyped]
+    Request as GoogleAuthRequest,
+)
 from google.oauth2 import service_account  # type: ignore[import-untyped]
 
 from app.core.config import Settings
@@ -33,13 +35,6 @@ class SearchConsoleError(ValueError):
 class SearchConsoleTokenProvider(Protocol):
     async def access_token(self) -> str:
         """Return one bearer token without exposing credential material."""
-
-
-@dataclass(frozen=True, slots=True)
-class SearchConsoleConfig:
-    site_url: str
-    service_account_json: str
-    timeout_seconds: float = 20.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,12 +124,22 @@ def _validated_page_url(value: str) -> str:
     return page_url
 
 
-def _validated_window(window_start: datetime, window_end: datetime) -> tuple[date, date]:
+def _validated_window(
+    window_start: datetime,
+    window_end: datetime,
+) -> tuple[datetime, datetime, date, date]:
     if window_start.tzinfo is None or window_end.tzinfo is None:
         raise SearchConsoleError("search_console_window_timezone_required")
-    if window_end < window_start:
+    if window_end <= window_start:
         raise SearchConsoleError("search_console_window_invalid")
-    return window_start.date(), window_end.date()
+
+    end_in_start_timezone = window_end.astimezone(window_start.tzinfo)
+    return (
+        window_start,
+        window_end,
+        window_start.date(),
+        end_in_start_timezone.date(),
+    )
 
 
 def _decimal(value: object, *, code: str) -> Decimal:
@@ -149,14 +154,27 @@ def _decimal(value: object, *, code: str) -> Decimal:
     return parsed
 
 
-def _metric_datetime(provider_date: date) -> datetime:
-    return datetime.combine(provider_date, time.min, tzinfo=UTC)
+def _metric_datetime(
+    provider_date: date,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> datetime:
+    representative = datetime.combine(
+        provider_date,
+        time(hour=12),
+        tzinfo=window_start.tzinfo,
+    )
+    bounded = min(max(representative, window_start), window_end)
+    return bounded.astimezone(UTC)
 
 
 def _parse_rows(
     payload: dict[str, object],
     *,
     canonical_url: str,
+    window_start: datetime,
+    window_end: datetime,
 ) -> tuple[MetricInput, ...]:
     rows = payload.get("rows", [])
     if rows is None:
@@ -197,7 +215,11 @@ def _parse_rows(
             "page": canonical_url,
             "provider_date": provider_date.isoformat(),
         }
-        metric_date = _metric_datetime(provider_date)
+        metric_date = _metric_datetime(
+            provider_date,
+            window_start=window_start,
+            window_end=window_end,
+        )
         metrics.extend(
             (
                 MetricInput(
@@ -280,7 +302,12 @@ class SearchConsoleGateway:
         window_end: datetime,
     ) -> SearchConsoleAcquisition:
         page_url = _validated_page_url(canonical_url)
-        start_date, end_date = _validated_window(window_start, window_end)
+        (
+            validated_start,
+            validated_end,
+            start_date,
+            end_date,
+        ) = _validated_window(window_start, window_end)
         token = await self._token_provider.access_token()
 
         endpoint = (
@@ -331,7 +358,12 @@ class SearchConsoleGateway:
         if not isinstance(payload, dict):
             raise SearchConsoleError("search_console_response_invalid")
         typed_payload = cast(dict[str, object], payload)
-        metrics = _parse_rows(typed_payload, canonical_url=page_url)
+        metrics = _parse_rows(
+            typed_payload,
+            canonical_url=page_url,
+            window_start=validated_start,
+            window_end=validated_end,
+        )
 
         raw_metrics: dict[str, object] = {
             "request": {
@@ -353,7 +385,6 @@ class SearchConsoleGateway:
 __all__ = [
     "GoogleServiceAccountTokenProvider",
     "SearchConsoleAcquisition",
-    "SearchConsoleConfig",
     "SearchConsoleError",
     "SearchConsoleGateway",
     "SearchConsoleTokenProvider",
