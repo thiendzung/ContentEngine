@@ -472,7 +472,7 @@ class RankMathBridgeGateway:
         *,
         transport: httpx.AsyncBaseTransport | None = None,
         clock: Callable[[], float] = time.time,
-    ) -> "RankMathBridgeGateway":
+    ) -> RankMathBridgeGateway:
         secret = (
             settings.rank_math_bridge_secret.get_secret_value()
             if settings.rank_math_bridge_secret is not None
@@ -488,7 +488,7 @@ class RankMathBridgeGateway:
             clock=clock,
         )
 
-    async def __aenter__(self) -> "RankMathBridgeGateway":
+    async def __aenter__(self) -> RankMathBridgeGateway:
         return self
 
     async def __aexit__(
