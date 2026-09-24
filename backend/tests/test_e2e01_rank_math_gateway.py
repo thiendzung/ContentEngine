@@ -20,7 +20,7 @@ from app.modules.publishing.rank_math_gateway import (
 def _config() -> RankMathBridgeConfig:
     return RankMathBridgeConfig(
         base_url="https://motgu.example",
-        secret="a" * 64,
+        secret=SecretStr("a" * 64),
         timeout_seconds=5.0,
     )
 
@@ -171,7 +171,7 @@ def test_rank_math_gateway_rejects_incomplete_or_insecure_configuration() -> Non
         RankMathBridgeGateway(
             RankMathBridgeConfig(
                 base_url="https://motgu.example",
-                secret="short",
+                secret=SecretStr("short"),
             )
         )
 
@@ -179,14 +179,14 @@ def test_rank_math_gateway_rejects_incomplete_or_insecure_configuration() -> Non
         RankMathBridgeGateway(
             RankMathBridgeConfig(
                 base_url="http://motgu.example",
-                secret="a" * 64,
+                secret=SecretStr("a" * 64),
             )
         )
 
     gateway = RankMathBridgeGateway(
         RankMathBridgeConfig(
             base_url="http://127.0.0.1:8080",
-            secret="a" * 64,
+            secret=SecretStr("a" * 64),
         )
     )
     assert gateway is not None
