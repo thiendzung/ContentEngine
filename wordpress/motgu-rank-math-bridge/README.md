@@ -40,7 +40,7 @@ REST_ROUTE
 TIMESTAMP
 ```
 
-The accepted clock skew is 300 seconds. Because all bridge routes are read-only, no nonce/replay store is added in P2C2.1.
+The accepted clock skew is 300 seconds. Because all bridge routes are read-only, no nonce/replay store is added in P2C2.1. Use a different bridge secret for each environment; never reuse the local `motgu.test` secret on `motgu.com`.
 
 The dedicated WordPress user must have only the minimum post access and the Rank Math capabilities required by the three abilities:
 
@@ -49,6 +49,12 @@ The dedicated WordPress user must have only the minimum post access and the Rank
 - `rank_math_link_builder`
 
 Provisioning that user/capability assignment is an operational step and is not performed by this plugin.
+
+## Third-party telemetry boundary
+
+Rank Math's read abilities call its usage-tracking hook. When Rank Math usage tracking is opted in, that hook can emit a third-party telemetry event even though the SEO operation itself is read-only.
+
+The bridge therefore fails closed with `rank_math_tracking_enabled` while Rank Math usage tracking is opted in. It does **not** change the Rank Math preference. Production activation must decide explicitly whether this bridge is compatible with the site's tracking preference; P2C2.1 does not make that decision for `motgu.com`.
 
 ## Output boundary
 
