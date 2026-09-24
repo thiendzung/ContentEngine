@@ -533,37 +533,52 @@ class RankMathBridgeGateway:
         ).hexdigest()
         url = f"{self._config.base_url}/wp-json{route}"
 
+        headers = {
+            "X-MOTGU-Bridge-Timestamp": timestamp,
+            "X-MOTGU-Bridge-Signature": signature,
+            "Cache-Control": "no-store",
+        }
         try:
-            response = await self._client.get(
-                url,
-                headers={
-                    "X-MOTGU-Bridge-Timestamp": timestamp,
-                    "X-MOTGU-Bridge-Signature": signature,
-                },
-            )
+            async with self._client.stream("GET", url, headers=headers) as response:
+                if response.status_code == 401:
+                    raise RankMathBridgeError("rank_math_bridge_unauthorized")
+                if response.status_code == 403:
+                    raise RankMathBridgeError("rank_math_bridge_forbidden")
+                if response.status_code == 404:
+                    raise RankMathBridgeError("rank_math_bridge_not_found")
+                if response.status_code == 429:
+                    raise RankMathBridgeError("rank_math_bridge_rate_limited")
+                if 300 <= response.status_code <= 399:
+                    raise RankMathBridgeError("rank_math_bridge_redirect_rejected")
+                if 500 <= response.status_code <= 599:
+                    raise RankMathBridgeError("rank_math_bridge_upstream_error")
+                if not 200 <= response.status_code < 300:
+                    raise RankMathBridgeError("rank_math_bridge_http_error")
+
+                content_length = response.headers.get("content-length")
+                if content_length is not None:
+                    try:
+                        declared_length = int(content_length)
+                    except ValueError as exc:
+                        raise RankMathBridgeError(
+                            "rank_math_bridge_response_invalid"
+                        ) from exc
+                    if declared_length < 0 or declared_length > _MAX_RESPONSE_BYTES:
+                        raise RankMathBridgeError("rank_math_bridge_response_too_large")
+
+                body = bytearray()
+                async for chunk in response.aiter_bytes():
+                    body.extend(chunk)
+                    if len(body) > _MAX_RESPONSE_BYTES:
+                        raise RankMathBridgeError("rank_math_bridge_response_too_large")
+        except RankMathBridgeError:
+            raise
         except httpx.HTTPError as exc:
             raise RankMathBridgeError("rank_math_bridge_transport_error") from exc
 
-        if len(response.content) > _MAX_RESPONSE_BYTES:
-            raise RankMathBridgeError("rank_math_bridge_response_too_large")
-        if response.status_code == 401:
-            raise RankMathBridgeError("rank_math_bridge_unauthorized")
-        if response.status_code == 403:
-            raise RankMathBridgeError("rank_math_bridge_forbidden")
-        if response.status_code == 404:
-            raise RankMathBridgeError("rank_math_bridge_not_found")
-        if response.status_code == 429:
-            raise RankMathBridgeError("rank_math_bridge_rate_limited")
-        if 300 <= response.status_code <= 399:
-            raise RankMathBridgeError("rank_math_bridge_redirect_rejected")
-        if 500 <= response.status_code <= 599:
-            raise RankMathBridgeError("rank_math_bridge_upstream_error")
-        if not 200 <= response.status_code < 300:
-            raise RankMathBridgeError("rank_math_bridge_http_error")
-
         try:
-            payload = response.json()
-        except ValueError as exc:
+            payload = json.loads(bytes(body))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise RankMathBridgeError("rank_math_bridge_response_invalid") from exc
 
         return _parse_inspection(
