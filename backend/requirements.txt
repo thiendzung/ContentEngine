@@ -7,3 +7,4 @@ alembic>=1.16,<2
 httpx>=0.28,<1
 markdown>=3.7,<4
 bleach>=6.2,<7
+google-auth[requests]>=2.40,<3
