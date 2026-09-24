@@ -116,6 +116,8 @@ class RankMathInspection:
 
 def _validated_config(config: RankMathBridgeConfig) -> RankMathBridgeConfig:
     base_url = config.base_url.strip().rstrip("/")
+    if not isinstance(config.secret, SecretStr):
+        raise RankMathBridgeError("rank_math_bridge_configuration_incomplete")
     secret = config.secret.get_secret_value()
     if not base_url or len(secret) < 32:
         raise RankMathBridgeError("rank_math_bridge_configuration_incomplete")
