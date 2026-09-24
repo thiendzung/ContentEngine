@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     wordpress_application_password: SecretStr | None = None
     wordpress_request_timeout_seconds: float = Field(default=20.0, gt=0)
 
+    rank_math_bridge_base_url: str | None = None
+    rank_math_bridge_secret: SecretStr | None = None
+    rank_math_bridge_request_timeout_seconds: float = Field(default=20.0, gt=0)
+
     search_console_site_url: str | None = None
     search_console_service_account_json: SecretStr | None = None
     search_console_request_timeout_seconds: float = Field(default=20.0, gt=0)

@@ -351,8 +351,9 @@ PM-01 review flow remains:
 
 ## E2E-01 P2C2 Rank Math bridge window — 2026-09-24
 
-P2C2.0 audit is accepted. The active bounded implementation is P2C2.1: a MOTGU-owned
-WordPress read-only bridge for Rank Math-native SEO intelligence.
+P2C2.0 audit is accepted. P2C2.1 merged via PR #212 with real `motgu.test`
+read-only verification. The active bounded implementation is P2C2.2: the ContentEngine
+client gateway for that fixed bridge.
 
 Frozen architecture:
 - WordPress post ID is the primary external identity; canonical URL is a locator, not identity;
@@ -365,6 +366,15 @@ Frozen architecture:
 - Search Console/GA metrics retain Google provenance and are not duplicated as Rank Math metrics;
 - P2C2.1 does not publish, mutate WordPress, change Rank Math settings, persist ContentEngine Artifacts or activate `motgu.com`.
 
-Next bounded gates after P2C2.1 are ContentEngine gateway (P2C2.2), exact
-PublishedContent/PublishEvent/version guard + immutable Artifact capture (P2C2.3), local exact-ref verification
-(P2C2.4), then separately authorized production-readiness validation (P2C2.5).
+P2C2.2 adds only transport/config/parser behavior: HMAC SecretStr config, three
+fixed GET methods, HTTPS except loopback dev, bounded timeout, redirects disabled, no
+automatic retries, strict envelope/safe-data validation and stable fail-closed errors.
+It does not yet bind a Rank Math read to PublishedContent/PublishEvent/ContentVersion or
+persist an Artifact. During reverse-risk review, the bridge response was additionally
+hardened with `Cache-Control: no-store, private` so authenticated SEO/draft metadata is
+not cacheable merely because the custom HMAC request is not a normal logged-in WP REST
+session.
+
+Next bounded gate after P2C2.2 is the exact PublishedContent/PublishEvent/version guard +
+immutable Artifact capture (P2C2.3), then local exact-ref verification (P2C2.4), then
+separately authorized production-readiness validation (P2C2.5).

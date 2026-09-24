@@ -118,6 +118,19 @@ Analytics giữ nguyên provenance tương ứng và không được ingest lầ
 ContentEngine xác minh exact PublishedContent WordPress ID + PublishEvent/revision.
 Historical attribution không có exact captured snapshot phải fail closed.
 
+ContentEngine P2C2.2 chỉ gọi bridge qua ba method cố định tương ứng ba route trên.
+Gateway dùng HMAC-SHA256 với secret kiểu `SecretStr`, timestamp ngắn hạn, timeout bounded,
+`follow_redirects=false`, không retry tự động và không dùng WordPress
+username/Application Password. Base URL phải HTTPS, ngoại trừ loopback HTTP cho test/dev.
+Bridge response phải `Cache-Control: no-store, private`; gateway cũng gửi `no-store`
+và đọc response theo bounded stream thay vì tải payload vô hạn trước khi kiểm tra kích thước.
+
+Gateway phải parse envelope theo schema version cố định, re-check exact post ID,
+capability, provenance `rank_math/rank_math_native`, WordPress revision/status và
+allowlist `safe_data`; unknown/malformed/sensitive output fail closed. P2C2.2 chỉ là
+transport/parser: chưa được tự gắn snapshot vào ContentVersion hay persist Artifact.
+Exact PublishedContent/PublishEvent/version/revision guard thuộc P2C2.3.
+
 ## 6. Measurement sources
 
 ### Search Console
