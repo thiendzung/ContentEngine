@@ -12,6 +12,7 @@ $GLOBALS['bridge_routes'] = [];
 $GLOBALS['bridge_abilities'] = [];
 $GLOBALS['bridge_current_user'] = 0;
 $GLOBALS['bridge_execution_count'] = 0;
+$GLOBALS['rank_math_tracking_opt_in'] = false;
 
 class WP_Error {
 	private $code;
@@ -81,6 +82,18 @@ class WP_REST_Response {
 	public function __construct( $data ) {
 		$this->data = $data;
 	}
+}
+
+class FakeTracking {
+	public function is_opted_in() {
+		return (bool) $GLOBALS['rank_math_tracking_opt_in'];
+	}
+}
+
+function rank_math() {
+	$runtime           = new stdClass();
+	$runtime->tracking = new FakeTracking();
+	return $runtime;
 }
 
 class FakeAbility {
@@ -227,6 +240,23 @@ expect_true(
 	$GLOBALS['bridge_abilities']['rank-math/get-post-seo-meta']->executed === 0,
 	'non-readonly ability annotation must block execution'
 );
+
+$GLOBALS['bridge_abilities']['rank-math/get-post-seo-meta'] = new FakeAbility(
+	readonly_meta(),
+	[ 'post_id' => 5 ]
+);
+$GLOBALS['rank_math_tracking_opt_in'] = true;
+$telemetry_blocked = Bridge::execute_allowed_ability( 'rank-math/get-post-seo-meta', [ 'post_id' => 5 ] );
+expect_error_code(
+	$telemetry_blocked,
+	'motgu_rank_math_bridge_rank_math_tracking_enabled',
+	'Rank Math usage telemetry opt-in must fail closed'
+);
+expect_true(
+	$GLOBALS['bridge_abilities']['rank-math/get-post-seo-meta']->executed === 0,
+	'telemetry opt-in must block ability execution'
+);
+$GLOBALS['rank_math_tracking_opt_in'] = false;
 
 $GLOBALS['bridge_abilities']['rank-math/get-post-seo-meta'] = new FakeAbility(
 	readonly_meta(),
