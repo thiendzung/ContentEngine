@@ -78,9 +78,14 @@ class WP_REST_Request {
 
 class WP_REST_Response {
 	public $data;
+	public $headers = [];
 
 	public function __construct( $data ) {
 		$this->data = $data;
+	}
+
+	public function header( $key, $value ) {
+		$this->headers[ $key ] = $value;
 	}
 }
 
@@ -298,6 +303,10 @@ expect_true(
 );
 $response = Bridge::handle_request( $request, 'seo-meta' );
 expect_true( $response instanceof WP_REST_Response, 'valid read must return REST response' );
+expect_true(
+	$response->headers['Cache-Control'] === 'no-store, private',
+	'bridge response must not be cacheable'
+);
 expect_true(
 	$response->data['capability'] === 'rank-math/get-post-seo-meta',
 	'capability identity mismatch'
