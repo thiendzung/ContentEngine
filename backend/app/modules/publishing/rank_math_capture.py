@@ -324,7 +324,7 @@ def _validate_stored_artifact(artifact: Artifact) -> dict[str, object]:
         or artifact.content_hash != _hash(artifact.content_json)
     ):
         raise RankMathCaptureError("rank_math_capture_artifact_history_invalid")
-    payload = cast(dict[str, object], artifact.content_json)
+    payload = artifact.content_json
     if (
         payload.get("schema_version") != RANK_MATH_CAPTURE_SCHEMA_VERSION
         or payload.get("artifact_type") != "rank_math_inspection"
