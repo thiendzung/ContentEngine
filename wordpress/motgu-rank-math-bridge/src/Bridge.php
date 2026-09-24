@@ -175,7 +175,7 @@ final class Bridge {
 		$modified  = get_post_modified_time( 'Y-m-d\TH:i:s', true, $post_id );
 		$status    = get_post_status( $post_id );
 
-		return rest_ensure_response(
+		$response = rest_ensure_response(
 			[
 				'payload_schema_version' => self::PAYLOAD_SCHEMA_VERSION,
 				'source'                 => 'rank_math',
@@ -191,6 +191,9 @@ final class Bridge {
 				'safe_data'              => $safe_data,
 			]
 		);
+		$response->header( 'Cache-Control', 'no-store, private' );
+
+		return $response;
 	}
 
 	/**
