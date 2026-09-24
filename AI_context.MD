@@ -351,9 +351,10 @@ PM-01 review flow remains:
 
 ## E2E-01 P2C2 Rank Math bridge window — 2026-09-24
 
-P2C2.0 audit is accepted. P2C2.1 merged via PR #212 with real `motgu.test`
-read-only verification. The active bounded implementation is P2C2.2: the ContentEngine
-client gateway for that fixed bridge.
+P2C2.0 audit is accepted. P2C2.1 merged via PR #212 and P2C2.2 merged via
+PR #213 after real `motgu.test` bridge/gateway verification. The active bounded
+implementation is P2C2.3: exact publication identity guard plus immutable Rank Math
+inspection capture.
 
 Frozen architecture:
 - WordPress post ID is the primary external identity; canonical URL is a locator, not identity;
@@ -375,6 +376,19 @@ hardened with `Cache-Control: no-store, private` so authenticated SEO/draft meta
 not cacheable merely because the custom HMAC request is not a normal logged-in WP REST
 session.
 
-Next bounded gate after P2C2.2 is the exact PublishedContent/PublishEvent/version guard +
-immutable Artifact capture (P2C2.3), then local exact-ref verification (P2C2.4), then
-separately authorized production-readiness validation (P2C2.5).
+P2C2.3 requires the requested ContentVersion to be the current PublishedContent version,
+requires a matching immutable PublishEvent whose canonical URL/status/revision/publication
+timestamp still matches the mapping, and revalidates the publish-package Artifact/run
+lineage before any Rank Math state can be persisted. The validated inspection is stored
+only as an immutable Harness Artifact owned by that publish run; there is no new
+Rank Math table or migration.
+
+Capture replay uses a deterministic snapshot fingerprint over publication identity,
+Rank Math versions/capability and safe data while excluding capture time. An identical
+snapshot reuses the existing Artifact; changed safe state creates the next immutable
+Artifact version. Historical ContentVersion reads are permitted only when an exact
+snapshot Artifact was already captured for that historical publish lineage. Missing
+historical snapshots fail closed rather than reading current Rank Math state.
+
+Next bounded gate after P2C2.3 is local exact-ref verification (P2C2.4), then separately
+authorized production-readiness validation (P2C2.5).
