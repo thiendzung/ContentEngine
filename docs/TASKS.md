@@ -198,8 +198,10 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 - [x] Allowlist output fields, reject secret-shaped nested Schema keys and bound links/payload size.
 - [x] Include WordPress post/revision/status identity plus Rank Math Free/PRO versions.
 - [x] Add deterministic PHP contract tests covering write-ability denial, runtime annotation drift, HMAC failure and output stripping.
-- [ ] P2C2.1 candidate must pass CI, exact-ref OCR and Agent Local local-WordPress verification before Founder merge.
-- [ ] P2C2.2 ContentEngine gateway remains separate.
+- [x] P2C2.1 passed CI + exact-ref review + real local WordPress verification and merged via PR #212.
+- [x] P2C2.2 bounded ContentEngine gateway implementation exists on the active branch: SecretStr HMAC config, three fixed GET methods, HTTPS/timeout/no-redirect/no-retry guards, strict provenance/identity/schema parsing and stable errors.
+- [x] P2C2.2 also hardens the bridge response with `Cache-Control: no-store, private` because custom HMAC auth does not make WordPress core treat the request as a logged-in REST request for cache headers.
+- [ ] P2C2.2 candidate must pass CI, exact-ref review and Agent Local local integration proof before Founder merge.
 - [ ] P2C2.3 exact PublishedContent/PublishEvent/version guard + immutable Artifact capture remains separate.
 - [ ] No `motgu.com` activation without Founder authorization and production-readiness validation.
 
