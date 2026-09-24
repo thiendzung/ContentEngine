@@ -97,6 +97,27 @@ Signal hữu ích khi có cách truy cập ổn định:
 
 Không lưu/đẩy overall score thành mục tiêu kinh doanh chính.
 
+P2C2 dùng một MOTGU-owned read-only bridge thay vì trao cho ContentEngine generic
+MCP/Abilities executor. Bridge V1 chỉ expose ba capability cố định theo exact WordPress
+post ID:
+
+- `rank-math/get-post-seo-meta`;
+- `rank-math/get-post-schema`;
+- `rank-math/get-post-links`.
+
+Bridge phải fail closed nếu capability live không còn `readonly=true`, nếu trở thành
+destructive/non-idempotent, nếu post ID không hợp lệ, hoặc nếu output không khớp schema
+allowlist. Secret/auth nằm ngoài Git; response không được chứa token, cookie,
+Authorization header, raw settings hay arbitrary ability output. Nếu Rank Math usage
+tracking đang opt-in, bridge V1 cũng fail closed thay vì biến một read inspection thành
+third-party telemetry; bridge không tự đổi preference đó.
+
+Rank Math chỉ là lớp SEO intelligence. Dữ liệu có upstream là Search Console hoặc Google
+Analytics giữ nguyên provenance tương ứng và không được ingest lần hai dưới provider
+`rank_math`. Current Rank Math state chỉ được gắn với current ContentVersion sau khi
+ContentEngine xác minh exact PublishedContent WordPress ID + PublishEvent/revision.
+Historical attribution không có exact captured snapshot phải fail closed.
+
 ## 6. Measurement sources
 
 ### Search Console

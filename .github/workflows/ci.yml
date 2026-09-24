@@ -5,6 +5,9 @@ on:
     branches: [main, ce01-walking-skeleton]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -32,6 +35,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: WordPress bridge contract
+        run: |
+          php -l wordpress/motgu-rank-math-bridge/motgu-rank-math-bridge.php
+          php -l wordpress/motgu-rank-math-bridge/src/Bridge.php
+          php -l wordpress/motgu-rank-math-bridge/tests/contract-test.php
+          php wordpress/motgu-rank-math-bridge/tests/contract-test.php
 
       - uses: actions/setup-python@v5
         with:
@@ -99,4 +109,3 @@ jobs:
             echo "Frontend install/build mutated canonical release inputs"
             exit 1
           fi
-

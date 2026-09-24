@@ -348,3 +348,23 @@ PM-01 still remains IN IMPLEMENTATION until exact final docs-head CI, exact-ref 
 
 PM-01 review flow remains:
 `CI → exact-ref OpenCodeReview Delegation → MG triage → Agent Local disposable exact-head proof → Founder merge`.
+
+## E2E-01 P2C2 Rank Math bridge window — 2026-09-24
+
+P2C2.0 audit is accepted. The active bounded implementation is P2C2.1: a MOTGU-owned
+WordPress read-only bridge for Rank Math-native SEO intelligence.
+
+Frozen architecture:
+- WordPress post ID is the primary external identity; canonical URL is a locator, not identity;
+- bridge source is tracked under `wordpress/motgu-rank-math-bridge/`;
+- only three initial Rank Math abilities are exposed: post SEO meta, post schema and post links;
+- there is no arbitrary ability-name endpoint and no generic MCP executor in the ContentEngine path;
+- HMAC auth uses a secret outside Git plus a dedicated internal WordPress service-user ID;
+- the bridge revalidates live ability annotations and fails closed on readonly/destructive/idempotency drift;
+- output is allowlisted/bounded and must not expose secrets or raw settings;
+- Search Console/GA metrics retain Google provenance and are not duplicated as Rank Math metrics;
+- P2C2.1 does not publish, mutate WordPress, change Rank Math settings, persist ContentEngine Artifacts or activate `motgu.com`.
+
+Next bounded gates after P2C2.1 are ContentEngine gateway (P2C2.2), exact
+PublishedContent/PublishEvent/version guard + immutable Artifact capture (P2C2.3), local exact-ref verification
+(P2C2.4), then separately authorized production-readiness validation (P2C2.5).
