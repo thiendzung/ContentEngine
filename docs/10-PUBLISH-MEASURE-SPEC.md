@@ -122,6 +122,8 @@ ContentEngine P2C2.2 chỉ gọi bridge qua ba method cố định tương ứng
 Gateway dùng HMAC-SHA256 với secret kiểu `SecretStr`, timestamp ngắn hạn, timeout bounded,
 `follow_redirects=false`, không retry tự động và không dùng WordPress
 username/Application Password. Base URL phải HTTPS, ngoại trừ loopback HTTP cho test/dev.
+Bridge response phải `Cache-Control: no-store, private`; gateway cũng gửi `no-store`
+và đọc response theo bounded stream thay vì tải payload vô hạn trước khi kiểm tra kích thước.
 
 Gateway phải parse envelope theo schema version cố định, re-check exact post ID,
 capability, provenance `rank_math/rank_math_native`, WordPress revision/status và
