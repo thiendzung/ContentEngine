@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Self
+from typing import Self, cast
 from urllib.parse import urlsplit
 
 import bleach  # type: ignore[import-untyped]
@@ -128,7 +128,8 @@ def _post_content_raw(post: dict[str, object]) -> str | None:
     content = post.get("content")
     if not isinstance(content, dict):
         return None
-    raw = content.get("raw")
+    typed_content = cast(dict[str, object], content)
+    raw = typed_content.get("raw")
     return raw if isinstance(raw, str) else None
 
 
@@ -201,7 +202,7 @@ class WordPressRestGateway:
         self,
         url: str,
         *,
-        params: list[tuple[str, str]] | None = None,
+        params: list[tuple[str, str | int | float | bool | None]] | None = None,
     ) -> httpx.Response | None:
         try:
             return await self._client.get(url, params=params)
@@ -465,7 +466,7 @@ class WordPressRestGateway:
                 )
             return self._reconciliation_success(payload, request=request)
 
-        params: list[tuple[str, str]] = [
+        params: list[tuple[str, str | int | float | bool | None]] = [
             ("context", "edit"),
             ("slug", request.slug),
             ("per_page", "10"),
