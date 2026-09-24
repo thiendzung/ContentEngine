@@ -11,11 +11,9 @@ from typing import Protocol, cast
 from urllib.parse import quote, urlsplit
 
 import httpx
-from google.auth.exceptions import GoogleAuthError  # type: ignore[import-untyped]
-from google.auth.transport.requests import (  # type: ignore[import-untyped]
-    Request as GoogleAuthRequest,
-)
-from google.oauth2 import service_account  # type: ignore[import-untyped]
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport.requests import Request as GoogleAuthRequest
+from google.oauth2 import service_account
 
 from app.core.config import Settings
 from app.modules.measurement.service import MetricInput
@@ -57,7 +55,7 @@ class GoogleServiceAccountTokenProvider:
         if not isinstance(parsed, dict):
             raise SearchConsoleError("search_console_credentials_invalid")
         try:
-            self._credentials = service_account.Credentials.from_service_account_info(
+            self._credentials = service_account.Credentials.from_service_account_info(  # type: ignore[no-untyped-call]
                 cast(dict[str, object], parsed),
                 scopes=[_READONLY_SCOPE],
             )
@@ -211,7 +209,7 @@ def _parse_rows(
             typed_row.get("impressions"),
             code="search_console_impressions_invalid",
         )
-        dimensions = {
+        dimensions: dict[str, object] = {
             "page": canonical_url,
             "provider_date": provider_date.isoformat(),
         }
