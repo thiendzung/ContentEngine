@@ -95,13 +95,16 @@ def _render_markdown(body_markdown: str) -> str:
         extensions=["extra", "sane_lists"],
         output_format="html5",
     )
-    return bleach.clean(
-        rendered,
-        tags=_ALLOWED_TAGS,
-        attributes=_ALLOWED_ATTRIBUTES,
-        protocols=_ALLOWED_PROTOCOLS,
-        strip=True,
-        strip_comments=True,
+    return cast(
+        str,
+        bleach.clean(
+            rendered,
+            tags=_ALLOWED_TAGS,
+            attributes=_ALLOWED_ATTRIBUTES,
+            protocols=_ALLOWED_PROTOCOLS,
+            strip=True,
+            strip_comments=True,
+        ),
     )
 
 
