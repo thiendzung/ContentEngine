@@ -171,7 +171,8 @@ final class Bridge {
 		}
 
 		$permalink = get_permalink( $post_id );
-		$modified  = get_post_modified_time( 'Y-m-d\TH:i:s\Z', true, $post_id );
+		// Match WordPress REST modified_gmt exactly: RFC3339 without a timezone suffix.
+		$modified  = get_post_modified_time( 'Y-m-d\TH:i:s', true, $post_id );
 		$status    = get_post_status( $post_id );
 
 		return rest_ensure_response(
