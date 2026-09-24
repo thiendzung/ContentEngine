@@ -329,6 +329,29 @@ expect_error_code(
 	'nested secret-shaped schema field must fail closed'
 );
 
+$GLOBALS['bridge_abilities']['rank-math/get-post-schema'] = new FakeAbility(
+	readonly_meta(),
+	[
+		'post_id'      => 5,
+		'schema_types' => [ 'EducationalOccupationalCredential' ],
+		'schemas'      => [
+			[
+				'@type'              => 'EducationalOccupationalCredential',
+				'credentialCategory' => 'Degree',
+			],
+		],
+	]
+);
+$safe_schema = Bridge::handle_request( $schema_request, 'schema' );
+expect_true(
+	$safe_schema instanceof WP_REST_Response,
+	'legitimate Schema credentialCategory must not be rejected as a secret'
+);
+expect_true(
+	$safe_schema->data['safe_data']['schemas'][0]['credentialCategory'] === 'Degree',
+	'legitimate Schema field must be preserved'
+);
+
 $invalid = new WP_REST_Request(
 	'GET',
 	'/motgu-contentengine/v1/rank-math/posts/0/seo-meta',
