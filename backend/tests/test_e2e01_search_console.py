@@ -241,37 +241,30 @@ async def test_search_console_rejects_duplicate_or_negative_provider_rows() -> N
                 )
 
 
-def test_search_console_rejects_invalid_property_page_and_window() -> None:
+@pytest.mark.asyncio
+async def test_search_console_rejects_invalid_property_page_and_window() -> None:
     with pytest.raises(SearchConsoleError, match="search_console_site_url_invalid"):
         SearchConsoleGateway(
             site_url="sc-domain:",
             token_provider=_TokenProvider(),
         )
 
-    gateway = SearchConsoleGateway(
+    async with SearchConsoleGateway(
         site_url="sc-domain:motgu.com",
         token_provider=_TokenProvider(),
-    )
-    with pytest.raises(SearchConsoleError, match="search_console_page_url_invalid"):
-        import asyncio
-
-        asyncio.run(
-            gateway.acquire_page(
+    ) as gateway:
+        with pytest.raises(SearchConsoleError, match="search_console_page_url_invalid"):
+            await gateway.acquire_page(
                 canonical_url="not-a-url",
                 window_start=datetime(2026, 9, 1, tzinfo=UTC),
                 window_end=datetime(2026, 9, 2, tzinfo=UTC),
             )
-        )
-    with pytest.raises(SearchConsoleError, match="search_console_window_timezone_required"):
-        import asyncio
-
-        asyncio.run(
-            gateway.acquire_page(
+        with pytest.raises(
+            SearchConsoleError,
+            match="search_console_window_timezone_required",
+        ):
+            await gateway.acquire_page(
                 canonical_url="https://motgu.com/example/",
                 window_start=datetime(2026, 9, 1),
                 window_end=datetime(2026, 9, 2),
             )
-        )
-    import asyncio
-
-    asyncio.run(gateway.aclose())
