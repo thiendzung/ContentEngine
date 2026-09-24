@@ -200,6 +200,15 @@ async def _current_binding(
     return mapping, version, item, event, package, run
 
 
+def _wordpress_post_id(mapping: PublishedContent) -> int:
+    if not mapping.external_id.isdigit() or mapping.external_id.startswith("0"):
+        raise RankMathCaptureError("rank_math_capture_post_id_invalid")
+    post_id = int(mapping.external_id)
+    if post_id <= 0:
+        raise RankMathCaptureError("rank_math_capture_post_id_invalid")
+    return post_id
+
+
 def _validated_inspection(
     *,
     mapping: PublishedContent,
@@ -229,7 +238,7 @@ def _validated_inspection(
         raise RankMathCaptureError("rank_math_capture_timestamp_invalid")
     if not inspection.rank_math_free_version.strip():
         raise RankMathCaptureError("rank_math_capture_rank_math_version_missing")
-    if inspection.safe_data.get("post_id") != int(mapping.external_id):
+    if inspection.safe_data.get("post_id") != _wordpress_post_id(mapping):
         raise RankMathCaptureError("rank_math_capture_safe_data_identity_mismatch")
 
     safe_data = _safe_json(inspection.safe_data)
