@@ -332,6 +332,53 @@ async def test_rank_math_gateway_rejects_unknown_or_sensitive_safe_data() -> Non
 
 
 @pytest.mark.asyncio
+async def test_rank_math_gateway_does_not_retry_upstream_failure() -> None:
+    calls = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, json={"code": "upstream"}, request=request)
+
+    async with RankMathBridgeGateway(
+        _config(),
+        transport=httpx.MockTransport(handler),
+    ) as gateway:
+        with pytest.raises(
+            RankMathBridgeError,
+            match="rank_math_bridge_upstream_error",
+        ):
+            await gateway.get_post_seo_meta(42)
+
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_rank_math_gateway_rejects_non_finite_schema_value() -> None:
+    payload = _envelope(
+        route_key="schema",
+        safe_data={
+            "post_id": 42,
+            "schema_types": ["Article"],
+            "schemas": [{"@type": "Article", "ratingValue": float("nan")}],
+        },
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload, request=request)
+
+    async with RankMathBridgeGateway(
+        _config(),
+        transport=httpx.MockTransport(handler),
+    ) as gateway:
+        with pytest.raises(
+            RankMathBridgeError,
+            match="rank_math_bridge_safe_data_invalid",
+        ):
+            await gateway.get_post_schema(42)
+
+
+@pytest.mark.asyncio
 async def test_rank_math_gateway_rejects_invalid_post_id_before_transport() -> None:
     calls = 0
 
