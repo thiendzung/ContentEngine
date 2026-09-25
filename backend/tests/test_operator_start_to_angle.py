@@ -99,6 +99,7 @@ def _intake_kwargs(*, key: str) -> dict[str, object]:
         "source_locale": "en",
         "research_country": "vn",
         "required_locales": ["vi", "en"],
+        "content_role": "cluster",
         "reader": "International visitor researching Vietnamese art",
         "situation": "Planning what to see and buy during a Vietnam trip",
         "need": "Understand how to evaluate locally made relief artwork",
