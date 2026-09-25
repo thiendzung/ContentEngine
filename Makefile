@@ -119,13 +119,13 @@ release-build-0042:
 	cd frontend && npm run build
 	cd backend && .venv/bin/python -m scripts.ops_release_provenance_0042 \
 		--authorized-head "$(AUTHORIZED_HEAD)" \
-		--output "../$(RELEASE_PROVENANCE)"
+		--output "$(RELEASE_PROVENANCE)"
 
 release-lifecycle-0042:
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
 	cd backend && .venv/bin/python -m scripts.ops_release_lifecycle_0042 \
 		--authorized-head "$(AUTHORIZED_HEAD)" \
-		--provenance "../$(RELEASE_PROVENANCE)"
+		--provenance "$(RELEASE_PROVENANCE)"
 
 release-lifecycle:
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required: make release-lifecycle AUTHORIZED_HEAD=<sha>" && exit 2)
