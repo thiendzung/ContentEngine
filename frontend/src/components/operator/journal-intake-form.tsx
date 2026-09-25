@@ -16,7 +16,7 @@ type Props = {
 };
 
 type SourceLocale = "" | "vi-VN" | "en";
-type ContentRole = "pillar" | "cluster";
+type ContentRole = "" | "pillar" | "cluster";
 
 type FormState = {
   source_locale: SourceLocale;
@@ -42,7 +42,7 @@ const initialState: FormState = {
   research_country: "vn",
   required_vi: true,
   required_en: true,
-  content_role: "cluster",
+  content_role: "",
   reader: "",
   situation: "",
   need: "",
@@ -91,6 +91,10 @@ export function JournalIntakeForm({ preflightReady }: Props) {
     if (!preflightReady || submitting) return;
     if (!form.source_locale) {
       setError("Cần chọn ngôn ngữ nguồn trước khi tạo Journal.");
+      return;
+    }
+    if (!form.content_role) {
+      setError("Cần chọn rõ Journal này là Pillar hay Cluster.");
       return;
     }
     if (!requiredLocales.includes(form.source_locale)) {
@@ -156,7 +160,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
 
       <fieldset className="form-section">
         <legend>Phạm vi</legend>
-        <div className="form-grid three">
+        <div className="form-grid two">
           <label>
             <span>Ngôn ngữ nguồn</span>
             <select
@@ -176,6 +180,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
               required
               value={form.content_role}
             >
+              <option disabled value="">Chọn Pillar hoặc Cluster</option>
               <option value="pillar">Pillar — bức tranh lớn</option>
               <option value="cluster">Cluster — vấn đề hẹp, đi sâu</option>
             </select>
