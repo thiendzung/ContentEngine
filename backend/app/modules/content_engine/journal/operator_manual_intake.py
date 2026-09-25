@@ -64,7 +64,7 @@ class FounderJournalIntakeResult(BaseModel):
     source_locale_variant_id: UUID
     originality_pack_id: UUID
     required_locales: list[str]
-    content_role: str
+    content_role: str | None
     coverage_requirements: list[str]
     research_country: str
     replayed: bool
@@ -203,7 +203,7 @@ async def _replay_result(
         source_locale_variant_id=variant.id,
         originality_pack_id=pack.id,
         required_locales=required,
-        content_role=opportunity.suggested_role or "primary",
+        content_role=opportunity.suggested_role,
         coverage_requirements=list(opportunity.coverage_requirements_json),
         research_country=spec.research_country,
         replayed=True,
