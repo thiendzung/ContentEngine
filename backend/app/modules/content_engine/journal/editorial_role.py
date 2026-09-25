@@ -107,6 +107,8 @@ def editorial_role_contract_or_none(value: object) -> EditorialRoleContract | No
     Pillar/Cluster role.
     """
 
+    if value is None:
+        return None
     if isinstance(value, str) and value.strip().lower() == _LEGACY_ROLE:
         return None
     return editorial_role_contract(value)
