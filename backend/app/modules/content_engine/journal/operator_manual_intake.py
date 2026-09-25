@@ -11,6 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal import operator_runtime
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    require_editorial_role,
+)
 from app.modules.content_engine.journal.models import (
     JournalIntakeSpec,
     JournalRequiredLocale,
@@ -60,6 +64,7 @@ class FounderJournalIntakeResult(BaseModel):
     source_locale_variant_id: UUID
     originality_pack_id: UUID
     required_locales: list[str]
+    content_role: str
     coverage_requirements: list[str]
     research_country: str
     replayed: bool
@@ -198,6 +203,7 @@ async def _replay_result(
         source_locale_variant_id=variant.id,
         originality_pack_id=pack.id,
         required_locales=required,
+        content_role=opportunity.suggested_role or "primary",
         coverage_requirements=list(opportunity.coverage_requirements_json),
         research_country=spec.research_country,
         replayed=True,
@@ -212,6 +218,7 @@ async def create_founder_journal_intake(
     source_locale: str,
     research_country: str,
     required_locales: list[str],
+    content_role: str,
     reader: str,
     situation: str,
     need: str,
@@ -248,6 +255,10 @@ async def create_founder_journal_intake(
     if len(country) > 8:
         raise OperatorControlError("operator_research_country_invalid")
     locales = _normalized_locales(required_locales)
+    try:
+        role = require_editorial_role(content_role)
+    except EditorialRoleError as exc:
+        raise OperatorControlError("operator_manual_content_role_invalid") from exc
     if source not in locales:
         raise OperatorControlError("operator_source_locale_not_required")
 
@@ -279,6 +290,7 @@ async def create_founder_journal_intake(
         source_locale=source,
         research_country=country,
         required_locales=locales,
+        content_role=role,
         reader=reader_text,
         situation=situation_text,
         need=need_text,
@@ -357,7 +369,7 @@ async def create_founder_journal_intake(
         priority="NOW",
         reasons_json=["Explicit Founder manual selection for Journal production."],
         suggested_content_type="journal",
-        suggested_role="primary",
+        suggested_role=role,
         version=1,
         selected_by=actor,
         selected_at=utc_now(),
@@ -476,6 +488,7 @@ async def create_founder_journal_intake(
         source_locale_variant_id=created.source_locale_variant_id,
         originality_pack_id=pack.id,
         required_locales=locales,
+        content_role=role,
         coverage_requirements=coverage,
         research_country=country,
         replayed=False,
