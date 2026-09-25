@@ -107,3 +107,55 @@ Rules:
 - CQ-01 does not yet define Pillar/Cluster editorial behavior, section-level evidence
   adequacy or Human Voice semantics; those belong to later Content Quality slices.
 
+## CQ-02 Pillar / Cluster editorial-role extension
+
+The repository already distinguishes `pillar` and `cluster` in planning. CQ-02 makes
+that role a bounded editorial production contract instead of leaving it as a label.
+
+New Founder-authored Journal intake must choose exactly one current role:
+
+```text
+pillar | cluster
+```
+
+Canonical role flow:
+
+```text
+ContentOpportunity.suggested_role
+→ source LocaleVariant.content_role
+→ required locale variants
+→ Angle editorial_role_contract
+→ Outline editorial_role_contract
+→ Writer editorial_role_contract
+```
+
+Pillar contract:
+- synthesize the bounded main reader problem into a navigational answer;
+- cover committed main questions at useful overview depth;
+- delegate narrower specialist depth to Cluster content where appropriate;
+- do not duplicate full Cluster depth merely to make the Pillar longer;
+- use internal-link intents toward narrower follow-up content when known/planned.
+
+Cluster contract:
+- resolve one bounded reader subproblem in greater depth;
+- stay centered on its primary question and committed coverage;
+- do not widen into a general Pillar-style guide;
+- do not restate the Pillar's broad synthesis as filler;
+- link upward to a parent Pillar when that relationship is actually known.
+
+Safety and compatibility:
+- no new manual intake may create legacy role `primary`;
+- new/current-role cases fail closed if Opportunity and LocaleVariant roles disagree;
+- historical `primary` or missing-role rows remain readable and are not backfilled with
+  invented Pillar/Cluster intent;
+- exact role contracts are derived deterministically in code and rendered to Angle,
+  Outline and Writer; approved prompt/recipe registry rows are not silently mutated;
+- generation/render identities change with the new semantics so exact-output reuse cannot
+  pretend old role-unaware generation is current behavior;
+- CQ-02 does not invent a new durable parent-Pillar/child-Cluster relation. “Link when
+  known” means use existing/planned relationship context only. CQ-07 will show whether a
+  dedicated durable relationship is actually required;
+- structural role propagation does not prove semantic article quality. CQ-04/CQ-06 own
+  deeper evaluation of whether the generated structure/prose truly behaves as Pillar or
+  Cluster.
+
