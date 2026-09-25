@@ -117,8 +117,15 @@ class OutlineFixture:
     recipe_version: str
 
 
-async def _approved_fixture(session: AsyncSession) -> OutlineFixture:
-    bundle_artifact, bundle, evidence_set, pack = await _bundle_fixture(session)
+async def _approved_fixture(
+    session: AsyncSession,
+    *,
+    coverage_requirements: list[str] | None = None,
+) -> OutlineFixture:
+    bundle_artifact, bundle, evidence_set, pack = await _bundle_fixture(
+        session,
+        coverage_requirements=coverage_requirements,
+    )
     angle_output = [_candidate_payload(bundle, index) for index in range(1, 4)]
     angle_result = await AngleGenerator(max_attempts=1).generate_candidates(
         session,
@@ -182,7 +189,7 @@ async def _approved_fixture(session: AsyncSession) -> OutlineFixture:
 def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
     evidence_ref = str(bundle.evidence_ids[0])
     originality_ref = bundle.originality_refs[0]
-    return {
+    payload: dict[str, object] = {
         "primary_answer": (
             "There is no universal formula for an artwork price; start with documented "
             "context around the work, then separate those facts from your personal decision."
@@ -230,6 +237,20 @@ def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
             },
         ],
     }
+    opportunity = bundle.angle_model_input.get("opportunity")
+    if isinstance(opportunity, dict):
+        requirements = opportunity.get("coverage_requirements")
+        if isinstance(requirements, list) and requirements:
+            ids = [
+                item["id"]
+                for item in requirements
+                if isinstance(item, dict) and isinstance(item.get("id"), str)
+            ]
+            sections = cast(list[dict[str, object]], payload["sections"])
+            sections[0]["coverage_requirement_ids"] = ids
+            for section in sections[1:]:
+                section["coverage_requirement_ids"] = []
+    return payload
 
 
 async def _generate(
@@ -436,3 +457,69 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
             call.runtime_metadata_json["runner_executable"]
             == "/Applications/ChatGPT.app/Contents/Resources/codex"
         )
+
+@pytest.mark.asyncio
+async def test_outline_fails_closed_when_committed_promise_coverage_is_missing() -> None:
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        valid = _outline_payload(fixture.bundle)
+        generated = await _generate(session, fixture, FakeOutlineModel([valid]))
+        assert generated.outline.coverage_contract_active is True
+        mapped = {
+            requirement_id
+            for section in generated.outline.sections
+            for requirement_id in section.coverage_requirement_ids
+        }
+        assert mapped == {"coverage-1", "coverage-2"}
+
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        invalid = _outline_payload(fixture.bundle)
+        sections = cast(list[dict[str, object]], invalid["sections"])
+        sections[0]["coverage_requirement_ids"] = ["coverage-1"]
+        with pytest.raises(OutlineGenerationError, match="outline_model_output_invalid"):
+            await _generate(session, fixture, FakeOutlineModel([invalid]))
+
+
+@pytest.mark.asyncio
+async def test_outline_rejects_unknown_or_reduced_promise_coverage_mapping() -> None:
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        # The second requirement is explicitly reduced at the approved Angle.
+        candidate = fixture.selected
+        object.__setattr__(
+            candidate,
+            "coverage",
+            (
+                candidate.coverage[0],
+                type(candidate.coverage[1])(
+                    requirement_id=candidate.coverage[1].requirement_id,
+                    status="reduced",
+                    rationale="Founder may accept a narrower Angle.",
+                ),
+            ),
+        )
+        invalid = _outline_payload(fixture.bundle)
+        sections = cast(list[dict[str, object]], invalid["sections"])
+        sections[0]["coverage_requirement_ids"] = ["coverage-1", "coverage-2"]
+        with pytest.raises(OutlineGenerationError, match="outline_model_output_invalid"):
+            await _generate(session, fixture, FakeOutlineModel([invalid]))
+
