@@ -336,6 +336,11 @@ class ControlledCodexRunner:
         assert isinstance(evidence_set, dict)
         assert isinstance(originality_pack, dict)
         assert isinstance(opportunity, dict)
+        role_contract = model_input.get("editorial_role_contract")
+        assert isinstance(role_contract, dict)
+        assert role_contract["role"] == "cluster"
+        assert "one bounded reader subproblem" in str(role_contract["objective"])
+        assert "EDITORIAL_ROLE_CONTRACT_JSON" in request.prompt
         coverage_requirements = opportunity["coverage_requirements"]
         assert isinstance(coverage_requirements, list) and coverage_requirements
         evidence = evidence_set["evidence"]
@@ -423,6 +428,7 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         )
         assert replay.replayed and replay.command_id == first.command_id
         assert first.required_locales == ["en", "vi-VN"]
+        assert first.content_role == "cluster"
         assert first.coverage_requirements == [
             "Explain how to inspect materials and physical finish.",
             "Separate factual evidence from MOTGU editorial judgment.",
@@ -432,6 +438,7 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         opportunity = await session.get(ContentOpportunity, first.content_opportunity_id)
         assert need is not None and need.origin == "founder_manual" and need.status == "PROPOSED"
         assert opportunity is not None and opportunity.selected_by == "founder"
+        assert opportunity.suggested_role == "cluster"
         assert opportunity.coverage_requirements_json == first.coverage_requirements
         assert int(await session.scalar(select(func.count(Signal.id))) or 0) == signals_before
         assert await session.scalar(
@@ -467,11 +474,53 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
             ).all()
         )
         assert [row.locale for row in variants] == ["en", "vi-VN"]
+        assert {row.content_role for row in variants} == {"cluster"}
         pack = await session.get(OriginalityPack, first.originality_pack_id)
         assert pack is not None and pack.status == "approved"
         assert pack.approved_by == "founder"
 
 
+
+
+
+
+@pytest.mark.asyncio
+async def test_founder_intake_requires_current_editorial_role_and_can_create_pillar() -> None:
+    async with isolated_session() as session:
+        pillar = _intake_kwargs(key="cq02-pillar-intake")
+        pillar["content_role"] = "pillar"
+        created = await create_founder_journal_intake(session, **pillar)
+        assert created.content_role == "pillar"
+        opportunity = await session.get(ContentOpportunity, created.content_opportunity_id)
+        assert opportunity is not None and opportunity.suggested_role == "pillar"
+        variants = list(
+            (
+                await session.scalars(
+                    select(LocaleVariant).where(
+                        LocaleVariant.content_case_id == created.content_case_id
+                    )
+                )
+            ).all()
+        )
+        assert variants
+        assert {row.content_role for row in variants} == {"pillar"}
+
+    async with isolated_session() as session:
+        invalid = _intake_kwargs(key="cq02-invalid-role")
+        invalid["content_role"] = "primary"
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_content_role_invalid",
+        ):
+            await create_founder_journal_intake(session, **invalid)
+
+
+def test_founder_intake_http_rejects_legacy_primary_role() -> None:
+    payload = _intake_kwargs(key="cq02-http-invalid-role")
+    payload.pop("actor_id")
+    payload["content_role"] = "primary"
+    with pytest.raises(ValidationError):
+        FounderJournalIntakeRequest.model_validate(payload)
 
 
 @pytest.mark.asyncio
