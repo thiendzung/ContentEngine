@@ -156,6 +156,19 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
                 and ref.strip()
             ]
 
+    coverage_requirement_ids: list[str] = []
+    opportunity = angle_model_input.get("opportunity")
+    if isinstance(opportunity, dict):
+        requirements = opportunity.get("coverage_requirements")
+        if isinstance(requirements, list):
+            coverage_requirement_ids = [
+                requirement_id.strip()
+                for item in requirements
+                if isinstance(item, dict)
+                and isinstance((requirement_id := item.get("id")), str)
+                and requirement_id.strip()
+            ]
+
     return {
         "evidence_refs": {
             "source_path": "ANGLE_INPUT_JSON.evidence_set.evidence[*].evidence_id",
@@ -167,6 +180,15 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
             "allowed_values": sorted(set(originality_refs)),
             "rule": "Every output originality_refs value must exactly equal one allowed value.",
             "forbidden_source_fields": ["approval_ref", "id", "snapshot_hash"],
+        },
+        "coverage_requirement_ids": {
+            "source_path": "ANGLE_INPUT_JSON.opportunity.coverage_requirements[*].id",
+            "allowed_values": coverage_requirement_ids,
+            "rule": (
+                "When Founder coverage requirements exist, classify every requirement "
+                "exactly once as covered or reduced and explain the rationale. Never "
+                "silently drop a requirement."
+            ),
         },
     }
 
@@ -198,6 +220,38 @@ def _bind_angle_output_schema(
     )
     if not isinstance(candidate_properties, dict):
         raise AngleGenerationError("angle_output_schema_invalid")
+
+    allowed_coverage = _contract_values(contract, "coverage_requirement_ids")
+    if allowed_coverage:
+        candidate_properties["coverage"] = {
+            "type": "array",
+            "minItems": len(allowed_coverage),
+            "maxItems": len(allowed_coverage),
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "requirement_id": {
+                        "type": "string",
+                        "enum": allowed_coverage,
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["covered", "reduced"],
+                    },
+                    "rationale": {
+                        "type": "string",
+                        "minLength": 1,
+                    },
+                },
+                "required": ["requirement_id", "status", "rationale"],
+            },
+        }
+        required = candidate_items.get("required")
+        if not isinstance(required, list) or any(not isinstance(item, str) for item in required):
+            raise AngleGenerationError("angle_output_schema_invalid")
+        if "coverage" not in required:
+            required.append("coverage")
 
     for key in ("evidence_refs", "originality_refs"):
         ref_schema = candidate_properties.get(key)
