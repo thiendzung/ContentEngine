@@ -540,7 +540,7 @@ Exit: normal operation becomes exception-driven rather than run-by-run supervisi
 
 Exit: UX-01 closes with a coherent exception-driven command center backed by canonical read models.
 
-## E2E-01 activation unblock window — 2026-09-25
+## Historical E2E-01 activation unblock window — 2026-09-25 (PAUSED)
 
 Current merged main after PR #220:
 `f2b3aaaddc6229302db0db791eb9c67a27692f66`.
@@ -554,7 +554,7 @@ Engineering readiness completed:
 - PR #220 exact HEAD `c20dee78c27e74dcb0dd6809f70317b034de5f21` passed CI #1832 and `PASS_E2E01_A4E2_EXACT_REF_RELEASE_LIFECYCLE`;
 - merge-main CI #1833 passed on `f2b3aaaddc6229302db0db791eb9c67a27692f66`.
 
-Current blockers / required next order:
+Preserved resume order only; **not current WIP** while Content Quality is active:
 1. **A2** — obtain an already-authorized read-only production WordPress/SSH/WP-CLI path and complete the production WordPress + Rank Math inventory.
 2. Provision the production bridge secret/service-user binding only after A2 proves the real host/runtime contract.
 3. Founder separately authorizes operational migration `20260915_0034 → 20260923_0042`; the merge of #218/#220 is not that authorization.
