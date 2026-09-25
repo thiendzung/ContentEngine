@@ -906,3 +906,434 @@ async def persist_angle_candidates(
         journal_input_bundle_id=bundle.artifact.id,
         expected_content_hash=bundle.artifact.content_hash,
     )
+    if refreshed_bundle.artifact.id != bundle.artifact.id:
+        raise AngleGenerationError("journal_input_bundle_snapshot_mismatch")
+    refreshed_model_input_hash = angle_model_input_hash(refreshed_bundle.angle_model_input)
+    if model_input_hash is not None and (
+        not _valid_hash(model_input_hash)
+        or model_input_hash != refreshed_model_input_hash
+    ):
+        raise AngleGenerationError("angle_model_input_snapshot_stale")
+    if not isinstance(provider, str) or not provider.strip():
+        raise AngleGenerationError("angle_provider_metadata_required")
+    if not isinstance(model, str) or not model.strip():
+        raise AngleGenerationError("angle_model_metadata_required")
+    if isinstance(model_calls, bool) or not isinstance(model_calls, int) or model_calls < 0:
+        raise AngleGenerationError("angle_model_call_count_invalid")
+    if (
+        isinstance(provider_calls, bool)
+        or not isinstance(provider_calls, int)
+        or provider_calls < 0
+    ):
+        raise AngleGenerationError("angle_provider_call_count_invalid")
+    if provider_calls != 0:
+        raise AngleGenerationError("angle_provider_calls_forbidden")
+    if (
+        isinstance(schema_version, bool)
+        or not isinstance(schema_version, int)
+        or schema_version <= 0
+    ):
+        raise AngleGenerationError("angle_schema_version_invalid")
+    if not isinstance(generator_version, str) or not generator_version.strip():
+        raise AngleGenerationError("angle_generator_version_required")
+    validated = _validate_candidates(
+        [candidate.to_dict() for candidate in candidates], bundle=refreshed_bundle
+    )
+    payload: dict[str, object] = {
+        "schema_version": schema_version,
+        "artifact_type": "angle_candidates",
+        "journal_input_bundle": {
+            "id": str(refreshed_bundle.artifact.id),
+            "version": refreshed_bundle.artifact.version,
+            "content_hash": refreshed_bundle.artifact.content_hash,
+        },
+        "model_input": {"content_hash": refreshed_model_input_hash},
+        "generator": {
+            "version": generator_version,
+            "schema_version": schema_version,
+        },
+        "model": {
+            "provider": provider.strip(),
+            "model": model.strip(),
+        },
+        "provider_calls": provider_calls,
+        "model_calls": model_calls,
+        "candidates": [candidate.to_dict() for candidate in validated],
+    }
+    artifact_hash = _canonical_hash(payload)
+    existing = await session.scalar(
+        select(Artifact).where(
+            Artifact.run_id == refreshed_bundle.artifact.run_id,
+            Artifact.artifact_type == "angle_candidates",
+            Artifact.content_hash == artifact_hash,
+        )
+    )
+    if existing is not None:
+        if existing.content_json != payload:
+            raise AngleGenerationError("angle_artifact_hash_collision")
+        return existing
+    latest_version = await session.scalar(
+        select(func.max(Artifact.version)).where(
+            Artifact.run_id == refreshed_bundle.artifact.run_id,
+            Artifact.artifact_type == "angle_candidates",
+        )
+    )
+    artifact = Artifact(
+        run_id=refreshed_bundle.artifact.run_id,
+        step_run_id=step_run_id or refreshed_bundle.artifact.step_run_id,
+        artifact_type="angle_candidates",
+        locale=refreshed_bundle.locale,
+        version=(latest_version or 0) + 1,
+        content_json=payload,
+        content_hash=artifact_hash,
+    )
+    session.add(artifact)
+    await session.flush()
+    if artifact.step_run_id is not None:
+        step = await session.get(StepRun, artifact.step_run_id)
+        if step is None or step.run_id != artifact.run_id:
+            raise AngleGenerationError("angle_artifact_step_mismatch")
+        if str(artifact.id) not in step.output_artifact_refs_json:
+            step.output_artifact_refs_json = [*step.output_artifact_refs_json, str(artifact.id)]
+            await session.flush()
+    return artifact
+
+
+class AngleGenerator:
+    """Generate typed candidates with one bounded validation retry."""
+
+    def __init__(self, *, max_attempts: int = 2) -> None:
+        if (
+            isinstance(max_attempts, bool)
+            or not isinstance(max_attempts, int)
+            or not 1 <= max_attempts <= 3
+        ):
+            raise ValueError("max_attempts must be between 1 and 3")
+        self.max_attempts = max_attempts
+
+    async def generate_candidates(
+        self,
+        session: AsyncSession,
+        *,
+        journal_input_bundle_id: UUID,
+        model: AngleModelPort,
+        provider: str,
+        model_name: str,
+        expected_bundle_hash: str | None = None,
+        generator_version: str = ANGLE_GENERATOR_VERSION,
+        schema_version: int = ANGLE_CANDIDATES_SCHEMA_VERSION,
+        step_run_id: UUID | None = None,
+    ) -> AngleGenerationResult:
+        bundle = await load_journal_input_bundle(
+            session,
+            journal_input_bundle_id=journal_input_bundle_id,
+            expected_content_hash=expected_bundle_hash,
+        )
+        if not isinstance(provider, str) or not provider.strip():
+            raise AngleGenerationError("angle_provider_metadata_required")
+        if not isinstance(model_name, str) or not model_name.strip():
+            raise AngleGenerationError("angle_model_metadata_required")
+        routed_identity = _routed_model_identity(model)
+        if routed_identity is not None:
+            if (
+                not isinstance(provider, str)
+                or not isinstance(model_name, str)
+                or provider.strip() != routed_identity[0]
+                or model_name.strip() != routed_identity[1]
+            ):
+                raise AngleGenerationError("angle_model_route_mismatch")
+        artifact_provider, artifact_model = routed_identity or (
+            provider.strip(),
+            model_name.strip(),
+        )
+        last_error: AngleGenerationError | None = None
+        model_input = _clone_json(bundle.angle_model_input)
+        model_input_hash = angle_model_input_hash(model_input)
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                raw = await model.generate(
+                    input_bundle=model_input,
+                    attempt=attempt,
+                )
+                candidates = _validate_candidates(raw, bundle=bundle)
+            except AngleGenerationError as exc:
+                last_error = exc
+                if attempt == self.max_attempts:
+                    raise AngleGenerationError(
+                        "angle_model_output_invalid",
+                        f"bounded retries exhausted ({exc.code})",
+                    ) from exc
+                continue
+            artifact = await persist_angle_candidates(
+                session,
+                bundle=bundle,
+                candidates=candidates,
+                provider=artifact_provider,
+                model=artifact_model,
+                model_calls=attempt,
+                model_input_hash=model_input_hash,
+                provider_calls=0,
+                generator_version=generator_version,
+                schema_version=schema_version,
+                step_run_id=step_run_id,
+            )
+            return AngleGenerationResult(
+                artifact=artifact,
+                candidates=candidates,
+                model_attempts=attempt,
+            )
+        raise AngleGenerationError("angle_model_output_invalid") from last_error
+
+
+def _artifact_candidates(
+    artifact: Artifact,
+    *,
+    bundle: JournalInputBundle,
+) -> tuple[AngleCandidate, ...]:
+    if artifact.artifact_type != "angle_candidates":
+        raise AngleApprovalError("angle_artifact_type_invalid")
+    if (
+        artifact.content_json is None
+        or _canonical_hash(artifact.content_json) != artifact.content_hash
+    ):
+        raise AngleApprovalError("angle_artifact_snapshot_stale")
+    payload = _as_dict(artifact.content_json, "angle_artifact_payload_invalid")
+    model_input_payload = payload.get("model_input")
+    if (
+        not isinstance(model_input_payload, dict)
+        or set(model_input_payload) != {"content_hash"}
+        or not _valid_hash(model_input_payload.get("content_hash"))
+        or model_input_payload["content_hash"]
+        != angle_model_input_hash(bundle.angle_model_input)
+    ):
+        raise AngleApprovalError("angle_model_input_snapshot_stale")
+    raw_candidates = payload.get("candidates")
+    try:
+        return _validate_candidates(raw_candidates, bundle=bundle)
+    except AngleGenerationError as exc:
+        raise AngleApprovalError(exc.code) from exc
+
+
+def _validate_artifact_snapshot(
+    artifact: Artifact,
+    *,
+    expected_version: int,
+    expected_hash: str,
+) -> None:
+    if (
+        isinstance(expected_version, bool)
+        or not isinstance(expected_version, int)
+        or expected_version <= 0
+    ):
+        raise AngleApprovalError("angle_artifact_version_invalid")
+    if not _valid_hash(expected_hash):
+        raise AngleApprovalError("angle_artifact_hash_invalid")
+    if artifact.version != expected_version or artifact.content_hash != expected_hash:
+        raise AngleApprovalError("angle_artifact_snapshot_stale")
+    if not _valid_hash(artifact.content_hash) or artifact.content_json is None:
+        raise AngleApprovalError("angle_artifact_snapshot_stale")
+    if _canonical_hash(artifact.content_json) != artifact.content_hash:
+        raise AngleApprovalError("angle_artifact_snapshot_stale")
+
+
+def _approval_matches(
+    approval: AngleApproval,
+    *,
+    artifact: Artifact,
+    selected_angle_id: str,
+    candidate_hash: str,
+    approved_by: str,
+    approval_reason: str,
+) -> bool:
+    return (
+        approval.angle_artifact_id == artifact.id
+        and approval.angle_artifact_version == artifact.version
+        and approval.angle_artifact_hash == artifact.content_hash
+        and approval.selected_angle_id == selected_angle_id
+        and approval.selected_candidate_hash == candidate_hash
+        and approval.approved_by == approved_by
+        and approval.approval_reason == approval_reason
+    )
+
+
+async def approve_angle_candidate(
+    session: AsyncSession,
+    *,
+    angle_artifact_id: UUID,
+    expected_artifact_version: int,
+    expected_artifact_hash: str,
+    selected_angle_id: str,
+    expected_candidate_hash: str,
+    approved_by: str,
+    approval_reason: str,
+) -> AngleApproval:
+    """Persist one exact human decision; model output cannot call this implicitly."""
+
+    selected_id = _text(selected_angle_id, "angle_selected_id_required")
+    approver = _text(approved_by, "angle_approver_required")
+    reason = _text(approval_reason, "angle_approval_reason_required")
+    if not _valid_hash(expected_candidate_hash):
+        raise AngleApprovalError("angle_candidate_hash_invalid")
+    artifact = await session.scalar(
+        select(Artifact).where(Artifact.id == angle_artifact_id).with_for_update()
+    )
+    if artifact is None:
+        raise AngleApprovalError("angle_artifact_not_found")
+    _validate_artifact_snapshot(
+        artifact,
+        expected_version=expected_artifact_version,
+        expected_hash=expected_artifact_hash,
+    )
+    payload = _as_dict(artifact.content_json, "angle_artifact_payload_invalid")
+    bundle_payload = _as_dict(
+        payload.get("journal_input_bundle"), "angle_artifact_bundle_ref_invalid"
+    )
+    bundle_id = _uuid(bundle_payload.get("id"), "angle_artifact_bundle_ref_invalid")
+    bundle_hash = bundle_payload.get("content_hash")
+    if not _valid_hash(bundle_hash):
+        raise AngleApprovalError("angle_artifact_bundle_ref_invalid")
+    bundle_hash = cast(str, bundle_hash)
+    try:
+        bundle = await load_journal_input_bundle(
+            session,
+            journal_input_bundle_id=bundle_id,
+            expected_content_hash=bundle_hash,
+        )
+    except AngleGenerationError as exc:
+        raise AngleApprovalError(exc.code) from exc
+    candidates = _artifact_candidates(artifact, bundle=bundle)
+    selected = next(
+        (candidate for candidate in candidates if candidate.angle_id == selected_id),
+        None,
+    )
+    if selected is None:
+        raise AngleApprovalError("angle_selected_candidate_not_found")
+    candidate_hash = angle_candidate_hash(selected)
+    if candidate_hash != expected_candidate_hash:
+        raise AngleApprovalError("angle_candidate_snapshot_stale")
+
+    approvals = list(
+        (
+            await session.scalars(
+                select(AngleApproval).where(AngleApproval.angle_artifact_id == artifact.id)
+            )
+        ).all()
+    )
+    for approval in approvals:
+        if _approval_matches(
+            approval,
+            artifact=artifact,
+            selected_angle_id=selected_id,
+            candidate_hash=candidate_hash,
+            approved_by=approver,
+            approval_reason=reason,
+        ):
+            return approval
+        raise AngleApprovalError("angle_approval_conflict")
+
+    approval = AngleApproval(
+        run_id=artifact.run_id,
+        angle_artifact_id=artifact.id,
+        angle_artifact_version=artifact.version,
+        angle_artifact_hash=artifact.content_hash,
+        selected_angle_id=selected_id,
+        selected_candidate_hash=candidate_hash,
+        approved_by=approver,
+        approval_reason=reason,
+        approved_at=datetime.now(UTC),
+    )
+    session.add(approval)
+    await session.flush()
+    return approval
+
+
+async def handoff_approved_angle(
+    session: AsyncSession,
+    *,
+    angle_artifact_id: UUID,
+    expected_artifact_version: int,
+    expected_artifact_hash: str,
+    selected_angle_id: str,
+    expected_candidate_hash: str,
+) -> ApprovedAngle:
+    """Expose an Angle to the next step only after exact human approval."""
+
+    selected_id = _text(selected_angle_id, "angle_selected_id_required")
+    if not _valid_hash(expected_candidate_hash):
+        raise AngleApprovalError("angle_candidate_hash_invalid")
+    artifact = await session.get(Artifact, angle_artifact_id)
+    if artifact is None:
+        raise AngleApprovalError("angle_artifact_not_found")
+    _validate_artifact_snapshot(
+        artifact,
+        expected_version=expected_artifact_version,
+        expected_hash=expected_artifact_hash,
+    )
+    payload = _as_dict(artifact.content_json, "angle_artifact_payload_invalid")
+    bundle_payload = _as_dict(
+        payload.get("journal_input_bundle"), "angle_artifact_bundle_ref_invalid"
+    )
+    bundle_id = _uuid(bundle_payload.get("id"), "angle_artifact_bundle_ref_invalid")
+    bundle_hash = bundle_payload.get("content_hash")
+    if not _valid_hash(bundle_hash):
+        raise AngleApprovalError("angle_artifact_bundle_ref_invalid")
+    bundle_hash = cast(str, bundle_hash)
+    try:
+        bundle = await load_journal_input_bundle(
+            session,
+            journal_input_bundle_id=bundle_id,
+            expected_content_hash=bundle_hash,
+        )
+    except AngleGenerationError as exc:
+        raise AngleApprovalError(exc.code) from exc
+    candidates = _artifact_candidates(artifact, bundle=bundle)
+    selected = next(
+        (candidate for candidate in candidates if candidate.angle_id == selected_id),
+        None,
+    )
+    if selected is None:
+        raise AngleApprovalError("angle_selected_candidate_not_found")
+    actual_candidate_hash = angle_candidate_hash(selected)
+    if actual_candidate_hash != expected_candidate_hash:
+        raise AngleApprovalError("angle_candidate_snapshot_stale")
+    approvals = list(
+        (
+            await session.scalars(
+                select(AngleApproval).where(AngleApproval.angle_artifact_id == artifact.id)
+            )
+        ).all()
+    )
+    if not approvals:
+        raise AngleApprovalError("angle_approval_required")
+    approval = approvals[0]
+    if not _approval_matches(
+        approval,
+        artifact=artifact,
+        selected_angle_id=selected_id,
+        candidate_hash=actual_candidate_hash,
+        approved_by=approval.approved_by,
+        approval_reason=approval.approval_reason,
+    ):
+        raise AngleApprovalError("angle_approval_conflict")
+    return ApprovedAngle(artifact=artifact, candidate=selected, approval=approval)
+
+
+__all__ = [
+    "ANGLE_CANDIDATES_SCHEMA_VERSION",
+    "ANGLE_GENERATOR_VERSION",
+    "AngleApproval",
+    "AngleApprovalError",
+    "AngleCandidate",
+    "AngleGenerationError",
+    "AngleGenerationResult",
+    "AngleGenerator",
+    "AngleModelPort",
+    "ApprovedAngle",
+    "JournalInputBundle",
+    "angle_candidate_hash",
+    "angle_model_input_hash",
+    "approve_angle_candidate",
+    "handoff_approved_angle",
+    "load_journal_input_bundle",
+    "persist_angle_candidates",
+]
