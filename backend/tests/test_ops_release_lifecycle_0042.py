@@ -67,6 +67,225 @@ def test_current_snapshot_includes_publication_state() -> None:
         "publish_events",
     }
 
+def _paused_retry_row(**overrides: object) -> dict[str, object]:
+    row: dict[str, object] = {
+        "step_run_id": "step-1",
+        "run_id": "run-1",
+        "step_key": "start_to_angle",
+        "step_status": "running",
+        "step_error_class": "insufficient_evidence",
+        "run_status": "running",
+        "current_step": "start_to_angle",
+        "run_failure_code": "insufficient_evidence",
+        "job_id": "job-1",
+        "job_run_id": "run-1",
+        "job_status": "failed",
+        "lease_owner": None,
+        "lease_expires_at": None,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_current_quiescence_accepts_exact_paused_operator_retry() -> None:
+    paused = lifecycle._classify_paused_operator_retries(
+        active_run_ids=["run-1"],
+        active_steps=[_paused_retry_row()],
+    )
+
+    assert paused == [
+        {
+            "run_id": "run-1",
+            "step_run_id": "step-1",
+            "job_id": "job-1",
+            "failure_class": "insufficient_evidence",
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("run_status", "pending"),
+        ("current_step", "outline"),
+        ("step_key", "outline"),
+        ("step_status", "pending"),
+        ("job_id", None),
+        ("job_run_id", "other-run"),
+        ("job_status", "cancelled"),
+        ("lease_owner", "worker-1"),
+        ("lease_expires_at", "2026-09-25T00:00:00Z"),
+        ("run_failure_code", ""),
+        ("step_error_class", "different_failure"),
+    ],
+)
+def test_current_quiescence_rejects_paused_contract_drift(
+    field: str,
+    value: object,
+) -> None:
+    with pytest.raises(
+        lifecycle.ReleaseLifecycleError,
+        match="release_quiescence_paused_contract_mismatch",
+    ):
+        lifecycle._classify_paused_operator_retries(
+            active_run_ids=["run-1"],
+            active_steps=[_paused_retry_row(**{field: value})],
+        )
+
+
+def test_current_quiescence_rejects_unmatched_active_run() -> None:
+    with pytest.raises(
+        lifecycle.ReleaseLifecycleError,
+        match="release_quiescence_active_run_unmatched",
+    ):
+        lifecycle._classify_paused_operator_retries(
+            active_run_ids=["run-1", "run-2"],
+            active_steps=[_paused_retry_row()],
+        )
+
+
+def test_current_quiescence_rejects_unmatched_active_step() -> None:
+    with pytest.raises(
+        lifecycle.ReleaseLifecycleError,
+        match="release_quiescence_active_step_unmatched",
+    ):
+        lifecycle._classify_paused_operator_retries(
+            active_run_ids=[],
+            active_steps=[_paused_retry_row()],
+        )
+
+
+def test_current_quiescence_rejects_multiple_active_steps_per_run() -> None:
+    with pytest.raises(
+        lifecycle.ReleaseLifecycleError,
+        match="release_quiescence_multiple_active_steps",
+    ):
+        lifecycle._classify_paused_operator_retries(
+            active_run_ids=["run-1"],
+            active_steps=[
+                _paused_retry_row(),
+                _paused_retry_row(step_run_id="step-2", job_id="job-2"),
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_historical_idle_guard_still_blocks_running_step(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def statuses(_engine: object, *, table_name: str) -> dict[str, int]:
+        values = {
+            "jobs": {"failed": 1},
+            "step_runs": {"running": 1},
+            "content_runs": {"running": 1},
+            "model_calls": {"completed": 1},
+            "tool_calls": {"completed": 1},
+            "outbox_intents": {},
+        }
+        return values[table_name]
+
+    monkeypatch.setattr(historical, "_status_counts", statuses)
+
+    with pytest.raises(
+        historical.ReleaseLifecycleError,
+        match="running_step_runs_present",
+    ):
+        await historical._assert_idle_operational_state(object())
+
+
+@pytest.mark.asyncio
+async def test_current_guard_accepts_paused_retry_and_returns_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def statuses(_engine: object, *, table_name: str) -> dict[str, int]:
+        values = {
+            "jobs": {"failed": 2},
+            "step_runs": {"running": 2, "completed": 23, "failed": 1},
+            "content_runs": {
+                "running": 2,
+                "completed": 9,
+                "failed": 1,
+                "waiting_approval": 4,
+            },
+            "model_calls": {"completed": 18},
+            "tool_calls": {"completed": 15},
+            "outbox_intents": {},
+        }
+        return values[table_name]
+
+    async def active_rows(
+        _engine: object,
+    ) -> tuple[list[str], list[dict[str, object]]]:
+        return (
+            ["run-1", "run-2"],
+            [
+                _paused_retry_row(),
+                _paused_retry_row(
+                    run_id="run-2",
+                    step_run_id="step-2",
+                    job_id="job-2",
+                    job_run_id="run-2",
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(historical, "_status_counts", statuses)
+    monkeypatch.setattr(lifecycle, "_active_release_rows", active_rows)
+
+    evidence = await lifecycle._assert_release_quiescent_state(object())
+
+    paused = evidence["paused_operator_retries"]
+    assert isinstance(paused, list)
+    assert [row["run_id"] for row in paused] == ["run-1", "run-2"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("table_name", "statuses", "blocker"),
+    [
+        ("jobs", {"queued": 1}, "nonterminal_jobs_present"),
+        ("jobs", {"leased": 1}, "nonterminal_jobs_present"),
+        ("model_calls", {"running": 1}, "active_model_calls_present"),
+        ("tool_calls", {"pending": 1}, "active_tool_calls_present"),
+        (
+            "outbox_intents",
+            {"needs_reconciliation": 1},
+            "active_outbox_intents_present",
+        ),
+    ],
+)
+async def test_current_guard_blocks_live_work(
+    monkeypatch: pytest.MonkeyPatch,
+    table_name: str,
+    statuses: dict[str, int],
+    blocker: str,
+) -> None:
+    async def status_counts(_engine: object, *, table_name: str) -> dict[str, int]:
+        defaults = {
+            "jobs": {"failed": 1},
+            "step_runs": {"running": 1},
+            "content_runs": {"running": 1},
+            "model_calls": {"completed": 1},
+            "tool_calls": {"completed": 1},
+            "outbox_intents": {},
+        }
+        if table_name == table_name_for_override:
+            return statuses
+        return defaults[table_name]
+
+    async def active_rows(
+        _engine: object,
+    ) -> tuple[list[str], list[dict[str, object]]]:
+        return ["run-1"], [_paused_retry_row()]
+
+    table_name_for_override = table_name
+    monkeypatch.setattr(historical, "_status_counts", status_counts)
+    monkeypatch.setattr(lifecycle, "_active_release_rows", active_rows)
+
+    with pytest.raises(lifecycle.ReleaseLifecycleError, match=blocker):
+        await lifecycle._assert_release_quiescent_state(object())
+
+
 def test_require_expected_revision_accepts_only_0042() -> None:
     lifecycle._require_expected_revision("20260923_0042")
 
