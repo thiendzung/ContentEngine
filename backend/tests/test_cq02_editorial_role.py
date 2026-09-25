@@ -2,18 +2,36 @@ from __future__ import annotations
 
 import pytest
 
-from app.modules.content_engine.journal.agent_bridge import render_angle_prompt
-from app.modules.content_engine.journal.angle import AngleGenerationError
+from app.modules.content_engine.journal.agent_bridge import (
+    ANGLE_RENDER_PROTOCOL_VERSION,
+    render_angle_prompt,
+)
+from app.modules.content_engine.journal.angle import (
+    ANGLE_GENERATOR_VERSION,
+    AngleGenerationError,
+)
 from app.modules.content_engine.journal.editorial_role import (
     EditorialRoleError,
     editorial_role_contract,
     editorial_role_contract_or_none,
     require_editorial_role,
 )
-from app.modules.content_engine.journal.outline import OutlineGenerationError
-from app.modules.content_engine.journal.outline_agent_bridge import render_outline_prompt
-from app.modules.content_engine.journal.writer import WriterGenerationError
-from app.modules.content_engine.journal.writer_agent_bridge import render_writer_prompt
+from app.modules.content_engine.journal.outline import (
+    OUTLINE_GENERATOR_VERSION,
+    OutlineGenerationError,
+)
+from app.modules.content_engine.journal.outline_agent_bridge import (
+    OUTLINE_RENDER_PROTOCOL_VERSION,
+    render_outline_prompt,
+)
+from app.modules.content_engine.journal.writer import (
+    WRITER_GENERATOR_VERSION,
+    WriterGenerationError,
+)
+from app.modules.content_engine.journal.writer_agent_bridge import (
+    WRITER_RENDER_PROTOCOL_VERSION,
+    render_writer_prompt,
+)
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition
 
 
@@ -32,6 +50,15 @@ def test_pillar_and_cluster_contracts_are_distinct_editorial_jobs() -> None:
     assert "Pillar's broad synthesis" in cluster.duplication_guard
     assert "Do not invent a Cluster target" in pillar.relationship_guard
     assert "Do not invent a parent Pillar" in cluster.relationship_guard
+
+
+def test_role_semantics_bump_generation_and_render_identities() -> None:
+    assert ANGLE_GENERATOR_VERSION == "ce05.angle_generator.v2"
+    assert OUTLINE_GENERATOR_VERSION == "ce05.outline_generator.v2"
+    assert WRITER_GENERATOR_VERSION == "ce05.journal_writer.v2"
+    assert ANGLE_RENDER_PROTOCOL_VERSION == "journal.angle.render.v3"
+    assert OUTLINE_RENDER_PROTOCOL_VERSION == "journal.outline.render.v2"
+    assert WRITER_RENDER_PROTOCOL_VERSION == "journal.writer.render.v2"
 
 
 def test_role_normalization_accepts_current_roles_only() -> None:
