@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Literal, cast
 
 JournalEditorialRole = Literal["pillar", "cluster"]
+EDITORIAL_ROLE_CONTRACT_VERSION = "cq02.editorial_role.v1"
 _VALID_ROLES = {"pillar", "cluster"}
 _LEGACY_ROLE = "primary"
 
@@ -28,6 +29,7 @@ class EditorialRoleContract:
 
     def to_dict(self) -> dict[str, str]:
         return {
+            "contract_version": EDITORIAL_ROLE_CONTRACT_VERSION,
             "role": self.role,
             "objective": self.objective,
             "breadth_rule": self.breadth_rule,
@@ -131,6 +133,7 @@ def is_current_editorial_role(value: object) -> bool:
 
 
 __all__ = [
+    "EDITORIAL_ROLE_CONTRACT_VERSION",
     "EditorialRoleContract",
     "EditorialRoleError",
     "JournalEditorialRole",
