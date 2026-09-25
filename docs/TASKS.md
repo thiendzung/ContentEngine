@@ -186,7 +186,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
 | UX-01 | DONE / PR #199 MERGED | UX-01A/B/C/D are merged. Exception-driven desktop command center, canonical Learning/System/Daily Digest views, and final navigation are accepted with CI/browser/OCR/local proof. |
-| E2E-01 | ACTIVE / READINESS UNBLOCK | Engineering foundation through A4E2 is merged and verified. Remaining blockers are production WordPress inventory/access, production secret provisioning, separately authorized operational migration/runtime activation, edge preflight and final activation re-audit before the real D1-D9 closed-loop pilot. |
+| E2E-01 | PAUSED BY FOUNDER / READINESS PRESERVED | Engineering foundation through A4E2 remains verified. Founder paused production WordPress/migration/publish activation to focus 100% on Pillar/Cluster content-production quality. Resume only by explicit Founder decision. |
 
 ### E2E-01 / P2C2 immediate checklist
 
@@ -569,3 +569,33 @@ A4E2 closeout:
 - exact Codex pin is `codex-cli 0.155.0-alpha.16.4`; ranges/wildcards remain forbidden;
 - the two audited Start-to-Angle failed-attempt lineages remain intentional paused operator-retry state and were preserved byte-for-byte during the disposable lifecycle proof;
 - the rev-0042 lifecycle is event-driven and must not regress to repeated sleep/HTTP/ps/pgrep polling.
+
+## Content Quality track — Founder priority 2026-09-25
+
+Production activation / A2 / WordPress / operational migration / publish work is paused.
+Current WIP is **CQ-01 / #225 / PR #226** on exact base
+`9aa2557434f1ae35c1bb96580029b40938558e35`.
+
+### CQ-01 — Promise Coverage
+
+- [x] Open a fresh current-main branch; do not merge/rebase stale PR #169.
+- [x] Add current-head rev `20260925_0043` for durable `coverage_requirements_json`; no operational migration authorization.
+- [x] Manual intake requires 1..12 normalized, case-insensitive-deduplicated requirements.
+- [x] Snapshot exact requirements as stable `coverage-N` IDs.
+- [x] Include coverage text in Evidence Research topic extraction.
+- [x] Angle must classify every requirement exactly once as `covered|reduced` with rationale.
+- [x] Bind exact coverage IDs into the local-agent structured output schema.
+- [x] Preserve legacy no-coverage Angle artifact compatibility.
+- [x] Outline may map only approved-Angle `covered` IDs and must map every committed ID at least once.
+- [x] Bind exact committed IDs into Outline structured output schema.
+- [x] Operator UI exposes original requirements, Angle keep/reduce decisions and Outline mappings.
+- [x] Add focused missing/unknown/duplicate/reduced coverage regressions.
+- [ ] Normal CI green on final code/docs SHA.
+- [ ] MG self-review complete with no unresolved P0/P1 content-integrity defect.
+- [ ] Exact-ref OpenCodeReview advisory review + MG triage.
+- [ ] Agent Local exact-head bounded verification.
+- [ ] Founder merge.
+
+Boundaries: no CQ-02 Pillar/Cluster role semantics, no HV-01 integration, no production
+WordPress/Rank Math/Google activation, no operational migration, no publication, no
+historical F7 mutation.
