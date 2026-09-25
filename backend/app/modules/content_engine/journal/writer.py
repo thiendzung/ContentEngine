@@ -587,10 +587,7 @@ async def load_writer_input(
     if editorial_contract is None:
         if upstream_editorial_contract is not None:
             raise WriterGenerationError("writer_editorial_role_contract_unexpected")
-    elif (
-        upstream_editorial_contract is not None
-        and upstream_editorial_contract != editorial_contract.to_dict()
-    ):
+    elif upstream_editorial_contract != editorial_contract.to_dict():
         raise WriterGenerationError("writer_editorial_role_contract_mismatch")
     evidence_set = _dict(upstream.model_input.get("evidence_set"), "writer_evidence_input_invalid")
     originality_pack = _dict(
