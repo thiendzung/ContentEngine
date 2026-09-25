@@ -161,6 +161,7 @@ class EvidenceResearchWorkflow:
                 opportunity.question,
                 opportunity.need,
                 opportunity.promise,
+                *opportunity.coverage_requirements_json,
             ),
             limit=request.max_claims,
         )
