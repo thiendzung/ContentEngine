@@ -121,12 +121,25 @@ async def _approved_fixture(
     session: AsyncSession,
     *,
     coverage_requirements: list[str] | None = None,
+    reduced_coverage_ids: set[str] | None = None,
 ) -> OutlineFixture:
     bundle_artifact, bundle, evidence_set, pack = await _bundle_fixture(
         session,
         coverage_requirements=coverage_requirements,
     )
     angle_output = [_candidate_payload(bundle, index) for index in range(1, 4)]
+    if reduced_coverage_ids:
+        for candidate in angle_output:
+            raw_coverage = candidate.get("coverage")
+            if not isinstance(raw_coverage, list):
+                continue
+            for raw_item in raw_coverage:
+                if (
+                    isinstance(raw_item, dict)
+                    and raw_item.get("requirement_id") in reduced_coverage_ids
+                ):
+                    raw_item["status"] = "reduced"
+                    raw_item["rationale"] = "Founder may accept a narrower Angle."
     angle_result = await AngleGenerator(max_attempts=1).generate_candidates(
         session,
         journal_input_bundle_id=bundle_artifact.id,
@@ -502,24 +515,28 @@ async def test_outline_rejects_unknown_or_reduced_promise_coverage_mapping() -> 
                 "Cover safe display conditions.",
                 "Cover safe handling and transport.",
             ],
+            reduced_coverage_ids={"coverage-2"},
         )
-        # The second requirement is explicitly reduced at the approved Angle.
-        candidate = fixture.selected
-        object.__setattr__(
-            candidate,
-            "coverage",
-            (
-                candidate.coverage[0],
-                type(candidate.coverage[1])(
-                    requirement_id=candidate.coverage[1].requirement_id,
-                    status="reduced",
-                    rationale="Founder may accept a narrower Angle.",
-                ),
-            ),
-        )
+        assert [
+            (item.requirement_id, item.status)
+            for item in fixture.selected.coverage
+        ] == [
+            ("coverage-1", "covered"),
+            ("coverage-2", "reduced"),
+        ]
         invalid = _outline_payload(fixture.bundle)
         sections = cast(list[dict[str, object]], invalid["sections"])
         sections[0]["coverage_requirement_ids"] = ["coverage-1", "coverage-2"]
         with pytest.raises(OutlineGenerationError, match="outline_model_output_invalid"):
             await _generate(session, fixture, FakeOutlineModel([invalid]))
 
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=["Cover safe display conditions."],
+        )
+        invalid = _outline_payload(fixture.bundle)
+        sections = cast(list[dict[str, object]], invalid["sections"])
+        sections[0]["coverage_requirement_ids"] = ["coverage-999"]
+        with pytest.raises(OutlineGenerationError, match="outline_model_output_invalid"):
+            await _generate(session, fixture, FakeOutlineModel([invalid]))
