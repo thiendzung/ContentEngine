@@ -167,7 +167,7 @@ export type OperatorCaseView = {
   need: string;
   intent: string;
   promise: string;
-  content_role: string;
+  content_role: string | null;
   coverage_requirements: CoverageRequirement[];
   state: OperatorState;
   intake: {
@@ -321,7 +321,7 @@ export type FounderJournalIntakeResult = {
   bootstrap_run_id: string;
   source_locale_variant_id: string;
   required_locales: string[];
-  content_role: string;
+  content_role: string | null;
   coverage_requirements: string[];
   research_country: string;
   replayed: boolean;
