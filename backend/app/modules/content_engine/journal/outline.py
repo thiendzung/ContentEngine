@@ -18,10 +18,14 @@ from app.modules.content_engine.journal.angle import (
     handoff_approved_angle,
     load_journal_input_bundle,
 )
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    editorial_role_contract_or_none,
+)
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
 
 OUTLINE_SCHEMA_VERSION = 1
-OUTLINE_GENERATOR_VERSION = "ce05.outline_generator.v1"
+OUTLINE_GENERATOR_VERSION = "ce05.outline_generator.v2"
 _SUPPORT_TYPES = {"factual", "motgu_original", "editorial", "mixed"}
 
 
@@ -296,6 +300,21 @@ async def load_outline_input(
         "outline_originality_input_invalid",
     )
     opportunity = _dict(angle_input.get("opportunity"), "outline_opportunity_input_invalid")
+    try:
+        editorial_contract = editorial_role_contract_or_none(
+            opportunity.get("suggested_role")
+        )
+    except EditorialRoleError as exc:
+        raise OutlineGenerationError("outline_editorial_role_invalid") from exc
+    upstream_editorial_contract = angle_input.get("editorial_role_contract")
+    if editorial_contract is None:
+        if upstream_editorial_contract is not None:
+            raise OutlineGenerationError("outline_editorial_role_contract_unexpected")
+    elif (
+        upstream_editorial_contract is not None
+        and upstream_editorial_contract != editorial_contract.to_dict()
+    ):
+        raise OutlineGenerationError("outline_editorial_role_contract_mismatch")
     model_input: dict[str, object] = {
         "approved_angle": _approved_angle_payload(approved),
         "journal_input_bundle_ref": {
@@ -307,6 +326,8 @@ async def load_outline_input(
         "evidence_set": cast(dict[str, object], _clone_json(evidence_set)),
         "originality_pack": cast(dict[str, object], _clone_json(originality_pack)),
     }
+    if editorial_contract is not None:
+        model_input["editorial_role_contract"] = editorial_contract.to_dict()
     upstream_context = angle_input.get("context")
     if upstream_context is not None:
         model_input["upstream_context"] = _clone_json(upstream_context)
