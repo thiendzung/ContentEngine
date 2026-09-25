@@ -153,6 +153,7 @@ type OutlineSectionView = {
   purpose: string | null;
   answerDirection: string | null;
   claimGuards: string[];
+  coverageRequirementIds: string[];
 };
 
 function outlineSections(gate: OutlineGate): OutlineSectionView[] {
@@ -170,6 +171,11 @@ function outlineSections(gate: OutlineGate): OutlineSectionView[] {
       answerDirection: typeof row.answer_direction === "string" ? row.answer_direction : null,
       claimGuards: Array.isArray(row.claim_guards)
         ? row.claim_guards.filter((item): item is string => typeof item === "string")
+        : [],
+      coverageRequirementIds: Array.isArray(row.coverage_requirement_ids)
+        ? row.coverage_requirement_ids.filter(
+            (item): item is string => typeof item === "string",
+          )
         : [],
     }];
   });
@@ -209,6 +215,19 @@ function AngleCard({
         <span>Độ tin cậy {Math.round(candidate.confidence * 100)}%</span>
         <span>{localeLabel(candidate.locale)}</span>
       </div>
+      {candidate.coverage.length > 0 && (
+        <div className="angle-risks">
+          <span className="label">Phủ lời hứa Founder</span>
+          <ul>
+            {candidate.coverage.map((item) => (
+              <li key={item.requirement_id}>
+                <strong>{item.status === "covered" ? "Giữ" : "Thu hẹp"}:</strong>{" "}
+                {item.requirement} — {item.rationale}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {candidate.risks.length > 0 && (
         <div className="angle-risks">
           <span className="label">Rủi ro cần giữ</span>
@@ -776,6 +795,18 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <p className="eyebrow">Journal · {localeLabel(view.intake.source_locale)}</p>
           <h1>{view.question}</h1>
           <p className="intro">{view.promise}</p>
+          {view.coverage_requirements.length > 0 && (
+            <div className="angle-risks">
+              <span className="label">Cam kết phạm vi</span>
+              <ul>
+                {view.coverage_requirements.map((item) => (
+                  <li key={item.id}>
+                    <strong>{item.id}</strong>: {item.requirement}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="operator-header-state">
           <span className={`operator-state-badge ${state.status.toLowerCase()}`}>
@@ -989,6 +1020,12 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   {section.answerDirection && <p><strong>Hướng trả lời:</strong> {section.answerDirection}</p>}
                   {section.claimGuards.length > 0 && (
                     <p><strong>Guard:</strong> {section.claimGuards.join(" · ")}</p>
+                  )}
+                  {section.coverageRequirementIds.length > 0 && (
+                    <p>
+                      <strong>Cam kết được giữ:</strong>{" "}
+                      {section.coverageRequirementIds.join(" · ")}
+                    </p>
                   )}
                 </div>
               </article>
