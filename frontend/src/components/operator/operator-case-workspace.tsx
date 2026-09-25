@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   approveAngle,
@@ -786,11 +786,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       })
     : "chưa có";
   const sections = outlineGate ? outlineSections(outlineGate) : [];
-  const coverageTextById = useMemo(
-    () => new Map(
-      (view?.coverage_requirements ?? []).map((item) => [item.id, item.requirement]),
-    ),
-    [view?.coverage_requirements],
+  const coverageTextById = new Map(
+    view.coverage_requirements.map((item) => [item.id, item.requirement]),
   );
   const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
   const finalPanels = review
