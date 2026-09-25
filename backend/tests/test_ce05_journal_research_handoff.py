@@ -61,6 +61,8 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
 
 async def _content_case(
     session: AsyncSession,
+    *,
+    suggested_role: str | None = "cluster",
 ) -> tuple[Project, ContentCase, ContentOpportunity, NeedHypothesis]:
     project = Project(slug=f"ce05-handoff-{uuid4().hex[:12]}", name="MOTGU")
     session.add(project)
@@ -97,6 +99,7 @@ async def _content_case(
         priority="NOW",
         reasons_json=["test"],
         suggested_content_type="journal",
+        suggested_role=suggested_role,
         selected_by="founder",
         selected_at=datetime.now(UTC),
         selection_reason="Selected for the handoff test.",
