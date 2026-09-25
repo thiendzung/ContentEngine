@@ -54,9 +54,10 @@ class OutlineSection:
     claim_guards: tuple[str, ...]
     reader_movement: str
     internal_link_targets: tuple[str, ...]
+    coverage_requirement_ids: tuple[str, ...] = ()
 
-    def to_dict(self) -> dict[str, object]:
-        return {
+    def to_dict(self, *, include_coverage: bool = False) -> dict[str, object]:
+        payload: dict[str, object] = {
             "section_id": self.section_id,
             "heading": self.heading,
             "purpose": self.purpose,
@@ -68,6 +69,9 @@ class OutlineSection:
             "reader_movement": self.reader_movement,
             "internal_link_targets": list(self.internal_link_targets),
         }
+        if include_coverage:
+            payload["coverage_requirement_ids"] = list(self.coverage_requirement_ids)
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +84,7 @@ class JournalOutline:
     sections: tuple[OutlineSection, ...]
     must_not_claim: tuple[str, ...]
     angle_risks: tuple[str, ...]
+    coverage_contract_active: bool = False
 
     def model_output_dict(self) -> dict[str, object]:
         return {
@@ -88,7 +93,10 @@ class JournalOutline:
             "primary_answer_evidence_refs": list(self.primary_answer_evidence_refs),
             "primary_answer_originality_refs": list(self.primary_answer_originality_refs),
             "primary_answer_claim_guard": self.primary_answer_claim_guard,
-            "sections": [section.to_dict() for section in self.sections],
+            "sections": [
+                section.to_dict(include_coverage=self.coverage_contract_active)
+                for section in self.sections
+            ],
         }
 
     def to_dict(self) -> dict[str, object]:
@@ -371,6 +379,11 @@ def _decode_model_output(raw: object) -> dict[str, object]:
 def _validate_model_output(raw: object, *, outline_input: OutlineInput) -> JournalOutline:
     payload = _decode_model_output(raw)
     allowed_evidence, allowed_originality = _allowed_refs(outline_input)
+    selected = outline_input.approved_angle.candidate
+    coverage_contract_active = bool(selected.coverage)
+    committed_coverage_ids = {
+        item.requirement_id for item in selected.coverage if item.status == "covered"
+    }
 
     primary_evidence, primary_originality = _validated_refs(
         payload.get("primary_answer_evidence_refs"),
@@ -414,6 +427,21 @@ def _validate_model_output(raw: object, *, outline_input: OutlineInput) -> Journ
         claim_guards = tuple(
             _string_list(section.get("claim_guards"), "outline_claim_guards_invalid")
         )
+        coverage_requirement_ids: tuple[str, ...] = ()
+        if coverage_contract_active:
+            coverage_requirement_ids = tuple(
+                _string_list(
+                    section.get("coverage_requirement_ids"),
+                    "outline_coverage_requirement_ids_invalid",
+                )
+            )
+            if len(set(coverage_requirement_ids)) != len(coverage_requirement_ids):
+                raise OutlineGenerationError("outline_coverage_requirement_duplicate")
+            if any(
+                requirement_id not in committed_coverage_ids
+                for requirement_id in coverage_requirement_ids
+            ):
+                raise OutlineGenerationError("outline_coverage_requirement_not_committed")
         if not claim_guards:
             raise OutlineGenerationError("outline_claim_guards_required")
         sections.append(
@@ -439,13 +467,21 @@ def _validate_model_output(raw: object, *, outline_input: OutlineInput) -> Journ
                         "outline_internal_link_targets_invalid",
                     )
                 ),
+                coverage_requirement_ids=coverage_requirement_ids,
             )
         )
     section_ids = [section.section_id for section in sections]
     if len(set(section_ids)) != len(section_ids):
         raise OutlineGenerationError("outline_section_id_duplicate")
+    if coverage_contract_active:
+        mapped_coverage_ids = {
+            requirement_id
+            for section in sections
+            for requirement_id in section.coverage_requirement_ids
+        }
+        if mapped_coverage_ids != committed_coverage_ids:
+            raise OutlineGenerationError("outline_coverage_incomplete")
 
-    selected = outline_input.approved_angle.candidate
     return JournalOutline(
         primary_answer=_text(payload.get("primary_answer"), "outline_primary_answer_required"),
         primary_answer_support_type=primary_support_type,
@@ -458,6 +494,7 @@ def _validate_model_output(raw: object, *, outline_input: OutlineInput) -> Journ
         sections=tuple(sections),
         must_not_claim=tuple(selected.excluded_claims),
         angle_risks=tuple(selected.risks),
+        coverage_contract_active=coverage_contract_active,
     )
 
 
