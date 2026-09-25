@@ -14,6 +14,10 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    editorial_role_contract_or_none,
+)
 from app.modules.content_engine.journal.models import AngleApproval
 from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
@@ -38,7 +42,7 @@ from app.modules.research.evidence.contracts import is_usable_originality_item
 _CONTENT_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _JOURNAL_INPUT_BUNDLE_SCHEMA_VERSION = 1
 ANGLE_CANDIDATES_SCHEMA_VERSION = 1
-ANGLE_GENERATOR_VERSION = "ce05.angle_generator.v1"
+ANGLE_GENERATOR_VERSION = "ce05.angle_generator.v2"
 _UPSTREAM_BLOCKING_DECISIONS = {"MERGE", "LINK_ONLY", "DO_NOT_WRITE"}
 _ANGLE_COVERAGE_STATUSES = {"covered", "reduced"}
 
@@ -404,6 +408,12 @@ async def _build_angle_model_input(
         **opportunity,
         "snapshot_hash": _canonical_hash(opportunity),
     }
+    try:
+        editorial_contract = editorial_role_contract_or_none(
+            opportunity.get("suggested_role")
+        )
+    except EditorialRoleError as exc:
+        raise AngleGenerationError("angle_editorial_role_invalid") from exc
     sanitized_originality = _sanitized_originality_items(originality_items)
     if not sanitized_originality:
         raise AngleGenerationError("angle_originality_model_input_empty")
@@ -426,6 +436,8 @@ async def _build_angle_model_input(
             "items": sanitized_originality,
         },
     }
+    if editorial_contract is not None:
+        model_input["editorial_role_contract"] = editorial_contract.to_dict()
     if context_manifest is not None:
         model_input["context"] = {
             "manifest_id": str(context_manifest.id),
