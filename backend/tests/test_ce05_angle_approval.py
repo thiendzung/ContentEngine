@@ -62,8 +62,12 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
 
 async def _bundle_fixture(
     session: AsyncSession,
+    *,
+    coverage_requirements: list[str] | None = None,
 ) -> tuple[Artifact, JournalInputBundle, EvidenceSet, OriginalityPack]:
     project, content_case, opportunity, _need = await _content_case(session)
+    opportunity.coverage_requirements_json = list(coverage_requirements or [])
+    await session.flush()
     evidence = await _evidence_row(session, project_id=project.id, suffix="angle")
     evidence_set = await create_locked_evidence_set(
         session,
@@ -107,7 +111,7 @@ async def _bundle_fixture(
 
 
 def _candidate_payload(bundle: JournalInputBundle, index: int) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "angle_id": f"angle-{index}",
         "working_title": f"Grounded title {index}",
         "reader_problem": "The reader lacks a grounded next question.",
@@ -122,6 +126,20 @@ def _candidate_payload(bundle: JournalInputBundle, index: int) -> dict[str, obje
         "confidence": 0.8,
         "locale": bundle.locale,
     }
+    opportunity = bundle.angle_model_input.get("opportunity")
+    if isinstance(opportunity, dict):
+        requirements = opportunity.get("coverage_requirements")
+        if isinstance(requirements, list) and requirements:
+            payload["coverage"] = [
+                {
+                    "requirement_id": item["id"],
+                    "status": "covered",
+                    "rationale": "Keep the Founder requirement in this Angle.",
+                }
+                for item in requirements
+                if isinstance(item, dict)
+            ]
+    return payload
 
 
 class FakeAngleModel:
@@ -734,3 +752,82 @@ async def test_angle_approval_row_is_immutable_at_database_boundary() -> None:
                     .where(AngleApproval.id == approval.id)
                     .values(approved_by="tampered")
                 )
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("mutation", "expected_code"),
+    [
+        ("missing", "angle_coverage_incomplete"),
+        ("unknown", "angle_coverage_requirement_unknown"),
+        ("duplicate", "angle_coverage_requirement_duplicate"),
+    ],
+)
+async def test_angle_promise_coverage_fails_closed(
+    mutation: str,
+    expected_code: str,
+) -> None:
+    async with isolated_session() as session:
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        output = [_candidate_payload(bundle, index) for index in range(1, 4)]
+        first = output[0]
+        coverage = first["coverage"]
+        assert isinstance(coverage, list)
+        if mutation == "missing":
+            first["coverage"] = coverage[:1]
+        elif mutation == "unknown":
+            row = dict(coverage[0])
+            row["requirement_id"] = "coverage-999"
+            first["coverage"] = [row, coverage[1]]
+        else:
+            first["coverage"] = [coverage[0], coverage[0]]
+
+        with pytest.raises(
+            AngleGenerationError,
+            match=f"angle_model_output_invalid: bounded retries exhausted \\({expected_code}\\)",
+        ):
+            await AngleGenerator(max_attempts=1).generate_candidates(
+                session,
+                journal_input_bundle_id=bundle_artifact.id,
+                model=FakeAngleModel([output]),
+                provider="fixture-provider",
+                model_name="fixture-model",
+            )
+
+
+@pytest.mark.asyncio
+async def test_angle_promise_coverage_is_persisted_and_hashed() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
+        output = [_candidate_payload(bundle, index) for index in range(1, 4)]
+        result = await AngleGenerator(max_attempts=1).generate_candidates(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            model=FakeAngleModel([output]),
+            provider="fixture-provider",
+            model_name="fixture-model",
+        )
+        assert [
+            (item.requirement_id, item.status)
+            for item in result.candidates[0].coverage
+        ] == [
+            ("coverage-1", "covered"),
+            ("coverage-2", "covered"),
+        ]
+        payload = result.artifact.content_json
+        assert isinstance(payload, dict)
+        candidates = payload["candidates"]
+        assert isinstance(candidates, list)
+        assert candidates[0]["coverage"] == output[0]["coverage"]
+
