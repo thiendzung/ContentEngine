@@ -545,3 +545,12 @@ Exit: UX-01 closes with a coherent exception-driven command center backed by can
 P2C2 production-readiness audit is complete but activation remains blocked. A1 proved a fresh current rev-0034 recovery point, exact disposable 0034→0042 migration and independent recovery restore without operational mutation. A2 is blocked because no authorized production WordPress admin/SSH/WP-CLI path is currently available. A3 accepted the non-Git secret-delivery design but production provisioning remains pending production access. A4 accepted the runtime-baseline audit and identified stale historical operational tooling.
 
 Current implementation WIP is **A4E1 / #217**: add a new bounded operational migration tool for exactly `20260915_0034 → 20260923_0042` while preserving the historical 0027→0034 scripts unchanged in meaning. The current live Postgres container has no host-published 5432 listener despite tracked compose declaring loopback publishing, so A4E1 must never recreate/rebind topology implicitly and must fail closed when its execution context cannot reach the exact operational DB. Operational migration, runtime start, production WordPress mutation, bridge activation and publication remain separately authorized.
+
+
+## E2E-01 A4E2 release lifecycle window — 2026-09-25
+
+A4E1 is merged via PR #218 at main `383b274e57ced368dbbf0bc0216d45c8fb622ed9`; its exact-ref disposable 0034→0042 migration proof passed. Operational DB remains rev-0034 and no migration is authorized by that merge.
+
+A4E2 / #219 is the active engineering slice. It adds a separate rev-0042 controlled-release lifecycle verifier while preserving the historical rev-0034 O1.3 verifier unchanged in meaning. The current verifier uses event-driven child-process/log readiness, then one-shot HTTP health checks; it does not reuse the historical HTTP/sleep polling loop. A local ignored provenance artifact under `artifacts/release/` binds exact Git HEAD, Python/requirements/pip-freeze, Node/npm/package-lock and Next BUILD_ID to the release checkout before lifecycle execution.
+
+A4E2 code/CI does not authorize operational migration, operational runtime start, WordPress/Rank Math activation, production credentials or publication. After CI and MG review, Agent Local must prove a fresh exact-ref Python/frontend build plus startup/restart/graceful shutdown against an isolated rev-0042 disposable database.
