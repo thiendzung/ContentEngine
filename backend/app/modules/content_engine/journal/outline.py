@@ -310,10 +310,7 @@ async def load_outline_input(
     if editorial_contract is None:
         if upstream_editorial_contract is not None:
             raise OutlineGenerationError("outline_editorial_role_contract_unexpected")
-    elif (
-        upstream_editorial_contract is not None
-        and upstream_editorial_contract != editorial_contract.to_dict()
-    ):
+    elif upstream_editorial_contract != editorial_contract.to_dict():
         raise OutlineGenerationError("outline_editorial_role_contract_mismatch")
     model_input: dict[str, object] = {
         "approved_angle": _approved_angle_payload(approved),
