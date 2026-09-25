@@ -16,12 +16,14 @@ type Props = {
 };
 
 type SourceLocale = "" | "vi-VN" | "en";
+type ContentRole = "pillar" | "cluster";
 
 type FormState = {
   source_locale: SourceLocale;
   research_country: string;
   required_vi: boolean;
   required_en: boolean;
+  content_role: ContentRole;
   reader: string;
   situation: string;
   need: string;
@@ -40,6 +42,7 @@ const initialState: FormState = {
   research_country: "vn",
   required_vi: true,
   required_en: true,
+  content_role: "cluster",
   reader: "",
   situation: "",
   need: "",
@@ -114,6 +117,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
         source_locale: form.source_locale,
         research_country: form.research_country.trim(),
         required_locales: requiredLocales,
+        content_role: form.content_role,
         reader: form.reader.trim(),
         situation: form.situation.trim(),
         need: form.need.trim(),
@@ -164,6 +168,20 @@ export function JournalIntakeForm({ preflightReady }: Props) {
               <option value="vi-VN">Tiếng Việt</option>
               <option value="en">Tiếng Anh</option>
             </select>
+          </label>
+          <label>
+            <span>Vai trò nội dung</span>
+            <select
+              onChange={(event) => update("content_role", event.target.value as ContentRole)}
+              required
+              value={form.content_role}
+            >
+              <option value="pillar">Pillar — bức tranh lớn</option>
+              <option value="cluster">Cluster — vấn đề hẹp, đi sâu</option>
+            </select>
+            <small>
+              Pillar tổng hợp và dẫn sang bài sâu; Cluster giải quyết một vấn đề hẹp hơn.
+            </small>
           </label>
           <label>
             <span>Quốc gia nghiên cứu</span>
