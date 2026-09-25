@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-25 after Founder merged PR #220. Current main is `f2b3aaaddc6229302db0db791eb9c67a27692f66`. A4E2 rev-0042 release lifecycle/build proof is complete; E2E-01 remains in production-readiness unblock, not yet in the real D1-D9 closed-loop pilot. This is the ONE current working window.
+Updated: 2026-09-25 after Founder merged PR #224 and explicitly reprioritized the product. Current main at CQ-01 start is `9aa2557434f1ae35c1bb96580029b40938558e35`. Production activation/E2E external work is paused; the active WIP is CQ-01 promise coverage so ContentEngine can first produce high-quality Pillar/Cluster content. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `f2b3aaaddc6229302db0db791eb9c67a27692f66` (merge PR #220). The exact verified A4E2 PR head was `c20dee78c27e74dcb0dd6809f70317b034de5f21`; CI #1832 passed on that head, Agent Local returned `PASS_E2E01_A4E2_EXACT_REF_RELEASE_LIFECYCLE`, and merge-main CI #1833 also passed. Operational DB remains at verified rev `20260915_0034`; code head is `20260923_0042`. A2 production WordPress inventory is still blocked on an authorized read-only production access path.
+Live GitHub main at CQ-01 start: `9aa2557434f1ae35c1bb96580029b40938558e35` (merge PR #224). A4E2 remains accepted evidence, but Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. Operational DB remains at verified rev `20260915_0034`. CQ-01 introduces code migration head `20260925_0043` on its branch only; applying it operationally is not authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -47,7 +47,9 @@ Neither authorizes publication.
 
 ## Immediate task
 
-P2 / O1 is complete operationally. P3.0 UI pilot-readiness is also complete via PR #142, merged as `7700fad4c24ba7ddac171487e442b305c6de2807`.
+**CQ-01 / #225 / PR #226** is the only active implementation. Preserve Founder/Opportunity promise requirements from intake through research, Angle and Outline. No requirement may disappear silently: Angle explicitly marks each as `covered` or `reduced`; every `covered` requirement must map to at least one Outline section. Current scope stops before CQ-02 Pillar/Cluster role semantics and before HV-01 Human Voice.
+
+P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
 F7 Case #2 (`#143`) has four earlier consumed audit-only executions: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, `e51f6b14-b048-4d5d-873b-635f7ea6ae40`, and R3 `9c185c18-af9f-4c81-9d81-8f6243bbebfc`. PR #160 fixed truthful Codex runner identity/executable integrity; PR #161 fixed educational-domain authority promotion. Fresh R4 case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached `AWAITING_APPROVAL / angle` with locked factual evidence and truthful runner metadata. Founder personally selected `angle-environment-checklist`. Agent Local later submitted Continue exactly once and the normal Outline path produced artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, leaving the run at `AWAITING_APPROVAL / outline`. That execution used pre-#162 SHA `39336052...`; #162 was docs-only, so no rerun was needed. Agent Local subsequently returned `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`, confirming preflight PASS, durable Outline state, exactly one Continue/Outline path, zero downstream mutations and the corrected EvidenceSet composition of 6 `supports` + 2 `context_only`. The closeout also exposed #167: Outline `runtime_metadata_json` persisted runner version but not `runner_executable`.
 
@@ -435,3 +437,21 @@ A4E2D1 / #222 proved the two A1/live `running` Run/Step rows are intentional Sta
 7. Only after `ACTIVATION_READY`: D1 freeze one new real E2E case, then D2-D9 closed-loop execution.
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
+
+## Content Quality priority — CQ-01
+
+Founder priority is now content quality before production activation.
+
+CQ sequence:
+`CQ-01 Promise Coverage → CQ-02 Pillar/Cluster Contract → CQ-03 Evidence/Originality Depth → CQ-04 Angle/Outline Quality → CQ-05 Writer/Human Voice → CQ-06 Deep Quality Gate → CQ-07 real Pillar+Cluster pilot`.
+
+CQ-01 implementation rules:
+- fresh current-main port; historical PR #169 is reference only and must not be merged/rebased;
+- current-head migration is 0043 and only adds `coverage_requirements_json`;
+- no second prompt/recipe registry generation: exact coverage IDs are dynamically bound at Agent Bridge structured-output boundaries;
+- manual intake requires 1..12 explicit requirements;
+- Evidence Research extraction considers those requirement texts;
+- Angle classifies every exact requirement once as covered/reduced with rationale;
+- Outline maps every covered ID at least once and never maps a reduced/unknown ID;
+- operator human gates show the contract before approval;
+- historical opportunities with empty coverage remain readable; no fabricated backfill.
