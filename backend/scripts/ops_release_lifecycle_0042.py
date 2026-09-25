@@ -861,9 +861,7 @@ async def _main() -> int:
             final_snapshot,
             code="durable_state_changed_after_lifecycle",
         )
-        evidence["final_idle_state"] = await historical._assert_idle_operational_state(
-            engine
-        )
+        evidence["final_idle_state"] = await _assert_release_quiescent_state(engine)
         evidence["runtime_final"] = historical._prestart_runtime_guard()
         evidence["final_snapshot"] = final_snapshot
         evidence["content_model_publication_delta"] = "NONE"
