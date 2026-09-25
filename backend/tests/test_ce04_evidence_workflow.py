@@ -273,6 +273,7 @@ async def selected_o4_like_plan(
     session: AsyncSession,
     *,
     motgu_material_refs: list[str] | None = None,
+    coverage_requirements: list[str] | None = None,
 ) -> tuple[Project, NeedHypothesis, ContentOpportunity]:
     project = (
         await session.execute(select(Project).where(Project.slug == "motgu"))
@@ -303,6 +304,7 @@ async def selected_o4_like_plan(
         question="How do I know if an original artwork is fairly priced?",
         intent="learn",
         promise="help the reader evaluate price with grounded context",
+        coverage_requirements_json=list(coverage_requirements or []),
         motgu_material_refs_json=list(motgu_material_refs or []),
         material_gaps_json=[],
         existing_content_refs_json=[],
@@ -345,6 +347,53 @@ def evidence_request(
         lock_evidence_set=lock,
         locked_by="test-reviewer" if lock else None,
     )
+
+
+class CapturingTopicWorkflow(EvidenceResearchWorkflow):
+    def __init__(self, *, router: FakeEvidenceRouter) -> None:
+        super().__init__(router=router)
+        self.captured_topic_texts: tuple[str, ...] | None = None
+
+    def _extract_claim_candidates(
+        self,
+        production: ProductionResearchResult,
+        *,
+        subject_text: str,
+        topic_texts: tuple[str, ...],
+        limit: int,
+    ) -> list[ClaimCandidate]:
+        del production, subject_text, limit
+        self.captured_topic_texts = topic_texts
+        return []
+
+
+@pytest.mark.asyncio
+async def test_evidence_workflow_includes_founder_coverage_in_extraction_topics() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_o4_like_plan(
+            session,
+            coverage_requirements=[
+                "Explain safe display conditions.",
+                "Explain safe handling and transport.",
+            ],
+        )
+        workflow = CapturingTopicWorkflow(router=FakeEvidenceRouter())
+        await workflow.run(
+            session,
+            request=evidence_request(
+                project_id=project.id,
+                need_id=need.id,
+                opportunity_id=opportunity.id,
+            ),
+        )
+
+        assert workflow.captured_topic_texts == (
+            opportunity.question,
+            opportunity.need,
+            opportunity.promise,
+            "Explain safe display conditions.",
+            "Explain safe handling and transport.",
+        )
 
 
 @pytest.mark.asyncio
