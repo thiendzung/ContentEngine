@@ -515,6 +515,13 @@ normalize/dedupe. Angle phải phân loại từng exact requirement là `covere
 requirement đã cam kết ít nhất một lần. Historical opportunities có danh sách rỗng vẫn
 được đọc theo contract cũ; không backfill hoặc giả lập Founder intent.
 
+CQ-02: `suggested_role` cho Journal mới chỉ nhận `pillar|cluster`. Manual Founder
+intake phải chốt role này trước khi tạo case; source/translation `LocaleVariant.content_role`
+phải giữ cùng role. Pillar và Cluster dùng hai editorial contract khác nhau xuyên Angle,
+Outline và Writer. Historical `primary`/NULL role được giữ nguyên để đọc/audit; không
+backfill hay suy diễn lại lịch sử. CQ-02 không tự tạo quan hệ parent-Pillar/child-Cluster
+nếu chưa có bằng chứng/identity rõ ràng.
+
 ### ContentExperiment
 
 - `id`, `project_id`, `content_opportunity_id`, `need_hypothesis_id`, `hypothesis_version`
