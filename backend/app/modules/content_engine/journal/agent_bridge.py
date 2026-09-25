@@ -218,7 +218,7 @@ def _bind_angle_output_schema(
     candidate_properties = (
         candidate_items.get("properties") if isinstance(candidate_items, dict) else None
     )
-    if not isinstance(candidate_properties, dict):
+    if not isinstance(candidate_items, dict) or not isinstance(candidate_properties, dict):
         raise AngleGenerationError("angle_output_schema_invalid")
 
     allowed_coverage = _contract_values(contract, "coverage_requirement_ids")
