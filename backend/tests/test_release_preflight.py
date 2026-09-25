@@ -118,7 +118,7 @@ async def test_codex_preflight_exposes_resolved_executable_identity(
                 (),
                 {
                     "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
-                    "version": "codex-cli 0.155.0-alpha.16.3",
+                    "version": "codex-cli 0.155.0-alpha.16.4",
                     "auth_mode": "cached_session",
                 },
             )()
@@ -130,5 +130,5 @@ async def test_codex_preflight_exposes_resolved_executable_identity(
     assert check.status == "READY"
     assert check.detail == (
         "executable=/Applications/ChatGPT.app/Contents/Resources/codex; "
-        "version=codex-cli 0.155.0-alpha.16.3; auth=cached_session"
+        "version=codex-cli 0.155.0-alpha.16.4; auth=cached_session"
     )

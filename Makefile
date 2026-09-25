@@ -1,4 +1,5 @@
 PYTHON ?= python3
+RELEASE_PYTHON ?= python3.12
 BACKEND_VENV := backend/.venv
 BACKEND_PY := $(BACKEND_VENV)/bin/python
 BACKEND_PIP := $(BACKEND_VENV)/bin/pip
@@ -8,6 +9,7 @@ AUTHORIZED_HEAD ?=
 EXPECTED_DUMP_SHA256 ?=
 EXPECTED_SOURCE_DOCUMENTS_COUNT ?=
 EXPECTED_SOURCE_DOCUMENTS_SHA256 ?=
+RELEASE_PROVENANCE ?= artifacts/release/release-0042-provenance.json
 MODEL ?=
 APPROVED_BY ?=
 OCR_BASE ?=
@@ -16,7 +18,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate operational-migrate-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal operational-migrate operational-migrate-0042 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -104,6 +106,26 @@ operational-migrate-0042:
 		--expected-dump-sha256 "$(EXPECTED_DUMP_SHA256)" \
 		--expected-source-documents-count "$(EXPECTED_SOURCE_DOCUMENTS_COUNT)" \
 		--expected-source-documents-sha256 "$(EXPECTED_SOURCE_DOCUMENTS_SHA256)"
+
+release-build-0042:
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	@test ! -e "$(BACKEND_VENV)" || (echo "fresh backend/.venv is required" && exit 2)
+	@test ! -e "frontend/node_modules" || (echo "fresh frontend/node_modules is required" && exit 2)
+	@test ! -e "frontend/.next" || (echo "fresh frontend/.next is required" && exit 2)
+	$(RELEASE_PYTHON) -m venv $(BACKEND_VENV)
+	$(BACKEND_PIP) install --upgrade pip
+	$(BACKEND_PIP) install -r backend/requirements-dev.txt
+	cd frontend && npm ci --no-audit --no-fund
+	cd frontend && npm run build
+	cd backend && .venv/bin/python -m scripts.ops_release_provenance_0042 \
+		--authorized-head "$(AUTHORIZED_HEAD)" \
+		--output "$(RELEASE_PROVENANCE)"
+
+release-lifecycle-0042:
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	cd backend && .venv/bin/python -m scripts.ops_release_lifecycle_0042 \
+		--authorized-head "$(AUTHORIZED_HEAD)" \
+		--provenance "$(RELEASE_PROVENANCE)"
 
 release-lifecycle:
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required: make release-lifecycle AUTHORIZED_HEAD=<sha>" && exit 2)

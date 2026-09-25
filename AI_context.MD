@@ -407,3 +407,18 @@ Active bounded implementation: **A4E1 / #217**.
 A4E1 adds a new current-generation operational migration entrypoint for exactly `20260915_0034 → 20260923_0042`. Historical `ops_migration_rehearsal.py` and `ops_operational_migrate.py` retain their 0027→0034 historical meaning. The new tool requires exact authorized clean code, stopped application runtime, format-v2 backup identity, explicit authorized dump SHA, exact source-documents fingerprint, exact migration chain, fail-closed pre/post schema guards and durable-state invariance. It never recreates/rebinds the Postgres container and must fail closed if the execution context cannot reach the exact operational DB.
 
 The live operational DB is still rev-0034. The current Postgres container is healthy but has no host-published 5432 listener even though tracked compose declares loopback publishing; this topology drift is a separate execution-context concern and must not be silently “fixed” by migration code. Operational migration, release-runtime start, production WordPress changes, Rank Math bridge activation, production credentials and publication remain separately Founder-authorized.
+
+
+## E2E-01 A4E2 active implementation — 2026-09-25
+
+Current main at A4E2 start: `383b274e57ced368dbbf0bc0216d45c8fb622ed9` (merge of PR #218 / A4E1).
+
+A4E1 is complete at code/review/local-proof level. The production/operational ContentEngine database remains rev `20260915_0034`; applying the proven 0034→0042 migration remains a separate Founder-authorized operation.
+
+A4E2 / #219 adds a new `ops_release_lifecycle_0042.py` instead of repurposing historical `ops_release_lifecycle.py`. The new lifecycle expects rev `20260923_0042`, requires exact clean checkout + local Python 3.12 venv + exact frontend build provenance, and uses event-driven process/log readiness with one-shot HTTP verification. It must not use repeated sleep/HTTP/ps/pgrep polling. Release provenance is local ignored evidence under `artifacts/release/`, not a committed generated artifact and contains no secrets.
+
+No operational runtime lifecycle is executed by this implementation work. Exact-ref local proof later uses an isolated disposable PostgreSQL restored from the accepted A1 recovery point and migrated to rev-0042 with the merged A4E1 tool.
+
+A4E2 exact-ref local proof initially stopped fail-closed on `agent_runner_version_not_approved` because the packaged Codex advanced from `.16.3` to `.16.4`. Issue #221 completed a read-only capability audit of exact binary SHA `93169e745735930598e867ad837abf3fdc50774a3ad7e7aa89c0d0c51b0189a5`: required runner flags, all 21 explicit no-tool controls and cached-session auth were preserved, with zero model/DB/runtime side effects. The audit authorizes an exact repin to `codex-cli 0.155.0-alpha.16.4` only; ranges/wildcards remain forbidden. PR #220 must rerun CI and exact-ref local lifecycle proof after the repin.
+
+A4E2D1 / #222 proved the two A1/live `running` Run/Step rows are intentional Start-to-Angle operator-retry pauses: latest Job is failed, no lease remains, failure evidence is persisted, and the only canonical operator action is an explicit retry that would resume research/model work. MG chose not to mutate or resume those workflows for a release test. A4E2D2 / #223 therefore narrows only the rev-0042 release quiescence guard: it may preserve this exact failed-job paused state as release-quiescent while still blocking queued/leased jobs, active model/tool/outbox work, any other stage/state, unmatched active Run/Step, multiple active Steps per Run, or failure-evidence mismatch. Historical rev-0034 lifecycle semantics remain unchanged.
