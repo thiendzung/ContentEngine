@@ -6,6 +6,7 @@ import contextlib
 import json
 import os
 import signal
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -266,7 +267,7 @@ async def _start_runtime(
         runtimes["backend"] = await _spawn_runtime(
             name="backend",
             command=[
-                os.fspath(Path(os.sys.executable)),
+                sys.executable,
                 "-m",
                 "uvicorn",
                 "app.main:app",
@@ -301,7 +302,7 @@ async def _start_runtime(
         runtimes["worker"] = await _spawn_runtime(
             name="worker",
             command=[
-                os.fspath(Path(os.sys.executable)),
+                sys.executable,
                 "-m",
                 "scripts.run_operator_worker_loop",
             ],
@@ -404,6 +405,24 @@ async def _stop_all(
     return results, errors
 
 
+def _require_expected_revision(revision: str | None) -> None:
+    if revision != _EXPECTED_REVISION:
+        raise ReleaseLifecycleError("operational_revision_not_current")
+
+
+def _require_graceful_shutdown(
+    shutdown: list[dict[str, object]],
+    *,
+    cycle: str,
+) -> None:
+    if shutdown and any(bool(row["forced_kill"]) for row in shutdown):
+        raise ReleaseLifecycleError(f"forced_runtime_kill_{cycle}")
+
+
+async def _require_release_preflight(*, blocker: str) -> dict[str, object]:
+    return await historical._require_release_preflight(blocker=blocker)
+
+
 async def _run_cycle(
     *,
     cycle: str,
@@ -472,12 +491,13 @@ async def _run_cycle(
         elif exc.code != primary.code:
             secondary.append(exc.code)
 
-    if shutdown and any(bool(row["forced_kill"]) for row in shutdown):
-        code = f"forced_runtime_kill_{cycle}"
+    try:
+        _require_graceful_shutdown(shutdown, cycle=cycle)
+    except ReleaseLifecycleError as exc:
         if primary is None:
-            primary = ReleaseLifecycleError(code)
-        elif code != primary.code:
-            secondary.append(code)
+            primary = exc
+        elif exc.code != primary.code:
+            secondary.append(exc.code)
 
     try:
         evidence["idle_after"] = await historical._assert_idle_operational_state(engine)
@@ -545,8 +565,7 @@ async def _main() -> int:
             raise ReleaseLifecycleError("database_identity_mismatch")
 
         revision = await historical._migration_revision(engine)
-        if revision != _EXPECTED_REVISION:
-            raise ReleaseLifecycleError("operational_revision_not_current")
+        _require_expected_revision(revision)
 
         evidence = {
             "mode": "controlled_release_lifecycle_0042",
@@ -562,7 +581,7 @@ async def _main() -> int:
             "cycles": [],
         }
 
-        pre_release_preflight = await historical._require_release_preflight(
+        pre_release_preflight = await _require_release_preflight(
             blocker="pre_release_preflight_blocked"
         )
         evidence["pre_release_preflight"] = pre_release_preflight
@@ -606,7 +625,7 @@ async def _main() -> int:
             )
         )
 
-        evidence["post_release_preflight"] = await historical._require_release_preflight(
+        evidence["post_release_preflight"] = await _require_release_preflight(
             blocker="post_release_preflight_blocked"
         )
 
