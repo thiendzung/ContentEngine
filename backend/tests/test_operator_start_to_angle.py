@@ -105,6 +105,10 @@ def _intake_kwargs(*, key: str) -> dict[str, object]:
         "question": "How can a visitor evaluate locally made relief artwork in Vietnam?",
         "intent": "learn",
         "promise": "Give a practical, evidence-backed evaluation framework.",
+        "coverage_requirements": [
+            "Explain how to inspect materials and physical finish.",
+            "Separate factual evidence from MOTGU editorial judgment.",
+        ],
         "selection_reason": "Founder selected this Journal as an acquisition entry point.",
         "originality_material": (
             "MOTGU evaluates relief work by material honesty and craft decisions."
@@ -331,6 +335,8 @@ class ControlledCodexRunner:
         assert isinstance(evidence_set, dict)
         assert isinstance(originality_pack, dict)
         assert isinstance(opportunity, dict)
+        coverage_requirements = opportunity["coverage_requirements"]
+        assert isinstance(coverage_requirements, list) and coverage_requirements
         evidence = evidence_set["evidence"]
         originality = originality_pack["items"]
         assert isinstance(evidence, list) and evidence
@@ -339,6 +345,28 @@ class ControlledCodexRunner:
         originality_item = originality[0]
         assert isinstance(evidence_item, dict)
         assert isinstance(originality_item, dict)
+
+        schema = request.structured_output_schema
+        properties = schema.get("properties")
+        assert isinstance(properties, dict)
+        candidates_schema = properties.get("candidates")
+        assert isinstance(candidates_schema, dict)
+        candidate_items = candidates_schema.get("items")
+        assert isinstance(candidate_items, dict)
+        candidate_properties = candidate_items.get("properties")
+        assert isinstance(candidate_properties, dict)
+        coverage_schema = candidate_properties.get("coverage")
+        assert isinstance(coverage_schema, dict)
+        assert coverage_schema["minItems"] == 2
+        assert coverage_schema["maxItems"] == 2
+        coverage_item_schema = coverage_schema.get("items")
+        assert isinstance(coverage_item_schema, dict)
+        coverage_properties = coverage_item_schema.get("properties")
+        assert isinstance(coverage_properties, dict)
+        requirement_schema = coverage_properties.get("requirement_id")
+        assert isinstance(requirement_schema, dict)
+        assert requirement_schema["enum"] == ["coverage-1", "coverage-2"]
+
         candidates = [
             {
                 "angle_id": f"pr45-angle-{index}",
@@ -358,6 +386,15 @@ class ControlledCodexRunner:
                 "risks": ["Do not generalize one source into a universal rule."],
                 "confidence": 0.8,
                 "locale": opportunity["locale"],
+                "coverage": [
+                    {
+                        "requirement_id": item["id"],
+                        "status": "covered",
+                        "rationale": "This candidate keeps the Founder requirement.",
+                    }
+                    for item in coverage_requirements
+                    if isinstance(item, dict)
+                ],
             }
             for index in range(1, 4)
         ]
@@ -385,11 +422,16 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         )
         assert replay.replayed and replay.command_id == first.command_id
         assert first.required_locales == ["en", "vi-VN"]
+        assert first.coverage_requirements == [
+            "Explain how to inspect materials and physical finish.",
+            "Separate factual evidence from MOTGU editorial judgment.",
+        ]
         assert first.state.status == "READY" and first.state.primary_intent == "start"
         need = await session.get(NeedHypothesis, first.need_hypothesis_id)
         opportunity = await session.get(ContentOpportunity, first.content_opportunity_id)
         assert need is not None and need.origin == "founder_manual" and need.status == "PROPOSED"
         assert opportunity is not None and opportunity.selected_by == "founder"
+        assert opportunity.coverage_requirements_json == first.coverage_requirements
         assert int(await session.scalar(select(func.count(Signal.id))) or 0) == signals_before
         assert await session.scalar(
             select(func.count(NeedHypothesisSignal.need_hypothesis_id)).where(
@@ -427,6 +469,31 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         pack = await session.get(OriginalityPack, first.originality_pack_id)
         assert pack is not None and pack.status == "approved"
         assert pack.approved_by == "founder"
+
+
+
+
+@pytest.mark.asyncio
+async def test_founder_intake_rejects_missing_or_duplicate_promise_coverage() -> None:
+    async with isolated_session() as session:
+        missing = _intake_kwargs(key="cq01-empty-coverage")
+        missing["coverage_requirements"] = []
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_coverage_requirements_invalid",
+        ):
+            await create_founder_journal_intake(session, **missing)
+
+        duplicate = _intake_kwargs(key="cq01-duplicate-coverage")
+        duplicate["coverage_requirements"] = [
+            "Cover safe handling.",
+            "  cover SAFE handling.  ",
+        ]
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_coverage_requirement_duplicate",
+        ):
+            await create_founder_journal_intake(session, **duplicate)
 
 
 @pytest.mark.asyncio

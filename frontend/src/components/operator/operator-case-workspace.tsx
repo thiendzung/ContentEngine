@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   approveAngle,
@@ -153,6 +153,7 @@ type OutlineSectionView = {
   purpose: string | null;
   answerDirection: string | null;
   claimGuards: string[];
+  coverageRequirementIds: string[];
 };
 
 function outlineSections(gate: OutlineGate): OutlineSectionView[] {
@@ -170,6 +171,11 @@ function outlineSections(gate: OutlineGate): OutlineSectionView[] {
       answerDirection: typeof row.answer_direction === "string" ? row.answer_direction : null,
       claimGuards: Array.isArray(row.claim_guards)
         ? row.claim_guards.filter((item): item is string => typeof item === "string")
+        : [],
+      coverageRequirementIds: Array.isArray(row.coverage_requirement_ids)
+        ? row.coverage_requirement_ids.filter(
+            (item): item is string => typeof item === "string",
+          )
         : [],
     }];
   });
@@ -209,6 +215,19 @@ function AngleCard({
         <span>Độ tin cậy {Math.round(candidate.confidence * 100)}%</span>
         <span>{localeLabel(candidate.locale)}</span>
       </div>
+      {candidate.coverage.length > 0 && (
+        <div className="angle-risks">
+          <span className="label">Cam kết phạm vi của Angle</span>
+          <ul>
+            {candidate.coverage.map((item) => (
+              <li key={item.requirement_id}>
+                <strong>{item.status === "covered" ? "Giữ" : "Thu hẹp"}:</strong>{" "}
+                {item.requirement} — {item.rationale}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {candidate.risks.length > 0 && (
         <div className="angle-risks">
           <span className="label">Rủi ro cần giữ</span>
@@ -557,9 +576,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
   const outlineGate = view?.pending_gate?.type === "outline" ? view.pending_gate : null;
-  const selectedAngle = useMemo(
-    () => angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null,
-    [angleGate, selectedAngleId],
+  const selectedAngle = (
+    angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null
   );
 
   async function reconcileMutationFailure(requestError: unknown, keyScope: string) {
@@ -635,7 +653,16 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       state.state_version,
       `approve-angle:${selectedAngle.angle_id}`,
     );
-    if (!window.confirm(`Duyệt góc “${selectedAngle.working_title}”?`)) return;
+    const reductions = selectedAngle.coverage.filter((item) => item.status === "reduced");
+    const confirmation = reductions.length > 0
+      ? [
+          `Góc “${selectedAngle.working_title}” đang thu hẹp ${reductions.length} cam kết phạm vi:`,
+          ...reductions.map((item) => `• ${item.requirement}`),
+          "",
+          "Duyệt Angle này đồng nghĩa chấp nhận các phần thu hẹp trên. Tiếp tục?",
+        ].join("\n")
+      : `Duyệt góc “${selectedAngle.working_title}”?`;
+    if (!window.confirm(confirmation)) return;
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -758,6 +785,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       })
     : "chưa có";
   const sections = outlineGate ? outlineSections(outlineGate) : [];
+  const coverageTextById = new Map(
+    view.coverage_requirements.map((item) => [item.id, item.requirement]),
+  );
   const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
   const finalPanels = review
     ? review.locales
@@ -776,6 +806,18 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <p className="eyebrow">Journal · {localeLabel(view.intake.source_locale)}</p>
           <h1>{view.question}</h1>
           <p className="intro">{view.promise}</p>
+          {view.coverage_requirements.length > 0 && (
+            <div className="angle-risks">
+              <span className="label">Cam kết phạm vi</span>
+              <ul>
+                {view.coverage_requirements.map((item) => (
+                  <li key={item.id}>
+                    <strong>{item.id}</strong>: {item.requirement}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="operator-header-state">
           <span className={`operator-state-badge ${state.status.toLowerCase()}`}>
@@ -989,6 +1031,18 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   {section.answerDirection && <p><strong>Hướng trả lời:</strong> {section.answerDirection}</p>}
                   {section.claimGuards.length > 0 && (
                     <p><strong>Guard:</strong> {section.claimGuards.join(" · ")}</p>
+                  )}
+                  {section.coverageRequirementIds.length > 0 && (
+                    <div>
+                      <strong>Cam kết được giữ:</strong>
+                      <ul>
+                        {section.coverageRequirementIds.map((requirementId) => (
+                          <li key={requirementId}>
+                            {coverageTextById.get(requirementId) ?? requirementId}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               </article>

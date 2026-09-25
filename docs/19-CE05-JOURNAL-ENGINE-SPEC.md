@@ -76,3 +76,34 @@ An artifact version change invalidates its previous approval.
 
 No auto-publish, scheduler, vector database, multi-agent swarm, full SEO score, Artwork
 writer, large dashboard, new research provider, or automatic learning/prompt changes.
+
+## CQ-01 promise coverage extension
+
+For new Founder-authored Journal intake, `promise` is not sufficient by itself. The
+Founder/editorial brief also supplies 1..12 ordered `coverage_requirements` that state
+which subject areas must not silently disappear while the model narrows the content.
+
+Canonical flow:
+
+```text
+ContentOpportunity.coverage_requirements_json
+→ exact journal opportunity snapshot (coverage-1..N)
+→ Evidence Research extraction topics
+→ Angle candidate: each ID = covered | reduced + rationale
+→ Founder Angle decision
+→ Outline: every covered ID maps to >=1 section
+→ Founder Outline decision
+```
+
+Rules:
+- a requirement may be intentionally reduced only at the visible Angle gate;
+- missing, duplicated or unknown Angle requirement IDs fail closed;
+- Outline may never map an ID the approved Angle marked `reduced`;
+- all `covered` IDs must be mapped at least once before an Outline is persistable;
+- exact IDs are bound dynamically into the Agent Bridge structured-output schemas;
+- no second prompt/recipe registry generation is required for CQ-01;
+- historical opportunities with no coverage contract remain readable and are not
+  backfilled with invented Founder intent;
+- CQ-01 does not yet define Pillar/Cluster editorial behavior, section-level evidence
+  adequacy or Human Voice semantics; those belong to later Content Quality slices.
+

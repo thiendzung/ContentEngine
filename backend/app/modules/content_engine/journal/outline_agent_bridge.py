@@ -83,6 +83,78 @@ def _runtime_metadata(result: AgentRunResult) -> dict[str, object]:
     return metadata
 
 
+def _coverage_contract(input_bundle: dict[str, object]) -> tuple[bool, list[str]]:
+    approved_angle = input_bundle.get("approved_angle")
+    if not isinstance(approved_angle, dict):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    candidate = approved_angle.get("candidate")
+    if not isinstance(candidate, dict):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    coverage = candidate.get("coverage", [])
+    if not isinstance(coverage, list):
+        raise OutlineGenerationError("outline_coverage_input_invalid")
+    if not coverage:
+        return False, []
+
+    committed: list[str] = []
+    seen: set[str] = set()
+    for raw in coverage:
+        if not isinstance(raw, dict):
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+        requirement_id = raw.get("requirement_id")
+        status = raw.get("status")
+        if not isinstance(requirement_id, str) or not requirement_id.strip():
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+        requirement_id = requirement_id.strip()
+        if requirement_id in seen:
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+        seen.add(requirement_id)
+        if status == "covered":
+            committed.append(requirement_id)
+        elif status != "reduced":
+            raise OutlineGenerationError("outline_coverage_input_invalid")
+    return True, committed
+
+
+def _bind_outline_output_schema(
+    base_schema: dict[str, object],
+    *,
+    input_bundle: dict[str, object],
+) -> dict[str, object]:
+    cloned = json.loads(json.dumps(base_schema, ensure_ascii=False))
+    if not isinstance(cloned, dict):
+        raise OutlineGenerationError("outline_output_schema_invalid")
+    properties = cloned.get("properties")
+    sections = properties.get("sections") if isinstance(properties, dict) else None
+    section_items = sections.get("items") if isinstance(sections, dict) else None
+    section_properties = (
+        section_items.get("properties") if isinstance(section_items, dict) else None
+    )
+    if not isinstance(section_items, dict) or not isinstance(section_properties, dict):
+        raise OutlineGenerationError("outline_output_schema_invalid")
+
+    contract_active, allowed = _coverage_contract(input_bundle)
+    if contract_active:
+        coverage_schema: dict[str, object] = {
+            "type": "array",
+            "items": {"type": "string"},
+        }
+        item_schema = coverage_schema["items"]
+        if not isinstance(item_schema, dict):
+            raise OutlineGenerationError("outline_output_schema_invalid")
+        if allowed:
+            item_schema["enum"] = allowed
+        else:
+            coverage_schema["maxItems"] = 0
+        section_properties["coverage_requirement_ids"] = coverage_schema
+        required = section_items.get("required")
+        if not isinstance(required, list) or any(not isinstance(item, str) for item in required):
+            raise OutlineGenerationError("outline_output_schema_invalid")
+        if "coverage_requirement_ids" not in required:
+            required.append("coverage_requirement_ids")
+    return cast(dict[str, object], cloned)
+
+
 def render_outline_prompt(
     prompt: PromptDefinition,
     recipe: RecipeDefinition,
@@ -106,6 +178,10 @@ def render_outline_prompt(
         f"{prompt.body.rstrip()}\n\n"
         f"RECIPE_JSON:\n{recipe_json}\n\n"
         f"OUTLINE_INPUT_JSON:\n{input_json}\n\n"
+        "PROMISE_COVERAGE_RULE:\n"
+        "If approved_angle.candidate.coverage exists, map every requirement marked "
+        "covered to at least one section coverage_requirement_ids entry. Never map "
+        "requirements marked reduced.\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
@@ -222,7 +298,10 @@ class CliOutlineModelPort(OutlineModelPort):
                 outline_model_input=sanitized_input,
                 attempt=attempt,
             ),
-            structured_output_schema=self._prompt.output_schema_json,
+            structured_output_schema=_bind_outline_output_schema(
+                self._prompt.output_schema_json,
+                input_bundle=sanitized_input,
+            ),
             working_context={"outline_model_input": sanitized_input},
             timeout=self._timeout,
         )

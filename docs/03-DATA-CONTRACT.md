@@ -498,6 +498,7 @@ Mọi thay đổi trạng thái giữ lịch sử và source refs, không overwr
 
 - `id`, `project_id`, `need_hypothesis_id`, `locale`
 - `reader`, `situation`, `need`, `question`, `intent`, `promise`
+- `coverage_requirements_json`: ordered Founder/editorial commitments that must not silently disappear; stable snapshot IDs are derived as `coverage-1..` for the exact opportunity version
 - `motgu_material_refs`, `material_gaps`, `existing_content_refs`
 - `what_is_actually_new`, `next_discovery_step`
 - `decision`: `CREATE | UPDATE | REFRESH | MERGE | LINK_ONLY | DO_NOT_WRITE`
@@ -507,6 +508,12 @@ Mọi thay đổi trạng thái giữ lịch sử và source refs, không overwr
 
 UPDATE/REFRESH/MERGE/LINK_ONLY yêu cầu existing target refs. Human selection là quyết
 định thử nội dung, không phải xác nhận hypothesis. Không tạo bài chỉ vì còn keyword.
+
+CQ-01: với manual Journal intake mới, coverage requirements phải có 1..12 mục đã
+normalize/dedupe. Angle phải phân loại từng exact requirement là `covered` hoặc
+`reduced` kèm lý do. Outline chỉ được map requirement `covered` và phải map mọi
+requirement đã cam kết ít nhất một lần. Historical opportunities có danh sách rỗng vẫn
+được đọc theo contract cũ; không backfill hoặc giả lập Founder intent.
 
 ### ContentExperiment
 

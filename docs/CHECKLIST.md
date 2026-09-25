@@ -157,3 +157,26 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Daily refresh reports what changed, not only row counts.
 - [ ] External Deep Research is triggered by need/gap/freshness, not blind daily crawling.
 - [ ] Real E2E pilot proves restart/replay/idempotency before claiming 99% automation.
+
+## N. CQ-01 promise coverage
+
+- [ ] New manual Journal intake has 1..12 non-empty, normalized, case-insensitive-deduplicated coverage requirements.
+- [ ] Coverage remains editorial/Founder intent; it is not promoted to customer truth or external evidence.
+- [ ] Exact requirement text is included in Evidence Research topic extraction.
+- [ ] Journal opportunity snapshot exposes stable ordered `coverage-1..N` IDs.
+- [ ] Every Angle candidate classifies every exact ID exactly once as `covered` or `reduced` with non-empty rationale.
+- [ ] Missing, duplicate or unknown Angle coverage IDs fail closed.
+- [ ] Agent Bridge structured output schema binds exact allowed Angle coverage IDs.
+- [ ] Founder Angle view shows each original requirement and keep/reduce decision before approval.
+- [ ] Reduced scope is explicit in the approval interaction; it is not silently hidden.
+- [ ] Outline maps only approved-Angle `covered` IDs.
+- [ ] Every committed `covered` ID appears in at least one Outline section; missing coverage fails closed.
+- [ ] Unknown or `reduced` IDs in Outline mapping fail closed.
+- [ ] Outline structured output schema binds exact committed IDs.
+- [ ] Historical no-coverage opportunities/artifacts remain readable without fabricated backfill.
+- [ ] Rev-0043 migration round-trip passes on disposable CI data; operational DB migration remains separately authorized.
+- [ ] Focused CQ-01 tests + full CI green on exact final SHA.
+- [ ] MG self-review finds no unresolved P0/P1 content-integrity defect.
+- [ ] Exact-ref OpenCodeReview advisory review is triaged.
+- [ ] Agent Local returns bounded exact-head verification before Founder merge.
+
