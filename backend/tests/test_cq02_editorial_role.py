@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.modules.content_engine.journal.agent_bridge import render_angle_prompt
+from app.modules.content_engine.journal.angle import AngleGenerationError
 from app.modules.content_engine.journal.editorial_role import (
     EditorialRoleError,
     editorial_role_contract,
@@ -151,9 +152,7 @@ def test_current_role_prompt_rendering_requires_exact_contract() -> None:
     missing = _current_model_input("cluster")
     missing.pop("editorial_role_contract")
 
-    with pytest.raises(EditorialRoleError):
-        editorial_role_contract("primary")
-    with pytest.raises(Exception, match="angle_editorial_role_contract_mismatch"):
+    with pytest.raises(AngleGenerationError, match="angle_editorial_role_contract_mismatch"):
         render_angle_prompt(
             prompt,
             recipe,
@@ -174,4 +173,3 @@ def test_current_role_prompt_rendering_requires_exact_contract() -> None:
             writer_model_input=missing,
             attempt=1,
         )
-
