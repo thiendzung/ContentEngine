@@ -98,6 +98,7 @@ class FounderJournalIntakeRequest(BaseModel):
         default_factory=lambda: ["vi-VN", "en"],
         min_length=1,
     )
+    content_role: Literal["pillar", "cluster"]
     reader: str = Field(min_length=1)
     situation: str = Field(min_length=1)
     need: str = Field(min_length=1)
@@ -165,6 +166,7 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_project_required",
         "operator_research_country_required",
         "operator_research_country_invalid",
+        "operator_manual_content_role_invalid",
         "operator_manual_reader_required",
         "operator_manual_situation_required",
         "operator_manual_need_required",
@@ -263,6 +265,7 @@ async def create_journal_founder_intake(
                 source_locale=payload.source_locale,
                 research_country=payload.research_country,
                 required_locales=payload.required_locales,
+                content_role=payload.content_role,
                 reader=payload.reader,
                 situation=payload.situation,
                 need=payload.need,
