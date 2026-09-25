@@ -805,6 +805,15 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         <div>
           <p className="eyebrow">Journal · {localeLabel(view.intake.source_locale)}</p>
           <h1>{view.question}</h1>
+          <div className="angle-meta-row">
+            <span>
+              {view.content_role === "pillar"
+                ? "Pillar — bức tranh lớn"
+                : view.content_role === "cluster"
+                  ? "Cluster — vấn đề hẹp, đi sâu"
+                  : `Vai trò legacy: ${view.content_role}`}
+            </span>
+          </div>
           <p className="intro">{view.promise}</p>
           {view.coverage_requirements.length > 0 && (
             <div className="angle-risks">
