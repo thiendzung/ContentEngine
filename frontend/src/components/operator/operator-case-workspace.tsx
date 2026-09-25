@@ -217,7 +217,7 @@ function AngleCard({
       </div>
       {candidate.coverage.length > 0 && (
         <div className="angle-risks">
-          <span className="label">Phủ lời hứa Founder</span>
+          <span className="label">Cam kết phạm vi của Angle</span>
           <ul>
             {candidate.coverage.map((item) => (
               <li key={item.requirement_id}>
@@ -786,6 +786,12 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       })
     : "chưa có";
   const sections = outlineGate ? outlineSections(outlineGate) : [];
+  const coverageTextById = useMemo(
+    () => new Map(
+      (view?.coverage_requirements ?? []).map((item) => [item.id, item.requirement]),
+    ),
+    [view?.coverage_requirements],
+  );
   const requiredLocales = new Set(view.intake.required_locales.map((item) => item.locale));
   const finalPanels = review
     ? review.locales
@@ -1031,10 +1037,16 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                     <p><strong>Guard:</strong> {section.claimGuards.join(" · ")}</p>
                   )}
                   {section.coverageRequirementIds.length > 0 && (
-                    <p>
-                      <strong>Cam kết được giữ:</strong>{" "}
-                      {section.coverageRequirementIds.join(" · ")}
-                    </p>
+                    <div>
+                      <strong>Cam kết được giữ:</strong>
+                      <ul>
+                        {section.coverageRequirementIds.map((requirementId) => (
+                          <li key={requirementId}>
+                            {coverageTextById.get(requirementId) ?? requirementId}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               </article>
