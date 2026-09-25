@@ -163,8 +163,11 @@ async def ensure_required_locales(
     if is_current_editorial_role(opportunity.suggested_role):
         if source_variant.content_role != opportunity.suggested_role:
             raise OperatorControlError("operator_locale_variant_role_mismatch")
-        for locale, rows in by_locale.items():
-            if any(row.content_role != source_variant.content_role for row in rows):
+        for locale, locale_variants in by_locale.items():
+            if any(
+                row.content_role != source_variant.content_role
+                for row in locale_variants
+            ):
                 raise OperatorControlError(
                     "operator_locale_variant_role_mismatch",
                     locale,
