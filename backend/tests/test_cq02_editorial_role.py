@@ -16,6 +16,8 @@ def test_pillar_and_cluster_contracts_are_distinct_editorial_jobs() -> None:
 
     assert pillar.role == "pillar"
     assert cluster.role == "cluster"
+    assert pillar.to_dict()["contract_version"] == "cq02.editorial_role.v1"
+    assert cluster.to_dict()["contract_version"] == "cq02.editorial_role.v1"
     assert pillar.to_dict() != cluster.to_dict()
     assert "whole decision space" in pillar.objective
     assert "one bounded reader subproblem" in cluster.objective
