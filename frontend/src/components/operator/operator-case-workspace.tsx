@@ -654,7 +654,16 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       state.state_version,
       `approve-angle:${selectedAngle.angle_id}`,
     );
-    if (!window.confirm(`Duyệt góc “${selectedAngle.working_title}”?`)) return;
+    const reductions = selectedAngle.coverage.filter((item) => item.status === "reduced");
+    const confirmation = reductions.length > 0
+      ? [
+          `Góc “${selectedAngle.working_title}” đang thu hẹp ${reductions.length} cam kết phạm vi:`,
+          ...reductions.map((item) => `• ${item.requirement}`),
+          "",
+          "Duyệt Angle này đồng nghĩa chấp nhận các phần thu hẹp trên. Tiếp tục?",
+        ].join("\n")
+      : `Duyệt góc “${selectedAngle.working_title}”?`;
+    if (!window.confirm(confirmation)) return;
     setSubmitting(true);
     setError("");
     setNotice("");
