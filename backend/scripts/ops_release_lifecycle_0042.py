@@ -450,6 +450,187 @@ async def _durable_snapshot(engine: AsyncEngine) -> dict[str, object]:
     }
 
 
+async def _active_release_rows(
+    engine: AsyncEngine,
+) -> tuple[list[str], list[dict[str, object]]]:
+    async with engine.connect() as connection:
+        active_runs = [
+            str(value)
+            for value in (
+                await connection.execute(
+                    text(
+                        "select id::text from content_runs "
+                        "where status in ('pending','running') order by id"
+                    )
+                )
+            ).scalars()
+        ]
+        rows = list(
+            (
+                await connection.execute(
+                    text(
+                        """
+                        select
+                            s.id::text as step_run_id,
+                            s.run_id::text as run_id,
+                            s.step_key,
+                            s.status as step_status,
+                            coalesce(s.error_json->>'class', '') as step_error_class,
+                            r.status as run_status,
+                            coalesce(r.current_step, '') as current_step,
+                            coalesce(r.failure_code, '') as run_failure_code,
+                            j.id::text as job_id,
+                            j.run_id::text as job_run_id,
+                            j.status as job_status,
+                            j.lease_owner,
+                            j.lease_expires_at
+                        from step_runs s
+                        join content_runs r on r.id = s.run_id
+                        left join lateral (
+                            select
+                                jobs.id,
+                                jobs.run_id,
+                                jobs.status,
+                                jobs.lease_owner,
+                                jobs.lease_expires_at
+                            from jobs
+                            where jobs.step_run_id = s.id
+                            order by jobs.updated_at desc, jobs.id desc
+                            limit 1
+                        ) j on true
+                        where s.status in ('pending','running')
+                        order by s.run_id, s.id
+                        """
+                    )
+                )
+            ).mappings()
+        ]
+    return active_runs, [dict(row) for row in rows]
+
+
+def _classify_paused_operator_retries(
+    *,
+    active_run_ids: list[str],
+    active_steps: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    step_run_ids = [str(row["run_id"]) for row in active_steps]
+    active_run_set = set(active_run_ids)
+    step_run_set = set(step_run_ids)
+
+    unmatched_runs = sorted(active_run_set - step_run_set)
+    if unmatched_runs:
+        raise ReleaseLifecycleError(
+            "release_quiescence_active_run_unmatched",
+            evidence={"run_ids": unmatched_runs},
+        )
+
+    unmatched_steps = sorted(step_run_set - active_run_set)
+    if unmatched_steps:
+        raise ReleaseLifecycleError(
+            "release_quiescence_active_step_unmatched",
+            evidence={"run_ids": unmatched_steps},
+        )
+
+    if len(step_run_ids) != len(step_run_set):
+        raise ReleaseLifecycleError("release_quiescence_multiple_active_steps")
+
+    paused: list[dict[str, str]] = []
+    for row in active_steps:
+        run_id = str(row["run_id"])
+        step_run_id = str(row["step_run_id"])
+        job_id = row.get("job_id")
+        run_failure = str(row.get("run_failure_code") or "").strip()
+        step_failure = str(row.get("step_error_class") or "").strip()
+        exact_paused_contract = (
+            row.get("run_status") == "running"
+            and row.get("current_step") == "start_to_angle"
+            and row.get("step_key") == "start_to_angle"
+            and row.get("step_status") == "running"
+            and isinstance(job_id, str)
+            and bool(job_id)
+            and row.get("job_run_id") == run_id
+            and row.get("job_status") == "failed"
+            and row.get("lease_owner") is None
+            and row.get("lease_expires_at") is None
+            and bool(run_failure)
+            and run_failure == step_failure
+        )
+        if not exact_paused_contract:
+            raise ReleaseLifecycleError(
+                "release_quiescence_paused_contract_mismatch",
+                evidence={
+                    "run_id": run_id,
+                    "step_run_id": step_run_id,
+                },
+            )
+        paused.append(
+            {
+                "run_id": run_id,
+                "step_run_id": step_run_id,
+                "job_id": str(job_id),
+                "failure_class": run_failure,
+            }
+        )
+    return paused
+
+
+async def _assert_release_quiescent_state(
+    engine: AsyncEngine,
+) -> dict[str, object]:
+    job_statuses = await historical._status_counts(engine, table_name="jobs")
+    nonterminal_jobs = {
+        status: count
+        for status, count in job_statuses.items()
+        if status not in historical._TERMINAL_JOB_STATUSES and count > 0
+    }
+    if nonterminal_jobs:
+        raise ReleaseLifecycleError(
+            "nonterminal_jobs_present",
+            evidence={"jobs": nonterminal_jobs},
+        )
+
+    model_statuses = await historical._status_counts(engine, table_name="model_calls")
+    if model_statuses.get("pending", 0) > 0 or model_statuses.get("running", 0) > 0:
+        raise ReleaseLifecycleError("active_model_calls_present")
+
+    tool_statuses = await historical._status_counts(engine, table_name="tool_calls")
+    if tool_statuses.get("pending", 0) > 0 or tool_statuses.get("running", 0) > 0:
+        raise ReleaseLifecycleError("active_tool_calls_present")
+
+    outbox_statuses = await historical._status_counts(
+        engine,
+        table_name="outbox_intents",
+    )
+    active_outbox = {
+        status: outbox_statuses.get(status, 0)
+        for status in ("pending", "processing", "needs_reconciliation")
+        if outbox_statuses.get(status, 0) > 0
+    }
+    if active_outbox:
+        raise ReleaseLifecycleError(
+            "active_outbox_intents_present",
+            evidence={"outbox_intents": active_outbox},
+        )
+
+    active_run_ids, active_steps = await _active_release_rows(engine)
+    paused = _classify_paused_operator_retries(
+        active_run_ids=active_run_ids,
+        active_steps=active_steps,
+    )
+
+    run_statuses = await historical._status_counts(engine, table_name="content_runs")
+    step_statuses = await historical._status_counts(engine, table_name="step_runs")
+    return {
+        "content_runs": run_statuses,
+        "step_runs": step_statuses,
+        "jobs": job_statuses,
+        "model_calls": model_statuses,
+        "tool_calls": tool_statuses,
+        "outbox_intents": outbox_statuses,
+        "paused_operator_retries": paused,
+    }
+
+
 def _require_expected_revision(revision: str | None) -> None:
     if revision != _EXPECTED_REVISION:
         raise ReleaseLifecycleError("operational_revision_not_current")
@@ -479,7 +660,7 @@ async def _run_cycle(
     settings_version: str,
     settings_environment: str,
 ) -> dict[str, object]:
-    await historical._assert_idle_operational_state(engine)
+    await _assert_release_quiescent_state(engine)
     before = await _durable_snapshot(engine)
     historical._require_snapshot_equal(
         baseline,
@@ -545,7 +726,7 @@ async def _run_cycle(
             secondary.append(exc.code)
 
     try:
-        evidence["idle_after"] = await historical._assert_idle_operational_state(engine)
+        evidence["idle_after"] = await _assert_release_quiescent_state(engine)
     except ReleaseLifecycleError as exc:
         if primary is None:
             primary = exc
@@ -631,7 +812,7 @@ async def _main() -> int:
         )
         evidence["pre_release_preflight"] = pre_release_preflight
 
-        idle_state = await historical._assert_idle_operational_state(engine)
+        idle_state = await _assert_release_quiescent_state(engine)
         baseline = await _durable_snapshot(engine)
         log_root = Path(
             tempfile.mkdtemp(prefix="contentengine-a4e2-lifecycle-")
