@@ -345,6 +345,28 @@ class ControlledCodexRunner:
         originality_item = originality[0]
         assert isinstance(evidence_item, dict)
         assert isinstance(originality_item, dict)
+
+        schema = request.structured_output_schema
+        properties = schema.get("properties")
+        assert isinstance(properties, dict)
+        candidates_schema = properties.get("candidates")
+        assert isinstance(candidates_schema, dict)
+        candidate_items = candidates_schema.get("items")
+        assert isinstance(candidate_items, dict)
+        candidate_properties = candidate_items.get("properties")
+        assert isinstance(candidate_properties, dict)
+        coverage_schema = candidate_properties.get("coverage")
+        assert isinstance(coverage_schema, dict)
+        assert coverage_schema["minItems"] == 2
+        assert coverage_schema["maxItems"] == 2
+        coverage_item_schema = coverage_schema.get("items")
+        assert isinstance(coverage_item_schema, dict)
+        coverage_properties = coverage_item_schema.get("properties")
+        assert isinstance(coverage_properties, dict)
+        requirement_schema = coverage_properties.get("requirement_id")
+        assert isinstance(requirement_schema, dict)
+        assert requirement_schema["enum"] == ["coverage-1", "coverage-2"]
+
         candidates = [
             {
                 "angle_id": f"pr45-angle-{index}",
@@ -447,6 +469,31 @@ async def test_founder_intake_preserves_provenance_requirements_and_replay() -> 
         pack = await session.get(OriginalityPack, first.originality_pack_id)
         assert pack is not None and pack.status == "approved"
         assert pack.approved_by == "founder"
+
+
+
+
+@pytest.mark.asyncio
+async def test_founder_intake_rejects_missing_or_duplicate_promise_coverage() -> None:
+    async with isolated_session() as session:
+        missing = _intake_kwargs(key="cq01-empty-coverage")
+        missing["coverage_requirements"] = []
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_coverage_requirements_invalid",
+        ):
+            await create_founder_journal_intake(session, **missing)
+
+        duplicate = _intake_kwargs(key="cq01-duplicate-coverage")
+        duplicate["coverage_requirements"] = [
+            "Cover safe handling.",
+            "  cover SAFE handling.  ",
+        ]
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_coverage_requirement_duplicate",
+        ):
+            await create_founder_journal_intake(session, **duplicate)
 
 
 @pytest.mark.asyncio
