@@ -191,6 +191,10 @@ def _opportunity_payload(opportunity: ContentOpportunity) -> dict[str, object]:
         "question": opportunity.question,
         "intent": opportunity.intent,
         "promise": opportunity.promise,
+        "coverage_requirements": [
+            {"id": f"coverage-{index + 1}", "requirement": requirement}
+            for index, requirement in enumerate(opportunity.coverage_requirements_json)
+        ],
         "motgu_material_refs": opportunity.motgu_material_refs_json,
         "material_gaps": opportunity.material_gaps_json,
         "existing_content_refs": opportunity.existing_content_refs_json,
