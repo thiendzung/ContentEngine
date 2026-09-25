@@ -341,6 +341,7 @@ class ControlledCodexRunner:
         assert role_contract["role"] == "cluster"
         assert "one bounded reader subproblem" in str(role_contract["objective"])
         assert "EDITORIAL_ROLE_CONTRACT_JSON" in request.prompt
+        assert "EDITORIAL_ROLE_RULE" in request.prompt
         coverage_requirements = opportunity["coverage_requirements"]
         assert isinstance(coverage_requirements, list) and coverage_requirements
         evidence = evidence_set["evidence"]
