@@ -211,6 +211,40 @@ def _bundle_hash(payload: dict[str, object]) -> str:
 
 
 @pytest.mark.asyncio
+async def test_pre_cq01_bundle_without_coverage_remains_readable() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        payload = copy.deepcopy(bundle_artifact.content_json)
+        assert isinstance(payload, dict)
+        opportunity = payload.get("opportunity")
+        assert isinstance(opportunity, dict)
+        assert opportunity.pop("coverage_requirements") == []
+        bundle_artifact.content_json = payload
+        bundle_artifact.content_hash = _bundle_hash(payload)
+        await session.flush()
+
+        legacy = await load_journal_input_bundle(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            expected_content_hash=bundle_artifact.content_hash,
+        )
+        assert "coverage_requirements" not in legacy.opportunity
+        model_opportunity = legacy.angle_model_input["opportunity"]
+        assert isinstance(model_opportunity, dict)
+        assert "coverage_requirements" not in model_opportunity
+
+        output = [_candidate_payload(legacy, index) for index in range(1, 4)]
+        result = await AngleGenerator(max_attempts=1).generate_candidates(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            model=FakeAngleModel([output]),
+            provider="fixture-provider",
+            model_name="fixture-model",
+        )
+        assert all(candidate.coverage == () for candidate in result.candidates)
+
+
+@pytest.mark.asyncio
 async def test_angle_approval_revalidates_factual_evidence_for_legacy_artifact() -> None:
     async with isolated_session() as session:
         bundle_artifact, bundle, evidence_set, _pack = await _bundle_fixture(session)
@@ -830,4 +864,3 @@ async def test_angle_promise_coverage_is_persisted_and_hashed() -> None:
         candidates = payload["candidates"]
         assert isinstance(candidates, list)
         assert candidates[0]["coverage"] == output[0]["coverage"]
-
