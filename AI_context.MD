@@ -35,10 +35,10 @@ Live GitHub main: `b1237cb45089116864f92226656ec4bfddd0f89f` (merge PR #226). CQ
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
-| F7 | ACTIVE / OUTLINE GATE TECHNICALLY REACHED | R4 Continue ran exactly once and produced durable Outline artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077`; state is `AWAITING_APPROVAL / outline`. Formal #165 closeout still needs read-only exact-main preflight/state proof. No Outline approval, Writer, Quality or publication has run. |
+| F7 | LEGACY PAUSED / audit-only lineage | Historical R4 reached `AWAITING_APPROVAL / outline` and later read-only closeout passed. This lineage is not current Content Quality WIP and must not be resumed merely to advance CQ-02. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
-Code/test migration head and the verified operational source are both `20260915_0034`, migration status `CURRENT`. O1.3 proved startup/shutdown/restart with durable state unchanged; O1.4 proved a fresh post-release backup can be restored exactly. Backend/frontend/worker are stopped after the proof.
+Code migration head is `20260925_0043` after CQ-01; the verified operational database/source remains `20260915_0034`. This intentional code/operational split is not a deployment error and does not authorize migration. O1.3/O1.4 remain historical release/recovery evidence; backend/frontend/worker were stopped after those proofs.
 
 Separate non-core publication track:
 - #114 Editorial Quality Pass: produce a successor publication-ready revision without mutating accepted V1.
