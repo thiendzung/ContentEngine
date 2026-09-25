@@ -47,7 +47,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-02 / #227** is the only active implementation. Turn the existing `pillar|cluster` role from a planning label into an explicit editorial contract carried through Founder intake, Journal case/LocaleVariant identity, Angle, Outline and Writer. New intake must choose Pillar or Cluster; new `primary` rows are forbidden. Historical `primary`/missing-role rows remain readable without backfill or invented semantics.
+**CQ-02 / #227 / PR #228** is the only active implementation. Turn the existing `pillar|cluster` role from a planning label into an explicit editorial contract carried through Founder intake, Journal case/LocaleVariant identity, Angle, Outline and Writer. New intake must choose Pillar or Cluster; new `primary` rows are forbidden. Historical `primary`/missing-role rows remain readable without backfill or invented semantics.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
