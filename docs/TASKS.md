@@ -539,3 +539,9 @@ Exit: normal operation becomes exception-driven rather than run-by-run supervisi
 - [x] No operational migration or production activation is implied by UX completion.
 
 Exit: UX-01 closes with a coherent exception-driven command center backed by canonical read models.
+
+## E2E-01 activation unblock window — 2026-09-25
+
+P2C2 production-readiness audit is complete but activation remains blocked. A1 proved a fresh current rev-0034 recovery point, exact disposable 0034→0042 migration and independent recovery restore without operational mutation. A2 is blocked because no authorized production WordPress admin/SSH/WP-CLI path is currently available. A3 accepted the non-Git secret-delivery design but production provisioning remains pending production access. A4 accepted the runtime-baseline audit and identified stale historical operational tooling.
+
+Current implementation WIP is **A4E1 / #217**: add a new bounded operational migration tool for exactly `20260915_0034 → 20260923_0042` while preserving the historical 0027→0034 scripts unchanged in meaning. The current live Postgres container has no host-published 5432 listener despite tracked compose declaring loopback publishing, so A4E1 must never recreate/rebind topology implicitly and must fail closed when its execution context cannot reach the exact operational DB. Operational migration, runtime start, production WordPress mutation, bridge activation and publication remain separately authorized.

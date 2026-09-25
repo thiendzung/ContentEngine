@@ -392,3 +392,18 @@ historical snapshots fail closed rather than reading current Rank Math state.
 
 Next bounded gate after P2C2.3 is local exact-ref verification (P2C2.4), then separately
 authorized production-readiness validation (P2C2.5).
+
+## E2E-01 activation unblock window — 2026-09-25
+
+Accepted readiness state:
+- P2C2.5 audit PASS, production activation BLOCKED;
+- A1 migration/recovery rehearsal PASS on the current rev-0034 recovery point;
+- A2 production WordPress inventory BLOCKED because no authorized production admin/SSH/WP-CLI path is available;
+- A3 secret-delivery design PASS, production provisioning still pending production access;
+- A4 runtime-baseline audit PASS with engineering required before any operational migration/release.
+
+Active bounded implementation: **A4E1 / #217**.
+
+A4E1 adds a new current-generation operational migration entrypoint for exactly `20260915_0034 → 20260923_0042`. Historical `ops_migration_rehearsal.py` and `ops_operational_migrate.py` retain their 0027→0034 historical meaning. The new tool requires exact authorized clean code, stopped application runtime, format-v2 backup identity, explicit authorized dump SHA, exact source-documents fingerprint, exact migration chain, fail-closed pre/post schema guards and durable-state invariance. It never recreates/rebinds the Postgres container and must fail closed if the execution context cannot reach the exact operational DB.
+
+The live operational DB is still rev-0034. The current Postgres container is healthy but has no host-published 5432 listener even though tracked compose declares loopback publishing; this topology drift is a separate execution-context concern and must not be silently “fixed” by migration code. Operational migration, release-runtime start, production WordPress changes, Rank Math bridge activation, production credentials and publication remain separately Founder-authorized.
