@@ -811,7 +811,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                 ? "Pillar — bức tranh lớn"
                 : view.content_role === "cluster"
                   ? "Cluster — vấn đề hẹp, đi sâu"
-                  : `Vai trò legacy: ${view.content_role}`}
+                  : `Vai trò legacy: ${view.content_role ?? "chưa khai báo"}`}
             </span>
           </div>
           <p className="intro">{view.promise}</p>
