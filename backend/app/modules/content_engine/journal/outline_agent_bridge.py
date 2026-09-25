@@ -194,11 +194,21 @@ def render_outline_prompt(
         sort_keys=True,
         separators=(",", ":"),
     )
+    editorial_role_contract = _validated_editorial_role_contract(outline_model_input)
     editorial_role_json = json.dumps(
-        _validated_editorial_role_contract(outline_model_input),
+        editorial_role_contract,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
+    )
+    editorial_role_rule = (
+        "Treat EDITORIAL_ROLE_CONTRACT_JSON as binding. Pillar and Cluster are "
+        "different editorial jobs; do not flatten them into the same outline shape."
+        if editorial_role_contract is not None
+        else (
+            "This is a legacy case with no declared Pillar/Cluster role. Do not infer "
+            "or invent one; preserve bounded legacy behavior."
+        )
     )
     input_json = json.dumps(
         outline_model_input,
@@ -216,9 +226,7 @@ def render_outline_prompt(
         "If approved_angle.candidate.coverage exists, map every requirement marked "
         "covered to at least one section coverage_requirement_ids entry. Never map "
         "requirements marked reduced.\n\n"
-        "EDITORIAL_ROLE_RULE:\n"
-        "Treat EDITORIAL_ROLE_CONTRACT_JSON as binding. Pillar and Cluster are different "
-        "editorial jobs; do not flatten them into the same outline shape.\n\n"
+        f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
