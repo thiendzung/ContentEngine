@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-25 after Founder merged PR #224 and explicitly reprioritized the product. Current main at CQ-01 start is `9aa2557434f1ae35c1bb96580029b40938558e35`. Production activation/E2E external work is paused; the active WIP is CQ-01 promise coverage so ContentEngine can first produce high-quality Pillar/Cluster content. This is the ONE current working window.
+Updated: 2026-09-25 after Founder merged PR #226. Current main is `b1237cb45089116864f92226656ec4bfddd0f89f`. CQ-01 Promise Coverage is technically complete and merged. Production activation/E2E external work remains paused; the active WIP is CQ-02 Pillar/Cluster Editorial Contract. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main at CQ-01 start: `9aa2557434f1ae35c1bb96580029b40938558e35` (merge PR #224). A4E2 remains accepted evidence, but Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. Operational DB remains at verified rev `20260915_0034`. CQ-01 introduces code migration head `20260925_0043` on its branch only; applying it operationally is not authorized.
+Live GitHub main: `b1237cb45089116864f92226656ec4bfddd0f89f` (merge PR #226). CQ-01 exact-head CI/OCR/final local verification passed before merge. Code migration head is `20260925_0043`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-02 is code/test/editorial-contract work only and does not authorize operational migration.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -47,7 +47,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-01 / #225 / PR #226** is the only active implementation. Preserve Founder/Opportunity promise requirements from intake through research, Angle and Outline. No requirement may disappear silently: Angle explicitly marks each as `covered` or `reduced`; every `covered` requirement must map to at least one Outline section. Current scope stops before CQ-02 Pillar/Cluster role semantics and before HV-01 Human Voice.
+**CQ-02 / #227** is the only active implementation. Turn the existing `pillar|cluster` role from a planning label into an explicit editorial contract carried through Founder intake, Journal case/LocaleVariant identity, Angle, Outline and Writer. New intake must choose Pillar or Cluster; new `primary` rows are forbidden. Historical `primary`/missing-role rows remain readable without backfill or invented semantics.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -439,20 +439,25 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01
+## Content Quality priority — CQ-01 merged, CQ-02 active
 
-Founder priority is now content quality before production activation.
+Founder priority is content quality before production activation.
 
 CQ sequence:
 `CQ-01 Promise Coverage → CQ-02 Pillar/Cluster Contract → CQ-03 Evidence/Originality Depth → CQ-04 Angle/Outline Quality → CQ-05 Writer/Human Voice → CQ-06 Deep Quality Gate → CQ-07 real Pillar+Cluster pilot`.
 
-CQ-01 implementation rules:
-- fresh current-main port; historical PR #169 is reference only and must not be merged/rebased;
-- current-head migration is 0043 and only adds `coverage_requirements_json`;
-- no second prompt/recipe registry generation: exact coverage IDs are dynamically bound at Agent Bridge structured-output boundaries;
-- manual intake requires 1..12 explicit requirements;
-- Evidence Research extraction considers those requirement texts;
-- Angle classifies every exact requirement once as covered/reduced with rationale;
-- Outline maps every covered ID at least once and never maps a reduced/unknown ID;
-- operator human gates show the contract before approval;
-- historical opportunities with empty coverage remain readable; no fabricated backfill.
+CQ-01 merged state:
+- PR #226 merged as main `b1237cb45089116864f92226656ec4bfddd0f89f`;
+- exact verified head `72d3210cad4f617c61f8945454d353b0b26732d7`;
+- CI #1852 PASS; OCR 24/24 with no Critical/High/Medium; `PASS_CQ01_FINAL_LOCAL_VERIFICATION`;
+- code migration head 0043 adds only `coverage_requirements_json`; operational DB migration remains unauthorized.
+
+CQ-02 active rules:
+- canonical new editorial roles are exactly `pillar|cluster`;
+- manual Founder intake must choose one explicitly; do not create new `primary` roles;
+- preserve legacy `primary` or missing roles without reinterpretation/backfill;
+- one deterministic role contract is carried into Angle, Outline and Writer and rendered explicitly to the local agent;
+- current opportunity role and LocaleVariant role must agree for new/current-role work;
+- generation/render identities are bumped so new role semantics do not silently reuse old outputs;
+- no new Pillar↔Cluster relationship table is invented in CQ-02; use “when known” link behavior and let CQ-07 prove whether durable relationship identity is necessary;
+- structural contract is not proof of semantic writing quality; deeper enforcement belongs to CQ-04/CQ-06.
