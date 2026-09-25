@@ -182,3 +182,181 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             <select
               onChange={(event) => update("content_role", event.target.value as ContentRole)}
               required
+              value={form.content_role}
+            >
+              <option disabled value="">Chọn Pillar hoặc Cluster</option>
+              <option value="pillar">Pillar — bức tranh lớn</option>
+              <option value="cluster">Cluster — vấn đề hẹp, đi sâu</option>
+            </select>
+            <small>
+              Pillar tổng hợp và dẫn sang bài sâu; Cluster giải quyết một vấn đề hẹp hơn.
+            </small>
+          </label>
+          <label>
+            <span>Quốc gia nghiên cứu</span>
+            <input
+              maxLength={8}
+              onChange={(event) => update("research_country", event.target.value)}
+              required
+              value={form.research_country}
+            />
+          </label>
+          <div className="checkbox-field">
+            <span>Ngôn ngữ bắt buộc</span>
+            <label>
+              <input
+                checked={form.required_vi}
+                disabled={form.source_locale === "vi-VN"}
+                onChange={(event) => update("required_vi", event.target.checked)}
+                type="checkbox"
+              />
+              VI
+            </label>
+            <label>
+              <input
+                checked={form.required_en}
+                disabled={form.source_locale === "en"}
+                onChange={(event) => update("required_en", event.target.checked)}
+                type="checkbox"
+              />
+              EN
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset className="form-section">
+        <legend>Nhu cầu nội dung</legend>
+        <div className="form-grid two">
+          <label>
+            <span>Độc giả</span>
+            <textarea
+              onChange={(event) => update("reader", event.target.value)}
+              required
+              rows={3}
+              value={form.reader}
+            />
+          </label>
+          <label>
+            <span>Tình huống</span>
+            <textarea
+              onChange={(event) => update("situation", event.target.value)}
+              required
+              rows={3}
+              value={form.situation}
+            />
+          </label>
+          <label>
+            <span>Nhu cầu</span>
+            <textarea
+              onChange={(event) => update("need", event.target.value)}
+              required
+              rows={3}
+              value={form.need}
+            />
+          </label>
+          <label>
+            <span>Lời hứa nội dung</span>
+            <textarea
+              onChange={(event) => update("promise", event.target.value)}
+              required
+              rows={3}
+              value={form.promise}
+            />
+          </label>
+          <label>
+            <span>Cam kết phạm vi bắt buộc</span>
+            <textarea
+              onChange={(event) => update("coverage_requirements", event.target.value)}
+              placeholder={"Mỗi dòng một mục, ví dụ:\nTreo và ánh sáng\nVệ sinh an toàn\nVận chuyển"}
+              required
+              rows={5}
+              value={form.coverage_requirements}
+            />
+            <small>
+              Angle phải nói rõ mục nào được giữ hoặc thu hẹp; Outline không được tự làm rơi
+              mục đã giữ.
+            </small>
+          </label>
+        </div>
+        <label className="full-field">
+          <span>Câu hỏi trung tâm</span>
+          <textarea
+            onChange={(event) => update("question", event.target.value)}
+            required
+            rows={3}
+            value={form.question}
+          />
+        </label>
+        <div className="form-grid two compact-grid">
+          <label>
+            <span>Ý định</span>
+            <input
+              maxLength={64}
+              onChange={(event) => update("intent", event.target.value)}
+              required
+              value={form.intent}
+            />
+          </label>
+          <label>
+            <span>Lý do chọn làm Journal</span>
+            <input
+              onChange={(event) => update("selection_reason", event.target.value)}
+              required
+              value={form.selection_reason}
+            />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="form-section">
+        <legend>Tư liệu MOTGU</legend>
+        <label className="full-field">
+          <span>Tư liệu gốc</span>
+          <textarea
+            onChange={(event) => update("originality_material", event.target.value)}
+            required
+            rows={4}
+            value={form.originality_material}
+          />
+        </label>
+        <div className="form-grid two">
+          <label>
+            <span>Cách người viết được phép sử dụng</span>
+            <textarea
+              onChange={(event) => update("originality_writer_use", event.target.value)}
+              required
+              rows={3}
+              value={form.originality_writer_use}
+            />
+          </label>
+          <label>
+            <span>Giới hạn / guardrails</span>
+            <textarea
+              onChange={(event) => update("originality_guardrails", event.target.value)}
+              required
+              rows={3}
+              value={form.originality_guardrails}
+            />
+          </label>
+        </div>
+      </fieldset>
+
+      {error && <p className="error">{error}</p>}
+      {!preflightReady && (
+        <p className="operator-block-note">
+          Chưa thể tạo Journal mới vì preflight chưa READY.
+        </p>
+      )}
+      <div className="form-actions">
+        <button
+          className="operator-button primary"
+          disabled={!preflightReady || submitting}
+          type="submit"
+        >
+          {submitting ? "Đang tạo…" : "Tạo Journal"}
+        </button>
+      </div>
+    </form>
+  );
+}
