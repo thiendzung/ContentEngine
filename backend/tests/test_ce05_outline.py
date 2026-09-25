@@ -459,6 +459,15 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
         assert request.provider == "codex_cli"
         assert request.model == "test-model"
         assert set(request.working_context) == {"outline_model_input"}
+        outline_context = cast(
+            dict[str, object],
+            request.working_context["outline_model_input"],
+        )
+        role_contract = outline_context.get("editorial_role_contract")
+        assert isinstance(role_contract, dict)
+        assert role_contract["role"] == "cluster"
+        assert "one bounded reader subproblem" in str(role_contract["objective"])
+        assert "EDITORIAL_ROLE_CONTRACT_JSON" in request.prompt
         schema_properties = request.structured_output_schema["properties"]
         assert isinstance(schema_properties, dict)
         sections_schema = schema_properties["sections"]
