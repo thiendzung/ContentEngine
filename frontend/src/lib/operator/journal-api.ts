@@ -167,6 +167,7 @@ export type OperatorCaseView = {
   need: string;
   intent: string;
   promise: string;
+  content_role: string;
   coverage_requirements: CoverageRequirement[];
   state: OperatorState;
   intake: {
