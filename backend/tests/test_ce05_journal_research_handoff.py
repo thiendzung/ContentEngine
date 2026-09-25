@@ -508,10 +508,12 @@ async def _run_and_step(
 ) -> tuple[ContentRun, StepRun]:
     from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
 
+    opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
+    assert opportunity is not None
     variant = LocaleVariant(
         content_case_id=content_case.id,
         locale="en",
-        content_role="primary",
+        content_role=opportunity.suggested_role or "primary",
         primary_question="How should a buyer evaluate an artwork price?",
         primary_intent="evaluate",
     )
