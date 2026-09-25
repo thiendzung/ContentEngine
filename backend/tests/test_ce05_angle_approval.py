@@ -37,7 +37,7 @@ from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
     ResearchDecision,
 )
-from app.modules.content_engine.models import ContentOpportunity
+from app.modules.content_engine.models import ContentOpportunity, LocaleVariant
 from app.modules.harness.models import Artifact, ContentRun, ToolCall
 from app.modules.knowledge.models import (
     Claim,
@@ -65,6 +65,7 @@ async def _bundle_fixture(
     *,
     coverage_requirements: list[str] | None = None,
     suggested_role: str | None = "cluster",
+    variant_role_override: str | None = None,
 ) -> tuple[Artifact, JournalInputBundle, EvidenceSet, OriginalityPack]:
     project, content_case, opportunity, _need = await _content_case(
         session,
@@ -81,6 +82,11 @@ async def _bundle_fixture(
     )
     pack = await _approved_pack(session, content_case_id=content_case.id)
     run, step = await _run_and_step(session, project=project, content_case=content_case)
+    if variant_role_override is not None:
+        variant = await session.get(LocaleVariant, run.locale_variant_id)
+        assert variant is not None
+        variant.content_role = variant_role_override
+        await session.flush()
     handoff = JournalResearchHandoff()
     evidence_handoff = await handoff.handoff_evidence_set(
         session,
@@ -850,6 +856,20 @@ async def test_angle_promise_coverage_fails_closed(
                 model=FakeAngleModel([output]),
                 provider="fixture-provider",
                 model_name="fixture-model",
+            )
+
+
+@pytest.mark.asyncio
+async def test_angle_fails_closed_when_current_role_disagrees_with_locale_variant() -> None:
+    async with isolated_session() as session:
+        with pytest.raises(
+            AngleGenerationError,
+            match="angle_locale_variant_role_mismatch",
+        ):
+            await _bundle_fixture(
+                session,
+                suggested_role="cluster",
+                variant_role_override="pillar",
             )
 
 
