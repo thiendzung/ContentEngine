@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import hashlib
 import json
 import os
 import signal
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -38,6 +40,11 @@ _FRONTEND_READY_MARKERS = (
 _STARTUP_TIMEOUT_SECONDS = 25.0
 _WORKER_STABILITY_SECONDS = 4.0
 _SHUTDOWN_TIMEOUT_SECONDS = 10.0
+_CURRENT_FINGERPRINT_TABLES = (
+    *historical._FINGERPRINT_TABLES,
+    "published_contents",
+    "publish_events",
+)
 
 ReleaseLifecycleError = historical.ReleaseLifecycleError
 
@@ -405,6 +412,44 @@ async def _stop_all(
     return results, errors
 
 
+async def _table_fingerprint(
+    engine: AsyncEngine,
+    *,
+    table_name: str,
+) -> dict[str, object]:
+    if table_name not in _CURRENT_FINGERPRINT_TABLES:
+        raise ReleaseLifecycleError("unsupported_runtime_fingerprint_table")
+    async with engine.connect() as connection:
+        rows = list(
+            (
+                await connection.execute(
+                    text(f"select row_to_json(t)::text from {table_name} t order by id")
+                )
+            ).scalars()
+        )
+    payload = json.dumps(
+        [str(row) for row in rows],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return {
+        "count": len(rows),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
+async def _durable_snapshot(engine: AsyncEngine) -> dict[str, object]:
+    fingerprint = await historical.database_fingerprint(engine)
+    tables = {
+        table_name: await _table_fingerprint(engine, table_name=table_name)
+        for table_name in _CURRENT_FINGERPRINT_TABLES
+    }
+    return {
+        "core": fingerprint.to_dict(),
+        "tables": tables,
+    }
+
+
 def _require_expected_revision(revision: str | None) -> None:
     if revision != _EXPECTED_REVISION:
         raise ReleaseLifecycleError("operational_revision_not_current")
@@ -435,7 +480,7 @@ async def _run_cycle(
     settings_environment: str,
 ) -> dict[str, object]:
     await historical._assert_idle_operational_state(engine)
-    before = await historical._durable_snapshot(engine)
+    before = await _durable_snapshot(engine)
     historical._require_snapshot_equal(
         baseline,
         before,
@@ -462,7 +507,7 @@ async def _run_cycle(
             settings_version=settings_version,
             settings_environment=settings_environment,
         )
-        during = await historical._durable_snapshot(engine)
+        during = await _durable_snapshot(engine)
         historical._require_snapshot_equal(
             baseline,
             during,
@@ -508,7 +553,7 @@ async def _run_cycle(
             secondary.append(exc.code)
 
     try:
-        after = await historical._durable_snapshot(engine)
+        after = await _durable_snapshot(engine)
         historical._require_snapshot_equal(
             baseline,
             after,
@@ -587,7 +632,7 @@ async def _main() -> int:
         evidence["pre_release_preflight"] = pre_release_preflight
 
         idle_state = await historical._assert_idle_operational_state(engine)
-        baseline = await historical._durable_snapshot(engine)
+        baseline = await _durable_snapshot(engine)
         log_root = Path(
             tempfile.mkdtemp(prefix="contentengine-a4e2-lifecycle-")
         )
@@ -629,7 +674,7 @@ async def _main() -> int:
             blocker="post_release_preflight_blocked"
         )
 
-        final_snapshot = await historical._durable_snapshot(engine)
+        final_snapshot = await _durable_snapshot(engine)
         historical._require_snapshot_equal(
             baseline,
             final_snapshot,
