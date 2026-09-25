@@ -47,6 +47,7 @@ def test_legacy_primary_or_missing_role_remains_readable_without_invented_contra
     assert editorial_role_contract_or_none("primary") is None
     assert editorial_role_contract_or_none(None) is None
 
+
 def _prompt_and_recipe() -> tuple[PromptDefinition, RecipeDefinition]:
     return (
         PromptDefinition(
