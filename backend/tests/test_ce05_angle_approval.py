@@ -375,6 +375,7 @@ async def test_angle_model_receives_only_grounded_allow_list_and_refs_come_from_
             "opportunity",
             "evidence_set",
             "originality_pack",
+            "editorial_role_contract",
         }
         assert "payload" not in received
         serialized = json.dumps(received, ensure_ascii=False, sort_keys=True)
