@@ -573,7 +573,7 @@ A4E2 closeout:
 ## Content Quality track — Founder priority 2026-09-25
 
 Production activation / A2 / WordPress / operational migration / publish work is paused.
-CQ-01 is merged via PR #226. Current WIP is **CQ-02 / #227** on exact main base
+CQ-01 is merged via PR #226. Current WIP is **CQ-02 / #227 / PR #228** on exact main base
 `b1237cb45089116864f92226656ec4bfddd0f89f`.
 
 ### CQ-01 — Promise Coverage — DONE
