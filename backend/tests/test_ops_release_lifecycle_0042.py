@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+
 import pytest
 
 from scripts import ops_release_lifecycle as historical
@@ -358,7 +359,7 @@ async def test_one_shot_http_readiness_makes_exactly_four_gets(
             return {"status": "ok"}
 
     class Client:
-        async def __aenter__(self) -> "Client":
+        async def __aenter__(self) -> Client:
             return self
 
         async def __aexit__(self, *args: object) -> None:
