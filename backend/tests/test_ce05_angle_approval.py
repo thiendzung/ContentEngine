@@ -64,8 +64,12 @@ async def _bundle_fixture(
     session: AsyncSession,
     *,
     coverage_requirements: list[str] | None = None,
+    suggested_role: str | None = "cluster",
 ) -> tuple[Artifact, JournalInputBundle, EvidenceSet, OriginalityPack]:
-    project, content_case, opportunity, _need = await _content_case(session)
+    project, content_case, opportunity, _need = await _content_case(
+        session,
+        suggested_role=suggested_role,
+    )
     opportunity.coverage_requirements_json = list(coverage_requirements or [])
     await session.flush()
     evidence = await _evidence_row(session, project_id=project.id, suffix="angle")
@@ -213,7 +217,10 @@ def _bundle_hash(payload: dict[str, object]) -> str:
 @pytest.mark.asyncio
 async def test_pre_cq01_bundle_without_coverage_remains_readable() -> None:
     async with isolated_session() as session:
-        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            suggested_role=None,
+        )
         payload = copy.deepcopy(bundle_artifact.content_json)
         assert isinstance(payload, dict)
         opportunity = payload.get("opportunity")
