@@ -21,6 +21,8 @@ def test_pillar_and_cluster_contracts_are_distinct_editorial_jobs() -> None:
     assert "one bounded reader subproblem" in cluster.objective
     assert "Cluster-level depth" in pillar.duplication_guard
     assert "Pillar's broad synthesis" in cluster.duplication_guard
+    assert "Do not invent a Cluster target" in pillar.relationship_guard
+    assert "Do not invent a parent Pillar" in cluster.relationship_guard
 
 
 def test_role_normalization_accepts_current_roles_only() -> None:
