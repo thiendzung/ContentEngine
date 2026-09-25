@@ -12,13 +12,17 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    editorial_role_contract_or_none,
+)
 from app.modules.content_engine.journal.models import OutlineApproval
 from app.modules.content_engine.journal.outline import OutlineInput, load_outline_input
 from app.modules.content_engine.models import ContentCase, LocaleVariant
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun, utc_now
 
 WRITER_SCHEMA_VERSION = 1
-WRITER_GENERATOR_VERSION = "ce05.journal_writer.v1"
+WRITER_GENERATOR_VERSION = "ce05.journal_writer.v2"
 WRITER_HANDOFF_SCHEMA_VERSION = 1
 SUPPORTED_WRITER_LOCALES = {"vi-VN", "en"}
 
@@ -571,6 +575,23 @@ async def load_writer_input(
         raise WriterGenerationError("writer_handoff_missing_or_stale")
 
     opportunity = _dict(upstream.model_input.get("opportunity"), "writer_opportunity_invalid")
+    try:
+        editorial_contract = editorial_role_contract_or_none(
+            opportunity.get("suggested_role")
+        )
+    except EditorialRoleError as exc:
+        raise WriterGenerationError("writer_editorial_role_invalid") from exc
+    if editorial_contract is not None and variant.content_role != editorial_contract.role:
+        raise WriterGenerationError("writer_locale_variant_role_mismatch")
+    upstream_editorial_contract = upstream.model_input.get("editorial_role_contract")
+    if editorial_contract is None:
+        if upstream_editorial_contract is not None:
+            raise WriterGenerationError("writer_editorial_role_contract_unexpected")
+    elif (
+        upstream_editorial_contract is not None
+        and upstream_editorial_contract != editorial_contract.to_dict()
+    ):
+        raise WriterGenerationError("writer_editorial_role_contract_mismatch")
     evidence_set = _dict(upstream.model_input.get("evidence_set"), "writer_evidence_input_invalid")
     originality_pack = _dict(
         upstream.model_input.get("originality_pack"),
@@ -606,6 +627,8 @@ async def load_writer_input(
             "needed but unsupported by this input, declare it unresolved instead of writing it."
         ),
     }
+    if editorial_contract is not None:
+        model_input["editorial_role_contract"] = editorial_contract.to_dict()
     if outline_approval_id is not None:
         model_input["outline_approval_ref"] = {"id": str(outline_approval_id)}
     return WriterInput(
