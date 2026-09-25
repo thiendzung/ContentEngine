@@ -152,11 +152,21 @@ def render_writer_prompt(
         sort_keys=True,
         separators=(",", ":"),
     )
+    editorial_role_contract = _validated_editorial_role_contract(writer_model_input)
     editorial_role_json = json.dumps(
-        _validated_editorial_role_contract(writer_model_input),
+        editorial_role_contract,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
+    )
+    editorial_role_rule = (
+        "Honor the exact Pillar/Cluster editorial job. Do not turn a Cluster into a "
+        "broad guide or inflate a Pillar by duplicating full Cluster depth."
+        if editorial_role_contract is not None
+        else (
+            "This is a legacy case with no declared Pillar/Cluster role. Do not infer "
+            "or invent one; preserve bounded legacy behavior."
+        )
     )
     input_json = json.dumps(
         writer_model_input,
@@ -170,9 +180,7 @@ def render_writer_prompt(
         f"RECIPE_JSON:\n{recipe_json}\n\n"
         f"EDITORIAL_ROLE_CONTRACT_JSON:\n{editorial_role_json}\n\n"
         f"WRITER_INPUT_JSON:\n{input_json}\n\n"
-        "EDITORIAL_ROLE_RULE:\n"
-        "Honor the exact Pillar/Cluster editorial job. Do not turn a Cluster into a "
-        "broad guide or inflate a Pillar by duplicating full Cluster depth.\n\n"
+        f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
