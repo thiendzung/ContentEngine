@@ -854,6 +854,20 @@ async def test_angle_promise_coverage_fails_closed(
 
 
 @pytest.mark.asyncio
+async def test_pillar_role_contract_is_bound_into_angle_model_input() -> None:
+    async with isolated_session() as session:
+        _artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            suggested_role="pillar",
+        )
+        contract = bundle.angle_model_input.get("editorial_role_contract")
+        assert isinstance(contract, dict)
+        assert contract["role"] == "pillar"
+        assert "whole decision space" in str(contract["objective"])
+        assert "Cluster-level depth" in str(contract["duplication_guard"])
+
+
+@pytest.mark.asyncio
 async def test_angle_promise_coverage_is_persisted_and_hashed() -> None:
     async with isolated_session() as session:
         bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
