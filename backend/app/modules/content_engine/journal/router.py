@@ -104,6 +104,7 @@ class FounderJournalIntakeRequest(BaseModel):
     question: str = Field(min_length=1)
     intent: str = Field(min_length=1, max_length=64)
     promise: str = Field(min_length=1)
+    coverage_requirements: list[str] = Field(min_length=1, max_length=12)
     selection_reason: str = Field(min_length=1)
     originality_material: str = Field(min_length=1)
     originality_writer_use: str = Field(min_length=1)
@@ -170,6 +171,10 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_manual_question_required",
         "operator_manual_intent_required",
         "operator_manual_promise_required",
+        "operator_manual_coverage_requirements_invalid",
+        "operator_manual_coverage_requirement_required",
+        "operator_manual_coverage_requirement_too_long",
+        "operator_manual_coverage_requirement_duplicate",
         "operator_manual_selection_reason_required",
         "operator_manual_originality_material_required",
         "operator_manual_originality_writer_use_required",
@@ -264,6 +269,7 @@ async def create_journal_founder_intake(
                 question=payload.question,
                 intent=payload.intent,
                 promise=payload.promise,
+                coverage_requirements=payload.coverage_requirements,
                 selection_reason=payload.selection_reason,
                 originality_material=payload.originality_material,
                 originality_writer_use=payload.originality_writer_use,
