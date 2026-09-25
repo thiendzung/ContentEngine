@@ -576,9 +576,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
   const outlineGate = view?.pending_gate?.type === "outline" ? view.pending_gate : null;
-  const selectedAngle = useMemo(
-    () => angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null,
-    [angleGate, selectedAngleId],
+  const selectedAngle = (
+    angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null
   );
 
   async function reconcileMutationFailure(requestError: unknown, keyScope: string) {
