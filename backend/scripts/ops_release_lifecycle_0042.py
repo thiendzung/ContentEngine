@@ -164,7 +164,7 @@ async def _await_ready_event(
     ready_task = asyncio.create_task(runtime.ready_event.wait())
     exit_task = asyncio.create_task(runtime.process.wait())
     try:
-        done, pending = await asyncio.wait(
+        done, _ = await asyncio.wait(
             {ready_task, exit_task},
             timeout=timeout_seconds,
             return_when=asyncio.FIRST_COMPLETED,
