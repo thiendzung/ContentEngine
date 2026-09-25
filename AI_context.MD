@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-20, after `PASS_F7_2B_READONLY_CLOSEOUT` on exact main proved R4 is durably at `AWAITING_APPROVAL / outline`. F7.2B runtime/state acceptance is good, but #167 is the active audit-lineage blocker because Outline ModelCall metadata omitted `runner_executable`. This is the ONE current working window.
+Updated: 2026-09-25 after Founder merged PR #220. Current main is `f2b3aaaddc6229302db0db791eb9c67a27692f66`. A4E2 rev-0042 release lifecycle/build proof is complete; E2E-01 remains in production-readiness unblock, not yet in the real D1-D9 closed-loop pilot. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current F7 reproof window: `ed7e76ced561886940c1add77a85bf350c3f9ca5` (merge PR #162). The Agent Local Outline execution used pre-merge SHA `39336052e18b1761e3a63c73f746aab7d91eaa85`; GitHub comparison proves the only differences to current main are `AI_context.MD` and `docs/TASKS.md`, with no runtime/application code drift. Canonical P2 operational release code baseline remains `545ca28042c489462606aa47bcbd2c11052fa3fe`, the merge commit of PR #137; do not confuse the historical operational release baseline with the current code candidate used for F7 evidence.
+Live GitHub main: `f2b3aaaddc6229302db0db791eb9c67a27692f66` (merge PR #220). The exact verified A4E2 PR head was `c20dee78c27e74dcb0dd6809f70317b034de5f21`; CI #1832 passed on that head, Agent Local returned `PASS_E2E01_A4E2_EXACT_REF_RELEASE_LIFECYCLE`, and merge-main CI #1833 also passed. Operational DB remains at verified rev `20260915_0034`; code head is `20260923_0042`. A2 production WordPress inventory is still blocked on an authorized read-only production access path.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -396,29 +396,42 @@ authorized production-readiness validation (P2C2.5).
 ## E2E-01 activation unblock window — 2026-09-25
 
 Accepted readiness state:
-- P2C2.5 audit PASS, production activation BLOCKED;
+- P2C2 local engineering/capture path through PR #214: DONE;
 - A1 migration/recovery rehearsal PASS on the current rev-0034 recovery point;
 - A2 production WordPress inventory BLOCKED because no authorized production admin/SSH/WP-CLI path is available;
 - A3 secret-delivery design PASS, production provisioning still pending production access;
-- A4 runtime-baseline audit PASS with engineering required before any operational migration/release.
+- A4E1 / PR #218 current 0034→0042 migration tooling: DONE with disposable proof;
+- A4E2 / PR #220 current rev-0042 release lifecycle/build provenance: DONE with exact-ref local proof and merge-main CI PASS.
 
-Active bounded implementation: **A4E1 / #217**.
+Current next bounded task is **A2 production WordPress inventory** once Founder supplies/authorizes an existing read-only production access path.
 
 A4E1 adds a new current-generation operational migration entrypoint for exactly `20260915_0034 → 20260923_0042`. Historical `ops_migration_rehearsal.py` and `ops_operational_migrate.py` retain their 0027→0034 historical meaning. The new tool requires exact authorized clean code, stopped application runtime, format-v2 backup identity, explicit authorized dump SHA, exact source-documents fingerprint, exact migration chain, fail-closed pre/post schema guards and durable-state invariance. It never recreates/rebinds the Postgres container and must fail closed if the execution context cannot reach the exact operational DB.
 
 The live operational DB is still rev-0034. The current Postgres container is healthy but has no host-published 5432 listener even though tracked compose declares loopback publishing; this topology drift is a separate execution-context concern and must not be silently “fixed” by migration code. Operational migration, release-runtime start, production WordPress changes, Rank Math bridge activation, production credentials and publication remain separately Founder-authorized.
 
 
-## E2E-01 A4E2 active implementation — 2026-09-25
+## E2E-01 A4E2 closeout — 2026-09-25
 
 Current main at A4E2 start: `383b274e57ced368dbbf0bc0216d45c8fb622ed9` (merge of PR #218 / A4E1).
 
 A4E1 is complete at code/review/local-proof level. The production/operational ContentEngine database remains rev `20260915_0034`; applying the proven 0034→0042 migration remains a separate Founder-authorized operation.
 
-A4E2 / #219 adds a new `ops_release_lifecycle_0042.py` instead of repurposing historical `ops_release_lifecycle.py`. The new lifecycle expects rev `20260923_0042`, requires exact clean checkout + local Python 3.12 venv + exact frontend build provenance, and uses event-driven process/log readiness with one-shot HTTP verification. It must not use repeated sleep/HTTP/ps/pgrep polling. Release provenance is local ignored evidence under `artifacts/release/`, not a committed generated artifact and contains no secrets.
+A4E2 / #219 is complete via PR #220. The new `ops_release_lifecycle_0042.py` preserves historical `ops_release_lifecycle.py`, expects rev `20260923_0042`, requires exact clean checkout + local Python 3.12 venv + exact frontend build provenance, and uses event-driven process/log readiness with one-shot HTTP verification. It must not use repeated sleep/HTTP/ps/pgrep polling. Release provenance is local ignored evidence under `artifacts/release/`, not a committed generated artifact and contains no secrets.
 
-No operational runtime lifecycle is executed by this implementation work. Exact-ref local proof later uses an isolated disposable PostgreSQL restored from the accepted A1 recovery point and migrated to rev-0042 with the merged A4E1 tool.
+Exact-ref local proof used an isolated disposable PostgreSQL restored from the accepted A1 recovery point and migrated to rev-0042 with the merged A4E1 tool; startup + restart + graceful shutdown passed with no durable/model/tool/outbox/publication delta. The operational DB/runtime remained untouched.
 
-A4E2 exact-ref local proof initially stopped fail-closed on `agent_runner_version_not_approved` because the packaged Codex advanced from `.16.3` to `.16.4`. Issue #221 completed a read-only capability audit of exact binary SHA `93169e745735930598e867ad837abf3fdc50774a3ad7e7aa89c0d0c51b0189a5`: required runner flags, all 21 explicit no-tool controls and cached-session auth were preserved, with zero model/DB/runtime side effects. The audit authorizes an exact repin to `codex-cli 0.155.0-alpha.16.4` only; ranges/wildcards remain forbidden. PR #220 must rerun CI and exact-ref local lifecycle proof after the repin.
+A4E2 exact-ref local proof initially stopped fail-closed on `agent_runner_version_not_approved` because the packaged Codex advanced from `.16.3` to `.16.4`. Issue #221 completed a read-only capability audit of exact binary SHA `93169e745735930598e867ad837abf3fdc50774a3ad7e7aa89c0d0c51b0189a5`: required runner flags, all 21 explicit no-tool controls and cached-session auth were preserved, with zero model/DB/runtime side effects. The audit authorized the exact repin to `codex-cli 0.155.0-alpha.16.4` only; ranges/wildcards remain forbidden. The repinned final PR #220 head passed CI and exact-ref local lifecycle proof.
 
-A4E2D1 / #222 proved the two A1/live `running` Run/Step rows are intentional Start-to-Angle operator-retry pauses: latest Job is failed, no lease remains, failure evidence is persisted, and the only canonical operator action is an explicit retry that would resume research/model work. MG chose not to mutate or resume those workflows for a release test. A4E2D2 / #223 therefore narrows only the rev-0042 release quiescence guard: it may preserve this exact failed-job paused state as release-quiescent while still blocking queued/leased jobs, active model/tool/outbox work, any other stage/state, unmatched active Run/Step, multiple active Steps per Run, or failure-evidence mismatch. Historical rev-0034 lifecycle semantics remain unchanged.
+A4E2D1 / #222 proved the two A1/live `running` Run/Step rows are intentional Start-to-Angle operator-retry pauses: latest Job is failed, no lease remains, failure evidence is persisted, and the only canonical operator action is an explicit retry that would resume research/model work. A4E2D2 / #223 narrowed only the rev-0042 release quiescence guard for that exact paused contract. Final proof preserved both paused lineages byte-for-byte while still blocking queued/leased jobs, active model/tool/outbox work, other stages/states, unmatched active Run/Step, multiple active Steps per Run, or failure-evidence mismatch. Historical rev-0034 lifecycle semantics remain unchanged.
+
+## Current E2E-01 next order — after PR #220 merge
+
+1. A2 production WordPress + Rank Math inventory — requires an already-authorized read-only production access path from Founder.
+2. Production bridge secret/service-user provisioning after A2 validates the real host contract.
+3. Founder-authorized operational migration `0034 → 0042`.
+4. Founder-authorized exact operational rev-0042 release lifecycle.
+5. A5 production edge/HMAC/cache/redirect preflight.
+6. A6 final activation re-audit.
+7. Only after `ACTIVATION_READY`: D1 freeze one new real E2E case, then D2-D9 closed-loop execution.
+
+Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
