@@ -395,7 +395,7 @@ historical snapshots fail closed rather than reading current Rank Math state.
 Next bounded gate after P2C2.3 is local exact-ref verification (P2C2.4), then separately
 authorized production-readiness validation (P2C2.5).
 
-## E2E-01 activation unblock window — 2026-09-25
+## Historical E2E-01 activation unblock snapshot — 2026-09-25
 
 Accepted readiness state:
 - P2C2 local engineering/capture path through PR #214: DONE;
@@ -405,7 +405,7 @@ Accepted readiness state:
 - A4E1 / PR #218 current 0034→0042 migration tooling: DONE with disposable proof;
 - A4E2 / PR #220 current rev-0042 release lifecycle/build provenance: DONE with exact-ref local proof and merge-main CI PASS.
 
-Current next bounded task is **A2 production WordPress inventory** once Founder supplies/authorizes an existing read-only production access path.
+At the time of this readiness snapshot, the next E2E task would have been **A2 production WordPress inventory**. It is now PAUSED by the Founder while the Content Quality track is active; do not dispatch it from this historical section.
 
 A4E1 adds a new current-generation operational migration entrypoint for exactly `20260915_0034 → 20260923_0042`. Historical `ops_migration_rehearsal.py` and `ops_operational_migrate.py` retain their 0027→0034 historical meaning. The new tool requires exact authorized clean code, stopped application runtime, format-v2 backup identity, explicit authorized dump SHA, exact source-documents fingerprint, exact migration chain, fail-closed pre/post schema guards and durable-state invariance. It never recreates/rebinds the Postgres container and must fail closed if the execution context cannot reach the exact operational DB.
 
@@ -426,8 +426,9 @@ A4E2 exact-ref local proof initially stopped fail-closed on `agent_runner_versio
 
 A4E2D1 / #222 proved the two A1/live `running` Run/Step rows are intentional Start-to-Angle operator-retry pauses: latest Job is failed, no lease remains, failure evidence is persisted, and the only canonical operator action is an explicit retry that would resume research/model work. A4E2D2 / #223 narrowed only the rev-0042 release quiescence guard for that exact paused contract. Final proof preserved both paused lineages byte-for-byte while still blocking queued/leased jobs, active model/tool/outbox work, other stages/states, unmatched active Run/Step, multiple active Steps per Run, or failure-evidence mismatch. Historical rev-0034 lifecycle semantics remain unchanged.
 
-## Current E2E-01 next order — after PR #220 merge
+## Historical E2E-01 resume order — preserved, currently PAUSED
 
+If the Founder later resumes E2E-01, continue from this preserved order:
 1. A2 production WordPress + Rank Math inventory — requires an already-authorized read-only production access path from Founder.
 2. Production bridge secret/service-user provisioning after A2 validates the real host contract.
 3. Founder-authorized operational migration `0034 → 0042`.
