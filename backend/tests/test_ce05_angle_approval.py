@@ -219,14 +219,26 @@ async def test_pre_cq01_bundle_without_coverage_remains_readable() -> None:
         opportunity = payload.get("opportunity")
         assert isinstance(opportunity, dict)
         assert opportunity.pop("coverage_requirements") == []
-        bundle_artifact.content_json = payload
-        bundle_artifact.content_hash = _bundle_hash(payload)
+
+        # Historical Artifacts are immutable. Reproduce a pre-CQ-01 row by inserting
+        # the legacy bytes as a distinct immutable artifact instead of mutating the
+        # already-persisted current artifact.
+        legacy_artifact = Artifact(
+            run_id=bundle_artifact.run_id,
+            step_run_id=bundle_artifact.step_run_id,
+            artifact_type="journal_input_bundle",
+            locale=bundle_artifact.locale,
+            version=bundle_artifact.version + 1,
+            content_json=payload,
+            content_hash=_bundle_hash(payload),
+        )
+        session.add(legacy_artifact)
         await session.flush()
 
         legacy = await load_journal_input_bundle(
             session,
-            journal_input_bundle_id=bundle_artifact.id,
-            expected_content_hash=bundle_artifact.content_hash,
+            journal_input_bundle_id=legacy_artifact.id,
+            expected_content_hash=legacy_artifact.content_hash,
         )
         assert "coverage_requirements" not in legacy.opportunity
         model_opportunity = legacy.angle_model_input["opportunity"]
@@ -236,7 +248,7 @@ async def test_pre_cq01_bundle_without_coverage_remains_readable() -> None:
         output = [_candidate_payload(legacy, index) for index in range(1, 4)]
         result = await AngleGenerator(max_attempts=1).generate_candidates(
             session,
-            journal_input_bundle_id=bundle_artifact.id,
+            journal_input_bundle_id=legacy_artifact.id,
             model=FakeAngleModel([output]),
             provider="fixture-provider",
             model_name="fixture-model",
