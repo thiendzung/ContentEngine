@@ -20,7 +20,7 @@ One implementation plus related verification. MG designs/codes/reviews; Founder 
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
 | O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | ACTIVE / OUTLINE GATE PASS / #167 BLOCKER | `PASS_F7_2B_READONLY_CLOSEOUT` proved exact-main preflight + durable Outline gate. #167 is the only active F7.2B blocker: persist `runner_executable` in Outline ModelCall metadata before Founder Outline approval. |
+| F7 | LEGACY PILOT / #167 CLOSED | Historical R4 remains paused at the Outline gate for audit only. #167 was resolved before the Customer Living Map track; do not resume or mutate this lineage merely to advance E2E-01. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 | Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
 | Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
@@ -149,7 +149,7 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 - [x] Fresh Case #2 R4: case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached a valid factual Angle gate on exact main with truthful packaged `codex-cli 0.155.0-alpha.9.2`; Founder manually selected `angle-environment-checklist`. No Continue/Outline ran.
 - [x] F7.2B runtime/state closeout: `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`; R4 remains `AWAITING_APPROVAL / outline`, artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, with one Continue/Outline path and zero downstream mutation.
 - [x] Audit bookkeeping: durable EvidenceSet contains 8 rows = 6 institutional `supports` + 2 educational `context_only`; prior `8 supports` wording was a reporting error.
-- [ ] #167: persist non-null `runner_executable` in Outline ModelCall runtime metadata and regression-test it. Do not backfill or rerun the historical R4 Outline call; fix applies to future Outline executions. Founder Outline approval remains blocked until #167 is merged and verified.
+- [x] #167 resolved. Future Outline ModelCalls persist non-null `runner_executable`; the historical R4 lineage was not backfilled or rerun and remains audit-only.
 
 ## F8 - Polish and closeout
 
@@ -186,7 +186,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 | PM-01 | DONE / PR #179 MERGED | Safe publish + measurement identity accepted with CI/OCR/local proof. Operational rev-0039 remains separately authorized. |
 | LL-01 | DONE / PR #190 MERGED | Measurement → factual Signal → LearningCandidate → reviewed apply → later validation/regression → human resolution → compensating rollback → Customer Map refresh is complete at backend-contract level. Operational rev-0035→0042 remains separately authorized. |
 | UX-01 | DONE / PR #199 MERGED | UX-01A/B/C/D are merged. Exception-driven desktop command center, canonical Learning/System/Daily Digest views, and final navigation are accepted with CI/browser/OCR/local proof. |
-| E2E-01 | ACTIVE | One real closed-loop pilot. Current bounded implementation is P2C2 Rank Math read-only SEO intelligence; operational migration, production bridge activation, publication and real Google credential activation remain separately authorized. |
+| E2E-01 | ACTIVE / READINESS UNBLOCK | Engineering foundation through A4E2 is merged and verified. Remaining blockers are production WordPress inventory/access, production secret provisioning, separately authorized operational migration/runtime activation, edge preflight and final activation re-audit before the real D1-D9 closed-loop pilot. |
 
 ### E2E-01 / P2C2 immediate checklist
 
@@ -206,7 +206,7 @@ Canonical spec: `21-CUSTOMER-LIVING-MAP-AUTOPILOT-SPEC.md`.
 - [x] P2C2.3 persists validated Rank Math state only as immutable Harness Artifact; no new SEO/Rank Math table or migration.
 - [x] Deterministic snapshot fingerprint ignores capture time for exact replay, while changed safe state creates the next immutable Artifact version.
 - [x] Historical ContentVersion reads require a previously captured exact Artifact; live Rank Math state is never retroactively attributed.
-- [ ] P2C2.3 candidate must pass CI, exact-ref review and Agent Local disposable/local integration proof before Founder merge.
+- [x] P2C2.3 passed CI + exact-ref review + Agent Local proof and merged via PR #214.
 - [ ] No `motgu.com` activation without Founder authorization and production-readiness validation.
 
 ### CT-01 immediate checklist
@@ -542,19 +542,30 @@ Exit: UX-01 closes with a coherent exception-driven command center backed by can
 
 ## E2E-01 activation unblock window — 2026-09-25
 
-P2C2 production-readiness audit is complete but activation remains blocked. A1 proved a fresh current rev-0034 recovery point, exact disposable 0034→0042 migration and independent recovery restore without operational mutation. A2 is blocked because no authorized production WordPress admin/SSH/WP-CLI path is currently available. A3 accepted the non-Git secret-delivery design but production provisioning remains pending production access. A4 accepted the runtime-baseline audit and identified stale historical operational tooling.
+Current merged main after PR #220:
+`f2b3aaaddc6229302db0db791eb9c67a27692f66`.
 
-Current implementation WIP is **A4E1 / #217**: add a new bounded operational migration tool for exactly `20260915_0034 → 20260923_0042` while preserving the historical 0027→0034 scripts unchanged in meaning. The current live Postgres container has no host-published 5432 listener despite tracked compose declaring loopback publishing, so A4E1 must never recreate/rebind topology implicitly and must fail closed when its execution context cannot reach the exact operational DB. Operational migration, runtime start, production WordPress mutation, bridge activation and publication remain separately authorized.
+Engineering readiness completed:
+- P2C2 Rank Math local engineering/capture path through PR #214: DONE;
+- A1 current rev-0034 recovery point + disposable 0034→0042 rehearsal: PASS;
+- A3 non-Git secret-delivery design: PASS, production provisioning still pending;
+- A4E1 / PR #218 current-generation 0034→0042 operational migration tooling: DONE with exact-ref disposable proof;
+- A4E2 / PR #220 current rev-0042 release lifecycle + exact build provenance: DONE;
+- PR #220 exact HEAD `c20dee78c27e74dcb0dd6809f70317b034de5f21` passed CI #1832 and `PASS_E2E01_A4E2_EXACT_REF_RELEASE_LIFECYCLE`;
+- merge-main CI #1833 passed on `f2b3aaaddc6229302db0db791eb9c67a27692f66`.
 
+Current blockers / required next order:
+1. **A2** — obtain an already-authorized read-only production WordPress/SSH/WP-CLI path and complete the production WordPress + Rank Math inventory.
+2. Provision the production bridge secret/service-user binding only after A2 proves the real host/runtime contract.
+3. Founder separately authorizes operational migration `20260915_0034 → 20260923_0042`; the merge of #218/#220 is not that authorization.
+4. Run the exact operational rev-0042 release lifecycle under separate Founder authorization.
+5. **A5** — production edge/HMAC/cache/redirect preflight.
+6. **A6** — final activation re-audit; only then may E2E-01 advance to D1 pilot freeze and D2-D9 real closed-loop execution.
 
-## E2E-01 A4E2 release lifecycle window — 2026-09-25
+Operational database remains rev-0034 until step 3 is explicitly authorized. Production WordPress/Rank Math activation, credentials, publication and real Google/model calls remain separately authorized.
 
-A4E1 is merged via PR #218 at main `383b274e57ced368dbbf0bc0216d45c8fb622ed9`; its exact-ref disposable 0034→0042 migration proof passed. Operational DB remains rev-0034 and no migration is authorized by that merge.
-
-A4E2 / #219 is the active engineering slice. It adds a separate rev-0042 controlled-release lifecycle verifier while preserving the historical rev-0034 O1.3 verifier unchanged in meaning. The current verifier uses event-driven child-process/log readiness, then one-shot HTTP health checks; it does not reuse the historical HTTP/sleep polling loop. A local ignored provenance artifact under `artifacts/release/` binds exact Git HEAD, Python/requirements/pip-freeze, Node/npm/package-lock and Next BUILD_ID to the release checkout before lifecycle execution.
-
-A4E2 code/CI does not authorize operational migration, operational runtime start, WordPress/Rank Math activation, production credentials or publication. After CI and MG review, Agent Local must prove a fresh exact-ref Python/frontend build plus startup/restart/graceful shutdown against an isolated rev-0042 disposable database.
-
-A4E2 local proof fail-closed on Codex `.16.4` versus repository pin `.16.3`. A4E2C1 / #221 then passed a read-only exact-binary capability audit (SHA `93169e745735930598e867ad837abf3fdc50774a3ad7e7aa89c0d0c51b0189a5`): required flags, 21/21 explicit disable controls and cached-session auth were preserved. Exact `.16.4` repin is eligible; no range/wildcard acceptance. PR #220 must rerun CI and the exact-ref disposable lifecycle proof on the new HEAD.
-
-A4E2D1 / #222 confirmed both non-idle A1 lineages are durable Start-to-Angle failed-attempt states waiting for an explicit operator retry, not live execution. Retry would resume research/model/content work and is not acceptable as lifecycle-test cleanup. A4E2D2 / #223 updates only the current rev-0042 release quiescence guard to recognize that exact paused contract without DB mutation; all other active/nonterminal work remains fail-closed. After CI, Agent Local must rerun the exact-ref disposable lifecycle proof and demonstrate startup + restart + graceful shutdown with those paused rows preserved byte-for-byte.
+A4E2 closeout:
+- #219 implementation is complete and may be closed;
+- exact Codex pin is `codex-cli 0.155.0-alpha.16.4`; ranges/wildcards remain forbidden;
+- the two audited Start-to-Angle failed-attempt lineages remain intentional paused operator-retry state and were preserved byte-for-byte during the disposable lifecycle proof;
+- the rev-0042 lifecycle is event-driven and must not regress to repeated sleep/HTTP/ps/pgrep polling.
