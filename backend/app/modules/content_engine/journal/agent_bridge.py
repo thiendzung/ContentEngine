@@ -337,11 +337,22 @@ def render_angle_prompt(
         sort_keys=True,
         separators=(",", ":"),
     )
+    editorial_role_contract = _validated_editorial_role_contract(angle_model_input)
     editorial_role_json = json.dumps(
-        _validated_editorial_role_contract(angle_model_input),
+        editorial_role_contract,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
+    )
+    editorial_role_rule = (
+        "Treat EDITORIAL_ROLE_CONTRACT_JSON as binding when choosing the angle. "
+        "A Pillar must orient the broader bounded decision space without swallowing "
+        "Cluster depth; a Cluster must stay on one bounded subproblem and go deeper."
+        if editorial_role_contract is not None
+        else (
+            "This is a legacy case with no declared Pillar/Cluster role. Do not infer "
+            "or invent one; preserve bounded legacy behavior."
+        )
     )
     input_json = json.dumps(
         angle_model_input,
@@ -362,10 +373,7 @@ def render_angle_prompt(
         f"RECIPE_JSON:\n{recipe_json}\n\n"
         f"REFERENCE_CONTRACT_JSON:\n{reference_contract_json}\n\n"
         f"EDITORIAL_ROLE_CONTRACT_JSON:\n{editorial_role_json}\n\n"
-        "EDITORIAL_ROLE_RULE:\n"
-        "Treat EDITORIAL_ROLE_CONTRACT_JSON as binding when choosing the angle. "
-        "A Pillar must orient the broader bounded decision space without swallowing "
-        "Cluster depth; a Cluster must stay on one bounded subproblem and go deeper.\n\n"
+        f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
         f"ANGLE_INPUT_JSON:\n{input_json}"
         f"{retry_note}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
