@@ -397,7 +397,13 @@ async def test_unsupported_factual_section_and_outside_ref_fail_closed() -> None
 @pytest.mark.asyncio
 async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> None:
     async with isolated_session() as session:
-        fixture = await _approved_fixture(session)
+        fixture = await _approved_fixture(
+            session,
+            coverage_requirements=[
+                "Cover safe display conditions.",
+                "Cover safe handling and transport.",
+            ],
+        )
         route_settings = {
             "models": {"angle": {"route": "agent_angle"}},
             "model_routes": {
@@ -453,6 +459,19 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
         assert request.provider == "codex_cli"
         assert request.model == "test-model"
         assert set(request.working_context) == {"outline_model_input"}
+        schema_properties = request.structured_output_schema["properties"]
+        assert isinstance(schema_properties, dict)
+        sections_schema = schema_properties["sections"]
+        assert isinstance(sections_schema, dict)
+        section_items = sections_schema["items"]
+        assert isinstance(section_items, dict)
+        section_properties = section_items["properties"]
+        assert isinstance(section_properties, dict)
+        coverage_schema = section_properties["coverage_requirement_ids"]
+        assert isinstance(coverage_schema, dict)
+        coverage_item_schema = coverage_schema["items"]
+        assert isinstance(coverage_item_schema, dict)
+        assert coverage_item_schema["enum"] == ["coverage-1", "coverage-2"]
         call = await session.scalar(
             select(ModelCall).where(
                 ModelCall.run_id == fixture.run.id,
