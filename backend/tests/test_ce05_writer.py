@@ -420,7 +420,11 @@ async def test_missing_target_locale_variant_fails_before_writer_run_creation() 
 async def test_writer_fails_closed_when_variant_role_disagrees_with_opportunity() -> None:
     async with isolated_session() as session:
         outline_fixture, outline_result = await _outline_result(session)
-        variant = await _ensure_variant(session, run=outline_fixture.run, locale="en")
+        variant = await _ensure_variant(
+            session,
+            run=outline_fixture.run,
+            locale="vi-VN",
+        )
         variant.content_role = "pillar"
         await session.flush()
         handoff = await ensure_writer_run(
@@ -429,7 +433,7 @@ async def test_writer_fails_closed_when_variant_role_disagrees_with_opportunity(
             outline_artifact_id=outline_result.artifact.id,
             expected_outline_version=outline_result.artifact.version,
             expected_outline_hash=outline_result.artifact.content_hash,
-            locale="en",
+            locale="vi-VN",
         )
         with pytest.raises(
             WriterGenerationError,
@@ -441,7 +445,7 @@ async def test_writer_fails_closed_when_variant_role_disagrees_with_opportunity(
                 outline_artifact_id=outline_result.artifact.id,
                 expected_outline_version=outline_result.artifact.version,
                 expected_outline_hash=outline_result.artifact.content_hash,
-                locale="en",
+                locale="vi-VN",
             )
 
 
