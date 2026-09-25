@@ -504,7 +504,7 @@ async def _active_release_rows(
                     )
                 )
             ).mappings()
-        ]
+        )
     return active_runs, [dict(row) for row in rows]
 
 
