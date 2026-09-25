@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from types import SimpleNamespace
-
 import pytest
 
 from scripts import ops_release_lifecycle as historical
@@ -55,6 +53,18 @@ def test_historical_and_current_revision_contracts_are_distinct() -> None:
     assert lifecycle._EXPECTED_REVISION == "20260923_0042"
     assert lifecycle._EXPECTED_DATABASE == "contentengine"
 
+
+
+def test_current_snapshot_includes_publication_state() -> None:
+    assert set(lifecycle._CURRENT_FINGERPRINT_TABLES) == {
+        "jobs",
+        "step_runs",
+        "model_calls",
+        "tool_calls",
+        "outbox_intents",
+        "published_contents",
+        "publish_events",
+    }
 
 def test_require_expected_revision_accepts_only_0042() -> None:
     lifecycle._require_expected_revision("20260923_0042")
