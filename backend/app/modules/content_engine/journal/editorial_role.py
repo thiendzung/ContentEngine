@@ -24,6 +24,7 @@ class EditorialRoleContract:
     depth_rule: str
     duplication_guard: str
     internal_link_rule: str
+    relationship_guard: str
 
     def to_dict(self) -> dict[str, str]:
         return {
@@ -33,6 +34,7 @@ class EditorialRoleContract:
             "depth_rule": self.depth_rule,
             "duplication_guard": self.duplication_guard,
             "internal_link_rule": self.internal_link_rule,
+            "relationship_guard": self.relationship_guard,
         }
 
 
@@ -59,6 +61,11 @@ _CONTRACTS: dict[str, EditorialRoleContract] = {
             "When narrower follow-up content exists or is planned, use internal-link "
             "intents to move the reader from the Pillar to the relevant Cluster."
         ),
+        relationship_guard=(
+            "Do not invent a Cluster target or parent/child relationship. If no exact "
+            "relationship identity is supplied in the input, do not fabricate a specific "
+            "internal-link target."
+        ),
     ),
     "cluster": EditorialRoleContract(
         role="cluster",
@@ -81,6 +88,11 @@ _CONTRACTS: dict[str, EditorialRoleContract] = {
         internal_link_rule=(
             "When a parent Pillar relationship is known, link upward to it; use sideways "
             "Cluster links only when they directly help the reader continue."
+        ),
+        relationship_guard=(
+            "Do not invent a parent Pillar, sibling Cluster or relationship identity. If "
+            "no exact relationship is supplied in the input, do not fabricate a specific "
+            "internal-link target."
         ),
     ),
 }
