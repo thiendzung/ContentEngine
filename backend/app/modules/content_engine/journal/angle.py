@@ -14,6 +14,10 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.coverage_support_depth_eval import (
+    CoverageSupportDepthRuntimeError,
+    load_validated_coverage_support_depth_artifact,
+)
 from app.modules.content_engine.journal.editorial_role import (
     EditorialRoleError,
     editorial_role_contract_or_none,
@@ -327,6 +331,66 @@ def _stable_hash(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+async def _coverage_support_depth_context(
+    session: AsyncSession,
+    *,
+    run: ContentRun,
+    opportunity: dict[str, object],
+    evidence_set_id: UUID,
+    originality_pack_id: UUID,
+    context_manifest: ContextManifest | None,
+) -> dict[str, object] | None:
+    if context_manifest is None:
+        return None
+    refs = [
+        ref
+        for ref in context_manifest.tool_result_refs_json
+        if isinstance(ref, str) and ref.startswith("coverage_support_depth:")
+    ]
+    if not refs:
+        return None
+    if len(refs) != 1:
+        raise AngleGenerationError("angle_coverage_support_ref_conflict")
+    _, _, raw_id = refs[0].partition(":")
+    try:
+        artifact_id = UUID(raw_id)
+    except ValueError as exc:
+        raise AngleGenerationError("angle_coverage_support_ref_invalid") from exc
+    opportunity_id = _uuid(
+        opportunity.get("id"),
+        "angle_coverage_support_opportunity_invalid",
+    )
+    if context_manifest.step_run_id is None:
+        raise AngleGenerationError("angle_coverage_support_step_required")
+    try:
+        result = await load_validated_coverage_support_depth_artifact(
+            session,
+            artifact_id=artifact_id,
+            run_id=run.id,
+            step_run_id=context_manifest.step_run_id,
+            content_case_id=run.content_case_id,
+            opportunity_id=opportunity_id,
+            evidence_set_id=evidence_set_id,
+            originality_pack_id=originality_pack_id,
+        )
+    except CoverageSupportDepthRuntimeError as exc:
+        raise AngleGenerationError(
+            "angle_coverage_support_artifact_invalid",
+            exc.code,
+        ) from exc
+    if not result.ready_for_angle:
+        raise AngleGenerationError("angle_coverage_support_unresolved")
+    return {
+        "artifact": {
+            "id": str(result.artifact.id),
+            "version": result.artifact.version,
+            "content_hash": result.artifact.content_hash,
+        },
+        "ready_for_angle": True,
+        "assessment": result.assessment.to_dict(),
+    }
+
+
 async def _build_angle_model_input(
     session: AsyncSession,
     *,
@@ -446,6 +510,16 @@ async def _build_angle_model_input(
     }
     if editorial_contract is not None:
         model_input["editorial_role_contract"] = editorial_contract.to_dict()
+    coverage_support_depth = await _coverage_support_depth_context(
+        session,
+        run=run,
+        opportunity=opportunity,
+        evidence_set_id=evidence_set_id,
+        originality_pack_id=originality_pack_id,
+        context_manifest=context_manifest,
+    )
+    if coverage_support_depth is not None:
+        model_input["coverage_support_depth"] = coverage_support_depth
     if context_manifest is not None:
         model_input["context"] = {
             "manifest_id": str(context_manifest.id),
