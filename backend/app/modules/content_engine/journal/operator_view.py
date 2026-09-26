@@ -341,7 +341,7 @@ async def _coverage_support_diagnostic(
         or _canonical_hash(artifact.content_json) != artifact.content_hash
         or step.error_json.get("diagnostic_content_hash") != artifact.content_hash
     ):
-        return None
+        raise OperatorControlError("operator_coverage_support_projection_invalid")
 
     payload = artifact.content_json
     opportunity_ref = payload.get("opportunity")
