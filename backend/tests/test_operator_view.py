@@ -256,9 +256,13 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
         assert view.pending_gate.artifact.id != stray.id
         assert view.pending_gate.artifact.content_hash == result.angle_artifact_hash
         assert len(view.pending_gate.candidates) == 3
+        assert view.pending_gate.semantic_artifact is not None
         for item in view.pending_gate.candidates:
             assert len(item.candidate_hash) == 64
             assert item.locale == "en"
+            assert item.semantic_quality is not None
+            assert item.semantic_quality.verdict == "pass"
+            assert item.semantic_quality.findings == []
             assert [(row.requirement_id, row.status) for row in item.coverage] == [
                 ("coverage-1", "covered"),
                 ("coverage-2", "covered"),

@@ -362,6 +362,12 @@ async def test_valid_bundle_generates_typed_candidates_and_reuses_exact_artifact
             "content_hash": angle_model_input_hash(bundle.angle_model_input)
         }
         assert first.artifact.content_json["provider_calls"] == 0
+        assert first.semantic_artifact is not None
+        assert second.semantic_artifact is not None
+        assert first.semantic_artifact.id == second.semantic_artifact.id
+        assert first.semantic_artifact.content_json["artifact_type"] == (
+            "angle_semantic_quality"
+        )
         assert model.calls == 2
         assert (
             await session.scalar(select(ToolCall).where(ToolCall.run_id == bundle_artifact.run_id))
@@ -705,6 +711,51 @@ async def test_exact_angle_approval_is_durable_idempotent_and_handoff_gated() ->
         )
         assert handed_off.candidate.angle_id == selected.angle_id
         assert handed_off.approval.approved_by == "founder"
+
+
+@pytest.mark.asyncio
+async def test_angle_semantic_revision_blocks_founder_approval() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            suggested_role="cluster",
+        )
+        output = [_candidate_payload(bundle, index) for index in range(1, 4)]
+        semantic = output[0]["semantic_quality"]
+        assert isinstance(semantic, dict)
+        semantic["verdict"] = "revise"
+        semantic["findings"] = [
+            {
+                "code": "angle_question_promise_mismatch",
+                "subject_ref": "angle:core_promise",
+                "reason": "The promise is broader than the bounded question.",
+                "remediation": "Narrow the promise to the exact reader question.",
+            }
+        ]
+        generated = await AngleGenerator(max_attempts=1).generate_candidates(
+            session,
+            journal_input_bundle_id=bundle_artifact.id,
+            model=FakeAngleModel([output]),
+            provider="fixture-provider",
+            model_name="fixture-model",
+        )
+        assert generated.semantic_artifact is not None
+        selected = generated.candidates[0]
+
+        with pytest.raises(
+            AngleApprovalError,
+            match="angle_semantic_revision_required",
+        ):
+            await approve_angle_candidate(
+                session,
+                angle_artifact_id=generated.artifact.id,
+                expected_artifact_version=generated.artifact.version,
+                expected_artifact_hash=generated.artifact.content_hash,
+                selected_angle_id=selected.angle_id,
+                expected_candidate_hash=angle_candidate_hash(selected),
+                approved_by="founder",
+                approval_reason="Must not approve a revise Angle.",
+            )
 
 
 @pytest.mark.asyncio
