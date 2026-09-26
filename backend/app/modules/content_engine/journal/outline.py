@@ -556,6 +556,13 @@ async def load_outline_semantic_quality_for_artifact(
     outline_input: OutlineInput,
     outline: JournalOutline,
 ) -> OutlineSemanticQualityResult | None:
+    payload = _dict(artifact.content_json, "outline_artifact_payload_invalid")
+    generator = payload.get("generator")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("version") != OUTLINE_GENERATOR_VERSION
+    ):
+        return None
     role = _semantic_role(outline_input)
     if role is None:
         return None
