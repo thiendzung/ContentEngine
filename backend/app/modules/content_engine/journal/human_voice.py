@@ -9,8 +9,9 @@ Assertion Audit on exact rewritten bytes.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Sequence, cast
+from typing import Literal, cast
 
 from app.modules.content_engine.journal.writer import JournalDraft
 
