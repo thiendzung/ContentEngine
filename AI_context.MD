@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-26 after Founder merged PR #234. Current main is `bb96995c294269b6c2398964cd41277133253f86`. CQ-01 through CQ-03 are merged. Production activation/E2E external work remains paused; the active WIP is CQ-04 Angle/Outline semantic quality. This is the ONE current working window.
+Updated: 2026-09-26 after Founder merged PR #235. Current main is `80ad589583d6d2b67e416109ccbd537a52139904`. CQ-01 through CQ-04 are merged. Production activation/E2E external work remains paused; the active WIP is CQ-05 Writer + Human Voice truth preservation. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `bb96995c294269b6c2398964cd41277133253f86` (merge PR #234). CQ-01 through CQ-03 passed exact-head CI/OCR/Agent Local verification before Founder merge. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-04 is bounded content-quality code/test work and does not authorize operational migration.
+Live GitHub main: `80ad589583d6d2b67e416109ccbd537a52139904` (merge PR #235). CQ-01 through CQ-04 passed exact-head CI/OCR/Agent Local verification before Founder merge. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-05 is bounded content-quality code/test work and does not authorize operational migration.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -38,7 +38,7 @@ Live GitHub main: `bb96995c294269b6c2398964cd41277133253f86` (merge PR #234). CQ
 | F7 | LEGACY PAUSED / audit-only lineage | Historical R4 reached `AWAITING_APPROVAL / outline` and later read-only closeout passed. This lineage is not current Content Quality WIP and must not be resumed merely to advance CQ-02. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
-Code migration head is `20260925_0043` after CQ-01; the verified operational database/source remains `20260915_0034`. This intentional code/operational split is not a deployment error and does not authorize migration. O1.3/O1.4 remain historical release/recovery evidence; backend/frontend/worker were stopped after those proofs.
+Code migration head is `20260926_0044`; the verified operational database/source remains `20260915_0034`. This intentional code/operational split is not a deployment error and does not authorize migration. O1.3/O1.4 remain historical release/recovery evidence; backend/frontend/worker were stopped after those proofs.
 
 Separate non-core publication track:
 - #114 Editorial Quality Pass: produce a successor publication-ready revision without mutating accepted V1.
@@ -47,7 +47,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-04 / #230** implementation is complete in draft PR #235 and is in closeout. Angle and Outline now carry bounded model-assisted semantic assessments with deterministic exact-ref validation, immutable lineage, `pass|revise` findings, Founder approval gates, Writer-handoff revalidation and operator projection. CQ-03 support-depth is directly bound into the Angle semantic artifact when present. Pillar/Cluster adversarial fixtures cover role/scope/coverage drift, redundancy, filler and unclear support purpose. Remaining work is final code/docs CI → MG exact-head full-diff review → exact-ref OpenCodeReview → Agent Local bounded verification → Founder merge.
+**CQ-05 / #231** is active on main `80ad589583d6d2b67e416109ccbd537a52139904`. Architecture is locked to enhance the existing locale-specific Review/Revise rewrite with Human Voice truth-preservation rather than adding a second model rewrite stage. Port only useful pure guards/diagnostics from historical HV-01 / PR #186. The target path is `immutable Writer draft → Human-Voice-aware Review/Revise → immutable rewritten draft → Assertion Audit on exact rewritten bytes → Source-copy → existing quality readiness`.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -439,53 +439,40 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01/CQ-02/CQ-03 merged, CQ-04 active
+## Content Quality priority — CQ-01/CQ-02/CQ-03/CQ-04 merged, CQ-05 active
 
 Founder priority remains content quality before production activation.
 
 CQ sequence:
 `CQ-01 Promise Coverage → CQ-02 Pillar/Cluster Contract → CQ-03 Evidence/Originality Depth → CQ-04 Angle/Outline Quality → CQ-05 Writer/Human Voice → CQ-06 Deep Quality Gate → CQ-07 real Pillar+Cluster pilot`.
 
-CQ-01 merged state:
-- PR #226 merged as main `b1237cb45089116864f92226656ec4bfddd0f89f`;
-- exact verified head `72d3210cad4f617c61f8945454d353b0b26732d7`;
-- CI #1852 PASS; OCR 24/24 with no Critical/High/Medium; `PASS_CQ01_FINAL_LOCAL_VERIFICATION`;
-- code migration head 0043 adds only `coverage_requirements_json`; operational DB migration remains unauthorized.
+CQ-01 merged:
+- PR #226; promise coverage contract complete; historical no-coverage compatibility preserved.
 
-CQ-02 merged state:
-- PR #228 merged as main `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`;
-- exact verified implementation head `e318ad20d35a45a2b77e6f9048a4b35be13968ee`;
-- CI PASS; MG exact-head self-review PASS;
-- Agent Local: 83 focused + 1185 full backend PASS, frontend PASS;
-- OpenCodeReview v1.12.9: 27/27 reviewable reviewed, 0 skipped, 0 Critical/High/Medium/Low;
-- canonical new editorial roles are `pillar|cluster`; legacy `primary|NULL` remains readable without invented semantics;
-- no durable Pillar↔Cluster relationship was invented; CQ-07 remains the proof point.
+CQ-02 merged:
+- PR #228; canonical `pillar|cluster` contract complete; legacy `primary|NULL` readable; no invented durable relationship.
 
-CQ-03 merged state:
-- PR #234 merged as main `bb96995c294269b6c2398964cd41277133253f86`;
-- exact verified implementation head `7cce0bc1df8afc92b96995ae03c2c7ed66154221`;
-- CI #36217801507 PASS; MG exact-head self-review PASS;
-- OpenCodeReview v1.12.9: 15/15 reviewable, zero findings;
-- Agent Local: 17 focused + 1202 full backend PASS; frontend/OpenAPI/migration round-trip PASS;
-- exact coverage support-depth now blocks Angle on unresolved requirements with immutable/revalidated lineage.
+CQ-03 merged:
+- PR #234; exact coverage support-depth blocks Angle on unresolved requirements with immutable/revalidated Evidence/Originality lineage.
 
-CQ-04 active rules:
-- exact coverage IDs/text are the unit of support-depth assessment;
-- locked external Evidence and approved MOTGU-owned Originality remain separate truth classes;
-- add one immutable support-depth Artifact rather than a new business table unless implementation proves otherwise;
-- every coverage ID appears exactly once as `evidence_supported|originality_supported|mixed|unresolved`;
-- every support claim binds exact allowed Evidence IDs and/or Originality source refs;
-- `context_only`, qualifying or contradicting evidence must not silently count as clean factual support;
-- unknown/duplicate/missing refs or coverage IDs fail closed;
-- any unresolved coverage requirement blocks Angle generation and is surfaced as an explicit research/support gap;
-- no numeric quality/SEO score and no lexical-overlap-only semantic decision;
-- no Writer/Human Voice, WordPress/Rank Math/Google activation, operational migration or publication in CQ-03.
+CQ-04 merged:
+- PR #235; merge/main `80ad589583d6d2b67e416109ccbd537a52139904`;
+- exact verified implementation head `026ad2f57a3240218adfe4a03a66568e7442981d`;
+- CI #36233164012 PASS;
+- OCR v1.12.9: 18/18 reviewable, zero findings;
+- Agent Local: 80 focused + 1226 full backend PASS; frontend PASS;
+- Angle/Outline semantic gates now preserve exact lineage, role behavior and backward compatibility.
 
-
-CQ-04 implementation direction:
-- immutable semantic-quality Artifacts; no new business table unless proven necessary;
-- Angle gate checks title/problem/question/promise coherence and exact role behavior before human Angle approval;
-- Outline gate checks intentional coverage placement, distinct section jobs/support purposes, role behavior and major overlap before human Outline approval/Writer;
-- findings are stable code + exact subject ref + reason + remediation with pass|revise status; no global numeric quality score;
-- semantic quality must not reclassify Evidence truth established by CQ-03 or invent Pillar↔Cluster identities;
-- no Writer/Human Voice, CQ-06 final prose gate, production activation, operational migration or publication in CQ-04.
+CQ-05 active architecture:
+- historical HV-01 / PR #186 is reference material only;
+- do not add a second rewrite model stage by default;
+- reuse existing Review/Revise as the Human Voice-aware bounded rewrite;
+- source is one exact immutable locale Writer draft;
+- rewritten output remains one immutable `journal_draft` with exact source/rewrite lineage;
+- VI and EN remain independent and never consume sibling draft input;
+- deterministic guards may detect introduced numeric/direct-quote drift, but are not a substitute for Assertion Audit;
+- Human Voice may improve rhythm, specificity, warmth, lived texture and natural phrasing only within exact approved truth/support boundaries;
+- no invented artist intent/quotes/customer stories/sensory observations/business promises/prices/scarcity/policies;
+- every Human Voice rewrite must be re-audited against the new exact bytes before Source-copy/final quality advances;
+- before/after diagnostics are explanatory, never AI-detector/authorship scores or a “humanization percentage”;
+- no production activation, operational migration, publication or final-approval bypass in CQ-05.

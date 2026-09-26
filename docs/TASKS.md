@@ -572,85 +572,60 @@ A4E2 closeout:
 
 ## Content Quality track — Founder priority 2026-09-26
 
-Production activation / A2 / WordPress / operational migration / publish work is paused.
-CQ-01 through CQ-03 are merged. Current WIP is **CQ-04 / #230** on exact main base
-`bb96995c294269b6c2398964cd41277133253f86`.
+Production activation / A2 / WordPress / operational migration / publish work remains paused.
+CQ-01 through CQ-04 are merged. Current WIP is **CQ-05 / #231 — Writer + Human Voice integration with truth preservation** on exact main base
+`80ad589583d6d2b67e416109ccbd537a52139904`.
 
 ### CQ-01 — Promise Coverage — DONE
 
-- [x] Current-main implementation complete; historical PR #169 superseded.
-- [x] Rev `20260925_0043` adds durable `coverage_requirements_json`; no operational migration authorization.
-- [x] Intake → Evidence Research → Angle covered/reduced → Founder gate → Outline mapping contract complete.
-- [x] CI #1852 PASS on exact head `72d3210cad4f617c61f8945454d353b0b26732d7`.
-- [x] OpenCodeReview 24/24 reviewed, 0 skipped, 0 Critical/High/Medium.
-- [x] Final disposable proof: `PASS_CQ01_FINAL_LOCAL_VERIFICATION`, 56 focused + 1174 full backend PASS, frontend build PASS.
-- [x] Founder merged PR #226.
+- [x] Durable ordered Founder coverage requirements flow through intake → Evidence Research → Angle keep/reduce → Outline mapping.
+- [x] Historical no-coverage records remain readable without fabricated backfill.
+- [x] Final CI / OCR / Agent Local proof passed; Founder merged PR #226.
 
 ### CQ-02 — Pillar / Cluster Editorial Contract — DONE
 
-- [x] Reuse existing `JournalRole.PILLAR|CLUSTER`, `ContentOpportunity.suggested_role` and `LocaleVariant.content_role`; no parallel taxonomy.
-- [x] New Founder intake explicitly selects `pillar|cluster`; no new `primary`.
-- [x] Current Opportunity/LocaleVariant role mismatch fails closed; required locales inherit the exact role.
-- [x] Legacy `primary|NULL` remains readable without backfill or invented Pillar/Cluster meaning.
-- [x] Canonical role contract propagates through Angle → Outline → Writer and local-agent prompts.
-- [x] Generation/render identities were bumped for changed semantics.
-- [x] Operator UI exposes exact role.
-- [x] Relationship guard prevents invented parent/child/sibling targets.
-- [x] Exact final CI PASS on head `e318ad20d35a45a2b77e6f9048a4b35be13968ee`.
-- [x] MG exact-head self-review PASS.
-- [x] OpenCodeReview v1.12.9: 27/27 reviewable, zero findings.
-- [x] Agent Local exact-head proof: 83 focused + 1185 full backend PASS; frontend PASS.
-- [x] Founder merged PR #228; main `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`; #227 closed.
+- [x] Canonical new roles are exactly `pillar|cluster`; legacy `primary|NULL` remains readable.
+- [x] Role contract propagates through Opportunity/LocaleVariant → Angle → Outline → Writer.
+- [x] No durable Pillar↔Cluster relationship was invented.
+- [x] Final CI / MG review / OCR / Agent Local proof passed; Founder merged PR #228.
 
 ### CQ-03 — Evidence / Originality Depth — DONE
 
-- [x] Audit current boundary: Evidence Research sees coverage text, but Start-to-Angle only checks aggregate evidence/originality readiness; no per-coverage depth contract exists.
-- [x] Architecture direction: immutable pre-Angle support-depth Artifact; avoid a new business table.
-- [x] Reject lexical overlap or a numeric score as semantic truth.
-- [x] Define versioned contract for every exact `coverage-N` requirement.
-- [x] Allowed statuses are exactly `evidence_supported|originality_supported|mixed|unresolved`.
-- [x] Bind exact EvidenceSet id/version/hash and approved OriginalityPack id/hash.
-- [x] Sanitize Evidence rows with claim/relation/excerpt/source authority+bias metadata for bounded semantic assessment.
-- [x] Sanitize only usable approved MOTGU-owned Originality items.
-- [x] Validate every coverage ID exactly once; unknown/duplicate/missing IDs fail closed.
-- [x] Validate every evidence/originality ref against the exact allowed snapshots.
-- [x] Prevent `context_only`, contradicting or qualifying evidence from silently becoming clean factual support.
-- [x] Any `unresolved` requirement blocks Angle and is exposed as an explicit support/research gap.
-- [x] Preserve the exact validated support-depth contract into the Angle input lineage.
-- [x] Add operator/read-model projection for unresolved support before Angle.
-- [x] Add focused positive/negative regressions: evidence-only, originality-only, mixed, missing, contradiction/qualification, unknown ref, duplicate/missing coverage.
-- [x] Confirm prompt/recipe registry impact; add code seed/migration only if existing approved registry cannot express the new bounded evaluator. Operational migration remains unauthorized.
-- [x] Normal CI green on final code/docs SHA.
-- [x] MG full-diff self-review with no unresolved P0/P1 support-integrity defect.
-- [x] Exact-ref OpenCodeReview + MG triage.
-- [x] Agent Local exact-head bounded verification.
-- [x] Founder merge.
+- [x] Every committed coverage requirement is assessed as `evidence_supported|originality_supported|mixed|unresolved`.
+- [x] Exact EvidenceSet and OriginalityPack refs remain separate immutable support classes.
+- [x] Unresolved coverage blocks Angle; search snippets/rank never become factual truth.
+- [x] Final CI / MG review / OCR / Agent Local proof passed; Founder merged PR #234.
+- [x] Closeout main: `bb96995c294269b6c2398964cd41277133253f86`.
 
-CQ-03 boundaries: no operational DB migration; no WordPress/Rank Math/Google/publish; no Writer/Human Voice; no magic quality score; no automatic promotion of model judgement, search snippets or KnowledgeCandidate to factual truth.
+### CQ-04 — Angle / Outline Semantic Quality — DONE
 
-CQ-03 closeout: PR #234 merged; main `bb96995c294269b6c2398964cd41277133253f86`; issue #229 closed completed.
+- [x] Angle semantic assessment checks title → reader problem → central question → core promise and exact Pillar/Cluster behavior.
+- [x] Outline semantic assessment checks committed coverage placement, distinct section jobs/support purposes, redundancy/filler and relationship invention.
+- [x] Semantic Artifacts bind exact upstream lineage; Angle/Outline approval and handoff revalidate current semantic PASS.
+- [x] Pre-CQ04 role-aware and legacy/no-role artifacts remain readable without fabricated semantics.
+- [x] Final implementation head `026ad2f57a3240218adfe4a03a66568e7442981d`; CI #36233164012 PASS.
+- [x] MG exact-head self-review PASS.
+- [x] OpenCodeReview v1.12.9: 18/18 reviewable, 0 skipped, 0 Critical/High/Medium/Low.
+- [x] Agent Local: 80 focused + 1226 full backend PASS; frontend lint/typecheck/build PASS.
+- [x] Founder merged PR #235; main `80ad589583d6d2b67e416109ccbd537a52139904`.
 
-### CQ-04 — Angle / Outline Semantic Quality — IMPLEMENTATION COMPLETE / CLOSEOUT
+CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06 final prose-quality gate, no durable Pillar↔Cluster DB relation, no production activation, operational migration or publication.
 
-- [x] Audit current Angle/Outline contracts and locate semantic-quality gaps.
-- [x] Lock architecture: immutable semantic-quality Artifacts + deterministic validators; no universal numeric score.
-- [x] Define versioned Angle semantic assessment contract with `pass|revise` and stable human-readable findings.
-- [x] Require semantic assessment of title → reader problem → central question → core promise coherence.
-- [x] Require Pillar breadth/navigation/delegation semantics versus Cluster narrow/deep semantics.
-- [x] Bind Angle assessment to exact Angle candidate, editorial-role contract and upstream CQ-03 support-depth lineage when present.
-- [x] Expose Angle pass/revise reasons before human Angle approval and block `revise`.
-- [x] Define versioned Outline semantic assessment contract with exact section/coverage refs.
-- [x] Require every committed coverage requirement to be intentionally fulfilled by at least one semantically matching section.
-- [x] Require every section to have a distinct reader job and evidence/originality purpose.
-- [x] Detect major section overlap/repetition and broad-summary filler before Writer.
-- [x] Preserve CQ-02 relationship guard; never invent Pillar↔Cluster identities.
-- [x] Expose Outline pass/revise reasons before human Outline approval / Writer; revalidate semantic lineage at handoff.
-- [x] Add positive/adversarial Pillar + Cluster fixtures for role drift, coverage drift, redundant sections and unsupported section intent.
-- [x] Bump Angle/Outline generation/render identities only where semantic behavior changed; no new registry migration was required.
+### CQ-05 — Writer + Human Voice truth preservation — IN IMPLEMENTATION
+
+- [x] Audit current Writer → Review/Revise → Assertion Audit → Source-copy path.
+- [x] Audit historical HV-01 / PR #186 as reference only; do not merge stale code.
+- [x] Lock architecture: enhance the existing Review/Revise rewrite instead of adding a second model rewrite stage.
+- [ ] CQ05-A: port bounded Human Voice deterministic style/number/quote guard primitives and tests onto current main.
+- [ ] CQ05-B: add explicit Human Voice policy to Review/Revise model input/output validation while preserving exact Outline/support refs and independent VI/EN lanes.
+- [ ] CQ05-C: persist immutable before/after Human Voice trace bound to exact source and rewritten draft hashes; no new business table unless proven necessary.
+- [ ] CQ05-D: prove Assertion Audit and Source-copy consume the exact rewritten bytes; stale/source substitution fails closed.
+- [ ] CQ05-E: expose before/after comparison for operator review and add safe/adversarial truth-drift fixtures.
+- [ ] Bump generator/render/prompt identities only where semantics actually change; do not silently reuse old output.
 - [ ] Normal CI green on final code/docs SHA.
-- [ ] MG full-diff self-review with no unresolved P0/P1 semantic-quality defect.
+- [ ] MG full-diff self-review with no unresolved P0/P1 truth-preservation defect.
 - [ ] Exact-ref OpenCodeReview + MG triage.
 - [ ] Agent Local exact-head bounded verification.
 - [ ] Founder merge.
 
-CQ-04 boundaries: no Writer/Human Voice; no CQ-06 final prose-quality gate; no durable Pillar↔Cluster DB relation; no production activation, operational migration or publication.
+CQ-05 boundaries: no AI-detector score or “humanization percentage”; no Evidence truth reclassification; no invented artist intent/quotes/customer stories/sensory observations/business promises/prices/scarcity/policies; no sibling-locale draft input; no final human-approval bypass; no production publication or operational migration.
