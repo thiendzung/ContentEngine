@@ -14,6 +14,9 @@ from app.modules.content_engine.journal.editorial_role import (
     editorial_role_contract_or_none,
 )
 from app.modules.content_engine.journal.outline import OutlineGenerationError, OutlineModelPort
+from app.modules.content_engine.journal.semantic_quality import (
+    OUTLINE_SEMANTIC_FINDING_CODES,
+)
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentRunnerError,
@@ -43,7 +46,7 @@ OUTLINE_TASK_KEY = "outline"
 # Founder-approved Angle provider/model route for this run rather than mutating its snapshot.
 OUTLINE_ROUTE_TASK_KEY = "angle"
 OUTLINE_TIMEOUT_SECONDS = 300.0
-OUTLINE_RENDER_PROTOCOL_VERSION = "journal.outline.render.v2"
+OUTLINE_RENDER_PROTOCOL_VERSION = "journal.outline.render.v3"
 
 
 def _definition_ref(key: str, version: int) -> str:
@@ -151,7 +154,61 @@ def _bind_outline_output_schema(
     if not isinstance(cloned, dict):
         raise OutlineGenerationError("outline_output_schema_invalid")
     properties = cloned.get("properties")
-    sections = properties.get("sections") if isinstance(properties, dict) else None
+    if not isinstance(properties, dict):
+        raise OutlineGenerationError("outline_output_schema_invalid")
+    role_contract = _validated_editorial_role_contract(input_bundle)
+    if role_contract is not None:
+        semantic_role = role_contract.get("role")
+        if semantic_role not in {"pillar", "cluster"}:
+            raise OutlineGenerationError("outline_output_schema_invalid")
+        properties["semantic_quality"] = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "schema_version": {"type": "integer", "enum": [1]},
+                "stage": {"type": "string", "enum": ["outline"]},
+                "role": {"type": "string", "enum": [semantic_role]},
+                "verdict": {"type": "string", "enum": ["pass", "revise"]},
+                "findings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "enum": list(OUTLINE_SEMANTIC_FINDING_CODES),
+                            },
+                            "subject_ref": {"type": "string", "minLength": 1},
+                            "reason": {"type": "string", "minLength": 1},
+                            "remediation": {"type": "string", "minLength": 1},
+                        },
+                        "required": [
+                            "code",
+                            "subject_ref",
+                            "reason",
+                            "remediation",
+                        ],
+                    },
+                },
+            },
+            "required": [
+                "schema_version",
+                "stage",
+                "role",
+                "verdict",
+                "findings",
+            ],
+        }
+        required = cloned.get("required")
+        if not isinstance(required, list) or any(
+            not isinstance(item, str) for item in required
+        ):
+            raise OutlineGenerationError("outline_output_schema_invalid")
+        if "semantic_quality" not in required:
+            required.append("semantic_quality")
+
+    sections = properties.get("sections")
     section_items = sections.get("items") if isinstance(sections, dict) else None
     section_properties = (
         section_items.get("properties") if isinstance(section_items, dict) else None
@@ -210,6 +267,24 @@ def render_outline_prompt(
             "or invent one; preserve bounded legacy behavior."
         )
     )
+    semantic_quality_rule = (
+        "Return one top-level semantic_quality object with schema_version 1, stage "
+        "'outline', the exact editorial role, verdict pass|revise, and findings. "
+        "Pass requires zero findings; revise requires at least one. Judge exact "
+        "approved-Angle alignment, Pillar/Cluster role behavior, semantic fulfillment "
+        "of every committed coverage requirement, distinct section reader jobs, "
+        "evidence/originality support purpose, material cross-section redundancy, "
+        "broad-summary filler, and invented relationship identity. Use only these "
+        f"finding codes: {', '.join(OUTLINE_SEMANTIC_FINDING_CODES)}. subject_ref must "
+        "be outline:global, outline:angle_alignment, outline:role, "
+        "outline:relationship, an exact section:<section_id>, or exact "
+        "coverage:<coverage-N>. Do not use a numeric quality score. Do not reclassify "
+        "factual Evidence truth already established upstream."
+        if editorial_role_contract is not None
+        else (
+            "Legacy no-role case: do not invent Pillar/Cluster semantic assessment."
+        )
+    )
     input_json = json.dumps(
         outline_model_input,
         ensure_ascii=False,
@@ -227,6 +302,7 @@ def render_outline_prompt(
         "covered to at least one section coverage_requirement_ids entry. Never map "
         "requirements marked reduced.\n\n"
         f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
+        f"SEMANTIC_QUALITY_RULE:\n{semantic_quality_rule}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
