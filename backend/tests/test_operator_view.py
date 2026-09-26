@@ -171,7 +171,12 @@ async def test_operator_view_surfaces_exact_cq03_unresolved_support(
         assert diagnostic is not None
         assert diagnostic.content_hash == view.coverage_support.artifact_hash
 
-        diagnostic.content_hash = "d" * 64
+        step = await session.get(StepRun, leased.step_run_id)
+        assert step is not None and isinstance(step.error_json, dict)
+        step.error_json = {
+            **step.error_json,
+            "diagnostic_content_hash": "d" * 64,
+        }
         await session.flush()
         with pytest.raises(
             OperatorControlError,
