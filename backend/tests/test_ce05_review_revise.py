@@ -398,6 +398,54 @@ async def test_review_revise_reuse_fails_closed_on_conflicting_human_voice_trace
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("generator_version", "schema_version"),
+    [
+        ("ce05.journal_review_revise.v5", 1),
+        ("ce05.journal_review_revise.v6", 2),
+    ],
+)
+async def test_review_revise_rejects_noncanonical_generator_identity(
+    generator_version: str,
+    schema_version: int,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        _step, manifest, prompt_version, recipe_version = await _review_manifest(
+            session,
+            fixture,
+            source,
+        )
+        model = FakeWriterModel([_draft_payload(fixture.writer_input, "en")])
+
+        with pytest.raises(
+            WriterGenerationError,
+            match="review_revise_generator_identity_invalid",
+        ):
+            await ReviewReviseGenerator(max_attempts=1).revise_draft(
+                session,
+                writer_run_id=fixture.writer_input.writer_run.id,
+                source_draft_artifact_id=source.artifact.id,
+                expected_source_draft_version=source.artifact.version,
+                expected_source_draft_hash=source.artifact.content_hash,
+                outline_artifact_id=fixture.outline_result.artifact.id,
+                expected_outline_version=fixture.outline_result.artifact.version,
+                expected_outline_hash=fixture.outline_result.artifact.content_hash,
+                locale="en",
+                model=model,
+                provider="fixture-provider",
+                model_name="fixture-model",
+                context_manifest_id=manifest.id,
+                prompt_version=prompt_version,
+                recipe_version=recipe_version,
+                generator_version=generator_version,
+                schema_version=schema_version,
+            )
+
+        assert model.calls == 0
+
+
+@pytest.mark.asyncio
 async def test_review_revise_fails_closed_when_unresolved_remains_after_budget() -> None:
     async with isolated_session() as session:
         fixture, source = await _source_draft(session, locale="en", unresolved=True)

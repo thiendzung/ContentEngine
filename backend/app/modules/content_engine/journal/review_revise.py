@@ -515,6 +515,11 @@ class ReviewReviseGenerator:
         generator_version: str = REVIEW_REVISE_GENERATOR_VERSION,
         schema_version: int = REVIEW_REVISE_SCHEMA_VERSION,
     ) -> WriterGenerationResult:
+        if (
+            generator_version != REVIEW_REVISE_GENERATOR_VERSION
+            or schema_version != REVIEW_REVISE_SCHEMA_VERSION
+        ):
+            raise WriterGenerationError("review_revise_generator_identity_invalid")
         review_input = await load_review_revise_input(
             session,
             writer_run_id=writer_run_id,

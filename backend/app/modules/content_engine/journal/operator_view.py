@@ -26,6 +26,7 @@ from app.modules.content_engine.journal.angle import (
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
 )
+from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
 from app.modules.content_engine.journal.human_voice_trace import (
     HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
     HUMAN_VOICE_TRACE_GENERATOR_VERSION,
@@ -478,7 +479,7 @@ async def _human_voice_comparison(
         raise OperatorControlError("operator_human_voice_projection_invalid")
     policy_version = payload.get("policy_version")
     if (
-        not isinstance(policy_version, str)
+        policy_version != HUMAN_VOICE_POLICY_VERSION
         or comparison.get("policy_version") != policy_version
         or comparison.get("locale") != revised.locale
         or comparison.get("advisory_only") is not True
