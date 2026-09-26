@@ -441,4 +441,6 @@ async def test_operator_view_exposes_exact_pending_outline_binding(
         assert view.pending_gate.artifact.id != stray.id
         assert view.pending_gate.artifact.version == exact.version
         assert view.pending_gate.artifact.content_hash == exact.content_hash
+        assert view.pending_gate.semantic_artifact is None
+        assert view.pending_gate.semantic_quality is None
         assert view.pending_gate.outline["title"] == "Exact projected Outline"
