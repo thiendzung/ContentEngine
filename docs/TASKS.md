@@ -625,7 +625,7 @@ CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06
 - [x] CQ05-D: current Review/Revise v6 requires valid trace before Assertion Audit; Source-copy revalidates the exact audited draft and fails closed on source mismatch.
 - [x] CQ05-E: operator quality view exposes bounded before/after diagnostics + exact trace binding; safe/adversarial fixtures cover both `vi-VN` and `en`.
 - [x] Review/Revise generator bumped to v6 and Human Voice render protocol is explicitly versioned; registry prompt/recipe identity remains unchanged because registry bodies were not changed.
-- [ ] MG full-diff self-review with no unresolved P0/P1 truth-preservation defect.
+- [x] MG full-diff self-review complete; no unresolved P0/P1 truth-preservation defect identified before exact-SHA local verification.
 - [ ] Exact-ref OpenCodeReview owned/triaged by MG; execute locally once if that is where OCR runs.
 - [ ] Agent Local exact-head heavy verification: focused/full tests, disposable DB/migrations, frontend build and applicable runtime/smoke proof.
 - [ ] Minimal GitHub confirmation CI green on final SHA when Actions is available; if quota/service is unavailable, record that explicitly instead of rerunning heavy verification elsewhere.
