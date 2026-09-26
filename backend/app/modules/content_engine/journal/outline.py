@@ -571,6 +571,41 @@ async def load_outline_semantic_quality_for_artifact(
         raise OutlineGenerationError(exc.code) from exc
 
 
+async def load_persisted_outline_semantic_quality(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+    outline_input: OutlineInput,
+) -> tuple[JournalOutline, OutlineSemanticQualityResult | None]:
+    if artifact.artifact_type != "journal_outline":
+        raise OutlineGenerationError("outline_artifact_type_invalid")
+    payload = _dict(artifact.content_json, "outline_artifact_payload_invalid")
+    if _canonical_hash(payload) != artifact.content_hash:
+        raise OutlineGenerationError("outline_artifact_snapshot_stale")
+    raw_outline = _dict(payload.get("outline"), "outline_artifact_payload_invalid")
+    model_output = {
+        key: raw_outline[key]
+        for key in (
+            "primary_answer",
+            "primary_answer_support_type",
+            "primary_answer_evidence_refs",
+            "primary_answer_originality_refs",
+            "primary_answer_claim_guard",
+            "sections",
+        )
+        if key in raw_outline
+    }
+    outline = _validate_model_output(model_output, outline_input=outline_input)
+    if outline.to_dict() != raw_outline:
+        raise OutlineGenerationError("outline_artifact_payload_stale")
+    semantic_result = await load_outline_semantic_quality_for_artifact(
+        session,
+        artifact=artifact,
+        outline_input=outline_input,
+        outline=outline,
+    )
+    return outline, semantic_result
+
 def _model_identity(model: OutlineModelPort) -> tuple[str, str] | None:
     resolver = getattr(model, "resolved_model_identity", None)
     if resolver is None:
@@ -930,6 +965,7 @@ __all__ = [
     "OUTLINE_SCHEMA_VERSION",
     "load_outline_input",
     "load_outline_semantic_quality_for_artifact",
+    "load_persisted_outline_semantic_quality",
     "outline_model_input_hash",
     "persist_journal_outline",
 ]
