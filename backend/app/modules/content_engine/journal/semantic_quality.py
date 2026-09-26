@@ -229,8 +229,8 @@ def validate_semantic_quality_assessment(
 
     return SemanticQualityAssessment(
         schema_version=SEMANTIC_QUALITY_SCHEMA_VERSION,
-        stage=cast(SemanticStage, stage),
-        role=cast(SemanticRole, role),
+        stage=stage,
+        role=role,
         verdict=cast(SemanticVerdict, verdict),
         findings=tuple(findings),
     )
