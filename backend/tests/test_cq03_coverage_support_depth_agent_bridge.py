@@ -12,15 +12,15 @@ from app.modules.content_engine.journal.coverage_support_depth_agent_bridge impo
     CoverageSupportDepthRegistryConfig,
     _bind_output_schema,
 )
-from app.modules.harness.models import ContentRun, ContextManifest
+from app.modules.content_engine.journal.coverage_support_depth_eval import (
+    build_coverage_support_depth_model_input,
+)
 from app.modules.harness.agent_runner import (
     AgentRunnerRegistry,
     AgentRunRequest,
     AgentRunResult,
 )
-from app.modules.content_engine.journal.coverage_support_depth_eval import (
-    build_coverage_support_depth_model_input,
-)
+from app.modules.harness.models import ContentRun, ContextManifest
 
 
 def _base_schema() -> dict[str, object]:
