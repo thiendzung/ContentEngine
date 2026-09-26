@@ -17,6 +17,10 @@ from test_ce05_writer import (
     isolated_session,
 )
 
+from app.modules.content_engine.journal.assertion_audit import (
+    AssertionAuditError,
+    load_assertion_audit_input,
+)
 from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
 from app.modules.content_engine.journal.human_voice_trace import (
     HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
@@ -276,6 +280,21 @@ async def test_review_revise_turns_declared_gaps_into_clean_v2_and_reuses_it() -
         assert comparison["advisory_only"] is True
         assert str(trace.id) in step.output_artifact_refs_json
 
+        audit_input = await load_assertion_audit_input(
+            session,
+            writer_run_id=fixture.writer_input.writer_run.id,
+            revised_draft_artifact_id=first.artifact.id,
+            expected_revised_draft_version=first.artifact.version,
+            expected_revised_draft_hash=first.artifact.content_hash,
+            outline_artifact_id=fixture.outline_result.artifact.id,
+            expected_outline_version=fixture.outline_result.artifact.version,
+            expected_outline_hash=fixture.outline_result.artifact.content_hash,
+            locale="en",
+        )
+        assert audit_input.source_artifact.id == first.artifact.id
+        assert audit_input.source_artifact.content_hash == first.artifact.content_hash
+        assert audit_input.source_draft.to_dict() == first.draft.to_dict()
+
 
 @pytest.mark.asyncio
 async def test_review_revise_reuse_fails_closed_on_conflicting_human_voice_trace() -> None:
@@ -348,6 +367,22 @@ async def test_review_revise_reuse_fails_closed_on_conflicting_human_voice_trace
                 context_manifest_id=manifest.id,
                 prompt_version=prompt_version,
                 recipe_version=recipe_version,
+            )
+
+        with pytest.raises(
+            AssertionAuditError,
+            match="assertion_audit_human_voice_trace_invalid",
+        ):
+            await load_assertion_audit_input(
+                session,
+                writer_run_id=fixture.writer_input.writer_run.id,
+                revised_draft_artifact_id=first.artifact.id,
+                expected_revised_draft_version=first.artifact.version,
+                expected_revised_draft_hash=first.artifact.content_hash,
+                outline_artifact_id=fixture.outline_result.artifact.id,
+                expected_outline_version=fixture.outline_result.artifact.version,
+                expected_outline_hash=fixture.outline_result.artifact.content_hash,
+                locale="en",
             )
 
         assert model.calls == 1

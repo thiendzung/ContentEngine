@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -342,8 +343,6 @@ async def require_human_voice_trace_for_rewritten_artifact(
     ):
         raise HumanVoiceTraceError("human_voice_trace_source_binding_stale")
     try:
-        from uuid import UUID
-
         source_id = UUID(raw_id)
     except ValueError as exc:
         raise HumanVoiceTraceError("human_voice_trace_source_binding_stale") from exc
@@ -359,7 +358,10 @@ async def require_human_voice_trace_for_rewritten_artifact(
     ):
         raise HumanVoiceTraceError("human_voice_trace_source_binding_stale")
     source_payload = source_artifact.content_json
-    if not isinstance(source_payload, dict) or _hash(source_payload) != source_artifact.content_hash:
+    if (
+        not isinstance(source_payload, dict)
+        or _hash(source_payload) != source_artifact.content_hash
+    ):
         raise HumanVoiceTraceError("human_voice_trace_source_snapshot_stale")
     raw_draft = source_payload.get("draft")
     if not isinstance(raw_draft, dict):
