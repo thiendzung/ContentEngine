@@ -299,6 +299,16 @@ async def _run(*, emit_idle: bool = True) -> None:
                 and exc.code == "operator_worker_research_failed"
             ):
                 failure_class = "research_failed"
+            elif (
+                isinstance(exc, OperatorWorkerError)
+                and exc.code == "operator_worker_coverage_support_unresolved"
+            ):
+                failure_class = "insufficient_support"
+            elif (
+                isinstance(exc, OperatorWorkerError)
+                and exc.code == "operator_worker_coverage_support_failed"
+            ):
+                failure_class = "coverage_support_failed"
             elif isinstance(exc, OperatorWorkerError) and "evidence" in exc.code:
                 failure_class = "insufficient_evidence"
             else:
