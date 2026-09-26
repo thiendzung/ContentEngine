@@ -13,15 +13,15 @@ SemanticRole = Literal["pillar", "cluster"]
 
 SEMANTIC_QUALITY_SCHEMA_VERSION = 1
 
-_ANGLE_FINDING_CODES = {
+ANGLE_SEMANTIC_FINDING_CODES = (
     "angle_title_problem_mismatch",
     "angle_problem_question_mismatch",
     "angle_question_promise_mismatch",
     "angle_role_drift",
     "angle_scope_drift",
     "angle_coverage_intent_drift",
-}
-_OUTLINE_FINDING_CODES = {
+)
+OUTLINE_SEMANTIC_FINDING_CODES = (
     "outline_angle_drift",
     "outline_role_drift",
     "outline_coverage_drift",
@@ -30,10 +30,10 @@ _OUTLINE_FINDING_CODES = {
     "outline_section_redundancy",
     "outline_broad_summary_filler",
     "outline_relationship_invention",
-}
+)
 _ALLOWED_FINDING_CODES = {
-    "angle": _ANGLE_FINDING_CODES,
-    "outline": _OUTLINE_FINDING_CODES,
+    "angle": set(ANGLE_SEMANTIC_FINDING_CODES),
+    "outline": set(OUTLINE_SEMANTIC_FINDING_CODES),
 }
 _SUBJECT_REF_PATTERN = re.compile(r"^[a-z0-9_.:-]+$")
 
@@ -237,6 +237,8 @@ def validate_semantic_quality_assessment(
 
 
 __all__ = [
+    "ANGLE_SEMANTIC_FINDING_CODES",
+    "OUTLINE_SEMANTIC_FINDING_CODES",
     "SEMANTIC_QUALITY_SCHEMA_VERSION",
     "SemanticFinding",
     "SemanticQualityAssessment",
