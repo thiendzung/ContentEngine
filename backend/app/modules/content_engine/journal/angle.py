@@ -31,13 +31,13 @@ from app.modules.content_engine.journal.editorial_role import (
     editorial_role_contract_or_none,
 )
 from app.modules.content_engine.journal.models import AngleApproval
-from app.modules.content_engine.journal.semantic_quality import SemanticRole
 from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
     JournalResearchHandoffError,
     ResearchDecision,
     _opportunity_payload,
 )
+from app.modules.content_engine.journal.semantic_quality import SemanticRole
 from app.modules.content_engine.lens_selection import (
     LensSelectionError,
     lens_selection_angle_context,
