@@ -249,7 +249,7 @@ def _semantic_support_depth_ref(
     cloned = _clone_json(artifact_ref)
     if not isinstance(cloned, dict):
         raise AngleGenerationError("angle_semantic_support_depth_ref_invalid")
-    return cast(dict[str, object], cloned)
+    return cloned
 
 
 def _semantic_candidate_refs(
