@@ -26,6 +26,7 @@ from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.evidence.contracts import is_usable_originality_item
 
 COVERAGE_SUPPORT_DEPTH_ARTIFACT_TYPE = "coverage_support_depth"
+COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE = "coverage_support_failure_diagnostic"
 COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
@@ -261,6 +262,22 @@ async def load_coverage_support_depth_input(
     )
 
 
+async def _append_step_output_ref(
+    session: AsyncSession,
+    *,
+    step: StepRun,
+    artifact: Artifact,
+) -> None:
+    artifact_ref = str(artifact.id)
+    if artifact_ref in step.output_artifact_refs_json:
+        return
+    step.output_artifact_refs_json = [
+        *step.output_artifact_refs_json,
+        artifact_ref,
+    ]
+    await session.flush()
+
+
 def _artifact_payload(
     source_input: CoverageSupportDepthInput,
     assessment: CoverageSupportDepthAssessment,
@@ -391,6 +408,7 @@ async def evaluate_coverage_support_depth(
             artifact.content_json,
             source_input=source_input,
         )
+        await _append_step_output_ref(session, step=step, artifact=artifact)
         return CoverageSupportDepthResult(
             artifact=artifact,
             assessment=assessment,
@@ -473,6 +491,7 @@ async def evaluate_coverage_support_depth(
             duplicate.content_json,
             source_input=source_input,
         )
+        await _append_step_output_ref(session, step=step, artifact=duplicate)
         return CoverageSupportDepthResult(
             artifact=duplicate,
             assessment=validated,
@@ -499,6 +518,7 @@ async def evaluate_coverage_support_depth(
     )
     session.add(artifact)
     await session.flush()
+    await _append_step_output_ref(session, step=step, artifact=artifact)
     unresolved = tuple(
         item.requirement_id
         for item in assessment.items
@@ -514,14 +534,161 @@ async def evaluate_coverage_support_depth(
     )
 
 
+async def load_validated_coverage_support_depth_artifact(
+    session: AsyncSession,
+    *,
+    artifact_id: UUID,
+    run_id: UUID,
+    step_run_id: UUID,
+    content_case_id: UUID,
+    opportunity_id: UUID,
+    evidence_set_id: UUID,
+    originality_pack_id: UUID,
+) -> CoverageSupportDepthResult:
+    artifact = await session.get(Artifact, artifact_id)
+    if (
+        artifact is None
+        or artifact.run_id != run_id
+        or artifact.step_run_id != step_run_id
+        or artifact.artifact_type != COVERAGE_SUPPORT_DEPTH_ARTIFACT_TYPE
+        or not isinstance(artifact.content_json, dict)
+        or artifact.content_hash != _canonical_hash(artifact.content_json)
+    ):
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_artifact_binding_invalid"
+        )
+    source_input = await load_coverage_support_depth_input(
+        session,
+        content_case_id=content_case_id,
+        opportunity_id=opportunity_id,
+        evidence_set_id=evidence_set_id,
+        originality_pack_id=originality_pack_id,
+    )
+    assessment, unresolved = _validate_persisted_payload(
+        artifact.content_json,
+        source_input=source_input,
+    )
+    return CoverageSupportDepthResult(
+        artifact=artifact,
+        assessment=assessment,
+        ready_for_angle=not unresolved,
+        unresolved_requirement_ids=unresolved,
+        model_attempts=0,
+        reused=True,
+    )
+
+
+def coverage_support_failure_diagnostic_payload(
+    source_input: CoverageSupportDepthInput,
+    result: CoverageSupportDepthResult,
+) -> dict[str, object]:
+    unresolved = [
+        {
+            "requirement_id": item.requirement_id,
+            "rationale": item.rationale,
+            "gaps": list(item.gaps),
+            "evidence_refs": list(item.evidence_refs),
+            "caveat_evidence_refs": list(item.caveat_evidence_refs),
+            "originality_refs": list(item.originality_refs),
+        }
+        for item in result.assessment.items
+        if item.status == "unresolved"
+    ]
+    if not unresolved or result.ready_for_angle:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_failure_diagnostic_requires_unresolved"
+        )
+    return {
+        "schema_version": COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION,
+        "artifact_type": COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
+        "input_snapshot_hash": source_input.input_snapshot_hash,
+        "opportunity": {
+            "id": str(source_input.opportunity.id),
+            "version": source_input.opportunity.version,
+        },
+        "evidence_set": {
+            "id": str(source_input.evidence_set.id),
+            "version": source_input.evidence_set.version,
+            "content_hash": source_input.evidence_set.content_hash,
+        },
+        "originality_pack": {
+            "id": str(source_input.originality_pack.id),
+            "snapshot_hash": source_input.originality_pack.snapshot_hash,
+        },
+        "ready_for_angle": False,
+        "unresolved": unresolved,
+    }
+
+
+async def persist_coverage_support_failure_diagnostic(
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+    step_run_id: UUID,
+    payload: dict[str, object],
+) -> Artifact:
+    run = await session.get(ContentRun, run_id)
+    step = await session.get(StepRun, step_run_id)
+    if (
+        run is None
+        or step is None
+        or step.run_id != run.id
+        or payload.get("artifact_type") != COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE
+        or payload.get("ready_for_angle") is not False
+    ):
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_failure_diagnostic_invalid"
+        )
+    unresolved = payload.get("unresolved")
+    if not isinstance(unresolved, list) or not unresolved:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_failure_diagnostic_invalid"
+        )
+    content_hash = _canonical_hash(payload)
+    existing = await session.scalar(
+        select(Artifact).where(
+            Artifact.run_id == run.id,
+            Artifact.step_run_id == step.id,
+            Artifact.artifact_type == COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
+            Artifact.content_hash == content_hash,
+        )
+    )
+    if existing is not None:
+        await _append_step_output_ref(session, step=step, artifact=existing)
+        return existing
+    latest_version = await session.scalar(
+        select(func.max(Artifact.version)).where(
+            Artifact.run_id == run.id,
+            Artifact.artifact_type == COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
+        )
+    )
+    artifact = Artifact(
+        run_id=run.id,
+        step_run_id=step.id,
+        artifact_type=COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
+        locale=None,
+        version=(latest_version or 0) + 1,
+        content_json=copy.deepcopy(payload),
+        content_hash=content_hash,
+    )
+    session.add(artifact)
+    await session.flush()
+    await _append_step_output_ref(session, step=step, artifact=artifact)
+    return artifact
+
+
 __all__ = [
     "COVERAGE_SUPPORT_DEPTH_ARTIFACT_TYPE",
+    "COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE",
     "COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION",
     "CoverageSupportDepthInput",
     "CoverageSupportDepthModelPort",
     "CoverageSupportDepthResult",
     "CoverageSupportDepthRuntimeError",
     "build_coverage_support_depth_model_input",
+    "coverage_support_failure_diagnostic_payload",
     "evaluate_coverage_support_depth",
     "load_coverage_support_depth_input",
+    "load_validated_coverage_support_depth_artifact",
+    "persist_coverage_support_failure_diagnostic",
 ]
