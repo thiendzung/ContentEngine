@@ -286,6 +286,20 @@ def _validate_artifact_payload(
     )
 
 
+def _artifact_binds_angle(
+    artifact: Artifact,
+    *,
+    angle_artifact_id: object,
+) -> bool:
+    payload = artifact.content_json
+    if not isinstance(payload, dict):
+        return False
+    angle_ref = payload.get("angle_artifact")
+    if not isinstance(angle_ref, dict):
+        return False
+    return angle_ref.get("id") == str(angle_artifact_id)
+
+
 async def load_angle_semantic_quality(
     session: AsyncSession,
     *,
@@ -308,9 +322,10 @@ async def load_angle_semantic_quality(
     matches = [
         artifact
         for artifact in rows
-        if isinstance(artifact.content_json, dict)
-        and isinstance(artifact.content_json.get("angle_artifact"), dict)
-        and artifact.content_json["angle_artifact"].get("id") == str(angle_artifact.id)
+        if _artifact_binds_angle(
+            artifact,
+            angle_artifact_id=angle_artifact.id,
+        )
     ]
     if len(matches) != 1:
         raise AngleSemanticQualityError(
