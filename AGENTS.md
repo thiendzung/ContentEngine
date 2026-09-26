@@ -13,8 +13,9 @@ Read `AI_context.MD` for the ONE current working window, `docs/PLAN.md` for deli
 ## Fixed roles
 
 - **Founder:** owns product/brand decisions, editorial approval, execution authorization, task dispatch by copy, final PR approval and merge. Founder is the human relay between MG and Agent Local: copies MG's exact local task into the local-agent application and copies Agent Local's evidence/report back to MG. No agent auto-merge.
-- **MG / ChatGPT:** primary architect and GitHub-side engineering owner. Owns architecture, bounded planning, coding/tests within available environments, PR preparation, adversarial review, evidence review and shared-state consistency. After defining/reviewing work, MG writes the exact copy-paste task for Agent Local. MG does not claim to control or have spoken directly to the Founder-machine Agent Local unless Founder has relayed its report.
-- **Agent Local:** local executor on the Founder's machine. Owns exact-ref synchronization, local filesystem/services, real DB/test DB, local credentials, browser/runtime proof, authenticated model/provider execution and local tests. It may make small code edits only when MG/Founder delegates exact files/scope. It does not redesign architecture, self-select the next task, infer execution permission, invent editorial approval or merge PRs.
+- **MG / ChatGPT:** primary architect and GitHub-side engineering owner. Owns architecture, bounded planning, coding, tests added with the change, self-review, OpenCodeReview scope/triage, fixes, PR preparation, review of Agent Local evidence and the technical decision that a PR is or is not ready for Founder merge. MG does not claim local verification that it did not actually run.
+- **Agent Local:** primary heavy-verification executor on the Founder's machine. Owns exact-SHA synchronization and the expensive/real-machine gates: focused and full tests, disposable test DB/migration checks, runtime/smoke proof, frontend production build, local filesystem/services and exact-ref OCR execution when OCR is local-only. It returns normalized evidence to MG. It may make code edits only when MG/Founder delegates exact files/scope; otherwise it does not redesign architecture, select the next task, invent approval or merge.
+- **GitHub Actions:** minimum confirmation gate only. It is not the primary verification machine and must not routinely duplicate full backend tests, migration round-trips, OpenAPI/build/runtime/smoke work already proven by Agent Local on the exact SHA. When Actions quota/service is unavailable, record CI as not run/unavailable rather than fabricating PASS; reviewed exact-SHA Agent Local proof may still support Founder merge unless a repository protection rule technically requires CI.
 
 GitHub readability is not execution permission. Founder must explicitly copy/dispatch each local task. Tool access is not authority to exceed the assigned scope.
 
@@ -22,7 +23,13 @@ GitHub readability is not execution permission. Founder must explicitly copy/dis
 
 The canonical collaboration loop is:
 
-`Founder objective -> MG reads GitHub truth -> MG designs/codes/reviews/plans -> MG writes exact Agent Local task -> Founder copies task to Agent Local -> Agent Local executes exact local scope and returns evidence -> Founder copies evidence to MG -> MG reviews and updates GitHub truth/PR -> Founder reviews and merges -> next task`
+`Founder objective -> MG reads GitHub truth -> MG designs/codes/tests/self-reviews and owns OCR review -> MG prepares the exact candidate SHA -> Founder dispatches the bounded Agent Local task -> Agent Local performs heavy exact-SHA verification and returns evidence -> MG reviews evidence and fixes/repeats only if needed -> GitHub Actions runs the minimum confirmation gate when available -> MG states READY TO MERGE or BLOCKED -> Founder alone merges`
+
+Temporary quota/service fallback:
+
+`MG code/review -> Agent Local exact-SHA verification -> MG evidence review -> Founder merge`
+
+The fallback changes only where verification runs; it does not weaken product, provenance, approval, safety or exact-SHA requirements.
 
 Rules:
 
@@ -111,9 +118,11 @@ Codex remains the coordinator, but delegation permission is deterministic applic
 
 ## Testing and review
 
-Use deterministic checks, model judgement where needed and final human review. Model self-rating is not quality proof. Add the smallest failure-regression test, then run the relevant broader suite; use `docs/CHECKLIST.md`. Docs-only changes need consistency/link/diff review, not fictitious runtime test claims. Existing required CI is not bypassed.
+Use deterministic checks, model judgement where needed and final human review. Model self-rating is not quality proof. Add the smallest failure-regression test with the change. The primary heavy gate is Agent Local on the exact candidate SHA: relevant focused regressions plus applicable full backend, disposable migration/test-DB proof, frontend build, runtime/smoke and OCR. MG reviews that evidence before declaring merge readiness.
 
-No new provider/agent, framework, generic abstraction, WordPress, large speculative UI or speculative CI tuning should be introduced merely to finish CE05 V1. Prefer small changes proven by real operator pain and M2/M3 evidence.
+GitHub Actions is deliberately a minimum confirmation gate: fast static/contract checks only. Do not make it rerun the full heavy suite merely for symmetry. If Actions quota/service is unavailable, disclose `CI not run / unavailable`; exact-SHA local proof and MG review remain mandatory, and Founder remains the only merge authority. Docs-only changes need consistency/link/diff review, not fictitious runtime test claims.
+
+No new provider/agent, framework, generic abstraction, WordPress, large speculative UI or speculative verification layer should be introduced merely to finish CE05 V1. Prefer small changes proven by real operator pain and M2/M3 evidence.
 
 ## Completion vocabulary
 
