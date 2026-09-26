@@ -48,7 +48,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-05 / #231** is active on main `80ad589583d6d2b67e416109ccbd537a52139904`. Architecture is locked to enhance the existing locale-specific Review/Revise rewrite with Human Voice truth-preservation rather than adding a second model rewrite stage. Port only useful pure guards/diagnostics from historical HV-01 / PR #186. The target path is `immutable Writer draft → Human-Voice-aware Review/Revise → immutable rewritten draft → Assertion Audit on exact rewritten bytes → Source-copy → existing quality readiness`.
+**CQ-05 / #231** implementation slices A–E are complete in draft PR #236 and are now in MG review / verification closeout. The implementation keeps one locale-specific Review/Revise model call, adds deterministic truth guards, immutable exact before/after trace lineage, current-v6 trace enforcement before Assertion Audit, exact Source-copy source revalidation, and bounded operator diagnostics without AI-detector or humanization scoring. Production activation/migration/publication remain out of scope.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -69,9 +69,9 @@ P2 completion did not authorize blanket content/model execution or publication. 
 Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
 
-OpenCodeReview process for new code-bearing PRs:
-`CI -> exact-ref OCR Delegation preview/review -> MG triage -> Agent Local bounded local proof when needed -> Founder merge`.
-OCR is advisory only: no auto-fix, auto-merge or required merge gate.
+Code-bearing PR verification process:
+`MG code/tests/self-review + OCR ownership -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub confirmation CI when available -> Founder merge`.
+If GitHub Actions quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path; never fabricate CI PASS. OCR remains advisory and never auto-fixes or merges.
 
 ## Current working log
 

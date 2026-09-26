@@ -618,12 +618,12 @@ CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06
 - [x] Audit current Writer → Review/Revise → Assertion Audit → Source-copy path.
 - [x] Audit historical HV-01 / PR #186 as reference only; do not merge stale code.
 - [x] Lock architecture: enhance the existing Review/Revise rewrite instead of adding a second model rewrite stage.
-- [ ] CQ05-A: port bounded Human Voice deterministic style/number/quote guard primitives and tests onto current main.
-- [ ] CQ05-B: add explicit Human Voice policy to Review/Revise model input/output validation while preserving exact Outline/support refs and independent VI/EN lanes.
-- [ ] CQ05-C: persist immutable before/after Human Voice trace bound to exact source and rewritten draft hashes; no new business table unless proven necessary.
-- [ ] CQ05-D: prove Assertion Audit and Source-copy consume the exact rewritten bytes; stale/source substitution fails closed.
-- [ ] CQ05-E: expose before/after comparison for operator review and add safe/adversarial truth-drift fixtures.
-- [ ] Bump generator/render/prompt identities only where semantics actually change; do not silently reuse old output.
+- [x] CQ05-A: bounded Human Voice style diagnostics plus numeric/direct-quote guards are implemented and regression-covered.
+- [x] CQ05-B: Review/Revise is Human-Voice-aware in the existing single model call; exact structure/support refs and independent VI/EN lanes remain enforced.
+- [x] CQ05-C: immutable `human_voice_trace` Artifact binds exact source/rewrite artifact + visible-draft hashes and advisory before/after diagnostics; no new table/migration.
+- [x] CQ05-D: current Review/Revise v6 requires valid trace before Assertion Audit; Source-copy revalidates the exact audited draft and fails closed on source mismatch.
+- [x] CQ05-E: operator quality view exposes bounded before/after diagnostics + exact trace binding; safe/adversarial fixtures cover both `vi-VN` and `en`.
+- [x] Review/Revise generator bumped to v6 and Human Voice render protocol is explicitly versioned; registry prompt/recipe identity remains unchanged because registry bodies were not changed.
 - [ ] MG full-diff self-review with no unresolved P0/P1 truth-preservation defect.
 - [ ] Exact-ref OpenCodeReview owned/triaged by MG; execute locally once if that is where OCR runs.
 - [ ] Agent Local exact-head heavy verification: focused/full tests, disposable DB/migrations, frontend build and applicable runtime/smoke proof.

@@ -205,17 +205,17 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] Existing Writer → Review/Revise → Assertion Audit → Source-copy pipeline is the integration target.
 - [x] Historical HV-01 is reference material only; stale workflow code is not merged blindly.
 - [x] Human Voice reuses the existing Review/Revise model call unless evidence proves a separate call is necessary.
-- [ ] Rewrite source is one exact immutable locale Writer draft with id/version/hash.
-- [ ] VI and EN remain independent lanes; sibling draft input remains forbidden.
-- [ ] Exact Outline section IDs/order/support refs remain unchanged by Human Voice rewrite.
-- [ ] Deterministic guards reject introduced unsupported numbers and direct quotes.
-- [ ] Prompt/policy explicitly forbids invented artist intent, customer stories, sensory observations, business promises, prices, scarcity and policies.
-- [ ] Human Voice style diagnostics are advisory only; no AI-detector/authorship score or humanization percentage.
-- [ ] Rewritten output is a new immutable exact draft; source bytes are never mutated.
-- [ ] Before/after trace binds exact source and rewritten artifact id/version/hash.
-- [ ] Assertion Audit reruns on the rewritten exact bytes before Source-copy/final quality can advance.
-- [ ] Stale/source substitution or audit bound to pre-rewrite bytes fails closed.
-- [ ] Safe rewrite fixtures and adversarial truth-drift fixtures cover VI and EN.
-- [ ] Operator can inspect bounded before/after comparison without fabricated quality scoring.
-- [ ] Generation/render/prompt identity changes prevent silent reuse when semantics change.
+- [x] Rewrite source is one exact immutable locale Writer draft with id/version/hash.
+- [x] VI and EN remain independent lanes; sibling draft input remains forbidden.
+- [x] Exact Outline section IDs/order/support refs remain unchanged by Human Voice rewrite.
+- [x] Deterministic guards reject introduced unsupported numbers and direct quotes.
+- [x] Prompt/policy explicitly forbids invented artist intent, customer stories, sensory observations, business promises, prices, scarcity and policies.
+- [x] Human Voice style diagnostics are advisory only; no AI-detector/authorship score or humanization percentage.
+- [x] Rewritten output is a new immutable exact draft; source bytes are never mutated.
+- [x] Before/after trace binds exact source and rewritten artifact id/version/hash plus visible-draft hashes.
+- [x] Assertion Audit reruns on the rewritten exact bytes before Source-copy/final quality can advance.
+- [x] Stale/source substitution and Human Voice trace conflicts fail closed; Source-copy requires the exact Assertion Audit source binding.
+- [x] Safe rewrite fixtures and adversarial truth-drift fixtures cover VI and EN.
+- [x] Operator can inspect bounded before/after style comparison and exact trace refs without fabricated quality scoring.
+- [x] Review/Revise v6 + versioned Human Voice render protocol prevent silent reuse when semantics change.
 - [ ] CI / MG / OCR / Agent Local / Founder merge gates complete.
