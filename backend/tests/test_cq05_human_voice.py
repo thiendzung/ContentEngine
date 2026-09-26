@@ -110,7 +110,7 @@ def test_direct_quote_guard_allows_source_or_exact_support_and_rejects_invention
     validate_no_invented_direct_quotes(
         source_text="The artist described the process.",
         rewritten_text='The artist said, "I work slowly."',
-        allowed_support_texts=('Interview note: "I work slowly."'),
+        allowed_support_texts=('Interview note: "I work slowly."',),
     )
 
     with pytest.raises(
@@ -120,7 +120,19 @@ def test_direct_quote_guard_allows_source_or_exact_support_and_rejects_invention
         validate_no_invented_direct_quotes(
             source_text="The artist described the process.",
             rewritten_text='The artist said, "I paint from memory."',
-            allowed_support_texts=('Interview note: "I work slowly."'),
+            allowed_support_texts=('Interview note: "I work slowly."',),
+        )
+
+
+def test_support_text_allowlist_rejects_bare_string() -> None:
+    with pytest.raises(
+        HumanVoiceGuardError,
+        match="human_voice_support_texts_invalid",
+    ):
+        validate_no_invented_direct_quotes(
+            source_text="The artist described the process.",
+            rewritten_text='The artist said, "I work slowly."',
+            allowed_support_texts='Interview note: "I work slowly."',
         )
 
 

@@ -159,6 +159,19 @@ def scan_formulaic_style(
     return tuple(findings)
 
 
+def _validated_support_texts(
+    values: Sequence[str],
+) -> tuple[str, ...]:
+    if isinstance(values, str):
+        raise HumanVoiceGuardError("human_voice_support_texts_invalid")
+    normalized: list[str] = []
+    for value in values:
+        if not isinstance(value, str) or not value.strip():
+            raise HumanVoiceGuardError("human_voice_support_texts_invalid")
+        normalized.append(value)
+    return tuple(normalized)
+
+
 def validate_no_introduced_numbers(
     *,
     source_text: str,
@@ -168,7 +181,7 @@ def validate_no_introduced_numbers(
     """Reject a new numeric token absent from both source and exact allowed support."""
 
     allowed = numeric_tokens(source_text)
-    for support in allowed_support_texts:
+    for support in _validated_support_texts(allowed_support_texts):
         allowed.update(numeric_tokens(support))
     introduced = sorted(numeric_tokens(rewritten_text) - allowed)
     if introduced:
@@ -187,7 +200,7 @@ def validate_no_invented_direct_quotes(
     """Reject a direct quote absent from both source and exact allowed support."""
 
     allowed = direct_quote_spans(source_text)
-    for support in allowed_support_texts:
+    for support in _validated_support_texts(allowed_support_texts):
         allowed.update(direct_quote_spans(support))
     introduced = sorted(direct_quote_spans(rewritten_text) - allowed)
     if introduced:
