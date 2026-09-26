@@ -14,7 +14,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.models import OutlineApproval
-from app.modules.content_engine.journal.outline import OutlineGenerationError, load_outline_input
+from app.modules.content_engine.journal.outline import (
+    OutlineGenerationError,
+    OutlineInput,
+    load_outline_input,
+    load_persisted_outline_semantic_quality,
+)
 from app.modules.harness.models import Artifact, ContentRun
 
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -102,7 +107,10 @@ def _validate_snapshot(
         raise OutlineApprovalError("outline_approval_payload_invalid")
 
 
-async def _validate_upstream(session: AsyncSession, artifact: Artifact) -> None:
+async def _validate_upstream(
+    session: AsyncSession,
+    artifact: Artifact,
+) -> OutlineInput:
     payload = _dict(artifact.content_json, "outline_approval_payload_invalid")
     approved_angle = _dict(
         payload.get("approved_angle"), "outline_approval_angle_ref_invalid"
@@ -143,6 +151,22 @@ async def _validate_upstream(session: AsyncSession, artifact: Artifact) -> None:
         raise OutlineApprovalError("outline_approval_upstream_invalid", str(exc)) from exc
     if upstream.approved_angle.artifact.run_id != artifact.run_id:
         raise OutlineApprovalError("outline_approval_run_mismatch")
+    try:
+        _outline, semantic_result = await load_persisted_outline_semantic_quality(
+            session,
+            artifact=artifact,
+            outline_input=upstream,
+        )
+    except OutlineGenerationError as exc:
+        if exc.code.startswith("outline_semantic_"):
+            raise OutlineApprovalError(exc.code) from exc
+        raise OutlineApprovalError(
+            "outline_approval_upstream_invalid",
+            str(exc),
+        ) from exc
+    if semantic_result is not None and semantic_result.assessment.verdict != "pass":
+        raise OutlineApprovalError("outline_semantic_revision_required")
+    return upstream
 
 
 def _matches(
