@@ -1488,6 +1488,23 @@ async def handoff_approved_angle(
     actual_candidate_hash = angle_candidate_hash(selected)
     if actual_candidate_hash != expected_candidate_hash:
         raise AngleApprovalError("angle_candidate_snapshot_stale")
+
+    try:
+        semantic_result = await load_angle_semantic_quality_for_artifact(
+            session,
+            artifact=artifact,
+            bundle=bundle,
+            candidates=candidates,
+        )
+    except AngleGenerationError as exc:
+        raise AngleApprovalError(exc.code) from exc
+    if semantic_result is not None:
+        assessment = semantic_result.by_angle_id.get(selected.angle_id)
+        if assessment is None:
+            raise AngleApprovalError("angle_semantic_selected_candidate_missing")
+        if assessment.verdict != "pass":
+            raise AngleApprovalError("angle_semantic_revision_required")
+
     approvals = list(
         (
             await session.scalars(

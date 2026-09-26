@@ -759,6 +759,53 @@ async def test_angle_semantic_revision_blocks_founder_approval() -> None:
 
 
 @pytest.mark.asyncio
+async def test_angle_handoff_revalidates_semantic_artifact_conflicts() -> None:
+    async with isolated_session() as session:
+        artifact, _bundle, candidates = await _generated_fixture(session)
+        selected = candidates[0]
+        approval = await approve_angle_candidate(
+            session,
+            angle_artifact_id=artifact.id,
+            expected_artifact_version=artifact.version,
+            expected_artifact_hash=artifact.content_hash,
+            selected_angle_id=selected.angle_id,
+            expected_candidate_hash=angle_candidate_hash(selected),
+            approved_by="founder",
+            approval_reason="Founder approved exact semantic Angle snapshot.",
+        )
+        assert approval is not None
+
+        conflict = Artifact(
+            run_id=artifact.run_id,
+            step_run_id=artifact.step_run_id,
+            artifact_type="angle_semantic_quality",
+            locale=artifact.locale,
+            version=999,
+            content_json={
+                "angle_artifact": {
+                    "id": str(artifact.id),
+                }
+            },
+            content_hash="f" * 64,
+        )
+        session.add(conflict)
+        await session.flush()
+
+        with pytest.raises(
+            AngleApprovalError,
+            match="angle_semantic_artifact_conflict",
+        ):
+            await handoff_approved_angle(
+                session,
+                angle_artifact_id=artifact.id,
+                expected_artifact_version=artifact.version,
+                expected_artifact_hash=artifact.content_hash,
+                selected_angle_id=selected.angle_id,
+                expected_candidate_hash=angle_candidate_hash(selected),
+            )
+
+
+@pytest.mark.asyncio
 async def test_stale_or_conflicting_angle_approval_fails_closed() -> None:
     async with isolated_session() as session:
         artifact, bundle, candidates = await _generated_fixture(session)

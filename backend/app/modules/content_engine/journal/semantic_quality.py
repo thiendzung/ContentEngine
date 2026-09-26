@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, cast
@@ -35,8 +34,6 @@ _ALLOWED_FINDING_CODES = {
     "angle": set(ANGLE_SEMANTIC_FINDING_CODES),
     "outline": set(OUTLINE_SEMANTIC_FINDING_CODES),
 }
-_SUBJECT_REF_PATTERN = re.compile(r"^[a-z0-9_.:-]+$")
-
 
 class SemanticQualityError(ValueError):
     def __init__(self, code: str) -> None:
@@ -197,8 +194,6 @@ def validate_semantic_quality_assessment(
             finding.get("subject_ref"),
             "semantic_quality_subject_ref_required",
         )
-        if _SUBJECT_REF_PATTERN.fullmatch(subject_ref) is None:
-            raise SemanticQualityError("semantic_quality_subject_ref_invalid")
         if subject_ref not in allowed_subject_refs:
             raise SemanticQualityError("semantic_quality_subject_ref_unknown")
 
