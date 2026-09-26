@@ -14,6 +14,14 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.angle_semantic_quality import (
+    AngleSemanticCandidateRef,
+    AngleSemanticQualityError,
+    AngleSemanticQualityResult,
+    load_angle_semantic_quality,
+    persist_angle_semantic_quality,
+    validate_angle_semantic_output,
+)
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     CoverageSupportDepthRuntimeError,
     load_validated_coverage_support_depth_artifact,
@@ -23,6 +31,7 @@ from app.modules.content_engine.journal.editorial_role import (
     editorial_role_contract_or_none,
 )
 from app.modules.content_engine.journal.models import AngleApproval
+from app.modules.content_engine.journal.semantic_quality import SemanticRole
 from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
     JournalResearchHandoffError,
@@ -46,7 +55,7 @@ from app.modules.research.evidence.contracts import is_usable_originality_item
 _CONTENT_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _JOURNAL_INPUT_BUNDLE_SCHEMA_VERSION = 1
 ANGLE_CANDIDATES_SCHEMA_VERSION = 1
-ANGLE_GENERATOR_VERSION = "ce05.angle_generator.v2"
+ANGLE_GENERATOR_VERSION = "cq04.angle_generator.v3"
 _UPSTREAM_BLOCKING_DECISIONS = {"MERGE", "LINK_ONLY", "DO_NOT_WRITE"}
 _ANGLE_COVERAGE_STATUSES = {"covered", "reduced"}
 
@@ -153,6 +162,7 @@ class AngleGenerationResult:
     artifact: Artifact
     candidates: tuple[AngleCandidate, ...]
     model_attempts: int
+    semantic_artifact: Artifact | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +223,52 @@ def _uuid(value: object, code: str) -> UUID:
 
 def _clone_json(value: dict[str, object]) -> dict[str, object]:
     return cast(dict[str, object], json.loads(json.dumps(value, ensure_ascii=False)))
+
+
+def _semantic_role(bundle: JournalInputBundle) -> SemanticRole | None:
+    try:
+        contract = editorial_role_contract_or_none(
+            bundle.opportunity.get("suggested_role")
+        )
+    except EditorialRoleError as exc:
+        raise AngleGenerationError("angle_editorial_role_invalid") from exc
+    return contract.role if contract is not None else None
+
+
+def _semantic_candidate_refs(
+    candidates: Sequence[AngleCandidate],
+) -> tuple[AngleSemanticCandidateRef, ...]:
+    return tuple(
+        AngleSemanticCandidateRef(
+            angle_id=candidate.angle_id,
+            candidate_hash=angle_candidate_hash(candidate),
+            coverage_requirement_ids=tuple(
+                item.requirement_id for item in candidate.coverage
+            ),
+        )
+        for candidate in candidates
+    )
+
+
+async def load_angle_semantic_quality_for_artifact(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+    bundle: JournalInputBundle,
+    candidates: Sequence[AngleCandidate],
+) -> AngleSemanticQualityResult | None:
+    role = _semantic_role(bundle)
+    if role is None:
+        return None
+    try:
+        return await load_angle_semantic_quality(
+            session,
+            angle_artifact=artifact,
+            role=role,
+            candidates=_semantic_candidate_refs(candidates),
+        )
+    except AngleSemanticQualityError as exc:
+        raise AngleGenerationError(exc.code) from exc
 
 
 def _routed_model_identity(model: AngleModelPort) -> tuple[str, str] | None:
@@ -1130,6 +1186,24 @@ class AngleGenerator:
                     attempt=attempt,
                 )
                 candidates = _validate_candidates(raw, bundle=bundle)
+                semantic_role = _semantic_role(bundle)
+                semantic_entries = (
+                    ()
+                    if semantic_role is None
+                    else validate_angle_semantic_output(
+                        raw,
+                        candidates=_semantic_candidate_refs(candidates),
+                        role=semantic_role,
+                    )
+                )
+            except AngleSemanticQualityError as exc:
+                last_error = AngleGenerationError(exc.code)
+                if attempt == self.max_attempts:
+                    raise AngleGenerationError(
+                        "angle_model_output_invalid",
+                        f"bounded retries exhausted ({exc.code})",
+                    ) from exc
+                continue
             except AngleGenerationError as exc:
                 last_error = exc
                 if attempt == self.max_attempts:
@@ -1151,10 +1225,19 @@ class AngleGenerator:
                 schema_version=schema_version,
                 step_run_id=step_run_id,
             )
+            semantic_artifact = None
+            if semantic_role is not None:
+                semantic_artifact = await persist_angle_semantic_quality(
+                    session,
+                    angle_artifact=artifact,
+                    role=semantic_role,
+                    entries=semantic_entries,
+                )
             return AngleGenerationResult(
                 artifact=artifact,
                 candidates=candidates,
                 model_attempts=attempt,
+                semantic_artifact=semantic_artifact,
             )
         raise AngleGenerationError("angle_model_output_invalid") from last_error
 
@@ -1286,6 +1369,22 @@ async def approve_angle_candidate(
     if candidate_hash != expected_candidate_hash:
         raise AngleApprovalError("angle_candidate_snapshot_stale")
 
+    try:
+        semantic_result = await load_angle_semantic_quality_for_artifact(
+            session,
+            artifact=artifact,
+            bundle=bundle,
+            candidates=candidates,
+        )
+    except AngleGenerationError as exc:
+        raise AngleApprovalError(exc.code) from exc
+    if semantic_result is not None:
+        assessment = semantic_result.by_angle_id.get(selected.angle_id)
+        if assessment is None:
+            raise AngleApprovalError("angle_semantic_selected_candidate_missing")
+        if assessment.verdict != "pass":
+            raise AngleApprovalError("angle_semantic_revision_required")
+
     approvals = list(
         (
             await session.scalars(
@@ -1408,6 +1507,7 @@ __all__ = [
     "angle_model_input_hash",
     "approve_angle_candidate",
     "handoff_approved_angle",
+    "load_angle_semantic_quality_for_artifact",
     "load_journal_input_bundle",
     "persist_angle_candidates",
 ]
