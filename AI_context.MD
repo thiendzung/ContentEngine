@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-25 after Founder merged PR #226. Current main is `b1237cb45089116864f92226656ec4bfddd0f89f`. CQ-01 Promise Coverage is technically complete and merged. Production activation/E2E external work remains paused; the active WIP is CQ-02 Pillar/Cluster Editorial Contract. This is the ONE current working window.
+Updated: 2026-09-26 after Founder merged PR #228. Current main is `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`. CQ-01 Promise Coverage and CQ-02 Pillar/Cluster Editorial Contract are merged. Production activation/E2E external work remains paused; the active WIP is CQ-03 Evidence/Originality Depth. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `b1237cb45089116864f92226656ec4bfddd0f89f` (merge PR #226). CQ-01 exact-head CI/OCR/final local verification passed before merge. Code migration head is `20260925_0043`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-02 is code/test/editorial-contract work only and does not authorize operational migration.
+Live GitHub main: `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c` (merge PR #228). CQ-01 and CQ-02 passed exact-head CI/OCR/Agent Local verification before Founder merge. Code migration head remains `20260925_0043`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-03 is bounded content-quality code/test work and does not authorize operational migration.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -47,7 +47,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-02 / #227 / PR #228** is the only active implementation. Turn the existing `pillar|cluster` role from a planning label into an explicit editorial contract carried through Founder intake, Journal case/LocaleVariant identity, Angle, Outline and Writer. New intake must choose Pillar or Cluster; new `primary` rows are forbidden. Historical `primary`/missing-role rows remain readable without backfill or invented semantics.
+**CQ-03 / #229** is the only active implementation. Add an explicit pre-Angle Evidence/Originality depth contract for every exact coverage requirement. The contract must bind the locked EvidenceSet and approved OriginalityPack, cite exact allowed refs, distinguish evidence/originality/mixed/unresolved support, and fail closed before Angle when a requirement remains unsupported. Do not use lexical overlap or a numeric quality score as a semantic truth oracle.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -439,9 +439,9 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01 merged, CQ-02 active
+## Content Quality priority — CQ-01/CQ-02 merged, CQ-03 active
 
-Founder priority is content quality before production activation.
+Founder priority remains content quality before production activation.
 
 CQ sequence:
 `CQ-01 Promise Coverage → CQ-02 Pillar/Cluster Contract → CQ-03 Evidence/Originality Depth → CQ-04 Angle/Outline Quality → CQ-05 Writer/Human Voice → CQ-06 Deep Quality Gate → CQ-07 real Pillar+Cluster pilot`.
@@ -452,12 +452,23 @@ CQ-01 merged state:
 - CI #1852 PASS; OCR 24/24 with no Critical/High/Medium; `PASS_CQ01_FINAL_LOCAL_VERIFICATION`;
 - code migration head 0043 adds only `coverage_requirements_json`; operational DB migration remains unauthorized.
 
-CQ-02 active rules:
-- canonical new editorial roles are exactly `pillar|cluster`;
-- manual Founder intake must choose one explicitly; do not create new `primary` roles;
-- preserve legacy `primary` or missing roles without reinterpretation/backfill;
-- one deterministic role contract is carried into Angle, Outline and Writer and rendered explicitly to the local agent;
-- current opportunity role and LocaleVariant role must agree for new/current-role work;
-- generation/render identities are bumped so new role semantics do not silently reuse old outputs;
-- no new Pillar↔Cluster relationship table is invented in CQ-02; use “when known” link behavior and let CQ-07 prove whether durable relationship identity is necessary;
-- structural contract is not proof of semantic writing quality; deeper enforcement belongs to CQ-04/CQ-06.
+CQ-02 merged state:
+- PR #228 merged as main `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`;
+- exact verified implementation head `e318ad20d35a45a2b77e6f9048a4b35be13968ee`;
+- CI PASS; MG exact-head self-review PASS;
+- Agent Local: 83 focused + 1185 full backend PASS, frontend PASS;
+- OpenCodeReview v1.12.9: 27/27 reviewable reviewed, 0 skipped, 0 Critical/High/Medium/Low;
+- canonical new editorial roles are `pillar|cluster`; legacy `primary|NULL` remains readable without invented semantics;
+- no durable Pillar↔Cluster relationship was invented; CQ-07 remains the proof point.
+
+CQ-03 active rules:
+- exact coverage IDs/text are the unit of support-depth assessment;
+- locked external Evidence and approved MOTGU-owned Originality remain separate truth classes;
+- add one immutable support-depth Artifact rather than a new business table unless implementation proves otherwise;
+- every coverage ID appears exactly once as `evidence_supported|originality_supported|mixed|unresolved`;
+- every support claim binds exact allowed Evidence IDs and/or Originality source refs;
+- `context_only`, qualifying or contradicting evidence must not silently count as clean factual support;
+- unknown/duplicate/missing refs or coverage IDs fail closed;
+- any unresolved coverage requirement blocks Angle generation and is surfaced as an explicit research/support gap;
+- no numeric quality/SEO score and no lexical-overlap-only semantic decision;
+- no Writer/Human Voice, WordPress/Rank Math/Google activation, operational migration or publication in CQ-03.

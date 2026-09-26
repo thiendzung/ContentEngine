@@ -570,11 +570,11 @@ A4E2 closeout:
 - the two audited Start-to-Angle failed-attempt lineages remain intentional paused operator-retry state and were preserved byte-for-byte during the disposable lifecycle proof;
 - the rev-0042 lifecycle is event-driven and must not regress to repeated sleep/HTTP/ps/pgrep polling.
 
-## Content Quality track — Founder priority 2026-09-25
+## Content Quality track — Founder priority 2026-09-26
 
 Production activation / A2 / WordPress / operational migration / publish work is paused.
-CQ-01 is merged via PR #226. Current WIP is **CQ-02 / #227 / PR #228** on exact main base
-`b1237cb45089116864f92226656ec4bfddd0f89f`.
+CQ-01 and CQ-02 are merged. Current WIP is **CQ-03 / #229** on exact main base
+`bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`.
 
 ### CQ-01 — Promise Coverage — DONE
 
@@ -584,27 +584,46 @@ CQ-01 is merged via PR #226. Current WIP is **CQ-02 / #227 / PR #228** on exact 
 - [x] CI #1852 PASS on exact head `72d3210cad4f617c61f8945454d353b0b26732d7`.
 - [x] OpenCodeReview 24/24 reviewed, 0 skipped, 0 Critical/High/Medium.
 - [x] Final disposable proof: `PASS_CQ01_FINAL_LOCAL_VERIFICATION`, 56 focused + 1174 full backend PASS, frontend build PASS.
-- [x] Founder merged PR #226; main `b1237cb45089116864f92226656ec4bfddd0f89f`.
+- [x] Founder merged PR #226.
 
-### CQ-02 — Pillar / Cluster Editorial Contract — IN IMPLEMENTATION
+### CQ-02 — Pillar / Cluster Editorial Contract — DONE
 
-- [x] Reuse existing `JournalRole.PILLAR|CLUSTER`, `ContentOpportunity.suggested_role` and `LocaleVariant.content_role`; do not create a parallel taxonomy.
-- [x] Add one deterministic Pillar/Cluster editorial contract with breadth/depth/duplication/internal-link rules.
-- [x] New Founder manual intake requires explicit `pillar|cluster`; no new `primary`.
-- [x] New Journal-case creation fails closed on invalid current role; current opportunity/LocaleVariant mismatch fails closed.
-- [x] Required locale variants inherit the exact source editorial role.
-- [x] Preserve historical `primary`/missing-role rows without backfill or invented role.
-- [x] Bind the canonical role contract into Angle, Outline and Writer model inputs.
-- [x] Render explicit role contract/rules in Angle, Outline and Writer local-agent prompts.
-- [x] Bump Angle/Outline/Writer generation/render identities for the changed semantics.
-- [x] Operator UI shows the selected editorial role.
-- [x] Add core role, Pillar intake, invalid role, bridge propagation and Writer mismatch regressions.
+- [x] Reuse existing `JournalRole.PILLAR|CLUSTER`, `ContentOpportunity.suggested_role` and `LocaleVariant.content_role`; no parallel taxonomy.
+- [x] New Founder intake explicitly selects `pillar|cluster`; no new `primary`.
+- [x] Current Opportunity/LocaleVariant role mismatch fails closed; required locales inherit the exact role.
+- [x] Legacy `primary|NULL` remains readable without backfill or invented Pillar/Cluster meaning.
+- [x] Canonical role contract propagates through Angle → Outline → Writer and local-agent prompts.
+- [x] Generation/render identities were bumped for changed semantics.
+- [x] Operator UI exposes exact role.
+- [x] Relationship guard prevents invented parent/child/sibling targets.
+- [x] Exact final CI PASS on head `e318ad20d35a45a2b77e6f9048a4b35be13968ee`.
+- [x] MG exact-head self-review PASS.
+- [x] OpenCodeReview v1.12.9: 27/27 reviewable, zero findings.
+- [x] Agent Local exact-head proof: 83 focused + 1185 full backend PASS; frontend PASS.
+- [x] Founder merged PR #228; main `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`; #227 closed.
+
+### CQ-03 — Evidence / Originality Depth — IN IMPLEMENTATION
+
+- [x] Audit current boundary: Evidence Research sees coverage text, but Start-to-Angle only checks aggregate evidence/originality readiness; no per-coverage depth contract exists.
+- [x] Architecture direction: immutable pre-Angle support-depth Artifact; avoid a new business table.
+- [x] Reject lexical overlap or a numeric score as semantic truth.
+- [ ] Define versioned contract for every exact `coverage-N` requirement.
+- [ ] Allowed statuses are exactly `evidence_supported|originality_supported|mixed|unresolved`.
+- [ ] Bind exact EvidenceSet id/version/hash and approved OriginalityPack id/hash.
+- [ ] Sanitize Evidence rows with claim/relation/excerpt/source authority+bias metadata for bounded semantic assessment.
+- [ ] Sanitize only usable approved MOTGU-owned Originality items.
+- [ ] Validate every coverage ID exactly once; unknown/duplicate/missing IDs fail closed.
+- [ ] Validate every evidence/originality ref against the exact allowed snapshots.
+- [ ] Prevent `context_only`, contradicting or qualifying evidence from silently becoming clean factual support.
+- [ ] Any `unresolved` requirement blocks Angle and is exposed as an explicit support/research gap.
+- [ ] Preserve the exact validated support-depth contract into the Angle input lineage.
+- [ ] Add operator/read-model projection for unresolved support before Angle.
+- [ ] Add focused positive/negative regressions: evidence-only, originality-only, mixed, missing, contradiction/qualification, unknown ref, duplicate/missing coverage.
+- [ ] Confirm prompt/recipe registry impact; add code seed/migration only if existing approved registry cannot express the new bounded evaluator. Operational migration remains unauthorized.
 - [ ] Normal CI green on final code/docs SHA.
-- [ ] MG self-review complete with no unresolved P0/P1 editorial-contract defect.
+- [ ] MG full-diff self-review with no unresolved P0/P1 support-integrity defect.
 - [ ] Exact-ref OpenCodeReview + MG triage.
 - [ ] Agent Local exact-head bounded verification.
 - [ ] Founder merge.
 
-CQ-02 boundaries: no operational migration; no WordPress/Rank Math/Google/publish; no
-Human Voice; no new parent-Pillar/child-Cluster database merely by assumption; no claim
-that structural role propagation alone proves semantic article quality.
+CQ-03 boundaries: no operational DB migration; no WordPress/Rank Math/Google/publish; no Writer/Human Voice; no magic quality score; no automatic promotion of model judgement, search snippets or KnowledgeCandidate to factual truth.
