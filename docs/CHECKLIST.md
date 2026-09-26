@@ -233,22 +233,22 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 - [x] Current Angle/Outline schema/ref validation is audited separately from semantic quality.
 - [x] CQ-04 uses immutable semantic-quality Artifacts rather than a new business table by default.
-- [ ] Angle assessment binds the exact candidate, role contract, committed coverage and CQ-03 support-depth lineage.
-- [ ] Angle verdict is exactly `pass|revise`; no universal numeric quality score.
-- [ ] Angle findings use stable code + exact subject ref + reason + remediation.
-- [ ] Title, reader problem, central question and core promise are semantically coherent.
-- [ ] Pillar Angle demonstrates bounded breadth/navigation and delegates narrow specialist depth.
-- [ ] Cluster Angle remains one bounded subproblem with materially deeper treatment and no Pillar-style expansion.
-- [ ] Outline assessment binds the exact approved Angle and exact Outline artifact.
-- [ ] Every committed coverage requirement is intentionally fulfilled by at least one semantically matching section.
-- [ ] Every section has a distinct reader job and evidence/originality purpose.
-- [ ] Major section overlap/repetition and broad-summary filler are surfaced before Writer.
-- [ ] Existing CQ-02 relationship guard remains authoritative; no parent/child/sibling identity is invented.
-- [ ] CQ-04 never reclassifies factual Evidence truth established by CQ-03.
-- [ ] Operator/read-model exposes human-readable pass/revise reasons at Angle and Outline gates.
-- [ ] Positive/adversarial Pillar + Cluster fixtures cover role drift, coverage drift, redundant sections and unsupported section intent.
-- [ ] Generation/render identity changes prevent silent reuse when semantic behavior changes.
-- [ ] Broader regressions + lint/type/API/frontend checks pass.
+- [x] Angle assessment binds the exact candidate, role contract, committed coverage and CQ-03 support-depth lineage when present.
+- [x] Angle verdict is exactly `pass|revise`; no universal numeric quality score.
+- [x] Angle findings use stable code + exact subject ref + reason + remediation.
+- [x] The semantic assessor is explicitly required to check title → reader problem → central question → core promise coherence.
+- [x] Pillar Angle assessment requires bounded breadth/navigation and delegation of narrow specialist depth.
+- [x] Cluster Angle assessment requires one bounded subproblem, deeper treatment and no Pillar-style expansion.
+- [x] Outline assessment binds the exact approved Angle and exact Outline artifact.
+- [x] Every committed coverage requirement must be intentionally fulfilled by at least one semantically matching section.
+- [x] Every section must have a distinct reader job and evidence/originality purpose.
+- [x] Major section overlap/repetition and broad-summary filler are surfaced before Writer.
+- [x] Existing CQ-02 relationship guard remains authoritative; no parent/child/sibling identity is invented.
+- [x] CQ-04 never reclassifies factual Evidence truth established by CQ-03.
+- [x] Operator/read-model exposes human-readable pass/revise reasons at Angle and Outline gates.
+- [x] Positive/adversarial Pillar + Cluster fixtures cover role drift, coverage drift, redundant sections and unsupported section intent.
+- [x] Generation/render identity changes prevent silent reuse when semantic behavior changes.
+- [ ] Final code/docs SHA passes broader regressions + lint/type/API/frontend checks.
 - [ ] MG self-review finds no unresolved P0/P1 semantic-quality defect.
 - [ ] Exact-ref OpenCodeReview is triaged.
 - [ ] Agent Local returns bounded exact-head verification before Founder merge.

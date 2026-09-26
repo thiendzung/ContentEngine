@@ -47,7 +47,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-04 / #230** is the only active implementation. Add bounded semantic-quality contracts around Angle and Outline so Pillar/Cluster behavior is proved rather than merely labeled. Validate title → reader problem → central question → core promise coherence, intentional coverage placement, Pillar breadth/navigation versus Cluster narrow/deep behavior, distinct section reader jobs/support purposes, and major overlap/repetition before Writer. Use explicit pass/revise findings, not a universal numeric score.
+**CQ-04 / #230** implementation is complete in draft PR #235 and is in closeout. Angle and Outline now carry bounded model-assisted semantic assessments with deterministic exact-ref validation, immutable lineage, `pass|revise` findings, Founder approval gates, Writer-handoff revalidation and operator projection. CQ-03 support-depth is directly bound into the Angle semantic artifact when present. Pillar/Cluster adversarial fixtures cover role/scope/coverage drift, redundancy, filler and unclear support purpose. Remaining work is final code/docs CI → MG exact-head full-diff review → exact-ref OpenCodeReview → Agent Local bounded verification → Founder merge.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 

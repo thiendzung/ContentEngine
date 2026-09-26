@@ -630,23 +630,23 @@ CQ-03 boundaries: no operational DB migration; no WordPress/Rank Math/Google/pub
 
 CQ-03 closeout: PR #234 merged; main `bb96995c294269b6c2398964cd41277133253f86`; issue #229 closed completed.
 
-### CQ-04 — Angle / Outline Semantic Quality — IN IMPLEMENTATION
+### CQ-04 — Angle / Outline Semantic Quality — IMPLEMENTATION COMPLETE / CLOSEOUT
 
 - [x] Audit current Angle/Outline contracts and locate semantic-quality gaps.
 - [x] Lock architecture: immutable semantic-quality Artifacts + deterministic validators; no universal numeric score.
-- [ ] Define versioned Angle semantic assessment contract with `pass|revise` and stable human-readable findings.
-- [ ] Validate title → reader problem → central question → core promise coherence.
-- [ ] Validate Pillar breadth/navigation/delegation semantics versus Cluster narrow/deep semantics.
-- [ ] Bind Angle assessment to exact Angle candidate, editorial-role contract and upstream support-depth lineage.
-- [ ] Expose Angle pass/revise reasons before human Angle approval.
-- [ ] Define versioned Outline semantic assessment contract with exact section/coverage refs.
-- [ ] Require every committed coverage requirement to be intentionally fulfilled by at least one semantically matching section.
-- [ ] Require every section to have a distinct reader job and evidence/originality purpose.
-- [ ] Detect major section overlap/repetition and broad-summary filler before Writer.
-- [ ] Preserve CQ-02 relationship guard; never invent Pillar↔Cluster identities.
-- [ ] Expose Outline pass/revise reasons before human Outline approval / Writer.
-- [ ] Add positive/adversarial Pillar + Cluster fixtures for role drift, coverage drift, redundant sections and unsupported section intent.
-- [ ] Decide prompt/recipe/generation identity changes only where semantic behavior actually changes.
+- [x] Define versioned Angle semantic assessment contract with `pass|revise` and stable human-readable findings.
+- [x] Require semantic assessment of title → reader problem → central question → core promise coherence.
+- [x] Require Pillar breadth/navigation/delegation semantics versus Cluster narrow/deep semantics.
+- [x] Bind Angle assessment to exact Angle candidate, editorial-role contract and upstream CQ-03 support-depth lineage when present.
+- [x] Expose Angle pass/revise reasons before human Angle approval and block `revise`.
+- [x] Define versioned Outline semantic assessment contract with exact section/coverage refs.
+- [x] Require every committed coverage requirement to be intentionally fulfilled by at least one semantically matching section.
+- [x] Require every section to have a distinct reader job and evidence/originality purpose.
+- [x] Detect major section overlap/repetition and broad-summary filler before Writer.
+- [x] Preserve CQ-02 relationship guard; never invent Pillar↔Cluster identities.
+- [x] Expose Outline pass/revise reasons before human Outline approval / Writer; revalidate semantic lineage at handoff.
+- [x] Add positive/adversarial Pillar + Cluster fixtures for role drift, coverage drift, redundant sections and unsupported section intent.
+- [x] Bump Angle/Outline generation/render identities only where semantic behavior changed; no new registry migration was required.
 - [ ] Normal CI green on final code/docs SHA.
 - [ ] MG full-diff self-review with no unresolved P0/P1 semantic-quality defect.
 - [ ] Exact-ref OpenCodeReview + MG triage.
