@@ -10,7 +10,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
+from app.modules.content_engine.journal.human_voice import (
+    HUMAN_VOICE_POLICY_VERSION,
+    HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
+)
 from app.modules.content_engine.journal.writer import WriterGenerationError, WriterModelPort
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
@@ -105,6 +108,7 @@ def _runtime_metadata(result: AgentRunResult, *, locale: str) -> dict[str, objec
         "stage": "review_revise",
         "independent_locale_revision": True,
         "human_voice_policy_version": HUMAN_VOICE_POLICY_VERSION,
+        "human_voice_render_protocol_version": HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
     }
     if result.session_id is not None:
         metadata["session_id"] = result.session_id
@@ -156,7 +160,7 @@ def render_review_revise_prompt(
         "Angle and promise. Prefer wording such as how to inspect, compare, read or evaluate "
         "the topic over an unsupported origin/provenance label. Do not invent title support "
         "refs.\n\n"
-        "HUMAN VOICE CONTRACT:\n"
+        f"HUMAN VOICE CONTRACT ({HUMAN_VOICE_RENDER_PROTOCOL_VERSION}):\n"
         "This Review/Revise call is also the bounded Human Voice rewrite; do not add a second "
         "rewrite stage. Improve rhythm, specificity, warmth, lived texture and natural phrasing "
         "only inside the exact source-draft and support boundaries. Do not invent unsupported "
@@ -266,6 +270,8 @@ class CliReviewReviseModelPort(WriterModelPort):
         if (
             not isinstance(human_voice_policy, dict)
             or human_voice_policy.get("version") != HUMAN_VOICE_POLICY_VERSION
+            or human_voice_policy.get("render_protocol_version")
+            != HUMAN_VOICE_RENDER_PROTOCOL_VERSION
             or human_voice_policy.get("post_rewrite_assertion_audit_required") is not True
             or human_voice_policy.get("extra_model_call") is not False
         ):

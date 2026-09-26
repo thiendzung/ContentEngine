@@ -21,7 +21,10 @@ from app.modules.content_engine.journal.assertion_audit import (
     AssertionAuditError,
     load_assertion_audit_input,
 )
-from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
+from app.modules.content_engine.journal.human_voice import (
+    HUMAN_VOICE_POLICY_VERSION,
+    HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
+)
 from app.modules.content_engine.journal.human_voice_trace import (
     HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
     HUMAN_VOICE_TRACE_GENERATOR_VERSION,
@@ -179,6 +182,10 @@ async def test_review_revise_turns_declared_gaps_into_clean_v2_and_reuses_it() -
             review_input.model_input["human_voice_policy"],
         )
         assert human_voice_policy["version"] == HUMAN_VOICE_POLICY_VERSION
+        assert (
+            human_voice_policy["render_protocol_version"]
+            == HUMAN_VOICE_RENDER_PROTOCOL_VERSION
+        )
         assert human_voice_policy["post_rewrite_assertion_audit_required"] is True
         assert human_voice_policy["extra_model_call"] is False
         revision_policy = cast(dict[str, object], review_input.model_input["revision_policy"])
@@ -549,7 +556,10 @@ async def test_review_revise_bridge_uses_locale_registry_and_review_task_key() -
         request = fake.requests[0]
         assert request.provider == "codex_cli"
         assert request.model == "test-model"
-        assert "HUMAN VOICE CONTRACT:" in request.prompt
+        assert (
+            f"HUMAN VOICE CONTRACT ({HUMAN_VOICE_RENDER_PROTOCOL_VERSION}):"
+            in request.prompt
+        )
         assert "do not add a second rewrite stage" in request.prompt
         assert "must pass Assertion Audit" in request.prompt
         assert "CLOSING SUPPORT CONTRACT:" in request.prompt
@@ -592,4 +602,8 @@ async def test_review_revise_bridge_uses_locale_registry_and_review_task_key() -
         assert (
             call.runtime_metadata_json["human_voice_policy_version"]
             == HUMAN_VOICE_POLICY_VERSION
+        )
+        assert (
+            call.runtime_metadata_json["human_voice_render_protocol_version"]
+            == HUMAN_VOICE_RENDER_PROTOCOL_VERSION
         )

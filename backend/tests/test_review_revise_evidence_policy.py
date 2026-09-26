@@ -6,7 +6,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
+from app.modules.content_engine.journal.human_voice import (
+    HUMAN_VOICE_POLICY_VERSION,
+    HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
+)
 from app.modules.content_engine.journal.human_voice_trace import (
     HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS,
 )
@@ -178,6 +181,10 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
     human_voice_policy = cast(dict[str, object], model_input["human_voice_policy"])
     assert human_voice_policy["version"] == HUMAN_VOICE_POLICY_VERSION
     assert human_voice_policy["mode"] == "truth_preserving_native_rewrite"
+    assert (
+        human_voice_policy["render_protocol_version"]
+        == HUMAN_VOICE_RENDER_PROTOCOL_VERSION
+    )
     assert human_voice_policy["post_rewrite_assertion_audit_required"] is True
     assert human_voice_policy["authorship_detection"] == "not_part_of_task"
     assert human_voice_policy["humanization_percentage"] == "forbidden"
@@ -299,7 +306,7 @@ def test_review_revise_prompt_states_fail_closed_support_boundary() -> None:
     assert "closing sentences zero allowed support refs" in rendered
     assert "closing_markdown must not contain factual" in rendered
     assert "Rewrite the closing as non-assertive reader guidance" in rendered
-    assert "HUMAN VOICE CONTRACT:" in rendered
+    assert f"HUMAN VOICE CONTRACT ({HUMAN_VOICE_RENDER_PROTOCOL_VERSION}):" in rendered
     assert "do not add a second rewrite stage" in rendered
     assert "artist intent or quotes" in rendered
     assert "customer stories" in rendered

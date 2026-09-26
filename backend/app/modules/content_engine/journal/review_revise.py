@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.human_voice import (
     HUMAN_VOICE_POLICY_VERSION,
+    HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
     REQUIRED_FORBIDDEN_INVENTIONS,
     HumanVoiceGuardError,
     validate_rewrite_structure,
@@ -160,6 +161,7 @@ def _segment_support_policy(draft: JournalDraft) -> dict[str, object]:
 def _human_voice_policy() -> dict[str, object]:
     return {
         "version": HUMAN_VOICE_POLICY_VERSION,
+        "render_protocol_version": HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
         "mode": "truth_preserving_native_rewrite",
         "may_improve": [
             "rhythm",

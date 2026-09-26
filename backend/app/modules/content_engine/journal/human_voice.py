@@ -18,6 +18,7 @@ from app.modules.content_engine.journal.writer import JournalDraft
 HumanVoiceLocale = Literal["vi-VN", "en"]
 
 HUMAN_VOICE_POLICY_VERSION = "cq05.human_voice.v1"
+HUMAN_VOICE_RENDER_PROTOCOL_VERSION = "cq05.review_revise.render.v1"
 REQUIRED_FORBIDDEN_INVENTIONS: tuple[str, ...] = (
     "unsupported_fact",
     "artist_intent",
@@ -296,6 +297,7 @@ def compare_draft_style(
 
 __all__ = [
     "HUMAN_VOICE_POLICY_VERSION",
+    "HUMAN_VOICE_RENDER_PROTOCOL_VERSION",
     "HumanVoiceGuardError",
     "HumanVoiceStyleComparison",
     "HumanVoiceStyleFinding",
