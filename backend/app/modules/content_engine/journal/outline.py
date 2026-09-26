@@ -22,10 +22,18 @@ from app.modules.content_engine.journal.editorial_role import (
     EditorialRoleError,
     editorial_role_contract_or_none,
 )
+from app.modules.content_engine.journal.outline_semantic_quality import (
+    OutlineSemanticQualityError,
+    OutlineSemanticQualityResult,
+    load_outline_semantic_quality,
+    persist_outline_semantic_quality,
+    validate_outline_semantic_output,
+)
+from app.modules.content_engine.journal.semantic_quality import SemanticRole
 from app.modules.harness.models import Artifact, ContentRun, ContextManifest, StepRun
 
 OUTLINE_SCHEMA_VERSION = 1
-OUTLINE_GENERATOR_VERSION = "ce05.outline_generator.v2"
+OUTLINE_GENERATOR_VERSION = "cq04.outline_generator.v3"
 _SUPPORT_TYPES = {"factual", "motgu_original", "editorial", "mixed"}
 
 
@@ -124,6 +132,7 @@ class OutlineGenerationResult:
     outline: JournalOutline
     model_attempts: int
     reused: bool
+    semantic_artifact: Artifact | None = None
 
 
 def _canonical_hash(value: object) -> str:
@@ -516,6 +525,52 @@ def _validate_model_output(raw: object, *, outline_input: OutlineInput) -> Journ
     )
 
 
+def _semantic_role(outline_input: OutlineInput) -> SemanticRole | None:
+    opportunity = _dict(
+        outline_input.model_input.get("opportunity"),
+        "outline_opportunity_input_invalid",
+    )
+    try:
+        contract = editorial_role_contract_or_none(opportunity.get("suggested_role"))
+    except EditorialRoleError as exc:
+        raise OutlineGenerationError("outline_editorial_role_invalid") from exc
+    return contract.role if contract is not None else None
+
+
+def _semantic_section_ids(outline: JournalOutline) -> tuple[str, ...]:
+    return tuple(section.section_id for section in outline.sections)
+
+
+def _semantic_coverage_ids(outline_input: OutlineInput) -> tuple[str, ...]:
+    return tuple(
+        item.requirement_id
+        for item in outline_input.approved_angle.candidate.coverage
+        if item.status == "covered"
+    )
+
+
+async def load_outline_semantic_quality_for_artifact(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+    outline_input: OutlineInput,
+    outline: JournalOutline,
+) -> OutlineSemanticQualityResult | None:
+    role = _semantic_role(outline_input)
+    if role is None:
+        return None
+    try:
+        return await load_outline_semantic_quality(
+            session,
+            outline_artifact=artifact,
+            role=role,
+            section_ids=_semantic_section_ids(outline),
+            coverage_requirement_ids=_semantic_coverage_ids(outline_input),
+        )
+    except OutlineSemanticQualityError as exc:
+        raise OutlineGenerationError(exc.code) from exc
+
+
 def _model_identity(model: OutlineModelPort) -> tuple[str, str] | None:
     resolver = getattr(model, "resolved_model_identity", None)
     if resolver is None:
@@ -596,11 +651,20 @@ async def _existing_outline(
         outline = _validate_model_output(model_output, outline_input=outline_input)
         if outline.to_dict() != outline_payload:
             raise OutlineGenerationError("outline_artifact_payload_stale")
+        semantic_result = await load_outline_semantic_quality_for_artifact(
+            session,
+            artifact=artifact,
+            outline_input=outline_input,
+            outline=outline,
+        )
         return OutlineGenerationResult(
             artifact=artifact,
             outline=outline,
             model_attempts=0,
             reused=True,
+            semantic_artifact=(
+                semantic_result.artifact if semantic_result is not None else None
+            ),
         )
     return None
 
@@ -794,6 +858,25 @@ class OutlineGenerator:
             try:
                 raw = await model.generate(input_bundle=model_input, attempt=attempt)
                 outline = _validate_model_output(raw, outline_input=outline_input)
+                semantic_role = _semantic_role(outline_input)
+                semantic_assessment = (
+                    None
+                    if semantic_role is None
+                    else validate_outline_semantic_output(
+                        raw,
+                        role=semantic_role,
+                        section_ids=_semantic_section_ids(outline),
+                        coverage_requirement_ids=_semantic_coverage_ids(outline_input),
+                    )
+                )
+            except OutlineSemanticQualityError as exc:
+                last_error = OutlineGenerationError(exc.code)
+                if attempt == self.max_attempts:
+                    raise OutlineGenerationError(
+                        "outline_model_output_invalid",
+                        f"bounded retries exhausted ({exc.code})",
+                    ) from exc
+                continue
             except OutlineGenerationError as exc:
                 last_error = exc
                 if attempt == self.max_attempts:
@@ -815,11 +898,22 @@ class OutlineGenerator:
                 generator_version=generator_version,
                 schema_version=schema_version,
             )
+            semantic_artifact = None
+            if semantic_role is not None:
+                if semantic_assessment is None:
+                    raise OutlineGenerationError("outline_semantic_assessment_required")
+                semantic_artifact = await persist_outline_semantic_quality(
+                    session,
+                    outline_artifact=artifact,
+                    role=semantic_role,
+                    assessment=semantic_assessment,
+                )
             return OutlineGenerationResult(
                 artifact=artifact,
                 outline=outline,
                 model_attempts=attempt,
                 reused=False,
+                semantic_artifact=semantic_artifact,
             )
         raise OutlineGenerationError("outline_model_output_invalid") from last_error
 
@@ -835,6 +929,7 @@ __all__ = [
     "OUTLINE_GENERATOR_VERSION",
     "OUTLINE_SCHEMA_VERSION",
     "load_outline_input",
+    "load_outline_semantic_quality_for_artifact",
     "outline_model_input_hash",
     "persist_journal_outline",
 ]
