@@ -20,6 +20,7 @@ from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.angle import (
     _artifact_candidates,
     angle_candidate_hash,
+    load_angle_semantic_quality_for_artifact,
     load_journal_input_bundle,
 )
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
@@ -85,6 +86,18 @@ class OperatorCoverageSupportDiagnosticView(BaseModel):
     unresolved: list[OperatorCoverageSupportGapView] = Field(default_factory=list)
 
 
+class OperatorSemanticFindingView(BaseModel):
+    code: str
+    subject_ref: str
+    reason: str
+    remediation: str
+
+
+class OperatorSemanticQualityView(BaseModel):
+    verdict: Literal["pass", "revise"]
+    findings: list[OperatorSemanticFindingView] = Field(default_factory=list)
+
+
 class OperatorAngleCoverageView(BaseModel):
     requirement_id: str
     requirement: str
@@ -108,11 +121,13 @@ class OperatorAngleCandidateView(BaseModel):
     confidence: float
     locale: str
     coverage: list[OperatorAngleCoverageView] = Field(default_factory=list)
+    semantic_quality: OperatorSemanticQualityView | None = None
 
 
 class OperatorAngleGateView(BaseModel):
     type: Literal["angle"] = "angle"
     artifact: OperatorAngleArtifactView
+    semantic_artifact: OperatorAngleArtifactView | None = None
     candidates: list[OperatorAngleCandidateView]
 
 
@@ -438,11 +453,32 @@ async def _angle_gate(
         raise OperatorControlError("operator_angle_projection_missing")
     coverage_requirements = _coverage_requirements_from_snapshot(bundle.opportunity)
     coverage_by_id = {item.id: item.requirement for item in coverage_requirements}
+    try:
+        semantic_result = await load_angle_semantic_quality_for_artifact(
+            session,
+            artifact=artifact,
+            bundle=bundle,
+            candidates=candidates,
+        )
+    except ValueError as exc:
+        raise OperatorControlError("operator_angle_semantic_projection_stale") from exc
+    semantic_by_id = (
+        semantic_result.by_angle_id if semantic_result is not None else {}
+    )
     return OperatorAngleGateView(
         artifact=OperatorAngleArtifactView(
             id=artifact.id,
             version=artifact.version,
             content_hash=artifact.content_hash,
+        ),
+        semantic_artifact=(
+            OperatorAngleArtifactView(
+                id=semantic_result.artifact.id,
+                version=semantic_result.artifact.version,
+                content_hash=semantic_result.artifact.content_hash,
+            )
+            if semantic_result is not None
+            else None
         ),
         candidates=[
             OperatorAngleCandidateView(
@@ -469,6 +505,22 @@ async def _angle_gate(
                     )
                     for item in candidate.coverage
                 ],
+                semantic_quality=(
+                    OperatorSemanticQualityView(
+                        verdict=semantic_by_id[candidate.angle_id].verdict,
+                        findings=[
+                            OperatorSemanticFindingView(
+                                code=finding.code,
+                                subject_ref=finding.subject_ref,
+                                reason=finding.reason,
+                                remediation=finding.remediation,
+                            )
+                            for finding in semantic_by_id[candidate.angle_id].findings
+                        ],
+                    )
+                    if candidate.angle_id in semantic_by_id
+                    else None
+                ),
             )
             for candidate in candidates
         ],

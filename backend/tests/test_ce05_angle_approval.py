@@ -138,6 +138,15 @@ def _candidate_payload(bundle: JournalInputBundle, index: int) -> dict[str, obje
     }
     opportunity = bundle.angle_model_input.get("opportunity")
     if isinstance(opportunity, dict):
+        role = opportunity.get("suggested_role")
+        if role in {"pillar", "cluster"}:
+            payload["semantic_quality"] = {
+                "schema_version": 1,
+                "stage": "angle",
+                "role": role,
+                "verdict": "pass",
+                "findings": [],
+            }
         requirements = opportunity.get("coverage_requirements")
         if isinstance(requirements, list) and requirements:
             payload["coverage"] = [
@@ -209,6 +218,19 @@ class GroundedAngleModel:
                 "risks": ["The reader may overgeneralize the evidence."],
                 "confidence": 0.8,
                 "locale": locale,
+                **(
+                    {
+                        "semantic_quality": {
+                            "schema_version": 1,
+                            "stage": "angle",
+                            "role": opportunity["suggested_role"],
+                            "verdict": "pass",
+                            "findings": [],
+                        }
+                    }
+                    if opportunity.get("suggested_role") in {"pillar", "cluster"}
+                    else {}
+                ),
             }
             for index in range(1, 4)
         ]

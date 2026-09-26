@@ -454,6 +454,13 @@ class ControlledCodexRunner:
                 "risks": ["Do not generalize one source into a universal rule."],
                 "confidence": 0.8,
                 "locale": opportunity["locale"],
+                "semantic_quality": {
+                    "schema_version": 1,
+                    "stage": "angle",
+                    "role": role_contract["role"],
+                    "verdict": "pass",
+                    "findings": [],
+                },
                 "coverage": [
                     {
                         "requirement_id": item["id"],
