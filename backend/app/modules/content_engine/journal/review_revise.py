@@ -16,6 +16,11 @@ from app.modules.content_engine.journal.human_voice import (
     validate_rewrite_structure,
     validate_text_truth_guards,
 )
+from app.modules.content_engine.journal.human_voice_trace import (
+    HumanVoiceTraceError,
+    load_human_voice_trace,
+    persist_human_voice_trace,
+)
 from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
@@ -34,7 +39,7 @@ from app.modules.content_engine.journal.writer import (
 )
 from app.modules.harness.models import Artifact
 
-REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v5"
+REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v6"
 REVIEW_REVISE_SCHEMA_VERSION = 1
 _SUPPORTIVE_EVIDENCE_RELATIONS = ("supports", "qualifies")
 _NON_SUPPORTIVE_EVIDENCE_RELATIONS = ("context_only", "contradicts")
@@ -563,9 +568,21 @@ class ReviewReviseGenerator:
                     review_input=review_input,
                     revised=existing.draft,
                 )
+                await load_human_voice_trace(
+                    session,
+                    source_artifact=review_input.source_artifact,
+                    source_draft=review_input.source_draft,
+                    rewritten_artifact=existing.artifact,
+                    rewritten_draft=existing.draft,
+                )
             except HumanVoiceGuardError as exc:
                 raise WriterGenerationError(
                     "review_revise_reused_human_voice_guard_failed",
+                    exc.code,
+                ) from exc
+            except HumanVoiceTraceError as exc:
+                raise WriterGenerationError(
+                    "review_revise_reused_human_voice_trace_invalid",
                     exc.code,
                 ) from exc
             return existing
@@ -612,6 +629,19 @@ class ReviewReviseGenerator:
             )
             if artifact.id == review_input.source_artifact.id:
                 raise WriterGenerationError("review_revise_source_artifact_reused_as_output")
+            try:
+                await persist_human_voice_trace(
+                    session,
+                    source_artifact=review_input.source_artifact,
+                    source_draft=review_input.source_draft,
+                    rewritten_artifact=artifact,
+                    rewritten_draft=revised,
+                )
+            except HumanVoiceTraceError as exc:
+                raise WriterGenerationError(
+                    "review_revise_human_voice_trace_invalid",
+                    exc.code,
+                ) from exc
             return WriterGenerationResult(
                 artifact=artifact,
                 draft=revised,
