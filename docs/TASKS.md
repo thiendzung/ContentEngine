@@ -607,19 +607,19 @@ CQ-01 and CQ-02 are merged. Current WIP is **CQ-03 / #229** on exact main base
 - [x] Audit current boundary: Evidence Research sees coverage text, but Start-to-Angle only checks aggregate evidence/originality readiness; no per-coverage depth contract exists.
 - [x] Architecture direction: immutable pre-Angle support-depth Artifact; avoid a new business table.
 - [x] Reject lexical overlap or a numeric score as semantic truth.
-- [ ] Define versioned contract for every exact `coverage-N` requirement.
-- [ ] Allowed statuses are exactly `evidence_supported|originality_supported|mixed|unresolved`.
-- [ ] Bind exact EvidenceSet id/version/hash and approved OriginalityPack id/hash.
-- [ ] Sanitize Evidence rows with claim/relation/excerpt/source authority+bias metadata for bounded semantic assessment.
-- [ ] Sanitize only usable approved MOTGU-owned Originality items.
-- [ ] Validate every coverage ID exactly once; unknown/duplicate/missing IDs fail closed.
-- [ ] Validate every evidence/originality ref against the exact allowed snapshots.
-- [ ] Prevent `context_only`, contradicting or qualifying evidence from silently becoming clean factual support.
-- [ ] Any `unresolved` requirement blocks Angle and is exposed as an explicit support/research gap.
-- [ ] Preserve the exact validated support-depth contract into the Angle input lineage.
-- [ ] Add operator/read-model projection for unresolved support before Angle.
-- [ ] Add focused positive/negative regressions: evidence-only, originality-only, mixed, missing, contradiction/qualification, unknown ref, duplicate/missing coverage.
-- [ ] Confirm prompt/recipe registry impact; add code seed/migration only if existing approved registry cannot express the new bounded evaluator. Operational migration remains unauthorized.
+- [x] Define versioned contract for every exact `coverage-N` requirement.
+- [x] Allowed statuses are exactly `evidence_supported|originality_supported|mixed|unresolved`.
+- [x] Bind exact EvidenceSet id/version/hash and approved OriginalityPack id/hash.
+- [x] Sanitize Evidence rows with claim/relation/excerpt/source authority+bias metadata for bounded semantic assessment.
+- [x] Sanitize only usable approved MOTGU-owned Originality items.
+- [x] Validate every coverage ID exactly once; unknown/duplicate/missing IDs fail closed.
+- [x] Validate every evidence/originality ref against the exact allowed snapshots.
+- [x] Prevent `context_only`, contradicting or qualifying evidence from silently becoming clean factual support.
+- [x] Any `unresolved` requirement blocks Angle and is exposed as an explicit support/research gap.
+- [x] Preserve the exact validated support-depth contract into the Angle input lineage.
+- [x] Add operator/read-model projection for unresolved support before Angle.
+- [x] Add focused positive/negative regressions: evidence-only, originality-only, mixed, missing, contradiction/qualification, unknown ref, duplicate/missing coverage.
+- [x] Confirm prompt/recipe registry impact; add code seed/migration only if existing approved registry cannot express the new bounded evaluator. Operational migration remains unauthorized.
 - [ ] Normal CI green on final code/docs SHA.
 - [ ] MG full-diff self-review with no unresolved P0/P1 support-integrity defect.
 - [ ] Exact-ref OpenCodeReview + MG triage.

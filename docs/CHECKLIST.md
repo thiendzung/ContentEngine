@@ -208,20 +208,20 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 ## P. CQ-03 Evidence / Originality depth
 
-- [ ] Exact `coverage-1..N` IDs/text from the selected Opportunity are the assessment unit.
-- [ ] Locked EvidenceSet and approved OriginalityPack are exact immutable inputs with IDs/versions/hashes preserved.
-- [ ] External Evidence and MOTGU-owned Originality remain separate support classes.
-- [ ] Search/discovery snippets and search rank are never promoted to factual Evidence.
-- [ ] Every coverage ID appears exactly once as `evidence_supported|originality_supported|mixed|unresolved`.
-- [ ] Support mappings cite only exact allowed Evidence IDs and/or usable Originality source refs.
-- [ ] Missing, duplicate or unknown coverage/ref IDs fail closed.
-- [ ] `context_only`, contradicting and qualifying evidence are preserved and cannot silently count as clean factual support.
-- [ ] Source authority/bias metadata is visible to semantic assessment but never converted into a fake numeric truth score.
-- [ ] Lexical overlap alone cannot declare semantic support.
-- [ ] Any unresolved coverage requirement blocks Angle generation and is surfaced as a research/support gap.
-- [ ] Validated support-depth contract is immutable and bound into downstream Angle lineage.
-- [ ] Legacy no-coverage behavior is explicit; do not fabricate coverage depth for historical records.
-- [ ] No new business table/schema is added unless implementation proves a durable query/update need.
+- [x] Exact `coverage-1..N` IDs/text from the selected Opportunity are the assessment unit.
+- [x] Locked EvidenceSet and approved OriginalityPack are exact immutable inputs with IDs/versions/hashes preserved.
+- [x] External Evidence and MOTGU-owned Originality remain separate support classes.
+- [x] Search/discovery snippets and search rank are never promoted to factual Evidence.
+- [x] Every coverage ID appears exactly once as `evidence_supported|originality_supported|mixed|unresolved`.
+- [x] Support mappings cite only exact allowed Evidence IDs and/or usable Originality source refs.
+- [x] Missing, duplicate or unknown coverage/ref IDs fail closed.
+- [x] `context_only`, contradicting and qualifying evidence are preserved and cannot silently count as clean factual support.
+- [x] Source authority/bias metadata is visible to semantic assessment but never converted into a fake numeric truth score.
+- [x] Lexical overlap alone cannot declare semantic support.
+- [x] Any unresolved coverage requirement blocks Angle generation and is surfaced as a research/support gap.
+- [x] Validated support-depth contract is immutable and bound into downstream Angle lineage.
+- [x] Legacy no-coverage behavior is explicit; do not fabricate coverage depth for historical records.
+- [x] No new business table/schema is added unless implementation proves a durable query/update need.
 - [ ] Focused happy/adversarial tests + broader regressions pass.
 - [ ] Backend lint/type/API generation and frontend checks pass when affected.
 - [ ] MG self-review finds no unresolved P0/P1 support-integrity defect.
