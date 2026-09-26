@@ -17,6 +17,7 @@ from test_ce05_writer import (
     isolated_session,
 )
 
+from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
 from app.modules.content_engine.journal.review_revise import (
     ReviewReviseGenerator,
     ReviewReviseInput,
@@ -164,6 +165,13 @@ async def test_review_revise_turns_declared_gaps_into_clean_v2_and_reuses_it() -
         assert len(unresolved_factual_claims(review_input.source_draft)) == 2
         assert "source_draft" in review_input.model_input
         assert "source_unresolved_factual_claims" in review_input.model_input
+        human_voice_policy = cast(
+            dict[str, object],
+            review_input.model_input["human_voice_policy"],
+        )
+        assert human_voice_policy["version"] == HUMAN_VOICE_POLICY_VERSION
+        assert human_voice_policy["post_rewrite_assertion_audit_required"] is True
+        assert human_voice_policy["extra_model_call"] is False
         revision_policy = cast(dict[str, object], review_input.model_input["revision_policy"])
         segment_policy = cast(dict[str, object], revision_policy["segment_support_policy"])
         closing_policy = cast(dict[str, object], segment_policy["closing_markdown"])
@@ -258,6 +266,46 @@ async def test_review_revise_fails_closed_when_unresolved_remains_after_budget()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("body_markdown", "A newly invented dimension is 999999 cm."),
+        ("body_markdown", 'The artist said, "I paint only from memory."'),
+    ],
+)
+async def test_review_revise_human_voice_truth_drift_fails_closed(
+    field: str,
+    replacement: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        invalid = _draft_payload(fixture.writer_input, "en")
+        sections = cast(list[object], invalid["sections"])
+        first = cast(dict[str, object], sections[0])
+        first[field] = replacement
+        model = FakeWriterModel([invalid])
+
+        with pytest.raises(
+            WriterGenerationError,
+            match="review_revise_human_voice_guard_failed",
+        ):
+            await _revise(session, fixture, source, model, max_attempts=1)
+
+        drafts = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.run_id == fixture.writer_input.writer_run.id,
+                        Artifact.artifact_type == "journal_draft",
+                    )
+                )
+            ).all()
+        )
+        assert model.calls == 1
+        assert [artifact.id for artifact in drafts] == [source.artifact.id]
+
+
+@pytest.mark.asyncio
 async def test_review_revise_support_drift_fails_closed() -> None:
     async with isolated_session() as session:
         fixture, source = await _source_draft(session, locale="en", unresolved=True)
@@ -347,6 +395,9 @@ async def test_review_revise_bridge_uses_locale_registry_and_review_task_key() -
         request = fake.requests[0]
         assert request.provider == "codex_cli"
         assert request.model == "test-model"
+        assert "HUMAN VOICE CONTRACT:" in request.prompt
+        assert "do not add a second rewrite stage" in request.prompt
+        assert "must pass Assertion Audit" in request.prompt
         assert "CLOSING SUPPORT CONTRACT:" in request.prompt
         assert "closing sentences zero allowed support refs" in request.prompt
         assert "closing_markdown must not contain factual" in request.prompt
@@ -359,6 +410,18 @@ async def test_review_revise_bridge_uses_locale_registry_and_review_task_key() -
         serialized = json.dumps(context, ensure_ascii=False, sort_keys=True)
         assert "other_locale_draft" not in serialized
         assert "translation_source" not in serialized
+        policy = cast(dict[str, object], context["human_voice_policy"])
+        assert policy["version"] == HUMAN_VOICE_POLICY_VERSION
+        assert policy["extra_model_call"] is False
+
+        invalid_input = copy.deepcopy(review_input.model_input)
+        invalid_input.pop("human_voice_policy")
+        with pytest.raises(
+            WriterGenerationError,
+            match="review_revise_model_input_incomplete",
+        ):
+            await port.generate(input_bundle=invalid_input, attempt=1)
+        assert len(fake.requests) == 1
 
         call = await session.scalar(
             select(ModelCall).where(
@@ -372,3 +435,7 @@ async def test_review_revise_bridge_uses_locale_registry_and_review_task_key() -
         assert call.runtime_metadata_json["route_reuse"] == REVIEW_REVISE_ROUTE_TASK_KEY
         assert call.runtime_metadata_json["stage"] == "review_revise"
         assert call.runtime_metadata_json["independent_locale_revision"] is True
+        assert (
+            call.runtime_metadata_json["human_voice_policy_version"]
+            == HUMAN_VOICE_POLICY_VERSION
+        )

@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
 from app.modules.content_engine.journal.review_revise import (
     REVIEW_REVISE_GENERATOR_VERSION,
     _evidence_relation_policy,
@@ -45,7 +46,7 @@ def _writer_input_with_relations(relations: list[tuple[str, str]]) -> WriterInpu
     )
 
 
-def test_review_revise_v4_exposes_exact_evidence_relation_policy() -> None:
+def test_review_revise_v5_exposes_exact_evidence_relation_policy() -> None:
     writer_input = _writer_input_with_relations(
         [
             ("e-support", "supports"),
@@ -57,7 +58,7 @@ def test_review_revise_v4_exposes_exact_evidence_relation_policy() -> None:
 
     policy = _evidence_relation_policy(writer_input)
 
-    assert REVIEW_REVISE_GENERATOR_VERSION == "ce05.journal_review_revise.v4"
+    assert REVIEW_REVISE_GENERATOR_VERSION == "ce05.journal_review_revise.v5"
     assert policy == {
         "supportive_relations": ["supports", "qualifies"],
         "non_supportive_relations": ["context_only", "contradicts"],
@@ -70,7 +71,7 @@ def test_review_revise_v4_exposes_exact_evidence_relation_policy() -> None:
     }
 
 
-def test_review_revise_v4_rejects_unknown_or_duplicate_relation_rows() -> None:
+def test_review_revise_v5_rejects_unknown_or_duplicate_relation_rows() -> None:
     unknown = _writer_input_with_relations([("e-1", "maybe")])
     with pytest.raises(
         WriterGenerationError,
@@ -118,6 +119,16 @@ def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules(
         source_artifact=source_artifact,
         source_draft=source_draft,
     )
+    human_voice_policy = cast(dict[str, object], model_input["human_voice_policy"])
+    assert human_voice_policy["version"] == HUMAN_VOICE_POLICY_VERSION
+    assert human_voice_policy["mode"] == "truth_preserving_native_rewrite"
+    assert human_voice_policy["post_rewrite_assertion_audit_required"] is True
+    assert human_voice_policy["authorship_detection"] == "not_part_of_task"
+    assert human_voice_policy["humanization_percentage"] == "forbidden"
+    assert human_voice_policy["extra_model_call"] is False
+    assert "artist_intent" in cast(list[str], human_voice_policy["forbidden_inventions"])
+    assert "price" in cast(list[str], human_voice_policy["forbidden_inventions"])
+
     revision_policy = cast(dict[str, object], model_input["revision_policy"])
     relation_policy = cast(dict[str, object], revision_policy["evidence_relation_policy"])
     segment_policy = cast(dict[str, object], revision_policy["segment_support_policy"])
@@ -232,3 +243,10 @@ def test_review_revise_prompt_states_fail_closed_support_boundary() -> None:
     assert "closing sentences zero allowed support refs" in rendered
     assert "closing_markdown must not contain factual" in rendered
     assert "Rewrite the closing as non-assertive reader guidance" in rendered
+    assert "HUMAN VOICE CONTRACT:" in rendered
+    assert "do not add a second rewrite stage" in rendered
+    assert "artist intent or quotes" in rendered
+    assert "customer stories" in rendered
+    assert "New numeric tokens and direct quotes" in rendered
+    assert "must pass Assertion Audit" in rendered
+    assert "humanization percentages are not part of this task" in rendered
