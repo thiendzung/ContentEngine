@@ -576,9 +576,6 @@ async def _outline_gate(
             raise OperatorControlError(
                 "operator_outline_semantic_projection_stale"
             ) from exc
-        if semantic_result is None:
-            raise OperatorControlError("operator_outline_semantic_projection_missing")
-
     return OperatorOutlineGateView(
         artifact=OperatorOutlineArtifactView(
             id=artifact.id,
