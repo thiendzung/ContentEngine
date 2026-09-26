@@ -54,10 +54,10 @@ def test_pillar_and_cluster_contracts_are_distinct_editorial_jobs() -> None:
 
 def test_role_semantics_bump_generation_and_render_identities() -> None:
     assert ANGLE_GENERATOR_VERSION == "cq04.angle_generator.v3"
-    assert OUTLINE_GENERATOR_VERSION == "ce05.outline_generator.v2"
+    assert OUTLINE_GENERATOR_VERSION == "cq04.outline_generator.v3"
     assert WRITER_GENERATOR_VERSION == "ce05.journal_writer.v2"
     assert ANGLE_RENDER_PROTOCOL_VERSION == "journal.angle.render.v4"
-    assert OUTLINE_RENDER_PROTOCOL_VERSION == "journal.outline.render.v2"
+    assert OUTLINE_RENDER_PROTOCOL_VERSION == "journal.outline.render.v3"
     assert WRITER_RENDER_PROTOCOL_VERSION == "journal.writer.render.v2"
 
 
