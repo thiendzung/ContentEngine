@@ -14,6 +14,7 @@ from test_operator_start_to_angle import (
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.modules.content_engine.journal.models import AngleApproval
+from app.modules.content_engine.journal.operator_control import OperatorControlError
 from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
 from app.modules.content_engine.journal.operator_manual_intake import (
     create_founder_journal_intake,
@@ -169,6 +170,17 @@ async def test_operator_view_surfaces_exact_cq03_unresolved_support(
         diagnostic = await session.get(Artifact, view.coverage_support.artifact_id)
         assert diagnostic is not None
         assert diagnostic.content_hash == view.coverage_support.artifact_hash
+
+        diagnostic.content_hash = "d" * 64
+        await session.flush()
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_coverage_support_projection_invalid",
+        ):
+            await get_operator_case_view(
+                session,
+                content_case_id=created.content_case_id,
+            )
 
 
 @pytest.mark.asyncio
