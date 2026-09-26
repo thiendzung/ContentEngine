@@ -14,7 +14,12 @@ from app.modules.content_engine.journal.human_voice import (
     HumanVoiceStyleComparison,
     compare_draft_style,
 )
-from app.modules.content_engine.journal.writer import JournalDraft
+from app.modules.content_engine.journal.writer import (
+    JournalDraft,
+    WriterGenerationError,
+    WriterInput,
+    _validate_model_output,
+)
 from app.modules.harness.models import Artifact, StepRun
 
 HUMAN_VOICE_TRACE_ARTIFACT_TYPE = "human_voice_trace"
@@ -283,6 +288,102 @@ async def load_human_voice_trace(
     return HumanVoiceTraceResult(artifact=artifact, style_comparison=comparison)
 
 
+async def require_human_voice_trace_for_rewritten_artifact(
+    session: AsyncSession,
+    *,
+    writer_input: WriterInput,
+    rewritten_artifact: Artifact,
+    rewritten_draft: JournalDraft,
+) -> HumanVoiceTraceResult:
+    rows = list(
+        (
+            await session.scalars(
+                select(Artifact)
+                .where(
+                    Artifact.run_id == rewritten_artifact.run_id,
+                    Artifact.artifact_type == HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+                )
+                .order_by(Artifact.version, Artifact.id)
+            )
+        ).all()
+    )
+    matches = [
+        artifact
+        for artifact in rows
+        if _binds_rewritten(artifact, rewritten_artifact=rewritten_artifact)
+    ]
+    if len(matches) != 1:
+        raise HumanVoiceTraceError(
+            "human_voice_trace_required"
+            if not matches
+            else "human_voice_trace_conflict"
+        )
+    trace_artifact = matches[0]
+    payload = trace_artifact.content_json
+    if not isinstance(payload, dict):
+        raise HumanVoiceTraceError("human_voice_trace_artifact_invalid")
+    source_ref = payload.get("source_draft")
+    if not isinstance(source_ref, dict) or set(source_ref) != {
+        "id",
+        "version",
+        "content_hash",
+        "draft_hash",
+    }:
+        raise HumanVoiceTraceError("human_voice_trace_source_binding_stale")
+    raw_id = source_ref.get("id")
+    raw_version = source_ref.get("version")
+    raw_hash = source_ref.get("content_hash")
+    if (
+        not isinstance(raw_id, str)
+        or not isinstance(raw_version, int)
+        or isinstance(raw_version, bool)
+        or raw_version <= 0
+        or not isinstance(raw_hash, str)
+    ):
+        raise HumanVoiceTraceError("human_voice_trace_source_binding_stale")
+    try:
+        from uuid import UUID
+
+        source_id = UUID(raw_id)
+    except ValueError as exc:
+        raise HumanVoiceTraceError("human_voice_trace_source_binding_stale") from exc
+    source_artifact = await session.get(Artifact, source_id)
+    if (
+        source_artifact is None
+        or source_artifact.artifact_type != "journal_draft"
+        or source_artifact.run_id != rewritten_artifact.run_id
+        or source_artifact.locale != rewritten_artifact.locale
+        or source_artifact.id == rewritten_artifact.id
+        or source_artifact.version != raw_version
+        or source_artifact.content_hash != raw_hash
+    ):
+        raise HumanVoiceTraceError("human_voice_trace_source_binding_stale")
+    source_payload = source_artifact.content_json
+    if not isinstance(source_payload, dict) or _hash(source_payload) != source_artifact.content_hash:
+        raise HumanVoiceTraceError("human_voice_trace_source_snapshot_stale")
+    raw_draft = source_payload.get("draft")
+    if not isinstance(raw_draft, dict):
+        raise HumanVoiceTraceError("human_voice_trace_source_snapshot_stale")
+    try:
+        source_draft = _validate_model_output(raw_draft, writer_input=writer_input)
+    except WriterGenerationError as exc:
+        raise HumanVoiceTraceError("human_voice_trace_source_snapshot_stale") from exc
+    if source_draft.to_dict() != raw_draft:
+        raise HumanVoiceTraceError("human_voice_trace_source_snapshot_stale")
+
+    comparison = _validate_trace(
+        trace_artifact,
+        source_artifact=source_artifact,
+        source_draft=source_draft,
+        rewritten_artifact=rewritten_artifact,
+        rewritten_draft=rewritten_draft,
+    )
+    return HumanVoiceTraceResult(
+        artifact=trace_artifact,
+        style_comparison=comparison,
+    )
+
+
 __all__ = [
     "HUMAN_VOICE_TRACE_ARTIFACT_TYPE",
     "HUMAN_VOICE_TRACE_GENERATOR_VERSION",
@@ -292,4 +393,5 @@ __all__ = [
     "draft_snapshot_hash",
     "load_human_voice_trace",
     "persist_human_voice_trace",
+    "require_human_voice_trace_for_rewritten_artifact",
 ]

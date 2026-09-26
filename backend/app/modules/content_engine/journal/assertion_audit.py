@@ -11,7 +11,14 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content_engine.journal.review_revise import unresolved_factual_claims
+from app.modules.content_engine.journal.human_voice_trace import (
+    HumanVoiceTraceError,
+    require_human_voice_trace_for_rewritten_artifact,
+)
+from app.modules.content_engine.journal.review_revise import (
+    REVIEW_REVISE_GENERATOR_VERSION,
+    unresolved_factual_claims,
+)
 from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
@@ -423,7 +430,24 @@ async def load_assertion_audit_input(
         or source.content_hash != expected_revised_draft_hash
     ):
         raise AssertionAuditError("assertion_audit_source_snapshot_mismatch")
-    _payload, draft = _source_payload(source, writer_input=writer_input)
+    source_payload, draft = _source_payload(source, writer_input=writer_input)
+    generator = source_payload.get("generator")
+    if (
+        isinstance(generator, dict)
+        and generator.get("version") == REVIEW_REVISE_GENERATOR_VERSION
+    ):
+        try:
+            await require_human_voice_trace_for_rewritten_artifact(
+                session,
+                writer_input=writer_input,
+                rewritten_artifact=source,
+                rewritten_draft=draft,
+            )
+        except HumanVoiceTraceError as exc:
+            raise AssertionAuditError(
+                "assertion_audit_human_voice_trace_invalid",
+                exc.code,
+            ) from exc
     segments = _source_segments(draft)
     catalog, claim_refs, relations = await _evidence_catalog(
         session,
