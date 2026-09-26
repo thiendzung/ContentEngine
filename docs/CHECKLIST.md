@@ -178,7 +178,7 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Focused CQ-01 tests + full CI green on exact final SHA.
 - [ ] MG self-review finds no unresolved P0/P1 content-integrity defect.
 - [ ] Exact-ref OpenCodeReview advisory review is triaged.
-- [ ] Agent Local returns bounded exact-head verification before Founder merge.
+- [x] Agent Local returns bounded exact-head verification before Founder merge.
 
 ## O. CQ-02 Pillar / Cluster editorial role
 
@@ -201,7 +201,7 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Focused role tests and broader regressions pass.
 - [ ] Backend lint/type and frontend lint/type/build pass.
 - [ ] MG self-review finds no unresolved P0/P1 editorial-contract defect.
-- [ ] Exact-ref OpenCodeReview is triaged.
+- [x] Exact-ref OpenCodeReview is triaged.
 - [ ] Agent Local returns bounded exact-head verification before Founder merge.
 
 
@@ -222,8 +222,33 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] Validated support-depth contract is immutable and bound into downstream Angle lineage.
 - [x] Legacy no-coverage behavior is explicit; do not fabricate coverage depth for historical records.
 - [x] No new business table/schema is added unless implementation proves a durable query/update need.
-- [ ] Focused happy/adversarial tests + broader regressions pass.
-- [ ] Backend lint/type/API generation and frontend checks pass when affected.
-- [ ] MG self-review finds no unresolved P0/P1 support-integrity defect.
+- [x] Focused happy/adversarial tests + broader regressions pass.
+- [x] Backend lint/type/API generation and frontend checks pass when affected.
+- [x] MG self-review finds no unresolved P0/P1 support-integrity defect.
+- [ ] Exact-ref OpenCodeReview is triaged.
+- [ ] Agent Local returns bounded exact-head verification before Founder merge.
+
+
+## Q. CQ-04 Angle / Outline semantic quality
+
+- [x] Current Angle/Outline schema/ref validation is audited separately from semantic quality.
+- [x] CQ-04 uses immutable semantic-quality Artifacts rather than a new business table by default.
+- [ ] Angle assessment binds the exact candidate, role contract, committed coverage and CQ-03 support-depth lineage.
+- [ ] Angle verdict is exactly `pass|revise`; no universal numeric quality score.
+- [ ] Angle findings use stable code + exact subject ref + reason + remediation.
+- [ ] Title, reader problem, central question and core promise are semantically coherent.
+- [ ] Pillar Angle demonstrates bounded breadth/navigation and delegates narrow specialist depth.
+- [ ] Cluster Angle remains one bounded subproblem with materially deeper treatment and no Pillar-style expansion.
+- [ ] Outline assessment binds the exact approved Angle and exact Outline artifact.
+- [ ] Every committed coverage requirement is intentionally fulfilled by at least one semantically matching section.
+- [ ] Every section has a distinct reader job and evidence/originality purpose.
+- [ ] Major section overlap/repetition and broad-summary filler are surfaced before Writer.
+- [ ] Existing CQ-02 relationship guard remains authoritative; no parent/child/sibling identity is invented.
+- [ ] CQ-04 never reclassifies factual Evidence truth established by CQ-03.
+- [ ] Operator/read-model exposes human-readable pass/revise reasons at Angle and Outline gates.
+- [ ] Positive/adversarial Pillar + Cluster fixtures cover role drift, coverage drift, redundant sections and unsupported section intent.
+- [ ] Generation/render identity changes prevent silent reuse when semantic behavior changes.
+- [ ] Broader regressions + lint/type/API/frontend checks pass.
+- [ ] MG self-review finds no unresolved P0/P1 semantic-quality defect.
 - [ ] Exact-ref OpenCodeReview is triaged.
 - [ ] Agent Local returns bounded exact-head verification before Founder merge.

@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-26 after Founder merged PR #228. Current main is `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`. CQ-01 Promise Coverage and CQ-02 Pillar/Cluster Editorial Contract are merged. Production activation/E2E external work remains paused; the active WIP is CQ-03 Evidence/Originality Depth. This is the ONE current working window.
+Updated: 2026-09-26 after Founder merged PR #234. Current main is `bb96995c294269b6c2398964cd41277133253f86`. CQ-01 through CQ-03 are merged. Production activation/E2E external work remains paused; the active WIP is CQ-04 Angle/Outline semantic quality. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -20,7 +20,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c` (merge PR #228). CQ-01 and CQ-02 passed exact-head CI/OCR/Agent Local verification before Founder merge. Code migration head remains `20260925_0043`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-03 is bounded content-quality code/test work and does not authorize operational migration.
+Live GitHub main: `bb96995c294269b6c2398964cd41277133253f86` (merge PR #234). CQ-01 through CQ-03 passed exact-head CI/OCR/Agent Local verification before Founder merge. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-04 is bounded content-quality code/test work and does not authorize operational migration.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -47,7 +47,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-03 / #229** is the only active implementation. Add an explicit pre-Angle Evidence/Originality depth contract for every exact coverage requirement. The contract must bind the locked EvidenceSet and approved OriginalityPack, cite exact allowed refs, distinguish evidence/originality/mixed/unresolved support, and fail closed before Angle when a requirement remains unsupported. Do not use lexical overlap or a numeric quality score as a semantic truth oracle.
+**CQ-04 / #230** is the only active implementation. Add bounded semantic-quality contracts around Angle and Outline so Pillar/Cluster behavior is proved rather than merely labeled. Validate title → reader problem → central question → core promise coherence, intentional coverage placement, Pillar breadth/navigation versus Cluster narrow/deep behavior, distinct section reader jobs/support purposes, and major overlap/repetition before Writer. Use explicit pass/revise findings, not a universal numeric score.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -439,7 +439,7 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01/CQ-02 merged, CQ-03 active
+## Content Quality priority — CQ-01/CQ-02/CQ-03 merged, CQ-04 active
 
 Founder priority remains content quality before production activation.
 
@@ -461,7 +461,15 @@ CQ-02 merged state:
 - canonical new editorial roles are `pillar|cluster`; legacy `primary|NULL` remains readable without invented semantics;
 - no durable Pillar↔Cluster relationship was invented; CQ-07 remains the proof point.
 
-CQ-03 active rules:
+CQ-03 merged state:
+- PR #234 merged as main `bb96995c294269b6c2398964cd41277133253f86`;
+- exact verified implementation head `7cce0bc1df8afc92b96995ae03c2c7ed66154221`;
+- CI #36217801507 PASS; MG exact-head self-review PASS;
+- OpenCodeReview v1.12.9: 15/15 reviewable, zero findings;
+- Agent Local: 17 focused + 1202 full backend PASS; frontend/OpenAPI/migration round-trip PASS;
+- exact coverage support-depth now blocks Angle on unresolved requirements with immutable/revalidated lineage.
+
+CQ-04 active rules:
 - exact coverage IDs/text are the unit of support-depth assessment;
 - locked external Evidence and approved MOTGU-owned Originality remain separate truth classes;
 - add one immutable support-depth Artifact rather than a new business table unless implementation proves otherwise;
@@ -472,3 +480,12 @@ CQ-03 active rules:
 - any unresolved coverage requirement blocks Angle generation and is surfaced as an explicit research/support gap;
 - no numeric quality/SEO score and no lexical-overlap-only semantic decision;
 - no Writer/Human Voice, WordPress/Rank Math/Google activation, operational migration or publication in CQ-03.
+
+
+CQ-04 implementation direction:
+- immutable semantic-quality Artifacts; no new business table unless proven necessary;
+- Angle gate checks title/problem/question/promise coherence and exact role behavior before human Angle approval;
+- Outline gate checks intentional coverage placement, distinct section jobs/support purposes, role behavior and major overlap before human Outline approval/Writer;
+- findings are stable code + exact subject ref + reason + remediation with pass|revise status; no global numeric quality score;
+- semantic quality must not reclassify Evidence truth established by CQ-03 or invent Pillar↔Cluster identities;
+- no Writer/Human Voice, CQ-06 final prose gate, production activation, operational migration or publication in CQ-04.

@@ -573,8 +573,8 @@ A4E2 closeout:
 ## Content Quality track — Founder priority 2026-09-26
 
 Production activation / A2 / WordPress / operational migration / publish work is paused.
-CQ-01 and CQ-02 are merged. Current WIP is **CQ-03 / #229** on exact main base
-`bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`.
+CQ-01 through CQ-03 are merged. Current WIP is **CQ-04 / #230** on exact main base
+`bb96995c294269b6c2398964cd41277133253f86`.
 
 ### CQ-01 — Promise Coverage — DONE
 
@@ -602,7 +602,7 @@ CQ-01 and CQ-02 are merged. Current WIP is **CQ-03 / #229** on exact main base
 - [x] Agent Local exact-head proof: 83 focused + 1185 full backend PASS; frontend PASS.
 - [x] Founder merged PR #228; main `bc2cad9b3d0a74e9b7d1d752df31f1377e88568c`; #227 closed.
 
-### CQ-03 — Evidence / Originality Depth — IN IMPLEMENTATION
+### CQ-03 — Evidence / Originality Depth — DONE
 
 - [x] Audit current boundary: Evidence Research sees coverage text, but Start-to-Angle only checks aggregate evidence/originality readiness; no per-coverage depth contract exists.
 - [x] Architecture direction: immutable pre-Angle support-depth Artifact; avoid a new business table.
@@ -620,10 +620,37 @@ CQ-01 and CQ-02 are merged. Current WIP is **CQ-03 / #229** on exact main base
 - [x] Add operator/read-model projection for unresolved support before Angle.
 - [x] Add focused positive/negative regressions: evidence-only, originality-only, mixed, missing, contradiction/qualification, unknown ref, duplicate/missing coverage.
 - [x] Confirm prompt/recipe registry impact; add code seed/migration only if existing approved registry cannot express the new bounded evaluator. Operational migration remains unauthorized.
+- [x] Normal CI green on final code/docs SHA.
+- [x] MG full-diff self-review with no unresolved P0/P1 support-integrity defect.
+- [x] Exact-ref OpenCodeReview + MG triage.
+- [x] Agent Local exact-head bounded verification.
+- [x] Founder merge.
+
+CQ-03 boundaries: no operational DB migration; no WordPress/Rank Math/Google/publish; no Writer/Human Voice; no magic quality score; no automatic promotion of model judgement, search snippets or KnowledgeCandidate to factual truth.
+
+CQ-03 closeout: PR #234 merged; main `bb96995c294269b6c2398964cd41277133253f86`; issue #229 closed completed.
+
+### CQ-04 — Angle / Outline Semantic Quality — IN IMPLEMENTATION
+
+- [x] Audit current Angle/Outline contracts and locate semantic-quality gaps.
+- [x] Lock architecture: immutable semantic-quality Artifacts + deterministic validators; no universal numeric score.
+- [ ] Define versioned Angle semantic assessment contract with `pass|revise` and stable human-readable findings.
+- [ ] Validate title → reader problem → central question → core promise coherence.
+- [ ] Validate Pillar breadth/navigation/delegation semantics versus Cluster narrow/deep semantics.
+- [ ] Bind Angle assessment to exact Angle candidate, editorial-role contract and upstream support-depth lineage.
+- [ ] Expose Angle pass/revise reasons before human Angle approval.
+- [ ] Define versioned Outline semantic assessment contract with exact section/coverage refs.
+- [ ] Require every committed coverage requirement to be intentionally fulfilled by at least one semantically matching section.
+- [ ] Require every section to have a distinct reader job and evidence/originality purpose.
+- [ ] Detect major section overlap/repetition and broad-summary filler before Writer.
+- [ ] Preserve CQ-02 relationship guard; never invent Pillar↔Cluster identities.
+- [ ] Expose Outline pass/revise reasons before human Outline approval / Writer.
+- [ ] Add positive/adversarial Pillar + Cluster fixtures for role drift, coverage drift, redundant sections and unsupported section intent.
+- [ ] Decide prompt/recipe/generation identity changes only where semantic behavior actually changes.
 - [ ] Normal CI green on final code/docs SHA.
-- [ ] MG full-diff self-review with no unresolved P0/P1 support-integrity defect.
+- [ ] MG full-diff self-review with no unresolved P0/P1 semantic-quality defect.
 - [ ] Exact-ref OpenCodeReview + MG triage.
 - [ ] Agent Local exact-head bounded verification.
 - [ ] Founder merge.
 
-CQ-03 boundaries: no operational DB migration; no WordPress/Rank Math/Google/publish; no Writer/Human Voice; no magic quality score; no automatic promotion of model judgement, search snippets or KnowledgeCandidate to factual truth.
+CQ-04 boundaries: no Writer/Human Voice; no CQ-06 final prose-quality gate; no durable Pillar↔Cluster DB relation; no production activation, operational migration or publication.
