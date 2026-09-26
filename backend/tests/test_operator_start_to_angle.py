@@ -312,9 +312,10 @@ class ExplodingEvidenceWorkflow:
 
 
 class ControlledCodexRunner:
-    def __init__(self) -> None:
+    def __init__(self, *, support_unresolved: bool = False) -> None:
         self.calls = 0
         self.received_context: dict[str, object] | None = None
+        self.support_unresolved = support_unresolved
 
     async def preflight(self) -> AgentCapability:
         return AgentCapability(
@@ -328,8 +329,68 @@ class ControlledCodexRunner:
     async def run(self, request: AgentRunRequest) -> AgentRunResult:
         self.calls += 1
         self.received_context = request.working_context
+        if "coverage_support_depth_input" in request.working_context:
+            support_input = request.working_context["coverage_support_depth_input"]
+            assert isinstance(support_input, dict)
+            requirements = support_input["coverage_requirements"]
+            evidence = support_input["evidence"]
+            originality_pack = support_input["originality_pack"]
+            assert isinstance(requirements, list) and requirements
+            assert isinstance(evidence, list) and evidence
+            assert isinstance(originality_pack, dict)
+            originality = originality_pack["items"]
+            assert isinstance(originality, list) and originality
+            evidence_item = evidence[0]
+            originality_item = originality[0]
+            assert isinstance(evidence_item, dict)
+            assert isinstance(originality_item, dict)
+            items: list[dict[str, object]] = []
+            for index, requirement in enumerate(requirements):
+                assert isinstance(requirement, dict)
+                requirement_id = requirement["id"]
+                if self.support_unresolved and index == 0:
+                    items.append(
+                        {
+                            "requirement_id": requirement_id,
+                            "status": "unresolved",
+                            "evidence_refs": [],
+                            "caveat_evidence_refs": [],
+                            "originality_refs": [],
+                            "rationale": "The exact requirement still lacks support.",
+                            "gaps": ["Acquire exact support before Angle generation."],
+                        }
+                    )
+                else:
+                    items.append(
+                        {
+                            "requirement_id": requirement_id,
+                            "status": "mixed",
+                            "evidence_refs": [evidence_item["evidence_id"]],
+                            "caveat_evidence_refs": [],
+                            "originality_refs": [originality_item["source_ref"]],
+                            "rationale": "Exact external and first-party support are present.",
+                            "gaps": [],
+                        }
+                    )
+            return AgentRunResult(
+                provider=request.provider,
+                model=request.model,
+                runner_version="fixture-codex",
+                structured_output={"schema_version": 1, "items": items},
+                raw_output_hash="b" * 64,
+                exit_code=0,
+                usage={"input_tokens": 80, "output_tokens": 40},
+                duration_ms=4,
+            )
+
         model_input = request.working_context["angle_model_input"]
         assert isinstance(model_input, dict)
+        support_depth = model_input.get("coverage_support_depth")
+        assert isinstance(support_depth, dict)
+        assert support_depth["ready_for_angle"] is True
+        assessment = support_depth["assessment"]
+        assert isinstance(assessment, dict)
+        assert assessment["schema_version"] == 1
         evidence_set = model_input["evidence_set"]
         originality_pack = model_input["originality_pack"]
         opportunity = model_input["opportunity"]
@@ -701,7 +762,7 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
             evidence_workflow=workflow,  # type: ignore[arg-type]
             runner_registry=registry,
         )
-        assert workflow.calls == 1 and runner.calls == 1
+        assert workflow.calls == 1 and runner.calls == 2
         assert workflow.last_request is not None
         research_request = workflow.last_request.research  # type: ignore[attr-defined]
         assert research_request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE
@@ -869,6 +930,79 @@ async def test_start_to_angle_rejects_all_context_evidence_before_angle_model(
             or 0
         )
         assert approval_count == 0
+
+
+@pytest.mark.asyncio
+async def test_cq03_unresolved_support_blocks_angle_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq03-unresolved-support"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq03-unresolved-support-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq03-unresolved",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow()
+        runner = ControlledCodexRunner(support_unresolved=True)
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_coverage_support_unresolved",
+        ) as exc_info:
+            await execute_start_to_angle_job(
+                session,
+                job_id=leased.id,
+                worker_id="worker-cq03-unresolved",
+                evidence_workflow=workflow,  # type: ignore[arg-type]
+                runner_registry=registry,
+            )
+
+        assert workflow.calls == 1
+        assert runner.calls == 1
+        snapshot = exc_info.value.diagnostic_snapshot
+        assert snapshot is not None
+        assert snapshot["artifact_type"] == "coverage_support_failure_diagnostic"
+        assert snapshot["ready_for_angle"] is False
+        unresolved = snapshot["unresolved"]
+        assert isinstance(unresolved, list) and unresolved
+        assert unresolved[0]["requirement_id"] == "coverage-1"
+
+        angle_count = int(
+            await session.scalar(
+                select(func.count(Artifact.id)).where(
+                    Artifact.run_id == created.bootstrap_run_id,
+                    Artifact.artifact_type == "angle_candidates",
+                )
+            )
+            or 0
+        )
+        assert angle_count == 0
 
 
 @pytest.mark.asyncio
