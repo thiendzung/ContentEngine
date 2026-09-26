@@ -605,6 +605,24 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
         view = await get_operator_case_view(session, content_case_id=case_id)
         assert len(view.quality_lanes) == 2
         assert all(lane.pending_approval_ready for lane in view.quality_lanes)
+        assert {lane.locale for lane in view.quality_lanes if lane.human_voice is not None} == {
+            "vi-VN",
+            "en",
+        }
+        for projected_lane in view.quality_lanes:
+            assert projected_lane.human_voice is not None
+            assert projected_lane.human_voice.advisory_only is True
+            assert projected_lane.human_voice.trace_artifact.id is not None
+            assert projected_lane.source_writer_draft is not None
+            assert projected_lane.revised_draft is not None
+            assert (
+                projected_lane.human_voice.source_draft_hash
+                != projected_lane.source_writer_draft.content_hash
+            )
+            assert (
+                projected_lane.human_voice.rewritten_draft_hash
+                != projected_lane.revised_draft.content_hash
+            )
         checkpoints = list(
             (
                 await session.scalars(

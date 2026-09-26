@@ -418,6 +418,7 @@ async def test_review_revise_fails_closed_when_unresolved_remains_after_budget()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("locale", ["vi-VN", "en"])
 @pytest.mark.parametrize(
     ("field", "replacement"),
     [
@@ -426,12 +427,13 @@ async def test_review_revise_fails_closed_when_unresolved_remains_after_budget()
     ],
 )
 async def test_review_revise_human_voice_truth_drift_fails_closed(
+    locale: str,
     field: str,
     replacement: str,
 ) -> None:
     async with isolated_session() as session:
-        fixture, source = await _source_draft(session, locale="en", unresolved=True)
-        invalid = _draft_payload(fixture.writer_input, "en")
+        fixture, source = await _source_draft(session, locale=locale, unresolved=True)
+        invalid = _draft_payload(fixture.writer_input, locale)
         sections = cast(list[object], invalid["sections"])
         first = cast(dict[str, object], sections[0])
         first[field] = replacement
