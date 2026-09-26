@@ -24,8 +24,10 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 )
 from app.modules.content_engine.journal.operator_view import get_operator_case_view
 from app.modules.content_engine.journal.operator_worker import (
+    OperatorWorkerError,
     claim_next_operator_job,
     execute_start_to_angle_job,
+    fail_start_to_angle_job,
 )
 from app.modules.content_engine.journal.production_board import list_production_board_cases
 from app.modules.harness.agent_runner import AgentRunnerRegistry
@@ -91,6 +93,82 @@ async def test_operator_view_projects_writer_lanes_before_quality_dispatch() -> 
         assert all(lane.draft_artifact_id is not None for lane in view.writer_lanes)
         assert all(lane.draft_hash is not None for lane in view.writer_lanes)
         assert view.quality_lanes == []
+
+
+@pytest.mark.asyncio
+async def test_operator_view_surfaces_exact_cq03_unresolved_support(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq03-operator-view-unresolved"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq03-operator-view-unresolved-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq03-operator-view",
+        )
+        assert leased is not None
+
+        runner = ControlledCodexRunner(support_unresolved=True)
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_coverage_support_unresolved",
+        ) as exc_info:
+            await execute_start_to_angle_job(
+                session,
+                job_id=leased.id,
+                worker_id="worker-cq03-operator-view",
+                evidence_workflow=ControlledEvidenceWorkflow(),  # type: ignore[arg-type]
+                runner_registry=registry,
+            )
+        assert exc_info.value.diagnostic_snapshot is not None
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-cq03-operator-view",
+            failure_class="insufficient_support",
+            message=str(exc_info.value),
+            diagnostic_snapshot=exc_info.value.diagnostic_snapshot,
+        )
+
+        view = await get_operator_case_view(
+            session,
+            content_case_id=created.content_case_id,
+        )
+
+        assert view.state.status == "BLOCKED"
+        assert view.coverage_support is not None
+        assert len(view.coverage_support.unresolved) == 1
+        gap = view.coverage_support.unresolved[0]
+        assert gap.requirement_id == "coverage-1"
+        assert gap.requirement == (
+            "Explain how to inspect materials and physical finish."
+        )
+        assert gap.gaps == ["Acquire exact support before Angle generation."]
+        diagnostic = await session.get(Artifact, view.coverage_support.artifact_id)
+        assert diagnostic is not None
+        assert diagnostic.content_hash == view.coverage_support.artifact_hash
 
 
 @pytest.mark.asyncio
