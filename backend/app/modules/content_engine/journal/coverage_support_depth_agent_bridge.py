@@ -402,10 +402,21 @@ async def load_coverage_support_depth_registry(
     PromptDefinition,
     RecipeDefinition,
 ]:
-    config, prompt, recipe = await load_coverage_support_depth_registry(
-        session,
-        locale=locale,
-    )
+    config = coverage_support_depth_registry_config(locale)
+    try:
+        prompt = await active_prompt_definition(session, prompt_key=config.prompt_key)
+        recipe = await active_recipe_definition(
+            session,
+            recipe_key=config.recipe_key,
+            content_type="journal",
+            locale=locale,
+            task_key=COVERAGE_SUPPORT_DEPTH_TASK_KEY,
+        )
+    except SettingsResolutionError as exc:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_registry_missing",
+            exc.code,
+        ) from exc
     return config, prompt, recipe
 
 
