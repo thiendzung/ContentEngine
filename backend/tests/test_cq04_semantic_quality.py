@@ -290,3 +290,30 @@ def test_pillar_cluster_roles_cannot_be_flattened_or_swapped() -> None:
             expected_role="cluster",
             allowed_subject_refs=refs,
         )
+
+
+
+def test_exact_subject_ref_accepts_upstream_id_outside_old_slug_charset() -> None:
+    section_id = "Section 1 / detail"
+    refs = outline_subject_refs(
+        section_ids=[section_id],
+        coverage_requirement_ids=["coverage-1"],
+    )
+    result = validate_semantic_quality_assessment(
+        {
+            "schema_version": 1,
+            "stage": "outline",
+            "role": "pillar",
+            "verdict": "revise",
+            "findings": [
+                _finding(
+                    "outline_section_job_unclear",
+                    f"section:{section_id}",
+                )
+            ],
+        },
+        expected_stage="outline",
+        expected_role="pillar",
+        allowed_subject_refs=refs,
+    )
+    assert result.findings[0].subject_ref == f"section:{section_id}"
