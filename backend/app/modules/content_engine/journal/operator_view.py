@@ -27,6 +27,12 @@ from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
 )
 from app.modules.content_engine.journal.models import JournalIntakeSpec, JournalRequiredLocale
+from app.modules.content_engine.journal.outline import (
+    OUTLINE_GENERATOR_VERSION,
+    OutlineGenerationError,
+    load_outline_input_from_artifact,
+    load_persisted_outline_semantic_quality,
+)
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
@@ -134,6 +140,8 @@ class OperatorAngleGateView(BaseModel):
 class OperatorOutlineGateView(BaseModel):
     type: Literal["outline"] = "outline"
     artifact: OperatorOutlineArtifactView
+    semantic_artifact: OperatorOutlineArtifactView | None = None
+    semantic_quality: OperatorSemanticQualityView | None = None
     outline: dict[str, object]
 
 
@@ -545,11 +553,62 @@ async def _outline_gate(
     outline = payload.get("outline")
     if not isinstance(outline, dict):
         raise OperatorControlError("operator_outline_projection_invalid")
+
+    semantic_result = None
+    generator = payload.get("generator")
+    if (
+        isinstance(generator, dict)
+        and generator.get("version") == OUTLINE_GENERATOR_VERSION
+    ):
+        try:
+            outline_input = await load_outline_input_from_artifact(
+                session,
+                artifact=artifact,
+            )
+            _validated_outline, semantic_result = (
+                await load_persisted_outline_semantic_quality(
+                    session,
+                    artifact=artifact,
+                    outline_input=outline_input,
+                )
+            )
+        except OutlineGenerationError as exc:
+            raise OperatorControlError(
+                "operator_outline_semantic_projection_stale"
+            ) from exc
+        if semantic_result is None:
+            raise OperatorControlError("operator_outline_semantic_projection_missing")
+
     return OperatorOutlineGateView(
         artifact=OperatorOutlineArtifactView(
             id=artifact.id,
             version=artifact.version,
             content_hash=artifact.content_hash,
+        ),
+        semantic_artifact=(
+            OperatorOutlineArtifactView(
+                id=semantic_result.artifact.id,
+                version=semantic_result.artifact.version,
+                content_hash=semantic_result.artifact.content_hash,
+            )
+            if semantic_result is not None
+            else None
+        ),
+        semantic_quality=(
+            OperatorSemanticQualityView(
+                verdict=semantic_result.assessment.verdict,
+                findings=[
+                    OperatorSemanticFindingView(
+                        code=finding.code,
+                        subject_ref=finding.subject_ref,
+                        reason=finding.reason,
+                        remediation=finding.remediation,
+                    )
+                    for finding in semantic_result.assessment.findings
+                ],
+            )
+            if semantic_result is not None
+            else None
         ),
         outline=outline,
     )
