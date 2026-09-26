@@ -571,6 +571,64 @@ async def load_outline_semantic_quality_for_artifact(
         raise OutlineGenerationError(exc.code) from exc
 
 
+async def load_outline_input_from_artifact(
+    session: AsyncSession,
+    *,
+    artifact: Artifact,
+) -> OutlineInput:
+    if artifact.artifact_type != "journal_outline":
+        raise OutlineGenerationError("outline_artifact_type_invalid")
+    payload = _dict(artifact.content_json, "outline_artifact_payload_invalid")
+    approved = _dict(payload.get("approved_angle"), "outline_approved_angle_ref_invalid")
+    angle_artifact = _dict(
+        approved.get("artifact"),
+        "outline_approved_angle_ref_invalid",
+    )
+    angle_approval = _dict(
+        approved.get("approval"),
+        "outline_approved_angle_ref_invalid",
+    )
+
+    raw_angle_id = angle_artifact.get("id")
+    raw_angle_version = angle_artifact.get("version")
+    raw_angle_hash = angle_artifact.get("content_hash")
+    raw_selected_angle_id = angle_approval.get("selected_angle_id")
+    raw_candidate_hash = angle_approval.get("selected_candidate_hash")
+    raw_approval_id = angle_approval.get("id")
+    if (
+        not isinstance(raw_angle_id, str)
+        or isinstance(raw_angle_version, bool)
+        or not isinstance(raw_angle_version, int)
+        or raw_angle_version <= 0
+        or not isinstance(raw_angle_hash, str)
+        or len(raw_angle_hash) != 64
+        or not isinstance(raw_selected_angle_id, str)
+        or not raw_selected_angle_id.strip()
+        or not isinstance(raw_candidate_hash, str)
+        or len(raw_candidate_hash) != 64
+        or not isinstance(raw_approval_id, str)
+    ):
+        raise OutlineGenerationError("outline_approved_angle_ref_invalid")
+    try:
+        angle_artifact_id = UUID(raw_angle_id)
+        angle_approval_id = UUID(raw_approval_id)
+    except ValueError as exc:
+        raise OutlineGenerationError("outline_approved_angle_ref_invalid") from exc
+
+    outline_input = await load_outline_input(
+        session,
+        angle_artifact_id=angle_artifact_id,
+        expected_angle_artifact_version=raw_angle_version,
+        expected_angle_artifact_hash=raw_angle_hash,
+        selected_angle_id=raw_selected_angle_id.strip(),
+        expected_candidate_hash=raw_candidate_hash,
+        expected_approval_id=angle_approval_id,
+    )
+    if outline_input.approved_angle.artifact.run_id != artifact.run_id:
+        raise OutlineGenerationError("outline_run_mismatch")
+    return outline_input
+
+
 async def load_persisted_outline_semantic_quality(
     session: AsyncSession,
     *,
@@ -964,6 +1022,7 @@ __all__ = [
     "OUTLINE_GENERATOR_VERSION",
     "OUTLINE_SCHEMA_VERSION",
     "load_outline_input",
+    "load_outline_input_from_artifact",
     "load_outline_semantic_quality_for_artifact",
     "load_persisted_outline_semantic_quality",
     "outline_model_input_hash",
