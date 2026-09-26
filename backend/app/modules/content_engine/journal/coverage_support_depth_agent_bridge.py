@@ -331,7 +331,7 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
             run_id=run.id,
             step_run_id=manifest.step_run_id,
             context_manifest_id=manifest.id,
-            task_key=COVERAGE_SUPPORT_DEPTH_TASK_KEY,
+            task_key=COVERAGE_SUPPORT_DEPTH_ROUTE_TASK_KEY,
             route=route.primary,
             purpose=f"CQ-03 coverage support-depth assessment for {self._config.locale}",
             prompt_version=self.prompt_version,
