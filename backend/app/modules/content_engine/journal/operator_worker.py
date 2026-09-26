@@ -21,6 +21,18 @@ from app.modules.content_engine.journal.context import (
     build_journal_context,
     persist_journal_context,
 )
+from app.modules.content_engine.journal.coverage_support_depth_agent_bridge import (
+    create_cli_coverage_support_depth_model_port,
+    load_coverage_support_depth_registry,
+)
+from app.modules.content_engine.journal.coverage_support_depth_eval import (
+    COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
+    CoverageSupportDepthRuntimeError,
+    coverage_support_failure_diagnostic_payload,
+    evaluate_coverage_support_depth,
+    load_coverage_support_depth_input,
+    persist_coverage_support_failure_diagnostic,
+)
 from app.modules.content_engine.journal.models import JournalIntakeSpec, OperatorCommand
 from app.modules.content_engine.journal.operator_angle_bundle import (
     bind_bundle_context_manifest,
@@ -212,12 +224,23 @@ async def fail_start_to_angle_job(
     job.updated_at = now
     diagnostic_artifact = None
     if diagnostic_snapshot is not None:
-        diagnostic_artifact = await persist_research_failure_diagnostic(
-            session,
-            run_id=run.id,
-            step_run_id=step.id,
-            payload=diagnostic_snapshot,
-        )
+        if (
+            diagnostic_snapshot.get("artifact_type")
+            == COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE
+        ):
+            diagnostic_artifact = await persist_coverage_support_failure_diagnostic(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                payload=diagnostic_snapshot,
+            )
+        else:
+            diagnostic_artifact = await persist_research_failure_diagnostic(
+                session,
+                run_id=run.id,
+                step_run_id=step.id,
+                payload=diagnostic_snapshot,
+            )
     step.error_json = {
         "class": safe_class,
         "message": safe_message,
@@ -478,16 +501,6 @@ async def execute_start_to_angle_job(
     settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
     if settings_snapshot is None:
         raise OperatorWorkerError("operator_worker_settings_missing")
-    prompt = await active_prompt_definition(session, prompt_key=ANGLE_PROMPT_KEY)
-    recipe = await active_recipe_definition(
-        session,
-        recipe_key=ANGLE_RECIPE_KEY,
-        content_type="journal",
-        locale=variant.locale,
-        task_key=ANGLE_TASK_KEY,
-    )
-    prompt_version = f"{prompt.prompt_key}:v{prompt.version}"
-    recipe_version = f"{recipe.recipe_key}:v{recipe.version}"
     route = SettingsModelRouter().resolve(
         task_key=ANGLE_TASK_KEY,
         settings_snapshot=settings_snapshot,
@@ -499,6 +512,75 @@ async def execute_start_to_angle_job(
     if capability.provider != route.primary.provider or not capability.authenticated:
         raise OperatorWorkerError("operator_worker_runner_preflight_invalid")
 
+    try:
+        _, support_prompt, support_recipe = await load_coverage_support_depth_registry(
+            session,
+            locale=variant.locale,
+        )
+        support_manifest = await build_context_manifest(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            inputs=ContextInputs(
+                prompt_version=(
+                    f"{support_prompt.prompt_key}:v{support_prompt.version}"
+                ),
+                recipe_version=(
+                    f"{support_recipe.recipe_key}:v{support_recipe.version}"
+                ),
+                evidence_set_id=evidence_handoff.evidence_set_id,
+                originality_pack_id=originality_handoff.originality_pack_id,
+                context_artifact_id=persisted_context.journal_context_artifact.id,
+                approved_knowledge_refs=context.approved_knowledge_refs,
+                knowledge_chunk_refs=(
+                    (brief_binding.ref,) if brief_binding is not None else ()
+                ),
+            ),
+        )
+        support_input = await load_coverage_support_depth_input(
+            session,
+            content_case_id=content_case.id,
+            opportunity_id=opportunity.id,
+            evidence_set_id=evidence_handoff.evidence_set_id,
+            originality_pack_id=originality_handoff.originality_pack_id,
+        )
+        support_port = await create_cli_coverage_support_depth_model_port(
+            session,
+            run_id=run.id,
+            settings_snapshot=settings_snapshot,
+            context_manifest_id=support_manifest.id,
+            runner_registry=runner_registry,
+            locale=variant.locale,
+        )
+        support_result = await evaluate_coverage_support_depth(
+            session,
+            source_input=support_input,
+            run_id=run.id,
+            step_run_id=step.id,
+            model=support_port,
+        )
+    except CoverageSupportDepthRuntimeError as exc:
+        raise OperatorWorkerError("operator_worker_coverage_support_failed") from exc
+
+    if not support_result.ready_for_angle:
+        raise OperatorWorkerError(
+            "operator_worker_coverage_support_unresolved",
+            diagnostic_snapshot=coverage_support_failure_diagnostic_payload(
+                support_input,
+                support_result,
+            ),
+        )
+
+    prompt = await active_prompt_definition(session, prompt_key=ANGLE_PROMPT_KEY)
+    recipe = await active_recipe_definition(
+        session,
+        recipe_key=ANGLE_RECIPE_KEY,
+        content_type="journal",
+        locale=variant.locale,
+        task_key=ANGLE_TASK_KEY,
+    )
+    prompt_version = f"{prompt.prompt_key}:v{prompt.version}"
+    recipe_version = f"{recipe.recipe_key}:v{recipe.version}"
     manifest = await build_context_manifest(
         session,
         run_id=run.id,
@@ -512,6 +594,9 @@ async def execute_start_to_angle_job(
             approved_knowledge_refs=context.approved_knowledge_refs,
             knowledge_chunk_refs=(
                 (brief_binding.ref,) if brief_binding is not None else ()
+            ),
+            tool_result_refs=(
+                f"coverage_support_depth:{support_result.artifact.id}",
             ),
         ),
     )

@@ -7,6 +7,8 @@ control plane.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Literal, cast
 from uuid import UUID
 
@@ -20,12 +22,15 @@ from app.modules.content_engine.journal.angle import (
     angle_candidate_hash,
     load_journal_input_bundle,
 )
+from app.modules.content_engine.journal.coverage_support_depth_eval import (
+    COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
+)
 from app.modules.content_engine.journal.models import JournalIntakeSpec, JournalRequiredLocale
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
-from app.modules.harness.models import Artifact, ContentRun
+from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.harness.persistence import get_latest_checkpoint
 
 LocaleRole = Literal["source", "translation"]
@@ -61,6 +66,23 @@ class OperatorOutlineArtifactView(BaseModel):
 class OperatorCoverageRequirementView(BaseModel):
     id: str
     requirement: str
+
+
+class OperatorCoverageSupportGapView(BaseModel):
+    requirement_id: str
+    requirement: str
+    rationale: str
+    gaps: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    caveat_evidence_refs: list[str] = Field(default_factory=list)
+    originality_refs: list[str] = Field(default_factory=list)
+
+
+class OperatorCoverageSupportDiagnosticView(BaseModel):
+    artifact_id: UUID
+    artifact_version: int
+    artifact_hash: str
+    unresolved: list[OperatorCoverageSupportGapView] = Field(default_factory=list)
 
 
 class OperatorAngleCoverageView(BaseModel):
@@ -175,6 +197,7 @@ class OperatorCaseView(BaseModel):
     promise: str
     content_role: str | None
     coverage_requirements: list[OperatorCoverageRequirementView] = Field(default_factory=list)
+    coverage_support: OperatorCoverageSupportDiagnosticView | None = None
     state: OperatorState
     intake: OperatorIntakeView
     pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
@@ -274,6 +297,115 @@ def _coverage_requirements_from_snapshot(
             )
         )
     return result
+
+
+def _canonical_hash(value: object) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+async def _coverage_support_diagnostic(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+    opportunity: ContentOpportunity,
+) -> OperatorCoverageSupportDiagnosticView | None:
+    if state.current_run_id is None or state.current_step_run_id is None:
+        return None
+    step = await session.get(StepRun, state.current_step_run_id)
+    if (
+        step is None
+        or step.run_id != state.current_run_id
+        or not isinstance(step.error_json, dict)
+    ):
+        return None
+    raw_artifact_id = step.error_json.get("diagnostic_artifact_id")
+    if not isinstance(raw_artifact_id, str):
+        return None
+    try:
+        artifact_id = UUID(raw_artifact_id)
+    except ValueError as exc:
+        raise OperatorControlError("operator_coverage_support_projection_invalid") from exc
+    artifact = await session.get(Artifact, artifact_id)
+    if (
+        artifact is None
+        or artifact.run_id != state.current_run_id
+        or artifact.step_run_id != state.current_step_run_id
+        or artifact.artifact_type != COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE
+        or not isinstance(artifact.content_json, dict)
+        or _canonical_hash(artifact.content_json) != artifact.content_hash
+        or step.error_json.get("diagnostic_content_hash") != artifact.content_hash
+    ):
+        raise OperatorControlError("operator_coverage_support_projection_invalid")
+
+    payload = artifact.content_json
+    opportunity_ref = payload.get("opportunity")
+    unresolved = payload.get("unresolved")
+    if (
+        payload.get("ready_for_angle") is not False
+        or not isinstance(opportunity_ref, dict)
+        or opportunity_ref.get("id") != str(opportunity.id)
+        or not isinstance(unresolved, list)
+        or not unresolved
+    ):
+        raise OperatorControlError("operator_coverage_support_projection_invalid")
+
+    requirements = {
+        f"coverage-{index + 1}": requirement
+        for index, requirement in enumerate(opportunity.coverage_requirements_json)
+    }
+    result: list[OperatorCoverageSupportGapView] = []
+    seen: set[str] = set()
+    for raw in unresolved:
+        if not isinstance(raw, dict):
+            raise OperatorControlError("operator_coverage_support_projection_invalid")
+        requirement_id = raw.get("requirement_id")
+        rationale = raw.get("rationale")
+        gaps = raw.get("gaps")
+        evidence_refs = raw.get("evidence_refs")
+        caveat_refs = raw.get("caveat_evidence_refs")
+        originality_refs = raw.get("originality_refs")
+        if (
+            not isinstance(requirement_id, str)
+            or requirement_id not in requirements
+            or requirement_id in seen
+            or not isinstance(rationale, str)
+            or not rationale.strip()
+            or not isinstance(gaps, list)
+            or not gaps
+            or any(not isinstance(item, str) or not item.strip() for item in gaps)
+            or not isinstance(evidence_refs, list)
+            or any(not isinstance(item, str) for item in evidence_refs)
+            or not isinstance(caveat_refs, list)
+            or any(not isinstance(item, str) for item in caveat_refs)
+            or not isinstance(originality_refs, list)
+            or any(not isinstance(item, str) for item in originality_refs)
+        ):
+            raise OperatorControlError("operator_coverage_support_projection_invalid")
+        seen.add(requirement_id)
+        result.append(
+            OperatorCoverageSupportGapView(
+                requirement_id=requirement_id,
+                requirement=requirements[requirement_id],
+                rationale=rationale.strip(),
+                gaps=[item.strip() for item in gaps],
+                evidence_refs=list(evidence_refs),
+                caveat_evidence_refs=list(caveat_refs),
+                originality_refs=list(originality_refs),
+            )
+        )
+
+    return OperatorCoverageSupportDiagnosticView(
+        artifact_id=artifact.id,
+        artifact_version=artifact.version,
+        artifact_hash=artifact.content_hash,
+        unresolved=result,
+    )
 
 
 async def _angle_gate(
@@ -399,6 +531,11 @@ async def get_operator_case_view(
     if not requirements:
         raise OperatorControlError("operator_required_locales_missing")
     state = await operator_runtime.get_operator_state(session, content_case_id=content_case.id)
+    coverage_support = await _coverage_support_diagnostic(
+        session,
+        state=state,
+        opportunity=opportunity,
+    )
     pending_gate: OperatorAngleGateView | OperatorOutlineGateView | None = None
     if state.status == "AWAITING_APPROVAL":
         if state.human_gate == "angle":
@@ -628,6 +765,7 @@ async def get_operator_case_view(
             )
             for index, requirement in enumerate(opportunity.coverage_requirements_json)
         ],
+        coverage_support=coverage_support,
         state=state,
         intake=OperatorIntakeView(
             source_locale=spec.source_locale,
@@ -648,6 +786,8 @@ __all__ = [
     "OperatorAngleCoverageView",
     "OperatorAngleGateView",
     "OperatorCoverageRequirementView",
+    "OperatorCoverageSupportDiagnosticView",
+    "OperatorCoverageSupportGapView",
     "OperatorCaseView",
     "OperatorIntakeView",
     "OperatorOutlineArtifactView",
