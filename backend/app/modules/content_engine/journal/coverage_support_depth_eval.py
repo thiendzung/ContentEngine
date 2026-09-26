@@ -499,12 +499,16 @@ async def evaluate_coverage_support_depth(
     )
     session.add(artifact)
     await session.flush()
-    unresolved = tuple(payload["unresolved_requirement_ids"])
+    unresolved = tuple(
+        item.requirement_id
+        for item in assessment.items
+        if item.status == "unresolved"
+    )
     return CoverageSupportDepthResult(
         artifact=artifact,
         assessment=assessment,
         ready_for_angle=not unresolved,
-        unresolved_requirement_ids=cast(tuple[str, ...], unresolved),
+        unresolved_requirement_ids=unresolved,
         model_attempts=attempts,
         reused=False,
     )
