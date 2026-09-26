@@ -18,6 +18,11 @@ from test_ce05_writer import (
 )
 
 from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
+from app.modules.content_engine.journal.human_voice_trace import (
+    HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+    HUMAN_VOICE_TRACE_GENERATOR_VERSION,
+    draft_snapshot_hash,
+)
 from app.modules.content_engine.journal.review_revise import (
     ReviewReviseGenerator,
     ReviewReviseInput,
@@ -236,6 +241,118 @@ async def test_review_revise_turns_declared_gaps_into_clean_v2_and_reuses_it() -
         assert unresolved_factual_claims(first.draft) == ()
         assert model.calls == 1
         assert source.artifact.content_json == source_snapshot
+
+        traces = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.run_id == fixture.writer_input.writer_run.id,
+                        Artifact.artifact_type == HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+                    )
+                )
+            ).all()
+        )
+        assert len(traces) == 1
+        trace = traces[0]
+        assert trace.step_run_id == first.artifact.step_run_id
+        assert trace.locale == "en"
+        payload = trace.content_json
+        assert isinstance(payload, dict)
+        assert payload["generator_version"] == HUMAN_VOICE_TRACE_GENERATOR_VERSION
+        assert payload["policy_version"] == HUMAN_VOICE_POLICY_VERSION
+        assert payload["source_draft"] == {
+            "id": str(source.artifact.id),
+            "version": source.artifact.version,
+            "content_hash": source.artifact.content_hash,
+            "draft_hash": draft_snapshot_hash(source.draft),
+        }
+        assert payload["rewritten_draft"] == {
+            "id": str(first.artifact.id),
+            "version": first.artifact.version,
+            "content_hash": first.artifact.content_hash,
+            "draft_hash": draft_snapshot_hash(first.draft),
+        }
+        comparison = cast(dict[str, object], payload["style_comparison"])
+        assert comparison["advisory_only"] is True
+        assert str(trace.id) in step.output_artifact_refs_json
+
+
+@pytest.mark.asyncio
+async def test_review_revise_reuse_fails_closed_on_conflicting_human_voice_trace() -> None:
+    async with isolated_session() as session:
+        fixture, source = await _source_draft(session, locale="en", unresolved=True)
+        revised_payload = _draft_payload(fixture.writer_input, "en")
+        model = FakeWriterModel([revised_payload])
+        step, manifest, prompt_version, recipe_version = await _review_manifest(
+            session,
+            fixture,
+            source,
+        )
+        generator = ReviewReviseGenerator(max_attempts=1)
+        first = await generator.revise_draft(
+            session,
+            writer_run_id=fixture.writer_input.writer_run.id,
+            source_draft_artifact_id=source.artifact.id,
+            expected_source_draft_version=source.artifact.version,
+            expected_source_draft_hash=source.artifact.content_hash,
+            outline_artifact_id=fixture.outline_result.artifact.id,
+            expected_outline_version=fixture.outline_result.artifact.version,
+            expected_outline_hash=fixture.outline_result.artifact.content_hash,
+            locale="en",
+            model=model,
+            provider="fixture-provider",
+            model_name="fixture-model",
+            context_manifest_id=manifest.id,
+            prompt_version=prompt_version,
+            recipe_version=recipe_version,
+        )
+
+        existing_trace = await session.scalar(
+            select(Artifact).where(
+                Artifact.run_id == fixture.writer_input.writer_run.id,
+                Artifact.artifact_type == HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+            )
+        )
+        assert existing_trace is not None
+        existing_payload = copy.deepcopy(existing_trace.content_json)
+        assert isinstance(existing_payload, dict)
+        duplicate = Artifact(
+            run_id=existing_trace.run_id,
+            step_run_id=existing_trace.step_run_id,
+            artifact_type=HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+            locale=existing_trace.locale,
+            version=existing_trace.version + 1,
+            content_json=existing_payload,
+            content_hash="f" * 64,
+        )
+        session.add(duplicate)
+        await session.flush()
+
+        with pytest.raises(
+            WriterGenerationError,
+            match="review_revise_reused_human_voice_trace_invalid",
+        ):
+            await generator.revise_draft(
+                session,
+                writer_run_id=fixture.writer_input.writer_run.id,
+                source_draft_artifact_id=source.artifact.id,
+                expected_source_draft_version=source.artifact.version,
+                expected_source_draft_hash=source.artifact.content_hash,
+                outline_artifact_id=fixture.outline_result.artifact.id,
+                expected_outline_version=fixture.outline_result.artifact.version,
+                expected_outline_hash=fixture.outline_result.artifact.content_hash,
+                locale="en",
+                model=model,
+                provider="fixture-provider",
+                model_name="fixture-model",
+                context_manifest_id=manifest.id,
+                prompt_version=prompt_version,
+                recipe_version=recipe_version,
+            )
+
+        assert model.calls == 1
+        assert first.artifact.id != source.artifact.id
+        assert str(existing_trace.id) in step.output_artifact_refs_json
 
 
 @pytest.mark.asyncio

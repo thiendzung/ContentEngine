@@ -46,7 +46,7 @@ def _writer_input_with_relations(relations: list[tuple[str, str]]) -> WriterInpu
     )
 
 
-def test_review_revise_v5_exposes_exact_evidence_relation_policy() -> None:
+def test_review_revise_v6_exposes_exact_evidence_relation_policy() -> None:
     writer_input = _writer_input_with_relations(
         [
             ("e-support", "supports"),
@@ -58,7 +58,7 @@ def test_review_revise_v5_exposes_exact_evidence_relation_policy() -> None:
 
     policy = _evidence_relation_policy(writer_input)
 
-    assert REVIEW_REVISE_GENERATOR_VERSION == "ce05.journal_review_revise.v5"
+    assert REVIEW_REVISE_GENERATOR_VERSION == "ce05.journal_review_revise.v6"
     assert policy == {
         "supportive_relations": ["supports", "qualifies"],
         "non_supportive_relations": ["context_only", "contradicts"],
@@ -71,7 +71,7 @@ def test_review_revise_v5_exposes_exact_evidence_relation_policy() -> None:
     }
 
 
-def test_review_revise_v5_rejects_unknown_or_duplicate_relation_rows() -> None:
+def test_review_revise_v6_rejects_unknown_or_duplicate_relation_rows() -> None:
     unknown = _writer_input_with_relations([("e-1", "maybe")])
     with pytest.raises(
         WriterGenerationError,
