@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,7 @@ from app.modules.content_engine.journal.semantic_quality import (
 from app.modules.harness.models import Artifact, StepRun
 
 ANGLE_SEMANTIC_QUALITY_ARTIFACT_TYPE = "angle_semantic_quality"
-ANGLE_SEMANTIC_QUALITY_GENERATOR_VERSION = "cq04.angle_semantic_quality.v1"
+ANGLE_SEMANTIC_QUALITY_GENERATOR_VERSION = "cq04.angle_semantic_quality.v2"
 
 
 class AngleSemanticQualityError(ValueError):
@@ -66,6 +67,47 @@ def _hash(value: object) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _normalize_support_depth_ref(
+    value: object | None,
+) -> dict[str, object] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {
+        "id",
+        "version",
+        "content_hash",
+    }:
+        raise AngleSemanticQualityError(
+            "angle_semantic_support_depth_ref_invalid"
+        )
+    raw_id = value.get("id")
+    version = value.get("version")
+    content_hash = value.get("content_hash")
+    if (
+        not isinstance(raw_id, str)
+        or isinstance(version, bool)
+        or not isinstance(version, int)
+        or version <= 0
+        or not isinstance(content_hash, str)
+        or len(content_hash) != 64
+        or any(ch not in "0123456789abcdef" for ch in content_hash)
+    ):
+        raise AngleSemanticQualityError(
+            "angle_semantic_support_depth_ref_invalid"
+        )
+    try:
+        artifact_id = UUID(raw_id)
+    except ValueError as exc:
+        raise AngleSemanticQualityError(
+            "angle_semantic_support_depth_ref_invalid"
+        ) from exc
+    return {
+        "id": str(artifact_id),
+        "version": version,
+        "content_hash": content_hash,
+    }
 
 
 def _decoded_candidates(raw: object) -> list[object]:
@@ -156,11 +198,15 @@ async def persist_angle_semantic_quality(
     angle_artifact: Artifact,
     role: SemanticRole,
     entries: tuple[AngleSemanticAssessmentEntry, ...],
+    coverage_support_depth_ref: object | None = None,
 ) -> Artifact:
     if angle_artifact.artifact_type != "angle_candidates":
         raise AngleSemanticQualityError("angle_semantic_angle_artifact_invalid")
     if not entries:
         raise AngleSemanticQualityError("angle_semantic_entries_required")
+    normalized_support_depth = _normalize_support_depth_ref(
+        coverage_support_depth_ref
+    )
     payload: dict[str, object] = {
         "schema_version": 1,
         "artifact_type": ANGLE_SEMANTIC_QUALITY_ARTIFACT_TYPE,
@@ -171,6 +217,7 @@ async def persist_angle_semantic_quality(
             "content_hash": angle_artifact.content_hash,
         },
         "role": role,
+        "coverage_support_depth": normalized_support_depth,
         "entries": [entry.to_dict() for entry in entries],
     }
     content_hash = _hash(payload)
@@ -214,6 +261,7 @@ def _validate_artifact_payload(
     angle_artifact: Artifact,
     role: SemanticRole,
     candidates: tuple[AngleSemanticCandidateRef, ...],
+    coverage_support_depth_ref: object | None,
 ) -> tuple[AngleSemanticAssessmentEntry, ...]:
     payload = artifact.content_json
     if (
@@ -235,6 +283,13 @@ def _validate_artifact_payload(
         or angle_ref.get("content_hash") != angle_artifact.content_hash
     ):
         raise AngleSemanticQualityError("angle_semantic_angle_binding_stale")
+    expected_support_depth = _normalize_support_depth_ref(
+        coverage_support_depth_ref
+    )
+    if payload.get("coverage_support_depth") != expected_support_depth:
+        raise AngleSemanticQualityError(
+            "angle_semantic_support_depth_binding_stale"
+        )
     raw_entries = payload.get("entries")
     if not isinstance(raw_entries, list) or len(raw_entries) != len(candidates):
         raise AngleSemanticQualityError("angle_semantic_entries_invalid")
@@ -306,6 +361,7 @@ async def load_angle_semantic_quality(
     angle_artifact: Artifact,
     role: SemanticRole,
     candidates: tuple[AngleSemanticCandidateRef, ...],
+    coverage_support_depth_ref: object | None = None,
 ) -> AngleSemanticQualityResult:
     rows = list(
         (
@@ -339,6 +395,7 @@ async def load_angle_semantic_quality(
         angle_artifact=angle_artifact,
         role=role,
         candidates=candidates,
+        coverage_support_depth_ref=coverage_support_depth_ref,
     )
     return AngleSemanticQualityResult(artifact=artifact, entries=entries)
 
@@ -350,12 +407,14 @@ async def require_angle_semantic_pass(
     role: SemanticRole,
     candidates: tuple[AngleSemanticCandidateRef, ...],
     selected_angle_id: str,
+    coverage_support_depth_ref: object | None = None,
 ) -> SemanticQualityAssessment:
     result = await load_angle_semantic_quality(
         session,
         angle_artifact=angle_artifact,
         role=role,
         candidates=candidates,
+        coverage_support_depth_ref=coverage_support_depth_ref,
     )
     assessment = result.by_angle_id.get(selected_angle_id)
     if assessment is None:

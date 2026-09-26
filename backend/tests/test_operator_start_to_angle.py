@@ -787,6 +787,33 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
         assert final_state.human_gate == "angle"
         angle = await session.get(Artifact, result.angle_artifact_id)
         assert angle is not None and angle.artifact_type == "angle_candidates"
+        support_depth_artifact = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "coverage_support_depth",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
+        semantic_artifact = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == run.id,
+                Artifact.artifact_type == "angle_semantic_quality",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
+        assert support_depth_artifact is not None
+        assert semantic_artifact is not None
+        semantic_payload = semantic_artifact.content_json
+        assert isinstance(semantic_payload, dict)
+        assert semantic_payload["coverage_support_depth"] == {
+            "id": str(support_depth_artifact.id),
+            "version": support_depth_artifact.version,
+            "content_hash": support_depth_artifact.content_hash,
+        }
         bundle = await session.scalar(
             select(Artifact)
             .where(

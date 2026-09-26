@@ -235,6 +235,23 @@ def _semantic_role(bundle: JournalInputBundle) -> SemanticRole | None:
     return contract.role if contract is not None else None
 
 
+def _semantic_support_depth_ref(
+    bundle: JournalInputBundle,
+) -> dict[str, object] | None:
+    raw = bundle.angle_model_input.get("coverage_support_depth")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or raw.get("ready_for_angle") is not True:
+        raise AngleGenerationError("angle_semantic_support_depth_ref_invalid")
+    artifact_ref = raw.get("artifact")
+    if not isinstance(artifact_ref, dict):
+        raise AngleGenerationError("angle_semantic_support_depth_ref_invalid")
+    cloned = _clone_json(artifact_ref)
+    if not isinstance(cloned, dict):
+        raise AngleGenerationError("angle_semantic_support_depth_ref_invalid")
+    return cast(dict[str, object], cloned)
+
+
 def _semantic_candidate_refs(
     candidates: Sequence[AngleCandidate],
 ) -> tuple[AngleSemanticCandidateRef, ...]:
@@ -266,6 +283,7 @@ async def load_angle_semantic_quality_for_artifact(
             angle_artifact=artifact,
             role=role,
             candidates=_semantic_candidate_refs(candidates),
+            coverage_support_depth_ref=_semantic_support_depth_ref(bundle),
         )
     except AngleSemanticQualityError as exc:
         raise AngleGenerationError(exc.code) from exc
@@ -1232,6 +1250,7 @@ class AngleGenerator:
                     angle_artifact=artifact,
                     role=semantic_role,
                     entries=semantic_entries,
+                    coverage_support_depth_ref=_semantic_support_depth_ref(bundle),
                 )
             return AngleGenerationResult(
                 artifact=artifact,
