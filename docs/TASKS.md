@@ -112,8 +112,8 @@ Implementation note: F6-MINI merged via PR #117 and F6.A1 browser acceptance pas
 - [x] OCR-01 merged via PR #121; Issue #119 closed.
 - [x] Exact-ref wrapper rejects moving/symbolic/short refs and is regression-tested.
 - [x] Tests, operational scripts/config and OCR config are first-class review scope.
-- [ ] Use OCR on the next 3-5 code-bearing PRs and record true defects / missing tests / false positives before considering OCR-02 automation.
-- [ ] Keep OCR advisory: no auto-fix, auto-merge or required merge gate during this evidence-collection window.
+- [ ] Agent Local executes exact-ref OCR as part of heavy exact-SHA verification; MG owns finding classification/triage.
+- [ ] Keep OCR advisory in authority: no auto-fix or auto-merge; OCR findings inform MG's technical merge-readiness decision.
 
 ## O1 - Controlled local operational release
 
@@ -164,8 +164,9 @@ O2: new Model Routing activation requires an explicit policy/model/provider deci
 
 - [ ] Canonical input/output contracts, bounded tests and human-gate STOP documented.
 - [ ] Code, tests and semantic AI_context/TASKS updates in the same PR when status meaning changes; exact runtime evidence lives in a dated log/comment.
-- [ ] For code-bearing PRs, run exact-ref OpenCodeReview Delegation review after normal CI and before final MG disposition; classify findings before modifying code.
-- [ ] Code/CI/local proof/deployment states remain separate; self-review is not independent local execution evidence.
+- [ ] MG completes code/test/self-review, then Founder dispatches one exact-SHA Agent Local heavy-verification task including exact-ref OCR where applicable.
+- [ ] MG triages OCR + Agent Local evidence before declaring technical merge readiness; GitHub Actions remains only a minimum confirmation gate when available.
+- [ ] Code/minimal-CI/local proof/deployment states remain separate; self-review is not independent local execution evidence.
 - [ ] MG provides an exact local task; Founder copies it and returns the report; no direct-agent-channel assumption.
 - [ ] No automatic merge or runtime permission inherited from a roadmap.
 
