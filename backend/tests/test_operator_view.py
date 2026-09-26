@@ -60,6 +60,7 @@ async def test_operator_view_projects_ready_intake_without_inventing_gate(
         assert view.pending_gate is None
         assert view.intake.source_locale == "en"
         assert view.intake.research_country == "vn"
+        assert view.content_role == "cluster"
         assert [item.requirement for item in view.coverage_requirements] == [
             "Explain how to inspect materials and physical finish.",
             "Separate factual evidence from MOTGU editorial judgment.",

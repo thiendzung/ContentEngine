@@ -17,7 +17,11 @@ from app.modules.content_engine.journal.review_revise_orchestration import (
     prepare_review_revise_en_orchestration,
     run_review_revise_en_orchestration,
 )
-from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
+from app.modules.content_engine.models import (
+    ContentOpportunity,
+    LocaleVariant,
+    SettingsSnapshot,
+)
 from app.modules.harness.agent_runner import (
     CODEX_CLI_APPROVED_VERSION,
     AgentCapability,
@@ -123,10 +127,15 @@ async def _source_draft_with_settings(
     settings = _settings(antigravity=antigravity)
 
     async def _run_and_step(session_, *, project, content_case):
+        opportunity = await session_.get(
+            ContentOpportunity,
+            content_case.content_opportunity_id,
+        )
+        assert opportunity is not None
         variant = LocaleVariant(
             content_case_id=content_case.id,
             locale="en",
-            content_role="primary",
+            content_role=opportunity.suggested_role or "primary",
             primary_question="How should a buyer evaluate an artwork price?",
             primary_intent="evaluate",
         )

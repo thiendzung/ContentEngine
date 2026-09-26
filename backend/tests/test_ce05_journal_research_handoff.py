@@ -61,6 +61,8 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
 
 async def _content_case(
     session: AsyncSession,
+    *,
+    suggested_role: str | None = "cluster",
 ) -> tuple[Project, ContentCase, ContentOpportunity, NeedHypothesis]:
     project = Project(slug=f"ce05-handoff-{uuid4().hex[:12]}", name="MOTGU")
     session.add(project)
@@ -97,6 +99,7 @@ async def _content_case(
         priority="NOW",
         reasons_json=["test"],
         suggested_content_type="journal",
+        suggested_role=suggested_role,
         selected_by="founder",
         selected_at=datetime.now(UTC),
         selection_reason="Selected for the handoff test.",
@@ -505,10 +508,12 @@ async def _run_and_step(
 ) -> tuple[ContentRun, StepRun]:
     from app.modules.content_engine.models import LocaleVariant, SettingsSnapshot
 
+    opportunity = await session.get(ContentOpportunity, content_case.content_opportunity_id)
+    assert opportunity is not None
     variant = LocaleVariant(
         content_case_id=content_case.id,
         locale="en",
-        content_role="primary",
+        content_role=opportunity.suggested_role or "primary",
         primary_question="How should a buyer evaluate an artwork price?",
         primary_intent="evaluate",
     )

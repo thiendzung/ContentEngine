@@ -37,7 +37,7 @@ from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
     ResearchDecision,
 )
-from app.modules.content_engine.models import ContentOpportunity
+from app.modules.content_engine.models import ContentOpportunity, LocaleVariant
 from app.modules.harness.models import Artifact, ContentRun, ToolCall
 from app.modules.knowledge.models import (
     Claim,
@@ -64,8 +64,13 @@ async def _bundle_fixture(
     session: AsyncSession,
     *,
     coverage_requirements: list[str] | None = None,
+    suggested_role: str | None = "cluster",
+    variant_role_override: str | None = None,
 ) -> tuple[Artifact, JournalInputBundle, EvidenceSet, OriginalityPack]:
-    project, content_case, opportunity, _need = await _content_case(session)
+    project, content_case, opportunity, _need = await _content_case(
+        session,
+        suggested_role=suggested_role,
+    )
     opportunity.coverage_requirements_json = list(coverage_requirements or [])
     await session.flush()
     evidence = await _evidence_row(session, project_id=project.id, suffix="angle")
@@ -77,6 +82,11 @@ async def _bundle_fixture(
     )
     pack = await _approved_pack(session, content_case_id=content_case.id)
     run, step = await _run_and_step(session, project=project, content_case=content_case)
+    if variant_role_override is not None:
+        variant = await session.get(LocaleVariant, run.locale_variant_id)
+        assert variant is not None
+        variant.content_role = variant_role_override
+        await session.flush()
     handoff = JournalResearchHandoff()
     evidence_handoff = await handoff.handoff_evidence_set(
         session,
@@ -213,7 +223,10 @@ def _bundle_hash(payload: dict[str, object]) -> str:
 @pytest.mark.asyncio
 async def test_pre_cq01_bundle_without_coverage_remains_readable() -> None:
     async with isolated_session() as session:
-        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(session)
+        bundle_artifact, _bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            suggested_role=None,
+        )
         payload = copy.deepcopy(bundle_artifact.content_json)
         assert isinstance(payload, dict)
         opportunity = payload.get("opportunity")
@@ -362,6 +375,7 @@ async def test_angle_model_receives_only_grounded_allow_list_and_refs_come_from_
             "opportunity",
             "evidence_set",
             "originality_pack",
+            "editorial_role_contract",
         }
         assert "payload" not in received
         serialized = json.dumps(received, ensure_ascii=False, sort_keys=True)
@@ -844,6 +858,34 @@ async def test_angle_promise_coverage_fails_closed(
                 provider="fixture-provider",
                 model_name="fixture-model",
             )
+
+
+@pytest.mark.asyncio
+async def test_angle_fails_closed_when_current_role_disagrees_with_locale_variant() -> None:
+    async with isolated_session() as session:
+        with pytest.raises(
+            AngleGenerationError,
+            match="angle_locale_variant_role_mismatch",
+        ):
+            await _bundle_fixture(
+                session,
+                suggested_role="cluster",
+                variant_role_override="pillar",
+            )
+
+
+@pytest.mark.asyncio
+async def test_pillar_role_contract_is_bound_into_angle_model_input() -> None:
+    async with isolated_session() as session:
+        _artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            suggested_role="pillar",
+        )
+        contract = bundle.angle_model_input.get("editorial_role_contract")
+        assert isinstance(contract, dict)
+        assert contract["role"] == "pillar"
+        assert "whole decision space" in str(contract["objective"])
+        assert "Cluster-level depth" in str(contract["duplication_guard"])
 
 
 @pytest.mark.asyncio

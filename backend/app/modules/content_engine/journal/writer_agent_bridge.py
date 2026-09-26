@@ -10,6 +10,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    editorial_role_contract_or_none,
+)
 from app.modules.content_engine.journal.writer import WriterGenerationError, WriterModelPort
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
@@ -35,6 +39,7 @@ from app.modules.system.settings_service import (
 
 WRITER_ROUTE_TASK_KEY = "angle"
 WRITER_TIMEOUT_SECONDS = 300.0
+WRITER_RENDER_PROTOCOL_VERSION = "journal.writer.render.v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +115,30 @@ def _runtime_metadata(result: AgentRunResult, *, locale: str) -> dict[str, objec
     return metadata
 
 
+def _validated_editorial_role_contract(
+    writer_model_input: dict[str, object],
+) -> dict[str, str] | None:
+    opportunity = writer_model_input.get("opportunity")
+    if not isinstance(opportunity, dict):
+        raise WriterGenerationError("writer_editorial_role_input_invalid")
+    try:
+        expected = editorial_role_contract_or_none(opportunity.get("suggested_role"))
+    except EditorialRoleError as exc:
+        raise WriterGenerationError("writer_editorial_role_invalid") from exc
+    raw = writer_model_input.get("editorial_role_contract")
+    if expected is None:
+        if raw is not None:
+            raise WriterGenerationError("writer_editorial_role_contract_unexpected")
+        return None
+    expected_payload = expected.to_dict()
+    if raw != expected_payload:
+        raise WriterGenerationError("writer_editorial_role_contract_mismatch")
+    variant = writer_model_input.get("locale_variant")
+    if not isinstance(variant, dict) or variant.get("content_role") != expected.role:
+        raise WriterGenerationError("writer_locale_variant_role_mismatch")
+    return expected_payload
+
+
 def render_writer_prompt(
     prompt: PromptDefinition,
     recipe: RecipeDefinition,
@@ -123,6 +152,22 @@ def render_writer_prompt(
         sort_keys=True,
         separators=(",", ":"),
     )
+    editorial_role_contract = _validated_editorial_role_contract(writer_model_input)
+    editorial_role_json = json.dumps(
+        editorial_role_contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    editorial_role_rule = (
+        "Honor the exact Pillar/Cluster editorial job. Do not turn a Cluster into a "
+        "broad guide or inflate a Pillar by duplicating full Cluster depth."
+        if editorial_role_contract is not None
+        else (
+            "This is a legacy case with no declared Pillar/Cluster role. Do not infer "
+            "or invent one; preserve bounded legacy behavior."
+        )
+    )
     input_json = json.dumps(
         writer_model_input,
         ensure_ascii=False,
@@ -131,8 +176,11 @@ def render_writer_prompt(
     )
     return (
         f"{prompt.body.rstrip()}\n\n"
+        f"WRITER_RENDER_PROTOCOL_VERSION:\n{WRITER_RENDER_PROTOCOL_VERSION}\n\n"
         f"RECIPE_JSON:\n{recipe_json}\n\n"
+        f"EDITORIAL_ROLE_CONTRACT_JSON:\n{editorial_role_json}\n\n"
         f"WRITER_INPUT_JSON:\n{input_json}\n\n"
+        f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
@@ -208,6 +256,7 @@ class CliWriterModelPort(WriterModelPort):
             raise WriterGenerationError("writer_model_input_incomplete")
         if sanitized.get("locale") != self._config.locale:
             raise WriterGenerationError("writer_model_input_locale_mismatch")
+        _validated_editorial_role_contract(sanitized)
         variant = sanitized.get("locale_variant")
         if not isinstance(variant, dict) or variant.get("locale") != self._config.locale:
             raise WriterGenerationError("writer_model_input_locale_variant_mismatch")

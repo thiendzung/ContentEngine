@@ -14,6 +14,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.editorial_role import is_current_editorial_role
 from app.modules.content_engine.journal.models import (
     JournalRequiredLocale,
     OperatorCommand,
@@ -159,6 +160,18 @@ async def ensure_required_locales(
     if len(source_variants) != 1:
         raise OperatorControlError("operator_source_locale_variant_missing")
     source_variant = source_variants[0]
+    if is_current_editorial_role(opportunity.suggested_role):
+        if source_variant.content_role != opportunity.suggested_role:
+            raise OperatorControlError("operator_locale_variant_role_mismatch")
+        for locale, locale_variants in by_locale.items():
+            if any(
+                row.content_role != source_variant.content_role
+                for row in locale_variants
+            ):
+                raise OperatorControlError(
+                    "operator_locale_variant_role_mismatch",
+                    locale,
+                )
     for locale in normalized:
         if by_locale.get(locale):
             continue

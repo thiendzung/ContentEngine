@@ -44,6 +44,8 @@ export type RequiredLocale = {
   role: "source" | "translation";
 };
 
+export type JournalEditorialRole = "pillar" | "cluster";
+
 export type ArtifactBinding = {
   id: string;
   version: number;
@@ -165,6 +167,7 @@ export type OperatorCaseView = {
   need: string;
   intent: string;
   promise: string;
+  content_role: string | null;
   coverage_requirements: CoverageRequirement[];
   state: OperatorState;
   intake: {
@@ -297,6 +300,7 @@ export type FounderJournalIntakeRequest = {
   source_locale: string;
   research_country: string;
   required_locales: string[];
+  content_role: JournalEditorialRole;
   reader: string;
   situation: string;
   need: string;
@@ -317,6 +321,7 @@ export type FounderJournalIntakeResult = {
   bootstrap_run_id: string;
   source_locale_variant_id: string;
   required_locales: string[];
+  content_role: string | null;
   coverage_requirements: string[];
   research_country: string;
   replayed: boolean;

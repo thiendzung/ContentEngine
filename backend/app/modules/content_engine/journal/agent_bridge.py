@@ -10,6 +10,10 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.angle import AngleGenerationError, AngleModelPort
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    editorial_role_contract_or_none,
+)
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentRunnerError,
@@ -36,7 +40,7 @@ ANGLE_PROMPT_KEY = "journal_angle_candidates"
 ANGLE_RECIPE_KEY = "journal_angle_v1"
 ANGLE_TASK_KEY = "angle"
 ANGLE_TIMEOUT_SECONDS = 300.0
-ANGLE_RENDER_PROTOCOL_VERSION = "journal.angle.render.v2"
+ANGLE_RENDER_PROTOCOL_VERSION = "journal.angle.render.v3"
 _MAX_DIAGNOSTIC_CANDIDATES = 5
 _MAX_DIAGNOSTIC_REFS = 16
 _MAX_DIAGNOSTIC_TEXT = 200
@@ -193,6 +197,27 @@ def _angle_reference_contract(angle_model_input: dict[str, object]) -> dict[str,
     }
 
 
+def _validated_editorial_role_contract(
+    angle_model_input: dict[str, object],
+) -> dict[str, str] | None:
+    opportunity = angle_model_input.get("opportunity")
+    if not isinstance(opportunity, dict):
+        raise AngleGenerationError("angle_editorial_role_input_invalid")
+    try:
+        expected = editorial_role_contract_or_none(opportunity.get("suggested_role"))
+    except EditorialRoleError as exc:
+        raise AngleGenerationError("angle_editorial_role_invalid") from exc
+    raw = angle_model_input.get("editorial_role_contract")
+    if expected is None:
+        if raw is not None:
+            raise AngleGenerationError("angle_editorial_role_contract_unexpected")
+        return None
+    expected_payload = expected.to_dict()
+    if raw != expected_payload:
+        raise AngleGenerationError("angle_editorial_role_contract_mismatch")
+    return expected_payload
+
+
 def _contract_values(contract: dict[str, object], key: str) -> list[str]:
     entry = contract.get(key)
     if not isinstance(entry, dict):
@@ -312,6 +337,23 @@ def render_angle_prompt(
         sort_keys=True,
         separators=(",", ":"),
     )
+    editorial_role_contract = _validated_editorial_role_contract(angle_model_input)
+    editorial_role_json = json.dumps(
+        editorial_role_contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    editorial_role_rule = (
+        "Treat EDITORIAL_ROLE_CONTRACT_JSON as binding when choosing the angle. "
+        "A Pillar must orient the broader bounded decision space without swallowing "
+        "Cluster depth; a Cluster must stay on one bounded subproblem and go deeper."
+        if editorial_role_contract is not None
+        else (
+            "This is a legacy case with no declared Pillar/Cluster role. Do not infer "
+            "or invent one; preserve bounded legacy behavior."
+        )
+    )
     input_json = json.dumps(
         angle_model_input,
         ensure_ascii=False,
@@ -330,6 +372,8 @@ def render_angle_prompt(
         f"ANGLE_RENDER_PROTOCOL_VERSION:\n{ANGLE_RENDER_PROTOCOL_VERSION}\n\n"
         f"RECIPE_JSON:\n{recipe_json}\n\n"
         f"REFERENCE_CONTRACT_JSON:\n{reference_contract_json}\n\n"
+        f"EDITORIAL_ROLE_CONTRACT_JSON:\n{editorial_role_json}\n\n"
+        f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
         f"ANGLE_INPUT_JSON:\n{input_json}"
         f"{retry_note}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
@@ -384,6 +428,7 @@ class CliAngleModelPort(AngleModelPort):
         required = {"input_bundle_ref", "opportunity", "evidence_set", "originality_pack"}
         if not required.issubset(sanitized):
             raise AngleGenerationError("angle_model_input_incomplete")
+        _validated_editorial_role_contract(sanitized)
         cloned = json.loads(json.dumps(sanitized, ensure_ascii=False))
         if not isinstance(cloned, dict):
             raise AngleGenerationError("angle_model_input_invalid")

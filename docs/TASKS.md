@@ -573,29 +573,38 @@ A4E2 closeout:
 ## Content Quality track — Founder priority 2026-09-25
 
 Production activation / A2 / WordPress / operational migration / publish work is paused.
-Current WIP is **CQ-01 / #225 / PR #226** on exact base
-`9aa2557434f1ae35c1bb96580029b40938558e35`.
+CQ-01 is merged via PR #226. Current WIP is **CQ-02 / #227 / PR #228** on exact main base
+`b1237cb45089116864f92226656ec4bfddd0f89f`.
 
-### CQ-01 — Promise Coverage
+### CQ-01 — Promise Coverage — DONE
 
-- [x] Open a fresh current-main branch; do not merge/rebase stale PR #169.
-- [x] Add current-head rev `20260925_0043` for durable `coverage_requirements_json`; no operational migration authorization.
-- [x] Manual intake requires 1..12 normalized, case-insensitive-deduplicated requirements.
-- [x] Snapshot exact requirements as stable `coverage-N` IDs.
-- [x] Include coverage text in Evidence Research topic extraction.
-- [x] Angle must classify every requirement exactly once as `covered|reduced` with rationale.
-- [x] Bind exact coverage IDs into the local-agent structured output schema.
-- [x] Preserve legacy no-coverage Angle artifact compatibility.
-- [x] Outline may map only approved-Angle `covered` IDs and must map every committed ID at least once.
-- [x] Bind exact committed IDs into Outline structured output schema.
-- [x] Operator UI exposes original requirements, Angle keep/reduce decisions and Outline mappings.
-- [x] Add focused missing/unknown/duplicate/reduced coverage regressions.
+- [x] Current-main implementation complete; historical PR #169 superseded.
+- [x] Rev `20260925_0043` adds durable `coverage_requirements_json`; no operational migration authorization.
+- [x] Intake → Evidence Research → Angle covered/reduced → Founder gate → Outline mapping contract complete.
+- [x] CI #1852 PASS on exact head `72d3210cad4f617c61f8945454d353b0b26732d7`.
+- [x] OpenCodeReview 24/24 reviewed, 0 skipped, 0 Critical/High/Medium.
+- [x] Final disposable proof: `PASS_CQ01_FINAL_LOCAL_VERIFICATION`, 56 focused + 1174 full backend PASS, frontend build PASS.
+- [x] Founder merged PR #226; main `b1237cb45089116864f92226656ec4bfddd0f89f`.
+
+### CQ-02 — Pillar / Cluster Editorial Contract — IN IMPLEMENTATION
+
+- [x] Reuse existing `JournalRole.PILLAR|CLUSTER`, `ContentOpportunity.suggested_role` and `LocaleVariant.content_role`; do not create a parallel taxonomy.
+- [x] Add one deterministic Pillar/Cluster editorial contract with breadth/depth/duplication/internal-link rules.
+- [x] New Founder manual intake requires explicit `pillar|cluster`; no new `primary`.
+- [x] New Journal-case creation fails closed on invalid current role; current opportunity/LocaleVariant mismatch fails closed.
+- [x] Required locale variants inherit the exact source editorial role.
+- [x] Preserve historical `primary`/missing-role rows without backfill or invented role.
+- [x] Bind the canonical role contract into Angle, Outline and Writer model inputs.
+- [x] Render explicit role contract/rules in Angle, Outline and Writer local-agent prompts.
+- [x] Bump Angle/Outline/Writer generation/render identities for the changed semantics.
+- [x] Operator UI shows the selected editorial role.
+- [x] Add core role, Pillar intake, invalid role, bridge propagation and Writer mismatch regressions.
 - [ ] Normal CI green on final code/docs SHA.
-- [ ] MG self-review complete with no unresolved P0/P1 content-integrity defect.
-- [ ] Exact-ref OpenCodeReview advisory review + MG triage.
+- [ ] MG self-review complete with no unresolved P0/P1 editorial-contract defect.
+- [ ] Exact-ref OpenCodeReview + MG triage.
 - [ ] Agent Local exact-head bounded verification.
 - [ ] Founder merge.
 
-Boundaries: no CQ-02 Pillar/Cluster role semantics, no HV-01 integration, no production
-WordPress/Rank Math/Google activation, no operational migration, no publication, no
-historical F7 mutation.
+CQ-02 boundaries: no operational migration; no WordPress/Rank Math/Google/publish; no
+Human Voice; no new parent-Pillar/child-Cluster database merely by assumption; no claim
+that structural role propagation alone proves semantic article quality.

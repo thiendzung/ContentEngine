@@ -180,3 +180,27 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Exact-ref OpenCodeReview advisory review is triaged.
 - [ ] Agent Local returns bounded exact-head verification before Founder merge.
 
+## O. CQ-02 Pillar / Cluster editorial role
+
+- [ ] New Founder Journal intake chooses exactly `pillar` or `cluster`; no new `primary`.
+- [ ] Existing Opportunity Map `JournalRole.PILLAR|CLUSTER` is reused; no parallel role taxonomy.
+- [ ] Current-role Opportunity and source LocaleVariant agree exactly.
+- [ ] Required translation LocaleVariants inherit the same editorial role.
+- [ ] Historical `primary`/missing-role rows remain readable without backfill or invented meaning.
+- [ ] One deterministic role contract is derived from the exact opportunity snapshot.
+- [ ] Pillar contract preserves overview/navigation semantics without forcing Cluster-level depth.
+- [ ] Cluster contract preserves narrow/deep semantics without expanding into a general Pillar.
+- [ ] Angle receives and validates the exact editorial role contract.
+- [ ] Outline receives and validates the exact editorial role contract.
+- [ ] Writer receives and validates the exact role and LocaleVariant consistency.
+- [ ] Local-agent prompts expose the exact contract; registry definitions are not silently mutated.
+- [ ] Generation/render identity changes prevent silent reuse of role-unaware output.
+- [ ] Operator UI shows the exact role before human review.
+- [ ] No parent-Pillar/child-Cluster relationship is invented if it is not durably known.
+- [ ] Structural contract is not reported as semantic-quality proof; CQ-04/CQ-06 remain responsible.
+- [ ] Focused role tests and broader regressions pass.
+- [ ] Backend lint/type and frontend lint/type/build pass.
+- [ ] MG self-review finds no unresolved P0/P1 editorial-contract defect.
+- [ ] Exact-ref OpenCodeReview is triaged.
+- [ ] Agent Local returns bounded exact-head verification before Founder merge.
+

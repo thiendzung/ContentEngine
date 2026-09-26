@@ -305,6 +305,9 @@ async def test_writer_binds_locale_outline_support_and_reuses_exact_artifact() -
         assert model.calls == 1
         assert model.received is not None
         assert cast(dict[str, object], model.received["locale_variant"])["locale"] == "vi-VN"
+        role_contract = model.received.get("editorial_role_contract")
+        assert isinstance(role_contract, dict)
+        assert role_contract["role"] == "cluster"
         serialized = json.dumps(model.received, ensure_ascii=False, sort_keys=True)
         assert "other_locale_draft" not in serialized
         assert "translation_source" not in serialized
@@ -409,6 +412,41 @@ async def test_missing_target_locale_variant_fails_before_writer_run_creation() 
             )
         )
         assert after == before
+
+
+
+
+@pytest.mark.asyncio
+async def test_writer_fails_closed_when_variant_role_disagrees_with_opportunity() -> None:
+    async with isolated_session() as session:
+        outline_fixture, outline_result = await _outline_result(session)
+        variant = await _ensure_variant(
+            session,
+            run=outline_fixture.run,
+            locale="vi-VN",
+        )
+        variant.content_role = "pillar"
+        await session.flush()
+        handoff = await ensure_writer_run(
+            session,
+            source_run_id=outline_fixture.run.id,
+            outline_artifact_id=outline_result.artifact.id,
+            expected_outline_version=outline_result.artifact.version,
+            expected_outline_hash=outline_result.artifact.content_hash,
+            locale="vi-VN",
+        )
+        with pytest.raises(
+            WriterGenerationError,
+            match="writer_locale_variant_role_mismatch",
+        ):
+            await load_writer_input(
+                session,
+                writer_run_id=handoff.run.id,
+                outline_artifact_id=outline_result.artifact.id,
+                expected_outline_version=outline_result.artifact.version,
+                expected_outline_hash=outline_result.artifact.content_hash,
+                locale="vi-VN",
+            )
 
 
 @pytest.mark.asyncio
@@ -521,6 +559,10 @@ async def test_writer_bridge_uses_locale_registry_and_writer_run_modelcall() -> 
         assert set(request.working_context) == {"writer_model_input"}
         writer_context = cast(dict[str, object], request.working_context["writer_model_input"])
         assert cast(dict[str, object], writer_context["locale_variant"])["locale"] == "en"
+        role_contract = writer_context.get("editorial_role_contract")
+        assert isinstance(role_contract, dict)
+        assert role_contract["role"] == "cluster"
+        assert "EDITORIAL_ROLE_CONTRACT_JSON" in request.prompt
         call = await session.scalar(
             select(ModelCall).where(
                 ModelCall.run_id == fixture.writer_input.writer_run.id,

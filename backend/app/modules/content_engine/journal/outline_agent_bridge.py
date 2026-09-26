@@ -9,6 +9,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    editorial_role_contract_or_none,
+)
 from app.modules.content_engine.journal.outline import OutlineGenerationError, OutlineModelPort
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
@@ -39,6 +43,7 @@ OUTLINE_TASK_KEY = "outline"
 # Founder-approved Angle provider/model route for this run rather than mutating its snapshot.
 OUTLINE_ROUTE_TASK_KEY = "angle"
 OUTLINE_TIMEOUT_SECONDS = 300.0
+OUTLINE_RENDER_PROTOCOL_VERSION = "journal.outline.render.v2"
 
 
 def _definition_ref(key: str, version: int) -> str:
@@ -81,6 +86,27 @@ def _runtime_metadata(result: AgentRunResult) -> dict[str, object]:
     if result.usage is not None:
         metadata["usage"] = result.usage
     return metadata
+
+
+def _validated_editorial_role_contract(
+    input_bundle: dict[str, object],
+) -> dict[str, str] | None:
+    opportunity = input_bundle.get("opportunity")
+    if not isinstance(opportunity, dict):
+        raise OutlineGenerationError("outline_editorial_role_input_invalid")
+    try:
+        expected = editorial_role_contract_or_none(opportunity.get("suggested_role"))
+    except EditorialRoleError as exc:
+        raise OutlineGenerationError("outline_editorial_role_invalid") from exc
+    raw = input_bundle.get("editorial_role_contract")
+    if expected is None:
+        if raw is not None:
+            raise OutlineGenerationError("outline_editorial_role_contract_unexpected")
+        return None
+    expected_payload = expected.to_dict()
+    if raw != expected_payload:
+        raise OutlineGenerationError("outline_editorial_role_contract_mismatch")
+    return expected_payload
 
 
 def _coverage_contract(input_bundle: dict[str, object]) -> tuple[bool, list[str]]:
@@ -168,6 +194,22 @@ def render_outline_prompt(
         sort_keys=True,
         separators=(",", ":"),
     )
+    editorial_role_contract = _validated_editorial_role_contract(outline_model_input)
+    editorial_role_json = json.dumps(
+        editorial_role_contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    editorial_role_rule = (
+        "Treat EDITORIAL_ROLE_CONTRACT_JSON as binding. Pillar and Cluster are "
+        "different editorial jobs; do not flatten them into the same outline shape."
+        if editorial_role_contract is not None
+        else (
+            "This is a legacy case with no declared Pillar/Cluster role. Do not infer "
+            "or invent one; preserve bounded legacy behavior."
+        )
+    )
     input_json = json.dumps(
         outline_model_input,
         ensure_ascii=False,
@@ -176,12 +218,15 @@ def render_outline_prompt(
     )
     return (
         f"{prompt.body.rstrip()}\n\n"
+        f"OUTLINE_RENDER_PROTOCOL_VERSION:\n{OUTLINE_RENDER_PROTOCOL_VERSION}\n\n"
         f"RECIPE_JSON:\n{recipe_json}\n\n"
+        f"EDITORIAL_ROLE_CONTRACT_JSON:\n{editorial_role_json}\n\n"
         f"OUTLINE_INPUT_JSON:\n{input_json}\n\n"
         "PROMISE_COVERAGE_RULE:\n"
         "If approved_angle.candidate.coverage exists, map every requirement marked "
         "covered to at least one section coverage_requirement_ids entry. Never map "
         "requirements marked reduced.\n\n"
+        f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
@@ -240,6 +285,7 @@ class CliOutlineModelPort(OutlineModelPort):
         }
         if not required.issubset(sanitized):
             raise OutlineGenerationError("outline_model_input_incomplete")
+        _validated_editorial_role_contract(sanitized)
         cloned = json.loads(json.dumps(sanitized, ensure_ascii=False))
         if not isinstance(cloned, dict):
             raise OutlineGenerationError("outline_model_input_invalid")

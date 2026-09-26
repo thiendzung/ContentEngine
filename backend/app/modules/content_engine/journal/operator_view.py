@@ -173,6 +173,7 @@ class OperatorCaseView(BaseModel):
     need: str
     intent: str
     promise: str
+    content_role: str | None
     coverage_requirements: list[OperatorCoverageRequirementView] = Field(default_factory=list)
     state: OperatorState
     intake: OperatorIntakeView
@@ -619,6 +620,7 @@ async def get_operator_case_view(
         need=opportunity.need,
         intent=opportunity.intent,
         promise=opportunity.promise,
+        content_role=opportunity.suggested_role,
         coverage_requirements=[
             OperatorCoverageRequirementView(
                 id=f"coverage-{index + 1}",

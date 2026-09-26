@@ -17,6 +17,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.editorial_role import (
+    EditorialRoleError,
+    is_current_editorial_role,
+    require_editorial_role,
+)
 from app.modules.content_engine.journal.models import (
     AngleApproval,
     OperatorCommand,
@@ -187,6 +192,11 @@ async def create_or_reuse_journal_case(
     if len(existing) > 1:
         raise OperatorControlError("operator_case_duplicate_binding")
     reused = bool(existing)
+    if not reused:
+        try:
+            require_editorial_role(opportunity.suggested_role)
+        except EditorialRoleError as exc:
+            raise OperatorControlError("operator_opportunity_role_invalid") from exc
     try:
         content_case, opportunity, _ = await ensure_selected_content_case(
             session,
@@ -206,10 +216,14 @@ async def create_or_reuse_journal_case(
     )
     source_variant = next((row for row in variants if row.locale == opportunity.locale), None)
     if source_variant is None:
+        try:
+            role = require_editorial_role(opportunity.suggested_role)
+        except EditorialRoleError as exc:
+            raise OperatorControlError("operator_opportunity_role_invalid") from exc
         source_variant = LocaleVariant(
             content_case_id=content_case.id,
             locale=opportunity.locale,
-            content_role=opportunity.suggested_role or "primary",
+            content_role=role,
             primary_question=opportunity.question,
             primary_intent=opportunity.intent,
             secondary_intent=None,
@@ -222,6 +236,9 @@ async def create_or_reuse_journal_case(
         )
         session.add(source_variant)
         await session.flush()
+    elif is_current_editorial_role(opportunity.suggested_role):
+        if source_variant.content_role != opportunity.suggested_role:
+            raise OperatorControlError("operator_locale_variant_role_mismatch")
 
     state = await get_operator_state(session, content_case_id=content_case.id)
     return CreatedJournalCase(
