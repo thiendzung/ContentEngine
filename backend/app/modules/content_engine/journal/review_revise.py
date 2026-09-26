@@ -215,10 +215,9 @@ def _human_voice_evidence_catalog(
             raise WriterGenerationError("review_revise_evidence_relation_invalid")
         texts: list[str] = []
         if relation in _SUPPORTIVE_EVIDENCE_RELATIONS:
-            for key in ("claim_statement", "excerpt"):
-                value = item.get(key)
-                if isinstance(value, str) and value.strip():
-                    texts.append(value.strip())
+            value = item.get("excerpt")
+            if isinstance(value, str) and value.strip():
+                texts.append(value.strip())
         catalog[evidence_id] = tuple(dict.fromkeys(texts))
     return catalog
 
@@ -244,10 +243,9 @@ def _human_voice_originality_catalog(
         if source_ref in catalog:
             raise WriterGenerationError("review_revise_originality_ref_duplicate")
         texts: list[str] = []
-        for key in ("material", "writer_use"):
-            value = item.get(key)
-            if isinstance(value, str) and value.strip():
-                texts.append(value.strip())
+        value = item.get("material")
+        if isinstance(value, str) and value.strip():
+            texts.append(value.strip())
         catalog[source_ref] = tuple(dict.fromkeys(texts))
     return catalog
 

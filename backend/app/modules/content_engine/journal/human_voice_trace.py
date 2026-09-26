@@ -26,6 +26,9 @@ from app.modules.harness.models import Artifact, StepRun
 HUMAN_VOICE_TRACE_ARTIFACT_TYPE = "human_voice_trace"
 HUMAN_VOICE_TRACE_GENERATOR_VERSION = "cq05.human_voice_trace.v1"
 HUMAN_VOICE_TRACE_SCHEMA_VERSION = 1
+HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS = frozenset(
+    {"ce05.journal_review_revise.v6"}
+)
 
 
 class HumanVoiceTraceError(ValueError):
@@ -390,6 +393,7 @@ __all__ = [
     "HUMAN_VOICE_TRACE_ARTIFACT_TYPE",
     "HUMAN_VOICE_TRACE_GENERATOR_VERSION",
     "HUMAN_VOICE_TRACE_SCHEMA_VERSION",
+    "HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS",
     "HumanVoiceTraceError",
     "HumanVoiceTraceResult",
     "draft_snapshot_hash",

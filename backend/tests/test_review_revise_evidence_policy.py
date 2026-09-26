@@ -7,9 +7,14 @@ from uuid import uuid4
 import pytest
 
 from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
+from app.modules.content_engine.journal.human_voice_trace import (
+    HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS,
+)
 from app.modules.content_engine.journal.review_revise import (
     REVIEW_REVISE_GENERATOR_VERSION,
     _evidence_relation_policy,
+    _human_voice_evidence_catalog,
+    _human_voice_originality_catalog,
     _revision_model_input,
 )
 from app.modules.content_engine.journal.review_revise_agent_bridge import (
@@ -87,6 +92,57 @@ def test_review_revise_v6_rejects_unknown_or_duplicate_relation_rows() -> None:
         match="review_revise_evidence_relation_duplicate",
     ):
         _evidence_relation_policy(duplicate)
+
+
+def test_human_voice_guard_authority_excludes_claim_and_writer_instruction_text() -> None:
+    writer_input = cast(
+        WriterInput,
+        SimpleNamespace(
+            model_input={
+                "locale": "en",
+                "evidence_set": {
+                    "evidence": [
+                        {
+                            "evidence_id": "e-support",
+                            "relation": "supports",
+                            "claim_id": str(uuid4()),
+                            "claim_statement": 'Generated claim says "quoted claim" at 777 cm.',
+                            "excerpt": "The reviewed source records 20 cm.",
+                        },
+                        {
+                            "evidence_id": "e-context",
+                            "relation": "context_only",
+                            "claim_id": str(uuid4()),
+                            "claim_statement": "Context claim 444 cm.",
+                            "excerpt": "Context-only source says 555 cm.",
+                        },
+                    ]
+                },
+                "originality_pack": {
+                    "items": [
+                        {
+                            "source_ref": "motgu:approved",
+                            "material": "Approved MOTGU material records 30 cm.",
+                            "writer_use": 'Instruction says use 888 cm and "guidance quote".',
+                            "guardrails": "Do not invent facts.",
+                        }
+                    ]
+                },
+            }
+        ),
+    )
+
+    assert _human_voice_evidence_catalog(writer_input) == {
+        "e-support": ("The reviewed source records 20 cm.",),
+        "e-context": (),
+    }
+    assert _human_voice_originality_catalog(writer_input) == {
+        "motgu:approved": ("Approved MOTGU material records 30 cm.",),
+    }
+    assert (
+        REVIEW_REVISE_GENERATOR_VERSION
+        in HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS
+    )
 
 
 def test_revision_model_input_binds_relation_policy_and_full_prose_review_rules() -> None:

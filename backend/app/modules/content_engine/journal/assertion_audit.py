@@ -12,13 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.journal.human_voice_trace import (
+    HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS,
     HumanVoiceTraceError,
     require_human_voice_trace_for_rewritten_artifact,
 )
-from app.modules.content_engine.journal.review_revise import (
-    REVIEW_REVISE_GENERATOR_VERSION,
-    unresolved_factual_claims,
-)
+from app.modules.content_engine.journal.review_revise import unresolved_factual_claims
 from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
@@ -434,7 +432,8 @@ async def load_assertion_audit_input(
     generator = source_payload.get("generator")
     if (
         isinstance(generator, dict)
-        and generator.get("version") == REVIEW_REVISE_GENERATOR_VERSION
+        and generator.get("version")
+        in HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS
     ):
         try:
             await require_human_voice_trace_for_rewritten_artifact(
