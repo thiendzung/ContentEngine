@@ -274,6 +274,13 @@ async def load_angle_semantic_quality_for_artifact(
     bundle: JournalInputBundle,
     candidates: Sequence[AngleCandidate],
 ) -> AngleSemanticQualityResult | None:
+    payload = _as_dict(artifact.content_json, "angle_artifact_payload_invalid")
+    generator = payload.get("generator")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("version") != ANGLE_GENERATOR_VERSION
+    ):
+        return None
     role = _semantic_role(bundle)
     if role is None:
         return None

@@ -32,6 +32,7 @@ from app.modules.content_engine.journal.angle import (
     approve_angle_candidate,
     handoff_approved_angle,
     load_journal_input_bundle,
+    persist_angle_candidates,
 )
 from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
@@ -289,6 +290,65 @@ async def test_pre_cq01_bundle_without_coverage_remains_readable() -> None:
             model_name="fixture-model",
         )
         assert all(candidate.coverage == () for candidate in result.candidates)
+
+
+@pytest.mark.asyncio
+async def test_pre_cq04_role_aware_angle_remains_approvable_without_semantic_artifact() -> None:
+    async with isolated_session() as session:
+        bundle_artifact, bundle, _evidence_set, _pack = await _bundle_fixture(
+            session,
+            suggested_role="cluster",
+        )
+        output = [_candidate_payload(bundle, index) for index in range(1, 4)]
+        candidates = tuple(
+            AngleCandidate(
+                angle_id=str(row["angle_id"]),
+                working_title=str(row["working_title"]),
+                reader_problem=str(row["reader_problem"]),
+                central_question=str(row["central_question"]),
+                core_promise=str(row["core_promise"]),
+                point_of_view=str(row["point_of_view"]),
+                why_now=str(row["why_now"]),
+                evidence_refs=tuple(row["evidence_refs"]),
+                originality_refs=tuple(row["originality_refs"]),
+                excluded_claims=tuple(row["excluded_claims"]),
+                risks=tuple(row["risks"]),
+                confidence=float(row["confidence"]),
+                locale=str(row["locale"]),
+                coverage=tuple(),
+            )
+            for row in output
+        )
+        artifact = await persist_angle_candidates(
+            session,
+            bundle=bundle,
+            candidates=candidates,
+            provider="fixture-provider",
+            model="fixture-model",
+            model_calls=1,
+            generator_version="ce05.angle_generator.v2",
+        )
+        selected = candidates[0]
+        approval = await approve_angle_candidate(
+            session,
+            angle_artifact_id=artifact.id,
+            expected_artifact_version=artifact.version,
+            expected_artifact_hash=artifact.content_hash,
+            selected_angle_id=selected.angle_id,
+            expected_candidate_hash=angle_candidate_hash(selected),
+            approved_by="founder",
+            approval_reason="Preserve pre-CQ04 role-aware Angle compatibility.",
+        )
+        assert approval.selected_angle_id == selected.angle_id
+        handed_off = await handoff_approved_angle(
+            session,
+            angle_artifact_id=artifact.id,
+            expected_artifact_version=artifact.version,
+            expected_artifact_hash=artifact.content_hash,
+            selected_angle_id=selected.angle_id,
+            expected_candidate_hash=angle_candidate_hash(selected),
+        )
+        assert handed_off.candidate.angle_id == selected.angle_id
 
 
 @pytest.mark.asyncio
