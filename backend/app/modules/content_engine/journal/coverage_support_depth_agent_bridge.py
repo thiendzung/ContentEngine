@@ -393,6 +393,22 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
         return result.structured_output
 
 
+async def load_coverage_support_depth_registry(
+    session: AsyncSession,
+    *,
+    locale: str,
+) -> tuple[
+    CoverageSupportDepthRegistryConfig,
+    PromptDefinition,
+    RecipeDefinition,
+]:
+    config, prompt, recipe = await load_coverage_support_depth_registry(
+        session,
+        locale=locale,
+    )
+    return config, prompt, recipe
+
+
 async def create_cli_coverage_support_depth_model_port(
     session: AsyncSession,
     *,
@@ -439,5 +455,6 @@ __all__ = [
     "CoverageSupportDepthRegistryConfig",
     "coverage_support_depth_registry_config",
     "create_cli_coverage_support_depth_model_port",
+    "load_coverage_support_depth_registry",
     "render_coverage_support_depth_prompt",
 ]
