@@ -91,7 +91,9 @@ def _decimal_usage(usage: dict[str, object] | None, key: str) -> Decimal | None:
         return None
 
 
-def _allowed_refs(model_input: dict[str, object]) -> tuple[list[str], list[str], list[str], list[str]]:
+def _allowed_refs(
+    model_input: dict[str, object],
+) -> tuple[list[str], list[str], list[str], list[str]]:
     raw_requirements = model_input.get("coverage_requirements")
     raw_evidence = model_input.get("evidence")
     raw_originality = model_input.get("originality_pack")
@@ -147,7 +149,11 @@ def _bind_output_schema(
     items = properties.get("items") if isinstance(properties, dict) else None
     item_schema = items.get("items") if isinstance(items, dict) else None
     item_properties = item_schema.get("properties") if isinstance(item_schema, dict) else None
-    if not isinstance(items, dict) or not isinstance(item_schema, dict) or not isinstance(item_properties, dict):
+    if (
+        not isinstance(items, dict)
+        or not isinstance(item_schema, dict)
+        or not isinstance(item_properties, dict)
+    ):
         raise CoverageSupportDepthRuntimeError("coverage_support_output_schema_invalid")
 
     items["minItems"] = len(requirement_ids)
@@ -185,9 +191,19 @@ def render_coverage_support_depth_prompt(
     return (
         f"{prompt.body.rstrip()}\n\n"
         "RECIPE_JSON:\n"
-        f"{json.dumps(recipe.recipe_json, ensure_ascii=False, sort_keys=True, separators=(',', ':'))}\n\n"
+        f"{json.dumps(
+            recipe.recipe_json,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(',', ':'),
+        )}\n\n"
         "COVERAGE_SUPPORT_INPUT_JSON:\n"
-        f"{json.dumps(model_input, ensure_ascii=False, sort_keys=True, separators=(',', ':'))}\n\n"
+        f"{json.dumps(
+            model_input,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(',', ':'),
+        )}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
     )
 
@@ -276,7 +292,10 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
             "originality_pack",
             "assessment_policy",
         }
-        if not required.issubset(value) or value.get("schema_version") != COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION:
+        if (
+            not required.issubset(value)
+            or value.get("schema_version") != COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION
+        ):
             raise CoverageSupportDepthRuntimeError("coverage_support_model_input_incomplete")
         cloned = json.loads(json.dumps(value, ensure_ascii=False))
         if not isinstance(cloned, dict):
@@ -340,9 +359,15 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
                 self._session,
                 call_id=call.id,
                 error_class=exc.code,
-                runtime_metadata={"runner_error": exc.code, "task": COVERAGE_SUPPORT_DEPTH_TASK_KEY},
+                runtime_metadata={
+                    "runner_error": exc.code,
+                    "task": COVERAGE_SUPPORT_DEPTH_TASK_KEY,
+                },
             )
-            raise CoverageSupportDepthRuntimeError("coverage_support_agent_runner_failed", exc.code) from exc
+            raise CoverageSupportDepthRuntimeError(
+                "coverage_support_agent_runner_failed",
+                exc.code,
+            ) from exc
         if result.provider != request.provider or result.model != request.model:
             await fail_model_call(
                 self._session,
@@ -389,7 +414,10 @@ async def create_cli_coverage_support_depth_model_port(
             task_key=COVERAGE_SUPPORT_DEPTH_TASK_KEY,
         )
     except SettingsResolutionError as exc:
-        raise CoverageSupportDepthRuntimeError("coverage_support_registry_missing", exc.code) from exc
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_registry_missing",
+            exc.code,
+        ) from exc
     return CliCoverageSupportDepthModelPort(
         session,
         run_id=run_id,
