@@ -309,6 +309,25 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
                   : "không có marker công thức"}
               </small>
             </div>
+          {lane.human_voice.changes.length > 0 ? (
+            <div className="human-voice-changes">
+              {lane.human_voice.changes.map((change) => (
+                <div className="human-voice-change" key={change.field}>
+                  <strong>{change.field}</strong>
+                  <div>
+                    <span>Trước</span>
+                    <p className="markdown-copy">{change.before}</p>
+                  </div>
+                  <div>
+                    <span>Sau</span>
+                    <p className="markdown-copy">{change.after}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="operator-note">Không có thay đổi prose giữa source draft và revised draft.</p>
+          )}
           </div>
         </details>
       )}

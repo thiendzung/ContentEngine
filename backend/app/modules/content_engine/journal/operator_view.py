@@ -174,6 +174,12 @@ class OperatorHumanVoiceFindingView(BaseModel):
     count: int
 
 
+class OperatorHumanVoiceChangeView(BaseModel):
+    field: str
+    before: str
+    after: str
+
+
 class OperatorHumanVoiceComparisonView(BaseModel):
     trace_artifact: OperatorQualityRefView
     policy_version: str
@@ -182,6 +188,7 @@ class OperatorHumanVoiceComparisonView(BaseModel):
     advisory_only: bool
     before: list[OperatorHumanVoiceFindingView] = Field(default_factory=list)
     after: list[OperatorHumanVoiceFindingView] = Field(default_factory=list)
+    changes: list[OperatorHumanVoiceChangeView] = Field(default_factory=list)
 
 
 class OperatorQualityLaneView(BaseModel):
@@ -380,6 +387,76 @@ def _human_voice_findings(
     return findings
 
 
+def _draft_payload_for_human_voice(artifact: Artifact) -> dict[str, object]:
+    payload = artifact.content_json
+    if not isinstance(payload, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    draft = payload.get("draft")
+    if not isinstance(draft, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    return cast(dict[str, object], draft)
+
+
+def _human_voice_text(value: object) -> str:
+    if not isinstance(value, str):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    return value
+
+
+def _human_voice_changes(
+    *,
+    source: Artifact,
+    revised: Artifact,
+) -> list[OperatorHumanVoiceChangeView]:
+    before = _draft_payload_for_human_voice(source)
+    after = _draft_payload_for_human_voice(revised)
+    changes: list[OperatorHumanVoiceChangeView] = []
+
+    for field in ("title", "standfirst", "lead_markdown", "closing_markdown"):
+        before_text = _human_voice_text(before.get(field))
+        after_text = _human_voice_text(after.get(field))
+        if before_text != after_text:
+            changes.append(
+                OperatorHumanVoiceChangeView(
+                    field=field,
+                    before=before_text,
+                    after=after_text,
+                )
+            )
+
+    before_sections = before.get("sections")
+    after_sections = after.get("sections")
+    if (
+        not isinstance(before_sections, list)
+        or not isinstance(after_sections, list)
+        or len(before_sections) != len(after_sections)
+    ):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    for before_raw, after_raw in zip(before_sections, after_sections, strict=True):
+        if not isinstance(before_raw, dict) or not isinstance(after_raw, dict):
+            raise OperatorControlError("operator_human_voice_projection_invalid")
+        before_id = before_raw.get("section_id")
+        after_id = after_raw.get("section_id")
+        if (
+            not isinstance(before_id, str)
+            or not before_id
+            or before_id != after_id
+        ):
+            raise OperatorControlError("operator_human_voice_projection_invalid")
+        for field in ("heading", "body_markdown"):
+            before_text = _human_voice_text(before_raw.get(field))
+            after_text = _human_voice_text(after_raw.get(field))
+            if before_text != after_text:
+                changes.append(
+                    OperatorHumanVoiceChangeView(
+                        field=f"section:{before_id}:{field}",
+                        before=before_text,
+                        after=after_text,
+                    )
+                )
+    return changes
+
+
 def _draft_hash_from_artifact(artifact: Artifact) -> str:
     payload = artifact.content_json
     if not isinstance(payload, dict):
@@ -497,6 +574,7 @@ async def _human_voice_comparison(
         advisory_only=True,
         before=_human_voice_findings(comparison.get("before")),
         after=_human_voice_findings(comparison.get("after")),
+        changes=_human_voice_changes(source=source, revised=revised),
     )
 
 
@@ -1078,6 +1156,7 @@ __all__ = [
     "OperatorWriterLaneView",
     "OperatorHumanVoiceComparisonView",
     "OperatorHumanVoiceFindingView",
+    "OperatorHumanVoiceChangeView",
     "OperatorQualityLaneView",
     "OperatorQualityRefView",
     "get_operator_case_view",

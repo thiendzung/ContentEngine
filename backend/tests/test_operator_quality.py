@@ -442,8 +442,15 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
         case_id = fixture.run.content_case_id
         _command, before_quality = await _dispatch_quality(session, fixture=fixture)
 
+        review_outputs = copy.deepcopy(writer_outputs)
+        cast(dict[str, object], review_outputs["en"])["closing_markdown"] = (
+            "Pause, look again, and decide at your own pace."
+        )
+        cast(dict[str, object], review_outputs["vi-VN"])["closing_markdown"] = (
+            "Dừng lại, nhìn thêm một lần rồi tự quyết định theo nhịp của bạn."
+        )
         review_ports = {
-            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+            locale: _CapturePort(payload) for locale, payload in review_outputs.items()
         }
 
         async def fake_review_port(
@@ -613,6 +620,13 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             assert projected_lane.human_voice is not None
             assert projected_lane.human_voice.advisory_only is True
             assert projected_lane.human_voice.trace_artifact.id is not None
+            assert projected_lane.human_voice.changes
+            closing_change = next(
+                change
+                for change in projected_lane.human_voice.changes
+                if change.field == "closing_markdown"
+            )
+            assert closing_change.before != closing_change.after
             assert projected_lane.source_writer_draft is not None
             assert projected_lane.revised_draft is not None
             assert (

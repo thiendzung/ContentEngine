@@ -117,6 +117,12 @@ export type HumanVoiceFinding = {
   count: number;
 };
 
+export type HumanVoiceChange = {
+  field: string;
+  before: string;
+  after: string;
+};
+
 export type HumanVoiceComparison = {
   trace_artifact: QualityRef;
   policy_version: string;
@@ -125,6 +131,7 @@ export type HumanVoiceComparison = {
   advisory_only: boolean;
   before: HumanVoiceFinding[];
   after: HumanVoiceFinding[];
+  changes: HumanVoiceChange[];
 };
 
 export type QualityLane = {
