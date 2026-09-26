@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 from sqlalchemy import select
 from test_ce05_review_revise import isolated_session
@@ -13,8 +15,12 @@ from test_operator_start_to_angle import (
 )
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
+import app.modules.content_engine.journal.operator_view as operator_view
 from app.modules.content_engine.journal.models import AngleApproval
-from app.modules.content_engine.journal.operator_control import OperatorControlError
+from app.modules.content_engine.journal.operator_control import (
+    OperatorControlError,
+    OperatorState,
+)
 from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
 from app.modules.content_engine.journal.operator_manual_intake import (
     create_founder_journal_intake,
@@ -38,6 +44,75 @@ from app.modules.harness.persistence import (
     transition_run,
     transition_step_run,
 )
+
+
+@pytest.mark.asyncio
+async def test_outline_gate_allows_current_generator_no_role_without_semantic_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = Artifact(
+        id=uuid4(),
+        run_id=uuid4(),
+        step_run_id=None,
+        artifact_type="journal_outline",
+        locale="en",
+        version=1,
+        content_json={
+            "artifact_type": "journal_outline",
+            "generator": {
+                "version": operator_view.OUTLINE_GENERATOR_VERSION,
+                "schema_version": 1,
+            },
+            "outline": {
+                "title": "Legacy no-role CQ04 Outline",
+                "sections": [],
+            },
+        },
+        content_hash="d" * 64,
+    )
+
+    async def fake_pending_artifact(*args: object, **kwargs: object) -> Artifact:
+        del args, kwargs
+        return artifact
+
+    async def fake_load_outline_input(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        return object()
+
+    async def fake_load_semantic(
+        *args: object,
+        **kwargs: object,
+    ) -> tuple[object, None]:
+        del args, kwargs
+        return object(), None
+
+    monkeypatch.setattr(operator_view, "_pending_artifact", fake_pending_artifact)
+    monkeypatch.setattr(
+        operator_view,
+        "load_outline_input_from_artifact",
+        fake_load_outline_input,
+    )
+    monkeypatch.setattr(
+        operator_view,
+        "load_persisted_outline_semantic_quality",
+        fake_load_semantic,
+    )
+
+    state = OperatorState(
+        content_case_id=uuid4(),
+        state_version="test-outline-no-role",
+        status="AWAITING_APPROVAL",
+        phase="Outline review",
+        human_gate="outline",
+        current_run_id=artifact.run_id,
+    )
+    async with isolated_session() as session:
+        gate = await operator_view._outline_gate(session, state=state)
+
+    assert gate.artifact.id == artifact.id
+    assert gate.semantic_artifact is None
+    assert gate.semantic_quality is None
+    assert gate.outline["title"] == "Legacy no-role CQ04 Outline"
 
 
 @pytest.mark.asyncio
@@ -256,9 +331,13 @@ async def test_operator_view_returns_revalidated_exact_angle_bindings(
         assert view.pending_gate.artifact.id != stray.id
         assert view.pending_gate.artifact.content_hash == result.angle_artifact_hash
         assert len(view.pending_gate.candidates) == 3
+        assert view.pending_gate.semantic_artifact is not None
         for item in view.pending_gate.candidates:
             assert len(item.candidate_hash) == 64
             assert item.locale == "en"
+            assert item.semantic_quality is not None
+            assert item.semantic_quality.verdict == "pass"
+            assert item.semantic_quality.findings == []
             assert [(row.requirement_id, row.status) for row in item.coverage] == [
                 ("coverage-1", "covered"),
                 ("coverage-2", "covered"),
@@ -437,4 +516,6 @@ async def test_operator_view_exposes_exact_pending_outline_binding(
         assert view.pending_gate.artifact.id != stray.id
         assert view.pending_gate.artifact.version == exact.version
         assert view.pending_gate.artifact.content_hash == exact.content_hash
+        assert view.pending_gate.semantic_artifact is None
+        assert view.pending_gate.semantic_quality is None
         assert view.pending_gate.outline["title"] == "Exact projected Outline"

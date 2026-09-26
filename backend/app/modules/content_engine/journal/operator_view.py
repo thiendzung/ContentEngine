@@ -20,6 +20,7 @@ from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.angle import (
     _artifact_candidates,
     angle_candidate_hash,
+    load_angle_semantic_quality_for_artifact,
     load_journal_input_bundle,
 )
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
@@ -29,6 +30,12 @@ from app.modules.content_engine.journal.models import JournalIntakeSpec, Journal
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
+from app.modules.content_engine.journal.outline import (
+    OUTLINE_GENERATOR_VERSION,
+    OutlineGenerationError,
+    load_outline_input_from_artifact,
+    load_persisted_outline_semantic_quality,
+)
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.harness.persistence import get_latest_checkpoint
@@ -85,6 +92,18 @@ class OperatorCoverageSupportDiagnosticView(BaseModel):
     unresolved: list[OperatorCoverageSupportGapView] = Field(default_factory=list)
 
 
+class OperatorSemanticFindingView(BaseModel):
+    code: str
+    subject_ref: str
+    reason: str
+    remediation: str
+
+
+class OperatorSemanticQualityView(BaseModel):
+    verdict: Literal["pass", "revise"]
+    findings: list[OperatorSemanticFindingView] = Field(default_factory=list)
+
+
 class OperatorAngleCoverageView(BaseModel):
     requirement_id: str
     requirement: str
@@ -108,17 +127,21 @@ class OperatorAngleCandidateView(BaseModel):
     confidence: float
     locale: str
     coverage: list[OperatorAngleCoverageView] = Field(default_factory=list)
+    semantic_quality: OperatorSemanticQualityView | None = None
 
 
 class OperatorAngleGateView(BaseModel):
     type: Literal["angle"] = "angle"
     artifact: OperatorAngleArtifactView
+    semantic_artifact: OperatorAngleArtifactView | None = None
     candidates: list[OperatorAngleCandidateView]
 
 
 class OperatorOutlineGateView(BaseModel):
     type: Literal["outline"] = "outline"
     artifact: OperatorOutlineArtifactView
+    semantic_artifact: OperatorOutlineArtifactView | None = None
+    semantic_quality: OperatorSemanticQualityView | None = None
     outline: dict[str, object]
 
 
@@ -438,11 +461,32 @@ async def _angle_gate(
         raise OperatorControlError("operator_angle_projection_missing")
     coverage_requirements = _coverage_requirements_from_snapshot(bundle.opportunity)
     coverage_by_id = {item.id: item.requirement for item in coverage_requirements}
+    try:
+        semantic_result = await load_angle_semantic_quality_for_artifact(
+            session,
+            artifact=artifact,
+            bundle=bundle,
+            candidates=candidates,
+        )
+    except ValueError as exc:
+        raise OperatorControlError("operator_angle_semantic_projection_stale") from exc
+    semantic_by_id = (
+        semantic_result.by_angle_id if semantic_result is not None else {}
+    )
     return OperatorAngleGateView(
         artifact=OperatorAngleArtifactView(
             id=artifact.id,
             version=artifact.version,
             content_hash=artifact.content_hash,
+        ),
+        semantic_artifact=(
+            OperatorAngleArtifactView(
+                id=semantic_result.artifact.id,
+                version=semantic_result.artifact.version,
+                content_hash=semantic_result.artifact.content_hash,
+            )
+            if semantic_result is not None
+            else None
         ),
         candidates=[
             OperatorAngleCandidateView(
@@ -469,6 +513,22 @@ async def _angle_gate(
                     )
                     for item in candidate.coverage
                 ],
+                semantic_quality=(
+                    OperatorSemanticQualityView(
+                        verdict=semantic_by_id[candidate.angle_id].verdict,
+                        findings=[
+                            OperatorSemanticFindingView(
+                                code=finding.code,
+                                subject_ref=finding.subject_ref,
+                                reason=finding.reason,
+                                remediation=finding.remediation,
+                            )
+                            for finding in semantic_by_id[candidate.angle_id].findings
+                        ],
+                    )
+                    if candidate.angle_id in semantic_by_id
+                    else None
+                ),
             )
             for candidate in candidates
         ],
@@ -493,11 +553,59 @@ async def _outline_gate(
     outline = payload.get("outline")
     if not isinstance(outline, dict):
         raise OperatorControlError("operator_outline_projection_invalid")
+
+    semantic_result = None
+    generator = payload.get("generator")
+    if (
+        isinstance(generator, dict)
+        and generator.get("version") == OUTLINE_GENERATOR_VERSION
+    ):
+        try:
+            outline_input = await load_outline_input_from_artifact(
+                session,
+                artifact=artifact,
+            )
+            _validated_outline, semantic_result = (
+                await load_persisted_outline_semantic_quality(
+                    session,
+                    artifact=artifact,
+                    outline_input=outline_input,
+                )
+            )
+        except OutlineGenerationError as exc:
+            raise OperatorControlError(
+                "operator_outline_semantic_projection_stale"
+            ) from exc
     return OperatorOutlineGateView(
         artifact=OperatorOutlineArtifactView(
             id=artifact.id,
             version=artifact.version,
             content_hash=artifact.content_hash,
+        ),
+        semantic_artifact=(
+            OperatorOutlineArtifactView(
+                id=semantic_result.artifact.id,
+                version=semantic_result.artifact.version,
+                content_hash=semantic_result.artifact.content_hash,
+            )
+            if semantic_result is not None
+            else None
+        ),
+        semantic_quality=(
+            OperatorSemanticQualityView(
+                verdict=semantic_result.assessment.verdict,
+                findings=[
+                    OperatorSemanticFindingView(
+                        code=finding.code,
+                        subject_ref=finding.subject_ref,
+                        reason=finding.reason,
+                        remediation=finding.remediation,
+                    )
+                    for finding in semantic_result.assessment.findings
+                ],
+            )
+            if semantic_result is not None
+            else None
         ),
         outline=outline,
     )

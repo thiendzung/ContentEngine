@@ -252,6 +252,15 @@ def _outline_payload(bundle: JournalInputBundle) -> dict[str, object]:
     }
     opportunity = bundle.angle_model_input.get("opportunity")
     if isinstance(opportunity, dict):
+        role = opportunity.get("suggested_role")
+        if role in {"pillar", "cluster"}:
+            payload["semantic_quality"] = {
+                "schema_version": 1,
+                "stage": "outline",
+                "role": role,
+                "verdict": "pass",
+                "findings": [],
+            }
         requirements = opportunity.get("coverage_requirements")
         if isinstance(requirements, list) and requirements:
             ids = [
@@ -303,6 +312,13 @@ async def test_outline_binds_exact_approval_support_and_reuses_exact_artifact() 
         assert all(isinstance(section, OutlineSection) for section in first.outline.sections)
         assert len(first.outline.sections) == 3
         assert first.artifact.id == second.artifact.id
+        assert first.semantic_artifact is not None
+        assert second.semantic_artifact is not None
+        assert first.semantic_artifact.id == second.semantic_artifact.id
+        assert (
+            first.semantic_artifact.content_json["artifact_type"]
+            == "outline_semantic_quality"
+        )
         assert first.reused is False
         assert second.reused is True
         assert second.model_attempts == 0
@@ -481,6 +497,15 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
         coverage_item_schema = coverage_schema["items"]
         assert isinstance(coverage_item_schema, dict)
         assert coverage_item_schema["enum"] == ["coverage-1", "coverage-2"]
+        semantic_schema = schema_properties["semantic_quality"]
+        assert isinstance(semantic_schema, dict)
+        semantic_properties = semantic_schema["properties"]
+        assert isinstance(semantic_properties, dict)
+        role_schema = semantic_properties["role"]
+        assert isinstance(role_schema, dict)
+        assert role_schema["enum"] == ["cluster"]
+        assert "SEMANTIC_QUALITY_RULE:" in request.prompt
+        assert "numeric quality score" in request.prompt
         call = await session.scalar(
             select(ModelCall).where(
                 ModelCall.run_id == fixture.run.id,
@@ -498,6 +523,31 @@ async def test_outline_cli_bridge_reuses_run_route_and_records_modelcall() -> No
             call.runtime_metadata_json["runner_executable"]
             == "/Applications/ChatGPT.app/Contents/Resources/codex"
         )
+
+@pytest.mark.asyncio
+async def test_outline_semantic_quality_rejects_unknown_subject_ref() -> None:
+    async with isolated_session() as session:
+        fixture = await _approved_fixture(session)
+        invalid = _outline_payload(fixture.bundle)
+        semantic = invalid["semantic_quality"]
+        assert isinstance(semantic, dict)
+        semantic["verdict"] = "revise"
+        semantic["findings"] = [
+            {
+                "code": "outline_section_job_unclear",
+                "subject_ref": "section:invented",
+                "reason": "The section job is unclear.",
+                "remediation": "Bind the finding to an exact generated section.",
+            }
+        ]
+        model = FakeOutlineModel([invalid])
+        with pytest.raises(
+            OutlineGenerationError,
+            match="outline_model_output_invalid",
+        ):
+            await _generate(session, fixture, model)
+        assert model.calls == 1
+
 
 @pytest.mark.asyncio
 async def test_outline_fails_closed_when_committed_promise_coverage_is_missing() -> None:

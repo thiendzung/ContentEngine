@@ -14,6 +14,9 @@ from app.modules.content_engine.journal.editorial_role import (
     EditorialRoleError,
     editorial_role_contract_or_none,
 )
+from app.modules.content_engine.journal.semantic_quality import (
+    ANGLE_SEMANTIC_FINDING_CODES,
+)
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
     AgentRunnerError,
@@ -40,7 +43,7 @@ ANGLE_PROMPT_KEY = "journal_angle_candidates"
 ANGLE_RECIPE_KEY = "journal_angle_v1"
 ANGLE_TASK_KEY = "angle"
 ANGLE_TIMEOUT_SECONDS = 300.0
-ANGLE_RENDER_PROTOCOL_VERSION = "journal.angle.render.v3"
+ANGLE_RENDER_PROTOCOL_VERSION = "journal.angle.render.v4"
 _MAX_DIAGNOSTIC_CANDIDATES = 5
 _MAX_DIAGNOSTIC_REFS = 16
 _MAX_DIAGNOSTIC_TEXT = 200
@@ -231,6 +234,8 @@ def _contract_values(contract: dict[str, object], key: str) -> list[str]:
 def _bind_angle_output_schema(
     base_schema: dict[str, object],
     contract: dict[str, object],
+    *,
+    semantic_role: str | None,
 ) -> dict[str, object]:
     """Bind exact upstream refs into the runner JSON schema without mutating the registry."""
 
@@ -247,6 +252,53 @@ def _bind_angle_output_schema(
         raise AngleGenerationError("angle_output_schema_invalid")
 
     allowed_coverage = _contract_values(contract, "coverage_requirement_ids")
+    if semantic_role is not None:
+        candidate_properties["semantic_quality"] = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "schema_version": {"type": "integer", "enum": [1]},
+                "stage": {"type": "string", "enum": ["angle"]},
+                "role": {"type": "string", "enum": [semantic_role]},
+                "verdict": {"type": "string", "enum": ["pass", "revise"]},
+                "findings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "enum": list(ANGLE_SEMANTIC_FINDING_CODES),
+                            },
+                            "subject_ref": {"type": "string", "minLength": 1},
+                            "reason": {"type": "string", "minLength": 1},
+                            "remediation": {"type": "string", "minLength": 1},
+                        },
+                        "required": [
+                            "code",
+                            "subject_ref",
+                            "reason",
+                            "remediation",
+                        ],
+                    },
+                },
+            },
+            "required": [
+                "schema_version",
+                "stage",
+                "role",
+                "verdict",
+                "findings",
+            ],
+        }
+        required = candidate_items.get("required")
+        if not isinstance(required, list) or any(
+            not isinstance(item, str) for item in required
+        ):
+            raise AngleGenerationError("angle_output_schema_invalid")
+        if "semantic_quality" not in required:
+            required.append("semantic_quality")
     if allowed_coverage:
         candidate_properties["coverage"] = {
             "type": "array",
@@ -354,6 +406,23 @@ def render_angle_prompt(
             "or invent one; preserve bounded legacy behavior."
         )
     )
+    semantic_quality_rule = (
+        "For every candidate, return semantic_quality using schema_version 1, stage "
+        "'angle', the exact editorial role, verdict pass|revise, and zero or more "
+        "findings. Pass requires zero findings; revise requires at least one. Judge "
+        "working_title -> reader_problem -> central_question -> core_promise coherence, "
+        "role behavior, bounded scope, and coverage intent. Use only these finding "
+        f"codes: {', '.join(ANGLE_SEMANTIC_FINDING_CODES)}. subject_ref must point to "
+        "the current candidate (angle:<angle_id>), one of angle:working_title, "
+        "angle:reader_problem, angle:central_question, angle:core_promise, angle:role, "
+        "angle:scope, or an exact coverage:<coverage-N> ref. Do not assign a numeric "
+        "quality score and do not reclassify factual evidence truth established by "
+        "the support-depth contract."
+        if editorial_role_contract is not None
+        else (
+            "Legacy no-role case: do not invent Pillar/Cluster semantic assessment."
+        )
+    )
     input_json = json.dumps(
         angle_model_input,
         ensure_ascii=False,
@@ -374,6 +443,7 @@ def render_angle_prompt(
         f"REFERENCE_CONTRACT_JSON:\n{reference_contract_json}\n\n"
         f"EDITORIAL_ROLE_CONTRACT_JSON:\n{editorial_role_json}\n\n"
         f"EDITORIAL_ROLE_RULE:\n{editorial_role_rule}\n\n"
+        f"SEMANTIC_QUALITY_RULE:\n{semantic_quality_rule}\n\n"
         f"ANGLE_INPUT_JSON:\n{input_json}"
         f"{retry_note}\n\n"
         f"This is bounded validation attempt {attempt}; return JSON only."
@@ -471,9 +541,15 @@ class CliAngleModelPort(AngleModelPort):
             raise AngleGenerationError(exc.code) from exc
 
         reference_contract = _angle_reference_contract(sanitized_input)
+        role_contract = _validated_editorial_role_contract(sanitized_input)
         structured_output_schema = _bind_angle_output_schema(
             self._prompt.output_schema_json,
             reference_contract,
+            semantic_role=(
+                role_contract.get("role")
+                if role_contract is not None
+                else None
+            ),
         )
         call = await start_model_call(
             self._session,
