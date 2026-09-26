@@ -40,6 +40,24 @@ Delegate one bounded outcome, not one approval request per shell command. A task
 
 Approval of a plan or merge of code is not approval to incur model charges, change an operational DB, approve content or publish. Exact tasks state permission and budget. Previously authorized editorial selection is usable only when the exact recorded rule, actor and artifact conditions can be verified; never manufacture an approval.
 
+## 3A. Verification ownership and merge order — 2026-09-26 update
+
+Verification is local-first as well as runtime-local. The Founder's machine is the primary heavy verification environment; GitHub-hosted runners are a small confirmation layer, not a second full verification machine.
+
+Canonical code-bearing merge path:
+
+`MG architecture/code/tests/self-review + OCR ownership -> Agent Local exact-SHA heavy verification -> MG evidence review -> GitHub minimum confirmation CI when available -> Founder merge`.
+
+Agent Local heavy verification includes the applicable focused/full test suites, disposable test DB and migration proof, frontend production build, runtime/smoke checks and exact-ref OCR execution when OCR is local-only. MG owns the OCR review/triage and the technical merge-readiness decision. Do not rerun the same heavy suite in GitHub Actions merely for symmetry.
+
+GitHub Actions should stay bounded to short static/contract confirmation such as syntax/contracts, lint and type checks. Full backend pytest, migration round-trip, OpenAPI regeneration, frontend production build and real runtime/smoke proof belong to Agent Local unless a specific task proves a reason to move one check back to hosted CI.
+
+If Actions quota or service is unavailable, the temporary path is:
+
+`MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> Founder merge`.
+
+The fallback does not relax any product, provenance, safety, approval, exact-ref or local-data rule. Report GitHub CI as `not run / unavailable`; never convert absence into PASS. A repository protection rule may still technically require a check and must be handled explicitly rather than bypassed.
+
 ## 4. M1 - one real Journal, unchanged hard gates
 
 Resume the fresh lineage in `docs/logs/2026-09-12-ce05-m1-one-real-journal-pass-status.md`. First verify current EvidenceSet/OriginalityPack bindings once. Do not redo research, recreate historical rows or start another case merely because Angle execution is blocked.

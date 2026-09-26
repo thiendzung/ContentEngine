@@ -10,13 +10,14 @@ Live GitHub refs/PR state/CI decide repository status. Local state requires date
 
 ## Fixed collaboration
 
-- MG / ChatGPT: architecture -> primary coding -> tests -> self-review -> OpenCodeReview as a second semantic reviewer -> fixes -> PR preparation -> review of Agent Local evidence and next technical slice.
-- Founder: product/editorial decisions, authorization of sensitive real executions, explicit human gate decisions (Angle/Outline/final/publish), and PR merge.
-- Agent Local: sync exact SHA -> run tests/runtime/OCR on the real machine -> return evidence. Code edits only when Founder/MG dispatches an explicit bounded coding scope; no independent redesign, next-task selection or merge.
+- MG / ChatGPT: architecture -> code + regression tests -> self-review -> own/triage OpenCodeReview -> fixes -> prepare exact candidate SHA/PR -> review Agent Local evidence -> decide technical merge readiness.
+- Founder: product/editorial decisions, authorization of sensitive real executions, dispatch of local tasks, and PR merge.
+- Agent Local: sync exact SHA -> run heavy verification on the real machine (focused/full tests, disposable DB/migrations, runtime/smoke, frontend build, exact-ref OCR when local execution is required) -> return normalized evidence. Code edits only when Founder/MG dispatches an explicit bounded coding scope.
+- GitHub Actions: minimum confirmation gate only; do not duplicate the full Agent Local suite. If quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path.
 - GitHub: shared code/contracts/plans/tasks/evidence, not a direct communication channel to Agent Local.
 - Product naming: on macOS the desktop application is **ChatGPT** (OpenAI renamed the former Codex app surface). Keep technical/runtime identifiers and the packaged CLI executable such as `codex_cli` / `/Applications/ChatGPT.app/Contents/Resources/codex` unchanged unless the actual technical contract changes.
 
-A GitHub comment or roadmap does not dispatch a local task. Never claim fresh local agreement without a returned report. WIP: one implementation plus related verification.
+A GitHub comment or roadmap does not dispatch a local task. Never claim fresh local agreement without a returned report. Canonical merge flow is `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`. During Actions quota/service outage, omit only the GitHub CI step and disclose that fact. WIP: one implementation plus related verification.
 
 ## Current delivery state
 

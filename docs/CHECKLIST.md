@@ -75,16 +75,18 @@ Docs-only:
 - [ ] Diff documentation-only, secret-free and in scope.
 
 Implementation:
-- [ ] Focused failure/contract test and relevant broader regression pass.
-- [ ] Backend lint/type; API generation when affected.
-- [ ] Frontend lint/type/build and key interactions when affected.
-- [ ] Migration upgrade and applicable downgrade/round-trip on disposable data.
-- [ ] Relevant happy/failure/retry/approval/resume/provenance paths tested.
-- [ ] Local gates run on exact candidate SHA in an authorized safe environment.
+- [ ] MG adds the smallest focused failure/contract regression with the implementation and performs self-review.
+- [ ] Agent Local runs applicable focused + full backend tests on the exact candidate SHA.
+- [ ] Agent Local runs disposable TEST DB migration/reset proof when schema/DB behavior is relevant.
+- [ ] Agent Local runs frontend lint/type/build and key interactions when frontend is affected; production build belongs here, not routine GitHub CI.
+- [ ] Agent Local runs applicable runtime/smoke proof on the real machine without touching unauthorized operational state.
+- [ ] Exact-ref OCR is executed once at the appropriate machine boundary and MG triages the findings; do not duplicate it merely for process symmetry.
+- [ ] All heavy local gates use the exact candidate SHA in an authorized safe environment.
 
 Every PR:
-- [ ] Actual diff reviewed; self-review distinguished from independent evidence.
-- [ ] Checks not run disclosed; required CI not bypassed.
+- [ ] Actual diff reviewed; MG self-review distinguished from Agent Local/OCR evidence.
+- [ ] GitHub Actions is only a minimum confirmation gate; no routine full-test/build duplication.
+- [ ] If Actions quota/service is unavailable, record `CI not run / unavailable`; never claim PASS. Exact-SHA Agent Local proof remains required.
 - [ ] No secrets/generated junk/unrelated changes.
 - [ ] Exact evidence included; merge-ready docs do not imply runtime completion.
 
@@ -92,7 +94,8 @@ Every PR:
 
 - [ ] Code/task transition and semantic AI_context/TASKS update in one coherent change.
 - [ ] Runtime evidence dated/sanitized and reviewed before asserting next gate.
-- [ ] Live HEAD/PR/CI read from GitHub, not maintained as stale copies.
+- [ ] Live HEAD/PR/available-CI state read from GitHub, not maintained as stale copies.
+- [ ] MG reviews exact-SHA Agent Local evidence before the minimal GitHub confirmation gate or documented CI-unavailable fallback.
 - [ ] Founder alone merges; no direct main write/auto-merge.
 - [ ] After merge verify actual SHA/checks and semantic state.
 - [ ] Before local use verify deployed checkout matches approved ref.

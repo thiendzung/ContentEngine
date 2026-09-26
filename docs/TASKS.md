@@ -2,7 +2,9 @@
 
 Current window: `../AI_context.MD`. Canonical plan: `logs/2026-09-16-finish-first-delivery-plan.md`. Dated reconciliation: `logs/2026-09-16-post-f2-status-replan.md`.
 
-One implementation plus related verification. MG designs/codes/reviews; Founder dispatches local tasks by copy and merges; Agent Local executes the exact local scope and returns evidence through Founder. A checkbox or plan is not runtime authorization.
+One implementation plus related verification. MG designs/codes/tests/self-reviews and owns OCR triage; Founder dispatches local tasks and merges; Agent Local is the primary heavy-verification machine for the exact candidate SHA. GitHub Actions is a minimum confirmation gate only and may be absent during quota/service outage if that absence is disclosed. A checkbox or plan is not runtime authorization.
+
+Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 ## Current queue
 
@@ -622,10 +624,10 @@ CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06
 - [ ] CQ05-D: prove Assertion Audit and Source-copy consume the exact rewritten bytes; stale/source substitution fails closed.
 - [ ] CQ05-E: expose before/after comparison for operator review and add safe/adversarial truth-drift fixtures.
 - [ ] Bump generator/render/prompt identities only where semantics actually change; do not silently reuse old output.
-- [ ] Normal CI green on final code/docs SHA.
 - [ ] MG full-diff self-review with no unresolved P0/P1 truth-preservation defect.
-- [ ] Exact-ref OpenCodeReview + MG triage.
-- [ ] Agent Local exact-head bounded verification.
+- [ ] Exact-ref OpenCodeReview owned/triaged by MG; execute locally once if that is where OCR runs.
+- [ ] Agent Local exact-head heavy verification: focused/full tests, disposable DB/migrations, frontend build and applicable runtime/smoke proof.
+- [ ] Minimal GitHub confirmation CI green on final SHA when Actions is available; if quota/service is unavailable, record that explicitly instead of rerunning heavy verification elsewhere.
 - [ ] Founder merge.
 
 CQ-05 boundaries: no AI-detector score or “humanization percentage”; no Evidence truth reclassification; no invented artist intent/quotes/customer stories/sensory observations/business promises/prices/scarcity/policies; no sibling-locale draft input; no final human-approval bypass; no production publication or operational migration.
