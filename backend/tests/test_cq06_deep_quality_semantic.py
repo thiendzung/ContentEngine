@@ -4,11 +4,11 @@ import copy
 import json
 
 import pytest
+from test_ce05_outline import isolated_session
 from test_cq06_deep_quality_input import (
     _complete_quality_pipeline,
     _loader_kwargs,
 )
-from test_ce05_outline import isolated_session
 
 from app.modules.content_engine.journal.deep_quality_input import (
     load_deep_quality_input,
