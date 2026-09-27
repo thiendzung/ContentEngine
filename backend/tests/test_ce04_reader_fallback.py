@@ -12,6 +12,7 @@ from app.modules.research.contracts import (
     ProviderCallArtifact,
     ProviderResponse,
     ResearchSignalKind,
+    SearchRequest,
     SearchSignal,
     SourceCandidate,
 )
@@ -27,11 +28,11 @@ async def _empty_retrieval(*args: object, **kwargs: object) -> list[object]:
 class SufficientSearch:
     name = "serper"
 
-    def estimated_calls(self, request) -> int:
+    def estimated_calls(self, request: SearchRequest) -> int:
         del request
         return 1
 
-    async def search(self, request):
+    async def search(self, request: SearchRequest) -> ProviderResponse:
         signals = tuple(
             SearchSignal(
                 provider=self.name,
@@ -187,7 +188,7 @@ async def test_reader_fallback_does_not_direct_fetch_discovery_source(
     monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
 
     class DiscoverySearch(SufficientSearch):
-        async def search(self, request):
+        async def search(self, request: SearchRequest) -> ProviderResponse:
             response = await super().search(request)
             discovery = tuple(
                 SourceCandidate(
