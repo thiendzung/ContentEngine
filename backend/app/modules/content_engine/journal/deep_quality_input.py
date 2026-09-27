@@ -51,7 +51,7 @@ from app.modules.content_engine.journal.source_copy import (
     load_source_copy_input,
 )
 from app.modules.content_engine.journal.writer import JournalDraft, WriterInput
-from app.modules.harness.models import Artifact
+from app.modules.harness.models import Artifact, QualityEvaluation
 
 
 class DeepQualityInputError(ValueError):
