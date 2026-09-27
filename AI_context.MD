@@ -440,7 +440,7 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01/CQ-02/CQ-03/CQ-04/CQ-05 merged, CQ-06 active
+## Content Quality priority — CQ-01 through CQ-06 merged, CQ-07 active
 
 Founder priority remains content quality before production activation.
 
@@ -477,3 +477,18 @@ CQ-05 merged architecture:
 - every Human Voice rewrite must be re-audited against the new exact bytes before Source-copy/final quality advances;
 - before/after diagnostics are explanatory, never AI-detector/authorship scores or a “humanization percentage”;
 - no production activation, operational migration, publication or final-approval bypass in CQ-05.
+
+CQ-06 merged:
+- PR #237 merged to main `8dfe5d0665d7dcb931336a52ef8102bef36af03f`;
+- verified implementation HEAD `9bc00e2379803dd44d70b182cef4db279fd6156e`;
+- final exact-ref OCR v1.12.9 reviewed 23/23 reviewable files with zero findings;
+- remediation-focused 68 PASS; affected CQ06 126 PASS; CQ03→CQ06 focused 180 PASS; full backend 1263 PASS; frontend PASS; VI/EN runtime smoke PASS;
+- persisted Source-copy/Reader/Search eval runs now fail closed on Writer-lineage substitution;
+- main push CI #36310526725 PASS.
+
+CQ-07 / #233 is now the active Content Quality task:
+- real one-Pillar + one-related-Cluster closed-loop pilot;
+- Founder must explicitly select the exact pair from the approved MOTGU A1 content plan; MG/system must not infer or auto-select it;
+- run each item independently through the existing gates before pair comparison;
+- do not add a durable Pillar↔Cluster relation before the pilot proves a concrete identity/query/update need;
+- no production activation, operational migration, WordPress/Rank Math mutation or auto-publication during the pilot.
