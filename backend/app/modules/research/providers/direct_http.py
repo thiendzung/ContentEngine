@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from io import BytesIO
 from urllib.parse import urljoin
 
 import httpx
+from pypdf import PdfReader
 
 from app.modules.research.contracts import (
     PageDocument,
@@ -136,10 +138,10 @@ class _HtmlExtractor(HTMLParser):
 
 
 class DirectHttpReader:
-    """Bounded public HTTP fallback for readable HTML/plain-text pages.
+    """Bounded public HTTP fallback for readable HTML, plain text and PDFs.
 
     The reader validates every redirect target, refuses private/local addresses, bounds
-    response bytes and text, and deliberately rejects unsupported binary formats.
+    response bytes/text/pages, and fails closed on unsupported or unreadable formats.
     """
 
     name = "direct_http"
@@ -152,12 +154,14 @@ class DirectHttpReader:
         max_content_chars: int = 100_000,
         max_links: int = 100,
         max_redirects: int = 5,
+        max_pdf_pages: int = 50,
     ) -> None:
         if (
             max_response_bytes <= 0
             or max_content_chars <= 0
             or max_links < 0
             or max_redirects < 0
+            or max_pdf_pages <= 0
         ):
             raise ValueError("invalid_direct_reader_limits")
         self._client = client
@@ -165,6 +169,7 @@ class DirectHttpReader:
         self._max_content_chars = max_content_chars
         self._max_links = max_links
         self._max_redirects = max_redirects
+        self._max_pdf_pages = max_pdf_pages
 
     async def read(self, url: str, *, query: str) -> PageReadResponse:
         requested_url = validate_public_http_url(url)
@@ -177,7 +182,7 @@ class DirectHttpReader:
                     "GET",
                     current_url,
                     headers={
-                        "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1",
+                        "Accept": "text/html,application/xhtml+xml,application/pdf,text/plain;q=0.9,*/*;q=0.1",
                         "User-Agent": "ContentEngine/1.0 (+bounded evidence reader)",
                     },
                     follow_redirects=False,
@@ -231,6 +236,7 @@ class DirectHttpReader:
                         "",
                         "text/html",
                         "application/xhtml+xml",
+                        "application/pdf",
                         "text/plain",
                     }:
                         raise ResearchProviderError(
@@ -267,6 +273,8 @@ class DirectHttpReader:
                         prefix = bytes(body).lstrip()[:32].lower()
                         if prefix.startswith((b"<!doctype html", b"<html", b"<head", b"<body")):
                             content_type = "text/html"
+                        elif prefix.startswith(b"%pdf-"):
+                            content_type = "application/pdf"
                         else:
                             raise ResearchProviderError(
                                 self.name,
@@ -294,32 +302,38 @@ class DirectHttpReader:
                 ) from exc
             break
 
-        try:
-            decoded = bytes(body).decode(encoding, errors="replace")
-        except LookupError:
-            decoded = bytes(body).decode("utf-8", errors="replace")
-
-        if content_type == "text/plain":
-            full_content = decoded.strip()
-            title = None
+        pdf_truncated = False
+        if content_type == "application/pdf":
+            full_content, title, pdf_truncated = self._extract_pdf(bytes(body))
             links: tuple[PageLink, ...] = ()
             links_truncated = False
         else:
-            parser = _HtmlExtractor(base_url=current_url, max_links=self._max_links)
             try:
-                parser.feed(decoded)
-                parser.close()
-            except Exception as exc:
-                raise ResearchProviderError(
-                    self.name,
-                    "read",
-                    "html_parse_failed",
-                    failure_class="tool_invalid_response",
-                ) from exc
-            full_content = parser.content.strip()
-            title = parser.title
-            links = parser.links
-            links_truncated = parser.links_truncated
+                decoded = bytes(body).decode(encoding, errors="replace")
+            except LookupError:
+                decoded = bytes(body).decode("utf-8", errors="replace")
+
+            if content_type == "text/plain":
+                full_content = decoded.strip()
+                title = None
+                links = ()
+                links_truncated = False
+            else:
+                parser = _HtmlExtractor(base_url=current_url, max_links=self._max_links)
+                try:
+                    parser.feed(decoded)
+                    parser.close()
+                except Exception as exc:
+                    raise ResearchProviderError(
+                        self.name,
+                        "read",
+                        "html_parse_failed",
+                        failure_class="tool_invalid_response",
+                    ) from exc
+                full_content = parser.content.strip()
+                title = parser.title
+                links = parser.links
+                links_truncated = parser.links_truncated
 
         if not full_content:
             raise ResearchProviderError(
@@ -339,7 +353,7 @@ class DirectHttpReader:
             provider_timestamp=last_modified,
             content=content,
             links=links,
-            content_truncated=len(content) < len(full_content),
+            content_truncated=pdf_truncated or len(content) < len(full_content),
             links_truncated=links_truncated,
         )
         call = ProviderCallArtifact(
@@ -352,3 +366,46 @@ class DirectHttpReader:
             raw_excerpt="",
         )
         return PageReadResponse(document=document, call=call)
+
+    def _extract_pdf(self, payload: bytes) -> tuple[str, str | None, bool]:
+        try:
+            reader = PdfReader(BytesIO(payload), strict=False)
+            if reader.is_encrypted:
+                raise ResearchProviderError(
+                    self.name,
+                    "read",
+                    "pdf_encrypted",
+                    failure_class="tool_invalid_response",
+                )
+            total_pages = len(reader.pages)
+            page_limit = min(total_pages, self._max_pdf_pages)
+            chunks: list[str] = []
+            char_count = 0
+            for index in range(page_limit):
+                text = reader.pages[index].extract_text() or ""
+                normalized = "\n".join(
+                    line for line in (" ".join(raw.split()) for raw in text.splitlines()) if line
+                )
+                if not normalized:
+                    continue
+                chunks.append(normalized)
+                char_count += len(normalized) + 2
+                if char_count >= self._max_content_chars:
+                    break
+            full_content = "\n\n".join(chunks).strip()
+            metadata = reader.metadata
+            title: str | None = None
+            if metadata is not None and isinstance(metadata.title, str):
+                title = metadata.title.strip() or None
+            truncated = total_pages > page_limit or char_count >= self._max_content_chars
+            return full_content, title, truncated
+        except ResearchProviderError:
+            raise
+        except Exception as exc:
+            raise ResearchProviderError(
+                self.name,
+                "read",
+                "pdf_parse_failed",
+                failure_class="tool_invalid_response",
+            ) from exc
+
