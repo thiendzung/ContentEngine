@@ -584,7 +584,11 @@ class ResearchRouter:
             successful_reads += 1
 
         if target_successes > 0 and successful_reads < target_successes:
-            return "reader_candidates_exhausted"
+            return (
+                "reader_candidates_exhausted"
+                if self._fallback_reader is not None
+                else "jina_candidates_exhausted"
+            )
         return None
 
     async def _enforce_next_tool_budget(
