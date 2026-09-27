@@ -15,6 +15,10 @@ from test_operator_quality import (
 
 from app.modules.content_engine.journal import operator_quality_worker
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
+from app.modules.content_engine.journal.deep_quality_authority import (
+    AUTHORITATIVE_DEEP_QUALITY_DIMENSIONS,
+    derive_authoritative_deep_quality_dimensions,
+)
 from app.modules.content_engine.journal.deep_quality_input import (
     DeepQualityInputError,
     load_deep_quality_input,
@@ -216,6 +220,13 @@ async def test_deep_quality_input_revalidates_exact_f4_lineage_for_vi_and_en(
             assert loaded.human_voice_trace.artifact.id is not None
             assert loaded.reader_value.result == "pass"
             assert loaded.search_ai.result == "pass"
+            authoritative = derive_authoritative_deep_quality_dimensions(loaded)
+            assert tuple(authoritative) == AUTHORITATIVE_DEEP_QUALITY_DIMENSIONS
+            assert {item.result for item in authoritative.values()} == {"pass"}
+            assert all(
+                item.authority in {"deterministic", "upstream_gate"}
+                for item in authoritative.values()
+            )
 
 
 @pytest.mark.asyncio
