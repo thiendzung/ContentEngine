@@ -17,6 +17,9 @@ from test_operator_writers import (
 
 from app.modules.content_engine.journal import operator_quality_worker
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
+from app.modules.content_engine.journal.deep_quality_semantic import (
+    DEEP_QUALITY_SEMANTIC_DIMENSIONS,
+)
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
 from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
@@ -87,6 +90,21 @@ def _passing_readiness_output(stage: str, locale: str) -> dict[str, object]:
                 "repair_suggestion": "",
             }
             for key in READINESS_CRITERIA[stage]
+        ],
+    }
+
+
+def _passing_deep_quality_output(locale: str) -> dict[str, object]:
+    return {
+        "locale": locale,
+        "dimensions": [
+            {
+                "key": key,
+                "result": "pass",
+                "finding": f"{key} passes on the exact supplied draft.",
+                "remediation": "",
+            }
+            for key in DEEP_QUALITY_SEMANTIC_DIMENSIONS
         ],
     }
 
@@ -566,7 +584,72 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             worker_prefix="f4-readiness-en",
         )
 
-        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        assert progress.final_gate_ready is False
+        assert {lane.status for lane in progress.lanes} == {"deep_quality_queued"}
+        assert all(lane.deep_quality.job is not None for lane in progress.lanes)
+        assert all(lane.final_content is None for lane in progress.lanes)
+        assert all(lane.final_review is None for lane in progress.lanes)
+
+        state_before_deep = await get_operator_state(
+            session,
+            content_case_id=case_id,
+        )
+        assert state_before_deep.human_gate is None
+        assert state_before_deep.status == "QUEUED"
+
+        deep_ports = {
+            locale: _CapturePort(_passing_deep_quality_output(locale))
+            for locale in ("vi-VN", "en")
+        }
+
+        async def fake_deep_quality_port(
+            _session: AsyncSession,
+            *,
+            locale: str,
+            **kwargs: object,
+        ) -> _CapturePort:
+            del _session, kwargs
+            return deep_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_deep_quality_model_port",
+            fake_deep_quality_port,
+        )
+        for index in range(2):
+            job = await operator_quality_worker.claim_or_reclaim_quality_job(
+                session,
+                worker_id=f"f4-deep-{index}",
+            )
+            assert job is not None
+            await operator_quality_worker.execute_quality_job(
+                session,
+                job_id=job.id,
+                worker_id=f"f4-deep-{index}",
+                runner_registry=registry,
+            )
+
+        assert {
+            locale
+            for locale, port in deep_ports.items()
+            if port.inputs
+        } == {"vi-VN", "en"}
+        for locale, port in deep_ports.items():
+            assert port.inputs[0]["locale"] == locale
+            assert "other_locale_draft" not in port.inputs[0]
+            assert "translation_source" not in port.inputs[0]
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
         assert progress is not None
         assert progress.final_gate_ready is True
         assert {lane.status for lane in progress.lanes} == {"final_gate_ready"}
@@ -600,7 +683,17 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             assert lane.writer.run.content_item_id == lane.final_item.id  # type: ignore[union-attr]
             assert lane.final_content.content_json == copy.deepcopy(lane.revised_draft.content_json)  # type: ignore[union-attr]
             assert lane.final_content.content_hash == lane.revised_draft.content_hash  # type: ignore[union-attr]
+            assert lane.deep_quality.artifact is not None
+            assert lane.deep_quality.evaluation is not None
+            assert lane.deep_quality.evaluation.result == "pass"
             assert lane.final_review.attempt == 1
+            assert lane.final_review.input_artifact_refs_json == [
+                str(lane.revised_draft.id),  # type: ignore[union-attr]
+                str(lane.final_item.id),  # type: ignore[union-attr]
+                str(lane.reader_value.artifact.id),  # type: ignore[union-attr]
+                str(lane.search_ai.artifact.id),  # type: ignore[union-attr]
+                str(lane.deep_quality.artifact.id),
+            ]
             assert lane.status == "final_gate_ready"
 
         state = await get_operator_state(session, content_case_id=case_id)

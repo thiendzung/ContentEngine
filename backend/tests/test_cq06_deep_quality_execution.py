@@ -25,7 +25,6 @@ from app.modules.content_engine.journal.deep_quality_input import (
 from app.modules.content_engine.journal.deep_quality_semantic import (
     DEEP_QUALITY_SEMANTIC_DIMENSIONS,
 )
-from app.modules.harness.models import StepRun
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 
 
@@ -91,26 +90,23 @@ async def _execution_fixture(
         session,
         **_loader_kwargs(lane, outline_result),
     )
-    run, handoff, created = await ensure_deep_quality_run(
-        session,
-        source=source,
-    )
-    assert created is False
+    assert lane.deep_quality.run is not None
+    assert lane.deep_quality.handoff is not None
+    assert lane.deep_quality.step is not None
+    assert lane.deep_quality.job is not None
+    run = lane.deep_quality.run
+    handoff = lane.deep_quality.handoff
+    step = lane.deep_quality.step
     assert run.status == "pending"
-    step = StepRun(
-        run_id=run.id,
-        step_key=deep_quality_task_key(locale),
-        attempt=1,
-        status="running",
-        input_artifact_refs_json=[
-            str(handoff.id),
-            str(source.source_artifact.id),
-            str(source.search_ai.artifact.id),
-        ],
-        output_artifact_refs_json=[],
-    )
-    session.add(step)
+    assert step.status == "pending"
+    assert step.step_key == deep_quality_task_key(locale)
+    assert step.input_artifact_refs_json == [
+        str(handoff.id),
+        str(source.source_artifact.id),
+        str(source.search_ai.artifact.id),
+    ]
     run.status = "running"
+    step.status = "running"
     await session.flush()
     manifest = await build_context_manifest(
         session,
