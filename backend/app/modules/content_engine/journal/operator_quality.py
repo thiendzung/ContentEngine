@@ -24,6 +24,7 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
 from app.modules.content_engine.journal.assertion_audit_execution import (
     prepare_assertion_audit_run,
 )
+from app.modules.content_engine.journal.deep_quality_input import DeepQualityInput
 from app.modules.content_engine.journal.deep_quality_execution import (
     DEEP_QUALITY_ARTIFACT_TYPE,
     DEEP_QUALITY_EVALUATOR_KEY,
@@ -761,7 +762,7 @@ async def _deep_quality_stage(
             )
         ).all()
     )
-    matches: list[tuple[Artifact, ContentRun, object]] = []
+    matches: list[tuple[Artifact, ContentRun, DeepQualityInput]] = []
     for handoff in rows:
         payload = handoff.content_json
         if (
