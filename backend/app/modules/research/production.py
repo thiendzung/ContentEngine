@@ -24,6 +24,7 @@ from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
     InternalKnowledgeHit,
+    PageReadResponse,
     ProductionResearchRequest,
     ProductionResearchResult,
     ProviderDecision,
@@ -108,6 +109,7 @@ class ResearchRouter:
         tavily: SearchProvider | None = None,
         exa: SearchProvider | None = None,
         reader: PageReader | None = None,
+        fallback_reader: PageReader | None = None,
         budget_limits: BudgetLimits | None = None,
         sufficiency: ProductionSufficiencyPolicy | None = None,
     ) -> None:
@@ -115,6 +117,7 @@ class ResearchRouter:
         self._tavily = tavily
         self._exa = exa
         self._reader = reader
+        self._fallback_reader = fallback_reader
         self._budget_limits = budget_limits or BudgetLimits(max_tool_calls=4)
         self._sufficiency = sufficiency or ProductionSufficiencyPolicy()
 
@@ -449,6 +452,65 @@ class ResearchRouter:
         )
         self._merge_provider_response(result, response, reason=reason)
 
+    async def _read_with_reader(
+        self,
+        session: AsyncSession,
+        *,
+        reader: PageReader,
+        source: SourceCandidate,
+        result: ProductionResearchResult,
+        run_id: UUID | None,
+        step_run_id: UUID | None,
+        transient_usage: _TransientUsage,
+        reason: str,
+    ) -> tuple[PageReadResponse | None, ResearchProviderError | None]:
+        await self._enforce_next_tool_budget(
+            session,
+            run_id=run_id,
+            step_run_id=step_run_id,
+            transient_usage=transient_usage,
+        )
+        tool_call_id = await self._start_telemetry(
+            session,
+            run_id=run_id,
+            step_run_id=step_run_id,
+            provider=reader.name,
+            operation="read",
+            payload={
+                "url": source.url,
+                "query": result.request.query,
+                "reason": reason,
+            },
+        )
+        transient_usage.tool_calls += 1
+        try:
+            page = await reader.read(source.url, query=result.request.query)
+        except ResearchProviderError as exc:
+            await self._fail_telemetry(
+                session,
+                call_id=tool_call_id,
+                failure_class=exc.failure_class,
+            )
+            result.decisions.append(
+                ProviderDecision(
+                    provider=reader.name,
+                    status=ProviderDecisionStatus.FAILED,
+                    reason=f"{reason}:{exc}",
+                    failure_class=exc.failure_class,
+                )
+            )
+            return None, exc
+
+        await self._complete_telemetry(session, call_id=tool_call_id)
+        result.decisions.append(
+            ProviderDecision(
+                provider=reader.name,
+                status=ProviderDecisionStatus.CALLED,
+                reason=f"{reason}:{source.url}",
+            )
+        )
+        return page, None
+
     async def _read_selected_pages(
         self,
         session: AsyncSession,
@@ -468,55 +530,50 @@ class ResearchRouter:
             if successful_reads >= target_successes:
                 break
             try:
-                await self._enforce_next_tool_budget(
+                page, primary_error = await self._read_with_reader(
                     session,
+                    reader=self._reader,
+                    source=source,
+                    result=result,
                     run_id=run_id,
                     step_run_id=step_run_id,
                     transient_usage=transient_usage,
+                    reason=f"selected_source:{source.found_via}",
                 )
+                if (
+                    page is None
+                    and primary_error is not None
+                    and primary_error.failure_class == "tool_invalid_response"
+                    and self._fallback_reader is not None
+                ):
+                    page, _ = await self._read_with_reader(
+                        session,
+                        reader=self._fallback_reader,
+                        source=source,
+                        result=result,
+                        run_id=run_id,
+                        step_run_id=step_run_id,
+                        transient_usage=transient_usage,
+                        reason=f"fallback_after:{self._reader.name}:{source.found_via}",
+                    )
             except BudgetExceededError as exc:
+                provider = (
+                    self._fallback_reader.name
+                    if self._fallback_reader is not None
+                    else self._reader.name
+                )
                 result.decisions.append(
                     ProviderDecision(
-                        provider=self._reader.name,
+                        provider=provider,
                         status=ProviderDecisionStatus.STOPPED,
                         reason=str(exc),
                         failure_class="budget_exceeded",
                     )
                 )
-                return f"budget_exceeded_before_{self._reader.name}"
+                return f"budget_exceeded_before_{provider}"
 
-            tool_call_id = await self._start_telemetry(
-                session,
-                run_id=run_id,
-                step_run_id=step_run_id,
-                provider=self._reader.name,
-                operation="read",
-                payload={
-                    "url": source.url,
-                    "query": result.request.query,
-                    "reason": f"selected_source:{source.found_via}",
-                },
-            )
-            transient_usage.tool_calls += 1
-            try:
-                page = await self._reader.read(source.url, query=result.request.query)
-            except ResearchProviderError as exc:
-                await self._fail_telemetry(
-                    session,
-                    call_id=tool_call_id,
-                    failure_class=exc.failure_class,
-                )
-                result.decisions.append(
-                    ProviderDecision(
-                        provider=self._reader.name,
-                        status=ProviderDecisionStatus.FAILED,
-                        reason=f"selected_url_read:{exc}",
-                        failure_class=exc.failure_class,
-                    )
-                )
+            if page is None:
                 continue
-
-            await self._complete_telemetry(session, call_id=tool_call_id)
             result.calls.append(
                 replace(
                     page.call,
@@ -524,17 +581,10 @@ class ResearchRouter:
                 )
             )
             result.documents.append(page.document)
-            result.decisions.append(
-                ProviderDecision(
-                    provider=self._reader.name,
-                    status=ProviderDecisionStatus.CALLED,
-                    reason=f"selected_url:{source.url}",
-                )
-            )
             successful_reads += 1
 
         if target_successes > 0 and successful_reads < target_successes:
-            return "jina_candidates_exhausted"
+            return "reader_candidates_exhausted"
         return None
 
     async def _enforce_next_tool_budget(
