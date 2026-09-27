@@ -280,6 +280,15 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <strong>{qualityResultLabel(lane.search_ai_result)}</strong>
           <small>{lane.search_ai_findings.length} tiêu chí được kiểm tra</small>
         </div>
+        <div>
+          <span>Deep Quality</span>
+          <strong>{qualityResultLabel(lane.deep_quality?.result ?? null)}</strong>
+          <small>
+            {lane.deep_quality
+              ? `12 chiều · lỗi ${lane.deep_quality.fail_count} · cảnh báo ${lane.deep_quality.warn_count}`
+              : "chưa đánh giá"}
+          </small>
+        </div>
       </div>
       {lane.warn_count > 0 && (
         <p className="quality-warning-note">Còn {lane.warn_count} cảnh báo cần đọc ở bản duyệt cuối.</p>
@@ -331,6 +340,26 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           </div>
         </details>
       )}
+      {lane.deep_quality && (
+        <details className="operator-technical-details">
+          <summary>Deep Quality · 12 chiều</summary>
+          <p className="operator-note">
+            Verdict được tổng hợp theo pass / warn / fail; không dùng điểm số, trọng số hoặc phần trăm chất lượng.
+          </p>
+          <div className="warnings">
+            {lane.deep_quality.dimensions.map((dimension) => (
+              <div key={dimension.key}>
+                <p>
+                  <strong>{dimension.key}</strong> · {qualityResultLabel(dimension.result)} · {dimension.authority}
+                </p>
+                <p>{dimension.finding}</p>
+                {dimension.remediation && <p>Sửa: {dimension.remediation}</p>}
+                <small>{dimension.provenance_refs.length} provenance ref</small>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
       {readerIssues.length > 0 && (
         <section className="warnings">
           <p className="label">Điểm cần sửa cho người đọc</p>
@@ -363,6 +392,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <div><dt>Source-copy artifact</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
           <div><dt>Reader Value</dt><dd>{lane.reader_value_artifact?.id ?? "—"}</dd></div>
           <div><dt>SEO / AI readiness</dt><dd>{lane.search_ai_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Deep Quality</dt><dd>{lane.deep_quality?.artifact.id ?? "—"}</dd></div>
           <div><dt>Final content</dt><dd>{lane.final_content?.id ?? "—"}</dd></div>
           <div><dt>Final hash</dt><dd>{lane.final_content?.content_hash ?? "—"}</dd></div>
         </dl>

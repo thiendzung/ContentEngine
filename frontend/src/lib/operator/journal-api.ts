@@ -134,6 +134,24 @@ export type HumanVoiceComparison = {
   changes: HumanVoiceChange[];
 };
 
+export type DeepQualityDimension = {
+  key: string;
+  result: "pass" | "warn" | "fail";
+  authority: "deterministic" | "upstream_gate" | "semantic_model";
+  finding: string;
+  remediation: string;
+  provenance_refs: string[];
+};
+
+export type DeepQualityView = {
+  artifact: QualityRef;
+  quality_evaluation_id: string;
+  result: "pass" | "warn" | "fail";
+  dimensions: DeepQualityDimension[];
+  fail_count: number;
+  warn_count: number;
+};
+
 export type QualityLane = {
   locale: string;
   locale_variant_id: string;
@@ -176,6 +194,10 @@ export type QualityLane = {
   search_ai_quality_evaluation_id: string | null;
   search_ai_result: string | null;
   search_ai_findings: unknown[];
+  deep_quality_run_id: string | null;
+  deep_quality_step_run_id: string | null;
+  deep_quality_job_id: string | null;
+  deep_quality: DeepQualityView | null;
   content_item_id: string | null;
   final_content: QualityRef | null;
   final_review_step_run_id: string | null;

@@ -710,6 +710,16 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             "en",
         }
         for projected_lane in view.quality_lanes:
+            assert projected_lane.deep_quality is not None
+            assert projected_lane.deep_quality.result == "pass"
+            assert len(projected_lane.deep_quality.dimensions) == 12
+            assert projected_lane.deep_quality.fail_count == 0
+            assert projected_lane.deep_quality.warn_count == 0
+            assert {
+                dimension.authority
+                for dimension in projected_lane.deep_quality.dimensions
+            } <= {"deterministic", "upstream_gate", "semantic_model"}
+            assert projected_lane.deep_quality.artifact.id is not None
             assert projected_lane.human_voice is not None
             assert projected_lane.human_voice.advisory_only is True
             assert projected_lane.human_voice.trace_artifact.id is not None

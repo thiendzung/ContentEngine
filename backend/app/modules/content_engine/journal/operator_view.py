@@ -26,6 +26,10 @@ from app.modules.content_engine.journal.angle import (
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
 )
+from app.modules.content_engine.journal.deep_quality import (
+    DeepQualityError,
+    validate_deep_quality_output,
+)
 from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
 from app.modules.content_engine.journal.human_voice_trace import (
     HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
@@ -191,6 +195,24 @@ class OperatorHumanVoiceComparisonView(BaseModel):
     changes: list[OperatorHumanVoiceChangeView] = Field(default_factory=list)
 
 
+class OperatorDeepQualityDimensionView(BaseModel):
+    key: str
+    result: Literal["pass", "warn", "fail"]
+    authority: Literal["deterministic", "upstream_gate", "semantic_model"]
+    finding: str
+    remediation: str
+    provenance_refs: list[str] = Field(default_factory=list)
+
+
+class OperatorDeepQualityView(BaseModel):
+    artifact: OperatorQualityRefView
+    quality_evaluation_id: UUID
+    result: Literal["pass", "warn", "fail"]
+    dimensions: list[OperatorDeepQualityDimensionView] = Field(default_factory=list)
+    fail_count: int = 0
+    warn_count: int = 0
+
+
 class OperatorQualityLaneView(BaseModel):
     locale: str
     locale_variant_id: UUID
@@ -233,6 +255,10 @@ class OperatorQualityLaneView(BaseModel):
     search_ai_quality_evaluation_id: UUID | None = None
     search_ai_result: str | None = None
     search_ai_findings: list[object] = Field(default_factory=list)
+    deep_quality_run_id: UUID | None = None
+    deep_quality_step_run_id: UUID | None = None
+    deep_quality_job_id: UUID | None = None
+    deep_quality: OperatorDeepQualityView | None = None
     content_item_id: UUID | None = None
     final_content: OperatorQualityRefView | None = None
     final_review_step_run_id: UUID | None = None
@@ -857,6 +883,67 @@ async def _outline_gate(
     )
 
 
+def _deep_quality_projection(
+    *,
+    locale: str,
+    artifact: Artifact | None,
+    evaluation: object | None,
+) -> OperatorDeepQualityView | None:
+    if artifact is None and evaluation is None:
+        return None
+    if artifact is None or evaluation is None:
+        raise OperatorControlError("operator_deep_quality_projection_incomplete")
+    if not hasattr(evaluation, "id") or not hasattr(evaluation, "result"):
+        raise OperatorControlError("operator_deep_quality_projection_invalid")
+    payload = artifact.content_json
+    if not isinstance(payload, dict):
+        raise OperatorControlError("operator_deep_quality_projection_invalid")
+    try:
+        assessment = validate_deep_quality_output(
+            payload.get("assessment"),
+            locale=locale,
+        )
+    except DeepQualityError as exc:
+        raise OperatorControlError(
+            "operator_deep_quality_projection_invalid",
+            exc.code,
+        ) from exc
+    evaluation_result = getattr(evaluation, "result", None)
+    evaluation_id = getattr(evaluation, "id", None)
+    findings = getattr(evaluation, "findings_json", None)
+    if (
+        evaluation_result != assessment.verdict
+        or not isinstance(evaluation_id, UUID)
+        or not isinstance(findings, dict)
+        or findings.get("verdict") != assessment.verdict
+        or findings.get("dimensions")
+        != [item.to_dict() for item in assessment.dimensions]
+    ):
+        raise OperatorControlError("operator_deep_quality_projection_stale")
+    return OperatorDeepQualityView(
+        artifact=OperatorQualityRefView(
+            id=artifact.id,
+            version=artifact.version,
+            content_hash=artifact.content_hash,
+        ),
+        quality_evaluation_id=evaluation_id,
+        result=assessment.verdict,
+        dimensions=[
+            OperatorDeepQualityDimensionView(
+                key=item.key,
+                result=item.result,
+                authority=item.authority,
+                finding=item.finding,
+                remediation=item.remediation,
+                provenance_refs=list(item.provenance_refs),
+            )
+            for item in assessment.dimensions
+        ],
+        fail_count=sum(item.result == "fail" for item in assessment.dimensions),
+        warn_count=sum(item.result == "warn" for item in assessment.dimensions),
+    )
+
+
 async def get_operator_case_view(
     session: AsyncSession,
     *,
@@ -960,6 +1047,11 @@ async def get_operator_case_view(
                 lane.search_ai.evaluation.findings_json
                 if lane.search_ai.evaluation is not None
                 else {}
+            )
+            deep_quality = _deep_quality_projection(
+                locale=lane.locale,
+                artifact=lane.deep_quality.artifact,
+                evaluation=lane.deep_quality.evaluation,
             )
             source_ref = (
                 OperatorQualityRefView(
@@ -1095,6 +1187,16 @@ async def get_operator_case_view(
                         if isinstance(search_findings.get("criteria", []), list)
                         else []
                     ),
+                    deep_quality_run_id=(
+                        lane.deep_quality.run.id if lane.deep_quality.run else None
+                    ),
+                    deep_quality_step_run_id=(
+                        lane.deep_quality.step.id if lane.deep_quality.step else None
+                    ),
+                    deep_quality_job_id=(
+                        lane.deep_quality.job.id if lane.deep_quality.job else None
+                    ),
+                    deep_quality=deep_quality,
                     content_item_id=lane.final_item.id if lane.final_item else None,
                     final_content=(
                         OperatorQualityRefView(
@@ -1157,6 +1259,8 @@ __all__ = [
     "OperatorHumanVoiceComparisonView",
     "OperatorHumanVoiceFindingView",
     "OperatorHumanVoiceChangeView",
+    "OperatorDeepQualityDimensionView",
+    "OperatorDeepQualityView",
     "OperatorQualityLaneView",
     "OperatorQualityRefView",
     "get_operator_case_view",
