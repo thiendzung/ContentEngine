@@ -202,8 +202,10 @@ async def ensure_deep_quality_run(
     reusable: list[tuple[ContentRun, Artifact]] = []
     for handoff in rows:
         if (
-            handoff.step_run_id is not None
+            handoff.version != 1
+            or handoff.step_run_id is not None
             or handoff.content_json != payload
+            or handoff.content_hash != handoff_hash
         ):
             raise DeepQualityExecutionError("deep_quality_handoff_snapshot_invalid")
         run = await session.get(ContentRun, handoff.run_id)
@@ -537,7 +539,13 @@ async def _load_existing(
             exc.code,
         ) from exc
 
-    authoritative = derive_authoritative_deep_quality_dimensions(source)
+    try:
+        authoritative = derive_authoritative_deep_quality_dimensions(source)
+    except DeepQualityAuthorityError as exc:
+        raise DeepQualityExecutionError(
+            "deep_quality_authoritative_derivation_invalid",
+            exc.code,
+        ) from exc
     persisted_by_key = {item.key: item for item in assessment.dimensions}
     for key, expected in authoritative.items():
         if persisted_by_key.get(key) != expected:
@@ -637,7 +645,17 @@ async def evaluate_deep_quality(
     snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
     if snapshot is None:
         raise DeepQualityExecutionError("deep_quality_settings_snapshot_missing")
-    if handoff.content_json != _handoff_payload(source, settings_snapshot=snapshot):
+    expected_handoff = _handoff_payload(
+        source,
+        settings_snapshot=snapshot,
+    )
+    if (
+        handoff.artifact_type != DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE
+        or handoff.locale != source.writer_input.locale
+        or handoff.version != 1
+        or handoff.content_json != expected_handoff
+        or handoff.content_hash != _hash(expected_handoff)
+    ):
         raise DeepQualityExecutionError("deep_quality_handoff_snapshot_invalid")
     bundle = source.writer_input.outline_input.bundle
     if (
