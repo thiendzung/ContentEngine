@@ -652,7 +652,7 @@ CQ-06 boundaries held: no auto-publication, no WordPress activation, no new work
 - [x] CQ07-1: Founder selected Option B — P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
 - [x] CQ07-2: exact pair identity/role/question/intent/promise/coverage/VI+EN lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`; v1.0 Master Plan owns canonical identity while Data Lock supplies customer problem/detail.
 - [x] CQ07-3: disposable/local pair preflight PASS on exact HEAD `990e66694a762a45165455d1fbbaeac31bb43737`: targeted 48 PASS; TEST DB rev `20260926_0044`; two independent P01/C02 intakes READY with exact EN+VI role/question/intent/promise/coverage; no durable pair relation required.
-- [ ] CQ07-4: run the Pillar through Founder intake → Evidence/Originality → Angle → Founder Angle approval → Outline → Founder Outline approval → Writer → Human Voice → Deep Quality → Founder final review.
+- [ ] CQ07-4: run P01 through Founder intake → Evidence/Originality → Angle → Founder Angle approval → Outline → Founder Outline approval → Writer → Human Voice → Deep Quality → Founder final review. Exact real intake payload is frozen in `docs/CQ07_P01_EXECUTION_INPUT.md`; bounded research/model execution awaits Founder authorization.
 - [ ] CQ07-5: run the related Cluster through the same chain independently.
 - [ ] CQ07-6: compare the exact pair for bounded Pillar breadth, genuine Cluster depth, intentional overlap, truthful/useful internal links and VI/EN quality.
 - [ ] CQ07-7: record one explicit relationship decision: existing identity is sufficient OR a minimum durable relation is justified by a concrete query/update need.
