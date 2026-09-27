@@ -538,8 +538,14 @@ class ResearchRouter:
                     run_id=run_id,
                     step_run_id=step_run_id,
                     transient_usage=transient_usage,
-                    reason=f"selected_source:{source.found_via}",
+                    reason="selected_url_read",
                 )
+                if (
+                    page is None
+                    and primary_error is not None
+                    and primary_error.failure_class in {"provider_auth", "provider_rate_limit"}
+                ):
+                    break
                 if (
                     page is None
                     and primary_error is not None
