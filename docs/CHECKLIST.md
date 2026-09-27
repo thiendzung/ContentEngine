@@ -239,4 +239,17 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] Operator exposes blockers/warnings/pass dimensions without magic scoring.
 - [x] Founder final approval remains a separate human gate after Deep Quality.
 - [x] Good-content + deceptive-polished fixtures and stale/conflict/substitution tests pass.
-- [ ] MG / Agent Local exact-SHA / OCR / minimal CI / Founder merge gates complete.
+- [x] MG / Agent Local exact-SHA / OCR / minimal CI / Founder merge gates complete.
+
+## T. CQ-07 Real Pillar + Cluster pilot
+
+- [ ] Founder explicitly selects one exact A1 Pillar and one exact related A1 Cluster; system/MG must not infer the pair.
+- [ ] Pair identity is frozen before execution: role, title/topic, primary question, primary intent, promise coverage and required locales.
+- [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
+- [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
+- [ ] Cluster solves one narrower reader subproblem in materially greater depth without widening into a generic Pillar.
+- [ ] Cross-pair repetition is identified and judged intentional/useful rather than filler.
+- [ ] Internal-link intent is used only when the relationship is known and the link is truthful/useful.
+- [ ] Final visible VI and EN content plus exact artifact IDs/hashes/approvals/quality results are retained for Founder comparison.
+- [ ] Pilot explicitly answers whether existing identity is sufficient; no new Pillar↔Cluster relation is added without a concrete identity/query/update requirement.
+- [ ] No auto-publish, WordPress/Rank Math mutation or operational DB migration occurs during CQ-07.
