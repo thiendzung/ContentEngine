@@ -24,7 +24,6 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
 from app.modules.content_engine.journal.assertion_audit_execution import (
     prepare_assertion_audit_run,
 )
-from app.modules.content_engine.journal.deep_quality_input import DeepQualityInput
 from app.modules.content_engine.journal.deep_quality_execution import (
     DEEP_QUALITY_ARTIFACT_TYPE,
     DEEP_QUALITY_EVALUATOR_KEY,
@@ -34,6 +33,7 @@ from app.modules.content_engine.journal.deep_quality_execution import (
     load_deep_quality_input_from_handoff,
     load_persisted_deep_quality_result,
 )
+from app.modules.content_engine.journal.deep_quality_input import DeepQualityInput
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
