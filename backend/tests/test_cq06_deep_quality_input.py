@@ -278,18 +278,8 @@ async def test_deep_quality_input_rejects_expected_snapshot_drift(
             await load_deep_quality_input(session, **kwargs)
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "run_field",
-    [
-        "project_id",
-        "content_case_id",
-        "locale_variant_id",
-        "settings_snapshot_id",
-    ],
-)
 async def test_deep_quality_input_rejects_reparented_source_copy_run_lineage(
     monkeypatch: pytest.MonkeyPatch,
-    run_field: str,
 ) -> None:
     async with isolated_session() as session:
         progress, outline_result = await _complete_quality_pipeline(
@@ -301,35 +291,31 @@ async def test_deep_quality_input_rejects_reparented_source_copy_run_lineage(
         run = await session.get(ContentRun, lane.source_copy.artifact.run_id)
         assert run is not None
 
-        original = getattr(run, run_field)
-        setattr(run, run_field, UUID(int=1))
-        try:
-            with session.no_autoflush:
-                with pytest.raises(
-                    DeepQualityInputError,
-                    match="deep_quality_source_copy_invalid",
-                ):
-                    await load_deep_quality_input(
-                        session,
-                        **_loader_kwargs(lane, outline_result),
-                    )
-        finally:
-            setattr(run, run_field, original)
+        for run_field in (
+            "project_id",
+            "content_case_id",
+            "locale_variant_id",
+            "settings_snapshot_id",
+        ):
+            original = getattr(run, run_field)
+            setattr(run, run_field, UUID(int=1))
+            try:
+                with session.no_autoflush:
+                    with pytest.raises(
+                        DeepQualityInputError,
+                        match="deep_quality_source_copy_invalid",
+                    ):
+                        await load_deep_quality_input(
+                            session,
+                            **_loader_kwargs(lane, outline_result),
+                        )
+            finally:
+                setattr(run, run_field, original)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "run_field",
-    [
-        "project_id",
-        "content_case_id",
-        "locale_variant_id",
-        "settings_snapshot_id",
-    ],
-)
 async def test_deep_quality_input_rejects_reparented_search_run_lineage(
     monkeypatch: pytest.MonkeyPatch,
-    run_field: str,
 ) -> None:
     async with isolated_session() as session:
         progress, outline_result = await _complete_quality_pipeline(
@@ -341,18 +327,24 @@ async def test_deep_quality_input_rejects_reparented_search_run_lineage(
         run = await session.get(ContentRun, lane.search_ai.artifact.run_id)
         assert run is not None
 
-        original = getattr(run, run_field)
-        setattr(run, run_field, UUID(int=1))
-        try:
-            with session.no_autoflush:
-                with pytest.raises(
-                    DeepQualityInputError,
-                    match="deep_quality_search_ai_invalid",
-                ):
-                    await load_deep_quality_input(
-                        session,
-                        **_loader_kwargs(lane, outline_result),
-                    )
-        finally:
-            setattr(run, run_field, original)
+        for run_field in (
+            "project_id",
+            "content_case_id",
+            "locale_variant_id",
+            "settings_snapshot_id",
+        ):
+            original = getattr(run, run_field)
+            setattr(run, run_field, UUID(int=1))
+            try:
+                with session.no_autoflush:
+                    with pytest.raises(
+                        DeepQualityInputError,
+                        match="deep_quality_search_ai_invalid",
+                    ):
+                        await load_deep_quality_input(
+                            session,
+                            **_loader_kwargs(lane, outline_result),
+                        )
+            finally:
+                setattr(run, run_field, original)
 
