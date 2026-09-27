@@ -182,6 +182,66 @@ async def _complete_readiness_lane(
         )
 
 
+async def _complete_deep_quality_lane(
+    session: AsyncSession,
+    *,
+    case_id: UUID,
+    locale: str,
+    monkeypatch: pytest.MonkeyPatch,
+    runner_registry: AgentRunnerRegistry,
+    worker_prefix: str,
+) -> None:
+    progress = await get_quality_progress(
+        session,
+        content_case_id=case_id,
+        source_run_id=None,
+    )
+    assert progress is not None
+    lane = next(candidate for candidate in progress.lanes if candidate.locale == locale)
+    assert lane.deep_quality.job is not None
+    assert lane.deep_quality.job.status == "queued"
+
+    async def _fake_deep_quality_port(
+        _session: AsyncSession,
+        *,
+        locale: str,
+        **kwargs: object,
+    ) -> _CapturePort:
+        del _session, kwargs
+        return _CapturePort(_passing_deep_quality_output(locale))
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_deep_quality_model_port",
+        _fake_deep_quality_port,
+    )
+
+    job = await session.get(Job, lane.deep_quality.job.id)
+    assert job is not None
+    step = await session.get(StepRun, job.step_run_id)
+    assert step is not None
+    run = await session.get(ContentRun, job.run_id)
+    assert run is not None
+
+    now = utc_now()
+    step.status = "running"
+    step.started_at = now
+    if run.status == "pending":
+        run.status = "running"
+    job.status = "leased"
+    job.lease_owner = f"{worker_prefix}-deep"
+    job.lease_expires_at = now + timedelta(seconds=900)
+    job.updated_at = now
+    await session.flush()
+
+    await operator_quality_worker.execute_quality_job(
+        session,
+        job_id=job.id,
+        worker_id=f"{worker_prefix}-deep",
+        runner_registry=runner_registry,
+    )
+
+
 async def _complete_f3_writers(
     session: AsyncSession,
 ) -> tuple[object, dict[str, dict[str, object]], object]:
@@ -448,6 +508,14 @@ async def _complete_healthy_lane_from_audit(
         monkeypatch=monkeypatch,
         runner_registry=runner_registry,
         worker_prefix=f"{worker_prefix}-readiness",
+    )
+    await _complete_deep_quality_lane(
+        session,
+        case_id=case_id,
+        locale=healthy_lane.locale,
+        monkeypatch=monkeypatch,
+        runner_registry=runner_registry,
+        worker_prefix=worker_prefix,
     )
 
 
@@ -1526,6 +1594,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             runner_registry=registry,
             worker_prefix="worker-sc-vi-readiness",
         )
+        await _complete_deep_quality_lane(
+            session,
+            case_id=case_id,
+            locale="vi-VN",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-sc-vi",
+        )
 
         # Now VI is qualified, EN Audit failed, no active jobs remain -> command failed
         parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
@@ -1589,6 +1665,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             monkeypatch=monkeypatch,
             runner_registry=registry,
             worker_prefix="worker-en-sc-readiness",
+        )
+        await _complete_deep_quality_lane(
+            session,
+            case_id=case_id,
+            locale="en",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-en-sc",
         )
 
         # 8. Verify both converge to final_gate_ready
