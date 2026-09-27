@@ -222,6 +222,41 @@ async def test_reader_fallback_does_not_direct_fetch_discovery_source(
         ),
     )
 
+    assert primary.calls == 3
+    assert fallback.calls == 0
+    assert result.documents == []
+
+
+@pytest.mark.asyncio
+async def test_reader_fallback_does_not_mask_provider_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    primary = FailingReader("provider_rate_limit")
+    fallback = SuccessReader()
+    router = ResearchRouter(
+        serper=SufficientSearch(),
+        reader=primary,
+        fallback_reader=fallback,
+    )
+
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=1,
+        ),
+    )
+
     assert primary.calls == 1
     assert fallback.calls == 0
     assert result.documents == []
+    assert result.stop_reason == "reader_candidates_exhausted"
+    assert any(
+        decision.provider == "jina"
+        and decision.status.value == "failed"
+        and decision.failure_class == "provider_rate_limit"
+        for decision in result.decisions
+    )
