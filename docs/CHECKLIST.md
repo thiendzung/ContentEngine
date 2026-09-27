@@ -243,8 +243,8 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 ## T. CQ-07 Real Pillar + Cluster pilot
 
-- [ ] Founder explicitly selects one exact A1 Pillar and one exact related A1 Cluster; system/MG must not infer the pair.
-- [ ] Pair identity is frozen before execution: role, title/topic, primary question, primary intent, promise coverage and required locales.
+- [x] Founder explicitly selected P01 + C02 (Option B); system/MG did not auto-select the pair.
+- [x] Pair identity is frozen in `docs/CQ07_PILOT_CONTRACT.md`: role, canonical title, customer problem, primary question, primary intent, promise, coverage and required EN/VI lanes.
 - [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
 - [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
 - [ ] Cluster solves one narrower reader subproblem in materially greater depth without widening into a generic Pillar.
