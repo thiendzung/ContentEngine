@@ -360,8 +360,114 @@ async def load_deep_quality_input(
     )
 
 
+def _artifact_ref_parts(
+    value: object,
+    *,
+    code: str,
+) -> tuple[UUID, int, str]:
+    if not isinstance(value, dict) or set(value) != {
+        "id",
+        "version",
+        "content_hash",
+    }:
+        raise DeepQualityInputError(code)
+    raw_id = value.get("id")
+    version = value.get("version")
+    content_hash = value.get("content_hash")
+    if (
+        not isinstance(raw_id, str)
+        or not isinstance(version, int)
+        or isinstance(version, bool)
+        or version <= 0
+        or not isinstance(content_hash, str)
+        or not content_hash
+    ):
+        raise DeepQualityInputError(code)
+    try:
+        artifact_id = UUID(raw_id)
+    except ValueError as exc:
+        raise DeepQualityInputError(code) from exc
+    return artifact_id, version, content_hash
+
+
+async def load_deep_quality_input_from_search_result(
+    session: AsyncSession,
+    *,
+    source_input: QualityReadinessInput,
+    search_artifact: Artifact,
+    search_evaluation: QualityEvaluation,
+) -> DeepQualityInput:
+    if (
+        source_input.stage != "search_ai"
+        or source_input.reader_value_artifact is None
+        or source_input.reader_value_evaluation is None
+        or search_artifact.locale != source_input.writer_input.locale
+    ):
+        raise DeepQualityInputError("deep_quality_search_handoff_invalid")
+
+    try:
+        validated_search = await load_persisted_quality_readiness_result(
+            session,
+            source_input=source_input,
+            artifact_id=search_artifact.id,
+            evaluation_id=search_evaluation.id,
+        )
+    except QualityReadinessError as exc:
+        raise DeepQualityInputError(
+            "deep_quality_search_ai_invalid",
+            exc.code,
+        ) from exc
+
+    source_copy_payload = source_input.source_copy_artifact.content_json
+    if not isinstance(source_copy_payload, dict):
+        raise DeepQualityInputError("deep_quality_source_copy_payload_invalid")
+    audit_payload = source_copy_payload.get("assertion_audit")
+    if not isinstance(audit_payload, dict):
+        raise DeepQualityInputError("deep_quality_audit_ref_invalid")
+    audit_id, audit_version, audit_hash = _artifact_ref_parts(
+        audit_payload.get("artifact"),
+        code="deep_quality_audit_ref_invalid",
+    )
+    raw_audit_evaluation_id = audit_payload.get("quality_evaluation_id")
+    if not isinstance(raw_audit_evaluation_id, str):
+        raise DeepQualityInputError("deep_quality_audit_ref_invalid")
+    try:
+        audit_evaluation_id = UUID(raw_audit_evaluation_id)
+    except ValueError as exc:
+        raise DeepQualityInputError("deep_quality_audit_ref_invalid") from exc
+
+    return await load_deep_quality_input(
+        session,
+        writer_run_id=source_input.writer_input.writer_run.id,
+        source_draft_artifact_id=source_input.source_artifact.id,
+        expected_source_draft_version=source_input.source_artifact.version,
+        expected_source_draft_hash=source_input.source_artifact.content_hash,
+        outline_artifact_id=source_input.writer_input.outline_artifact.id,
+        expected_outline_version=source_input.writer_input.outline_artifact.version,
+        expected_outline_hash=source_input.writer_input.outline_artifact.content_hash,
+        assertion_audit_artifact_id=audit_id,
+        expected_assertion_audit_version=audit_version,
+        expected_assertion_audit_hash=audit_hash,
+        assertion_audit_quality_evaluation_id=audit_evaluation_id,
+        source_copy_artifact_id=source_input.source_copy_artifact.id,
+        expected_source_copy_version=source_input.source_copy_artifact.version,
+        expected_source_copy_hash=source_input.source_copy_artifact.content_hash,
+        source_copy_quality_evaluation_id=source_input.source_copy_evaluation.id,
+        reader_value_artifact_id=source_input.reader_value_artifact.id,
+        expected_reader_value_version=source_input.reader_value_artifact.version,
+        expected_reader_value_hash=source_input.reader_value_artifact.content_hash,
+        reader_value_quality_evaluation_id=source_input.reader_value_evaluation.id,
+        search_ai_artifact_id=validated_search.artifact.id,
+        expected_search_ai_version=validated_search.artifact.version,
+        expected_search_ai_hash=validated_search.artifact.content_hash,
+        search_ai_quality_evaluation_id=validated_search.evaluation.id,
+        locale=source_input.writer_input.locale,
+    )
+
+
 __all__ = [
     "DeepQualityInput",
     "DeepQualityInputError",
     "load_deep_quality_input",
+    "load_deep_quality_input_from_search_result",
 ]

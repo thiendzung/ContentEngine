@@ -485,6 +485,7 @@ async def _quality_state_overlay(
         or focused.source_copy.step
         or focused.reader_value.step
         or focused.search_ai.step
+        or focused.deep_quality.step
     )
     common = {
         "state_version": state_version,
@@ -534,6 +535,7 @@ async def _quality_state_overlay(
                     lane.source_copy,
                     lane.reader_value,
                     lane.search_ai,
+                    lane.deep_quality,
                 )
             )
         )
@@ -545,6 +547,7 @@ async def _quality_state_overlay(
                 active_lane.source_copy,
                 active_lane.reader_value,
                 active_lane.search_ai,
+                active_lane.deep_quality,
             )
             if stage.job is not None and stage.job.status in {"queued", "leased"}
         )

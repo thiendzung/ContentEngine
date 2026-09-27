@@ -19,6 +19,23 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
     create_cli_assertion_audit_model_port,
 )
 from app.modules.content_engine.journal.assertion_audit_execution import prepare_assertion_audit_run
+from app.modules.content_engine.journal.deep_quality_agent_bridge import (
+    DEEP_QUALITY_PROMPT_VERSION,
+    DEEP_QUALITY_RECIPE_VERSION,
+    DEEP_QUALITY_ROUTE_TASK_KEY,
+    create_cli_deep_quality_model_port,
+)
+from app.modules.content_engine.journal.deep_quality_execution import (
+    DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE,
+    DEEP_QUALITY_TASK_KEYS,
+    ensure_deep_quality_run,
+    evaluate_deep_quality,
+    load_deep_quality_input_from_handoff,
+)
+from app.modules.content_engine.journal.deep_quality_input import (
+    DeepQualityInput,
+    load_deep_quality_input_from_search_result,
+)
 from app.modules.content_engine.journal.operator_quality import (
     QUALITY_AUDIT_TASK_KEYS,
     QUALITY_MAX_JOB_ATTEMPTS,
@@ -75,6 +92,7 @@ QUALITY_STEP_KEYS = tuple(
         *SOURCE_COPY_TASK_KEYS.values(),
         *READER_VALUE_TASK_KEYS.values(),
         *SEARCH_AI_TASK_KEYS.values(),
+        *DEEP_QUALITY_TASK_KEYS.values(),
     }
 )
 
@@ -598,6 +616,65 @@ async def _enqueue_readiness(
     )
 
 
+async def _enqueue_deep_quality(
+    session: AsyncSession,
+    *,
+    source: DeepQualityInput,
+) -> None:
+    run, handoff, _ = await ensure_deep_quality_run(
+        session,
+        source=source,
+    )
+    task_key = DEEP_QUALITY_TASK_KEYS[source.writer_input.locale]
+    steps = list(
+        (
+            await session.scalars(
+                select(StepRun).where(
+                    StepRun.run_id == run.id,
+                    StepRun.step_key == task_key,
+                )
+            )
+        ).all()
+    )
+    if len(steps) > 1:
+        raise OperatorQualityWorkerError("operator_quality_deep_quality_step_conflict")
+    input_refs = [
+        str(handoff.id),
+        str(source.source_artifact.id),
+        str(source.search_ai.artifact.id),
+    ]
+    step = (
+        steps[0]
+        if steps
+        else StepRun(
+            run_id=run.id,
+            step_key=task_key,
+            attempt=1,
+            status="pending",
+            input_artifact_refs_json=input_refs,
+            output_artifact_refs_json=[],
+        )
+    )
+    if not steps:
+        session.add(step)
+        await session.flush()
+    elif step.input_artifact_refs_json != input_refs:
+        raise OperatorQualityWorkerError("operator_quality_deep_quality_step_input_stale")
+    if run.status == "completed" and step.status == "completed":
+        return
+    if run.status in {"failed", "cancelled"} or step.status in {"failed", "skipped"}:
+        raise OperatorQualityWorkerError("operator_quality_deep_quality_terminal_state")
+    await enqueue_job(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        dedupe_key=(
+            f"operator:quality:{task_key}:{run.id}:"
+            f"{source.source_artifact.id}:{source.search_ai.artifact.id}"
+        ),
+    )
+
+
 async def _execute_readiness(
     session: AsyncSession,
     *,
@@ -697,6 +774,92 @@ async def _execute_readiness(
             reader_value_quality_evaluation_id=result.evaluation.id,
         )
         await _enqueue_readiness(session, source_input=search_input)
+    elif source_input.stage == "search_ai" and result.result in {"pass", "warn"}:
+        deep_input = await load_deep_quality_input_from_search_result(
+            session,
+            source_input=source_input,
+            search_artifact=result.artifact,
+            search_evaluation=result.evaluation,
+        )
+        await _enqueue_deep_quality(session, source=deep_input)
+
+
+async def _execute_deep_quality(
+    session: AsyncSession,
+    *,
+    job: Job,
+    step: StepRun,
+    run: ContentRun,
+    runner_registry: AgentRunnerRegistry,
+) -> None:
+    if len(step.input_artifact_refs_json) != 3:
+        raise OperatorQualityWorkerError("operator_quality_deep_quality_input_refs_invalid")
+    handoff_id, source_id, search_id = (
+        UUID(value) for value in step.input_artifact_refs_json
+    )
+    source = await load_deep_quality_input_from_handoff(
+        session,
+        handoff_artifact_id=handoff_id,
+    )
+    locale = source.writer_input.locale
+    task_key = DEEP_QUALITY_TASK_KEYS[locale]
+    if (
+        step.step_key != task_key
+        or run.current_step != task_key
+        or source.source_artifact.id != source_id
+        or source.search_ai.artifact.id != search_id
+    ):
+        raise OperatorQualityWorkerError("operator_quality_deep_quality_binding_mismatch")
+
+    snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+    if snapshot is None:
+        raise OperatorQualityWorkerError("operator_quality_settings_missing")
+    bundle = source.writer_input.outline_input.bundle
+    manifest = await build_context_manifest(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        inputs=ContextInputs(
+            prompt_version=DEEP_QUALITY_PROMPT_VERSION,
+            recipe_version=DEEP_QUALITY_RECIPE_VERSION,
+            evidence_set_id=bundle.evidence_set_id,
+            originality_pack_id=bundle.originality_pack_id,
+        ),
+    )
+    route = (
+        SettingsModelRouter()
+        .resolve(
+            task_key=DEEP_QUALITY_ROUTE_TASK_KEY,
+            settings_snapshot=snapshot,
+        )
+        .primary
+    )
+    port = await create_cli_deep_quality_model_port(
+        session,
+        run_id=run.id,
+        settings_snapshot=snapshot,
+        context_manifest_id=manifest.id,
+        runner_registry=runner_registry,
+        locale=locale,
+    )
+    await evaluate_deep_quality(
+        session,
+        source=source,
+        eval_run_id=run.id,
+        step_run_id=step.id,
+        handoff_artifact_id=handoff_id,
+        model=port,
+        provider=route.provider,
+        model_name=route.model,
+        context_manifest_id=manifest.id,
+        prompt_version=DEEP_QUALITY_PROMPT_VERSION,
+        recipe_version=DEEP_QUALITY_RECIPE_VERSION,
+    )
+    if step.status == "running":
+        step.status = "completed"
+        step.completed_at = utc_now()
+    if run.status == "running":
+        await transition_run(session, run_id=run.id, status="completed")
 
 
 async def _execute_source_copy(
@@ -874,6 +1037,7 @@ async def fail_quality_job(
                         "source_copy_handoff",
                         READINESS_HANDOFF_TYPES["reader_value"],
                         READINESS_HANDOFF_TYPES["search_ai"],
+                        DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE,
                     )
                 ),
             )
@@ -948,6 +1112,15 @@ async def execute_quality_job(
         await complete_job(session, job_id=job.id, worker_id=worker_id)
     elif step.step_key in SOURCE_COPY_TASK_KEYS.values():
         await _execute_source_copy(session, job=job, step=step, run=run)
+    elif step.step_key in DEEP_QUALITY_TASK_KEYS.values():
+        await _execute_deep_quality(
+            session,
+            job=job,
+            step=step,
+            run=run,
+            runner_registry=runner_registry,
+        )
+        await complete_job(session, job_id=job.id, worker_id=worker_id)
     else:
         await _execute_readiness(
             session,

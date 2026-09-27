@@ -30,6 +30,7 @@ from app.modules.content_engine.journal.deep_quality_execution import (
     DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE,
     DEEP_QUALITY_TASK_KEYS,
     DeepQualityExecutionError,
+    ensure_deep_quality_run,
     load_deep_quality_input_from_handoff,
     load_persisted_deep_quality_result,
 )
@@ -190,9 +191,57 @@ class QualityLane:
             == {"step_key": "final_review", "artifact_id": str(self.final_content.id)}
         ):
             return "final_gate_ready"
+        deep_eval = self.deep_quality.evaluation
+        if deep_eval is not None:
+            return "quality_blocked" if deep_eval.result == "fail" else "qualified"
+        deep_job = self.deep_quality.job
+        if deep_job is not None and deep_job.status in {"queued", "leased"}:
+            return (
+                "deep_quality_running"
+                if deep_job.status == "leased"
+                else "deep_quality_queued"
+            )
+        if (
+            (deep_job is not None and deep_job.status in {"failed", "cancelled"})
+            or (
+                self.deep_quality.run is not None
+                and self.deep_quality.run.status in {"failed", "cancelled"}
+            )
+        ):
+            if _stage_has_integrity_failure(self.deep_quality):
+                return "quality_blocked"
+            is_exhausted = (
+                self.deep_quality.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or (
+                    deep_job is not None
+                    and deep_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                )
+                or (
+                    self.deep_quality.run is not None
+                    and self.deep_quality.run.failure_code
+                    == "operator_quality_retry_exhausted"
+                )
+            )
+            return (
+                "execution_failed_exhausted"
+                if is_exhausted
+                else "execution_failed_retryable"
+            )
+        if (
+            self.deep_quality.run is not None
+            and self.deep_quality.run.status == "completed"
+        ):
+            return "quality_blocked"
+
         search_eval = self.search_ai.evaluation
         if search_eval is not None:
-            return "quality_blocked" if search_eval.result == "fail" else "qualified"
+            if search_eval.result == "fail":
+                return "quality_blocked"
+            return (
+                "search_ai_ready"
+                if self.deep_quality.run is None
+                else "deep_quality_queued"
+            )
         search_job = self.search_ai.job
         if search_job is not None and search_job.status in {"queued", "leased"}:
             return "search_ai_running" if search_job.status == "leased" else "search_ai_queued"
@@ -1368,6 +1417,52 @@ async def _enqueue_readiness_retry(
     )
 
 
+async def _enqueue_deep_quality_retry(
+    session: AsyncSession,
+    *,
+    source: DeepQualityInput,
+    dedupe_suffix: str,
+) -> None:
+    run, handoff, _ = await ensure_deep_quality_run(
+        session,
+        source=source,
+    )
+    task_key = DEEP_QUALITY_TASK_KEYS[source.writer_input.locale]
+    step = await session.scalar(
+        select(StepRun).where(
+            StepRun.run_id == run.id,
+            StepRun.step_key == task_key,
+        )
+    )
+    input_refs = [
+        str(handoff.id),
+        str(source.source_artifact.id),
+        str(source.search_ai.artifact.id),
+    ]
+    if step is None:
+        step = StepRun(
+            run_id=run.id,
+            step_key=task_key,
+            attempt=1,
+            status="pending",
+            input_artifact_refs_json=input_refs,
+            output_artifact_refs_json=[],
+        )
+        session.add(step)
+        await session.flush()
+    elif step.input_artifact_refs_json != input_refs:
+        raise OperatorControlError(
+            "operator_quality_deep_quality_step_input_stale",
+            source.writer_input.locale,
+        )
+    await enqueue_job(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        dedupe_key=f"operator:quality:{task_key}:{dedupe_suffix}",
+    )
+
+
 async def _queue_quality_retry_lane(
     session: AsyncSession,
     *,
@@ -1589,6 +1684,47 @@ async def _queue_quality_retry_lane(
             dedupe_suffix=f"retry:{command.id}:{lane.locale}",
         )
         return
+    if (
+        (
+            lane.deep_quality.job is not None
+            and lane.deep_quality.job.status in {"failed", "cancelled"}
+        )
+        or (
+            lane.deep_quality.run is not None
+            and lane.deep_quality.run.status in {"failed", "cancelled"}
+        )
+    ):
+        if (
+            lane.deep_quality.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            or (
+                lane.deep_quality.job is not None
+                and lane.deep_quality.job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            )
+            or (
+                lane.deep_quality.run is not None
+                and lane.deep_quality.run.failure_code
+                == "operator_quality_retry_exhausted"
+            )
+        ):
+            raise OperatorControlError("operator_quality_retry_exhausted")
+        if lane.deep_quality.handoff is None:
+            raise OperatorControlError("operator_quality_retry_deep_handoff_missing")
+        try:
+            deep_input = await load_deep_quality_input_from_handoff(
+                session,
+                handoff_artifact_id=lane.deep_quality.handoff.id,
+            )
+        except DeepQualityExecutionError as exc:
+            raise OperatorControlError(
+                "operator_quality_retry_deep_input_invalid",
+                exc.code,
+            ) from exc
+        await _enqueue_deep_quality_retry(
+            session,
+            source=deep_input,
+            dedupe_suffix=f"retry:{command.id}:{lane.locale}",
+        )
+        return
     raise OperatorControlError("operator_quality_retry_stage_missing")
 
 
@@ -1700,6 +1836,7 @@ async def submit_writers_to_quality_command(
                 lane.source_copy,
                 lane.reader_value,
                 lane.search_ai,
+                lane.deep_quality,
             ):
                 job = stage.job
                 if job is not None and job.status == "queued":
@@ -1935,6 +2072,8 @@ async def prepare_final_gates(
             lane.reader_value.run.content_item_id = item.id
         if lane.search_ai.run is not None:
             lane.search_ai.run.content_item_id = item.id
+        if lane.deep_quality.run is not None:
+            lane.deep_quality.run.content_item_id = item.id
         if lane.writer.run.status == "waiting_approval":
             await transition_run(session, run_id=lane.writer.run.id, status="running")
         elif lane.writer.run.status != "running":
@@ -1953,11 +2092,21 @@ async def prepare_final_gates(
             raise OperatorControlError("operator_quality_final_step_conflict", lane.locale)
         if lane.reader_value.artifact is None or lane.search_ai.artifact is None:
             raise OperatorControlError("operator_quality_final_readiness_missing", lane.locale)
+        if (
+            lane.deep_quality.artifact is None
+            or lane.deep_quality.evaluation is None
+            or lane.deep_quality.evaluation.result == "fail"
+        ):
+            raise OperatorControlError(
+                "operator_quality_final_deep_quality_missing",
+                lane.locale,
+            )
         expected_final_inputs = [
             str(lane.revised_draft.id),
             str(item.id),
             str(lane.reader_value.artifact.id),
             str(lane.search_ai.artifact.id),
+            str(lane.deep_quality.artifact.id),
         ]
         step = (
             steps[0]
