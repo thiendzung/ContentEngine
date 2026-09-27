@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+import app.modules.research.providers.direct_http as direct_http_module
 from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.providers.direct_http import DirectHttpReader
 
@@ -64,24 +65,55 @@ async def test_direct_http_reader_rejects_private_redirect_target() -> None:
 
 
 @pytest.mark.asyncio
-async def test_direct_http_reader_rejects_unsupported_pdf_fail_closed() -> None:
+async def test_direct_http_reader_reads_bounded_pdf(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakePage:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class FakeMetadata:
+        title = "Official Art Guidance"
+
+    class FakePdf:
+        is_encrypted = False
+        metadata = FakeMetadata()
+        pages = [
+            FakePage("Page one: original artwork guidance."),
+            FakePage("Page two: documentation and ownership."),
+            FakePage("Page three should be outside the page limit."),
+        ]
+
+    monkeypatch.setattr(
+        direct_http_module,
+        "PdfReader",
+        lambda *args, **kwargs: FakePdf(),
+    )
     transport = httpx.MockTransport(
         lambda request: httpx.Response(
             200,
             request=request,
             headers={"content-type": "application/pdf"},
-            content=b"%PDF-1.7 not parsed here",
+            content=b"%PDF-1.7 fixture",
         )
     )
-    async with httpx.AsyncClient(transport=transport) as client:
-        with pytest.raises(ResearchProviderError) as exc_info:
-            await DirectHttpReader(client).read(
-                "https://example.org/guide.pdf",
-                query="original artwork",
-            )
 
-    assert str(exc_info.value) == "unsupported_content_type:application/pdf"
-    assert exc_info.value.failure_class == "tool_invalid_response"
+    async with httpx.AsyncClient(transport=transport) as client:
+        result = await DirectHttpReader(client, max_pdf_pages=2).read(
+            "https://example.org/guide.pdf",
+            query="original artwork",
+        )
+
+    assert result.document.provider == "direct_http"
+    assert result.document.title == "Official Art Guidance"
+    assert "Page one: original artwork guidance." in result.document.content
+    assert "Page two: documentation and ownership." in result.document.content
+    assert "Page three should be outside the page limit." not in result.document.content
+    assert result.document.content_truncated is True
+    assert result.document.links == ()
 
 
 @pytest.mark.asyncio
