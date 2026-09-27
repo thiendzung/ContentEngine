@@ -24,6 +24,15 @@ from app.modules.content_engine.journal.assertion_audit_agent_bridge import (
 from app.modules.content_engine.journal.assertion_audit_execution import (
     prepare_assertion_audit_run,
 )
+from app.modules.content_engine.journal.deep_quality_execution import (
+    DEEP_QUALITY_ARTIFACT_TYPE,
+    DEEP_QUALITY_EVALUATOR_KEY,
+    DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE,
+    DEEP_QUALITY_TASK_KEYS,
+    DeepQualityExecutionError,
+    load_deep_quality_input_from_handoff,
+    load_persisted_deep_quality_result,
+)
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
@@ -156,6 +165,7 @@ class QualityLane:
     source_copy: QualityStage
     reader_value: QualityStage
     search_ai: QualityStage
+    deep_quality: QualityStage
     final_item: ContentItem | None = None
     final_content: Artifact | None = None
     final_review: StepRun | None = None
@@ -340,6 +350,7 @@ class QualityProgress:
             or lane.source_copy.run is not None
             or lane.reader_value.run is not None
             or lane.search_ai.run is not None
+            or lane.deep_quality.run is not None
             or lane.final_content is not None
             for lane in self.lanes
         )
@@ -365,6 +376,7 @@ class QualityProgress:
                 lane.source_copy,
                 lane.reader_value,
                 lane.search_ai,
+                lane.deep_quality,
             )
         )
 
@@ -427,6 +439,23 @@ class QualityProgress:
                         "jobs": [_job_payload(job) for job in lane.search_ai.jobs],
                         "artifact": _ref(lane.search_ai.artifact),
                         "evaluation": _evaluation_payload(lane.search_ai.evaluation),
+                    },
+                    "deep_quality": {
+                        "run_id": (
+                            str(lane.deep_quality.run.id)
+                            if lane.deep_quality.run
+                            else None
+                        ),
+                        "handoff": _ref(lane.deep_quality.handoff),
+                        "step": _step_payload(lane.deep_quality.step),
+                        "jobs": [
+                            _job_payload(job)
+                            for job in lane.deep_quality.jobs
+                        ],
+                        "artifact": _ref(lane.deep_quality.artifact),
+                        "evaluation": _evaluation_payload(
+                            lane.deep_quality.evaluation
+                        ),
                     },
                     "final": {
                         "content_item_id": str(lane.final_item.id) if lane.final_item else None,
@@ -694,6 +723,243 @@ async def _stage_for_handoff(
     )
 
 
+async def _deep_quality_stage(
+    session: AsyncSession,
+    *,
+    writer: WriterLane,
+    locale: str,
+    source_draft: Artifact | None,
+    audit: QualityStage,
+    source_copy: QualityStage,
+    reader_value: QualityStage,
+    search_ai: QualityStage,
+) -> QualityStage:
+    if (
+        writer.run is None
+        or source_draft is None
+        or audit.artifact is None
+        or audit.evaluation is None
+        or source_copy.artifact is None
+        or source_copy.evaluation is None
+        or reader_value.artifact is None
+        or reader_value.evaluation is None
+        or search_ai.artifact is None
+        or search_ai.evaluation is None
+    ):
+        return QualityStage()
+
+    rows = list(
+        (
+            await session.scalars(
+                select(Artifact)
+                .where(
+                    Artifact.artifact_type
+                    == DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE,
+                    Artifact.locale == locale,
+                )
+                .order_by(Artifact.created_at, Artifact.id)
+            )
+        ).all()
+    )
+    matches: list[tuple[Artifact, ContentRun, object]] = []
+    for handoff in rows:
+        payload = handoff.content_json
+        if (
+            not isinstance(payload, dict)
+            or payload.get("task_key") != DEEP_QUALITY_TASK_KEYS[locale]
+        ):
+            continue
+        lineage = payload.get("lineage")
+        if not isinstance(lineage, dict):
+            continue
+        source_ref = lineage.get("source_draft")
+        search_payload = lineage.get("search_ai")
+        search_ref = (
+            search_payload.get("artifact")
+            if isinstance(search_payload, dict)
+            else None
+        )
+        search_eval_ref = (
+            search_payload.get("quality_evaluation")
+            if isinstance(search_payload, dict)
+            else None
+        )
+        if (
+            lineage.get("source_writer_run_id") != str(writer.run.id)
+            or source_ref != _ref(source_draft)
+            or search_ref != _ref(search_ai.artifact)
+            or not isinstance(search_eval_ref, dict)
+            or search_eval_ref.get("id")
+            != str(search_ai.evaluation.id)
+        ):
+            continue
+        try:
+            deep_input = await load_deep_quality_input_from_handoff(
+                session,
+                handoff_artifact_id=handoff.id,
+            )
+        except DeepQualityExecutionError as exc:
+            raise OperatorControlError(
+                "operator_quality_deep_handoff_invalid",
+                exc.code,
+            ) from exc
+        if (
+            deep_input.writer_input.writer_run.id != writer.run.id
+            or deep_input.source_artifact.id != source_draft.id
+            or deep_input.source_copy_input.assertion_audit_artifact.id
+            != audit.artifact.id
+            or deep_input.source_copy_input.assertion_audit_evaluation.id
+            != audit.evaluation.id
+            or deep_input.source_copy.artifact.id
+            != source_copy.artifact.id
+            or deep_input.source_copy.evaluation.id
+            != source_copy.evaluation.id
+            or deep_input.reader_value.artifact.id
+            != reader_value.artifact.id
+            or deep_input.reader_value.evaluation.id
+            != reader_value.evaluation.id
+            or deep_input.search_ai.artifact.id
+            != search_ai.artifact.id
+            or deep_input.search_ai.evaluation.id
+            != search_ai.evaluation.id
+        ):
+            continue
+        run = await session.get(ContentRun, handoff.run_id)
+        if (
+            run is None
+            or run.content_case_id != writer.run.content_case_id
+            or run.locale_variant_id != writer.run.locale_variant_id
+        ):
+            raise OperatorControlError(
+                "operator_quality_deep_handoff_run_mismatch",
+                locale,
+            )
+        matches.append((handoff, run, deep_input))
+
+    active = [
+        item
+        for item in matches
+        if item[1].status not in {"failed", "cancelled"}
+    ]
+    if len(active) > 1:
+        raise OperatorControlError(
+            "operator_quality_deep_active_run_conflict",
+            locale,
+        )
+    if active:
+        selected = active[0]
+    elif matches:
+        selected = sorted(
+            matches,
+            key=lambda item: (item[1].created_at, item[1].id),
+        )[-1]
+    else:
+        return QualityStage()
+
+    attempt = max(len({item[1].id for item in matches}), 1)
+    handoff, run, deep_input = selected
+    steps = list(
+        (
+            await session.scalars(
+                select(StepRun)
+                .where(
+                    StepRun.run_id == run.id,
+                    StepRun.step_key == DEEP_QUALITY_TASK_KEYS[locale],
+                )
+                .order_by(StepRun.attempt, StepRun.created_at, StepRun.id)
+            )
+        ).all()
+    )
+    if len(steps) > 1:
+        raise OperatorControlError(
+            "operator_quality_deep_step_conflict",
+            locale,
+        )
+    step = steps[0] if steps else None
+    jobs: tuple[Job, ...] = ()
+    artifact: Artifact | None = None
+    evaluation: QualityEvaluation | None = None
+    if step is not None:
+        jobs = tuple(
+            sorted(
+                list(
+                    (
+                        await session.scalars(
+                            select(Job).where(Job.step_run_id == step.id)
+                        )
+                    ).all()
+                ),
+                key=lambda job: (
+                    job.attempt,
+                    job.created_at,
+                    str(job.id),
+                ),
+            )
+        )
+        artifacts = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.run_id == run.id,
+                        Artifact.step_run_id == step.id,
+                        Artifact.artifact_type
+                        == DEEP_QUALITY_ARTIFACT_TYPE,
+                        Artifact.locale == locale,
+                    )
+                )
+            ).all()
+        )
+        if len(artifacts) > 1:
+            raise OperatorControlError(
+                "operator_quality_deep_artifact_conflict",
+                locale,
+            )
+        artifact = artifacts[0] if artifacts else None
+        if artifact is not None:
+            evaluations = list(
+                (
+                    await session.scalars(
+                        select(QualityEvaluation).where(
+                            QualityEvaluation.run_id == run.id,
+                            QualityEvaluation.artifact_id == artifact.id,
+                            QualityEvaluation.evaluator_key
+                            == DEEP_QUALITY_EVALUATOR_KEY,
+                        )
+                    )
+                ).all()
+            )
+            if len(evaluations) != 1:
+                raise OperatorControlError(
+                    "operator_quality_deep_evaluation_conflict",
+                    locale,
+                )
+            evaluation = evaluations[0]
+            try:
+                validated = await load_persisted_deep_quality_result(
+                    session,
+                    source=deep_input,
+                    artifact_id=artifact.id,
+                    evaluation_id=evaluation.id,
+                )
+            except DeepQualityExecutionError as exc:
+                raise OperatorControlError(
+                    "operator_quality_deep_result_invalid",
+                    exc.code,
+                ) from exc
+            artifact = validated.artifact
+            evaluation = validated.evaluation
+
+    return QualityStage(
+        run=run,
+        handoff=handoff,
+        step=step,
+        jobs=jobs,
+        artifact=artifact,
+        evaluation=evaluation,
+        attempt=attempt,
+    )
+
+
 async def _review_stage(
     session: AsyncSession,
     *,
@@ -830,6 +1096,16 @@ async def get_quality_progress(
             reader_value_artifact=reader_value.artifact,
             reader_value_evaluation=reader_value.evaluation,
         )
+        deep_quality = await _deep_quality_stage(
+            session,
+            writer=writer,
+            locale=writer.required_locale,
+            source_draft=audit_input_draft,
+            audit=audit,
+            source_copy=source_copy,
+            reader_value=reader_value,
+            search_ai=search_ai,
+        )
         item = None
         final_content = None
         final_review = None
@@ -897,6 +1173,7 @@ async def get_quality_progress(
             source_copy=source_copy,
             reader_value=reader_value,
             search_ai=search_ai,
+            deep_quality=deep_quality,
             final_item=item,
             final_content=final_content,
             final_review=final_review,
@@ -1749,6 +2026,7 @@ async def prepare_final_gates(
                 source_copy=lane.source_copy,
                 reader_value=lane.reader_value,
                 search_ai=lane.search_ai,
+                deep_quality=lane.deep_quality,
                 final_item=item,
                 final_content=final,
                 final_review=step,
