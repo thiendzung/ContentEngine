@@ -601,6 +601,218 @@ async def _load_existing(
     )
 
 
+async def load_persisted_deep_quality_result(
+    session: AsyncSession,
+    *,
+    source: DeepQualityInput,
+    artifact_id: UUID,
+    evaluation_id: UUID,
+) -> DeepQualityGateResult:
+    artifact = await session.get(Artifact, artifact_id)
+    evaluation = await session.get(QualityEvaluation, evaluation_id)
+    if (
+        artifact is None
+        or evaluation is None
+        or artifact.artifact_type != DEEP_QUALITY_ARTIFACT_TYPE
+        or artifact.locale != source.writer_input.locale
+        or artifact.version != 1
+        or artifact.step_run_id is None
+        or evaluation.run_id != artifact.run_id
+        or evaluation.artifact_id != artifact.id
+    ):
+        raise DeepQualityExecutionError("deep_quality_persisted_binding_invalid")
+
+    run = await session.get(ContentRun, artifact.run_id)
+    step = await session.get(StepRun, artifact.step_run_id)
+    task_key = deep_quality_task_key(source.writer_input.locale)
+    if (
+        run is None
+        or step is None
+        or step.run_id != run.id
+        or run.run_mode != "eval"
+        or run.project_id != source.writer_input.writer_run.project_id
+        or run.content_case_id != source.writer_input.writer_run.content_case_id
+        or run.locale_variant_id != source.writer_input.locale_variant.id
+        or run.settings_snapshot_id
+        != source.writer_input.writer_run.settings_snapshot_id
+        or run.current_step != task_key
+        or run.status not in {"running", "completed"}
+        or step.step_key != task_key
+        or step.status not in {"running", "completed"}
+    ):
+        raise DeepQualityExecutionError("deep_quality_persisted_execution_invalid")
+
+    snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+    if snapshot is None:
+        raise DeepQualityExecutionError("deep_quality_settings_snapshot_missing")
+    handoffs = list(
+        (
+            await session.scalars(
+                select(Artifact).where(
+                    Artifact.run_id == run.id,
+                    Artifact.artifact_type
+                    == DEEP_QUALITY_HANDOFF_ARTIFACT_TYPE,
+                    Artifact.locale == source.writer_input.locale,
+                )
+            )
+        ).all()
+    )
+    if len(handoffs) != 1:
+        raise DeepQualityExecutionError("deep_quality_handoff_conflict")
+    handoff = handoffs[0]
+    expected_handoff = _handoff_payload(
+        source,
+        settings_snapshot=snapshot,
+    )
+    if (
+        handoff.version != 1
+        or handoff.step_run_id is not None
+        or handoff.content_json != expected_handoff
+        or handoff.content_hash != _hash(expected_handoff)
+    ):
+        raise DeepQualityExecutionError("deep_quality_handoff_snapshot_invalid")
+
+    payload = artifact.content_json
+    if (
+        not isinstance(payload, dict)
+        or _hash(payload) != artifact.content_hash
+        or payload.get("schema_version") != DEEP_QUALITY_SCHEMA_VERSION
+        or payload.get("artifact_type") != DEEP_QUALITY_ARTIFACT_TYPE
+        or payload.get("generator_version") != DEEP_QUALITY_GENERATOR_VERSION
+        or payload.get("locale") != source.writer_input.locale
+        or payload.get("lineage") != _lineage_payload(source)
+    ):
+        raise DeepQualityExecutionError("deep_quality_artifact_stale")
+
+    generator = payload.get("generator")
+    execution_context = payload.get("execution_context")
+    routing_policy = payload.get("routing_policy")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("semantic_generator_version")
+        != DEEP_QUALITY_SEMANTIC_GENERATOR_VERSION
+        or generator.get("evaluator_key") != DEEP_QUALITY_EVALUATOR_KEY
+        or generator.get("evaluator_version")
+        != DEEP_QUALITY_EVALUATOR_VERSION
+        or not isinstance(execution_context, dict)
+        or routing_policy
+        != {
+            "numeric_score_used": False,
+            "semantic_model_can_override_authoritative_dimensions": False,
+            "founder_final_approval_separate": True,
+            "auto_publish": False,
+        }
+    ):
+        raise DeepQualityExecutionError("deep_quality_artifact_stale")
+
+    provider = generator.get("provider")
+    model_name = generator.get("model")
+    prompt_version = generator.get("prompt_version")
+    recipe_version = generator.get("recipe_version")
+    context_manifest_id = execution_context.get("context_manifest_id")
+    context_manifest_hash = execution_context.get("context_manifest_hash")
+    if (
+        not isinstance(provider, str)
+        or not provider.strip()
+        or not isinstance(model_name, str)
+        or not model_name.strip()
+        or not isinstance(prompt_version, str)
+        or not prompt_version.strip()
+        or not isinstance(recipe_version, str)
+        or not recipe_version.strip()
+        or not isinstance(context_manifest_id, str)
+        or not isinstance(context_manifest_hash, str)
+    ):
+        raise DeepQualityExecutionError("deep_quality_artifact_generator_invalid")
+    try:
+        manifest_id = UUID(context_manifest_id)
+    except ValueError as exc:
+        raise DeepQualityExecutionError(
+            "deep_quality_context_manifest_invalid"
+        ) from exc
+    manifest = await session.get(ContextManifest, manifest_id)
+    bundle = source.writer_input.outline_input.bundle
+    if (
+        manifest is None
+        or manifest.run_id != run.id
+        or manifest.step_run_id != step.id
+        or manifest.settings_snapshot_id != run.settings_snapshot_id
+        or manifest.content_hash != context_manifest_hash
+        or manifest.prompt_version != prompt_version
+        or manifest.recipe_version != recipe_version
+        or manifest.evidence_set_id != bundle.evidence_set_id
+        or manifest.originality_pack_id != bundle.originality_pack_id
+        or execution_context
+        != {
+            "run_id": str(run.id),
+            "step_run_id": str(step.id),
+            "context_manifest_id": str(manifest.id),
+            "context_manifest_hash": manifest.content_hash,
+        }
+    ):
+        raise DeepQualityExecutionError("deep_quality_context_manifest_mismatch")
+
+    try:
+        assessment = validate_deep_quality_output(
+            payload.get("assessment"),
+            locale=source.writer_input.locale,
+        )
+        authoritative = derive_authoritative_deep_quality_dimensions(source)
+    except DeepQualityError as exc:
+        raise DeepQualityExecutionError(
+            "deep_quality_artifact_assessment_invalid",
+            exc.code,
+        ) from exc
+    except DeepQualityAuthorityError as exc:
+        raise DeepQualityExecutionError(
+            "deep_quality_authoritative_derivation_invalid",
+            exc.code,
+        ) from exc
+
+    persisted_by_key = {item.key: item for item in assessment.dimensions}
+    for key, expected in authoritative.items():
+        if persisted_by_key.get(key) != expected:
+            raise DeepQualityExecutionError(
+                "deep_quality_authoritative_dimension_stale",
+                key,
+            )
+
+    expected_payload = _artifact_payload(
+        source=source,
+        assessment=assessment,
+        run=run,
+        step=step,
+        manifest=manifest,
+        provider=provider.strip(),
+        model_name=model_name.strip(),
+        prompt_version=prompt_version,
+        recipe_version=recipe_version,
+    )
+    if payload != expected_payload:
+        raise DeepQualityExecutionError("deep_quality_artifact_snapshot_stale")
+    if (
+        evaluation.evaluator_key != DEEP_QUALITY_EVALUATOR_KEY
+        or evaluation.evaluator_version != DEEP_QUALITY_EVALUATOR_VERSION
+        or evaluation.evaluator_type != "model"
+        or evaluation.result != assessment.verdict
+        or evaluation.score is not None
+        or evaluation.findings_json
+        != _evaluation_findings(source, assessment)
+    ):
+        raise DeepQualityExecutionError("deep_quality_evaluation_stale")
+
+    return DeepQualityGateResult(
+        eval_run=run,
+        handoff=handoff,
+        step_run=step,
+        artifact=artifact,
+        evaluation=evaluation,
+        assessment=assessment,
+        model_attempts=0,
+        reused=True,
+    )
+
+
 async def evaluate_deep_quality(
     session: AsyncSession,
     *,
@@ -785,4 +997,5 @@ __all__ = [
     "ensure_deep_quality_run",
     "evaluate_deep_quality",
     "load_deep_quality_input_from_handoff",
+    "load_persisted_deep_quality_result",
 ]

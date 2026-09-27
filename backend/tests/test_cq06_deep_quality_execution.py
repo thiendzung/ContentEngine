@@ -17,6 +17,7 @@ from app.modules.content_engine.journal.deep_quality_execution import (
     ensure_deep_quality_run,
     evaluate_deep_quality,
     load_deep_quality_input_from_handoff,
+    load_persisted_deep_quality_result,
 )
 from app.modules.content_engine.journal.deep_quality_input import (
     load_deep_quality_input,
@@ -188,6 +189,16 @@ async def test_deep_quality_persists_scoreless_exact_assessment_and_reuses(
         )
         assert first.evaluation.findings_json["numeric_score_used"] is False
         assert str(first.artifact.id) in step.output_artifact_refs_json
+
+        loaded_result = await load_persisted_deep_quality_result(
+            session,
+            source=source,
+            artifact_id=first.artifact.id,
+            evaluation_id=first.evaluation.id,
+        )
+        assert loaded_result.artifact.id == first.artifact.id
+        assert loaded_result.assessment == first.assessment
+        assert loaded_result.evaluation.id == first.evaluation.id
 
         loaded = await load_deep_quality_input_from_handoff(
             session,
