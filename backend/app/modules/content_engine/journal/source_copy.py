@@ -1183,13 +1183,22 @@ async def load_persisted_source_copy_result(
 
     run = await session.get(ContentRun, artifact.run_id)
     step = await session.get(StepRun, artifact.step_run_id)
+    writer_run = source_input.writer_input.writer_run
+    expected_task = SOURCE_COPY_TASK_KEYS.get(source_input.writer_input.locale)
     if (
         run is None
         or step is None
         or step.run_id != run.id
+        or run.run_mode != "eval"
+        or run.project_id != writer_run.project_id
+        or run.content_case_id != writer_run.content_case_id
+        or run.locale_variant_id != source_input.writer_input.locale_variant.id
+        or run.content_item_id != writer_run.content_item_id
+        or run.settings_snapshot_id != writer_run.settings_snapshot_id
+        or run.current_step != expected_task
         or run.status != "completed"
         or step.status != "completed"
-        or step.step_key != SOURCE_COPY_TASK_KEYS.get(source_input.writer_input.locale)
+        or step.step_key != expected_task
     ):
         raise SourceCopyError("source_copy_persisted_execution_invalid")
 
