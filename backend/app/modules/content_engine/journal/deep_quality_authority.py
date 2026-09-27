@@ -7,6 +7,7 @@ dimensions are deliberately absent and are filled by the bounded CQ06-D evaluato
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import cast
 
 from app.modules.content_engine.journal.deep_quality import (
     DEEP_QUALITY_AUTHORITY_BY_DIMENSION,
@@ -57,7 +58,7 @@ def _result(value: str) -> DeepQualityResult:
             "deep_quality_authoritative_result_invalid",
             value,
         )
-    return value  # type: ignore[return-value]
+    return cast(DeepQualityResult, value)
 
 
 def _dimension(
@@ -249,13 +250,13 @@ def derive_authoritative_deep_quality_dimensions(
     raw_items = raw_pack.get("items")
     if not isinstance(raw_items, list):
         raise DeepQualityAuthorityError("deep_quality_originality_pack_invalid")
-    allowed_originality = {
-        item["source_ref"]
-        for item in raw_items
-        if isinstance(item, dict)
-        and isinstance(item.get("source_ref"), str)
-        and item["source_ref"].strip()
-    }
+    allowed_originality: set[str] = set()
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        source_ref = item.get("source_ref")
+        if isinstance(source_ref, str) and source_ref.strip():
+            allowed_originality.add(source_ref.strip())
     used_originality = {
         *source.source_draft.lead_originality_refs,
         *(
