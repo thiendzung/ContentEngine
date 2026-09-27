@@ -776,6 +776,7 @@ async def ensure_source_copy_run(
             or run.locale_variant_id != source_input.writer_input.locale_variant.id
             or run.content_item_id != source_input.writer_input.writer_run.content_item_id
             or run.settings_snapshot_id != source_input.writer_input.writer_run.settings_snapshot_id
+            or run.current_step != task_key
         ):
             raise SourceCopyError("source_copy_handoff_run_mismatch")
         if run.status not in {"failed", "cancelled"}:
