@@ -627,7 +627,7 @@ CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06
 
 CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input, extra rewrite model stage, operational migration, publication or final-approval bypass.
 
-### CQ-06 — Deep Quality Gate — IN CLOSEOUT
+### CQ-06 — Deep Quality Gate — DONE
 
 - [x] Audit existing Assertion Audit, Source-copy, Reader Value, Search/AI and final-review path.
 - [x] Lock architecture: add one final aggregate Deep Quality gate after Search/AI; do not replace or weaken upstream gates.
@@ -637,10 +637,25 @@ CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input,
 - [x] CQ06-C: derive authoritative upstream/deterministic dimension findings; semantic model cannot override them.
 - [x] CQ06-D: bounded semantic evaluator only for coherence, Human Voice/MOTGU voice, repetition/filler/system-language and locale-specific quality.
 - [x] CQ06-E: persist immutable Deep Quality Artifact/Evaluation, integrate operator/final-review gate, add fail-closed/adversarial regressions.
-- [x] MG full-diff self-review on implementation candidate; no unresolved P0/P1 defect found before final closeout docs.
-- [ ] Agent Local exact-SHA heavy verification + exact-ref OCR on the final branch HEAD.
-- [ ] MG evidence/OCR triage.
-- [ ] Minimal GitHub confirmation CI on the final SHA.
-- [ ] Founder merge.
+- [x] OCR Medium persisted-lineage substitution finding remediated fail-closed and regressed.
+- [x] Final exact implementation HEAD `9bc00e2379803dd44d70b182cef4db279fd6156e`: remediation-focused 68 PASS; affected CQ06 126 PASS; CQ03→CQ06 focused 180 PASS; full backend 1263 PASS; frontend PASS; VI/EN runtime smoke PASS.
+- [x] OpenCodeReview v1.12.9 exact-ref: 24 total / 23 reviewable / 23 reviewed / 0 skipped / 1 excluded+manual / zero findings.
+- [x] Founder merged PR #237; main `8dfe5d0665d7dcb931336a52ef8102bef36af03f`; main CI #36310526725 PASS.
 
-CQ-06 boundaries: no auto-publication, no WordPress activation, no CQ-07 pilot, no new workflow engine, no weakening Assertion Audit/Source-copy, no opaque score and no operational migration unless a later slice proves a schema change is unavoidable.
+CQ-06 boundaries held: no auto-publication, no WordPress activation, no new workflow engine, no weakening Assertion Audit/Source-copy, no opaque score and no operational migration.
+
+### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE
+
+- [x] CQ07-0: exact post-CQ06 main base locked at `8dfe5d0665d7dcb931336a52ef8102bef36af03f`.
+- [x] CQ07-0: tracking issue #233 remains the canonical pilot contract.
+- [x] CQ07-0: preserve the rule that the pilot proves whether a durable Pillar↔Cluster relation is needed; do not add one before evidence.
+- [ ] CQ07-1: Founder selects one exact Pillar + one exact related Cluster from the approved MOTGU A1 content plan. MG must not infer or auto-select the pair.
+- [ ] CQ07-2: freeze exact pair identity, role, primary question/intent, promise coverage and required VI/EN lanes before execution.
+- [ ] CQ07-3: preflight the existing pipeline for both items on disposable/local runtime; identify only concrete blockers, no speculative schema work.
+- [ ] CQ07-4: run the Pillar through Founder intake → Evidence/Originality → Angle → Founder Angle approval → Outline → Founder Outline approval → Writer → Human Voice → Deep Quality → Founder final review.
+- [ ] CQ07-5: run the related Cluster through the same chain independently.
+- [ ] CQ07-6: compare the exact pair for bounded Pillar breadth, genuine Cluster depth, intentional overlap, truthful/useful internal links and VI/EN quality.
+- [ ] CQ07-7: record one explicit relationship decision: existing identity is sufficient OR a minimum durable relation is justified by a concrete query/update need.
+- [ ] CQ07-8: return exact artifact IDs/hashes, approvals, quality results and final visible VI/EN content; exact-ref review before Founder closes #233.
+
+CQ-07 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant.
