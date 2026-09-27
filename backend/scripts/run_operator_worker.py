@@ -58,6 +58,7 @@ from app.modules.research.evidence import EvidenceResearchWorkflow
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.direct_http import DirectHttpReader
 from app.modules.research.providers.exa import ExaProvider
+from app.modules.research.providers.exa_contents import ExaContentsReader
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.providers.serper import SerperProvider
 from app.modules.research.providers.tavily import TavilyProvider
@@ -116,7 +117,16 @@ def _research_router(
             token_budget=settings.research_jina_token_budget,
             max_links=settings.research_jina_max_links,
         ),
-        fallback_reader=DirectHttpReader(
+        fallback_reader=(
+            ExaContentsReader(
+                exa_key,
+                client,
+                max_content_chars=100_000,
+            )
+            if exa_key
+            else None
+        ),
+        terminal_reader=DirectHttpReader(
             client,
             max_content_chars=100_000,
             max_links=settings.research_jina_max_links,
