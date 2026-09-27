@@ -264,7 +264,7 @@ class DirectHttpReader:
                                 failure_class="tool_invalid_response",
                             )
                     if not content_type:
-                        prefix = bytes(body).lstrip()[:32].casefold()
+                        prefix = bytes(body).lstrip()[:32].lower()
                         if prefix.startswith((b"<!doctype html", b"<html", b"<head", b"<body")):
                             content_type = "text/html"
                         else:
