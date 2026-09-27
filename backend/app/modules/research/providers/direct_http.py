@@ -5,7 +5,12 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.modules.research.contracts import PageDocument, PageLink, PageReadResponse, ProviderCallArtifact
+from app.modules.research.contracts import (
+    PageDocument,
+    PageLink,
+    PageReadResponse,
+    ProviderCallArtifact,
+)
 from app.modules.research.providers.base import ResearchProviderError
 from app.modules.research.utils import validate_public_http_url
 
@@ -256,6 +261,17 @@ class DirectHttpReader:
                                 self.name,
                                 "read",
                                 "response_too_large",
+                                failure_class="tool_invalid_response",
+                            )
+                    if not content_type:
+                        prefix = bytes(body).lstrip()[:32].casefold()
+                        if prefix.startswith((b"<!doctype html", b"<html", b"<head", b"<body")):
+                            content_type = "text/html"
+                        else:
+                            raise ResearchProviderError(
+                                self.name,
+                                "read",
+                                "unsupported_content_type:unknown",
                                 failure_class="tool_invalid_response",
                             )
                     encoding = response.encoding or "utf-8"
