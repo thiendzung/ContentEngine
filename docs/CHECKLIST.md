@@ -245,6 +245,7 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 - [x] Founder explicitly selected P01 + C02 (Option B); system/MG did not auto-select the pair.
 - [x] Pair identity is frozen in `docs/CQ07_PILOT_CONTRACT.md`: role, canonical title, customer problem, primary question, primary intent, promise, coverage and required EN/VI lanes.
+- [x] Disposable preflight proves P01 and C02 can be created independently with exact role/locale/coverage and no durable relation row.
 - [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
 - [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
 - [ ] Cluster solves one narrower reader subproblem in materially greater depth without widening into a generic Pillar.
