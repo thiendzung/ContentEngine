@@ -27,6 +27,10 @@ async def _empty_retrieval(*args: object, **kwargs: object) -> list[object]:
 class SufficientSearch:
     name = "serper"
 
+    def estimated_calls(self, request) -> int:
+        del request
+        return 1
+
     async def search(self, request):
         signals = tuple(
             SearchSignal(
@@ -174,3 +178,49 @@ async def test_reader_fallback_does_not_mask_provider_auth_failure(
         and decision.failure_class == "provider_auth"
         for decision in result.decisions
     )
+
+
+@pytest.mark.asyncio
+async def test_reader_fallback_does_not_direct_fetch_discovery_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+
+    class DiscoverySearch(SufficientSearch):
+        async def search(self, request):
+            response = await super().search(request)
+            discovery = tuple(
+                SourceCandidate(
+                    provider=source.provider,
+                    query=source.query,
+                    url=source.url,
+                    title=source.title,
+                    source_type="editorial",
+                    commercial_bias=CommercialBias.MEDIUM,
+                    intended_use=IntendedUse.DISCOVERY,
+                    found_via=source.found_via,
+                )
+                for source in response.sources
+            )
+            return ProviderResponse(response.signals, discovery, response.calls)
+
+    primary = FailingReader("tool_invalid_response")
+    fallback = SuccessReader()
+    router = ResearchRouter(
+        serper=DiscoverySearch(),
+        reader=primary,
+        fallback_reader=fallback,
+    )
+
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert primary.calls == 1
+    assert fallback.calls == 0
+    assert result.documents == []
