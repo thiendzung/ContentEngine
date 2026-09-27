@@ -182,7 +182,10 @@ class DirectHttpReader:
                     "GET",
                     current_url,
                     headers={
-                        "Accept": "text/html,application/xhtml+xml,application/pdf,text/plain;q=0.9,*/*;q=0.1",
+                        "Accept": (
+                            "text/html,application/xhtml+xml,application/pdf,"
+                            "text/plain;q=0.9,*/*;q=0.1"
+                        ),
                         "User-Agent": "ContentEngine/1.0 (+bounded evidence reader)",
                     },
                     follow_redirects=False,
@@ -383,9 +386,10 @@ class DirectHttpReader:
             char_count = 0
             for index in range(page_limit):
                 text = reader.pages[index].extract_text() or ""
-                normalized = "\n".join(
-                    line for line in (" ".join(raw.split()) for raw in text.splitlines()) if line
+                normalized_lines = (
+                    " ".join(raw.split()) for raw in text.splitlines()
                 )
+                normalized = "\n".join(line for line in normalized_lines if line)
                 if not normalized:
                     continue
                 chunks.append(normalized)
