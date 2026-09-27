@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from typing import cast
+from uuid import UUID
 
 import pytest
 from test_ce05_assertion_audit import _passing_output
@@ -25,6 +26,7 @@ from app.modules.content_engine.journal.deep_quality_input import (
 )
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
 from app.modules.harness.agent_runner import AgentRunnerRegistry
+from app.modules.harness.models import ContentRun
 
 
 async def _complete_quality_pipeline(
@@ -274,3 +276,83 @@ async def test_deep_quality_input_rejects_expected_snapshot_drift(
             match="deep_quality_reader_value_snapshot_mismatch",
         ):
             await load_deep_quality_input(session, **kwargs)
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "run_field",
+    [
+        "project_id",
+        "content_case_id",
+        "locale_variant_id",
+        "settings_snapshot_id",
+    ],
+)
+async def test_deep_quality_input_rejects_reparented_source_copy_run_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+    run_field: str,
+) -> None:
+    async with isolated_session() as session:
+        progress, outline_result = await _complete_quality_pipeline(
+            session,
+            monkeypatch,
+        )
+        lane = next(item for item in progress.lanes if item.locale == "en")
+        assert lane.source_copy.artifact is not None
+        run = await session.get(ContentRun, lane.source_copy.artifact.run_id)
+        assert run is not None
+
+        original = getattr(run, run_field)
+        setattr(run, run_field, UUID(int=1))
+        try:
+            with session.no_autoflush:
+                with pytest.raises(
+                    DeepQualityInputError,
+                    match="deep_quality_source_copy_invalid",
+                ):
+                    await load_deep_quality_input(
+                        session,
+                        **_loader_kwargs(lane, outline_result),
+                    )
+        finally:
+            setattr(run, run_field, original)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "run_field",
+    [
+        "project_id",
+        "content_case_id",
+        "locale_variant_id",
+        "settings_snapshot_id",
+    ],
+)
+async def test_deep_quality_input_rejects_reparented_search_run_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+    run_field: str,
+) -> None:
+    async with isolated_session() as session:
+        progress, outline_result = await _complete_quality_pipeline(
+            session,
+            monkeypatch,
+        )
+        lane = next(item for item in progress.lanes if item.locale == "en")
+        assert lane.search_ai.artifact is not None
+        run = await session.get(ContentRun, lane.search_ai.artifact.run_id)
+        assert run is not None
+
+        original = getattr(run, run_field)
+        setattr(run, run_field, UUID(int=1))
+        try:
+            with session.no_autoflush:
+                with pytest.raises(
+                    DeepQualityInputError,
+                    match="deep_quality_search_ai_invalid",
+                ):
+                    await load_deep_quality_input(
+                        session,
+                        **_loader_kwargs(lane, outline_result),
+                    )
+        finally:
+            setattr(run, run_field, original)
+
