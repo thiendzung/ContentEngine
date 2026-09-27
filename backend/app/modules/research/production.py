@@ -549,17 +549,18 @@ class ResearchRouter:
                 ):
                     break
                 fallback_error: ResearchProviderError | None = None
+                fallback_reader = self._fallback_reader
                 if (
                     page is None
                     and primary_error is not None
                     and primary_error.failure_class
                     in {"tool_invalid_response", "provider_transient"}
                     and source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
-                    and self._fallback_reader is not None
+                    and fallback_reader is not None
                 ):
                     page, fallback_error = await self._read_with_reader(
                         session,
-                        reader=self._fallback_reader,
+                        reader=fallback_reader,
                         source=source,
                         result=result,
                         run_id=run_id,
@@ -571,19 +572,27 @@ class ResearchRouter:
                     page is None
                     and fallback_error is not None
                     and fallback_error.failure_class
+                    in {"provider_auth", "provider_rate_limit"}
+                ):
+                    break
+                terminal_reader = self._terminal_reader
+                if (
+                    page is None
+                    and fallback_error is not None
+                    and fallback_error.failure_class
                     in {"tool_invalid_response", "provider_transient"}
-                    and self._terminal_reader is not None
+                    and terminal_reader is not None
                 ):
                     page, _ = await self._read_with_reader(
                         session,
-                        reader=self._terminal_reader,
+                        reader=terminal_reader,
                         source=source,
                         result=result,
                         run_id=run_id,
                         step_run_id=step_run_id,
                         transient_usage=transient_usage,
                         reason=(
-                            f"fallback_after:{self._fallback_reader.name}:"
+                            f"fallback_after:{fallback_reader.name}:"
                             f"{source.found_via}"
                         ),
                     )
