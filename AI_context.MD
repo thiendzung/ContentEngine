@@ -487,8 +487,12 @@ CQ-06 merged:
 - main push CI #36310526725 PASS.
 
 CQ-07 / #233 is now the active Content Quality task:
-- real one-Pillar + one-related-Cluster closed-loop pilot;
-- Founder must explicitly select the exact pair from the approved MOTGU A1 content plan; MG/system must not infer or auto-select it;
-- run each item independently through the existing gates before pair comparison;
+- Founder selected Option B: P01 Pillar + C02 Cluster; exact pair contract is frozen in `docs/CQ07_PILOT_CONTRACT.md`;
+- disposable pair preflight passed; no durable Pillar↔Cluster relation is currently required;
+- P01 durable intake exists in the isolated CQ07 pilot DB and remains READY/start before real research;
+- Founder authorized bounded real P01 research/model execution to the Angle human gate and selected `codex_cli / gpt-5.6-luna`;
+- local packaged Codex advanced to audited exact `codex-cli 0.158.0-alpha.2.1` (SHA-256 `3e11ccc743e8198a5ef84fb57c89941d845b0ea0302485ed1fbac2f0821aca5a`); branch repin is implemented and awaiting focused exact-head verification;
+- Serper already exists in Founder `.env` but must be injected only into the isolated pilot process without printing/copying the secret;
+- run each item independently through existing gates before pair comparison;
 - do not add a durable Pillar↔Cluster relation before the pilot proves a concrete identity/query/update need;
 - no production activation, operational migration, WordPress/Rank Math mutation or auto-publication during the pilot.
