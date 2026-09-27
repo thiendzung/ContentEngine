@@ -31,6 +31,7 @@ from app.modules.content_engine.journal.operator_quality import (
     get_quality_progress,
     prepare_final_gates,
 )
+from app.modules.harness.persistence import transition_run
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 
 
@@ -224,6 +225,19 @@ async def test_deep_quality_persists_scoreless_exact_assessment_and_reuses(
         assert loaded.human_voice_trace.artifact.id == (
             source.human_voice_trace.artifact.id
         )
+
+        writer_run = source.writer_input.writer_run
+        assert writer_run.status == "waiting_approval"
+        await transition_run(session, run_id=writer_run.id, status="running")
+        await transition_run(session, run_id=writer_run.id, status="completed")
+
+        post_approval_loaded = await load_deep_quality_input_from_handoff(
+            session,
+            handoff_artifact_id=handoff.id,
+        )
+        assert post_approval_loaded.source_artifact.id == source.source_artifact.id
+        assert post_approval_loaded.search_ai.artifact.id == source.search_ai.artifact.id
+        assert post_approval_loaded.source_copy.artifact.id == source.source_copy.artifact.id
 
         same_run, same_handoff, reused_run = await ensure_deep_quality_run(
             session,

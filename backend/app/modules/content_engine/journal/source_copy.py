@@ -470,6 +470,7 @@ async def load_source_copy_input(
     expected_outline_version: int,
     expected_outline_hash: str,
     locale: str,
+    allow_completed_writer_for_persisted_read: bool = False,
 ) -> SourceCopyInput:
     writer_input = await load_writer_input(
         session,
@@ -489,15 +490,21 @@ async def load_source_copy_input(
         or source.content_hash != expected_source_draft_hash
     ):
         raise SourceCopyError("source_copy_source_draft_snapshot_mismatch")
-    try:
-        validate_source_writer_eligibility(
-            writer_input=writer_input,
-            source_artifact=source,
-        )
-    except AssertionAuditError as exc:
-        raise SourceCopyError(
-            "source_copy_writer_run_state_invalid", writer_input.writer_run.status
-        ) from exc
+    writer_run = writer_input.writer_run
+    completed_persisted_read = (
+        allow_completed_writer_for_persisted_read
+        and writer_run.status == "completed"
+    )
+    if not completed_persisted_read:
+        try:
+            validate_source_writer_eligibility(
+                writer_input=writer_input,
+                source_artifact=source,
+            )
+        except AssertionAuditError as exc:
+            raise SourceCopyError(
+                "source_copy_writer_run_state_invalid", writer_run.status
+            ) from exc
     payload = _dict(source.content_json, "source_copy_source_draft_payload_invalid")
     if _canonical_hash(payload) != source.content_hash:
         raise SourceCopyError("source_copy_source_draft_snapshot_stale")

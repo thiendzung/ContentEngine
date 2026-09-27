@@ -305,6 +305,10 @@ async def load_deep_quality_input_from_handoff(
     ):
         raise DeepQualityExecutionError("deep_quality_handoff_invalid")
     payload = handoff.content_json
+    deep_run = await session.get(ContentRun, handoff.run_id)
+    allow_completed_writer_for_persisted_read = (
+        deep_run is not None and deep_run.status == "completed"
+    )
     lineage = payload.get("lineage")
     if not isinstance(lineage, dict):
         raise DeepQualityExecutionError("deep_quality_handoff_lineage_invalid")
@@ -394,6 +398,9 @@ async def load_deep_quality_input_from_handoff(
                 "deep_quality_handoff_search_eval_invalid",
             ),
             locale=handoff.locale,
+            allow_completed_writer_for_persisted_read=(
+                allow_completed_writer_for_persisted_read
+            ),
         )
     except DeepQualityInputError as exc:
         raise DeepQualityExecutionError(

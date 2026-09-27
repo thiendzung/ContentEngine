@@ -205,6 +205,7 @@ async def load_deep_quality_input(
     expected_search_ai_hash: str,
     search_ai_quality_evaluation_id: UUID,
     locale: str,
+    allow_completed_writer_for_persisted_read: bool = False,
 ) -> DeepQualityInput:
     try:
         source_copy_input = await load_source_copy_input(
@@ -221,6 +222,9 @@ async def load_deep_quality_input(
             expected_outline_version=expected_outline_version,
             expected_outline_hash=expected_outline_hash,
             locale=locale,
+            allow_completed_writer_for_persisted_read=(
+                allow_completed_writer_for_persisted_read
+            ),
         )
         source_copy = await load_persisted_source_copy_result(
             session,
