@@ -576,8 +576,8 @@ A4E2 closeout:
 ## Content Quality track — Founder priority 2026-09-26
 
 Production activation / A2 / WordPress / operational migration / publish work remains paused.
-CQ-01 through CQ-04 are merged. Current WIP is **CQ-05 / #231 — Writer + Human Voice integration with truth preservation** on exact main base
-`80ad589583d6d2b67e416109ccbd537a52139904`.
+CQ-01 through CQ-05 are merged. Current WIP is **CQ-06 / #232 — Deep Quality Gate for final Journal content** on exact main base
+`bae80f607c5873202af2fe0da2d527bba753bc85`.
 
 ### CQ-01 — Promise Coverage — DONE
 
@@ -614,21 +614,33 @@ CQ-01 through CQ-04 are merged. Current WIP is **CQ-05 / #231 — Writer + Human
 
 CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06 final prose-quality gate, no durable Pillar↔Cluster DB relation, no production activation, operational migration or publication.
 
-### CQ-05 — Writer + Human Voice truth preservation — IN IMPLEMENTATION
+### CQ-05 — Writer + Human Voice truth preservation — DONE
 
-- [x] Audit current Writer → Review/Revise → Assertion Audit → Source-copy path.
-- [x] Audit historical HV-01 / PR #186 as reference only; do not merge stale code.
-- [x] Lock architecture: enhance the existing Review/Revise rewrite instead of adding a second model rewrite stage.
-- [x] CQ05-A: bounded Human Voice style diagnostics plus numeric/direct-quote guards are implemented and regression-covered.
-- [x] CQ05-B: Review/Revise is Human-Voice-aware in the existing single model call; exact structure/support refs and independent VI/EN lanes remain enforced.
-- [x] CQ05-C: immutable `human_voice_trace` Artifact binds exact source/rewrite artifact + visible-draft hashes and advisory before/after diagnostics; no new table/migration.
-- [x] CQ05-D: current Review/Revise v6 requires valid trace before Assertion Audit; Source-copy revalidates the exact audited draft and fails closed on source mismatch.
-- [x] CQ05-E: operator quality view exposes bounded before/after diagnostics + exact trace binding; safe/adversarial fixtures cover both `vi-VN` and `en`.
-- [x] Review/Revise generator bumped to v6 and Human Voice render protocol is explicitly versioned; registry prompt/recipe identity remains unchanged because registry bodies were not changed.
-- [x] MG full-diff self-review complete; no unresolved P0/P1 truth-preservation defect identified before exact-SHA local verification.
-- [ ] Exact-ref OpenCodeReview owned/triaged by MG; execute locally once if that is where OCR runs.
-- [ ] Agent Local exact-head heavy verification: focused/full tests, disposable DB/migrations, frontend build and applicable runtime/smoke proof.
-- [ ] Minimal GitHub confirmation CI green on final SHA when Actions is available; if quota/service is unavailable, record that explicitly instead of rerunning heavy verification elsewhere.
+- [x] Reused existing Review/Revise as the single Human Voice-aware rewrite stage.
+- [x] Preserved exact locale/section/support/link lineage and independent VI/EN lanes.
+- [x] Added deterministic unsupported-number/direct-quote guards without redefining factual truth.
+- [x] Added immutable `human_voice_trace` bound to exact source/rewrite artifact and visible-draft hashes.
+- [x] Assertion Audit requires valid current-v6 trace; Source-copy revalidates exact audited draft.
+- [x] Operator exposes bounded before/after diagnostics; no AI-detector/authorship score/humanization percentage.
+- [x] Final exact HEAD `a076d31870b39a6b326ebdeff7aeea1caee79355`: focused 121 PASS; full backend 1242 PASS; frontend PASS; OCR 18/18 reviewable, zero findings; minimal CI PASS.
+- [x] Founder merged PR #236; main `bae80f607c5873202af2fe0da2d527bba753bc85`.
+
+CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input, extra rewrite model stage, operational migration, publication or final-approval bypass.
+
+### CQ-06 — Deep Quality Gate — IN CLOSEOUT
+
+- [x] Audit existing Assertion Audit, Source-copy, Reader Value, Search/AI and final-review path.
+- [x] Lock architecture: add one final aggregate Deep Quality gate after Search/AI; do not replace or weaken upstream gates.
+- [x] Lock exact 12-dimension contract from issue #232; no numeric/magic score.
+- [x] CQ06-A: pure dimension contract, authority map, deterministic aggregation and good/deceptive-polished fixtures.
+- [x] CQ06-B: exact lineage input loader for CQ-03/04/05 + Assertion/Source-copy/Reader/Search prerequisites.
+- [x] CQ06-C: derive authoritative upstream/deterministic dimension findings; semantic model cannot override them.
+- [x] CQ06-D: bounded semantic evaluator only for coherence, Human Voice/MOTGU voice, repetition/filler/system-language and locale-specific quality.
+- [x] CQ06-E: persist immutable Deep Quality Artifact/Evaluation, integrate operator/final-review gate, add fail-closed/adversarial regressions.
+- [x] MG full-diff self-review on implementation candidate; no unresolved P0/P1 defect found before final closeout docs.
+- [ ] Agent Local exact-SHA heavy verification + exact-ref OCR on the final branch HEAD.
+- [ ] MG evidence/OCR triage.
+- [ ] Minimal GitHub confirmation CI on the final SHA.
 - [ ] Founder merge.
 
-CQ-05 boundaries: no AI-detector score or “humanization percentage”; no Evidence truth reclassification; no invented artist intent/quotes/customer stories/sensory observations/business promises/prices/scarcity/policies; no sibling-locale draft input; no final human-approval bypass; no production publication or operational migration.
+CQ-06 boundaries: no auto-publication, no WordPress activation, no CQ-07 pilot, no new workflow engine, no weakening Assertion Audit/Source-copy, no opaque score and no operational migration unless a later slice proves a schema change is unavoidable.

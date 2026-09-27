@@ -17,6 +17,9 @@ from test_operator_writers import (
 
 from app.modules.content_engine.journal import operator_quality_worker
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
+from app.modules.content_engine.journal.deep_quality_semantic import (
+    DEEP_QUALITY_SEMANTIC_DIMENSIONS,
+)
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
 from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
@@ -87,6 +90,21 @@ def _passing_readiness_output(stage: str, locale: str) -> dict[str, object]:
                 "repair_suggestion": "",
             }
             for key in READINESS_CRITERIA[stage]
+        ],
+    }
+
+
+def _passing_deep_quality_output(locale: str) -> dict[str, object]:
+    return {
+        "locale": locale,
+        "dimensions": [
+            {
+                "key": key,
+                "result": "pass",
+                "finding": f"{key} passes on the exact supplied draft.",
+                "remediation": "",
+            }
+            for key in DEEP_QUALITY_SEMANTIC_DIMENSIONS
         ],
     }
 
@@ -162,6 +180,66 @@ async def _complete_readiness_lane(
             worker_id=worker_id,
             runner_registry=runner_registry,
         )
+
+
+async def _complete_deep_quality_lane(
+    session: AsyncSession,
+    *,
+    case_id: UUID,
+    locale: str,
+    monkeypatch: pytest.MonkeyPatch,
+    runner_registry: AgentRunnerRegistry,
+    worker_prefix: str,
+) -> None:
+    progress = await get_quality_progress(
+        session,
+        content_case_id=case_id,
+        source_run_id=None,
+    )
+    assert progress is not None
+    lane = next(candidate for candidate in progress.lanes if candidate.locale == locale)
+    assert lane.deep_quality.job is not None
+    assert lane.deep_quality.job.status == "queued"
+
+    async def _fake_deep_quality_port(
+        _session: AsyncSession,
+        *,
+        locale: str,
+        **kwargs: object,
+    ) -> _CapturePort:
+        del _session, kwargs
+        return _CapturePort(_passing_deep_quality_output(locale))
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_deep_quality_model_port",
+        _fake_deep_quality_port,
+    )
+
+    job = await session.get(Job, lane.deep_quality.job.id)
+    assert job is not None
+    step = await session.get(StepRun, job.step_run_id)
+    assert step is not None
+    run = await session.get(ContentRun, job.run_id)
+    assert run is not None
+
+    now = utc_now()
+    step.status = "running"
+    step.started_at = now
+    if run.status == "pending":
+        run.status = "running"
+    job.status = "leased"
+    job.lease_owner = f"{worker_prefix}-deep"
+    job.lease_expires_at = now + timedelta(seconds=900)
+    job.updated_at = now
+    await session.flush()
+
+    await operator_quality_worker.execute_quality_job(
+        session,
+        job_id=job.id,
+        worker_id=f"{worker_prefix}-deep",
+        runner_registry=runner_registry,
+    )
 
 
 async def _complete_f3_writers(
@@ -431,6 +509,14 @@ async def _complete_healthy_lane_from_audit(
         runner_registry=runner_registry,
         worker_prefix=f"{worker_prefix}-readiness",
     )
+    await _complete_deep_quality_lane(
+        session,
+        case_id=case_id,
+        locale=healthy_lane.locale,
+        monkeypatch=monkeypatch,
+        runner_registry=runner_registry,
+        worker_prefix=worker_prefix,
+    )
 
 
 @pytest.mark.asyncio
@@ -566,7 +652,72 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             worker_prefix="f4-readiness-en",
         )
 
-        progress = await get_quality_progress(session, content_case_id=case_id, source_run_id=None)
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        assert progress.final_gate_ready is False
+        assert {lane.status for lane in progress.lanes} == {"deep_quality_queued"}
+        assert all(lane.deep_quality.job is not None for lane in progress.lanes)
+        assert all(lane.final_content is None for lane in progress.lanes)
+        assert all(lane.final_review is None for lane in progress.lanes)
+
+        state_before_deep = await get_operator_state(
+            session,
+            content_case_id=case_id,
+        )
+        assert state_before_deep.human_gate is None
+        assert state_before_deep.status == "QUEUED"
+
+        deep_ports = {
+            locale: _CapturePort(_passing_deep_quality_output(locale))
+            for locale in ("vi-VN", "en")
+        }
+
+        async def fake_deep_quality_port(
+            _session: AsyncSession,
+            *,
+            locale: str,
+            **kwargs: object,
+        ) -> _CapturePort:
+            del _session, kwargs
+            return deep_ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_deep_quality_model_port",
+            fake_deep_quality_port,
+        )
+        for index in range(2):
+            job = await operator_quality_worker.claim_or_reclaim_quality_job(
+                session,
+                worker_id=f"f4-deep-{index}",
+            )
+            assert job is not None
+            await operator_quality_worker.execute_quality_job(
+                session,
+                job_id=job.id,
+                worker_id=f"f4-deep-{index}",
+                runner_registry=registry,
+            )
+
+        assert {
+            locale
+            for locale, port in deep_ports.items()
+            if port.inputs
+        } == {"vi-VN", "en"}
+        for locale, port in deep_ports.items():
+            assert port.inputs[0]["locale"] == locale
+            assert "other_locale_draft" not in port.inputs[0]
+            assert "translation_source" not in port.inputs[0]
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=case_id,
+            source_run_id=None,
+        )
         assert progress is not None
         assert progress.final_gate_ready is True
         assert {lane.status for lane in progress.lanes} == {"final_gate_ready"}
@@ -600,7 +751,17 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             assert lane.writer.run.content_item_id == lane.final_item.id  # type: ignore[union-attr]
             assert lane.final_content.content_json == copy.deepcopy(lane.revised_draft.content_json)  # type: ignore[union-attr]
             assert lane.final_content.content_hash == lane.revised_draft.content_hash  # type: ignore[union-attr]
+            assert lane.deep_quality.artifact is not None
+            assert lane.deep_quality.evaluation is not None
+            assert lane.deep_quality.evaluation.result == "pass"
             assert lane.final_review.attempt == 1
+            assert lane.final_review.input_artifact_refs_json == [
+                str(lane.revised_draft.id),  # type: ignore[union-attr]
+                str(lane.final_item.id),  # type: ignore[union-attr]
+                str(lane.reader_value.artifact.id),  # type: ignore[union-attr]
+                str(lane.search_ai.artifact.id),  # type: ignore[union-attr]
+                str(lane.deep_quality.artifact.id),
+            ]
             assert lane.status == "final_gate_ready"
 
         state = await get_operator_state(session, content_case_id=case_id)
@@ -617,6 +778,16 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
             "en",
         }
         for projected_lane in view.quality_lanes:
+            assert projected_lane.deep_quality is not None
+            assert projected_lane.deep_quality.result == "pass"
+            assert len(projected_lane.deep_quality.dimensions) == 12
+            assert projected_lane.deep_quality.fail_count == 0
+            assert projected_lane.deep_quality.warn_count == 0
+            assert {
+                dimension.authority
+                for dimension in projected_lane.deep_quality.dimensions
+            } <= {"deterministic", "upstream_gate", "semantic_model"}
+            assert projected_lane.deep_quality.artifact.id is not None
             assert projected_lane.human_voice is not None
             assert projected_lane.human_voice.advisory_only is True
             assert projected_lane.human_voice.trace_artifact.id is not None
@@ -1423,6 +1594,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             runner_registry=registry,
             worker_prefix="worker-sc-vi-readiness",
         )
+        await _complete_deep_quality_lane(
+            session,
+            case_id=case_id,
+            locale="vi-VN",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-sc-vi",
+        )
 
         # Now VI is qualified, EN Audit failed, no active jobs remain -> command failed
         parent_row = await session.get(OperatorCommand, parent_cmd.command_id)
@@ -1486,6 +1665,14 @@ async def test_f4_audit_vi_pass_en_fail_retry_converges(
             monkeypatch=monkeypatch,
             runner_registry=registry,
             worker_prefix="worker-en-sc-readiness",
+        )
+        await _complete_deep_quality_lane(
+            session,
+            case_id=case_id,
+            locale="en",
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix="worker-en-sc",
         )
 
         # 8. Verify both converge to final_gate_ready

@@ -470,6 +470,7 @@ async def load_source_copy_input(
     expected_outline_version: int,
     expected_outline_hash: str,
     locale: str,
+    allow_completed_writer_for_persisted_read: bool = False,
 ) -> SourceCopyInput:
     writer_input = await load_writer_input(
         session,
@@ -489,15 +490,21 @@ async def load_source_copy_input(
         or source.content_hash != expected_source_draft_hash
     ):
         raise SourceCopyError("source_copy_source_draft_snapshot_mismatch")
-    try:
-        validate_source_writer_eligibility(
-            writer_input=writer_input,
-            source_artifact=source,
-        )
-    except AssertionAuditError as exc:
-        raise SourceCopyError(
-            "source_copy_writer_run_state_invalid", writer_input.writer_run.status
-        ) from exc
+    writer_run = writer_input.writer_run
+    completed_persisted_read = (
+        allow_completed_writer_for_persisted_read
+        and writer_run.status == "completed"
+    )
+    if not completed_persisted_read:
+        try:
+            validate_source_writer_eligibility(
+                writer_input=writer_input,
+                source_artifact=source,
+            )
+        except AssertionAuditError as exc:
+            raise SourceCopyError(
+                "source_copy_writer_run_state_invalid", writer_run.status
+            ) from exc
     payload = _dict(source.content_json, "source_copy_source_draft_payload_invalid")
     if _canonical_hash(payload) != source.content_hash:
         raise SourceCopyError("source_copy_source_draft_snapshot_stale")
@@ -769,6 +776,7 @@ async def ensure_source_copy_run(
             or run.locale_variant_id != source_input.writer_input.locale_variant.id
             or run.content_item_id != source_input.writer_input.writer_run.content_item_id
             or run.settings_snapshot_id != source_input.writer_input.writer_run.settings_snapshot_id
+            or run.current_step != task_key
         ):
             raise SourceCopyError("source_copy_handoff_run_mismatch")
         if run.status not in {"failed", "cancelled"}:
@@ -1156,6 +1164,117 @@ class SourceCopyGenerator:
         )
 
 
+async def load_persisted_source_copy_result(
+    session: AsyncSession,
+    *,
+    source_input: SourceCopyInput,
+    artifact_id: UUID,
+    evaluation_id: UUID,
+) -> SourceCopyResult:
+    artifact = await session.get(Artifact, artifact_id)
+    evaluation = await session.get(QualityEvaluation, evaluation_id)
+    if (
+        artifact is None
+        or evaluation is None
+        or artifact.run_id != evaluation.run_id
+        or artifact.id != evaluation.artifact_id
+        or artifact.step_run_id is None
+    ):
+        raise SourceCopyError("source_copy_persisted_binding_invalid")
+
+    run = await session.get(ContentRun, artifact.run_id)
+    step = await session.get(StepRun, artifact.step_run_id)
+    writer_run = source_input.writer_input.writer_run
+    expected_task = SOURCE_COPY_TASK_KEYS.get(source_input.writer_input.locale)
+    if (
+        run is None
+        or step is None
+        or step.run_id != run.id
+        or run.run_mode != "eval"
+        or run.project_id != writer_run.project_id
+        or run.content_case_id != writer_run.content_case_id
+        or run.locale_variant_id != source_input.writer_input.locale_variant.id
+        or run.content_item_id != writer_run.content_item_id
+        or run.settings_snapshot_id != writer_run.settings_snapshot_id
+        or run.current_step != expected_task
+        or run.status != "completed"
+        or step.status != "completed"
+        or step.step_key != expected_task
+    ):
+        raise SourceCopyError("source_copy_persisted_execution_invalid")
+
+    settings_snapshot = await session.get(
+        SettingsSnapshot,
+        source_input.writer_input.writer_run.settings_snapshot_id,
+    )
+    if settings_snapshot is None:
+        raise SourceCopyError("source_copy_settings_snapshot_missing")
+    if (
+        source_input.settings_snapshot_hash is not None
+        and source_input.settings_snapshot_hash != settings_snapshot.content_hash
+    ):
+        raise SourceCopyError("source_copy_settings_snapshot_mismatch")
+
+    task_key = SOURCE_COPY_TASK_KEYS[source_input.writer_input.locale]
+    expected_handoff = _handoff_payload(
+        source_input=source_input,
+        settings_snapshot=settings_snapshot,
+        task_key=task_key,
+    )
+    handoffs = list(
+        (
+            await session.scalars(
+                select(Artifact).where(
+                    Artifact.run_id == run.id,
+                    Artifact.artifact_type == "source_copy_handoff",
+                    Artifact.locale == source_input.writer_input.locale,
+                )
+            )
+        ).all()
+    )
+    if len(handoffs) != 1:
+        raise SourceCopyError("source_copy_persisted_handoff_conflict")
+    handoff = handoffs[0]
+    _validate_handoff(
+        handoff,
+        payload=expected_handoff,
+        source_input=source_input,
+        task_key=task_key,
+    )
+
+    fingerprint = _fingerprint(source_input, task_key=task_key)
+    check = _validate_persisted_artifact(
+        artifact,
+        source_input=source_input,
+        step=step,
+        fingerprint=fingerprint,
+    )
+    expected_findings = {
+        "source_copy_artifact_id": str(artifact.id),
+        "source_copy_artifact_hash": artifact.content_hash,
+        **check.summary(),
+    }
+    if (
+        evaluation.evaluator_key != SOURCE_COPY_EVALUATOR_KEY
+        or evaluation.evaluator_version != SOURCE_COPY_EVALUATOR_VERSION
+        or evaluation.evaluator_type != "deterministic"
+        or evaluation.result != check.result
+        or evaluation.score is not None
+        or evaluation.findings_json != expected_findings
+    ):
+        raise SourceCopyError("source_copy_quality_evaluation_missing_or_stale")
+
+    return SourceCopyResult(
+        eval_run=run,
+        handoff=handoff,
+        step_run=step,
+        artifact=artifact,
+        evaluation=evaluation,
+        check=check,
+        reused=True,
+    )
+
+
 async def execute_source_copy(
     session: AsyncSession,
     *,
@@ -1231,6 +1350,7 @@ __all__ = [
     "check_source_copy",
     "classify_source_copy_overlap",
     "execute_source_copy",
+    "load_persisted_source_copy_result",
     "load_source_copy_input",
     "normalize_source_copy_text",
     "normalize_source_copy_tokens",

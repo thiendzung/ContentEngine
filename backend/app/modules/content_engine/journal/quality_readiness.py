@@ -620,7 +620,9 @@ async def ensure_quality_readiness_run(
             or run.project_id != source_input.writer_input.writer_run.project_id
             or run.content_case_id != source_input.writer_input.writer_run.content_case_id
             or run.locale_variant_id != source_input.writer_input.locale_variant.id
+            or run.content_item_id != source_input.writer_input.writer_run.content_item_id
             or run.settings_snapshot_id != source_input.writer_input.writer_run.settings_snapshot_id
+            or run.current_step != expected_task
         ):
             raise QualityReadinessError("quality_readiness_handoff_run_mismatch")
         if run.status not in {"failed", "cancelled"}:
@@ -824,6 +826,7 @@ async def evaluate_quality_readiness(
     step = await session.get(StepRun, step_run_id)
     handoff = await session.get(Artifact, handoff_artifact_id)
     manifest = await session.get(ContextManifest, context_manifest_id)
+    writer_run = source_input.writer_input.writer_run
     if (
         run is None
         or step is None
@@ -832,6 +835,11 @@ async def evaluate_quality_readiness(
         or handoff.run_id != run.id
         or handoff.step_run_id is not None
         or run.run_mode != "eval"
+        or run.project_id != writer_run.project_id
+        or run.content_case_id != writer_run.content_case_id
+        or run.locale_variant_id != source_input.writer_input.locale_variant.id
+        or run.content_item_id != writer_run.content_item_id
+        or run.settings_snapshot_id != writer_run.settings_snapshot_id
         or run.status not in {"running", "completed"}
         or run.current_step != readiness_task_key(
             source_input.stage,
@@ -1035,6 +1043,193 @@ async def evaluate_quality_readiness(
     raise QualityReadinessError("quality_readiness_model_output_invalid") from last_error
 
 
+async def load_persisted_quality_readiness_result(
+    session: AsyncSession,
+    *,
+    source_input: QualityReadinessInput,
+    artifact_id: UUID,
+    evaluation_id: UUID,
+) -> QualityReadinessResult:
+    evaluator_key, evaluator_version, artifact_type = _evaluation_metadata(
+        source_input.stage
+    )
+    artifact = await session.get(Artifact, artifact_id)
+    evaluation = await session.get(QualityEvaluation, evaluation_id)
+    if (
+        artifact is None
+        or evaluation is None
+        or artifact.run_id != evaluation.run_id
+        or artifact.id != evaluation.artifact_id
+        or artifact.step_run_id is None
+        or artifact.artifact_type != artifact_type
+        or artifact.locale != source_input.writer_input.locale
+    ):
+        raise QualityReadinessError("quality_readiness_persisted_binding_invalid")
+
+    run = await session.get(ContentRun, artifact.run_id)
+    step = await session.get(StepRun, artifact.step_run_id)
+    writer_run = source_input.writer_input.writer_run
+    expected_task = readiness_task_key(
+        source_input.stage,
+        source_input.writer_input.locale,
+    )
+    if (
+        run is None
+        or step is None
+        or step.run_id != run.id
+        or run.run_mode != "eval"
+        or run.project_id != writer_run.project_id
+        or run.content_case_id != writer_run.content_case_id
+        or run.locale_variant_id != source_input.writer_input.locale_variant.id
+        or run.content_item_id != writer_run.content_item_id
+        or run.settings_snapshot_id != writer_run.settings_snapshot_id
+        or run.current_step != expected_task
+        or run.status != "completed"
+        or step.status != "completed"
+        or step.step_key != expected_task
+    ):
+        raise QualityReadinessError("quality_readiness_persisted_execution_invalid")
+
+    snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+    if snapshot is None:
+        raise QualityReadinessError("quality_readiness_settings_snapshot_missing")
+    handoffs = list(
+        (
+            await session.scalars(
+                select(Artifact).where(
+                    Artifact.run_id == run.id,
+                    Artifact.artifact_type
+                    == READINESS_HANDOFF_TYPES[source_input.stage],
+                    Artifact.locale == source_input.writer_input.locale,
+                )
+            )
+        ).all()
+    )
+    if len(handoffs) != 1:
+        raise QualityReadinessError("quality_readiness_persisted_handoff_conflict")
+    handoff = handoffs[0]
+    expected_handoff = _handoff_payload(
+        source_input,
+        task_key=readiness_task_key(
+            source_input.stage,
+            source_input.writer_input.locale,
+        ),
+        settings_snapshot=snapshot,
+    )
+    if (
+        handoff.step_run_id is not None
+        or handoff.content_json != expected_handoff
+        or handoff.content_hash != _canonical_hash(expected_handoff)
+    ):
+        raise QualityReadinessError("quality_readiness_handoff_snapshot_invalid")
+
+    payload = artifact.content_json
+    if (
+        not isinstance(payload, dict)
+        or _canonical_hash(payload) != artifact.content_hash
+        or payload.get("schema_version") != QUALITY_READINESS_SCHEMA_VERSION
+        or payload.get("artifact_type") != artifact_type
+        or payload.get("stage") != source_input.stage
+        or payload.get("locale") != source_input.writer_input.locale
+        or payload.get("source_writer_run_id")
+        != str(source_input.writer_input.writer_run.id)
+        or payload.get("source_draft") != _ref(source_input.source_artifact)
+        or payload.get("journal_outline")
+        != _ref(source_input.writer_input.outline_artifact)
+        or payload.get("source_copy")
+        != {
+            "artifact": _ref(source_input.source_copy_artifact),
+            "quality_evaluation": _quality_ref(
+                source_input.source_copy_evaluation
+            ),
+        }
+    ):
+        raise QualityReadinessError("quality_readiness_artifact_stale")
+
+    expected_reader = (
+        {
+            "artifact": _ref(source_input.reader_value_artifact),
+            "quality_evaluation": _quality_ref(
+                source_input.reader_value_evaluation
+            ),
+        }
+        if source_input.reader_value_artifact is not None
+        and source_input.reader_value_evaluation is not None
+        else None
+    )
+    if payload.get("reader_value") != expected_reader:
+        raise QualityReadinessError("quality_readiness_artifact_stale")
+
+    generator = payload.get("generator")
+    execution_context = payload.get("execution_context")
+    routing_policy = payload.get("routing_policy")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("version") != QUALITY_READINESS_GENERATOR_VERSION
+        or generator.get("evaluator_key") != evaluator_key
+        or generator.get("evaluator_version") != evaluator_version
+        or generator.get("schema_version") != QUALITY_READINESS_SCHEMA_VERSION
+        or not isinstance(execution_context, dict)
+        or execution_context
+        != {"run_id": str(run.id), "step_run_id": str(step.id)}
+        or routing_policy
+        != {
+            "numeric_score_used": False,
+            "reader_value_precedes_discovery": True,
+            "seo_ai_can_override_reader_value": False,
+        }
+    ):
+        raise QualityReadinessError("quality_readiness_artifact_stale")
+
+    raw_criteria = payload.get("criteria")
+    if not isinstance(raw_criteria, list):
+        raise QualityReadinessError("quality_readiness_artifact_invalid")
+    result, criteria, summary = validate_quality_readiness_output(
+        {
+            "locale": payload.get("locale"),
+            "result": payload.get("result"),
+            "summary": payload.get("summary"),
+            "criteria": raw_criteria,
+        },
+        stage=source_input.stage,
+        locale=source_input.writer_input.locale,
+    )
+    fail_count = sum(item.result == "fail" for item in criteria)
+    warn_count = sum(item.result == "warn" for item in criteria)
+    expected_findings = {
+        "source_draft_id": str(source_input.source_artifact.id),
+        "source_draft_hash": source_input.source_artifact.content_hash,
+        "stage": source_input.stage,
+        "summary": summary,
+        "criteria": [item.to_dict() for item in criteria],
+        "fail_count": fail_count,
+        "warn_count": warn_count,
+        "numeric_score_used": False,
+    }
+    if (
+        evaluation.evaluator_key != evaluator_key
+        or evaluation.evaluator_version != evaluator_version
+        or evaluation.evaluator_type != "model"
+        or evaluation.result != result
+        or evaluation.score is not None
+        or evaluation.findings_json != expected_findings
+    ):
+        raise QualityReadinessError("quality_readiness_evaluation_stale")
+
+    return QualityReadinessResult(
+        eval_run=run,
+        handoff=handoff,
+        step_run=step,
+        artifact=artifact,
+        evaluation=evaluation,
+        result=result,
+        criteria=criteria,
+        summary=summary,
+        model_attempts=0,
+        reused=True,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class PairwiseReadinessDecision:
     eligible: bool
@@ -1108,6 +1303,7 @@ __all__ = [
     "compare_readiness_pair",
     "ensure_quality_readiness_run",
     "evaluate_quality_readiness",
+    "load_persisted_quality_readiness_result",
     "load_quality_readiness_input",
     "load_quality_readiness_input_from_handoff",
     "readiness_task_key",

@@ -296,6 +296,29 @@ async def load_angle_semantic_quality_for_artifact(
         raise AngleGenerationError(exc.code) from exc
 
 
+async def load_approved_angle_semantic_quality(
+    session: AsyncSession,
+    *,
+    approved: ApprovedAngle,
+    bundle: JournalInputBundle,
+) -> AngleSemanticQualityResult | None:
+    candidates = _artifact_candidates(approved.artifact, bundle=bundle)
+    result = await load_angle_semantic_quality_for_artifact(
+        session,
+        artifact=approved.artifact,
+        bundle=bundle,
+        candidates=candidates,
+    )
+    if result is None:
+        return None
+    assessment = result.by_angle_id.get(approved.candidate.angle_id)
+    if assessment is None:
+        raise AngleGenerationError("angle_semantic_selected_candidate_missing")
+    if assessment.verdict != "pass":
+        raise AngleGenerationError("angle_semantic_revision_required")
+    return result
+
+
 def _routed_model_identity(model: AngleModelPort) -> tuple[str, str] | None:
     """Read the authoritative route identity exposed by a production model port."""
 
@@ -1551,6 +1574,7 @@ __all__ = [
     "approve_angle_candidate",
     "handoff_approved_angle",
     "load_angle_semantic_quality_for_artifact",
+    "load_approved_angle_semantic_quality",
     "load_journal_input_bundle",
     "persist_angle_candidates",
 ]
