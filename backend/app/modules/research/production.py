@@ -110,6 +110,7 @@ class ResearchRouter:
         exa: SearchProvider | None = None,
         reader: PageReader | None = None,
         fallback_reader: PageReader | None = None,
+        terminal_reader: PageReader | None = None,
         budget_limits: BudgetLimits | None = None,
         sufficiency: ProductionSufficiencyPolicy | None = None,
     ) -> None:
@@ -118,6 +119,7 @@ class ResearchRouter:
         self._exa = exa
         self._reader = reader
         self._fallback_reader = fallback_reader
+        self._terminal_reader = terminal_reader
         self._budget_limits = budget_limits or BudgetLimits(max_tool_calls=4)
         self._sufficiency = sufficiency or ProductionSufficiencyPolicy()
 
@@ -546,14 +548,16 @@ class ResearchRouter:
                     and primary_error.failure_class in {"provider_auth", "provider_rate_limit"}
                 ):
                     break
+                fallback_error: ResearchProviderError | None = None
                 if (
                     page is None
                     and primary_error is not None
-                    and primary_error.failure_class == "tool_invalid_response"
+                    and primary_error.failure_class
+                    in {"tool_invalid_response", "provider_transient"}
                     and source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
                     and self._fallback_reader is not None
                 ):
-                    page, _ = await self._read_with_reader(
+                    page, fallback_error = await self._read_with_reader(
                         session,
                         reader=self._fallback_reader,
                         source=source,
@@ -563,11 +567,35 @@ class ResearchRouter:
                         transient_usage=transient_usage,
                         reason=f"fallback_after:{self._reader.name}:{source.found_via}",
                     )
+                if (
+                    page is None
+                    and fallback_error is not None
+                    and fallback_error.failure_class
+                    in {"tool_invalid_response", "provider_transient"}
+                    and self._terminal_reader is not None
+                ):
+                    page, _ = await self._read_with_reader(
+                        session,
+                        reader=self._terminal_reader,
+                        source=source,
+                        result=result,
+                        run_id=run_id,
+                        step_run_id=step_run_id,
+                        transient_usage=transient_usage,
+                        reason=(
+                            f"fallback_after:{self._fallback_reader.name}:"
+                            f"{source.found_via}"
+                        ),
+                    )
             except BudgetExceededError as exc:
                 provider = (
-                    self._fallback_reader.name
-                    if self._fallback_reader is not None
-                    else self._reader.name
+                    self._terminal_reader.name
+                    if self._terminal_reader is not None
+                    else (
+                        self._fallback_reader.name
+                        if self._fallback_reader is not None
+                        else self._reader.name
+                    )
                 )
                 result.decisions.append(
                     ProviderDecision(
@@ -593,7 +621,7 @@ class ResearchRouter:
         if target_successes > 0 and successful_reads < target_successes:
             return (
                 "reader_candidates_exhausted"
-                if self._fallback_reader is not None
+                if self._fallback_reader is not None or self._terminal_reader is not None
                 else "jina_candidates_exhausted"
             )
         return None
@@ -690,6 +718,15 @@ class ResearchRouter:
         limit = self._selected_source_limit(result.request)
         parent_url = result.request.parent_url
         if parent_url is None:
+            required_use = result.request.required_intended_use
+            if required_use is not None:
+                required = [
+                    source
+                    for source in result.source_candidates
+                    if source.intended_use is required_use
+                ]
+                if required:
+                    return choose_sources(required, limit)
             return choose_sources(result.source_candidates, limit)
 
         second_hop = [
@@ -736,7 +773,13 @@ class ResearchRouter:
         providers: list[str] = [self._serper.name]
         providers.extend(
             provider.name
-            for provider in (self._tavily, self._exa, self._reader)
+            for provider in (
+                self._tavily,
+                self._exa,
+                self._reader,
+                self._fallback_reader,
+                self._terminal_reader,
+            )
             if provider is not None
         )
         for provider in dict.fromkeys(providers):
