@@ -644,4 +644,3 @@ CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input,
 - [ ] Founder merge.
 
 CQ-06 boundaries: no auto-publication, no WordPress activation, no CQ-07 pilot, no new workflow engine, no weakening Assertion Audit/Source-copy, no opaque score and no operational migration unless a later slice proves a schema change is unavoidable.
-
