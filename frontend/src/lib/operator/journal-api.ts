@@ -112,6 +112,28 @@ export type QualityRef = {
   content_hash: string | null;
 };
 
+export type HumanVoiceFinding = {
+  code: string;
+  count: number;
+};
+
+export type HumanVoiceChange = {
+  field: string;
+  before: string;
+  after: string;
+};
+
+export type HumanVoiceComparison = {
+  trace_artifact: QualityRef;
+  policy_version: string;
+  source_draft_hash: string;
+  rewritten_draft_hash: string;
+  advisory_only: boolean;
+  before: HumanVoiceFinding[];
+  after: HumanVoiceFinding[];
+  changes: HumanVoiceChange[];
+};
+
 export type QualityLane = {
   locale: string;
   locale_variant_id: string;
@@ -120,6 +142,7 @@ export type QualityLane = {
   status: string;
   source_writer_draft: QualityRef | null;
   revised_draft: QualityRef | null;
+  human_voice: HumanVoiceComparison | null;
   review_step_run_id: string | null;
   review_job_id: string | null;
   review_attempt: number | null;

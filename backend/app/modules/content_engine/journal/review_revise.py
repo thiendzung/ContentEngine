@@ -9,6 +9,19 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.human_voice import (
+    HUMAN_VOICE_POLICY_VERSION,
+    HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
+    REQUIRED_FORBIDDEN_INVENTIONS,
+    HumanVoiceGuardError,
+    validate_rewrite_structure,
+    validate_text_truth_guards,
+)
+from app.modules.content_engine.journal.human_voice_trace import (
+    HumanVoiceTraceError,
+    load_human_voice_trace,
+    persist_human_voice_trace,
+)
 from app.modules.content_engine.journal.writer import (
     JournalDraft,
     WriterGenerationError,
@@ -27,7 +40,7 @@ from app.modules.content_engine.journal.writer import (
 )
 from app.modules.harness.models import Artifact
 
-REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v4"
+REVIEW_REVISE_GENERATOR_VERSION = "ce05.journal_review_revise.v6"
 REVIEW_REVISE_SCHEMA_VERSION = 1
 _SUPPORTIVE_EVIDENCE_RELATIONS = ("supports", "qualifies")
 _NON_SUPPORTIVE_EVIDENCE_RELATIONS = ("context_only", "contradicts")
@@ -145,6 +158,185 @@ def _segment_support_policy(draft: JournalDraft) -> dict[str, object]:
     }
 
 
+def _human_voice_policy() -> dict[str, object]:
+    return {
+        "version": HUMAN_VOICE_POLICY_VERSION,
+        "render_protocol_version": HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
+        "mode": "truth_preserving_native_rewrite",
+        "may_improve": [
+            "rhythm",
+            "specificity",
+            "warmth",
+            "lived_texture",
+            "natural_phrasing",
+        ],
+        "must_preserve": [
+            "locale",
+            "section_ids_and_order",
+            "evidence_refs",
+            "originality_refs",
+            "internal_link_intents",
+            "approved_truth_boundaries",
+        ],
+        "forbidden_inventions": list(REQUIRED_FORBIDDEN_INVENTIONS),
+        "deterministic_guards": [
+            "no_new_numeric_token_without_exact_source_or_allowed_support",
+            "no_new_direct_quote_without_exact_source_or_allowed_support",
+        ],
+        "post_rewrite_assertion_audit_required": True,
+        "authorship_detection": "not_part_of_task",
+        "humanization_percentage": "forbidden",
+        "extra_model_call": False,
+    }
+
+
+def _human_voice_evidence_catalog(
+    writer_input: WriterInput,
+) -> dict[str, tuple[str, ...]]:
+    evidence_set = _dict(
+        writer_input.model_input.get("evidence_set"),
+        "review_revise_evidence_set_invalid",
+    )
+    raw_items = evidence_set.get("evidence")
+    if not isinstance(raw_items, list):
+        raise WriterGenerationError("review_revise_evidence_set_invalid")
+    relation_policy = _evidence_relation_policy(writer_input)
+    relations = relation_policy.get("relations_by_evidence_id")
+    if not isinstance(relations, dict):
+        raise WriterGenerationError("review_revise_evidence_relation_invalid")
+
+    catalog: dict[str, tuple[str, ...]] = {}
+    for raw_item in raw_items:
+        item = _dict(raw_item, "review_revise_evidence_item_invalid")
+        raw_id = item.get("evidence_id")
+        if not isinstance(raw_id, str) or not raw_id.strip():
+            raise WriterGenerationError("review_revise_evidence_relation_invalid")
+        evidence_id = raw_id.strip()
+        relation = relations.get(evidence_id)
+        if relation not in _ALLOWED_EVIDENCE_RELATIONS:
+            raise WriterGenerationError("review_revise_evidence_relation_invalid")
+        texts: list[str] = []
+        if relation in _SUPPORTIVE_EVIDENCE_RELATIONS:
+            value = item.get("excerpt")
+            if isinstance(value, str) and value.strip():
+                texts.append(value.strip())
+        catalog[evidence_id] = tuple(dict.fromkeys(texts))
+    return catalog
+
+
+def _human_voice_originality_catalog(
+    writer_input: WriterInput,
+) -> dict[str, tuple[str, ...]]:
+    pack = _dict(
+        writer_input.model_input.get("originality_pack"),
+        "review_revise_originality_pack_invalid",
+    )
+    raw_items = pack.get("items")
+    if not isinstance(raw_items, list):
+        raise WriterGenerationError("review_revise_originality_pack_invalid")
+
+    catalog: dict[str, tuple[str, ...]] = {}
+    for raw_item in raw_items:
+        item = _dict(raw_item, "review_revise_originality_item_invalid")
+        raw_ref = item.get("source_ref")
+        if not isinstance(raw_ref, str) or not raw_ref.strip():
+            raise WriterGenerationError("review_revise_originality_ref_invalid")
+        source_ref = raw_ref.strip()
+        if source_ref in catalog:
+            raise WriterGenerationError("review_revise_originality_ref_duplicate")
+        texts: list[str] = []
+        value = item.get("material")
+        if isinstance(value, str) and value.strip():
+            texts.append(value.strip())
+        catalog[source_ref] = tuple(dict.fromkeys(texts))
+    return catalog
+
+
+def _human_voice_support_texts(
+    *,
+    evidence_catalog: dict[str, tuple[str, ...]],
+    originality_catalog: dict[str, tuple[str, ...]],
+    evidence_refs: tuple[str, ...],
+    originality_refs: tuple[str, ...],
+) -> tuple[str, ...]:
+    texts: list[str] = []
+    for evidence_ref in evidence_refs:
+        if evidence_ref not in evidence_catalog:
+            raise WriterGenerationError(
+                "review_revise_human_voice_evidence_ref_unknown",
+                evidence_ref,
+            )
+        texts.extend(evidence_catalog[evidence_ref])
+    for originality_ref in originality_refs:
+        if originality_ref not in originality_catalog:
+            raise WriterGenerationError(
+                "review_revise_human_voice_originality_ref_unknown",
+                originality_ref,
+            )
+        texts.extend(originality_catalog[originality_ref])
+    return tuple(dict.fromkeys(texts))
+
+
+def _validate_human_voice_rewrite(
+    *,
+    review_input: ReviewReviseInput,
+    revised: JournalDraft,
+) -> None:
+    source = review_input.source_draft
+    validate_rewrite_structure(source=source, rewritten=revised)
+
+    evidence_catalog = _human_voice_evidence_catalog(review_input.writer_input)
+    originality_catalog = _human_voice_originality_catalog(review_input.writer_input)
+
+    lead_support = _human_voice_support_texts(
+        evidence_catalog=evidence_catalog,
+        originality_catalog=originality_catalog,
+        evidence_refs=source.lead_evidence_refs,
+        originality_refs=source.lead_originality_refs,
+    )
+    validate_text_truth_guards(
+        source_text=source.title,
+        rewritten_text=revised.title,
+    )
+    validate_text_truth_guards(
+        source_text=source.standfirst,
+        rewritten_text=revised.standfirst,
+        allowed_support_texts=lead_support,
+    )
+    validate_text_truth_guards(
+        source_text=source.lead_markdown,
+        rewritten_text=revised.lead_markdown,
+        allowed_support_texts=lead_support,
+    )
+
+    for source_section, revised_section in zip(
+        source.sections,
+        revised.sections,
+        strict=True,
+    ):
+        section_support = _human_voice_support_texts(
+            evidence_catalog=evidence_catalog,
+            originality_catalog=originality_catalog,
+            evidence_refs=source_section.evidence_refs,
+            originality_refs=source_section.originality_refs,
+        )
+        validate_text_truth_guards(
+            source_text=source_section.heading,
+            rewritten_text=revised_section.heading,
+            allowed_support_texts=section_support,
+        )
+        validate_text_truth_guards(
+            source_text=source_section.body_markdown,
+            rewritten_text=revised_section.body_markdown,
+            allowed_support_texts=section_support,
+        )
+
+    validate_text_truth_guards(
+        source_text=source.closing_markdown,
+        rewritten_text=revised.closing_markdown,
+    )
+
+
 def _validate_source_provenance(
     source_payload: dict[str, object],
     *,
@@ -193,6 +385,7 @@ def _revision_model_input(
             },
             "source_draft": source_draft.to_dict(),
             "source_unresolved_factual_claims": _source_unresolved_payload(source_draft),
+            "human_voice_policy": _human_voice_policy(),
             "revision_policy": {
                 "mode": "bounded_review_revise",
                 "evidence_relation_policy": _evidence_relation_policy(writer_input),
@@ -322,6 +515,11 @@ class ReviewReviseGenerator:
         generator_version: str = REVIEW_REVISE_GENERATOR_VERSION,
         schema_version: int = REVIEW_REVISE_SCHEMA_VERSION,
     ) -> WriterGenerationResult:
+        if (
+            generator_version != REVIEW_REVISE_GENERATOR_VERSION
+            or schema_version != REVIEW_REVISE_SCHEMA_VERSION
+        ):
+            raise WriterGenerationError("review_revise_generator_identity_invalid")
         review_input = await load_review_revise_input(
             session,
             writer_run_id=writer_run_id,
@@ -370,6 +568,28 @@ class ReviewReviseGenerator:
         if existing is not None:
             if unresolved_factual_claims(existing.draft):
                 raise WriterGenerationError("review_revise_reused_draft_not_clean")
+            try:
+                _validate_human_voice_rewrite(
+                    review_input=review_input,
+                    revised=existing.draft,
+                )
+                await load_human_voice_trace(
+                    session,
+                    source_artifact=review_input.source_artifact,
+                    source_draft=review_input.source_draft,
+                    rewritten_artifact=existing.artifact,
+                    rewritten_draft=existing.draft,
+                )
+            except HumanVoiceGuardError as exc:
+                raise WriterGenerationError(
+                    "review_revise_reused_human_voice_guard_failed",
+                    exc.code,
+                ) from exc
+            except HumanVoiceTraceError as exc:
+                raise WriterGenerationError(
+                    "review_revise_reused_human_voice_trace_invalid",
+                    exc.code,
+                ) from exc
             return existing
 
         last_error: WriterGenerationError | None = None
@@ -378,6 +598,16 @@ class ReviewReviseGenerator:
             try:
                 raw = await model.generate(input_bundle=model_input, attempt=attempt)
                 revised = _validate_model_output(raw, writer_input=writer_input)
+                try:
+                    _validate_human_voice_rewrite(
+                        review_input=review_input,
+                        revised=revised,
+                    )
+                except HumanVoiceGuardError as exc:
+                    raise WriterGenerationError(
+                        "review_revise_human_voice_guard_failed",
+                        exc.code,
+                    ) from exc
                 if unresolved_factual_claims(revised):
                     raise WriterGenerationError("review_revise_unresolved_remaining")
             except WriterGenerationError as exc:
@@ -404,6 +634,19 @@ class ReviewReviseGenerator:
             )
             if artifact.id == review_input.source_artifact.id:
                 raise WriterGenerationError("review_revise_source_artifact_reused_as_output")
+            try:
+                await persist_human_voice_trace(
+                    session,
+                    source_artifact=review_input.source_artifact,
+                    source_draft=review_input.source_draft,
+                    rewritten_artifact=artifact,
+                    rewritten_draft=revised,
+                )
+            except HumanVoiceTraceError as exc:
+                raise WriterGenerationError(
+                    "review_revise_human_voice_trace_invalid",
+                    exc.code,
+                ) from exc
             return WriterGenerationResult(
                 artifact=artifact,
                 draft=revised,

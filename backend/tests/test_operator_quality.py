@@ -442,8 +442,15 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
         case_id = fixture.run.content_case_id
         _command, before_quality = await _dispatch_quality(session, fixture=fixture)
 
+        review_outputs = copy.deepcopy(writer_outputs)
+        cast(dict[str, object], review_outputs["en"])["closing_markdown"] = (
+            "Pause, look again, and decide at your own pace."
+        )
+        cast(dict[str, object], review_outputs["vi-VN"])["closing_markdown"] = (
+            "Dừng lại, nhìn thêm một lần rồi tự quyết định theo nhịp của bạn."
+        )
         review_ports = {
-            locale: _CapturePort(payload) for locale, payload in writer_outputs.items()
+            locale: _CapturePort(payload) for locale, payload in review_outputs.items()
         }
 
         async def fake_review_port(
@@ -605,6 +612,31 @@ async def test_f4_quality_dispatch_is_bilingual_idempotent_and_final_gate_exact(
         view = await get_operator_case_view(session, content_case_id=case_id)
         assert len(view.quality_lanes) == 2
         assert all(lane.pending_approval_ready for lane in view.quality_lanes)
+        assert {lane.locale for lane in view.quality_lanes if lane.human_voice is not None} == {
+            "vi-VN",
+            "en",
+        }
+        for projected_lane in view.quality_lanes:
+            assert projected_lane.human_voice is not None
+            assert projected_lane.human_voice.advisory_only is True
+            assert projected_lane.human_voice.trace_artifact.id is not None
+            assert projected_lane.human_voice.changes
+            closing_change = next(
+                change
+                for change in projected_lane.human_voice.changes
+                if change.field == "closing_markdown"
+            )
+            assert closing_change.before != closing_change.after
+            assert projected_lane.source_writer_draft is not None
+            assert projected_lane.revised_draft is not None
+            assert (
+                projected_lane.human_voice.source_draft_hash
+                != projected_lane.source_writer_draft.content_hash
+            )
+            assert (
+                projected_lane.human_voice.rewritten_draft_hash
+                != projected_lane.revised_draft.content_hash
+            )
         checkpoints = list(
             (
                 await session.scalars(

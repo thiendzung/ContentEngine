@@ -284,6 +284,53 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
       {lane.warn_count > 0 && (
         <p className="quality-warning-note">Còn {lane.warn_count} cảnh báo cần đọc ở bản duyệt cuối.</p>
       )}
+      {lane.human_voice && (
+        <details className="operator-technical-details">
+          <summary>Human Voice · so sánh trước / sau</summary>
+          <p className="operator-note">
+            Chỉ là chẩn đoán style mô tả; không phải AI detector, điểm chất lượng hay phần trăm “giống người”.
+          </p>
+          <div className="quality-lane-checks">
+            <div>
+              <span>Trước rewrite</span>
+              <strong>{lane.human_voice.before.length} marker</strong>
+              <small>
+                {lane.human_voice.before.length
+                  ? lane.human_voice.before.map((item) => `${item.code} ×${item.count}`).join(" · ")
+                  : "không có marker công thức"}
+              </small>
+            </div>
+            <div>
+              <span>Sau rewrite</span>
+              <strong>{lane.human_voice.after.length} marker</strong>
+              <small>
+                {lane.human_voice.after.length
+                  ? lane.human_voice.after.map((item) => `${item.code} ×${item.count}`).join(" · ")
+                  : "không có marker công thức"}
+              </small>
+            </div>
+          {lane.human_voice.changes.length > 0 ? (
+            <div className="human-voice-changes">
+              {lane.human_voice.changes.map((change) => (
+                <div className="human-voice-change" key={change.field}>
+                  <strong>{change.field}</strong>
+                  <div>
+                    <span>Trước</span>
+                    <p className="markdown-copy">{change.before}</p>
+                  </div>
+                  <div>
+                    <span>Sau</span>
+                    <p className="markdown-copy">{change.after}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="operator-note">Không có thay đổi prose giữa source draft và revised draft.</p>
+          )}
+          </div>
+        </details>
+      )}
       {readerIssues.length > 0 && (
         <section className="warnings">
           <p className="label">Điểm cần sửa cho người đọc</p>
@@ -311,6 +358,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
         <dl>
           <div><dt>Writer run</dt><dd>{lane.writer_run_id ?? "—"}</dd></div>
           <div><dt>Revised draft</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
+          <div><dt>Human Voice trace</dt><dd>{lane.human_voice?.trace_artifact.id ?? "—"}</dd></div>
           <div><dt>Audit artifact</dt><dd>{lane.assertion_audit_artifact?.id ?? "—"}</dd></div>
           <div><dt>Source-copy artifact</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
           <div><dt>Reader Value</dt><dd>{lane.reader_value_artifact?.id ?? "—"}</dd></div>

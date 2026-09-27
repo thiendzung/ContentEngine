@@ -3,35 +3,31 @@ name: CI
 on:
   push:
     branches: [main, ce01-walking-skeleton]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "wordpress/**"
+      - ".github/workflows/ci.yml"
+      - "Makefile"
   pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "wordpress/**"
+      - ".github/workflows/ci.yml"
+      - "Makefile"
 
 permissions:
   contents: read
 
-jobs:
-  quality:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: contentengine_test
-          POSTGRES_USER: contentengine
-          POSTGRES_PASSWORD: contentengine
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U contentengine -d contentengine_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
-    env:
-      APP_ENV: test
-      APP_VERSION: 0.1.0-ce04
-      DATABASE_URL: postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine
-      TEST_DATABASE_URL: postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_test
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+jobs:
+  minimum-confirmation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
 
     steps:
       - uses: actions/checkout@v4
@@ -62,32 +58,15 @@ jobs:
         working-directory: backend
         run: mypy app
 
-      - name: Run migration round-trip
-        working-directory: backend
-        run: |
-          alembic upgrade head
-          alembic downgrade 20260902_0001
-          alembic upgrade head
-
-      - name: Backend tests
-        working-directory: backend
-        run: pytest
-
-      - name: Export OpenAPI
-        working-directory: backend
-        run: python -m scripts.dump_openapi
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend
         working-directory: frontend
         run: npm ci --no-audit --no-fund
-
-      - name: Generate frontend API types
-        working-directory: frontend
-        run: npm run gen:types
 
       - name: Frontend lint
         working-directory: frontend
@@ -97,15 +76,11 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
-      - name: Frontend build
-        working-directory: frontend
-        run: npm run build
-
-      - name: Verify frontend release inputs stay clean
+      - name: Verify install inputs stay clean
         run: |
           DIRTY="$(git status --porcelain -- frontend/package-lock.json frontend/next-env.d.ts frontend/tsconfig.json)"
           if [ -n "$DIRTY" ]; then
             printf '%s\n' "$DIRTY"
-            echo "Frontend install/build mutated canonical release inputs"
+            echo "Install/typecheck mutated canonical release inputs"
             exit 1
           fi

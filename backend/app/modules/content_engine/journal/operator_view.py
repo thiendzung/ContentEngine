@@ -26,6 +26,12 @@ from app.modules.content_engine.journal.angle import (
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
 )
+from app.modules.content_engine.journal.human_voice import HUMAN_VOICE_POLICY_VERSION
+from app.modules.content_engine.journal.human_voice_trace import (
+    HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+    HUMAN_VOICE_TRACE_GENERATOR_VERSION,
+    HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS,
+)
 from app.modules.content_engine.journal.models import JournalIntakeSpec, JournalRequiredLocale
 from app.modules.content_engine.journal.operator_control import OperatorControlError, OperatorState
 from app.modules.content_engine.journal.operator_quality import get_quality_progress
@@ -163,6 +169,28 @@ class OperatorQualityRefView(BaseModel):
     content_hash: str | None = None
 
 
+class OperatorHumanVoiceFindingView(BaseModel):
+    code: str
+    count: int
+
+
+class OperatorHumanVoiceChangeView(BaseModel):
+    field: str
+    before: str
+    after: str
+
+
+class OperatorHumanVoiceComparisonView(BaseModel):
+    trace_artifact: OperatorQualityRefView
+    policy_version: str
+    source_draft_hash: str
+    rewritten_draft_hash: str
+    advisory_only: bool
+    before: list[OperatorHumanVoiceFindingView] = Field(default_factory=list)
+    after: list[OperatorHumanVoiceFindingView] = Field(default_factory=list)
+    changes: list[OperatorHumanVoiceChangeView] = Field(default_factory=list)
+
+
 class OperatorQualityLaneView(BaseModel):
     locale: str
     locale_variant_id: UUID
@@ -171,6 +199,7 @@ class OperatorQualityLaneView(BaseModel):
     status: str
     source_writer_draft: OperatorQualityRefView | None = None
     revised_draft: OperatorQualityRefView | None = None
+    human_voice: OperatorHumanVoiceComparisonView | None = None
     review_step_run_id: UUID | None = None
     review_job_id: UUID | None = None
     review_attempt: int | None = None
@@ -330,6 +359,223 @@ def _canonical_hash(value: object) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def _human_voice_findings(
+    value: object,
+) -> list[OperatorHumanVoiceFindingView]:
+    if not isinstance(value, list):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    findings: list[OperatorHumanVoiceFindingView] = []
+    seen: set[str] = set()
+    for raw in value:
+        if not isinstance(raw, dict) or set(raw) != {"code", "count"}:
+            raise OperatorControlError("operator_human_voice_projection_invalid")
+        code = raw.get("code")
+        count = raw.get("count")
+        if (
+            not isinstance(code, str)
+            or not code.strip()
+            or code in seen
+            or isinstance(count, bool)
+            or not isinstance(count, int)
+            or count <= 0
+        ):
+            raise OperatorControlError("operator_human_voice_projection_invalid")
+        seen.add(code)
+        findings.append(OperatorHumanVoiceFindingView(code=code, count=count))
+    return findings
+
+
+def _draft_payload_for_human_voice(artifact: Artifact) -> dict[str, object]:
+    payload = artifact.content_json
+    if not isinstance(payload, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    draft = payload.get("draft")
+    if not isinstance(draft, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    return cast(dict[str, object], draft)
+
+
+def _human_voice_text(value: object) -> str:
+    if not isinstance(value, str):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    return value
+
+
+def _human_voice_changes(
+    *,
+    source: Artifact,
+    revised: Artifact,
+) -> list[OperatorHumanVoiceChangeView]:
+    before = _draft_payload_for_human_voice(source)
+    after = _draft_payload_for_human_voice(revised)
+    changes: list[OperatorHumanVoiceChangeView] = []
+
+    for field in ("title", "standfirst", "lead_markdown", "closing_markdown"):
+        before_text = _human_voice_text(before.get(field))
+        after_text = _human_voice_text(after.get(field))
+        if before_text != after_text:
+            changes.append(
+                OperatorHumanVoiceChangeView(
+                    field=field,
+                    before=before_text,
+                    after=after_text,
+                )
+            )
+
+    before_sections = before.get("sections")
+    after_sections = after.get("sections")
+    if (
+        not isinstance(before_sections, list)
+        or not isinstance(after_sections, list)
+        or len(before_sections) != len(after_sections)
+    ):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    for before_raw, after_raw in zip(before_sections, after_sections, strict=True):
+        if not isinstance(before_raw, dict) or not isinstance(after_raw, dict):
+            raise OperatorControlError("operator_human_voice_projection_invalid")
+        before_id = before_raw.get("section_id")
+        after_id = after_raw.get("section_id")
+        if (
+            not isinstance(before_id, str)
+            or not before_id
+            or before_id != after_id
+        ):
+            raise OperatorControlError("operator_human_voice_projection_invalid")
+        for field in ("heading", "body_markdown"):
+            before_text = _human_voice_text(before_raw.get(field))
+            after_text = _human_voice_text(after_raw.get(field))
+            if before_text != after_text:
+                changes.append(
+                    OperatorHumanVoiceChangeView(
+                        field=f"section:{before_id}:{field}",
+                        before=before_text,
+                        after=after_text,
+                    )
+                )
+    return changes
+
+
+def _draft_hash_from_artifact(artifact: Artifact) -> str:
+    payload = artifact.content_json
+    if not isinstance(payload, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    draft = payload.get("draft")
+    if not isinstance(draft, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    return _canonical_hash(draft)
+
+
+async def _human_voice_comparison(
+    session: AsyncSession,
+    *,
+    source: Artifact | None,
+    revised: Artifact | None,
+) -> OperatorHumanVoiceComparisonView | None:
+    if revised is None:
+        return None
+    revised_payload = revised.content_json
+    if not isinstance(revised_payload, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    generator = revised_payload.get("generator")
+    generator_version = (
+        generator.get("version")
+        if isinstance(generator, dict) and isinstance(generator.get("version"), str)
+        else None
+    )
+    trace_required = (
+        generator_version in HUMAN_VOICE_TRACE_REQUIRED_REVIEW_REVISE_GENERATORS
+    )
+    rows = list(
+        (
+            await session.scalars(
+                select(Artifact)
+                .where(
+                    Artifact.run_id == revised.run_id,
+                    Artifact.artifact_type == HUMAN_VOICE_TRACE_ARTIFACT_TYPE,
+                    Artifact.locale == revised.locale,
+                )
+                .order_by(Artifact.version, Artifact.id)
+            )
+        ).all()
+    )
+    matches: list[Artifact] = []
+    for artifact in rows:
+        payload = artifact.content_json
+        rewritten_ref = payload.get("rewritten_draft") if isinstance(payload, dict) else None
+        if isinstance(rewritten_ref, dict) and rewritten_ref.get("id") == str(revised.id):
+            matches.append(artifact)
+    if not matches:
+        if trace_required:
+            raise OperatorControlError("operator_human_voice_trace_required")
+        return None
+    if len(matches) != 1:
+        raise OperatorControlError("operator_human_voice_trace_conflict")
+    if source is None:
+        raise OperatorControlError("operator_human_voice_source_missing")
+
+    artifact = matches[0]
+    payload = artifact.content_json
+    if (
+        not isinstance(payload, dict)
+        or _canonical_hash(payload) != artifact.content_hash
+        or payload.get("artifact_type") != HUMAN_VOICE_TRACE_ARTIFACT_TYPE
+        or payload.get("generator_version") != HUMAN_VOICE_TRACE_GENERATOR_VERSION
+        or payload.get("locale") != revised.locale
+    ):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    source_ref = payload.get("source_draft")
+    rewritten_ref = payload.get("rewritten_draft")
+    if not isinstance(source_ref, dict) or not isinstance(rewritten_ref, dict):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    source_draft_hash = _draft_hash_from_artifact(source)
+    rewritten_draft_hash = _draft_hash_from_artifact(revised)
+    expected_source = {
+        "id": str(source.id),
+        "version": source.version,
+        "content_hash": source.content_hash,
+        "draft_hash": source_draft_hash,
+    }
+    expected_rewritten = {
+        "id": str(revised.id),
+        "version": revised.version,
+        "content_hash": revised.content_hash,
+        "draft_hash": rewritten_draft_hash,
+    }
+    if source_ref != expected_source or rewritten_ref != expected_rewritten:
+        raise OperatorControlError("operator_human_voice_projection_stale")
+    comparison = payload.get("style_comparison")
+    if not isinstance(comparison, dict) or set(comparison) != {
+        "policy_version",
+        "locale",
+        "before",
+        "after",
+        "advisory_only",
+    }:
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    policy_version = payload.get("policy_version")
+    if (
+        policy_version != HUMAN_VOICE_POLICY_VERSION
+        or comparison.get("policy_version") != policy_version
+        or comparison.get("locale") != revised.locale
+        or comparison.get("advisory_only") is not True
+    ):
+        raise OperatorControlError("operator_human_voice_projection_invalid")
+    return OperatorHumanVoiceComparisonView(
+        trace_artifact=OperatorQualityRefView(
+            id=artifact.id,
+            version=artifact.version,
+            content_hash=artifact.content_hash,
+        ),
+        policy_version=policy_version,
+        source_draft_hash=source_draft_hash,
+        rewritten_draft_hash=rewritten_draft_hash,
+        advisory_only=True,
+        before=_human_voice_findings(comparison.get("before")),
+        after=_human_voice_findings(comparison.get("after")),
+        changes=_human_voice_changes(source=source, revised=revised),
+    )
 
 
 async def _coverage_support_diagnostic(
@@ -733,6 +979,11 @@ async def get_operator_case_view(
                 if lane.revised_draft is not None
                 else None
             )
+            human_voice = await _human_voice_comparison(
+                session,
+                source=lane.source_draft,
+                revised=lane.revised_draft,
+            )
             quality_lanes.append(
                 OperatorQualityLaneView(
                     locale=lane.locale,
@@ -742,6 +993,7 @@ async def get_operator_case_view(
                     status=lane.status,
                     source_writer_draft=source_ref,
                     revised_draft=revised_ref,
+                    human_voice=human_voice,
                     review_step_run_id=lane.review.step.id if lane.review.step else None,
                     review_job_id=lane.review.job.id if lane.review.job else None,
                     review_attempt=lane.review.job.attempt if lane.review.job else None,
@@ -902,6 +1154,9 @@ __all__ = [
     "OperatorOutlineGateView",
     "OperatorRequiredLocaleView",
     "OperatorWriterLaneView",
+    "OperatorHumanVoiceComparisonView",
+    "OperatorHumanVoiceFindingView",
+    "OperatorHumanVoiceChangeView",
     "OperatorQualityLaneView",
     "OperatorQualityRefView",
     "get_operator_case_view",

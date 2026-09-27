@@ -10,6 +10,10 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.human_voice import (
+    HUMAN_VOICE_POLICY_VERSION,
+    HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
+)
 from app.modules.content_engine.journal.writer import WriterGenerationError, WriterModelPort
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsSnapshot
 from app.modules.harness.agent_runner import (
@@ -103,6 +107,8 @@ def _runtime_metadata(result: AgentRunResult, *, locale: str) -> dict[str, objec
         "locale": locale,
         "stage": "review_revise",
         "independent_locale_revision": True,
+        "human_voice_policy_version": HUMAN_VOICE_POLICY_VERSION,
+        "human_voice_render_protocol_version": HUMAN_VOICE_RENDER_PROTOCOL_VERSION,
     }
     if result.session_id is not None:
         metadata["session_id"] = result.session_id
@@ -154,6 +160,16 @@ def render_review_revise_prompt(
         "Angle and promise. Prefer wording such as how to inspect, compare, read or evaluate "
         "the topic over an unsupported origin/provenance label. Do not invent title support "
         "refs.\n\n"
+        f"HUMAN VOICE CONTRACT ({HUMAN_VOICE_RENDER_PROTOCOL_VERSION}):\n"
+        "This Review/Revise call is also the bounded Human Voice rewrite; do not add a second "
+        "rewrite stage. Improve rhythm, specificity, warmth, lived texture and natural phrasing "
+        "only inside the exact source-draft and support boundaries. Do not invent unsupported "
+        "facts, artist intent or quotes, customer stories, sensory observations, business "
+        "promises, prices, scarcity or policies. Do not use another locale draft. New numeric "
+        "tokens and direct quotes must already exist in the same source region or its exact "
+        "allowed support. The rewritten exact bytes must pass Assertion Audit before downstream "
+        "quality may advance. Authorship detection and humanization percentages are not part "
+        "of this task.\n\n"
         "CLOSING SUPPORT CONTRACT:\n"
         "The Writer schema has no evidence-ref or originality-ref fields for closing_markdown, "
         "and Assertion Audit therefore gives closing sentences zero allowed support refs. "
@@ -237,6 +253,7 @@ class CliReviewReviseModelPort(WriterModelPort):
             "source_draft_ref",
             "source_draft",
             "source_unresolved_factual_claims",
+            "human_voice_policy",
             "revision_policy",
         }
         if not required.issubset(sanitized):
@@ -245,10 +262,20 @@ class CliReviewReviseModelPort(WriterModelPort):
             raise WriterGenerationError("review_revise_model_input_locale_mismatch")
         variant = sanitized.get("locale_variant")
         source_draft = sanitized.get("source_draft")
+        human_voice_policy = sanitized.get("human_voice_policy")
         if not isinstance(variant, dict) or variant.get("locale") != self._config.locale:
             raise WriterGenerationError("review_revise_locale_variant_mismatch")
         if not isinstance(source_draft, dict) or source_draft.get("locale") != self._config.locale:
             raise WriterGenerationError("review_revise_source_locale_mismatch")
+        if (
+            not isinstance(human_voice_policy, dict)
+            or human_voice_policy.get("version") != HUMAN_VOICE_POLICY_VERSION
+            or human_voice_policy.get("render_protocol_version")
+            != HUMAN_VOICE_RENDER_PROTOCOL_VERSION
+            or human_voice_policy.get("post_rewrite_assertion_audit_required") is not True
+            or human_voice_policy.get("extra_model_call") is not False
+        ):
+            raise WriterGenerationError("review_revise_human_voice_policy_invalid")
         cloned = json.loads(json.dumps(sanitized, ensure_ascii=False))
         if not isinstance(cloned, dict):
             raise WriterGenerationError("review_revise_model_input_invalid")

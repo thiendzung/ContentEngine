@@ -75,16 +75,18 @@ Docs-only:
 - [ ] Diff documentation-only, secret-free and in scope.
 
 Implementation:
-- [ ] Focused failure/contract test and relevant broader regression pass.
-- [ ] Backend lint/type; API generation when affected.
-- [ ] Frontend lint/type/build and key interactions when affected.
-- [ ] Migration upgrade and applicable downgrade/round-trip on disposable data.
-- [ ] Relevant happy/failure/retry/approval/resume/provenance paths tested.
-- [ ] Local gates run on exact candidate SHA in an authorized safe environment.
+- [ ] MG adds the smallest focused failure/contract regression with the implementation and performs self-review.
+- [ ] Agent Local runs applicable focused + full backend tests on the exact candidate SHA.
+- [ ] Agent Local runs disposable TEST DB migration/reset proof when schema/DB behavior is relevant.
+- [ ] Agent Local runs frontend lint/type/build and key interactions when frontend is affected; production build belongs here, not routine GitHub CI.
+- [ ] Agent Local runs applicable runtime/smoke proof on the real machine without touching unauthorized operational state.
+- [ ] Exact-ref OCR is executed once at the appropriate machine boundary and MG triages the findings; do not duplicate it merely for process symmetry.
+- [ ] All heavy local gates use the exact candidate SHA in an authorized safe environment.
 
 Every PR:
-- [ ] Actual diff reviewed; self-review distinguished from independent evidence.
-- [ ] Checks not run disclosed; required CI not bypassed.
+- [ ] Actual diff reviewed; MG self-review distinguished from Agent Local/OCR evidence.
+- [ ] GitHub Actions is only a minimum confirmation gate; no routine full-test/build duplication.
+- [ ] If Actions quota/service is unavailable, record `CI not run / unavailable`; never claim PASS. Exact-SHA Agent Local proof remains required.
 - [ ] No secrets/generated junk/unrelated changes.
 - [ ] Exact evidence included; merge-ready docs do not imply runtime completion.
 
@@ -92,7 +94,8 @@ Every PR:
 
 - [ ] Code/task transition and semantic AI_context/TASKS update in one coherent change.
 - [ ] Runtime evidence dated/sanitized and reviewed before asserting next gate.
-- [ ] Live HEAD/PR/CI read from GitHub, not maintained as stale copies.
+- [ ] Live HEAD/PR/available-CI state read from GitHub, not maintained as stale copies.
+- [ ] MG reviews exact-SHA Agent Local evidence before the minimal GitHub confirmation gate or documented CI-unavailable fallback.
 - [ ] Founder alone merges; no direct main write/auto-merge.
 - [ ] After merge verify actual SHA/checks and semantic state.
 - [ ] Before local use verify deployed checkout matches approved ref.
@@ -160,95 +163,59 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 ## N. CQ-01 promise coverage
 
-- [ ] New manual Journal intake has 1..12 non-empty, normalized, case-insensitive-deduplicated coverage requirements.
-- [ ] Coverage remains editorial/Founder intent; it is not promoted to customer truth or external evidence.
-- [ ] Exact requirement text is included in Evidence Research topic extraction.
-- [ ] Journal opportunity snapshot exposes stable ordered `coverage-1..N` IDs.
-- [ ] Every Angle candidate classifies every exact ID exactly once as `covered` or `reduced` with non-empty rationale.
-- [ ] Missing, duplicate or unknown Angle coverage IDs fail closed.
-- [ ] Agent Bridge structured output schema binds exact allowed Angle coverage IDs.
-- [ ] Founder Angle view shows each original requirement and keep/reduce decision before approval.
-- [ ] Reduced scope is explicit in the approval interaction; it is not silently hidden.
-- [ ] Outline maps only approved-Angle `covered` IDs.
-- [ ] Every committed `covered` ID appears in at least one Outline section; missing coverage fails closed.
-- [ ] Unknown or `reduced` IDs in Outline mapping fail closed.
-- [ ] Outline structured output schema binds exact committed IDs.
-- [ ] Historical no-coverage opportunities/artifacts remain readable without fabricated backfill.
-- [ ] Rev-0043 migration round-trip passes on disposable CI data; operational DB migration remains separately authorized.
-- [ ] Focused CQ-01 tests + full CI green on exact final SHA.
-- [ ] MG self-review finds no unresolved P0/P1 content-integrity defect.
-- [ ] Exact-ref OpenCodeReview advisory review is triaged.
-- [x] Agent Local returns bounded exact-head verification before Founder merge.
+- [x] Founder coverage requirements are durable, normalized and stable-ID mapped downstream.
+- [x] Coverage remains editorial intent rather than customer truth/evidence.
+- [x] Angle classifies every exact requirement once as covered/reduced; invalid mappings fail closed.
+- [x] Outline maps every committed covered requirement and rejects missing/unknown/reduced IDs.
+- [x] Historical no-coverage records remain readable.
+- [x] CI / MG / OCR / Agent Local / Founder merge gates completed.
 
 ## O. CQ-02 Pillar / Cluster editorial role
 
-- [ ] New Founder Journal intake chooses exactly `pillar` or `cluster`; no new `primary`.
-- [ ] Existing Opportunity Map `JournalRole.PILLAR|CLUSTER` is reused; no parallel role taxonomy.
-- [ ] Current-role Opportunity and source LocaleVariant agree exactly.
-- [ ] Required translation LocaleVariants inherit the same editorial role.
-- [ ] Historical `primary`/missing-role rows remain readable without backfill or invented meaning.
-- [ ] One deterministic role contract is derived from the exact opportunity snapshot.
-- [ ] Pillar contract preserves overview/navigation semantics without forcing Cluster-level depth.
-- [ ] Cluster contract preserves narrow/deep semantics without expanding into a general Pillar.
-- [ ] Angle receives and validates the exact editorial role contract.
-- [ ] Outline receives and validates the exact editorial role contract.
-- [ ] Writer receives and validates the exact role and LocaleVariant consistency.
-- [ ] Local-agent prompts expose the exact contract; registry definitions are not silently mutated.
-- [ ] Generation/render identity changes prevent silent reuse of role-unaware output.
-- [ ] Operator UI shows the exact role before human review.
-- [ ] No parent-Pillar/child-Cluster relationship is invented if it is not durably known.
-- [ ] Structural contract is not reported as semantic-quality proof; CQ-04/CQ-06 remain responsible.
-- [ ] Focused role tests and broader regressions pass.
-- [ ] Backend lint/type and frontend lint/type/build pass.
-- [ ] MG self-review finds no unresolved P0/P1 editorial-contract defect.
-- [x] Exact-ref OpenCodeReview is triaged.
-- [ ] Agent Local returns bounded exact-head verification before Founder merge.
-
-
+- [x] New Journal intake uses exactly `pillar|cluster`; no new `primary`.
+- [x] Opportunity and LocaleVariants carry one consistent role contract.
+- [x] Angle, Outline, Writer and local-agent prompts receive the exact role.
+- [x] Legacy `primary|NULL` remains readable without invented meaning.
+- [x] No unknown parent/child/sibling relationship is invented.
+- [x] CI / MG / OCR / Agent Local / Founder merge gates completed.
 
 ## P. CQ-03 Evidence / Originality depth
 
-- [x] Exact `coverage-1..N` IDs/text from the selected Opportunity are the assessment unit.
-- [x] Locked EvidenceSet and approved OriginalityPack are exact immutable inputs with IDs/versions/hashes preserved.
-- [x] External Evidence and MOTGU-owned Originality remain separate support classes.
-- [x] Search/discovery snippets and search rank are never promoted to factual Evidence.
-- [x] Every coverage ID appears exactly once as `evidence_supported|originality_supported|mixed|unresolved`.
-- [x] Support mappings cite only exact allowed Evidence IDs and/or usable Originality source refs.
-- [x] Missing, duplicate or unknown coverage/ref IDs fail closed.
-- [x] `context_only`, contradicting and qualifying evidence are preserved and cannot silently count as clean factual support.
-- [x] Source authority/bias metadata is visible to semantic assessment but never converted into a fake numeric truth score.
-- [x] Lexical overlap alone cannot declare semantic support.
-- [x] Any unresolved coverage requirement blocks Angle generation and is surfaced as a research/support gap.
-- [x] Validated support-depth contract is immutable and bound into downstream Angle lineage.
-- [x] Legacy no-coverage behavior is explicit; do not fabricate coverage depth for historical records.
-- [x] No new business table/schema is added unless implementation proves a durable query/update need.
-- [x] Focused happy/adversarial tests + broader regressions pass.
-- [x] Backend lint/type/API generation and frontend checks pass when affected.
-- [x] MG self-review finds no unresolved P0/P1 support-integrity defect.
-- [ ] Exact-ref OpenCodeReview is triaged.
-- [ ] Agent Local returns bounded exact-head verification before Founder merge.
-
+- [x] Exact coverage IDs/text are the support-depth assessment unit.
+- [x] Locked EvidenceSet and approved OriginalityPack remain separate immutable inputs.
+- [x] Every requirement maps exactly once to `evidence_supported|originality_supported|mixed|unresolved`.
+- [x] Context-only/contradicting/qualifying evidence cannot silently become clean factual support.
+- [x] Unresolved coverage blocks Angle and is exposed to the operator.
+- [x] No lexical-overlap-only truth decision or numeric truth score.
+- [x] CI / MG / OCR / Agent Local / Founder merge gates completed.
 
 ## Q. CQ-04 Angle / Outline semantic quality
 
-- [x] Current Angle/Outline schema/ref validation is audited separately from semantic quality.
-- [x] CQ-04 uses immutable semantic-quality Artifacts rather than a new business table by default.
-- [x] Angle assessment binds the exact candidate, role contract, committed coverage and CQ-03 support-depth lineage when present.
-- [x] Angle verdict is exactly `pass|revise`; no universal numeric quality score.
-- [x] Angle findings use stable code + exact subject ref + reason + remediation.
-- [x] The semantic assessor is explicitly required to check title → reader problem → central question → core promise coherence.
-- [x] Pillar Angle assessment requires bounded breadth/navigation and delegation of narrow specialist depth.
-- [x] Cluster Angle assessment requires one bounded subproblem, deeper treatment and no Pillar-style expansion.
-- [x] Outline assessment binds the exact approved Angle and exact Outline artifact.
-- [x] Every committed coverage requirement must be intentionally fulfilled by at least one semantically matching section.
-- [x] Every section must have a distinct reader job and evidence/originality purpose.
-- [x] Major section overlap/repetition and broad-summary filler are surfaced before Writer.
-- [x] Existing CQ-02 relationship guard remains authoritative; no parent/child/sibling identity is invented.
-- [x] CQ-04 never reclassifies factual Evidence truth established by CQ-03.
-- [x] Operator/read-model exposes human-readable pass/revise reasons at Angle and Outline gates.
-- [x] Positive/adversarial Pillar + Cluster fixtures cover role drift, coverage drift, redundant sections and unsupported section intent.
-- [x] Generation/render identity changes prevent silent reuse when semantic behavior changes.
-- [ ] Final code/docs SHA passes broader regressions + lint/type/API/frontend checks.
-- [ ] MG self-review finds no unresolved P0/P1 semantic-quality defect.
-- [ ] Exact-ref OpenCodeReview is triaged.
-- [ ] Agent Local returns bounded exact-head verification before Founder merge.
+- [x] Angle assessment binds exact candidate, role contract, committed coverage and CQ-03 support-depth lineage when present.
+- [x] Angle verdict is exactly `pass|revise` with stable finding code/ref/reason/remediation.
+- [x] Pillar and Cluster semantic behavior remain distinct.
+- [x] Outline binds exact approved Angle and checks coverage placement, section jobs/support purposes and major redundancy/filler.
+- [x] CQ-04 never reclassifies factual Evidence truth or invents Pillar↔Cluster relationships.
+- [x] Operator projection exposes semantic findings truthfully.
+- [x] Current role-aware missing/stale semantic Artifact fails closed; pre-CQ04/legacy no-role compatibility remains readable.
+- [x] CI / MG / OCR / Agent Local / Founder merge gates completed.
+
+## R. CQ-05 Writer + Human Voice truth preservation
+
+- [x] Existing Writer → Review/Revise → Assertion Audit → Source-copy pipeline is the integration target.
+- [x] Historical HV-01 is reference material only; stale workflow code is not merged blindly.
+- [x] Human Voice reuses the existing Review/Revise model call unless evidence proves a separate call is necessary.
+- [x] Rewrite source is one exact immutable locale Writer draft with id/version/hash.
+- [x] VI and EN remain independent lanes; sibling draft input remains forbidden.
+- [x] Exact Outline section IDs/order/support refs remain unchanged by Human Voice rewrite.
+- [x] Deterministic guards reject introduced unsupported numbers and direct quotes.
+- [x] Prompt/policy explicitly forbids invented artist intent, customer stories, sensory observations, business promises, prices, scarcity and policies.
+- [x] Human Voice style diagnostics are advisory only; no AI-detector/authorship score or humanization percentage.
+- [x] Rewritten output is a new immutable exact draft; source bytes are never mutated.
+- [x] Before/after trace binds exact source and rewritten artifact id/version/hash plus visible-draft hashes.
+- [x] Assertion Audit reruns on the rewritten exact bytes before Source-copy/final quality can advance.
+- [x] Stale/source substitution and Human Voice trace conflicts fail closed; Source-copy requires the exact Assertion Audit source binding.
+- [x] Safe rewrite fixtures and adversarial truth-drift fixtures cover VI and EN.
+- [x] Operator can inspect bounded before/after style comparison and exact trace refs without fabricated quality scoring.
+- [x] Review/Revise v6 + versioned Human Voice render protocol prevent silent reuse when semantics change.
+- [ ] CI / MG / OCR / Agent Local / Founder merge gates complete.

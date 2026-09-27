@@ -418,6 +418,38 @@ async def test_source_copy_rejects_mismatched_assertion_audit_version_pairs(
 
 
 @pytest.mark.asyncio
+async def test_source_copy_rejects_assertion_audit_bound_to_different_draft() -> None:
+    async with isolated_session() as session:
+        fixture, source, _audit_input, audit_result = await _persisted_audit_source(
+            session,
+            generator_version="ce05.journal_assertion_audit.v5",
+            evaluator_version="ce05.assertion_audit.hard_gate.v5",
+        )
+        sibling = Artifact(
+            run_id=source.run_id,
+            step_run_id=source.step_run_id,
+            artifact_type=source.artifact_type,
+            locale=source.locale,
+            version=source.version + 1,
+            content_json=copy.deepcopy(source.content_json),
+            content_hash=source.content_hash,
+        )
+        session.add(sibling)
+        await session.flush()
+
+        with pytest.raises(
+            SourceCopyError,
+            match="source_copy_assertion_audit_source_mismatch",
+        ):
+            await _load_persisted_source_copy(
+                session,
+                fixture=fixture,
+                source=sibling,
+                audit_result=audit_result,
+            )
+
+
+@pytest.mark.asyncio
 async def test_source_copy_accepts_noncritical_assertion_audit_warning() -> None:
     async with isolated_session() as session:
         fixture, source, audit_input = await _source(session)
