@@ -649,8 +649,8 @@ CQ-06 boundaries held: no auto-publication, no WordPress activation, no new work
 - [x] CQ07-0: exact post-CQ06 main base locked at `8dfe5d0665d7dcb931336a52ef8102bef36af03f`.
 - [x] CQ07-0: tracking issue #233 remains the canonical pilot contract.
 - [x] CQ07-0: preserve the rule that the pilot proves whether a durable Pillar↔Cluster relation is needed; do not add one before evidence.
-- [ ] CQ07-1: Founder selects one exact Pillar + one exact related Cluster from the approved MOTGU A1 content plan. MG must not infer or auto-select the pair.
-- [ ] CQ07-2: freeze exact pair identity, role, primary question/intent, promise coverage and required VI/EN lanes before execution.
+- [x] CQ07-1: Founder selected Option B — P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
+- [x] CQ07-2: exact pair identity/role/question/intent/promise/coverage/VI+EN lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`; v1.0 Master Plan owns canonical identity while Data Lock supplies customer problem/detail.
 - [ ] CQ07-3: preflight the existing pipeline for both items on disposable/local runtime; identify only concrete blockers, no speculative schema work.
 - [ ] CQ07-4: run the Pillar through Founder intake → Evidence/Originality → Angle → Founder Angle approval → Outline → Founder Outline approval → Writer → Human Voice → Deep Quality → Founder final review.
 - [ ] CQ07-5: run the related Cluster through the same chain independently.
