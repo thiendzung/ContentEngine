@@ -59,9 +59,8 @@ class SufficientSearch:
 
 
 class FailingReader:
-    name = "jina"
-
-    def __init__(self, failure_class: str) -> None:
+    def __init__(self, failure_class: str, *, name: str = "jina") -> None:
+        self.name = name
         self.failure_class = failure_class
         self.calls = 0
 
@@ -77,9 +76,8 @@ class FailingReader:
 
 
 class SuccessReader:
-    name = "direct_http"
-
-    def __init__(self) -> None:
+    def __init__(self, *, name: str = "direct_http") -> None:
+        self.name = name
         self.calls = 0
 
     async def read(self, url: str, *, query: str) -> PageReadResponse:
@@ -260,3 +258,113 @@ async def test_reader_fallback_does_not_mask_provider_rate_limit(
         and decision.failure_class == "provider_rate_limit"
         for decision in result.decisions
     )
+
+
+@pytest.mark.asyncio
+async def test_reader_chain_uses_terminal_reader_after_provider_native_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    primary = FailingReader("tool_invalid_response", name="jina")
+    provider_native = FailingReader("provider_transient", name="exa_contents")
+    terminal = SuccessReader(name="direct_http")
+    router = ResearchRouter(
+        serper=SufficientSearch(),
+        reader=primary,
+        fallback_reader=provider_native,
+        terminal_reader=terminal,
+    )
+
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert primary.calls == 1
+    assert provider_native.calls == 1
+    assert terminal.calls == 1
+    assert len(result.documents) == 1
+    assert result.documents[0].provider == "direct_http"
+    assert any(
+        decision.provider == "exa_contents"
+        and decision.status.value == "failed"
+        and decision.failure_class == "provider_transient"
+        for decision in result.decisions
+    )
+
+
+@pytest.mark.asyncio
+async def test_reader_chain_does_not_hide_provider_native_auth_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    primary = FailingReader("tool_invalid_response", name="jina")
+    provider_native = FailingReader("provider_auth", name="exa_contents")
+    terminal = SuccessReader(name="direct_http")
+    router = ResearchRouter(
+        serper=SufficientSearch(),
+        reader=primary,
+        fallback_reader=provider_native,
+        terminal_reader=terminal,
+    )
+
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert primary.calls == 1
+    assert provider_native.calls == 1
+    assert terminal.calls == 0
+    assert result.documents == []
+
+
+@pytest.mark.asyncio
+async def test_required_intended_use_selects_only_evidence_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+
+    class MixedSearch(SufficientSearch):
+        async def search(self, request: SearchRequest) -> ProviderResponse:
+            response = await super().search(request)
+            sources = list(response.sources)
+            sources[2] = SourceCandidate(
+                provider=self.name,
+                query=request.query,
+                url="https://editorial.example/guide",
+                title="Editorial guide",
+                source_type="editorial",
+                commercial_bias=CommercialBias.MEDIUM,
+                intended_use=IntendedUse.DISCOVERY,
+                found_via="fixture",
+            )
+            return ProviderResponse(response.signals, tuple(sources), response.calls)
+
+    router = ResearchRouter(serper=MixedSearch())
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=0,
+        ),
+    )
+
+    assert len(result.selected_sources) == 2
+    assert all(
+        source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+        for source in result.selected_sources
+    )
+    assert all("editorial.example" not in source.url for source in result.selected_sources)
