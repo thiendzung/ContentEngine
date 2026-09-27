@@ -34,7 +34,7 @@ from app.modules.harness.agent_runner import (
     AgentRunRequest,
     AgentRunResult,
 )
-from app.modules.harness.models import ModelCall, StepRun
+from app.modules.harness.models import ModelCall
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 
 
@@ -103,26 +103,30 @@ async def test_deep_quality_agent_bridge_is_bounded_and_records_truthful_runtime
             session,
             **_loader_kwargs(lane, outline_result),
         )
-        run, handoff, reused = await ensure_deep_quality_run(
+        assert lane.deep_quality.run is not None
+        assert lane.deep_quality.handoff is not None
+        assert lane.deep_quality.step is not None
+        run = lane.deep_quality.run
+        handoff = lane.deep_quality.handoff
+        step = lane.deep_quality.step
+        assert run.status == "pending"
+        assert step.status == "pending"
+        assert step.input_artifact_refs_json == [
+            str(handoff.id),
+            str(source.source_artifact.id),
+            str(source.search_ai.artifact.id),
+        ]
+
+        same_run, same_handoff, reused = await ensure_deep_quality_run(
             session,
             source=source,
         )
-        assert reused is False
+        assert reused is True
+        assert same_run.id == run.id
+        assert same_handoff.id == handoff.id
 
-        step = StepRun(
-            run_id=run.id,
-            step_key=deep_quality_task_key("en"),
-            attempt=1,
-            status="running",
-            input_artifact_refs_json=[
-                str(handoff.id),
-                str(source.source_artifact.id),
-                str(source.search_ai.artifact.id),
-            ],
-            output_artifact_refs_json=[],
-        )
-        session.add(step)
         run.status = "running"
+        step.status = "running"
         await session.flush()
 
         manifest = await build_context_manifest(
