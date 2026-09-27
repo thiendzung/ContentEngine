@@ -651,7 +651,7 @@ CQ-06 boundaries held: no auto-publication, no WordPress activation, no new work
 - [x] CQ07-0: preserve the rule that the pilot proves whether a durable Pillar↔Cluster relation is needed; do not add one before evidence.
 - [x] CQ07-1: Founder selected Option B — P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
 - [x] CQ07-2: exact pair identity/role/question/intent/promise/coverage/VI+EN lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`; v1.0 Master Plan owns canonical identity while Data Lock supplies customer problem/detail.
-- [ ] CQ07-3: preflight the existing pipeline for both items on disposable/local runtime; identify only concrete blockers, no speculative schema work.
+- [x] CQ07-3: disposable/local pair preflight PASS on exact HEAD `990e66694a762a45165455d1fbbaeac31bb43737`: targeted 48 PASS; TEST DB rev `20260926_0044`; two independent P01/C02 intakes READY with exact EN+VI role/question/intent/promise/coverage; no durable pair relation required.
 - [ ] CQ07-4: run the Pillar through Founder intake → Evidence/Originality → Angle → Founder Angle approval → Outline → Founder Outline approval → Writer → Human Voice → Deep Quality → Founder final review.
 - [ ] CQ07-5: run the related Cluster through the same chain independently.
 - [ ] CQ07-6: compare the exact pair for bounded Pillar breadth, genuine Cluster depth, intentional overlap, truthful/useful internal links and VI/EN quality.
