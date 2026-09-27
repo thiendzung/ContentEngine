@@ -277,6 +277,7 @@ async def test_deep_quality_input_rejects_expected_snapshot_drift(
         ):
             await load_deep_quality_input(session, **kwargs)
 
+
 @pytest.mark.asyncio
 async def test_deep_quality_input_rejects_reparented_source_copy_run_lineage(
     monkeypatch: pytest.MonkeyPatch,
@@ -301,14 +302,15 @@ async def test_deep_quality_input_rejects_reparented_source_copy_run_lineage(
             setattr(run, run_field, UUID(int=1))
             try:
                 with session.no_autoflush:
-                    with pytest.raises(
-                        DeepQualityInputError,
-                        match="deep_quality_source_copy_invalid",
-                    ):
+                    with pytest.raises(DeepQualityInputError) as exc_info:
                         await load_deep_quality_input(
                             session,
                             **_loader_kwargs(lane, outline_result),
                         )
+                assert exc_info.value.code == "deep_quality_source_copy_invalid"
+                assert "source_copy_persisted_execution_invalid" in str(
+                    exc_info.value
+                )
             finally:
                 setattr(run, run_field, original)
 
@@ -337,14 +339,15 @@ async def test_deep_quality_input_rejects_reparented_search_run_lineage(
             setattr(run, run_field, UUID(int=1))
             try:
                 with session.no_autoflush:
-                    with pytest.raises(
-                        DeepQualityInputError,
-                        match="deep_quality_search_ai_invalid",
-                    ):
+                    with pytest.raises(DeepQualityInputError) as exc_info:
                         await load_deep_quality_input(
                             session,
                             **_loader_kwargs(lane, outline_result),
                         )
+                assert exc_info.value.code == "deep_quality_search_ai_invalid"
+                assert "quality_readiness_persisted_execution_invalid" in str(
+                    exc_info.value
+                )
             finally:
                 setattr(run, run_field, original)
 
