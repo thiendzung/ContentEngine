@@ -157,6 +157,19 @@ class QualityStage:
         return _latest_job(self.jobs)
 
 
+def _deep_quality_execution_complete(
+    run: ContentRun | None,
+    step: StepRun | None,
+) -> bool:
+    return (
+        run is not None
+        and step is not None
+        and step.run_id == run.id
+        and run.status == "completed"
+        and step.status == "completed"
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class QualityLane:
     locale: str
@@ -191,8 +204,12 @@ class QualityLane:
             == {"step_key": "final_review", "artifact_id": str(self.final_content.id)}
         ):
             return "final_gate_ready"
+        deep_execution_complete = _deep_quality_execution_complete(
+            self.deep_quality.run,
+            self.deep_quality.step,
+        )
         deep_eval = self.deep_quality.evaluation
-        if deep_eval is not None:
+        if deep_eval is not None and deep_execution_complete:
             return "quality_blocked" if deep_eval.result == "fail" else "qualified"
         deep_job = self.deep_quality.job
         if deep_job is not None and deep_job.status in {"queued", "leased"}:
@@ -965,7 +982,7 @@ async def _deep_quality_stage(
                 locale,
             )
         artifact = artifacts[0] if artifacts else None
-        if artifact is not None:
+        if artifact is not None and _deep_quality_execution_complete(run, step):
             evaluations = list(
                 (
                     await session.scalars(
@@ -998,6 +1015,8 @@ async def _deep_quality_stage(
                 ) from exc
             artifact = validated.artifact
             evaluation = validated.evaluation
+        elif artifact is not None:
+            artifact = None
 
     return QualityStage(
         run=run,
@@ -2057,6 +2076,14 @@ async def prepare_final_gates(
         raise OperatorControlError("operator_case_not_found")
     prepared: list[QualityLane] = []
     for lane in progress.lanes:
+        if not _deep_quality_execution_complete(
+            lane.deep_quality.run,
+            lane.deep_quality.step,
+        ):
+            raise OperatorControlError(
+                "operator_quality_final_deep_quality_incomplete",
+                lane.locale,
+            )
         if lane.writer.run is None or lane.revised_draft is None:
             raise OperatorControlError("operator_quality_final_source_missing", lane.locale)
         item = await _exact_final_item(session, content_case=content_case, variant=lane.variant)

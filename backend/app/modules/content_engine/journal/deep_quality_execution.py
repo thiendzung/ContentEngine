@@ -636,9 +636,9 @@ async def load_persisted_deep_quality_result(
         or run.settings_snapshot_id
         != source.writer_input.writer_run.settings_snapshot_id
         or run.current_step != task_key
-        or run.status not in {"running", "completed"}
+        or run.status != "completed"
         or step.step_key != task_key
-        or step.status not in {"running", "completed"}
+        or step.status != "completed"
     ):
         raise DeepQualityExecutionError("deep_quality_persisted_execution_invalid")
 

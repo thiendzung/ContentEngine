@@ -13,6 +13,7 @@ from app.modules.content_engine.journal.deep_quality_execution import (
     DEEP_QUALITY_ARTIFACT_TYPE,
     DEEP_QUALITY_EVALUATOR_KEY,
     DEEP_QUALITY_EVALUATOR_VERSION,
+    DeepQualityExecutionError,
     deep_quality_task_key,
     ensure_deep_quality_run,
     evaluate_deep_quality,
@@ -24,6 +25,11 @@ from app.modules.content_engine.journal.deep_quality_input import (
 )
 from app.modules.content_engine.journal.deep_quality_semantic import (
     DEEP_QUALITY_SEMANTIC_DIMENSIONS,
+)
+from app.modules.content_engine.journal.operator_control import OperatorControlError
+from app.modules.content_engine.journal.operator_quality import (
+    get_quality_progress,
+    prepare_final_gates,
 )
 from app.modules.harness.runtime import ContextInputs, build_context_manifest
 
@@ -186,6 +192,19 @@ async def test_deep_quality_persists_scoreless_exact_assessment_and_reuses(
         assert first.evaluation.findings_json["numeric_score_used"] is False
         assert str(first.artifact.id) in step.output_artifact_refs_json
 
+        with pytest.raises(DeepQualityExecutionError) as incomplete_exc:
+            await load_persisted_deep_quality_result(
+                session,
+                source=source,
+                artifact_id=first.artifact.id,
+                evaluation_id=first.evaluation.id,
+            )
+        assert incomplete_exc.value.code == "deep_quality_persisted_execution_invalid"
+
+        run.status = "completed"
+        step.status = "completed"
+        await session.flush()
+
         loaded_result = await load_persisted_deep_quality_result(
             session,
             source=source,
@@ -213,6 +232,63 @@ async def test_deep_quality_persists_scoreless_exact_assessment_and_reuses(
         assert reused_run is True
         assert same_run.id == run.id
         assert same_handoff.id == handoff.id
+
+
+@pytest.mark.asyncio
+async def test_partial_persisted_deep_quality_cannot_open_founder_final_review(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        source, run, handoff, step, manifest, model = await _execution_fixture(
+            session,
+            monkeypatch,
+            locale="en",
+        )
+
+        result = await evaluate_deep_quality(
+            session,
+            source=source,
+            eval_run_id=run.id,
+            step_run_id=step.id,
+            handoff_artifact_id=handoff.id,
+            model=model,
+            provider="codex_cli",
+            model_name="test-model",
+            context_manifest_id=manifest.id,
+            prompt_version="cq06-deep-quality-test:v1",
+            recipe_version="cq06-deep-quality-test-recipe:v1",
+            max_attempts=1,
+        )
+        assert result.evaluation.result == "pass"
+        assert run.status == "running"
+        assert step.status == "running"
+
+        progress = await get_quality_progress(
+            session,
+            content_case_id=source.writer_input.writer_run.content_case_id,
+            source_run_id=None,
+        )
+        assert progress is not None
+        lane = next(item for item in progress.lanes if item.locale == "en")
+        assert lane.status != "qualified"
+        assert lane.deep_quality.artifact is None
+        assert lane.deep_quality.evaluation is None
+        assert progress.all_qualified is False
+
+        class _ForcedQualifiedProgress:
+            all_qualified = True
+            lanes = (lane,)
+
+        with pytest.raises(OperatorControlError) as final_gate_exc:
+            await prepare_final_gates(
+                session,
+                content_case_id=source.writer_input.writer_run.content_case_id,
+                progress=_ForcedQualifiedProgress(),  # type: ignore[arg-type]
+            )
+        assert (
+            final_gate_exc.value.code
+            == "operator_quality_final_deep_quality_incomplete"
+        )
 
 
 @pytest.mark.asyncio
