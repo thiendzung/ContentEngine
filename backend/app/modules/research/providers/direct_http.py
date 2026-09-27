@@ -412,4 +412,3 @@ class DirectHttpReader:
                 "pdf_parse_failed",
                 failure_class="tool_invalid_response",
             ) from exc
-
