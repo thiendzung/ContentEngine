@@ -620,7 +620,9 @@ async def ensure_quality_readiness_run(
             or run.project_id != source_input.writer_input.writer_run.project_id
             or run.content_case_id != source_input.writer_input.writer_run.content_case_id
             or run.locale_variant_id != source_input.writer_input.locale_variant.id
+            or run.content_item_id != source_input.writer_input.writer_run.content_item_id
             or run.settings_snapshot_id != source_input.writer_input.writer_run.settings_snapshot_id
+            or run.current_step != expected_task
         ):
             raise QualityReadinessError("quality_readiness_handoff_run_mismatch")
         if run.status not in {"failed", "cancelled"}:
@@ -1060,17 +1062,25 @@ async def load_persisted_quality_readiness_result(
 
     run = await session.get(ContentRun, artifact.run_id)
     step = await session.get(StepRun, artifact.step_run_id)
+    writer_run = source_input.writer_input.writer_run
+    expected_task = readiness_task_key(
+        source_input.stage,
+        source_input.writer_input.locale,
+    )
     if (
         run is None
         or step is None
         or step.run_id != run.id
+        or run.run_mode != "eval"
+        or run.project_id != writer_run.project_id
+        or run.content_case_id != writer_run.content_case_id
+        or run.locale_variant_id != source_input.writer_input.locale_variant.id
+        or run.content_item_id != writer_run.content_item_id
+        or run.settings_snapshot_id != writer_run.settings_snapshot_id
+        or run.current_step != expected_task
         or run.status != "completed"
         or step.status != "completed"
-        or step.step_key
-        != readiness_task_key(
-            source_input.stage,
-            source_input.writer_input.locale,
-        )
+        or step.step_key != expected_task
     ):
         raise QualityReadinessError("quality_readiness_persisted_execution_invalid")
 
