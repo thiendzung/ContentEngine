@@ -1,0 +1,176 @@
+from uuid import uuid4
+
+import pytest
+
+import app.modules.research.production as production_module
+from app.modules.research.contracts import (
+    CommercialBias,
+    IntendedUse,
+    PageDocument,
+    PageReadResponse,
+    ProductionResearchRequest,
+    ProviderCallArtifact,
+    ProviderResponse,
+    ResearchSignalKind,
+    SearchSignal,
+    SourceCandidate,
+)
+from app.modules.research.production import ResearchRouter
+from app.modules.research.providers.base import ResearchProviderError
+
+
+async def _empty_retrieval(*args: object, **kwargs: object) -> list[object]:
+    del args, kwargs
+    return []
+
+
+class SufficientSearch:
+    name = "serper"
+
+    async def search(self, request):
+        signals = tuple(
+            SearchSignal(
+                provider=self.name,
+                query=request.query,
+                kind=ResearchSignalKind.PEOPLE_ALSO_ASK,
+                text=f"question-{index}",
+            )
+            for index in range(3)
+        )
+        sources = tuple(
+            SourceCandidate(
+                provider=self.name,
+                query=request.query,
+                url=f"https://authority{index}.gov/guide",
+                title=f"Authority {index}",
+                source_type="institutional",
+                commercial_bias=CommercialBias.LOW,
+                intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+                found_via="fixture",
+            )
+            for index in range(3)
+        )
+        return ProviderResponse(signals, sources, ())
+
+
+class FailingReader:
+    name = "jina"
+
+    def __init__(self, failure_class: str) -> None:
+        self.failure_class = failure_class
+        self.calls = 0
+
+    async def read(self, url: str, *, query: str) -> PageReadResponse:
+        del url, query
+        self.calls += 1
+        raise ResearchProviderError(
+            self.name,
+            "read",
+            "controlled_failure",
+            failure_class=self.failure_class,
+        )
+
+
+class SuccessReader:
+    name = "direct_http"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def read(self, url: str, *, query: str) -> PageReadResponse:
+        self.calls += 1
+        return PageReadResponse(
+            document=PageDocument(
+                provider=self.name,
+                url=url,
+                requested_url=url,
+                content=(
+                    "Original artwork buyers can inspect the exact work, artist information, "
+                    "and supporting documentation before deciding."
+                ),
+            ),
+            call=ProviderCallArtifact(
+                provider=self.name,
+                operation="read",
+                query=query,
+                purpose="selected_url_direct_read_fallback",
+                status="ok",
+                result_count=1,
+                raw_excerpt="",
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_reader_fallback_runs_once_after_tool_invalid_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    primary = FailingReader("tool_invalid_response")
+    fallback = SuccessReader()
+    router = ResearchRouter(
+        serper=SufficientSearch(),
+        reader=primary,
+        fallback_reader=fallback,
+    )
+
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert primary.calls == 1
+    assert fallback.calls == 1
+    assert len(result.documents) == 1
+    assert result.documents[0].provider == "direct_http"
+    assert any(
+        decision.provider == "jina"
+        and decision.status.value == "failed"
+        and decision.failure_class == "tool_invalid_response"
+        for decision in result.decisions
+    )
+    assert any(
+        decision.provider == "direct_http"
+        and decision.status.value == "called"
+        for decision in result.decisions
+    )
+
+
+@pytest.mark.asyncio
+async def test_reader_fallback_does_not_mask_provider_auth_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    primary = FailingReader("provider_auth")
+    fallback = SuccessReader()
+    router = ResearchRouter(
+        serper=SufficientSearch(),
+        reader=primary,
+        fallback_reader=fallback,
+    )
+
+    result = await router.run(
+        None,  # type: ignore[arg-type]
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="how to buy original artwork",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert primary.calls == 1
+    assert fallback.calls == 0
+    assert result.documents == []
+    assert result.stop_reason == "reader_candidates_exhausted"
+    assert any(
+        decision.provider == "jina"
+        and decision.status.value == "failed"
+        and decision.failure_class == "provider_auth"
+        for decision in result.decisions
+    )
