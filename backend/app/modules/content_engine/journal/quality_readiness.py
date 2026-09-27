@@ -826,6 +826,7 @@ async def evaluate_quality_readiness(
     step = await session.get(StepRun, step_run_id)
     handoff = await session.get(Artifact, handoff_artifact_id)
     manifest = await session.get(ContextManifest, context_manifest_id)
+    writer_run = source_input.writer_input.writer_run
     if (
         run is None
         or step is None
@@ -834,6 +835,11 @@ async def evaluate_quality_readiness(
         or handoff.run_id != run.id
         or handoff.step_run_id is not None
         or run.run_mode != "eval"
+        or run.project_id != writer_run.project_id
+        or run.content_case_id != writer_run.content_case_id
+        or run.locale_variant_id != source_input.writer_input.locale_variant.id
+        or run.content_item_id != writer_run.content_item_id
+        or run.settings_snapshot_id != writer_run.settings_snapshot_id
         or run.status not in {"running", "completed"}
         or run.current_step != readiness_task_key(
             source_input.stage,
