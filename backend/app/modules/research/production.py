@@ -544,6 +544,7 @@ class ResearchRouter:
                     page is None
                     and primary_error is not None
                     and primary_error.failure_class == "tool_invalid_response"
+                    and source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
                     and self._fallback_reader is not None
                 ):
                     page, _ = await self._read_with_reader(
