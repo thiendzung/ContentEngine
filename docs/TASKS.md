@@ -627,20 +627,20 @@ CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06
 
 CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input, extra rewrite model stage, operational migration, publication or final-approval bypass.
 
-### CQ-06 — Deep Quality Gate — IN IMPLEMENTATION
+### CQ-06 — Deep Quality Gate — IN CLOSEOUT
 
 - [x] Audit existing Assertion Audit, Source-copy, Reader Value, Search/AI and final-review path.
 - [x] Lock architecture: add one final aggregate Deep Quality gate after Search/AI; do not replace or weaken upstream gates.
 - [x] Lock exact 12-dimension contract from issue #232; no numeric/magic score.
-- [ ] CQ06-A: pure dimension contract, authority map, deterministic aggregation and good/deceptive-polished fixtures.
-- [ ] CQ06-B: exact lineage input loader for CQ-03/04/05 + Assertion/Source-copy/Reader/Search prerequisites.
-- [ ] CQ06-C: derive authoritative upstream/deterministic dimension findings; semantic model cannot override them.
-- [ ] CQ06-D: bounded semantic evaluator only for coherence, Human Voice/MOTGU voice, repetition/filler/system-language and locale-specific quality.
-- [ ] CQ06-E: persist immutable Deep Quality Artifact/Evaluation, integrate operator/final-review gate, add fail-closed/adversarial regressions.
-- [ ] MG full-diff self-review.
-- [ ] Agent Local exact-SHA heavy verification + exact-ref OCR.
+- [x] CQ06-A: pure dimension contract, authority map, deterministic aggregation and good/deceptive-polished fixtures.
+- [x] CQ06-B: exact lineage input loader for CQ-03/04/05 + Assertion/Source-copy/Reader/Search prerequisites.
+- [x] CQ06-C: derive authoritative upstream/deterministic dimension findings; semantic model cannot override them.
+- [x] CQ06-D: bounded semantic evaluator only for coherence, Human Voice/MOTGU voice, repetition/filler/system-language and locale-specific quality.
+- [x] CQ06-E: persist immutable Deep Quality Artifact/Evaluation, integrate operator/final-review gate, add fail-closed/adversarial regressions.
+- [x] MG full-diff self-review on implementation candidate; no unresolved P0/P1 defect found before final closeout docs.
+- [ ] Agent Local exact-SHA heavy verification + exact-ref OCR on the final branch HEAD.
 - [ ] MG evidence/OCR triage.
-- [ ] Minimal GitHub confirmation CI on final SHA when available.
+- [ ] Minimal GitHub confirmation CI on the final SHA.
 - [ ] Founder merge.
 
 CQ-06 boundaries: no auto-publication, no WordPress activation, no CQ-07 pilot, no new workflow engine, no weakening Assertion Audit/Source-copy, no opaque score and no operational migration unless a later slice proves a schema change is unavoidable.
