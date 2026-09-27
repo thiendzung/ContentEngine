@@ -56,6 +56,7 @@ from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
 from app.modules.research.evidence import EvidenceResearchWorkflow
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
+from app.modules.research.providers.direct_http import DirectHttpReader
 from app.modules.research.providers.exa import ExaProvider
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.providers.serper import SerperProvider
@@ -113,6 +114,11 @@ def _research_router(
             jina_key,
             raw_excerpt_chars=raw_excerpt_chars,
             token_budget=settings.research_jina_token_budget,
+            max_links=settings.research_jina_max_links,
+        ),
+        fallback_reader=DirectHttpReader(
+            client,
+            max_content_chars=100_000,
             max_links=settings.research_jina_max_links,
         ),
         budget_limits=BudgetLimits(
