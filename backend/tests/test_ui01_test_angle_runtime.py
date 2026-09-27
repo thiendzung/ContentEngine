@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Settings
+from app.core.config import get_settings
 from app.core.database import engine
 from app.modules.content_engine.models import PromptDefinition, RecipeDefinition, SettingsVersion
 from app.modules.system.test_angle_runtime import (
@@ -32,16 +32,8 @@ async def isolated_session() -> AsyncIterator[AsyncSession]:
             await transaction.rollback()
 
 
-def _test_settings() -> Settings:
-    return Settings(
-        app_env="test",
-        database_url=(
-            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
-        ),
-        test_database_url=(
-            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_test"
-        ),
-    )
+def _test_settings():
+    return get_settings()
 
 
 def test_activation_cli_payload_is_json_serializable() -> None:
