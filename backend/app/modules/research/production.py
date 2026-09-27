@@ -581,6 +581,7 @@ class ResearchRouter:
                     and fallback_error is not None
                     and fallback_error.failure_class
                     in {"tool_invalid_response", "provider_transient"}
+                    and fallback_reader is not None
                     and terminal_reader is not None
                 ):
                     page, _ = await self._read_with_reader(
