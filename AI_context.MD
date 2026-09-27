@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-26 after Founder merged PR #235. Current main is `80ad589583d6d2b67e416109ccbd537a52139904`. CQ-01 through CQ-04 are merged. Production activation/E2E external work remains paused; the active WIP is CQ-05 Writer + Human Voice truth preservation. This is the ONE current working window.
+Updated: 2026-09-27 after Founder merged PR #236. Current main is `bae80f607c5873202af2fe0da2d527bba753bc85`. CQ-01 through CQ-05 are merged. Production activation/E2E external work remains paused; the active WIP is CQ-06 Deep Quality Gate. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `80ad589583d6d2b67e416109ccbd537a52139904` (merge PR #235). CQ-01 through CQ-04 passed exact-head CI/OCR/Agent Local verification before Founder merge. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-05 is bounded content-quality code/test work and does not authorize operational migration.
+Live GitHub main: `bae80f607c5873202af2fe0da2d527bba753bc85` (merge PR #236). CQ-01 through CQ-05 passed their required exact-head technical gates before Founder merge. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-05 is bounded content-quality code/test work and does not authorize operational migration.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -48,7 +48,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-05 / #231** implementation slices A–E are complete in draft PR #236 and are now in MG review / verification closeout. The implementation keeps one locale-specific Review/Revise model call, adds deterministic truth guards, immutable exact before/after trace lineage, current-v6 trace enforcement before Assertion Audit, exact Source-copy source revalidation, and bounded operator diagnostics without AI-detector or humanization scoring. Production activation/migration/publication remain out of scope.
+**CQ-06 / #232** is the active bounded content-quality window. CQ-05 is merged. CQ-06 adds one final aggregate Deep Quality gate after Search/AI, preserves all upstream truth/provenance hard gates, returns explicit pass/warn/fail findings across the 12 locked dimensions, and keeps Founder final approval separate. No production activation, migration, publication or CQ-07 pilot is authorized.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -440,7 +440,7 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01/CQ-02/CQ-03/CQ-04 merged, CQ-05 active
+## Content Quality priority — CQ-01/CQ-02/CQ-03/CQ-04/CQ-05 merged, CQ-06 active
 
 Founder priority remains content quality before production activation.
 
@@ -464,7 +464,7 @@ CQ-04 merged:
 - Agent Local: 80 focused + 1226 full backend PASS; frontend PASS;
 - Angle/Outline semantic gates now preserve exact lineage, role behavior and backward compatibility.
 
-CQ-05 active architecture:
+CQ-05 merged architecture:
 - historical HV-01 / PR #186 is reference material only;
 - do not add a second rewrite model stage by default;
 - reuse existing Review/Revise as the Human Voice-aware bounded rewrite;

@@ -218,4 +218,25 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] Safe rewrite fixtures and adversarial truth-drift fixtures cover VI and EN.
 - [x] Operator can inspect bounded before/after style comparison and exact trace refs without fabricated quality scoring.
 - [x] Review/Revise v6 + versioned Human Voice render protocol prevent silent reuse when semantics change.
-- [ ] CI / MG / OCR / Agent Local / Founder merge gates complete.
+- [x] CI / MG / OCR / Agent Local / Founder merge gates complete.
+
+
+## S. CQ-06 Deep Quality Gate
+
+- [x] Deep Quality is a final aggregate gate after existing Assertion Audit → Source-copy → Reader Value → Search/AI.
+- [x] Canonical output has exactly 12 named dimensions from issue #232.
+- [x] Every dimension reports `pass|warn|fail`, finding, remediation and explicit authority/provenance.
+- [x] Overall verdict is deterministic: any fail → fail; else any warn → warn; else pass.
+- [x] No numeric score, weighted score, quality percentage, tier or opaque ranking.
+- [ ] Exact CQ-03/04/05 + Assertion/Source-copy/Reader/Search lineage is loaded and revalidated from immutable refs.
+- [ ] Upstream hard/provenance dimensions are derived from authoritative artifacts and cannot be reclassified by the semantic evaluator.
+- [ ] Semantic model is restricted to the bounded dimensions that genuinely need semantic judgment.
+- [ ] Deep Quality does not research, rewrite, use tools, consume sibling-locale copy or fabricate missing provenance.
+- [ ] Deceptive-polished content cannot pass when any factual/provenance hard route fails.
+- [ ] Search/AI improvement cannot override reader value, truth, provenance or attribution safety.
+- [ ] VI and EN are independently evaluated against locale-specific quality.
+- [ ] Deep Quality Artifact/Evaluation binds exact final draft + all prerequisite ids/versions/hashes.
+- [ ] Operator exposes blockers/warnings/pass dimensions without magic scoring.
+- [ ] Founder final approval remains a separate human gate after Deep Quality.
+- [ ] Good-content + deceptive-polished fixtures and stale/conflict/substitution tests pass.
+- [ ] MG / Agent Local exact-SHA / OCR / minimal CI / Founder merge gates complete.
