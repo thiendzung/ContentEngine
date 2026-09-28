@@ -64,7 +64,7 @@ def _draft_payload(payload: dict[str, object]) -> dict[str, object]:
 def _artifact_visible_text(artifact: Artifact) -> str | None:
     if not isinstance(artifact.content_json, dict):
         return None
-    payload = _draft_payload(cast(dict[str, object], artifact.content_json))
+    payload = _draft_payload(artifact.content_json)
     title = payload.get("title")
     standfirst = payload.get("standfirst")
     lead = payload.get("lead_markdown")
