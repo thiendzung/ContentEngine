@@ -183,7 +183,9 @@ async def record_publish_assisted_observation(
     actor = _clean_text(actor_id, "publish_assisted_actor_required")
     manual = _clean_text(content_markdown, "publish_assisted_content_required")
 
-    run = await session.get(ContentRun, source_run_id)
+    run = await session.scalar(
+        select(ContentRun).where(ContentRun.id == source_run_id).with_for_update()
+    )
     if run is None or run.run_mode == "eval":
         raise PublishAssistedError("publish_assisted_source_run_invalid")
     variant = await session.get(LocaleVariant, run.locale_variant_id)
