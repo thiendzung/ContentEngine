@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy import func, select
 from test_run_records import create_run, isolated_session
 
-from app.modules.harness.models import Artifact
+from app.modules.harness.models import Artifact, Job, StepRun
 from app.modules.publishing.assisted import (
     ASSISTED_OBSERVATION_ARTIFACT_TYPE,
     PublishAssistedError,
@@ -192,3 +194,50 @@ async def test_publish_assisted_source_artifact_must_share_case_and_locale() -> 
                 content_markdown="# Manual\n\nDraft.",
                 source_artifact_id=foreign.id,
             )
+
+
+@pytest.mark.asyncio
+async def test_publish_assisted_captures_pipeline_job_state() -> None:
+    async with isolated_session() as session:
+        _project, run, _snapshot = await create_run(session)
+        step = StepRun(
+            run_id=run.id,
+            step_key="start_to_angle",
+            attempt=1,
+            status="running",
+        )
+        session.add(step)
+        await session.flush()
+        job = Job(
+            run_id=run.id,
+            step_run_id=step.id,
+            status="failed",
+            available_at=datetime.now(UTC),
+            attempt=3,
+            dedupe_key=f"publish-assisted-test:{run.id}",
+        )
+        session.add(job)
+        await session.flush()
+
+        result = await record_publish_assisted_observation(
+            session,
+            source_run_id=run.id,
+            phase="draft",
+            actor_id="founder",
+            content_markdown="# Draft\n\nObserved while the shadow lane is blocked.",
+        )
+
+        payload = result.artifact.content_json
+        assert isinstance(payload, dict)
+        pipeline = payload["pipeline_snapshot"]
+        assert isinstance(pipeline, dict)
+        jobs = pipeline["jobs"]
+        assert isinstance(jobs, list)
+        assert jobs == [
+            {
+                "id": str(job.id),
+                "attempt": 3,
+                "status": "failed",
+                "step_key": "start_to_angle",
+            }
+        ]
