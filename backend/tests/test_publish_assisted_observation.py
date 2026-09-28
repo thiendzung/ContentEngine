@@ -12,7 +12,7 @@ from app.modules.publishing.assisted import (
     PublishAssistedError,
     record_publish_assisted_observation,
 )
-from app.modules.publishing.models import PublishEvent, PublishedContent
+from app.modules.publishing.models import PublishedContent, PublishEvent
 
 
 def _draft_payload() -> dict[str, object]:
