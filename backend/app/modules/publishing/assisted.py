@@ -110,7 +110,11 @@ def _edit_delta(source: str | None, manual: str) -> dict[str, object]:
     opcodes = matcher.get_opcodes()
     changed = [opcode for opcode in opcodes if opcode[0] != "equal"]
     added_lines = sum(j2 - j1 for tag, _i1, _i2, j1, j2 in changed if tag in {"insert", "replace"})
-    removed_lines = sum(i2 - i1 for tag, i1, i2, _j1, _j2 in changed if tag in {"delete", "replace"})
+    removed_lines = sum(
+        i2 - i1
+        for tag, i1, i2, _j1, _j2 in changed
+        if tag in {"delete", "replace"}
+    )
     return {
         "status": "compared",
         "source_chars": len(source),
@@ -239,7 +243,11 @@ async def record_publish_assisted_observation(
         "edit_delta": _edit_delta(source_text, manual),
         "publication_observation": {
             "canonical_url": normalized_url,
-            "external_id": external_id.strip() if isinstance(external_id, str) and external_id.strip() else None,
+            "external_id": (
+                external_id.strip()
+                if isinstance(external_id, str) and external_id.strip()
+                else None
+            ),
             "canonical_pm01_bound": False,
         },
         "pipeline_snapshot": await _pipeline_snapshot(session, run=run),
