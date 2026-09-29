@@ -3,12 +3,13 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import insert, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_ce05_assertion_audit import _source
 from test_ce05_assertion_audit_recovery import _mark_source_waiting
 
 from app.core.database import engine
+from app.modules.content_engine.models import Project, SettingsVersion
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
 from app.modules.content_engine.journal.assertion_audit_execution import (
     prepare_assertion_audit_run,
@@ -26,10 +27,66 @@ async def _prepare(session: AsyncSession, *, source_input):
     )
 
 
+async def _snapshot_canonical_project_seed() -> tuple[
+    dict[str, object],
+    list[dict[str, object]],
+]:
+    async with engine.connect() as connection:
+        project_table = Project.__table__
+        settings_table = SettingsVersion.__table__
+        project = (
+            await connection.execute(
+                select(project_table).where(project_table.c.slug == "motgu")
+            )
+        ).mappings().one()
+        settings = (
+            await connection.execute(
+                select(settings_table)
+                .where(settings_table.c.project_id == project["id"])
+                .order_by(settings_table.c.id)
+            )
+        ).mappings().all()
+        return dict(project), [dict(row) for row in settings]
+
+
+async def _restore_canonical_project_seed(
+    *,
+    project_seed: dict[str, object],
+    settings_seed: list[dict[str, object]],
+) -> None:
+    project_table = Project.__table__
+    settings_table = SettingsVersion.__table__
+    async with engine.begin() as cleanup_connection:
+        await cleanup_connection.execute(text("TRUNCATE TABLE projects CASCADE"))
+        await cleanup_connection.execute(insert(project_table), [project_seed])
+        if settings_seed:
+            await cleanup_connection.execute(insert(settings_table), settings_seed)
+
+        restored_project_id = await cleanup_connection.scalar(
+            select(project_table.c.id).where(project_table.c.slug == "motgu")
+        )
+        restored_settings_ids = set(
+            (
+                await cleanup_connection.scalars(
+                    select(settings_table.c.id).where(
+                        settings_table.c.project_id == project_seed["id"]
+                    )
+                )
+            ).all()
+        )
+        expected_settings_ids = {row["id"] for row in settings_seed}
+        if (
+            restored_project_id != project_seed["id"]
+            or restored_settings_ids != expected_settings_ids
+        ):
+            raise AssertionError("canonical_motgu_seed_restore_failed")
+
+
 @pytest.mark.asyncio
 async def test_postgresql_concurrent_prepare_reuses_one_locked_pending_run() -> None:
     assert engine.dialect.name == "postgresql"
     source_ids: dict[str, object] = {}
+    project_seed, settings_seed = await _snapshot_canonical_project_seed()
     try:
         async with engine.connect() as setup_connection:
             setup_session = AsyncSession(bind=setup_connection, expire_on_commit=False)
@@ -108,5 +165,7 @@ async def test_postgresql_concurrent_prepare_reuses_one_locked_pending_run() -> 
                 if transaction_b.is_active:
                     await transaction_b.rollback()
     finally:
-        async with engine.begin() as cleanup_connection:
-            await cleanup_connection.execute(text("TRUNCATE TABLE projects CASCADE"))
+        await _restore_canonical_project_seed(
+            project_seed=project_seed,
+            settings_seed=settings_seed,
+        )
