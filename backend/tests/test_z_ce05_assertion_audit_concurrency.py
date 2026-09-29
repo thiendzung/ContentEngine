@@ -9,11 +9,11 @@ from test_ce05_assertion_audit import _source
 from test_ce05_assertion_audit_recovery import _mark_source_waiting
 
 from app.core.database import engine
-from app.modules.content_engine.models import Project, SettingsVersion
 from app.modules.content_engine.journal.assertion_audit import load_assertion_audit_input
 from app.modules.content_engine.journal.assertion_audit_execution import (
     prepare_assertion_audit_run,
 )
+from app.modules.content_engine.models import Project, SettingsVersion
 from app.modules.harness.models import ContentRun
 
 
