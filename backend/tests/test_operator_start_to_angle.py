@@ -20,6 +20,7 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 )
 from app.modules.content_engine.journal.operator_worker import (
     OperatorWorkerError,
+    _safe_failure_metadata,
     claim_next_operator_job,
     execute_start_to_angle_job,
     fail_start_to_angle_job,
@@ -1253,19 +1254,8 @@ async def test_failed_attempt_persists_only_allowlisted_safe_runner_metadata(
         assert "secret-jsonl-do-not-persist" not in serialized
 
 
-        leased.status = "leased"
-        leased.lease_owner = "worker-cq07-safe-runner-metadata"
-        leased.lease_expires_at = datetime.now(UTC).replace(year=datetime.now(UTC).year + 1)
-        step.status = "running"
-        await session.flush()
-
-        await fail_start_to_angle_job(
-            session,
-            job_id=leased.id,
-            worker_id="worker-cq07-safe-runner-metadata",
-            failure_class="coverage_support_failed",
-            message="operator_worker_coverage_support_failed",
-            safe_metadata={
+        assert _safe_failure_metadata(
+            {
                 "runner_error": "agent_nonzero_exit",
                 "runner_diagnostic": "not-allowed",
                 "runner_exit_code": True,
@@ -1274,13 +1264,8 @@ async def test_failed_attempt_persists_only_allowlisted_safe_runner_metadata(
                 "runner_diagnostic_source": "raw_stdout",
                 "task": "wrong-task",
                 "raw_stdout": "still-secret",
-            },
-        )
-        step = await session.get(StepRun, leased.step_run_id)
-        assert step is not None and step.error_json is not None
-        assert step.error_json["safe_metadata"] == {
-            "runner_error": "agent_nonzero_exit",
-        }
+            }
+        ) == {"runner_error": "agent_nonzero_exit"}
 
 
 @pytest.mark.asyncio
