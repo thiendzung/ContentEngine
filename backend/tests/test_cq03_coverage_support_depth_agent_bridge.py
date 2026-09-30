@@ -302,7 +302,7 @@ async def test_nonzero_runner_failure_propagates_only_safe_diagnostic_metadata(
             "coverage_support_agent_runner_failed: "
             "agent_nonzero_exit:agent_cli_model_unavailable"
         ),
-    ):
+    ) as exc_info:
         await port.generate(
             input_bundle=build_coverage_support_depth_model_input(
                 coverage_requirements=[],
@@ -321,11 +321,13 @@ async def test_nonzero_runner_failure_propagates_only_safe_diagnostic_metadata(
             attempt=1,
         )
 
-    assert captured["error_class"] == "agent_nonzero_exit"
-    assert captured["runtime_metadata"] == {
+    expected_metadata = {
         "runner_error": "agent_nonzero_exit",
         "task": "coverage_support_depth",
         "runner_diagnostic": "agent_cli_model_unavailable",
         "runner_exit_code": 7,
         "runner_stderr_hash": "d" * 64,
     }
+    assert captured["error_class"] == "agent_nonzero_exit"
+    assert captured["runtime_metadata"] == expected_metadata
+    assert exc_info.value.safe_metadata == expected_metadata
