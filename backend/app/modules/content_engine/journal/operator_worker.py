@@ -102,7 +102,6 @@ class OperatorWorkerError(RuntimeError):
         super().__init__(code)
 
 
-@dataclass(frozen=True, slots=True)
 _SAFE_RUNNER_DIAGNOSTICS = {
     "agent_cli_auth_failure",
     "agent_cli_model_unavailable",
@@ -142,6 +141,7 @@ def _safe_failure_metadata(value: dict[str, object] | None) -> dict[str, object]
     return result
 
 
+@dataclass(frozen=True, slots=True)
 class WorkerExecutionResult:
     job_id: UUID
     run_id: UUID
