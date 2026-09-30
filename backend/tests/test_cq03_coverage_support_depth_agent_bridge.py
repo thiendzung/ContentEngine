@@ -128,6 +128,8 @@ class _FailingRunner:
             diagnostic_code="agent_cli_model_unavailable",
             exit_code=7,
             stderr_hash="d" * 64,
+            stdout_hash="e" * 64,
+            diagnostic_source="stdout_jsonl",
         )
 
 
@@ -327,6 +329,8 @@ async def test_nonzero_runner_failure_propagates_only_safe_diagnostic_metadata(
         "runner_diagnostic": "agent_cli_model_unavailable",
         "runner_exit_code": 7,
         "runner_stderr_hash": "d" * 64,
+        "runner_stdout_hash": "e" * 64,
+        "runner_diagnostic_source": "stdout_jsonl",
     }
     assert captured["error_class"] == "agent_nonzero_exit"
     assert captured["runtime_metadata"] == expected_metadata
