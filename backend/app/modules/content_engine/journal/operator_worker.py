@@ -94,9 +94,11 @@ class OperatorWorkerError(RuntimeError):
         code: str,
         *,
         diagnostic_snapshot: dict[str, object] | None = None,
+        safe_metadata: dict[str, object] | None = None,
     ) -> None:
         self.code = code
         self.diagnostic_snapshot = diagnostic_snapshot
+        self.safe_metadata = safe_metadata
         super().__init__(code)
 
 
@@ -184,6 +186,7 @@ async def fail_start_to_angle_job(
     failure_class: str,
     message: str,
     diagnostic_snapshot: dict[str, object] | None = None,
+    safe_metadata: dict[str, object] | None = None,
 ) -> Job:
     """Persist a failed attempt while keeping the exact stage explicitly retryable.
 
@@ -241,6 +244,24 @@ async def fail_start_to_angle_job(
                 step_run_id=step.id,
                 payload=diagnostic_snapshot,
             )
+    allowed_safe_metadata_keys = {
+        "runner_error",
+        "runner_diagnostic",
+        "runner_exit_code",
+        "runner_stderr_hash",
+        "task",
+    }
+    filtered_safe_metadata = (
+        {
+            key: value
+            for key, value in safe_metadata.items()
+            if key in allowed_safe_metadata_keys
+            and isinstance(value, (str, int))
+            and not isinstance(value, bool)
+        }
+        if isinstance(safe_metadata, dict)
+        else {}
+    )
     step.error_json = {
         "class": safe_class,
         "message": safe_message,
@@ -250,6 +271,11 @@ async def fail_start_to_angle_job(
                 "diagnostic_content_hash": diagnostic_artifact.content_hash,
             }
             if diagnostic_artifact is not None
+            else {}
+        ),
+        **(
+            {"safe_metadata": filtered_safe_metadata}
+            if filtered_safe_metadata
             else {}
         ),
     }
@@ -560,7 +586,10 @@ async def execute_start_to_angle_job(
             model=support_port,
         )
     except CoverageSupportDepthRuntimeError as exc:
-        raise OperatorWorkerError("operator_worker_coverage_support_failed") from exc
+        raise OperatorWorkerError(
+            "operator_worker_coverage_support_failed",
+            safe_metadata=exc.safe_metadata,
+        ) from exc
 
     if not support_result.ready_for_angle:
         raise OperatorWorkerError(
