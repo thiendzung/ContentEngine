@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-27 after Founder merged PR #236. Current main is `bae80f607c5873202af2fe0da2d527bba753bc85`. CQ-01 through CQ-05 are merged. Production activation/E2E external work remains paused; the active WIP is CQ-06 Deep Quality Gate. This is the ONE current working window.
+Updated: 2026-09-30 after Founder merged PR #241. Current main is `6bb7a2fa16383a685daf5c84490eface1c91071e`. CQ-01 through CQ-06 are merged. Pre-CQ07 cleanup and exact Codex `0.159.0` repin are complete. Production activation/E2E external work remains paused; the active WIP is CQ-07 real Pillar + Cluster pilot. This is the ONE current working window.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `bae80f607c5873202af2fe0da2d527bba753bc85` (merge PR #236). CQ-01 through CQ-05 passed their required exact-head technical gates before Founder merge. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has paused A2/production WordPress, operational migration, runtime activation and publish work. CQ-05 is bounded content-quality code/test work and does not authorize operational migration.
+Live GitHub main: `6bb7a2fa16383a685daf5c84490eface1c91071e` (merge PR #241). CQ-01 through CQ-06 passed their required technical gates and are merged. PR #239 completed pre-CQ07 cleanup/test isolation + local-run README. PR #241 repinned the audited exact Codex runner to `codex-cli 0.159.0`. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, production activation or publication.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -48,7 +48,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-06 / #232** is the active bounded content-quality window. CQ-05 is merged. CQ-06 adds one final aggregate Deep Quality gate after Search/AI, preserves all upstream truth/provenance hard gates, returns explicit pass/warn/fail findings across the 12 locked dimensions, and keeps Founder final approval separate. No production activation, migration, publication or CQ-07 pilot is authorized.
+**CQ-07 / #233** is the active bounded content-quality window. Founder selected the P01 Pillar + C02 Cluster pair. The clean pilot contract and exact P01 intake are frozen in `docs/CQ07_PILOT_CONTRACT.md` and `docs/CQ07_P01_EXECUTION_INPUT.md`. Agent Local proved a fresh disposable CQ-07 baseline on exact main `6bb7a2fa16383a685daf5c84490eface1c91071e`: Alembic `20260926_0044`, canonical `motgu` seed present, health/preflight READY, exact audited Codex `0.159.0`, and zero provider/model calls. Next real step is P01 intake; external research/model execution requires a separate explicit Founder authorization and must stop at Angle, Outline and final-review gates. No operational migration or publication is authorized.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -85,6 +85,11 @@ If GitHub Actions quota/service is unavailable, record CI as unavailable and use
 - 2026-09-20: #167 opened because the historical Outline ModelCall metadata lacks `runner_executable` even though the actual runtime used `/Applications/ChatGPT.app/Contents/Resources/codex`. PR #166 now carries the bounded persistence fix + regression test; historical ModelCall is not mutated/backfilled.
 - 2026-09-20: #164 was a false alarm caused by missing context about the Founder click; classify as no code/UI defect.
 - Open audit bookkeeping: the R4 report states 8 supporting evidence items but enumerates 7; reconcile the missing eighth item in the next evidence review, but this does not negate the already-proven factual threshold because at least 7 authoritative supports were explicitly enumerated.
+
+- 2026-09-30: PR #239 merged; pre-CQ07 test isolation and simplified safe local-run README are on main.
+- 2026-09-30: Issue #240 read-only audit passed for exact packaged `codex-cli 0.159.0`, SHA-256 `ccd1b9441d35ce30102059c78514a125d676e6765ea1d001033e8cbe88718314`.
+- 2026-09-30: PR #241 merged; exact Codex 0.159.0 repin is on main `6bb7a2fa16383a685daf5c84490eface1c91071e`.
+- 2026-09-30: Agent Local returned `PASS_CQ07_FRESH_BASELINE_READY` on a fresh disposable DB `contentengine_cq07_baseline_20260930_test`, rev `20260926_0044`, preflight READY, zero model/provider calls. Historical PR #238 is not an execution branch and must not be widened or merged as a bundle.
 
 ## Remaining order and completion meaning
 
