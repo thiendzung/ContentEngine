@@ -298,7 +298,10 @@ async def test_nonzero_runner_failure_propagates_only_safe_diagnostic_metadata(
 
     with pytest.raises(
         CoverageSupportDepthRuntimeError,
-        match="coverage_support_agent_runner_failed: agent_nonzero_exit:agent_cli_model_unavailable",
+        match=(
+            "coverage_support_agent_runner_failed: "
+            "agent_nonzero_exit:agent_cli_model_unavailable"
+        ),
     ):
         await port.generate(
             input_bundle=build_coverage_support_depth_model_input(
