@@ -377,6 +377,7 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
             raise CoverageSupportDepthRuntimeError(
                 "coverage_support_agent_runner_failed",
                 detail,
+                safe_metadata=runtime_metadata,
             ) from exc
         if result.provider != request.provider or result.model != request.model:
             await fail_model_call(
