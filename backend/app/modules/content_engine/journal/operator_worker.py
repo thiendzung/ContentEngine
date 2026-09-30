@@ -94,10 +94,51 @@ class OperatorWorkerError(RuntimeError):
         code: str,
         *,
         diagnostic_snapshot: dict[str, object] | None = None,
+        safe_metadata: dict[str, object] | None = None,
     ) -> None:
         self.code = code
         self.diagnostic_snapshot = diagnostic_snapshot
+        self.safe_metadata = safe_metadata
         super().__init__(code)
+
+
+_SAFE_RUNNER_DIAGNOSTICS = {
+    "agent_cli_auth_failure",
+    "agent_cli_model_unavailable",
+    "agent_cli_rate_limited",
+    "agent_cli_transport_failure",
+    "agent_cli_output_schema_invalid",
+    "agent_cli_configuration_invalid",
+    "agent_cli_content_filter",
+    "agent_cli_nonzero_unknown",
+}
+
+
+def _safe_failure_metadata(value: dict[str, object] | None) -> dict[str, object]:
+    """Allow only bounded runner diagnostics; raw process output can never pass through."""
+
+    if not isinstance(value, dict):
+        return {}
+    result: dict[str, object] = {}
+    runner_error = value.get("runner_error")
+    if runner_error == "agent_nonzero_exit":
+        result["runner_error"] = runner_error
+    diagnostic = value.get("runner_diagnostic")
+    if isinstance(diagnostic, str) and diagnostic in _SAFE_RUNNER_DIAGNOSTICS:
+        result["runner_diagnostic"] = diagnostic
+    exit_code = value.get("runner_exit_code")
+    if isinstance(exit_code, int) and not isinstance(exit_code, bool):
+        result["runner_exit_code"] = exit_code
+    stderr_hash = value.get("runner_stderr_hash")
+    if (
+        isinstance(stderr_hash, str)
+        and len(stderr_hash) == 64
+        and all(char in "0123456789abcdef" for char in stderr_hash)
+    ):
+        result["runner_stderr_hash"] = stderr_hash
+    if value.get("task") == "coverage_support_depth":
+        result["task"] = "coverage_support_depth"
+    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +225,7 @@ async def fail_start_to_angle_job(
     failure_class: str,
     message: str,
     diagnostic_snapshot: dict[str, object] | None = None,
+    safe_metadata: dict[str, object] | None = None,
 ) -> Job:
     """Persist a failed attempt while keeping the exact stage explicitly retryable.
 
@@ -241,6 +283,7 @@ async def fail_start_to_angle_job(
                 step_run_id=step.id,
                 payload=diagnostic_snapshot,
             )
+    filtered_safe_metadata = _safe_failure_metadata(safe_metadata)
     step.error_json = {
         "class": safe_class,
         "message": safe_message,
@@ -250,6 +293,11 @@ async def fail_start_to_angle_job(
                 "diagnostic_content_hash": diagnostic_artifact.content_hash,
             }
             if diagnostic_artifact is not None
+            else {}
+        ),
+        **(
+            {"safe_metadata": filtered_safe_metadata}
+            if filtered_safe_metadata
             else {}
         ),
     }
@@ -560,7 +608,10 @@ async def execute_start_to_angle_job(
             model=support_port,
         )
     except CoverageSupportDepthRuntimeError as exc:
-        raise OperatorWorkerError("operator_worker_coverage_support_failed") from exc
+        raise OperatorWorkerError(
+            "operator_worker_coverage_support_failed",
+            safe_metadata=exc.safe_metadata,
+        ) from exc
 
     if not support_result.ready_for_angle:
         raise OperatorWorkerError(

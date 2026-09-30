@@ -24,9 +24,20 @@ from app.modules.harness.repository_snapshot import (
 class AgentRunnerError(RuntimeError):
     """Raised when a local agent cannot be used safely."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(
+        self,
+        code: str,
+        *,
+        diagnostic_code: str | None = None,
+        exit_code: int | None = None,
+        stderr_hash: str | None = None,
+    ) -> None:
         self.code = code
-        super().__init__(code)
+        self.diagnostic_code = diagnostic_code
+        self.exit_code = exit_code
+        self.stderr_hash = stderr_hash
+        message = code if diagnostic_code is None else f"{code}:{diagnostic_code}"
+        super().__init__(message)
 
 
 CODEX_CLI_APPROVED_VERSION = "codex-cli 0.159.0"
@@ -207,6 +218,73 @@ def _hash_output(value: bytes) -> str:
 
 def _decode(value: bytes) -> str:
     return value.decode("utf-8", errors="replace")
+
+
+def _safe_cli_failure_category(stderr: bytes) -> str:
+    """Classify stderr without returning or persisting raw stderr."""
+
+    text = _decode(stderr).casefold()
+    if "content_filter" in text or "content filter" in text:
+        return "agent_cli_content_filter"
+    if any(token in text for token in ("rate limit", "rate_limit", "quota exceeded")):
+        return "agent_cli_rate_limited"
+    if "model" in text and any(
+        token in text
+        for token in (
+            "not found",
+            "not available",
+            "unavailable",
+            "unsupported",
+            "does not have access",
+            "permission",
+        )
+    ):
+        return "agent_cli_model_unavailable"
+    if any(
+        token in text
+        for token in (
+            "unauthorized",
+            "forbidden",
+            "authentication",
+            "not logged in",
+            "login required",
+            "invalid token",
+        )
+    ):
+        return "agent_cli_auth_failure"
+    if ("schema" in text or "output-schema" in text or "output schema" in text) and any(
+        token in text
+        for token in ("invalid", "unsupported", "not supported", "failed", "error")
+    ):
+        return "agent_cli_output_schema_invalid"
+    if any(
+        token in text
+        for token in (
+            "unknown feature",
+            "unknown argument",
+            "unexpected argument",
+            "unrecognized option",
+            "invalid value",
+            "configuration error",
+            "config error",
+        )
+    ):
+        return "agent_cli_configuration_invalid"
+    if any(
+        token in text
+        for token in (
+            "stream disconnected",
+            "connection reset",
+            "connection refused",
+            "network error",
+            "dns",
+            "tls",
+            "timed out",
+            "timeout",
+        )
+    ):
+        return "agent_cli_transport_failure"
+    return "agent_cli_nonzero_unknown"
 
 
 def _safe_usage(value: object) -> dict[str, object] | None:
@@ -419,7 +497,7 @@ class _CliRunner:
                 await process.stdin.drain()
                 process.stdin.close()
                 await process.stdin.wait_closed()
-                stdout, _stderr = await asyncio.wait_for(
+                stdout, stderr = await asyncio.wait_for(
                     process.communicate(), timeout=request.timeout
                 )
             except FileNotFoundError as exc:
@@ -433,7 +511,12 @@ class _CliRunner:
             raw_hash = _hash_output(raw_output)
             exit_code = process.returncode or 0
             if exit_code != 0:
-                raise AgentRunnerError("agent_nonzero_exit")
+                raise AgentRunnerError(
+                    "agent_nonzero_exit",
+                    diagnostic_code=_safe_cli_failure_category(stderr),
+                    exit_code=exit_code,
+                    stderr_hash=_hash_output(stderr),
+                )
             structured, usage, session_id = _parse_final_output(raw_output)
             return AgentRunResult(
                 provider=request.provider,

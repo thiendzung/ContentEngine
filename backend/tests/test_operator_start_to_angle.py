@@ -1181,6 +1181,72 @@ async def test_failed_research_diagnostic_survives_research_rollback(
 
 
 @pytest.mark.asyncio
+async def test_failed_attempt_persists_only_allowlisted_safe_runner_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-safe-runner-metadata"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq07-safe-runner-metadata-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq07-safe-runner-metadata",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-cq07-safe-runner-metadata",
+            failure_class="coverage_support_failed",
+            message="operator_worker_coverage_support_failed",
+            safe_metadata={
+                "runner_error": "agent_nonzero_exit",
+                "runner_diagnostic": "agent_cli_model_unavailable",
+                "runner_exit_code": 7,
+                "runner_stderr_hash": "d" * 64,
+                "task": "coverage_support_depth",
+                "raw_stderr": "secret-do-not-persist",
+            },
+        )
+
+        failed = await session.get(Job, leased.id)
+        step = await session.get(StepRun, leased.step_run_id)
+        assert failed is not None and failed.status == "failed"
+        assert step is not None and step.error_json is not None
+        assert step.error_json["safe_metadata"] == {
+            "runner_error": "agent_nonzero_exit",
+            "runner_diagnostic": "agent_cli_model_unavailable",
+            "runner_exit_code": 7,
+            "runner_stderr_hash": "d" * 64,
+            "task": "coverage_support_depth",
+        }
+        serialized = json.dumps(step.error_json, sort_keys=True)
+        assert "raw_stderr" not in serialized
+        assert "secret-do-not-persist" not in serialized
+
+
+@pytest.mark.asyncio
 async def test_research_exception_diagnostic_omits_exception_message(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -355,18 +355,29 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
         try:
             result = await runner.run(request)
         except AgentRunnerError as exc:
+            runtime_metadata: dict[str, object] = {
+                "runner_error": exc.code,
+                "task": COVERAGE_SUPPORT_DEPTH_TASK_KEY,
+            }
+            if exc.diagnostic_code is not None:
+                runtime_metadata["runner_diagnostic"] = exc.diagnostic_code
+            if exc.exit_code is not None:
+                runtime_metadata["runner_exit_code"] = exc.exit_code
+            if exc.stderr_hash is not None:
+                runtime_metadata["runner_stderr_hash"] = exc.stderr_hash
             await fail_model_call(
                 self._session,
                 call_id=call.id,
                 error_class=exc.code,
-                runtime_metadata={
-                    "runner_error": exc.code,
-                    "task": COVERAGE_SUPPORT_DEPTH_TASK_KEY,
-                },
+                runtime_metadata=runtime_metadata,
             )
+            detail = exc.code
+            if exc.diagnostic_code is not None:
+                detail = f"{detail}:{exc.diagnostic_code}"
             raise CoverageSupportDepthRuntimeError(
                 "coverage_support_agent_runner_failed",
-                exc.code,
+                detail,
+                safe_metadata=runtime_metadata,
             ) from exc
         if result.provider != request.provider or result.model != request.model:
             await fail_model_call(

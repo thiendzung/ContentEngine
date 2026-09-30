@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -98,12 +99,14 @@ class FakeProcess:
         argv: tuple[str, ...],
         *,
         stdout: bytes = b"",
+        stderr: bytes = b"",
         exit_code: int = 0,
         last_message: object | None = None,
         hang: bool = False,
     ) -> None:
         self.argv = argv
         self.stdout = stdout
+        self.stderr = stderr
         self.returncode: int | None = None
         self._exit_code = exit_code
         self._last_message = last_message
@@ -118,7 +121,7 @@ class FakeProcess:
         if self._hang and not self.killed:
             await asyncio.Future()
         self.returncode = self._exit_code
-        return self.stdout, b""
+        return self.stdout, self.stderr
 
     def kill(self) -> None:
         self.killed = True
@@ -333,6 +336,55 @@ async def test_cli_runner_rejects_invalid_or_nonzero_execution(
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
     with pytest.raises(AgentRunnerError, match=error_code):
         await CodexCliRunner().run(_request("codex_cli"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("stderr", "expected_diagnostic"),
+    [
+        (
+            b"Error: model gpt-test is not available for this account",
+            "agent_cli_model_unavailable",
+        ),
+        (
+            b"ERROR: stream disconnected before completion",
+            "agent_cli_transport_failure",
+        ),
+        (b"response stopped: content_filter", "agent_cli_content_filter"),
+        (
+            b"opaque failure containing secret-value-that-must-not-surface",
+            "agent_cli_nonzero_unknown",
+        ),
+    ],
+)
+async def test_codex_nonzero_exit_exposes_only_safe_diagnostics(
+    monkeypatch,
+    stderr: bytes,
+    expected_diagnostic: str,
+) -> None:
+    async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        control = _codex_control_process(argv)
+        if control is not None:
+            return control
+        if "--version" in argv:
+            return FakeProcess(argv, stdout=CODEX_CLI_APPROVED_VERSION.encode())
+        if argv[-2:] == ("login", "status"):
+            return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
+        return FakeProcess(argv, stderr=stderr, exit_code=7)
+
+    monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/codex")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+
+    with pytest.raises(AgentRunnerError) as exc_info:
+        await CodexCliRunner().run(_request("codex_cli"))
+
+    exc = exc_info.value
+    assert exc.code == "agent_nonzero_exit"
+    assert exc.diagnostic_code == expected_diagnostic
+    assert exc.exit_code == 7
+    assert exc.stderr_hash == hashlib.sha256(stderr).hexdigest()
+    assert str(exc) == f"agent_nonzero_exit:{expected_diagnostic}"
+    assert "secret-value-that-must-not-surface" not in str(exc)
 
 
 @pytest.mark.asyncio
