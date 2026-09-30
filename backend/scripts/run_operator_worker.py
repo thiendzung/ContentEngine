@@ -326,6 +326,11 @@ async def _run(*, emit_idle: bool = True) -> None:
                             if isinstance(exc, OperatorWorkerError)
                             else None
                         ),
+                        safe_metadata=(
+                            exc.safe_metadata
+                            if isinstance(exc, OperatorWorkerError)
+                            else None
+                        ),
                     )
         elif step_key in WRITER_STEP_BY_LOCALE.values():
             failure_class = (
