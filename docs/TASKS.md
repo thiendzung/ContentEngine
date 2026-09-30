@@ -627,20 +627,34 @@ CQ-04 boundaries remained intact: no Writer/Human Voice implementation, no CQ-06
 
 CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input, extra rewrite model stage, operational migration, publication or final-approval bypass.
 
-### CQ-06 — Deep Quality Gate — IN CLOSEOUT
+### CQ-06 — Deep Quality Gate — DONE
 
 - [x] Audit existing Assertion Audit, Source-copy, Reader Value, Search/AI and final-review path.
-- [x] Lock architecture: add one final aggregate Deep Quality gate after Search/AI; do not replace or weaken upstream gates.
-- [x] Lock exact 12-dimension contract from issue #232; no numeric/magic score.
-- [x] CQ06-A: pure dimension contract, authority map, deterministic aggregation and good/deceptive-polished fixtures.
-- [x] CQ06-B: exact lineage input loader for CQ-03/04/05 + Assertion/Source-copy/Reader/Search prerequisites.
-- [x] CQ06-C: derive authoritative upstream/deterministic dimension findings; semantic model cannot override them.
-- [x] CQ06-D: bounded semantic evaluator only for coherence, Human Voice/MOTGU voice, repetition/filler/system-language and locale-specific quality.
-- [x] CQ06-E: persist immutable Deep Quality Artifact/Evaluation, integrate operator/final-review gate, add fail-closed/adversarial regressions.
-- [x] MG full-diff self-review on implementation candidate; no unresolved P0/P1 defect found before final closeout docs.
-- [ ] Agent Local exact-SHA heavy verification + exact-ref OCR on the final branch HEAD.
-- [ ] MG evidence/OCR triage.
-- [ ] Minimal GitHub confirmation CI on the final SHA.
-- [ ] Founder merge.
+- [x] Final aggregate Deep Quality gate added after Search/AI without weakening upstream truth/provenance gates.
+- [x] Exact 12-dimension contract implemented; no numeric/magic score.
+- [x] CQ06-A through CQ06-E complete.
+- [x] Persisted-lineage substitution remediation shipped fail-closed with regression coverage.
+- [x] Final implementation head `9bc00e2379803dd44d70b182cef4db279fd6156e`: remediation-focused 68 PASS; affected CQ06 126 PASS; CQ03→CQ06 focused 180 PASS; full backend 1263 PASS; frontend PASS; VI/EN runtime smoke PASS.
+- [x] Exact-ref OpenCodeReview v1.12.9 reviewed 23/23 reviewable files with zero findings.
+- [x] Founder merged PR #237; main became `8dfe5d0665d7dcb931336a52ef8102bef36af03f`.
 
-CQ-06 boundaries: no auto-publication, no WordPress activation, no CQ-07 pilot, no new workflow engine, no weakening Assertion Audit/Source-copy, no opaque score and no operational migration unless a later slice proves a schema change is unavoidable.
+CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow engine, weakening Assertion Audit/Source-copy, opaque score or operational migration.
+
+### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE
+
+- [x] Founder selected Option B: P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
+- [x] Pair identity/role/question/intent/promise/coverage/EN+VI lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`.
+- [x] Pre-CQ07 cleanup completed via PR #239; local main cleaned and safe-run README simplified.
+- [x] Exact Codex `0.159.0` capability audit passed (#240) and exact repin merged via PR #241.
+- [x] Fresh disposable baseline proved on main `6bb7a2fa16383a685daf5c84490eface1c91071e`: Alembic `20260926_0044`, one head, `motgu` seed present, health/preflight READY, no model/provider call.
+- [x] Exact P01 intake payload frozen in `docs/CQ07_P01_EXECUTION_INPUT.md`.
+- [ ] Founder explicitly authorizes bounded external research/model execution for P01.
+- [ ] Create P01 intake in the fresh CQ-07 disposable baseline and execute only to the Angle human gate.
+- [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
+- [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
+- [ ] Run C02 independently through the same chain.
+- [ ] Compare P01/C02 breadth, depth, overlap, links and VI/EN quality.
+- [ ] Record whether existing identity is sufficient or a minimum durable Pillar↔Cluster relation is justified.
+- [ ] Return exact artifact IDs/hashes, approvals, quality results and final visible VI/EN content.
+
+CQ-07 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant. Historical PR #238 is evidence/history only and is not the clean execution branch.
