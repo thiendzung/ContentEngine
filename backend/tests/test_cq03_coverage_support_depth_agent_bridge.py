@@ -13,6 +13,7 @@ from app.modules.content_engine.journal.coverage_support_depth_agent_bridge impo
     _bind_output_schema,
 )
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
+    CoverageSupportDepthRuntimeError,
     build_coverage_support_depth_model_input,
 )
 from app.modules.harness.agent_runner import (
@@ -296,7 +297,7 @@ async def test_nonzero_runner_failure_propagates_only_safe_diagnostic_metadata(
     )
 
     with pytest.raises(
-        Exception,
+        CoverageSupportDepthRuntimeError,
         match="coverage_support_agent_runner_failed: agent_nonzero_exit:agent_cli_model_unavailable",
     ):
         await port.generate(
