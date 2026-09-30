@@ -342,10 +342,19 @@ async def test_cli_runner_rejects_invalid_or_nonzero_execution(
 @pytest.mark.parametrize(
     ("stderr", "expected_diagnostic"),
     [
-        (b"Error: model gpt-test is not available for this account", "agent_cli_model_unavailable"),
-        (b"ERROR: stream disconnected before completion", "agent_cli_transport_failure"),
+        (
+            b"Error: model gpt-test is not available for this account",
+            "agent_cli_model_unavailable",
+        ),
+        (
+            b"ERROR: stream disconnected before completion",
+            "agent_cli_transport_failure",
+        ),
         (b"response stopped: content_filter", "agent_cli_content_filter"),
-        (b"opaque failure containing secret-value-that-must-not-surface", "agent_cli_nonzero_unknown"),
+        (
+            b"opaque failure containing secret-value-that-must-not-surface",
+            "agent_cli_nonzero_unknown",
+        ),
     ],
 )
 async def test_codex_nonzero_exit_exposes_only_safe_diagnostics(
