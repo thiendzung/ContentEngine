@@ -31,8 +31,16 @@ COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
 class CoverageSupportDepthRuntimeError(ValueError):
-    def __init__(self, code: str, detail: str | None = None) -> None:
+    def __init__(
+        self,
+        code: str,
+        detail: str | None = None,
+        *,
+        safe_metadata: dict[str, object] | None = None,
+    ) -> None:
         self.code = code
+        self.detail = detail
+        self.safe_metadata = safe_metadata
         super().__init__(f"{code}: {detail}" if detail else code)
 
 
