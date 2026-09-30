@@ -20,6 +20,7 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 )
 from app.modules.content_engine.journal.operator_worker import (
     OperatorWorkerError,
+    _safe_failure_metadata,
     claim_next_operator_job,
     execute_start_to_angle_job,
     fail_start_to_angle_job,
@@ -1225,8 +1226,11 @@ async def test_failed_attempt_persists_only_allowlisted_safe_runner_metadata(
                 "runner_diagnostic": "agent_cli_model_unavailable",
                 "runner_exit_code": 7,
                 "runner_stderr_hash": "d" * 64,
+                "runner_stdout_hash": "e" * 64,
+                "runner_diagnostic_source": "stdout_jsonl",
                 "task": "coverage_support_depth",
                 "raw_stderr": "secret-do-not-persist",
+                "raw_stdout": "secret-jsonl-do-not-persist",
             },
         )
 
@@ -1239,11 +1243,29 @@ async def test_failed_attempt_persists_only_allowlisted_safe_runner_metadata(
             "runner_diagnostic": "agent_cli_model_unavailable",
             "runner_exit_code": 7,
             "runner_stderr_hash": "d" * 64,
+            "runner_stdout_hash": "e" * 64,
+            "runner_diagnostic_source": "stdout_jsonl",
             "task": "coverage_support_depth",
         }
         serialized = json.dumps(step.error_json, sort_keys=True)
         assert "raw_stderr" not in serialized
+        assert "raw_stdout" not in serialized
         assert "secret-do-not-persist" not in serialized
+        assert "secret-jsonl-do-not-persist" not in serialized
+
+
+        assert _safe_failure_metadata(
+            {
+                "runner_error": "agent_nonzero_exit",
+                "runner_diagnostic": "not-allowed",
+                "runner_exit_code": True,
+                "runner_stderr_hash": "not-a-hash",
+                "runner_stdout_hash": "z" * 64,
+                "runner_diagnostic_source": "raw_stdout",
+                "task": "wrong-task",
+                "raw_stdout": "still-secret",
+            }
+        ) == {"runner_error": "agent_nonzero_exit"}
 
 
 @pytest.mark.asyncio

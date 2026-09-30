@@ -365,6 +365,10 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
                 runtime_metadata["runner_exit_code"] = exc.exit_code
             if exc.stderr_hash is not None:
                 runtime_metadata["runner_stderr_hash"] = exc.stderr_hash
+            if exc.stdout_hash is not None:
+                runtime_metadata["runner_stdout_hash"] = exc.stdout_hash
+            if exc.diagnostic_source is not None:
+                runtime_metadata["runner_diagnostic_source"] = exc.diagnostic_source
             await fail_model_call(
                 self._session,
                 call_id=call.id,

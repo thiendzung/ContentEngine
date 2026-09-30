@@ -136,6 +136,16 @@ def _safe_failure_metadata(value: dict[str, object] | None) -> dict[str, object]
         and all(char in "0123456789abcdef" for char in stderr_hash)
     ):
         result["runner_stderr_hash"] = stderr_hash
+    stdout_hash = value.get("runner_stdout_hash")
+    if (
+        isinstance(stdout_hash, str)
+        and len(stdout_hash) == 64
+        and all(char in "0123456789abcdef" for char in stdout_hash)
+    ):
+        result["runner_stdout_hash"] = stdout_hash
+    diagnostic_source = value.get("runner_diagnostic_source")
+    if diagnostic_source in {"stderr", "stdout_jsonl", "none"}:
+        result["runner_diagnostic_source"] = diagnostic_source
     if value.get("task") == "coverage_support_depth":
         result["task"] = "coverage_support_depth"
     return result
