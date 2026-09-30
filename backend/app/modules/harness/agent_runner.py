@@ -31,11 +31,15 @@ class AgentRunnerError(RuntimeError):
         diagnostic_code: str | None = None,
         exit_code: int | None = None,
         stderr_hash: str | None = None,
+        stdout_hash: str | None = None,
+        diagnostic_source: str | None = None,
     ) -> None:
         self.code = code
         self.diagnostic_code = diagnostic_code
         self.exit_code = exit_code
         self.stderr_hash = stderr_hash
+        self.stdout_hash = stdout_hash
+        self.diagnostic_source = diagnostic_source
         message = code if diagnostic_code is None else f"{code}:{diagnostic_code}"
         super().__init__(message)
 
@@ -220,10 +224,10 @@ def _decode(value: bytes) -> str:
     return value.decode("utf-8", errors="replace")
 
 
-def _safe_cli_failure_category(stderr: bytes) -> str:
-    """Classify stderr without returning or persisting raw stderr."""
+def _safe_cli_failure_category_text(value: str) -> str:
+    """Classify one error message without returning or persisting the message."""
 
-    text = _decode(stderr).casefold()
+    text = value.casefold()
     if "content_filter" in text or "content filter" in text:
         return "agent_cli_content_filter"
     if any(token in text for token in ("rate limit", "rate_limit", "quota exceeded")):
@@ -285,6 +289,65 @@ def _safe_cli_failure_category(stderr: bytes) -> str:
     ):
         return "agent_cli_transport_failure"
     return "agent_cli_nonzero_unknown"
+
+
+def _safe_cli_failure_category(stderr: bytes) -> str:
+    """Classify stderr without returning or persisting raw stderr."""
+
+    return _safe_cli_failure_category_text(_decode(stderr))
+
+
+def _codex_jsonl_failure_messages(stdout: bytes) -> list[str]:
+    """Extract only terminal error messages from Codex --json JSONL output."""
+
+    messages: list[str] = []
+    for line in _decode(stdout).splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        event_type = event.get("type")
+        message: object | None = None
+        if event_type == "error":
+            message = event.get("message")
+        elif event_type == "turn.failed":
+            error = event.get("error")
+            if isinstance(error, dict):
+                message = error.get("message")
+        elif event_type == "item.completed":
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") == "error":
+                message = item.get("message")
+        if isinstance(message, str) and message.strip():
+            messages.append(message)
+    return messages
+
+
+def _safe_codex_nonzero_diagnostic(
+    *,
+    stdout: bytes,
+    stderr: bytes,
+) -> tuple[str, str]:
+    """Prefer known stderr diagnostics, then bounded Codex JSONL failure events."""
+
+    stderr_category = _safe_cli_failure_category(stderr)
+    if stderr and stderr_category != "agent_cli_nonzero_unknown":
+        return stderr_category, "stderr"
+
+    jsonl_messages = _codex_jsonl_failure_messages(stdout)
+    for message in reversed(jsonl_messages):
+        category = _safe_cli_failure_category_text(message)
+        if category != "agent_cli_nonzero_unknown":
+            return category, "stdout_jsonl"
+    if jsonl_messages:
+        return "agent_cli_nonzero_unknown", "stdout_jsonl"
+    if stderr:
+        return stderr_category, "stderr"
+    return "agent_cli_nonzero_unknown", "none"
 
 
 def _safe_usage(value: object) -> dict[str, object] | None:
@@ -511,11 +574,20 @@ class _CliRunner:
             raw_hash = _hash_output(raw_output)
             exit_code = process.returncode or 0
             if exit_code != 0:
+                diagnostic_code = _safe_cli_failure_category(stderr)
+                diagnostic_source = "stderr" if stderr else "none"
+                if self.provider == "codex_cli":
+                    diagnostic_code, diagnostic_source = _safe_codex_nonzero_diagnostic(
+                        stdout=stdout,
+                        stderr=stderr,
+                    )
                 raise AgentRunnerError(
                     "agent_nonzero_exit",
-                    diagnostic_code=_safe_cli_failure_category(stderr),
+                    diagnostic_code=diagnostic_code,
                     exit_code=exit_code,
                     stderr_hash=_hash_output(stderr),
+                    stdout_hash=_hash_output(stdout),
+                    diagnostic_source=diagnostic_source,
                 )
             structured, usage, session_id = _parse_final_output(raw_output)
             return AgentRunResult(
