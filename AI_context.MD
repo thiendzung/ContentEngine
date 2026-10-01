@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-09-30 after Founder merged PR #241. Current main is `6bb7a2fa16383a685daf5c84490eface1c91071e`. CQ-01 through CQ-06 are merged. Pre-CQ07 cleanup and exact Codex `0.159.0` repin are complete. Production activation/E2E external work remains paused; the active WIP is CQ-07 real Pillar + Cluster pilot. This is the ONE current working window.
+Updated: 2026-10-01 after Founder merged PR #249. Current main is `7e506aed4e895c1d0e85286fffd9ebc398bacc9a`. CQ-01 through CQ-06 are merged and CQ-07 is active. P01-R2 attempts 1-3 are preserved failed retries; PR #249 fixed the reproducible Coverage Support structured-output transport-schema blocker. Founder has now decided that normal ChatGPT-packaged Codex version drift must not be an authorization blocker by itself; #251 is replacing the exact-version gate with a capability-based contract while preserving read-only/no-tool/auth fail-closed checks. Production activation/E2E external work remains paused.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `6bb7a2fa16383a685daf5c84490eface1c91071e` (merge PR #241). CQ-01 through CQ-06 passed their required technical gates and are merged. PR #239 completed pre-CQ07 cleanup/test isolation + local-run README. PR #241 repinned the audited exact Codex runner to `codex-cli 0.159.0`. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, production activation or publication.
+Live GitHub main: `7e506aed4e895c1d0e85286fffd9ebc398bacc9a` (merge PR #249). CQ-01 through CQ-06 passed their required technical gates and are merged. CQ-07 P01-R2 preserves exactly three failed retry jobs; no Attempt 4 exists. PR #249 removes provider-unsupported `uniqueItems` only from the deep-cloned Coverage Support transport schema while leaving the canonical registry/validator unchanged. Exact Codex patch-version pinning is now superseded as an operating policy by Founder decision; #251 implements capability-based Codex compatibility. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, production activation or publication.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -48,7 +48,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-07 / #233** is the active bounded content-quality window. Founder selected the P01 Pillar + C02 Cluster pair. The clean pilot contract and exact P01 intake are frozen in `docs/CQ07_PILOT_CONTRACT.md` and `docs/CQ07_P01_EXECUTION_INPUT.md`. Agent Local proved a fresh disposable CQ-07 baseline on exact main `6bb7a2fa16383a685daf5c84490eface1c91071e`: Alembic `20260926_0044`, canonical `motgu` seed present, health/preflight READY, exact audited Codex `0.159.0`, and zero provider/model calls. Next real step is P01 intake; external research/model execution requires a separate explicit Founder authorization and must stop at Angle, Outline and final-review gates. No operational migration or publication is authorized.
+**CQ-07 / #233** is the active bounded content-quality window. Founder selected the P01 Pillar + C02 Cluster pair. The pilot contract and P01 intake remain frozen in `docs/CQ07_PILOT_CONTRACT.md` and `docs/CQ07_P01_EXECUTION_INPUT.md`. P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` has exactly three preserved failed retry jobs and remains BLOCKED at Start-to-Angle; Attempt 3 exposed `agent_cli_output_schema_invalid`, and merged PR #249 applies the bounded transport-schema compatibility fix. No Attempt 4 is authorized. The immediate task is #251: make Codex compatibility capability-based so routine packaged CLI version updates do not create false blockers. After #251 merge and read-only readiness proof, any new real retry still requires separate Founder authorization and must stop at Angle, Outline and final-review gates. No operational migration or publication is authorized.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 

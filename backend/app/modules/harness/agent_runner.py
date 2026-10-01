@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -44,7 +45,27 @@ class AgentRunnerError(RuntimeError):
         super().__init__(message)
 
 
+# Historical known-good identity kept only for fixtures/provenance. Runtime approval is
+# capability-based because the ChatGPT-packaged Codex CLI updates independently.
 CODEX_CLI_APPROVED_VERSION = "codex-cli 0.159.0"
+_CODEX_CLI_CORE_RE = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
+)
+_CODEX_CLI_IDENTIFIER_RE = re.compile(
+    r"^[0-9A-Za-z]+(?:-[0-9A-Za-z]+)*$"
+)
+CODEX_REQUIRED_EXEC_FLAGS = (
+    "--model",
+    "--json",
+    "--output-schema",
+    "--output-last-message",
+    "--sandbox",
+    "--disable",
+    "--skip-git-repo-check",
+    "--ignore-user-config",
+    "--ephemeral",
+    "-c",
+)
 CODEX_NO_TOOL_FEATURES = (
     "shell_tool",
     "unified_exec",
@@ -68,6 +89,47 @@ CODEX_NO_TOOL_FEATURES = (
     "skill_mcp_dependency_install",
     "skill_search",
 )
+
+
+def is_codex_cli_version(value: object) -> bool:
+    """Recognize one fail-closed Codex CLI version identity."""
+
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    prefix = "codex-cli "
+    if not text.startswith(prefix):
+        return False
+
+    raw_version = text[len(prefix) :]
+    base_and_pre, build_sep, build = raw_version.partition("+")
+    if build_sep:
+        if not build or any(
+            not _CODEX_CLI_IDENTIFIER_RE.fullmatch(part)
+            for part in build.split(".")
+        ):
+            return False
+
+    core, pre_sep, prerelease = base_and_pre.partition("-")
+    if _CODEX_CLI_CORE_RE.fullmatch(core) is None:
+        return False
+    if pre_sep and (
+        not prerelease
+        or any(
+            not _CODEX_CLI_IDENTIFIER_RE.fullmatch(part)
+            for part in prerelease.split(".")
+        )
+    ):
+        return False
+    return True
+
+
+def runner_versions_compatible(*, provider: str, expected: str, observed: str) -> bool:
+    """Use capability-family compatibility for Codex, exact identity elsewhere."""
+
+    if provider == "codex_cli":
+        return is_codex_cli_version(expected) and is_codex_cli_version(observed)
+    return observed == expected
 
 
 @dataclass(frozen=True, slots=True)
@@ -626,7 +688,9 @@ class CodexCliRunner(_CliRunner):
             timeout=10.0,
         )
         help_text = _decode(help_result.stdout + b"\n" + help_result.stderr)
-        if help_result.exit_code != 0 or "--disable" not in help_text:
+        if help_result.exit_code != 0 or any(
+            flag not in help_text for flag in CODEX_REQUIRED_EXEC_FLAGS
+        ):
             raise AgentRunnerError("agent_tool_disable_unsupported")
 
         feature_result = await _run_command(
@@ -651,8 +715,9 @@ class CodexCliRunner(_CliRunner):
         version_text = (_decode(version.stdout) or _decode(version.stderr)).strip()
         if not version_text:
             raise AgentRunnerError("agent_version_check_failed")
-        if version_text.splitlines()[0].strip() != CODEX_CLI_APPROVED_VERSION:
-            raise AgentRunnerError("agent_runner_version_not_approved")
+        version_line = version_text.splitlines()[0].strip()
+        if not is_codex_cli_version(version_line):
+            raise AgentRunnerError("agent_runner_identity_invalid")
         await self._verify_no_tool_support(executable=executable)
         auth = await _run_command([executable, *self.auth_args], timeout=10.0)
         auth_mode = self._auth_mode(auth.stdout + b"\n" + auth.stderr)
@@ -661,7 +726,7 @@ class CodexCliRunner(_CliRunner):
         return AgentCapability(
             provider=self.provider,
             executable=executable,
-            version=version_text.splitlines()[0][:200],
+            version=version_line[:200],
             authenticated=True,
             auth_mode=auth_mode,
         )
@@ -748,6 +813,7 @@ def default_agent_runner_registry() -> AgentRunnerRegistry:
 
 __all__ = [
     "CODEX_CLI_APPROVED_VERSION",
+    "CODEX_REQUIRED_EXEC_FLAGS",
     "CODEX_NO_TOOL_FEATURES",
     "AgentCapability",
     "AgentRunRequest",
@@ -758,4 +824,6 @@ __all__ = [
     "AntigravityCliRunner",
     "CodexCliRunner",
     "default_agent_runner_registry",
+    "is_codex_cli_version",
+    "runner_versions_compatible",
 ]
