@@ -114,6 +114,23 @@ _SAFE_RUNNER_DIAGNOSTICS = {
 }
 
 
+def _coverage_aware_research_query(opportunity: ContentOpportunity) -> str:
+    """Keep one bounded research execution aware of every frozen coverage target."""
+
+    question = opportunity.question.strip()
+    requirements = [
+        item.strip()
+        for item in opportunity.coverage_requirements_json
+        if isinstance(item, str) and item.strip()
+    ]
+    if not requirements:
+        return question
+    return (
+        f"{question}\n\nCoverage requirements that the research must be able to support:\n"
+        + "\n".join(f"- {item}" for item in requirements)
+    )
+
+
 def _safe_failure_metadata(value: dict[str, object] | None) -> dict[str, object]:
     """Allow only bounded runner diagnostics; raw process output can never pass through."""
 
@@ -496,7 +513,7 @@ async def execute_start_to_angle_job(
     research_request = EvidenceResearchRequest(
         research=ProductionResearchRequest(
             project_id=content_case.project_id,
-            query=opportunity.question,
+            query=_coverage_aware_research_query(opportunity),
             locale=variant.locale,
             country=spec.research_country,
             limit=10,
@@ -746,4 +763,5 @@ __all__ = [
     "execute_start_to_angle_job",
     "fail_start_to_angle_job",
     "heartbeat_operator_job",
+    "_coverage_aware_research_query",
 ]
