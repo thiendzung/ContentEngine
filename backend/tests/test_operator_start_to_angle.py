@@ -14,7 +14,10 @@ from test_ce05_review_revise import isolated_session
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.modules.content_engine.journal.models import JournalRequiredLocale, OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
-from app.modules.content_engine.journal.operator_manual_intake import create_founder_journal_intake
+from app.modules.content_engine.journal.operator_manual_intake import (
+    FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    create_founder_journal_intake,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import (
     get_operator_state_v45,
     submit_operator_command_v45,
@@ -188,10 +191,12 @@ class ControlledEvidenceWorkflow:
         *,
         relation: str = "supports",
         evidence_eligible: bool = True,
+        include_stale_originality_gap: bool = False,
     ) -> None:
         self.calls = 0
         self.relation = relation
         self.evidence_eligible = evidence_eligible
+        self.include_stale_originality_gap = include_stale_originality_gap
         self.last_request: object | None = None
 
     async def run(self, session: AsyncSession, **kwargs: object) -> EvidenceResearchResult:
@@ -318,12 +323,19 @@ class ControlledEvidenceWorkflow:
             evidence_set_content_hash=evidence_set.content_hash,
             evidence_set_status="draft",
             research_gaps=(
-                []
-                if self.evidence_eligible
-                else [
-                    "No Evidence member can support or qualify factual claims; "
-                    "context-only evidence cannot ground downstream factual work."
+                [
+                    "Originality gap remains: no usable approved MOTGU-owned material is "
+                    "attached to this opportunity. Reference-only items do not close this gap."
                 ]
+                if self.evidence_eligible and self.include_stale_originality_gap
+                else (
+                    []
+                    if self.evidence_eligible
+                    else [
+                        "No Evidence member can support or qualify factual claims; "
+                        "context-only evidence cannot ground downstream factual work."
+                    ]
+                )
             ),
             evidence_eligible=self.evidence_eligible,
         )
@@ -416,6 +428,7 @@ class ControlledCodexRunner:
                 provider=request.provider,
                 model=request.model,
                 runner_version="fixture-codex",
+                runner_executable="/fixture/bin/codex",
                 structured_output={"schema_version": 1, "items": items},
                 raw_output_hash="b" * 64,
                 exit_code=0,
@@ -622,6 +635,25 @@ async def test_founder_intake_requires_current_editorial_role_and_can_create_pil
             match="operator_manual_content_role_invalid",
         ):
             await create_founder_journal_intake(session, **invalid)
+
+
+@pytest.mark.asyncio
+async def test_founder_intake_bounds_originality_before_evaluator_input() -> None:
+    too_long = "x" * (FOUNDER_ORIGINALITY_FIELD_MAX_CHARS + 1)
+    payload = _intake_kwargs(key="cq07-originality-too-long")
+    payload["originality_material"] = too_long
+
+    async with isolated_session() as session:
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_originality_material_required_too_long",
+        ):
+            await create_founder_journal_intake(session, **payload)
+
+    http_payload = dict(payload)
+    http_payload.pop("actor_id")
+    with pytest.raises(ValidationError):
+        FounderJournalIntakeRequest.model_validate(http_payload)
 
 
 def test_founder_intake_http_rejects_legacy_primary_role() -> None:
@@ -1113,7 +1145,9 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         )
         assert leased is not None
 
-        workflow = ControlledEvidenceWorkflow()
+        workflow = ControlledEvidenceWorkflow(
+            include_stale_originality_gap=True,
+        )
         runner = ControlledCodexRunner(
             support_unresolved=True,
             support_verbose=True,
@@ -1212,6 +1246,22 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         )
         assert research["stop_reason"] == "controlled_fixture_sufficient"
         assert research_snapshot["relation_counts"] == {"supports": 1}
+        assert research_snapshot["research_gaps"] == []
+        assert research_snapshot["omitted_stale_gaps"] == [
+            "stale_opportunity_originality_gap"
+        ]
+
+        evaluator_identity = snapshot["evaluator_identity"]
+        assert isinstance(evaluator_identity, dict)
+        assert evaluator_identity["provider"] == "codex_cli"
+        assert evaluator_identity["model"]
+        assert evaluator_identity["prompt_version"] == "journal_coverage_support_depth_en:v1"
+        assert evaluator_identity["recipe_version"] == "journal_coverage_support_depth_en_v1:v1"
+        assert evaluator_identity["runner_version"] == "fixture-codex"
+        assert evaluator_identity["runner_executable"] == "/fixture/bin/codex"
+        assert evaluator_identity["raw_output_hash"] == "b" * 64
+        assert evaluator_identity["accepted_attempt"] == 1
+        assert evaluator_identity["context_manifest_id"]
 
         serialized = json.dumps(snapshot, sort_keys=True)
         assert "content_markdown" not in serialized
