@@ -20,6 +20,7 @@ from app.modules.content_engine.journal.operator_vertical_slice import (
 )
 from app.modules.content_engine.journal.operator_worker import (
     OperatorWorkerError,
+    _coverage_aware_research_query,
     _safe_failure_metadata,
     claim_next_operator_job,
     execute_start_to_angle_job,
@@ -124,6 +125,27 @@ def _intake_kwargs(*, key: str) -> dict[str, object]:
         "idempotency_key": key,
         "actor_id": "founder",
     }
+
+
+def test_coverage_aware_research_query_preserves_question_and_all_requirements() -> None:
+    opportunity = type(
+        "OpportunityFixture",
+        (),
+        {
+            "question": "How can a first-time buyer evaluate original art?",
+            "coverage_requirements_json": [
+                "Explain what signatures can and cannot establish.",
+                "Explain what certificates and invoices can and cannot establish.",
+                "Give a low-pressure checklist and link to Artist / Artwork / Visit.",
+            ],
+        },
+    )()
+
+    query = _coverage_aware_research_query(opportunity)  # type: ignore[arg-type]
+
+    assert query.startswith("How can a first-time buyer evaluate original art?")
+    for requirement in opportunity.coverage_requirements_json:
+        assert requirement in query
 
 
 async def _activate_seeded_angle_runtime(session: AsyncSession) -> None:
