@@ -1163,7 +1163,10 @@ async def test_failed_research_diagnostic_survives_research_rollback(
         research = diagnostic.content_json["research"]
         assert isinstance(research, dict)
         assert research["query"] == (
-            "How can a visitor evaluate locally made relief artwork in Vietnam?"
+            "How can a visitor evaluate locally made relief artwork in Vietnam?\n\n"
+            "Coverage requirements that the research must be able to support:\n"
+            "- Explain how to inspect materials and physical finish.\n"
+            "- Separate factual evidence from MOTGU editorial judgment."
         )
         assert research["stop_reason"] == "controlled_fixture_context_only"
         decisions = research["decisions"]
