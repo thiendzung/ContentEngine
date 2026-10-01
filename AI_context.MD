@@ -97,6 +97,7 @@ If GitHub Actions quota/service is unavailable, record CI as unavailable and use
 - 2026-10-01: Founder merged PR #264 as main `9a57b4ed39404081ff4ef8ab8942ba029ce9da35`; post-merge readiness passed and Founder authorized exactly one Attempt 6.
 - 2026-10-01: Attempt 6 ran exactly once and failed safely at Coverage Support with only `coverage-5` unresolved; no Attempt 7, no queued/leased work, no Angle artifact and operational DB unchanged.
 - 2026-10-01: Read-only diagnosis exposed an observability gap: the generated EvidenceSet/Evidence/SourceDocument rows roll back on failed Start-to-Angle, while the persisted Coverage Support diagnostic did not retain the bounded evidence/research/full-assessment snapshot needed to classify the remaining gap. #268 is the active fix.
+- 2026-10-01: PR #269 R5 exact-head local verification passed focused/full backend, Ruff, mypy, OpenAPI and OCR, but later Codex review findings on the same production delta remained valid: robust URL redaction/malformed-URL tolerance, legacy oversized intake replay, and pre-research aggregate size fail-fast. MG fixed those findings on the same PR; a new exact-head closeout is required before merge readiness.
 
 ## Remaining order and completion meaning
 
