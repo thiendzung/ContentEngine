@@ -451,9 +451,9 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01/CQ-02/CQ-03/CQ-04/CQ-05 merged, CQ-06 active
+## Content Quality priority — CQ-01 through CQ-06 merged, CQ-07 active / P0
 
-Founder priority remains content quality before production activation.
+Founder priority remains content quality before production activation. P0 is the CQ-07 real Pillar+Cluster closeout; P1 Production Readiness remains gated until P0 closes.
 
 CQ sequence:
 `CQ-01 Promise Coverage → CQ-02 Pillar/Cluster Contract → CQ-03 Evidence/Originality Depth → CQ-04 Angle/Outline Quality → CQ-05 Writer/Human Voice → CQ-06 Deep Quality Gate → CQ-07 real Pillar+Cluster pilot`.
