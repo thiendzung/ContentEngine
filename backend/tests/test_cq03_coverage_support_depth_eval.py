@@ -8,6 +8,7 @@ from app.modules.content_engine.journal.coverage_support_depth_eval import (
     build_coverage_support_depth_model_input,
     preflight_coverage_support_depth_capacity,
 )
+from app.modules.research.evidence.contracts import DEFAULT_EVIDENCE_MAX_CLAIMS
 
 
 def _originality_item() -> dict[str, str]:
@@ -166,7 +167,7 @@ def test_preresearch_capacity_reserves_worst_case_automatic_evidence() -> None:
                 "id": "op-1",
                 "snapshot_hash": "b" * 64,
             },
-            max_evidence_items=8,
+            max_evidence_items=DEFAULT_EVIDENCE_MAX_CLAIMS,
         )
 
 
