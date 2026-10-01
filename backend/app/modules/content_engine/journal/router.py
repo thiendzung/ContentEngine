@@ -24,7 +24,6 @@ from app.modules.content_engine.journal.operator_decisions import (
     submit_operator_decision,
 )
 from app.modules.content_engine.journal.operator_manual_intake import (
-    FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
     FounderJournalIntakeResult,
     create_founder_journal_intake,
 )
@@ -108,18 +107,11 @@ class FounderJournalIntakeRequest(BaseModel):
     promise: str = Field(min_length=1)
     coverage_requirements: list[str] = Field(min_length=1, max_length=12)
     selection_reason: str = Field(min_length=1)
-    originality_material: str = Field(
-        min_length=1,
-        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
-    )
-    originality_writer_use: str = Field(
-        min_length=1,
-        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
-    )
-    originality_guardrails: str = Field(
-        min_length=1,
-        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
-    )
+    # Creation bounds are enforced in the service after idempotent replay lookup
+    # so legacy oversized requests can still resolve to their canonical receipt.
+    originality_material: str = Field(min_length=1)
+    originality_writer_use: str = Field(min_length=1)
+    originality_guardrails: str = Field(min_length=1)
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
