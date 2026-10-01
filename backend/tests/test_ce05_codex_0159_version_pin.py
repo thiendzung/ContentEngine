@@ -10,6 +10,7 @@ from app.modules.harness.agent_runner import (
     CODEX_REQUIRED_EXEC_FLAGS,
     AgentRunnerError,
     CodexCliRunner,
+    runner_versions_compatible,
 )
 
 
@@ -93,3 +94,26 @@ async def test_codex_missing_required_exec_flag_fails_before_auth(
         ("/usr/local/bin/codex", "--version"),
         ("/usr/local/bin/codex", "exec", "--help"),
     ]
+
+
+def test_runner_version_policy_is_capability_family_for_codex_and_exact_elsewhere() -> None:
+    assert runner_versions_compatible(
+        provider="codex_cli",
+        expected="codex-cli 0.159.0",
+        observed="codex-cli 0.159.2",
+    )
+    assert not runner_versions_compatible(
+        provider="codex_cli",
+        expected="codex-cli 0.159.0",
+        observed="not-codex 0.159.2",
+    )
+    assert runner_versions_compatible(
+        provider="antigravity_cli",
+        expected="agy-1",
+        observed="agy-1",
+    )
+    assert not runner_versions_compatible(
+        provider="antigravity_cli",
+        expected="agy-1",
+        observed="agy-2",
+    )
