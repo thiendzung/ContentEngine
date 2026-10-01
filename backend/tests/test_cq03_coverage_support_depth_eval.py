@@ -6,6 +6,7 @@ from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES,
     CoverageSupportDepthRuntimeError,
     build_coverage_support_depth_model_input,
+    preflight_coverage_support_depth_capacity,
 )
 
 
@@ -125,6 +126,47 @@ def test_model_input_rejects_oversized_exact_snapshot_before_evaluator_call() ->
                 "id": "op-1",
                 "snapshot_hash": "b" * 64,
             },
+        )
+
+
+def test_preresearch_capacity_reserves_worst_case_automatic_evidence() -> None:
+    item = _originality_item()
+    item["material"] = "😀" * 4_000
+    item["writer_use"] = "x" * 4_000
+    item["guardrails"] = "x" * 4_000
+    coverage = [
+        f"{index:02d}-" + ("x" * 497)
+        for index in range(12)
+    ]
+
+    base = build_coverage_support_depth_model_input(
+        coverage_requirements=coverage,
+        evidence_items=[],
+        originality_items=[item],
+        evidence_set_ref={
+            "id": "pre-research",
+            "version": 1,
+            "content_hash": "0" * 64,
+        },
+        originality_pack_ref={
+            "id": "op-1",
+            "snapshot_hash": "b" * 64,
+        },
+    )
+    assert base["evidence"] == []
+
+    with pytest.raises(
+        CoverageSupportDepthRuntimeError,
+        match="coverage_support_model_input_too_large",
+    ):
+        preflight_coverage_support_depth_capacity(
+            coverage_requirements=coverage,
+            originality_items=[item],
+            originality_pack_ref={
+                "id": "op-1",
+                "snapshot_hash": "b" * 64,
+            },
+            max_evidence_items=8,
         )
 
 
