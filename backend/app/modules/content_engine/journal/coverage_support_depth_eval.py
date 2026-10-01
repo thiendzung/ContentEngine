@@ -357,8 +357,8 @@ def preflight_coverage_support_depth_capacity(
         ),
         originality_items=originality_items,
         evidence_set_ref={
-            "id": "pre-research",
-            "version": 1,
+            "id": "f" * 36,
+            "version": 2_147_483_647,
             "content_hash": "0" * 64,
         },
         originality_pack_ref=originality_pack_ref,
