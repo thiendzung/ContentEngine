@@ -74,7 +74,7 @@ def test_research_failure_diagnostic_strips_url_query_and_fragment() -> None:
     candidate = SourceCandidate(
         provider="exa",
         query="art authenticity",
-        url="https://example.test/source?token=SECRET_TOKEN&session=abc#private",
+        url="https://user:SECRET_PASSWORD@example.test/source?token=SECRET_TOKEN&session=abc#private",
         title="Evidence source",
         source_type="institutional",
         commercial_bias=CommercialBias.LOW,
@@ -116,6 +116,7 @@ def test_research_failure_diagnostic_strips_url_query_and_fragment() -> None:
     payload = research_failure_diagnostic_payload(result)
     serialized = str(payload)
 
+    assert "SECRET_PASSWORD" not in serialized
     assert "SECRET_TOKEN" not in serialized
     assert "SECRET_PARENT" not in serialized
     assert "SECRET_REQUEST" not in serialized
