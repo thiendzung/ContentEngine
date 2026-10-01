@@ -28,6 +28,9 @@ from app.modules.research.evidence.contracts import is_usable_originality_item
 COVERAGE_SUPPORT_DEPTH_ARTIFACT_TYPE = "coverage_support_depth"
 COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE = "coverage_support_failure_diagnostic"
 COVERAGE_SUPPORT_FAILURE_DIAGNOSTIC_SCHEMA_VERSION = 2
+COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS = 2_000
+COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS = 20
+COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS = 1_000
 COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
@@ -90,117 +93,55 @@ def _require_dict(value: object, code: str) -> dict[str, object]:
     return cast(dict[str, object], value)
 
 
-def _bounded_diagnostic_text(value: object, *, limit: int) -> str | None:
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized[:limit] if normalized else None
-
-
-def _coverage_requirement_diagnostic_snapshot(
+def _model_input_diagnostic_snapshot(
     source_input: CoverageSupportDepthInput,
-) -> list[dict[str, str]]:
-    requirements = source_input.model_input.get("coverage_requirements")
-    if not isinstance(requirements, list):
-        return []
-    output: list[dict[str, str]] = []
-    for raw in requirements[:50]:
-        if not isinstance(raw, dict):
-            continue
-        requirement_id = _bounded_diagnostic_text(raw.get("id"), limit=100)
-        requirement = _bounded_diagnostic_text(raw.get("requirement"), limit=1000)
-        if requirement_id is None or requirement is None:
-            continue
-        output.append(
+) -> dict[str, object]:
+    """Persist the exact sanitized evaluator input so its hash remains verifiable."""
+
+    snapshot = copy.deepcopy(source_input.model_input)
+    if _canonical_hash(snapshot) != source_input.input_snapshot_hash:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_diagnostic_input_hash_mismatch"
+        )
+    return snapshot
+
+
+def _assessment_diagnostic_snapshot(
+    assessment: CoverageSupportDepthAssessment,
+) -> dict[str, object]:
+    """Bound model-authored prose while retaining exact output hashes and refs."""
+
+    items: list[dict[str, object]] = []
+    for item in assessment.items:
+        exact_gaps = list(item.gaps)
+        items.append(
             {
-                "id": requirement_id,
-                "requirement": requirement,
+                "requirement_id": item.requirement_id,
+                "status": item.status,
+                "evidence_refs": list(item.evidence_refs),
+                "caveat_evidence_refs": list(item.caveat_evidence_refs),
+                "originality_refs": list(item.originality_refs),
+                "rationale": item.rationale[
+                    :COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS
+                ],
+                "rationale_hash": hashlib.sha256(
+                    item.rationale.encode("utf-8")
+                ).hexdigest(),
+                "gaps": [
+                    gap[:COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS]
+                    for gap in exact_gaps[:COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS]
+                ],
+                "gaps_hash": _canonical_hash(exact_gaps),
+                "gaps_total": len(exact_gaps),
             }
         )
-    return output
+    exact = assessment.to_dict()
+    return {
+        "schema_version": assessment.schema_version,
+        "content_hash": _canonical_hash(exact),
+        "items": items,
+    }
 
-
-def _coverage_evidence_diagnostic_snapshot(
-    source_input: CoverageSupportDepthInput,
-) -> list[dict[str, object]]:
-    evidence = source_input.model_input.get("evidence")
-    if not isinstance(evidence, list):
-        return []
-    output: list[dict[str, object]] = []
-    for raw in evidence[:50]:
-        if not isinstance(raw, dict):
-            continue
-        provenance = raw.get("provenance")
-        source_document_id = (
-            provenance.get("source_document_id")
-            if isinstance(provenance, dict)
-            else None
-        )
-        output.append(
-            {
-                "evidence_id": _bounded_diagnostic_text(
-                    raw.get("evidence_id"), limit=100
-                )
-                or "",
-                "claim_id": _bounded_diagnostic_text(raw.get("claim_id"), limit=100)
-                or "",
-                "claim": _bounded_diagnostic_text(raw.get("claim"), limit=1000)
-                or "",
-                "claim_type": _bounded_diagnostic_text(
-                    raw.get("claim_type"), limit=100
-                ),
-                "importance": _bounded_diagnostic_text(
-                    raw.get("importance"), limit=50
-                ),
-                "relation": _bounded_diagnostic_text(raw.get("relation"), limit=50)
-                or "",
-                "authority_level": _bounded_diagnostic_text(
-                    raw.get("authority_level"), limit=100
-                ),
-                "locator": _bounded_diagnostic_text(raw.get("locator"), limit=500)
-                or "",
-                "excerpt": _bounded_diagnostic_text(raw.get("excerpt"), limit=1000)
-                or "",
-                "source_document_id": _bounded_diagnostic_text(
-                    source_document_id, limit=100
-                ),
-            }
-        )
-    return output
-
-
-def _coverage_originality_diagnostic_snapshot(
-    source_input: CoverageSupportDepthInput,
-) -> list[dict[str, object]]:
-    pack = source_input.model_input.get("originality_pack")
-    if not isinstance(pack, dict):
-        return []
-    items = pack.get("items")
-    if not isinstance(items, list):
-        return []
-    output: list[dict[str, object]] = []
-    for raw in items[:20]:
-        if not isinstance(raw, dict):
-            continue
-        output.append(
-            {
-                "source_ref": _bounded_diagnostic_text(
-                    raw.get("source_ref"), limit=200
-                )
-                or "",
-                "material": _bounded_diagnostic_text(raw.get("material"), limit=1000)
-                or "",
-                "writer_use": _bounded_diagnostic_text(
-                    raw.get("writer_use"), limit=1000
-                )
-                or "",
-                "guardrails": _bounded_diagnostic_text(
-                    raw.get("guardrails"), limit=1000
-                )
-                or "",
-            }
-        )
-    return output
 
 
 def build_coverage_support_depth_model_input(
@@ -724,17 +665,16 @@ def coverage_support_failure_diagnostic_payload(
     *,
     research_snapshot: dict[str, object] | None = None,
 ) -> dict[str, object]:
+    assessment = _assessment_diagnostic_snapshot(result.assessment)
+    assessment_items = assessment.get("items")
+    if not isinstance(assessment_items, list):
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_failure_diagnostic_assessment_invalid"
+        )
     unresolved = [
-        {
-            "requirement_id": item.requirement_id,
-            "rationale": item.rationale,
-            "gaps": list(item.gaps),
-            "evidence_refs": list(item.evidence_refs),
-            "caveat_evidence_refs": list(item.caveat_evidence_refs),
-            "originality_refs": list(item.originality_refs),
-        }
-        for item in result.assessment.items
-        if item.status == "unresolved"
+        copy.deepcopy(item)
+        for item in assessment_items
+        if isinstance(item, dict) and item.get("status") == "unresolved"
     ]
     if not unresolved or result.ready_for_angle:
         raise CoverageSupportDepthRuntimeError(
@@ -760,11 +700,13 @@ def coverage_support_failure_diagnostic_payload(
             ),
         }
 
+    model_input_snapshot = _model_input_diagnostic_snapshot(source_input)
     return {
         "schema_version": COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION,
         "diagnostic_schema_version": COVERAGE_SUPPORT_FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
         "artifact_type": COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
         "input_snapshot_hash": source_input.input_snapshot_hash,
+        "model_input_snapshot": model_input_snapshot,
         "opportunity": {
             "id": str(source_input.opportunity.id),
             "version": source_input.opportunity.version,
@@ -778,12 +720,7 @@ def coverage_support_failure_diagnostic_payload(
             "id": str(source_input.originality_pack.id),
             "snapshot_hash": source_input.originality_pack.snapshot_hash,
         },
-        "coverage_requirements": _coverage_requirement_diagnostic_snapshot(
-            source_input
-        ),
-        "assessment": result.assessment.to_dict(),
-        "evidence_input": _coverage_evidence_diagnostic_snapshot(source_input),
-        "originality_input": _coverage_originality_diagnostic_snapshot(source_input),
+        "assessment": assessment,
         "research_snapshot": safe_research,
         "ready_for_angle": False,
         "unresolved": unresolved,
