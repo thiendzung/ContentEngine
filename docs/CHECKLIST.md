@@ -242,14 +242,17 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] MG / Agent Local exact-SHA / OCR / minimal CI / Founder merge gates complete.
 
 
-## T. CQ-07 Real Pillar + Cluster pilot
+## T. CQ-07 Real Pillar + Cluster pilot — P0
 
 - [x] Founder explicitly selected P01 + C02; system/MG did not auto-select the pair.
 - [x] Pair identity is frozen in `docs/CQ07_PILOT_CONTRACT.md`: role, canonical title, customer problem, primary question, primary intent, promise, coverage and EN/VI lanes.
 - [x] Clean fresh disposable baseline uses exact merged main and does not reuse the old CQ07 database as the new pilot source.
-- [x] Exact Codex runner identity is audited/pinned and preflight READY before model work.
-- [ ] P01 intake is created from the frozen payload without silently changing question/promise/coverage.
-- [ ] External research/model execution has explicit Founder authorization before the first call.
+- [x] Codex capability/auth/no-tool preflight is fail-closed; routine packaged patch-version drift alone is not a blocker.
+- [x] P01 intake is created from the frozen payload without silently changing question/promise/coverage.
+- [x] External research/model executions to date were separately Founder-authorized and bounded; failed attempts do not imply blanket retry permission.
+- [x] Attempts 1-4 are preserved as failed Jobs; the blocked pre-#257 submission created no command/Job and therefore did not consume Attempt 5.
+- [x] PR #255 coverage-aware support acquisition and PR #257 CWD-independent Alembic preflight are merged.
+- [ ] Post-#257 exact-main read-only readiness passes before any real Attempt 5 command is created.
 - [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
 - [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
 - [ ] Cluster solves one narrower reader subproblem in materially greater depth without widening into a generic Pillar.
@@ -258,3 +261,12 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Final visible VI and EN content plus exact artifact IDs/hashes/approvals/quality results are retained for Founder comparison.
 - [ ] Pilot explicitly answers whether existing identity is sufficient; no new Pillar↔Cluster relation is added without a concrete identity/query/update requirement.
 - [ ] No auto-publish, WordPress/Rank Math mutation or operational DB migration occurs during CQ-07.
+
+## U. P1 Production Readiness — gated by P0
+
+- [ ] Do not start P1 until CQ-07/P0 is closed.
+- [ ] Fresh operational backup + isolated restore proof exists for the exact source state.
+- [ ] Disposable rehearsal proves `20260915_0034 → 20260926_0044` with exact chain and old-data/fingerprint invariance.
+- [ ] Runtime/worker/health/retry-safety proof passes on the candidate release without publication.
+- [ ] Operational migration/release requires a new explicit Founder authorization after the proofs.
+- [ ] WordPress/Rank Math activation and publication remain separate authorizations.
