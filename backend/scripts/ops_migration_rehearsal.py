@@ -152,7 +152,9 @@ def _manifest_source_revision(manifest: dict[str, object], source: URL) -> str:
 
 
 def _alembic_script() -> ScriptDirectory:
-    config = Config(str(_backend_root() / "alembic.ini"))
+    backend_root = _backend_root()
+    config = Config(str(backend_root / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_root / "migrations"))
     return ScriptDirectory.from_config(config)
 
 
