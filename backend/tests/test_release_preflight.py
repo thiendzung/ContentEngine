@@ -5,6 +5,18 @@ import pytest
 from app.modules.system import preflight
 
 
+def test_migration_head_resolution_is_cwd_independent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    expected = preflight._expected_migration_head()
+    assert expected is not None
+
+    monkeypatch.chdir(tmp_path)
+
+    assert preflight._expected_migration_head() == expected
+
+
 @pytest.mark.asyncio
 async def test_release_preflight_excludes_test_database_gate(
     monkeypatch: pytest.MonkeyPatch,
