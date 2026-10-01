@@ -80,6 +80,7 @@ from app.modules.knowledge.originality_pack import originality_pack_snapshot_has
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import IntendedUse, ProductionResearchRequest, ResearchDepth
 from app.modules.research.evidence import EvidenceResearchRequest, EvidenceResearchWorkflow
+from app.modules.research.evidence.contracts import DEFAULT_EVIDENCE_MAX_CLAIMS
 from app.modules.research.evidence.artifact import (
     persist_research_failure_diagnostic,
     research_exception_diagnostic_payload,
@@ -132,7 +133,7 @@ def _preflight_coverage_support_base_input(
                 "id": str(originality.id),
                 "snapshot_hash": originality.snapshot_hash,
             },
-            max_evidence_items=8,
+            max_evidence_items=DEFAULT_EVIDENCE_MAX_CLAIMS,
         )
     except CoverageSupportDepthRuntimeError as exc:
         if exc.code == "coverage_support_model_input_too_large":
@@ -556,7 +557,7 @@ async def execute_start_to_angle_job(
         ),
         content_opportunity_id=opportunity.id,
         need_hypothesis_id=content_case.need_hypothesis_id,
-        max_claims=8,
+        max_claims=DEFAULT_EVIDENCE_MAX_CLAIMS,
     )
     try:
         research_result = await evidence_workflow.run(
