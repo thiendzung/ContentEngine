@@ -96,6 +96,42 @@ async def test_codex_missing_required_exec_flag_fails_before_auth(
     ]
 
 
+@pytest.mark.parametrize(
+    "version",
+    [
+        "codex-cli 0.159.2--",
+        "codex-cli 0.159.2-alpha..1",
+        "codex-cli 0.159.2-alpha-",
+        "codex-cli 0.159.2+build..1",
+        "codex-cli 00.159.2",
+        "codex-cli 0.159",
+        "codex 0.159.2",
+    ],
+)
+def test_codex_malformed_identity_is_not_compatible(version: str) -> None:
+    assert not runner_versions_compatible(
+        provider="codex_cli",
+        expected="codex-cli 0.159.0",
+        observed=version,
+    )
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        "codex-cli 0.159.2",
+        "codex-cli 0.155.0-alpha.16.4",
+        "codex-cli 1.0.0-rc-1+build.7",
+    ],
+)
+def test_codex_valid_version_identity_is_compatible(version: str) -> None:
+    assert runner_versions_compatible(
+        provider="codex_cli",
+        expected="codex-cli 0.159.0",
+        observed=version,
+    )
+
+
 def test_runner_version_policy_is_capability_family_for_codex_and_exact_elsewhere() -> None:
     assert runner_versions_compatible(
         provider="codex_cli",
