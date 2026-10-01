@@ -50,6 +50,7 @@ async def _database_check() -> PreflightCheck:
 def _expected_migration_head() -> str | None:
     backend_root = Path(__file__).resolve().parents[3]
     config = Config(str(backend_root / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_root / "migrations"))
     script = ScriptDirectory.from_config(config)
     return script.get_current_head()
 
