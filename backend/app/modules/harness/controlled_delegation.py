@@ -17,11 +17,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import SettingsSnapshot
 from app.modules.harness.agent_runner import (
-    CODEX_CLI_APPROVED_VERSION,
     AgentRunnerError,
     AgentRunnerRegistry,
     AgentRunRequest,
     AgentRunResult,
+    is_codex_cli_version,
+    runner_versions_compatible,
 )
 from app.modules.harness.delegation import (
     DelegationStateError,
@@ -237,7 +238,11 @@ class ControlledDelegationBridge:
                 error_class=exc.code,
             )
             raise ControlledDelegationError(exc.code) from exc
-        if capability.provider != route.provider or capability.version != route.runner_version:
+        if capability.provider != route.provider or not runner_versions_compatible(
+            provider=route.provider,
+            expected=route.runner_version,
+            observed=capability.version,
+        ):
             await fail_delegation_execution(
                 session,
                 execution_id=execution.id,
@@ -425,7 +430,7 @@ async def _resolve_controlled_plan(
     ):
         raise ControlledDelegationError("delegation_coordinator_call_invalid")
     metadata = coordinator.runtime_metadata_json or {}
-    if metadata.get("runner_version") != CODEX_CLI_APPROVED_VERSION:
+    if not is_codex_cli_version(metadata.get("runner_version")):
         raise ControlledDelegationError("delegation_coordinator_runner_not_approved")
 
     artifact = await session.get(Artifact, coordinator.result_artifact_id)
