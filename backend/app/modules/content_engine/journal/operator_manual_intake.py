@@ -54,6 +54,8 @@ from app.modules.knowledge.originality_pack import (
 )
 from app.modules.research.evidence.contracts import ORIGINALITY_MATERIAL_TYPE
 
+FOUNDER_ORIGINALITY_FIELD_MAX_CHARS = 4_000
+
 
 class FounderJournalIntakeResult(BaseModel):
     command_id: UUID
@@ -75,6 +77,13 @@ def _text(value: str, code: str) -> str:
     normalized = value.strip()
     if not normalized:
         raise OperatorControlError(code)
+    return normalized
+
+
+def _bounded_text(value: str, code: str, *, max_length: int) -> str:
+    normalized = _text(value, code)
+    if len(normalized) > max_length:
+        raise OperatorControlError(f"{code}_too_long")
     return normalized
 
 
@@ -273,17 +282,20 @@ async def create_founder_journal_intake(
         selection_reason,
         "operator_manual_selection_reason_required",
     )
-    material_text = _text(
+    material_text = _bounded_text(
         originality_material,
         "operator_manual_originality_material_required",
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
     )
-    writer_use_text = _text(
+    writer_use_text = _bounded_text(
         originality_writer_use,
         "operator_manual_originality_writer_use_required",
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
     )
-    guardrails_text = _text(
+    guardrails_text = _bounded_text(
         originality_guardrails,
         "operator_manual_originality_guardrails_required",
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
     )
     request_hash = _request_hash(
         project_slug=project_key,
