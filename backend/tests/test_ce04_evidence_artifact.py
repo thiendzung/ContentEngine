@@ -69,18 +69,21 @@ def test_evidence_artifact_keeps_refs_without_raw_provider_or_page_content() -> 
     assert payload["evidence_ids"] == [str(result.evidence_ids[0])]
 
 
-def test_research_failure_diagnostic_strips_url_query_and_fragment() -> None:
+def test_research_failure_diagnostic_strips_url_query_fragment_and_userinfo() -> None:
     project_id = uuid4()
     candidate = SourceCandidate(
         provider="exa",
         query="art authenticity",
-        url="https://user:SECRET_PASSWORD@example.test/source?token=SECRET_TOKEN&session=abc#private",
+        url=(
+            "https://user:SECRET_PASSWORD@example.test/source"
+            "?token=SECRET_TOKEN&session=abc#private"
+        ),
         title="Evidence source",
         source_type="institutional",
         commercial_bias=CommercialBias.LOW,
         intended_use=IntendedUse.EVIDENCE_CANDIDATE,
         why_selected="Controlled source.",
-        parent_url="https://parent.test/path?signed=SECRET_PARENT#fragment",
+        parent_url="//user:SECRET_PARENT@example.test/parent?signed=token#fragment",
     )
     production = ProductionResearchResult(
         request=ProductionResearchRequest(
@@ -126,8 +129,49 @@ def test_research_failure_diagnostic_strips_url_query_and_fragment() -> None:
     sources = research["selected_sources"]
     assert isinstance(sources, list)
     assert sources[0]["url"] == "https://example.test/source"
-    assert sources[0]["parent_url"] == "https://parent.test/path"
+    assert sources[0]["parent_url"] == "//example.test/parent"
     documents = research["read_documents"]
     assert isinstance(documents, list)
     assert documents[0]["requested_url"] == "https://example.test/source"
     assert documents[0]["final_url"] == "https://example.test/final"
+
+
+def test_research_failure_diagnostic_tolerates_malformed_provider_url() -> None:
+    project_id = uuid4()
+    candidate = SourceCandidate(
+        provider="exa",
+        query="art authenticity",
+        url="http://[bad",
+        title="Malformed provider result",
+        source_type="unknown",
+        commercial_bias=CommercialBias.UNKNOWN,
+        intended_use=IntendedUse.DISCOVERY,
+        why_selected="Unselected malformed candidate.",
+    )
+    production = ProductionResearchResult(
+        request=ProductionResearchRequest(
+            project_id=project_id,
+            query="art authenticity",
+            max_pages_to_read=1,
+        ),
+        source_candidates=[candidate],
+        stop_reason="controlled",
+        sufficient=False,
+    )
+    result = EvidenceResearchResult(
+        research=production,
+        content_case_id=uuid4(),
+        relation_counts={},
+        research_gaps=["Controlled unresolved gap."],
+        evidence_eligible=False,
+    )
+
+    payload = research_failure_diagnostic_payload(result)
+    research = payload["research"]
+    assert isinstance(research, dict)
+    candidates = research["source_candidates"]
+    assert isinstance(candidates, list) and candidates
+    url = candidates[0]["url"]
+    assert isinstance(url, str)
+    assert url.startswith("invalid-url:")
+    assert "http://[bad" not in str(payload)
