@@ -31,6 +31,7 @@ COVERAGE_SUPPORT_FAILURE_DIAGNOSTIC_SCHEMA_VERSION = 2
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS = 2_000
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS = 20
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS = 1_000
+COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES = 64_000
 COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
@@ -77,14 +78,24 @@ class CoverageSupportDepthResult:
     reused: bool
 
 
-def _canonical_hash(value: object) -> str:
-    payload = json.dumps(
+def _canonical_json(value: object) -> str:
+    return json.dumps(
         value,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _canonical_hash(value: object) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _require_bounded_model_input(value: dict[str, object]) -> None:
+    if len(_canonical_json(value).encode("utf-8")) > COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_model_input_too_large"
+        )
 
 
 def _require_dict(value: object, code: str) -> dict[str, object]:
@@ -104,6 +115,73 @@ def _model_input_diagnostic_snapshot(
             "coverage_support_diagnostic_input_hash_mismatch"
         )
     return snapshot
+
+
+def _coverage_research_diagnostic_snapshot(
+    source_input: CoverageSupportDepthInput,
+    research_snapshot: dict[str, object] | None,
+) -> dict[str, object] | None:
+    if not isinstance(research_snapshot, dict):
+        return None
+    research = research_snapshot.get("research")
+    relation_counts = research_snapshot.get("relation_counts")
+    research_gaps = research_snapshot.get("research_gaps")
+    gaps = list(research_gaps) if isinstance(research_gaps, list) else []
+    originality_pack = source_input.model_input.get("originality_pack")
+    items = originality_pack.get("items") if isinstance(originality_pack, dict) else None
+    omitted: list[str] = []
+    if isinstance(items, list) and items:
+        filtered: list[object] = []
+        for gap in gaps:
+            if isinstance(gap, str) and gap.startswith("Originality gap remains:"):
+                omitted.append("stale_opportunity_originality_gap")
+                continue
+            filtered.append(gap)
+        gaps = filtered
+    return {
+        "research": copy.deepcopy(research) if isinstance(research, dict) else {},
+        "relation_counts": (
+            copy.deepcopy(relation_counts)
+            if isinstance(relation_counts, dict)
+            else {}
+        ),
+        "research_gaps": copy.deepcopy(gaps),
+        "omitted_stale_gaps": omitted,
+    }
+
+
+def _coverage_evaluator_identity_snapshot(
+    evaluator_identity: dict[str, object] | None,
+) -> dict[str, object] | None:
+    if not isinstance(evaluator_identity, dict):
+        return None
+
+    def text_value(key: str, limit: int) -> str | None:
+        value = evaluator_identity.get(key)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise CoverageSupportDepthRuntimeError(
+                "coverage_support_evaluator_identity_invalid"
+            )
+        return value.strip()[:limit]
+
+    attempt = evaluator_identity.get("accepted_attempt")
+    if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1 or attempt > 2:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_evaluator_identity_invalid"
+        )
+    return {
+        "prompt_version": text_value("prompt_version", 200),
+        "recipe_version": text_value("recipe_version", 200),
+        "provider": text_value("provider", 100),
+        "model": text_value("model", 200),
+        "runner_version": text_value("runner_version", 200),
+        "runner_executable": text_value("runner_executable", 1000),
+        "raw_output_hash": text_value("raw_output_hash", 128),
+        "accepted_attempt": attempt,
+        "context_manifest_id": text_value("context_manifest_id", 100),
+    }
 
 
 def _assessment_diagnostic_snapshot(
@@ -160,7 +238,7 @@ def build_coverage_support_depth_model_input(
         for item in originality_items
         if is_usable_originality_item(item)
     ]
-    return {
+    model_input = {
         "schema_version": COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION,
         "coverage_requirements": requirements,
         "evidence_set": copy.deepcopy(evidence_set_ref),
@@ -204,6 +282,8 @@ def build_coverage_support_depth_model_input(
             ),
         },
     }
+    _require_bounded_model_input(model_input)
+    return model_input
 
 
 async def load_coverage_support_depth_input(
@@ -663,6 +743,7 @@ def coverage_support_failure_diagnostic_payload(
     result: CoverageSupportDepthResult,
     *,
     research_snapshot: dict[str, object] | None = None,
+    evaluator_identity: dict[str, object] | None = None,
 ) -> dict[str, object]:
     assessment = _assessment_diagnostic_snapshot(result.assessment)
     assessment_items = assessment.get("items")
@@ -680,24 +761,13 @@ def coverage_support_failure_diagnostic_payload(
             "coverage_support_failure_diagnostic_requires_unresolved"
         )
 
-    safe_research: dict[str, object] | None = None
-    if isinstance(research_snapshot, dict):
-        research = research_snapshot.get("research")
-        relation_counts = research_snapshot.get("relation_counts")
-        research_gaps = research_snapshot.get("research_gaps")
-        safe_research = {
-            "research": copy.deepcopy(research) if isinstance(research, dict) else {},
-            "relation_counts": (
-                copy.deepcopy(relation_counts)
-                if isinstance(relation_counts, dict)
-                else {}
-            ),
-            "research_gaps": (
-                copy.deepcopy(research_gaps)
-                if isinstance(research_gaps, list)
-                else []
-            ),
-        }
+    safe_research = _coverage_research_diagnostic_snapshot(
+        source_input,
+        research_snapshot,
+    )
+    safe_evaluator_identity = _coverage_evaluator_identity_snapshot(
+        evaluator_identity
+    )
 
     model_input_snapshot = _model_input_diagnostic_snapshot(source_input)
     return {
@@ -721,6 +791,7 @@ def coverage_support_failure_diagnostic_payload(
         },
         "assessment": assessment,
         "research_snapshot": safe_research,
+        "evaluator_identity": safe_evaluator_identity,
         "ready_for_angle": False,
         "unresolved": unresolved,
     }
