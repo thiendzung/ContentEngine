@@ -22,6 +22,7 @@ from app.modules.content_engine.models import PromptDefinition, RecipeDefinition
 from app.modules.harness.agent_runner import (
     CODEX_CLI_APPROVED_VERSION,
     CODEX_NO_TOOL_FEATURES,
+    CODEX_REQUIRED_EXEC_FLAGS,
     AgentRunnerError,
     AgentRunnerRegistry,
     AgentRunRequest,
@@ -69,7 +70,10 @@ _CODEX_FEATURES = b"\n".join(
 
 def _codex_control_process(argv: tuple[str, ...]) -> FakeProcess | None:
     if argv[1:] == ("exec", "--help"):
-        return FakeProcess(argv, stdout=b"--disable <FEATURE>")
+        return FakeProcess(
+            argv,
+            stdout=" ".join(CODEX_REQUIRED_EXEC_FLAGS).encode(),
+        )
     if argv[1:] == ("features", "list"):
         return FakeProcess(argv, stdout=_CODEX_FEATURES)
     return None
@@ -202,25 +206,22 @@ async def test_codex_preflight_reports_resolved_executable_path(monkeypatch) -> 
 
 
 @pytest.mark.asyncio
-async def test_codex_runner_pins_exact_version_before_any_model_execution(monkeypatch) -> None:
+async def test_codex_runner_rejects_malformed_identity_before_capability_auth(monkeypatch) -> None:
     calls: list[tuple[str, ...]] = []
 
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
+        del kwargs
         calls.append(argv)
-        control = _codex_control_process(argv)
-        if control is not None:
-            return control
         if "--version" in argv:
-            return FakeProcess(argv, stdout=b"codex-cli 0.153.3")
-        return FakeProcess(argv, stdout=b"Logged in using ChatGPT")
+            return FakeProcess(argv, stdout=b"not-codex 0.159.2")
+        pytest.fail(f"unexpected subprocess after invalid identity: {argv!r}")
 
     monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/codex")
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
 
-    with pytest.raises(AgentRunnerError, match="agent_runner_version_not_approved"):
+    with pytest.raises(AgentRunnerError, match="agent_runner_identity_invalid"):
         await CodexCliRunner().preflight()
-    assert all(argv[1:] != ("features", "list") for argv in calls)
-    assert all(argv[1:] != ("exec", "--help") for argv in calls)
+    assert calls == [("/usr/local/bin/codex", "--version")]
 
 
 @pytest.mark.asyncio
@@ -230,7 +231,10 @@ async def test_codex_runner_requires_every_no_tool_feature_capability(monkeypatc
     async def fake_exec(*argv: str, **kwargs: Any) -> FakeProcess:
         calls.append(argv)
         if argv[1:] == ("exec", "--help"):
-            return FakeProcess(argv, stdout=b"--disable <FEATURE>")
+            return FakeProcess(
+                argv,
+                stdout=" ".join(CODEX_REQUIRED_EXEC_FLAGS).encode(),
+            )
         if argv[1:] == ("features", "list"):
             return FakeProcess(argv, stdout=b"shell_tool stable true")
         if "--version" in argv:
