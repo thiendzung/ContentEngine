@@ -97,6 +97,29 @@ def _bounded_diagnostic_text(value: object, *, limit: int) -> str | None:
     return normalized[:limit] if normalized else None
 
 
+def _coverage_requirement_diagnostic_snapshot(
+    source_input: CoverageSupportDepthInput,
+) -> list[dict[str, str]]:
+    requirements = source_input.model_input.get("coverage_requirements")
+    if not isinstance(requirements, list):
+        return []
+    output: list[dict[str, str]] = []
+    for raw in requirements[:50]:
+        if not isinstance(raw, dict):
+            continue
+        requirement_id = _bounded_diagnostic_text(raw.get("id"), limit=100)
+        requirement = _bounded_diagnostic_text(raw.get("requirement"), limit=1000)
+        if requirement_id is None or requirement is None:
+            continue
+        output.append(
+            {
+                "id": requirement_id,
+                "requirement": requirement,
+            }
+        )
+    return output
+
+
 def _coverage_evidence_diagnostic_snapshot(
     source_input: CoverageSupportDepthInput,
 ) -> list[dict[str, object]]:
@@ -755,6 +778,9 @@ def coverage_support_failure_diagnostic_payload(
             "id": str(source_input.originality_pack.id),
             "snapshot_hash": source_input.originality_pack.snapshot_hash,
         },
+        "coverage_requirements": _coverage_requirement_diagnostic_snapshot(
+            source_input
+        ),
         "assessment": result.assessment.to_dict(),
         "evidence_input": _coverage_evidence_diagnostic_snapshot(source_input),
         "originality_input": _coverage_originality_diagnostic_snapshot(source_input),
