@@ -130,6 +130,24 @@ def build_coverage_support_depth_model_input(
             "lexical_overlap_is_not_semantic_proof": True,
             "numeric_quality_score_forbidden": True,
             "do_not_invent_artist_or_motgu_facts": True,
+            "coverage_requirement_is_editorial_spec_not_evidence": True,
+            "structural_navigation_directives_do_not_require_external_evidence": True,
+            "factual_assertions_still_require_factual_support": True,
+            (
+                "mixed_requirement_may_combine_factual_evidence_with_"
+                "first_party_editorial_support"
+            ): True,
+            "editorial_spec_rule": (
+                "Coverage requirement text is an authoritative editorial specification, "
+                "not evidence. Structural or internal-navigation directives do not need "
+                "external evidence merely to be obeyed."
+            ),
+            "mixed_support_rule": (
+                "Factual clauses still require factual support. First-party editorial "
+                "stance may use approved OriginalityPack support; do not mark a requirement "
+                "unresolved solely because internal navigation labels appear only in the "
+                "frozen requirement."
+            ),
         },
     }
 
