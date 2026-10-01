@@ -255,6 +255,8 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] Attempt 6 ran exactly once and stopped safely with only `coverage-5` unresolved; no Attempt 7 was created or authorized.
 - [x] Postmortem does not overclaim `BINDING_EVALUATOR`: rollback removed the generated Evidence rows, so the durable historical root classification remains `MIXED_OR_UNKNOWN`.
 - [ ] Coverage Support failure diagnostics survive rollback with bounded full assessment, Evidence input and research summary while excluding raw page/provider/model data.
+- [ ] Diagnostic URLs redact query/fragment/userinfo, tolerate malformed provider URLs, and cannot replace the intended durable failure path.
+- [ ] Legacy oversized Founder-intake replays remain idempotent; new creations are bounded and deterministic oversized Coverage Support input fails before external research.
 - [ ] Exact-SHA regression/OCR proof passes for the diagnostic-durability fix before any Attempt 7 decision.
 - [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
 - [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
