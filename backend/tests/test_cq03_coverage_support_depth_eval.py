@@ -104,7 +104,6 @@ def test_model_input_drops_reference_only_or_incomplete_originality() -> None:
     assert originality["items"] == [_originality_item()]
 
 
-
 def test_model_input_rejects_oversized_exact_snapshot_before_evaluator_call() -> None:
     item = _originality_item()
     item["material"] = "x" * (COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES + 1)
