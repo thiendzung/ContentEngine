@@ -16,6 +16,7 @@ from app.modules.content_engine.journal.models import JournalRequiredLocale, Ope
 from app.modules.content_engine.journal.operator_control import OperatorControlError
 from app.modules.content_engine.journal.operator_manual_intake import (
     FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    _request_hash,
     create_founder_journal_intake,
 )
 from app.modules.content_engine.journal.operator_vertical_slice import (
@@ -638,10 +639,15 @@ async def test_founder_intake_requires_current_editorial_role_and_can_create_pil
 
 
 @pytest.mark.asyncio
-async def test_founder_intake_bounds_originality_before_evaluator_input() -> None:
+async def test_founder_intake_bounds_new_originality_after_replay_lookup() -> None:
     too_long = "x" * (FOUNDER_ORIGINALITY_FIELD_MAX_CHARS + 1)
     payload = _intake_kwargs(key="cq07-originality-too-long")
     payload["originality_material"] = too_long
+
+    http_payload = dict(payload)
+    http_payload.pop("actor_id")
+    parsed = FounderJournalIntakeRequest.model_validate(http_payload)
+    assert parsed.originality_material == too_long
 
     async with isolated_session() as session:
         with pytest.raises(
@@ -650,10 +656,47 @@ async def test_founder_intake_bounds_originality_before_evaluator_input() -> Non
         ):
             await create_founder_journal_intake(session, **payload)
 
-    http_payload = dict(payload)
-    http_payload.pop("actor_id")
-    with pytest.raises(ValidationError):
-        FounderJournalIntakeRequest.model_validate(http_payload)
+
+@pytest.mark.asyncio
+async def test_founder_intake_replays_legacy_oversized_originality() -> None:
+    key = "cq07-legacy-oversized-replay"
+    normal = _intake_kwargs(key=key)
+    oversized = dict(normal)
+    oversized["originality_material"] = "x" * (
+        FOUNDER_ORIGINALITY_FIELD_MAX_CHARS + 1
+    )
+
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(session, **normal)
+        command = await session.get(OperatorCommand, created.command_id)
+        assert command is not None
+        command.request_hash = _request_hash(
+            project_slug=str(oversized["project_slug"]).strip(),
+            source_locale=str(oversized["source_locale"]).strip(),
+            research_country=str(oversized["research_country"]).strip().lower(),
+            required_locales=["en", "vi-VN"],
+            content_role=str(oversized["content_role"]),
+            reader=str(oversized["reader"]).strip(),
+            situation=str(oversized["situation"]).strip(),
+            need=str(oversized["need"]).strip(),
+            question=str(oversized["question"]).strip(),
+            intent=str(oversized["intent"]).strip(),
+            promise=str(oversized["promise"]).strip(),
+            coverage_requirements=list(oversized["coverage_requirements"]),
+            selection_reason=str(oversized["selection_reason"]).strip(),
+            originality_material=str(oversized["originality_material"]).strip(),
+            originality_writer_use=str(
+                oversized["originality_writer_use"]
+            ).strip(),
+            originality_guardrails=str(
+                oversized["originality_guardrails"]
+            ).strip(),
+        )
+        await session.flush()
+
+        replay = await create_founder_journal_intake(session, **oversized)
+        assert replay.replayed is True
+        assert replay.command_id == created.command_id
 
 
 def test_founder_intake_http_rejects_legacy_primary_role() -> None:
@@ -1330,6 +1373,68 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
             )
             or 0
         ) == 0
+
+
+@pytest.mark.asyncio
+async def test_oversized_support_base_input_fails_before_research(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    payload = _intake_kwargs(key="cq07-support-preflight-too-large")
+    payload["originality_material"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["originality_writer_use"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["originality_guardrails"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["coverage_requirements"] = [
+        f"{index:02d}-" + ("😀" * 497)
+        for index in range(12)
+    ]
+
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(session, **payload)
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq07-support-preflight-too-large-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq07-support-preflight",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow()
+        runner = ControlledCodexRunner()
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_coverage_support_failed",
+        ):
+            await execute_start_to_angle_job(
+                session,
+                job_id=leased.id,
+                worker_id="worker-cq07-support-preflight",
+                evidence_workflow=workflow,  # type: ignore[arg-type]
+                runner_registry=registry,
+            )
+
+        assert workflow.calls == 0
+        assert runner.calls == 0
+        run = await session.get(ContentRun, created.bootstrap_run_id)
+        assert run is not None and run.status == "pending"
 
 
 @pytest.mark.asyncio
