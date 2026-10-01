@@ -645,11 +645,11 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 - [x] Founder selected Option B: P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
 - [x] Pair identity/role/question/intent/promise/coverage/EN+VI lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`.
 - [x] Pre-CQ07 cleanup completed via PR #239; local main cleaned and safe-run README simplified.
-- [x] Exact Codex `0.159.0` capability audit passed (#240) and exact repin merged via PR #241.
-- [x] Fresh disposable baseline proved on main `6bb7a2fa16383a685daf5c84490eface1c91071e`: Alembic `20260926_0044`, one head, `motgu` seed present, health/preflight READY, no model/provider call.
-- [x] Exact P01 intake payload frozen in `docs/CQ07_P01_EXECUTION_INPUT.md`.
-- [ ] Founder explicitly authorizes bounded external research/model execution for P01.
-- [ ] Create P01 intake in the fresh CQ-07 disposable baseline and execute only to the Angle human gate.
+- [x] Historical exact Codex `0.159.0` audit/repin passed (#240/#241); retained as evidence, but exact patch-version pinning is superseded as an operating policy by Founder decision on 2026-10-01.
+- [x] Fresh disposable baseline + frozen P01 intake were established at Alembic `20260926_0044`; P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` now preserves attempts 1-3 as failed retry evidence.
+- [x] PR #249 merged on main `7e506aed4e895c1d0e85286fffd9ebc398bacc9a`; Coverage Support transport schema now strips provider-unsupported `uniqueItems` only on the deep-cloned runner copy.
+- [ ] #251: replace exact Codex version approval with capability-based compatibility while preserving required flags, 21 no-tool feature controls, cached-session auth and runtime version provenance.
+- [ ] Post-#251 read-only P01-R2 readiness proof, then Founder separately authorizes at most one next bounded retry to the Angle human gate.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
 - [ ] Run C02 independently through the same chain.
