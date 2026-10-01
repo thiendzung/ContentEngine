@@ -61,6 +61,32 @@ def _base_schema() -> dict[str, object]:
     }
 
 
+def test_output_schema_strips_transport_only_unique_items_without_mutating_source() -> None:
+    base_schema = _base_schema()
+    properties = base_schema["properties"]  # type: ignore[index]
+    items = properties["items"]  # type: ignore[index]
+    item_schema = items["items"]  # type: ignore[index]
+    item_properties = item_schema["properties"]  # type: ignore[index]
+    item_properties["evidence_refs"]["uniqueItems"] = True  # type: ignore[index]
+    item_properties["gaps"]["uniqueItems"] = True  # type: ignore[index]
+
+    model_input = build_coverage_support_depth_model_input(
+        coverage_requirements=["One"],
+        evidence_items=[],
+        originality_items=[],
+        evidence_set_ref={"id": "es", "version": 1, "content_hash": "a" * 64},
+        originality_pack_ref={"id": "op", "snapshot_hash": "b" * 64},
+    )
+
+    schema = _bind_output_schema(base_schema, model_input=model_input)
+    bound_properties = schema["properties"]["items"]["items"]["properties"]  # type: ignore[index]
+
+    assert "uniqueItems" not in bound_properties["evidence_refs"]
+    assert "uniqueItems" not in bound_properties["gaps"]
+    assert item_properties["evidence_refs"]["uniqueItems"] is True  # type: ignore[index]
+    assert item_properties["gaps"]["uniqueItems"] is True  # type: ignore[index]
+
+
 def test_output_schema_binds_exact_allowed_refs() -> None:
     model_input = build_coverage_support_depth_model_input(
         coverage_requirements=["One", "Two"],

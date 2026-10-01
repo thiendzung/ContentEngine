@@ -135,6 +135,22 @@ def _allowed_refs(
     return requirement_ids, support_refs, caveat_refs, originality_refs
 
 
+def _strip_provider_unsupported_schema_keywords(value: object) -> None:
+    """Remove transport-only schema keywords rejected by the local CLI provider.
+
+    The canonical registry schema and the deterministic validator remain unchanged.
+    This mutates only the deep-cloned schema passed to the agent runner.
+    """
+
+    if isinstance(value, dict):
+        value.pop("uniqueItems", None)
+        for child in value.values():
+            _strip_provider_unsupported_schema_keywords(child)
+    elif isinstance(value, list):
+        for child in value:
+            _strip_provider_unsupported_schema_keywords(child)
+
+
 def _bind_output_schema(
     base_schema: dict[str, object],
     *,
@@ -143,6 +159,7 @@ def _bind_output_schema(
     cloned = json.loads(json.dumps(base_schema, ensure_ascii=False))
     if not isinstance(cloned, dict):
         raise CoverageSupportDepthRuntimeError("coverage_support_output_schema_invalid")
+    _strip_provider_unsupported_schema_keywords(cloned)
     requirement_ids, support_refs, caveat_refs, originality_refs = _allowed_refs(model_input)
 
     properties = cloned.get("properties")
