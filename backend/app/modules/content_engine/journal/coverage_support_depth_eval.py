@@ -143,7 +143,6 @@ def _assessment_diagnostic_snapshot(
     }
 
 
-
 def build_coverage_support_depth_model_input(
     *,
     coverage_requirements: list[str],
