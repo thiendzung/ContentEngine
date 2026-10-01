@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-10-01 after Founder merged PR #249. Current main is `7e506aed4e895c1d0e85286fffd9ebc398bacc9a`. CQ-01 through CQ-06 are merged and CQ-07 is active. P01-R2 attempts 1-3 are preserved failed retries; PR #249 fixed the reproducible Coverage Support structured-output transport-schema blocker. Founder has now decided that normal ChatGPT-packaged Codex version drift must not be an authorization blocker by itself; #251 is replacing the exact-version gate with a capability-based contract while preserving read-only/no-tool/auth fail-closed checks. Production activation/E2E external work remains paused.
+Updated: 2026-10-01 after Founder merged PR #257. Current main is `c034b80a175a7c3b7d6278f245c79610a893f1ec`. CQ-01 through CQ-06 are merged and CQ-07 remains active. P01-R2 preserves four failed Jobs (Attempts 1-4); a Founder-authorized Attempt 5 submission was blocked by preflight before any OperatorCommand or Job was created, so Attempt 5 has not been consumed. PR #252 made Codex compatibility capability-based, PR #255 made Start-to-Angle support acquisition coverage-aware, and PR #257 made Alembic preflight checkout-rooted/CWD-independent. Production activation/E2E external work remains paused.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `7e506aed4e895c1d0e85286fffd9ebc398bacc9a` (merge PR #249). CQ-01 through CQ-06 passed their required technical gates and are merged. CQ-07 P01-R2 preserves exactly three failed retry jobs; no Attempt 4 exists. PR #249 removes provider-unsupported `uniqueItems` only from the deep-cloned Coverage Support transport schema while leaving the canonical registry/validator unchanged. Exact Codex patch-version pinning is now superseded as an operating policy by Founder decision; #251 implements capability-based Codex compatibility. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, production activation or publication.
+Live GitHub main: `c034b80a175a7c3b7d6278f245c79610a893f1ec` (merge PR #257). CQ-01 through CQ-06 passed their required technical gates and are merged. CQ-07 P01-R2 preserves exactly four failed Jobs (Attempts 1-4). The Attempt-5 submission did not create a command or Job because preflight failed before enqueue; PR #257 fixes that CWD-dependent Alembic path defect without changing migration semantics. PR #252 is the active capability-based Codex compatibility contract; PR #255 is the active coverage-aware single-query Start-to-Angle contract. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, production activation or publication.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -48,7 +48,13 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-07 / #233** is the active bounded content-quality window. Founder selected the P01 Pillar + C02 Cluster pair. The pilot contract and P01 intake remain frozen in `docs/CQ07_PILOT_CONTRACT.md` and `docs/CQ07_P01_EXECUTION_INPUT.md`. P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` has exactly three preserved failed retry jobs and remains BLOCKED at Start-to-Angle; Attempt 3 exposed `agent_cli_output_schema_invalid`, and merged PR #249 applies the bounded transport-schema compatibility fix. No Attempt 4 is authorized. The immediate task is #251: make Codex compatibility capability-based so routine packaged CLI version updates do not create false blockers. After #251 merge and read-only readiness proof, any new real retry still requires separate Founder authorization and must stop at Angle, Outline and final-review gates. No operational migration or publication is authorized.
+**CQ-07 / #233** is the active bounded content-quality window and is **P0**. Founder selected the P01 Pillar + C02 Cluster pair. The pilot contract and P01 intake remain frozen in `docs/CQ07_PILOT_CONTRACT.md` and `docs/CQ07_P01_EXECUTION_INPUT.md`. P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves four failed Jobs (Attempts 1-4) and remains BLOCKED at Start-to-Angle with `insufficient_support` from Attempt 4. PR #255 addresses the proven support-acquisition gap; PR #257 removes the preflight CWD false blocker that prevented the first Attempt-5 submission from enqueueing. Attempt 5 still does not exist. Next step is a short post-merge read-only readiness check on exact main; only then may Founder authorize exactly one real Attempt 5 to the Angle human gate. No operational migration or publication is authorized.
+
+### P0 / P1 roadmap status
+
+- **P0 — CQ-07 closeout: ACTIVE.** Finish P01 through Angle → Outline → independent EN/VI Writer → Human Voice → quality → final review; then run C02 independently through the same chain; compare breadth/depth/overlap/internal-link intent and VI/EN quality; decide whether the existing identity model is sufficient. Current sub-step: post-#257 readiness, then the first real Attempt 5 if separately authorized.
+- **P1 — Production Readiness: NOT STARTED / gated by P0.** Do not open this work until CQ-07 closes. P1 means fresh backup/restore proof, isolated operational migration rehearsal from `20260915_0034` to code head `20260926_0044`, old-data invariance checks, runtime/worker/health/retry-safety verification, and only then a separate Founder decision on operational migration/release.
+- **No overlap:** P1 must not be used to bypass or distract from P0. Current production WordPress/Rank Math activation, operational migration and publication remain paused.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
