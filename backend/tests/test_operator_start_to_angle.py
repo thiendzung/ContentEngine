@@ -1120,6 +1120,13 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert snapshot["diagnostic_schema_version"] == 2
         assert snapshot["ready_for_angle"] is False
 
+        coverage_requirements = snapshot["coverage_requirements"]
+        assert isinstance(coverage_requirements, list)
+        assert [item["id"] for item in coverage_requirements] == [
+            "coverage-1",
+            "coverage-2",
+        ]
+
         assessment = snapshot["assessment"]
         assert isinstance(assessment, dict)
         items = assessment["items"]
