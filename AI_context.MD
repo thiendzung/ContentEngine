@@ -98,6 +98,7 @@ If GitHub Actions quota/service is unavailable, record CI as unavailable and use
 - 2026-10-01: Attempt 6 ran exactly once and failed safely at Coverage Support with only `coverage-5` unresolved; no Attempt 7, no queued/leased work, no Angle artifact and operational DB unchanged.
 - 2026-10-01: Read-only diagnosis exposed an observability gap: the generated EvidenceSet/Evidence/SourceDocument rows roll back on failed Start-to-Angle, while the persisted Coverage Support diagnostic did not retain the bounded evidence/research/full-assessment snapshot needed to classify the remaining gap. #268 is the active fix.
 - 2026-10-01: PR #269 R5 exact-head local verification passed focused/full backend, Ruff, mypy, OpenAPI and OCR, but later Codex review findings on the same production delta remained valid: robust URL redaction/malformed-URL tolerance, legacy oversized intake replay, and pre-research aggregate size fail-fast. MG fixed those findings on the same PR; a new exact-head closeout is required before merge readiness.
+- 2026-10-02: Agent Local R6 exact-head verification passed on `b4560d7b2bbbf0e89744a57f4f5b726a092203d3`, but the subsequent Codex review found one additional valid P2: the pre-research 64KB check reserved no bytes for the up-to-8 automatic Evidence items. MG fixed this by sharing the automatic claim/count limits with Research and reserving a worst-case Evidence payload before any external research. R7 exact-head verification is required; Attempt 7 remains unauthorized.
 
 ## Remaining order and completion meaning
 
