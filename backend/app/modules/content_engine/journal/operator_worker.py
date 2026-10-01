@@ -28,11 +28,11 @@ from app.modules.content_engine.journal.coverage_support_depth_agent_bridge impo
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
     CoverageSupportDepthRuntimeError,
-    build_coverage_support_depth_model_input,
     coverage_support_failure_diagnostic_payload,
     evaluate_coverage_support_depth,
     load_coverage_support_depth_input,
     persist_coverage_support_failure_diagnostic,
+    preflight_coverage_support_depth_capacity,
 )
 from app.modules.content_engine.journal.models import JournalIntakeSpec, OperatorCommand
 from app.modules.content_engine.journal.operator_angle_bundle import (
@@ -125,19 +125,14 @@ def _preflight_coverage_support_base_input(
     if originality.snapshot_hash is None:
         raise OperatorWorkerError("operator_worker_originality_invalid")
     try:
-        build_coverage_support_depth_model_input(
+        preflight_coverage_support_depth_capacity(
             coverage_requirements=list(opportunity.coverage_requirements_json),
-            evidence_items=[],
             originality_items=list(originality.item_refs_json),
-            evidence_set_ref={
-                "id": "pre-research",
-                "version": 1,
-                "content_hash": "0" * 64,
-            },
             originality_pack_ref={
                 "id": str(originality.id),
                 "snapshot_hash": originality.snapshot_hash,
             },
+            max_evidence_items=8,
         )
     except CoverageSupportDepthRuntimeError as exc:
         if exc.code == "coverage_support_model_input_too_large":
