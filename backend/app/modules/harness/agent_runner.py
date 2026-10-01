@@ -696,7 +696,7 @@ class CodexCliRunner(_CliRunner):
         return AgentCapability(
             provider=self.provider,
             executable=executable,
-            version=version_text.splitlines()[0][:200],
+            version=version_line[:200],
             authenticated=True,
             auth_mode=auth_mode,
         )
