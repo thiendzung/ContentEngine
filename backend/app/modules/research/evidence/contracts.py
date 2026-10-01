@@ -15,6 +15,11 @@ class EvidenceRelation(StrEnum):
     CONTEXT_ONLY = "context_only"
 
 
+DEFAULT_EVIDENCE_MAX_CLAIMS = 8
+AUTOMATIC_CLAIM_MIN_CHARS = 40
+AUTOMATIC_CLAIM_MAX_CHARS = 600
+
+
 type OriginalityMaterialInput = str | dict[str, object]
 
 ORIGINALITY_MATERIAL_TYPE = "motgu_owned_material"
@@ -75,7 +80,7 @@ class EvidenceResearchRequest:
     research: ProductionResearchRequest
     content_opportunity_id: UUID
     need_hypothesis_id: UUID
-    max_claims: int = 8
+    max_claims: int = DEFAULT_EVIDENCE_MAX_CLAIMS
     explicit_candidates: tuple[ClaimCandidate, ...] = ()
     lock_evidence_set: bool = False
     locked_by: str | None = None
