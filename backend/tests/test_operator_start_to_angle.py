@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -335,10 +336,16 @@ class ExplodingEvidenceWorkflow:
 
 
 class ControlledCodexRunner:
-    def __init__(self, *, support_unresolved: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        support_unresolved: bool = False,
+        support_verbose: bool = False,
+    ) -> None:
         self.calls = 0
         self.received_context: dict[str, object] | None = None
         self.support_unresolved = support_unresolved
+        self.support_verbose = support_verbose
 
     async def preflight(self) -> AgentCapability:
         return AgentCapability(
@@ -372,6 +379,16 @@ class ControlledCodexRunner:
                 assert isinstance(requirement, dict)
                 requirement_id = requirement["id"]
                 if self.support_unresolved and index == 0:
+                    rationale = (
+                        "r" * 5_000
+                        if self.support_verbose
+                        else "The exact requirement still lacks support."
+                    )
+                    gaps = (
+                        [f"{position:02d}-" + ("g" * 2_000) for position in range(30)]
+                        if self.support_verbose
+                        else ["Acquire exact support before Angle generation."]
+                    )
                     items.append(
                         {
                             "requirement_id": requirement_id,
@@ -379,8 +396,8 @@ class ControlledCodexRunner:
                             "evidence_refs": [],
                             "caveat_evidence_refs": [],
                             "originality_refs": [],
-                            "rationale": "The exact requirement still lacks support.",
-                            "gaps": ["Acquire exact support before Angle generation."],
+                            "rationale": rationale,
+                            "gaps": gaps,
                         }
                     )
                 else:
@@ -1097,7 +1114,10 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert leased is not None
 
         workflow = ControlledEvidenceWorkflow()
-        runner = ControlledCodexRunner(support_unresolved=True)
+        runner = ControlledCodexRunner(
+            support_unresolved=True,
+            support_verbose=True,
+        )
         registry = AgentRunnerRegistry()
         registry.register("codex_cli", runner)
 
@@ -1120,12 +1140,48 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert snapshot["diagnostic_schema_version"] == 2
         assert snapshot["ready_for_angle"] is False
 
-        coverage_requirements = snapshot["coverage_requirements"]
+        model_input_snapshot = snapshot["model_input_snapshot"]
+        assert isinstance(model_input_snapshot, dict)
+        assert runner.received_context is not None
+        exact_runner_input = runner.received_context["coverage_support_depth_input"]
+        assert isinstance(exact_runner_input, dict)
+        assert model_input_snapshot == exact_runner_input
+        canonical = json.dumps(
+            model_input_snapshot,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        assert hashlib.sha256(canonical.encode("utf-8")).hexdigest() == snapshot[
+            "input_snapshot_hash"
+        ]
+
+        coverage_requirements = model_input_snapshot["coverage_requirements"]
         assert isinstance(coverage_requirements, list)
         assert [item["id"] for item in coverage_requirements] == [
             "coverage-1",
             "coverage-2",
         ]
+
+        evidence_input = model_input_snapshot["evidence"]
+        assert isinstance(evidence_input, list) and len(evidence_input) == 1
+        evidence_snapshot = evidence_input[0]
+        assert isinstance(evidence_snapshot, dict)
+        assert evidence_snapshot["relation"] == "supports"
+        assert evidence_snapshot["quality_metadata"] == {"fixture": True}
+        provenance = evidence_snapshot["provenance"]
+        assert isinstance(provenance, dict)
+        assert provenance["source_document_id"]
+        assert "chunk_id" in provenance
+        assert "media_observation_id" in provenance
+        assert provenance["verified_at"]
+        assert "Physical materials and finish" in str(evidence_snapshot["claim"])
+
+        originality_pack = model_input_snapshot["originality_pack"]
+        assert isinstance(originality_pack, dict)
+        originality_items = originality_pack["items"]
+        assert isinstance(originality_items, list) and originality_items
+        assert originality_items[0]["approval_ref"]
 
         assessment = snapshot["assessment"]
         assert isinstance(assessment, dict)
@@ -1133,16 +1189,14 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert isinstance(items, list) and len(items) == 2
         assert items[0]["requirement_id"] == "coverage-1"
         assert items[0]["status"] == "unresolved"
+        assert len(items[0]["rationale"]) == 2_000
+        assert isinstance(items[0]["rationale_hash"], str)
+        assert len(items[0]["gaps"]) == 20
+        assert all(len(gap) <= 1_000 for gap in items[0]["gaps"])
+        assert items[0]["gaps_total"] == 30
+        assert isinstance(items[0]["gaps_hash"], str)
         assert items[1]["requirement_id"] == "coverage-2"
         assert items[1]["status"] == "mixed"
-
-        evidence_input = snapshot["evidence_input"]
-        assert isinstance(evidence_input, list) and len(evidence_input) == 1
-        evidence_snapshot = evidence_input[0]
-        assert isinstance(evidence_snapshot, dict)
-        assert evidence_snapshot["relation"] == "supports"
-        assert "Physical materials and finish" in str(evidence_snapshot["claim"])
-        assert evidence_snapshot["source_document_id"]
 
         research_snapshot = snapshot["research_snapshot"]
         assert isinstance(research_snapshot, dict)
@@ -1162,7 +1216,11 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         serialized = json.dumps(snapshot, sort_keys=True)
         assert "content_markdown" not in serialized
         assert "raw_excerpt" not in serialized
-        assert "quality_metadata" not in serialized
+        assert "raw_payload" not in serialized
+        assert "raw_output" not in serialized
+        assert "api_key" not in serialized
+        assert "authorization" not in serialized.casefold()
+        assert "cookie" not in serialized.casefold()
         assert "do-not-persist" not in serialized
 
         rolled_back_set = await session.scalar(
