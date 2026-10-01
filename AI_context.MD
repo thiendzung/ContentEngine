@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-10-01 after Founder merged PR #249. Current main is `7e506aed4e895c1d0e85286fffd9ebc398bacc9a`. CQ-01 through CQ-06 are merged and CQ-07 is active. P01-R2 attempts 1-3 are preserved failed retries; PR #249 fixed the reproducible Coverage Support structured-output transport-schema blocker. Founder has now decided that normal ChatGPT-packaged Codex version drift must not be an authorization blocker by itself; #251 is replacing the exact-version gate with a capability-based contract while preserving read-only/no-tool/auth fail-closed checks. Production activation/E2E external work remains paused.
+Updated: 2026-10-01 during CQ-07 P0 remediation after Founder merged PR #257. Current main remains `c034b80a175a7c3b7d6278f245c79610a893f1ec`; PR #264 is the current code candidate and is not merged. P01-R2 preserves Attempts 1-5 as failed Jobs. Attempt 5 passed post-#257 readiness, then stopped before any model call because the evidence-oriented research path selected discovery-only sources that could not become factual `SUPPORTS`; one Jina `http_409` occurred but was not the root cause. Issue #263 / PR #264 applies the bounded authority-fallback/source-selection fix. Production activation/E2E external work remains paused.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `7e506aed4e895c1d0e85286fffd9ebc398bacc9a` (merge PR #249). CQ-01 through CQ-06 passed their required technical gates and are merged. CQ-07 P01-R2 preserves exactly three failed retry jobs; no Attempt 4 exists. PR #249 removes provider-unsupported `uniqueItems` only from the deep-cloned Coverage Support transport schema while leaving the canonical registry/validator unchanged. Exact Codex patch-version pinning is now superseded as an operating policy by Founder decision; #251 implements capability-based Codex compatibility. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, production activation or publication.
+Live GitHub main: `c034b80a175a7c3b7d6278f245c79610a893f1ec` (merge PR #257). CQ-01 through CQ-06 are merged. CQ-07 P01-R2 preserves exactly five failed Jobs (Attempts 1-5), with no queued/leased work and no Angle artifact. PR #252 is the capability-based Codex compatibility contract; PR #255 made the frozen coverage requirements visible to Start-to-Angle research; PR #257 fixed checkout-rooted Alembic preflight. Attempt 5 proved the next blocker is evidence-candidate acquisition/selection, not Codex compatibility or Alembic preflight. PR #264 is the current unmerged remediation candidate. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized Attempt 6, operational migration, production activation or publication.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -34,7 +34,7 @@ Live GitHub main: `7e506aed4e895c1d0e85286fffd9ebc398bacc9a` (merge PR #249). CQ
 | F5 | DONE / `PASS_F5_FINALIZATION` | PR #109 + PR #113; #110 accepted exact VI/EN approvals -> ContentVersions -> `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`. |
 | F6-MINI | DONE / browser acceptance PASS | Browser workspace and canonical end-to-end browser acceptance are complete; #116/#118 and related P1 trackers are closed. |
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
-| OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory; OCR-01 originally verified v1.12.5, and routine exact-ref review baseline advanced to upstream v1.12.6 after compatibility review on 2026-09-18. |
+| OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory. Historical OCR-01 evidence remains tied to v1.12.5; the current routine exact-ref baseline is upstream v1.12.11, verified as the latest release on 2026-10-01. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
 | F7 | LEGACY PAUSED / audit-only lineage | Historical R4 reached `AWAITING_APPROVAL / outline` and later read-only closeout passed. This lineage is not current Content Quality WIP and must not be resumed merely to advance CQ-02. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
@@ -48,7 +48,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**CQ-07 / #233** is the active bounded content-quality window. Founder selected the P01 Pillar + C02 Cluster pair. The pilot contract and P01 intake remain frozen in `docs/CQ07_PILOT_CONTRACT.md` and `docs/CQ07_P01_EXECUTION_INPUT.md`. P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` has exactly three preserved failed retry jobs and remains BLOCKED at Start-to-Angle; Attempt 3 exposed `agent_cli_output_schema_invalid`, and merged PR #249 applies the bounded transport-schema compatibility fix. No Attempt 4 is authorized. The immediate task is #251: make Codex compatibility capability-based so routine packaged CLI version updates do not create false blockers. After #251 merge and read-only readiness proof, any new real retry still requires separate Founder authorization and must stop at Angle, Outline and final-review gates. No operational migration or publication is authorized.
+**CQ-07 / #233 is P0 and remains the only active delivery window.** Founder selected the frozen P01 Pillar + C02 Cluster pair. P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves Attempts 1-5 as failed Jobs. Attempt 5 passed exact-main readiness and then failed in research before ModelCall with `insufficient_evidence`; read-only diagnosis showed 10 candidates, 3 selected discovery-only sources, 2 successful Jina reads and one `http_409`. Because discovery-only sources map to `CONTEXT_ONLY`, the Jina 409 was incidental rather than sufficient root cause. Issue #263 / PR #264 changes only the bounded evidence-oriented path: Exa first, at most one Tavily authority-recovery fallback, and Jina reads only `EVIDENCE_CANDIDATE` sources. Agent Local exact-SHA proof for PR #264 passed 1290 backend tests, focused semantic suites, Ruff, mypy and OpenCodeReview v1.12.11; GitHub CI #2067 also passed. One Codex review finding requires this semantic state update before merge readiness. **No Attempt 6 is authorized.** Next stop: complete the PR #264 semantic-doc closeout, exact-head review, Founder merge, then post-merge read-only readiness before any separately authorized Attempt 6 to the Angle gate. No P1 implementation, operational migration or publication is authorized while CQ-07 remains open.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -90,6 +90,10 @@ If GitHub Actions quota/service is unavailable, record CI as unavailable and use
 - 2026-09-30: Issue #240 read-only audit passed for exact packaged `codex-cli 0.159.0`, SHA-256 `ccd1b9441d35ce30102059c78514a125d676e6765ea1d001033e8cbe88718314`.
 - 2026-09-30: PR #241 merged; exact Codex 0.159.0 repin is on main `6bb7a2fa16383a685daf5c84490eface1c91071e`.
 - 2026-09-30: Agent Local returned `PASS_CQ07_FRESH_BASELINE_READY` on a fresh disposable DB `contentengine_cq07_baseline_20260930_test`, rev `20260926_0044`, preflight READY, zero model/provider calls. Historical PR #238 is not an execution branch and must not be widened or merged as a bundle.
+- 2026-10-01: PR #252 capability-based Codex compatibility, PR #255 coverage-aware research query/support semantics, and PR #257 checkout-rooted Alembic preflight are merged.
+- 2026-10-01: P01-R2 Attempt 5 passed post-#257 readiness, then failed before ModelCall with `insufficient_evidence`; diagnostic proved 3 selected discovery-only sources, 2 successful Jina reads and one bounded `http_409`.
+- 2026-10-01: MG reclassified the root cause as evidence-source selection/acquisition because discovery-only sources cannot become automatic factual `SUPPORTS`; #263 / PR #264 is the bounded remediation.
+- 2026-10-01: Agent Local exact-SHA verification of PR #264 passed 1290 backend tests, focused authority/second-hop suites, Ruff, mypy and OCR v1.12.11; GitHub CI #2067 PASS. Codex review requested canonical state updates in the same PR before merge readiness.
 
 ## Remaining order and completion meaning
 
@@ -111,7 +115,7 @@ Recovery, idempotency and wrong-version approval tests ship with each affected s
 
 UI displays only canonical data. Health can be unknown/stale; installed CLI is not worker liveness. `Approved / Not published` is distinct from publishing. No invented due dates, percentages, accounts or activity.
 
-OpenCodeReview is a second semantic reviewer, not workflow authority or runtime proof. For routine OCR use, use the verified v1.12.6 baseline, Git >=2.41, exact full commit SHAs, tests/operational config in review scope, and classify every finding before code changes. OCR-01 historical evidence remains tied to v1.12.5.
+OpenCodeReview is a second semantic reviewer, not workflow authority or runtime proof. For routine OCR use, use upstream v1.12.11 (latest verified release on 2026-10-01), Git >=2.41, exact full commit SHAs, tests/operational config in review scope, and classify every finding before code changes. Historical evidence keeps the OCR version actually used; do not rewrite old v1.12.5/v1.12.6/v1.12.9 proofs.
 
 Operational migration requires explicit authorization, backup/restore proof and frozen-M1 verification. New Model Routing policy activation is optional for V1 when existing approved routes suffice. No WordPress/publish, Artwork expansion, vector DB, native Codex multi-agent or Antigravity production activation in this completion scope.
 
@@ -445,9 +449,9 @@ If the Founder later resumes E2E-01, continue from this preserved order:
 
 Do not substitute public HTTP guesses for A2. Do not migrate, start operational runtime, provision production credentials, mutate WordPress/Rank Math, publish, or run real Google/model work without the corresponding Founder authorization.
 
-## Content Quality priority — CQ-01/CQ-02/CQ-03/CQ-04/CQ-05 merged, CQ-06 active
+## Content Quality priority — CQ-01 through CQ-06 merged, CQ-07 active / P0
 
-Founder priority remains content quality before production activation.
+Founder priority remains CQ-07 closeout before P1 local production readiness or any production activation.
 
 CQ sequence:
 `CQ-01 Promise Coverage → CQ-02 Pillar/Cluster Contract → CQ-03 Evidence/Originality Depth → CQ-04 Angle/Outline Quality → CQ-05 Writer/Human Voice → CQ-06 Deep Quality Gate → CQ-07 real Pillar+Cluster pilot`.

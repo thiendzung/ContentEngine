@@ -255,7 +255,10 @@ class ResearchRouter:
             result.stop_reason = search_stop_reason
         elif search_stop_reason.startswith("budget_exceeded"):
             result.stop_reason = search_stop_reason
-        elif search_stop_reason == "exa_required_for_second_hop":
+        elif search_stop_reason in {
+            "exa_required_for_second_hop",
+            "evidence_candidate_fallbacks_exhausted",
+        }:
             result.stop_reason = search_stop_reason
         else:
             result.stop_reason = "bounded_search_exhausted"
@@ -307,8 +310,12 @@ class ResearchRouter:
             self._mark_search_fallbacks_skipped(result, reason)
             return reason
 
+        evidence_recovery = (
+            result.request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE
+            and result.request.parent_url is None
+        )
         other = self._exa if provider is self._tavily else self._tavily
-        if other is not None:
+        if other is not None and not evidence_recovery:
             result.decisions.append(
                 ProviderDecision(
                     provider=other.name,
@@ -341,8 +348,47 @@ class ResearchRouter:
 
         result.source_candidates = dedupe_sources(result.source_candidates)
         if self._sufficiency.request_is_sufficient(result):
+            if evidence_recovery and self._tavily is not None and provider is self._exa:
+                result.decisions.append(
+                    ProviderDecision(
+                        provider=self._tavily.name,
+                        status=ProviderDecisionStatus.SKIPPED,
+                        reason="evidence_candidate_exa_sufficient",
+                    )
+                )
             return f"{provider.name}_sufficient"
-        return f"{provider.name}_insufficient_bounded_stop"
+
+        if not evidence_recovery:
+            return f"{provider.name}_insufficient_bounded_stop"
+
+        if provider is self._exa and self._tavily is not None:
+            try:
+                await self._search_provider(
+                    session,
+                    provider=self._tavily,
+                    request=search_request,
+                    result=result,
+                    reason="evidence_candidate_exa_insufficient_use_tavily_once",
+                    run_id=run_id,
+                    step_run_id=step_run_id,
+                    transient_usage=transient_usage,
+                )
+            except BudgetExceededError as exc:
+                result.decisions.append(
+                    ProviderDecision(
+                        provider=self._tavily.name,
+                        status=ProviderDecisionStatus.STOPPED,
+                        reason=str(exc),
+                        failure_class="budget_exceeded",
+                    )
+                )
+                return f"budget_exceeded_before_{self._tavily.name}"
+
+            result.source_candidates = dedupe_sources(result.source_candidates)
+            if self._sufficiency.request_is_sufficient(result):
+                return f"{self._tavily.name}_sufficient"
+
+        return "evidence_candidate_fallbacks_exhausted"
 
     def _fallback_search_request(
         self,
@@ -627,9 +673,17 @@ class ResearchRouter:
 
     def _select_sources(self, result: ProductionResearchResult) -> list[SourceCandidate]:
         limit = self._selected_source_limit(result.request)
+        required_use = result.request.required_intended_use
         parent_url = result.request.parent_url
         if parent_url is None:
-            return choose_sources(result.source_candidates, limit)
+            candidates = result.source_candidates
+            if required_use is not None:
+                candidates = [
+                    source
+                    for source in candidates
+                    if source.intended_use is required_use
+                ]
+            return choose_sources(candidates, limit)
 
         second_hop = [
             source
