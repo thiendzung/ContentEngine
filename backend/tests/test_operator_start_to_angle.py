@@ -1386,10 +1386,10 @@ async def test_oversized_support_base_input_fails_before_research(
     )
     payload = _intake_kwargs(key="cq07-support-preflight-too-large")
     payload["originality_material"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
-    payload["originality_writer_use"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
-    payload["originality_guardrails"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["originality_writer_use"] = "x" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["originality_guardrails"] = "x" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
     payload["coverage_requirements"] = [
-        f"{index:02d}-" + ("😀" * 497)
+        f"{index:02d}-" + ("x" * 497)
         for index in range(12)
     ]
 
