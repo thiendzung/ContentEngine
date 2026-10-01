@@ -28,6 +28,7 @@ from app.modules.content_engine.journal.coverage_support_depth_agent_bridge impo
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
     CoverageSupportDepthRuntimeError,
+    build_coverage_support_depth_model_input,
     coverage_support_failure_diagnostic_payload,
     evaluate_coverage_support_depth,
     load_coverage_support_depth_input,
@@ -112,6 +113,38 @@ _SAFE_RUNNER_DIAGNOSTICS = {
     "agent_cli_content_filter",
     "agent_cli_nonzero_unknown",
 }
+
+
+def _preflight_coverage_support_base_input(
+    *,
+    opportunity: ContentOpportunity,
+    originality: OriginalityPack,
+) -> None:
+    """Reject deterministic oversized evaluator input before external research."""
+
+    if originality.snapshot_hash is None:
+        raise OperatorWorkerError("operator_worker_originality_invalid")
+    try:
+        build_coverage_support_depth_model_input(
+            coverage_requirements=list(opportunity.coverage_requirements_json),
+            evidence_items=[],
+            originality_items=list(originality.item_refs_json),
+            evidence_set_ref={
+                "id": "pre-research",
+                "version": 1,
+                "content_hash": "0" * 64,
+            },
+            originality_pack_ref={
+                "id": str(originality.id),
+                "snapshot_hash": originality.snapshot_hash,
+            },
+        )
+    except CoverageSupportDepthRuntimeError as exc:
+        if exc.code == "coverage_support_model_input_too_large":
+            raise OperatorWorkerError(
+                "operator_worker_coverage_support_failed"
+            ) from exc
+        raise
 
 
 def _coverage_aware_research_query(opportunity: ContentOpportunity) -> str:
@@ -488,6 +521,11 @@ async def execute_start_to_angle_job(
         or originality.snapshot_hash != originality_pack_snapshot_hash(originality)
     ):
         raise OperatorWorkerError("operator_worker_originality_invalid")
+
+    _preflight_coverage_support_base_input(
+        opportunity=opportunity,
+        originality=originality,
+    )
 
     if run.status == "pending":
         await transition_run(session, run_id=run.id, status="running")
