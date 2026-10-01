@@ -122,3 +122,7 @@ def test_model_policy_forbids_fake_numeric_or_lexical_truth() -> None:
     assert policy["numeric_quality_score_forbidden"] is True
     assert policy["context_only_is_not_factual_support"] is True
     assert policy["contradicting_evidence_requires_resolution"] is True
+    assert policy["coverage_requirement_is_editorial_spec_not_evidence"] is True
+    assert policy["structural_navigation_directives_do_not_require_external_evidence"] is True
+    assert policy["factual_assertions_still_require_factual_support"] is True
+    assert policy["mixed_requirement_may_combine_factual_evidence_with_first_party_editorial_support"] is True
