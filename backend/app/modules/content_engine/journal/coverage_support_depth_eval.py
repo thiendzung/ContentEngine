@@ -32,6 +32,8 @@ COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS = 2_000
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS = 20
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS = 1_000
 COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES = 64_000
+COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS = 8
+COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS = 600
 COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
@@ -289,6 +291,71 @@ def build_coverage_support_depth_model_input(
     }
     _require_bounded_model_input(model_input)
     return model_input
+
+
+def _reserved_research_evidence_items(
+    *,
+    max_evidence_items: int,
+) -> list[dict[str, object]]:
+    """Upper-bound the automatic research evidence shape before external calls."""
+
+    if max_evidence_items < 0 or max_evidence_items > COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_evidence_reservation_invalid"
+        )
+
+    widest_text = "😀" * COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS
+    uuid_text = "f" * 36
+    return [
+        {
+            "evidence_id": uuid_text,
+            "claim_id": uuid_text,
+            "claim": widest_text,
+            "claim_type": "x" * 32,
+            "importance": "x" * 16,
+            "relation": "x" * 16,
+            "locator": "x" * 128,
+            "excerpt": widest_text,
+            "authority_level": "x" * 32,
+            "quality_metadata": {
+                "source_type": "x" * 32,
+                "commercial_bias": "x" * 32,
+                "authority_hint": "x" * 32,
+                "search_rank_used_as_authority": False,
+            },
+            "provenance": {
+                "source_document_id": uuid_text,
+                "chunk_id": uuid_text,
+                "media_observation_id": uuid_text,
+                "verified_at": "x" * 64,
+            },
+        }
+        for _ in range(max_evidence_items)
+    ]
+
+
+def preflight_coverage_support_depth_capacity(
+    *,
+    coverage_requirements: list[str],
+    originality_items: list[object],
+    originality_pack_ref: dict[str, object],
+    max_evidence_items: int = COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS,
+) -> None:
+    """Reserve worst-case automatic Evidence payload before external research."""
+
+    build_coverage_support_depth_model_input(
+        coverage_requirements=coverage_requirements,
+        evidence_items=_reserved_research_evidence_items(
+            max_evidence_items=max_evidence_items
+        ),
+        originality_items=originality_items,
+        evidence_set_ref={
+            "id": "pre-research",
+            "version": 1,
+            "content_hash": "0" * 64,
+        },
+        originality_pack_ref=originality_pack_ref,
+    )
 
 
 async def load_coverage_support_depth_input(
