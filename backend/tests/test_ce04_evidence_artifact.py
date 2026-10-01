@@ -131,5 +131,3 @@ def test_research_failure_diagnostic_strips_url_query_and_fragment() -> None:
     assert isinstance(documents, list)
     assert documents[0]["requested_url"] == "https://example.test/source"
     assert documents[0]["final_url"] == "https://example.test/final"
-
-
