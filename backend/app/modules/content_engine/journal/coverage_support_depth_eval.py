@@ -130,6 +130,10 @@ def build_coverage_support_depth_model_input(
             "lexical_overlap_is_not_semantic_proof": True,
             "numeric_quality_score_forbidden": True,
             "do_not_invent_artist_or_motgu_facts": True,
+            "coverage_requirement_is_editorial_spec_not_evidence": True,
+            "structural_navigation_directives_do_not_require_external_evidence": True,
+            "factual_assertions_still_require_factual_support": True,
+            "mixed_requirement_may_combine_factual_evidence_with_first_party_editorial_support": True,
         },
     }
 
