@@ -167,7 +167,12 @@ def _coverage_evaluator_identity_snapshot(
         return value.strip()[:limit]
 
     attempt = evaluator_identity.get("accepted_attempt")
-    if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1 or attempt > 2:
+    if (
+        isinstance(attempt, bool)
+        or not isinstance(attempt, int)
+        or attempt < 1
+        or attempt > 2
+    ):
         raise CoverageSupportDepthRuntimeError(
             "coverage_support_evaluator_identity_invalid"
         )
