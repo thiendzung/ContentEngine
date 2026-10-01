@@ -640,21 +640,40 @@ CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input,
 
 CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow engine, weakening Assertion Audit/Source-copy, opaque score or operational migration.
 
-### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE
+### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE / P0
 
 - [x] Founder selected Option B: P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
 - [x] Pair identity/role/question/intent/promise/coverage/EN+VI lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`.
-- [x] Pre-CQ07 cleanup completed via PR #239; local main cleaned and safe-run README simplified.
-- [x] Historical exact Codex `0.159.0` audit/repin passed (#240/#241); retained as evidence, but exact patch-version pinning is superseded as an operating policy by Founder decision on 2026-10-01.
-- [x] Fresh disposable baseline + frozen P01 intake were established at Alembic `20260926_0044`; P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` now preserves attempts 1-3 as failed retry evidence.
-- [x] PR #249 merged on main `7e506aed4e895c1d0e85286fffd9ebc398bacc9a`; Coverage Support transport schema now strips provider-unsupported `uniqueItems` only on the deep-cloned runner copy.
-- [ ] #251: replace exact Codex version approval with capability-based compatibility while preserving required flags, 21 no-tool feature controls, cached-session auth and runtime version provenance.
-- [ ] Post-#251 read-only P01-R2 readiness proof, then Founder separately authorizes at most one next bounded retry to the Angle human gate.
+- [x] Fresh disposable P01-R2 intake exists at Alembic `20260926_0044`; Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves Attempts 1-5 as failed Jobs.
+- [x] PR #249 fixed the Coverage Support structured-output transport-schema compatibility defect without weakening canonical validation.
+- [x] PR #252 replaced exact Codex patch-version gating with capability-based compatibility while retaining malformed-identity/auth/no-tool fail-closed behavior.
+- [x] Attempt 4 reached semantic Coverage Support and exposed a real `insufficient_support` gap; no Angle was generated.
+- [x] PR #255 merged coverage-aware single-query research acquisition plus explicit editorial-vs-factual support semantics.
+- [x] PR #257 merged checkout-rooted/CWD-independent Alembic preflight; the blocked pre-#257 submission did not consume Attempt 5.
+- [x] Attempt 5 passed post-#257 readiness and ran exactly once; it failed before ModelCall with `insufficient_evidence`.
+- [x] #262 diagnosis proved 10 candidates → 3 selected discovery-only sources → 2 successful Jina reads + one bounded `http_409`; the reader failure was incidental because discovery-only sources map to `CONTEXT_ONLY`.
+- [x] #263 defines the bounded root fix: evidence-oriented acquisition/selection must produce `EVIDENCE_CANDIDATE` sources before Jina.
+- [x] PR #264 implementation keeps Serper first, Exa authority recovery, at most one Tavily recovery fallback, and filters Jina reads to required evidence candidates; no authority weakening or budget increase.
+- [x] Agent Local exact-SHA PR #264 proof passed: focused router 20, Evidence/Start-to-Angle 30, authority+second-hop 18, full backend 1290, Ruff, mypy, OpenAPI; OCR v1.12.11 had no Critical/High/Medium findings.
+- [x] GitHub CI #2067 passed on PR #264 head `2c44bf6ace3bbac84df41b27b21cd8274ee70d38`.
+- [ ] Close the one Codex P1 review finding by recording Attempt 5 / #263 / next bounded stop in canonical `AI_context.MD` + `docs/TASKS.md` within PR #264, then verify the new exact head.
+- [ ] Founder merges PR #264 after MG exact-head review; do not merge automatically.
+- [ ] Post-merge read-only P01-R2 readiness; only then may Founder separately authorize exactly one Attempt 6 to the Angle human gate.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
+- [ ] Complete P01 final review/content evidence without publication.
 - [ ] Run C02 independently through the same chain.
-- [ ] Compare P01/C02 breadth, depth, overlap, links and VI/EN quality.
+- [ ] Compare P01/C02 breadth, depth, overlap, truthful internal-link intent and VI/EN quality.
 - [ ] Record whether existing identity is sufficient or a minimum durable Pillar↔Cluster relation is justified.
 - [ ] Return exact artifact IDs/hashes, approvals, quality results and final visible VI/EN content.
 
-CQ-07 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant. Historical PR #238 is evidence/history only and is not the clean execution branch.
+**P0 exit:** P01 + C02 both complete the bounded CQ-07 quality path, Founder comparison is recorded, and the Pillar↔Cluster identity decision is explicit.
+
+**P1 — Local Content Production Ready: NOT STARTED / gated by P0.**
+- [ ] After P0 closes, DATA-02: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal + old-data/fingerprint invariance.
+- [ ] RUN-02 MIN: smallest local start/readiness/one-shot-worker/graceful-stop path; event/exit-driven only, no polling, no auto-migration/model/publish.
+- [ ] REC-02: crash/restart/resume, ambiguous external effect reconciliation, duplicate-action idempotency and no blind retry.
+- [ ] LOCAL-E2E-01: reuse CQ-07 proof plus one fresh distinct real case with one controlled stop/restart/resume and no case-specific patch.
+- [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then begin real content production while later hardening is driven by observed failures.
+
+CQ-07/P0 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant. P1 implementation does not start while P0 is open. Historical PR #238 is evidence/history only and is not the clean execution branch.
