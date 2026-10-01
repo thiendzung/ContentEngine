@@ -48,8 +48,11 @@ class AgentRunnerError(RuntimeError):
 # Historical known-good identity kept only for fixtures/provenance. Runtime approval is
 # capability-based because the ChatGPT-packaged Codex CLI updates independently.
 CODEX_CLI_APPROVED_VERSION = "codex-cli 0.159.0"
-_CODEX_CLI_VERSION_RE = re.compile(
-    r"^codex-cli [0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+_CODEX_CLI_CORE_RE = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
+)
+_CODEX_CLI_IDENTIFIER_RE = re.compile(
+    r"^[0-9A-Za-z]+(?:-[0-9A-Za-z]+)*$"
 )
 CODEX_REQUIRED_EXEC_FLAGS = (
     "--model",
@@ -89,9 +92,36 @@ CODEX_NO_TOOL_FEATURES = (
 
 
 def is_codex_cli_version(value: object) -> bool:
-    """Recognize Codex CLI provenance without pinning a patch/minor release."""
+    """Recognize one fail-closed Codex CLI version identity."""
 
-    return isinstance(value, str) and _CODEX_CLI_VERSION_RE.fullmatch(value.strip()) is not None
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    prefix = "codex-cli "
+    if not text.startswith(prefix):
+        return False
+
+    raw_version = text[len(prefix) :]
+    base_and_pre, build_sep, build = raw_version.partition("+")
+    if build_sep:
+        if not build or any(
+            not _CODEX_CLI_IDENTIFIER_RE.fullmatch(part)
+            for part in build.split(".")
+        ):
+            return False
+
+    core, pre_sep, prerelease = base_and_pre.partition("-")
+    if _CODEX_CLI_CORE_RE.fullmatch(core) is None:
+        return False
+    if pre_sep and (
+        not prerelease
+        or any(
+            not _CODEX_CLI_IDENTIFIER_RE.fullmatch(part)
+            for part in prerelease.split(".")
+        )
+    ):
+        return False
+    return True
 
 
 def runner_versions_compatible(*, provider: str, expected: str, observed: str) -> bool:
