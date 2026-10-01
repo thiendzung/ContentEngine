@@ -573,11 +573,12 @@ A4E2 closeout:
 - the two audited Start-to-Angle failed-attempt lineages remain intentional paused operator-retry state and were preserved byte-for-byte during the disposable lifecycle proof;
 - the rev-0042 lifecycle is event-driven and must not regress to repeated sleep/HTTP/ps/pgrep polling.
 
-## Content Quality track — Founder priority 2026-09-26
+## Content Quality track — Founder priority
 
 Production activation / A2 / WordPress / operational migration / publish work remains paused.
-CQ-01 through CQ-05 are merged. Current WIP is **CQ-06 / #232 — Deep Quality Gate for final Journal content** on exact main base
-`bae80f607c5873202af2fe0da2d527bba753bc85`.
+CQ-01 through CQ-06 are merged. Current WIP is **CQ-07 / #233 — P0 Real Pillar + Cluster closed-loop pilot** on current main
+`c034b80a175a7c3b7d6278f245c79610a893f1ec`.
+P1 Production Readiness remains NOT STARTED until P0 closes.
 
 ### CQ-01 — Promise Coverage — DONE
 
