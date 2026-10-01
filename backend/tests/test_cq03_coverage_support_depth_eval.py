@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import pytest
+
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
+    COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES,
+    CoverageSupportDepthRuntimeError,
     build_coverage_support_depth_model_input,
 )
 
@@ -98,6 +102,31 @@ def test_model_input_drops_reference_only_or_incomplete_originality() -> None:
     originality = payload["originality_pack"]
     assert isinstance(originality, dict)
     assert originality["items"] == [_originality_item()]
+
+
+
+def test_model_input_rejects_oversized_exact_snapshot_before_evaluator_call() -> None:
+    item = _originality_item()
+    item["material"] = "x" * (COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES + 1)
+
+    with pytest.raises(
+        CoverageSupportDepthRuntimeError,
+        match="coverage_support_model_input_too_large",
+    ):
+        build_coverage_support_depth_model_input(
+            coverage_requirements=["Explain the decision."],
+            evidence_items=[],
+            originality_items=[item],
+            evidence_set_ref={
+                "id": "es-1",
+                "version": 1,
+                "content_hash": "a" * 64,
+            },
+            originality_pack_ref={
+                "id": "op-1",
+                "snapshot_hash": "b" * 64,
+            },
+        )
 
 
 def test_model_policy_forbids_fake_numeric_or_lexical_truth() -> None:
