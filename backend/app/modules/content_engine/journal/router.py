@@ -24,6 +24,7 @@ from app.modules.content_engine.journal.operator_decisions import (
     submit_operator_decision,
 )
 from app.modules.content_engine.journal.operator_manual_intake import (
+    FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
     FounderJournalIntakeResult,
     create_founder_journal_intake,
 )
@@ -107,9 +108,18 @@ class FounderJournalIntakeRequest(BaseModel):
     promise: str = Field(min_length=1)
     coverage_requirements: list[str] = Field(min_length=1, max_length=12)
     selection_reason: str = Field(min_length=1)
-    originality_material: str = Field(min_length=1)
-    originality_writer_use: str = Field(min_length=1)
-    originality_guardrails: str = Field(min_length=1)
+    originality_material: str = Field(
+        min_length=1,
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    )
+    originality_writer_use: str = Field(
+        min_length=1,
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    )
+    originality_guardrails: str = Field(
+        min_length=1,
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    )
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
@@ -179,8 +189,11 @@ def _operator_http_error(exc: OperatorControlError) -> HTTPException:
         "operator_manual_coverage_requirement_duplicate",
         "operator_manual_selection_reason_required",
         "operator_manual_originality_material_required",
+        "operator_manual_originality_material_required_too_long",
         "operator_manual_originality_writer_use_required",
+        "operator_manual_originality_writer_use_required_too_long",
         "operator_manual_originality_guardrails_required",
+        "operator_manual_originality_guardrails_required_too_long",
         "operator_knowledge_brief_binding_start_only",
         "operator_knowledge_brief_binding_stage_required",
     }
