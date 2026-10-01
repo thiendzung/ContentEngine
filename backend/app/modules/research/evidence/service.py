@@ -18,6 +18,8 @@ from app.modules.research.contracts import (
 )
 from app.modules.research.evidence.artifact import persist_evidence_artifact
 from app.modules.research.evidence.contracts import (
+    AUTOMATIC_CLAIM_MAX_CHARS,
+    AUTOMATIC_CLAIM_MIN_CHARS,
     ClaimCandidate,
     EvidenceRelation,
     EvidenceResearchRequest,
@@ -507,7 +509,10 @@ class EvidenceResearchWorkflow:
         subject_terms: set[str],
         source_anchor_terms: set[str],
     ) -> bool:
-        if len(statement) < 40 or len(statement) > 600:
+        if (
+            len(statement) < AUTOMATIC_CLAIM_MIN_CHARS
+            or len(statement) > AUTOMATIC_CLAIM_MAX_CHARS
+        ):
             return False
         if statement.endswith("?"):
             return False
