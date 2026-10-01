@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -75,11 +76,21 @@ def _bounded_text(value: str | None, *, limit: int) -> str | None:
     return normalized[:limit]
 
 
+def _safe_diagnostic_url(value: str | None) -> str | None:
+    bounded = _bounded_text(value, limit=2048)
+    if not bounded:
+        return bounded
+    parts = urlsplit(bounded)
+    if not parts.scheme or not parts.netloc:
+        return bounded.split("?", 1)[0].split("#", 1)[0]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
 def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
     return {
         "provider": _bounded_text(source.provider, limit=100) or "",
         "query": _bounded_text(source.query, limit=1000) or "",
-        "url": _bounded_text(source.url, limit=2048) or "",
+        "url": _safe_diagnostic_url(source.url) or "",
         "title": _bounded_text(source.title, limit=500) or "",
         "source_type": _bounded_text(source.source_type, limit=100) or "",
         "commercial_bias": source.commercial_bias.value,
@@ -87,7 +98,7 @@ def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
         "relation": source.relation.value,
         "intended_use": source.intended_use.value,
         "why_selected": _bounded_text(source.why_selected, limit=500) or "",
-        "parent_url": _bounded_text(source.parent_url, limit=2048),
+        "parent_url": _safe_diagnostic_url(source.parent_url),
     }
 
 
@@ -170,13 +181,11 @@ def research_failure_diagnostic_payload(
             "read_documents": [
                 {
                     "provider": _bounded_text(document.provider, limit=100) or "",
-                    "requested_url": _bounded_text(
-                        document.requested_url or document.url,
-                        limit=2048,
+                    "requested_url": _safe_diagnostic_url(
+                        document.requested_url or document.url
                     ),
-                    "final_url": _bounded_text(
-                        document.final_url or document.url,
-                        limit=2048,
+                    "final_url": _safe_diagnostic_url(
+                        document.final_url or document.url
                     ),
                     "title": _bounded_text(document.title, limit=500),
                 }
