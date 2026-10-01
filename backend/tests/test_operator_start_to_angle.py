@@ -1063,6 +1063,161 @@ async def test_cq03_unresolved_support_blocks_angle_generation(
 
 
 @pytest.mark.asyncio
+async def test_coverage_support_diagnostic_survives_worker_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-coverage-diagnostic-rollback"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq07-coverage-diagnostic-rollback-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq07-coverage-diagnostic",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow()
+        runner = ControlledCodexRunner(support_unresolved=True)
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_coverage_support_unresolved",
+        ) as exc_info:
+            async with session.begin_nested():
+                await execute_start_to_angle_job(
+                    session,
+                    job_id=leased.id,
+                    worker_id="worker-cq07-coverage-diagnostic",
+                    evidence_workflow=workflow,  # type: ignore[arg-type]
+                    runner_registry=registry,
+                )
+
+        snapshot = exc_info.value.diagnostic_snapshot
+        assert snapshot is not None
+        assert snapshot["artifact_type"] == "coverage_support_failure_diagnostic"
+        assert snapshot["diagnostic_schema_version"] == 2
+        assert snapshot["ready_for_angle"] is False
+
+        assessment = snapshot["assessment"]
+        assert isinstance(assessment, dict)
+        items = assessment["items"]
+        assert isinstance(items, list) and len(items) == 2
+        assert items[0]["requirement_id"] == "coverage-1"
+        assert items[0]["status"] == "unresolved"
+        assert items[1]["requirement_id"] == "coverage-2"
+        assert items[1]["status"] == "mixed"
+
+        evidence_input = snapshot["evidence_input"]
+        assert isinstance(evidence_input, list) and len(evidence_input) == 1
+        evidence_snapshot = evidence_input[0]
+        assert isinstance(evidence_snapshot, dict)
+        assert evidence_snapshot["relation"] == "supports"
+        assert "Physical materials and finish" in str(evidence_snapshot["claim"])
+        assert evidence_snapshot["source_document_id"]
+
+        research_snapshot = snapshot["research_snapshot"]
+        assert isinstance(research_snapshot, dict)
+        research = research_snapshot["research"]
+        assert isinstance(research, dict)
+        selected_sources = research["selected_sources"]
+        assert isinstance(selected_sources, list) and len(selected_sources) == 1
+        selected = selected_sources[0]
+        assert isinstance(selected, dict)
+        selected_url = selected["url"]
+        assert isinstance(selected_url, str) and selected_url.startswith(
+            "https://example.test/pr45/"
+        )
+        assert research["stop_reason"] == "controlled_fixture_sufficient"
+        assert research_snapshot["relation_counts"] == {"supports": 1}
+
+        serialized = json.dumps(snapshot, sort_keys=True)
+        assert "content_markdown" not in serialized
+        assert "raw_excerpt" not in serialized
+        assert "quality_metadata" not in serialized
+        assert "do-not-persist" not in serialized
+
+        rolled_back_set = await session.scalar(
+            select(EvidenceSet).where(
+                EvidenceSet.content_case_id == created.content_case_id
+            )
+        )
+        assert rolled_back_set is None
+        assert (
+            await session.scalar(
+                select(func.count(SourceDocument.id)).where(
+                    SourceDocument.canonical_url == selected_url
+                )
+            )
+            or 0
+        ) == 0
+        assert (
+            await session.scalar(
+                select(func.count(ModelCall.id)).where(
+                    ModelCall.run_id == created.bootstrap_run_id
+                )
+            )
+            or 0
+        ) == 0
+
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-cq07-coverage-diagnostic",
+            failure_class="insufficient_support",
+            message="operator_worker_coverage_support_unresolved",
+            diagnostic_snapshot=snapshot,
+        )
+
+        diagnostic = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == created.bootstrap_run_id,
+                Artifact.artifact_type == "coverage_support_failure_diagnostic",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
+        assert diagnostic is not None
+        assert diagnostic.content_json == snapshot
+        assert diagnostic.content_hash
+        step = await session.get(StepRun, leased.step_run_id)
+        assert step is not None and step.error_json is not None
+        assert step.error_json["diagnostic_artifact_id"] == str(diagnostic.id)
+        assert step.error_json["diagnostic_content_hash"] == diagnostic.content_hash
+        assert (
+            await session.scalar(
+                select(func.count(Artifact.id)).where(
+                    Artifact.run_id == created.bootstrap_run_id,
+                    Artifact.artifact_type == "angle_candidates",
+                )
+            )
+            or 0
+        ) == 0
+
+
+@pytest.mark.asyncio
 async def test_failed_research_diagnostic_survives_research_rollback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
