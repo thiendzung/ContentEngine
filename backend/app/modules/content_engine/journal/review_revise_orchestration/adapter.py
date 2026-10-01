@@ -24,11 +24,11 @@ from app.modules.content_engine.journal.writer import (
     _validate_model_output,
 )
 from app.modules.harness.agent_runner import (
-    CODEX_CLI_APPROVED_VERSION,
     AgentRunnerError,
     AgentRunnerRegistry,
     AgentRunRequest,
     AgentRunResult,
+    is_codex_cli_version,
 )
 from app.modules.harness.bounded_orchestration import (
     BoundedOrchestrationResult,
@@ -366,13 +366,13 @@ class ReviewReviseEnOrchestrationAdapter:
             raise ReviewReviseOrchestrationError(
                 "review_revise_coordinator_result_route_mismatch"
             )
-        if result.runner_version != CODEX_CLI_APPROVED_VERSION:
+        if not is_codex_cli_version(result.runner_version):
             await fail_model_call(
                 self._session,
                 call_id=call.id,
-                error_class="agent_runner_version_not_approved",
+                error_class="agent_runner_identity_invalid",
             )
-            raise ReviewReviseOrchestrationError("agent_runner_version_not_approved")
+            raise ReviewReviseOrchestrationError("agent_runner_identity_invalid")
         try:
             artifact = await persist_delegation_plan_artifact(
                 self._session,
