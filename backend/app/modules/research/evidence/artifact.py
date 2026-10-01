@@ -77,14 +77,25 @@ def _bounded_text(value: str | None, *, limit: int) -> str | None:
 
 
 def _safe_diagnostic_url(value: str | None) -> str | None:
-    bounded = _bounded_text(value, limit=2048)
-    if not bounded:
-        return bounded
-    parts = urlsplit(bounded)
-    if not parts.scheme or not parts.netloc:
-        return bounded.split("?", 1)[0].split("#", 1)[0]
+    if value is None:
+        return None
+    raw = value.strip()
+    if not raw:
+        return ""
+
+    try:
+        parts = urlsplit(raw)
+    except ValueError:
+        fingerprint = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+        return f"invalid-url:{fingerprint}"
+
     safe_netloc = parts.netloc.rsplit("@", 1)[-1]
-    return urlunsplit((parts.scheme, safe_netloc, parts.path, "", ""))
+    if safe_netloc:
+        safe = urlunsplit((parts.scheme, safe_netloc, parts.path, "", ""))
+    else:
+        safe = parts.path.split("?", 1)[0].split("#", 1)[0]
+
+    return _bounded_text(safe, limit=2048)
 
 
 def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
