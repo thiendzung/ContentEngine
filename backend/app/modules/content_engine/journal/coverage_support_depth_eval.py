@@ -23,7 +23,11 @@ from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet, OriginalityPack
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
-from app.modules.research.evidence.contracts import is_usable_originality_item
+from app.modules.research.evidence.contracts import (
+    AUTOMATIC_CLAIM_MAX_CHARS,
+    DEFAULT_EVIDENCE_MAX_CLAIMS,
+    is_usable_originality_item,
+)
 
 COVERAGE_SUPPORT_DEPTH_ARTIFACT_TYPE = "coverage_support_depth"
 COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE = "coverage_support_failure_diagnostic"
@@ -32,8 +36,8 @@ COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS = 2_000
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS = 20
 COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS = 1_000
 COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES = 64_000
-COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS = 8
-COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS = 600
+COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS = DEFAULT_EVIDENCE_MAX_CLAIMS
+COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS = AUTOMATIC_CLAIM_MAX_CHARS
 COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
@@ -299,7 +303,10 @@ def _reserved_research_evidence_items(
 ) -> list[dict[str, object]]:
     """Upper-bound the automatic research evidence shape before external calls."""
 
-    if max_evidence_items < 0 or max_evidence_items > COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS:
+    if (
+        max_evidence_items < 0
+        or max_evidence_items > COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS
+    ):
         raise CoverageSupportDepthRuntimeError(
             "coverage_support_evidence_reservation_invalid"
         )
