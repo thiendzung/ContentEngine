@@ -416,6 +416,103 @@ async def test_evidence_oriented_route_uses_tavily_when_exa_unavailable(
     )
 
 
+@pytest.mark.asyncio
+async def test_evidence_oriented_route_uses_tavily_once_after_exa_discovery_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    exa_discovery = _source(
+        "exa",
+        0,
+        url="https://example.com/deep-context",
+    )
+    institutional = _source(
+        "tavily",
+        0,
+        bias=CommercialBias.LOW,
+        url="https://guidance.example.gov/evidence",
+        source_type="institutional",
+        intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+    )
+    exa = FakeProvider("exa", ProviderResponse((), (exa_discovery,), ()))
+    tavily = FakeProvider("tavily", ProviderResponse((), (institutional,), ()))
+    router = ResearchRouter(serper=serper, tavily=tavily, exa=exa)
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="evidence needed",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=0,
+        ),
+    )
+
+    assert exa.call_count == 1
+    assert tavily.call_count == 1
+    assert exa.requests[0].query == tavily.requests[0].query
+    assert result.sufficient is True
+    assert result.stop_reason == "tavily_sufficient"
+    assert result.selected_sources == [institutional]
+    assert all(
+        source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+        for source in result.selected_sources
+    )
+
+
+@pytest.mark.asyncio
+async def test_evidence_oriented_route_does_not_read_discovery_only_sources(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        _response("serper", question_count=3, source_count=3, low_bias_count=1),
+    )
+    exa = FakeProvider(
+        "exa",
+        ProviderResponse((), (_source("exa", 0, url="https://example.com/deep"),), ()),
+    )
+    tavily = FakeProvider(
+        "tavily",
+        ProviderResponse(
+            (),
+            (_source("tavily", 0, url="https://example.net/context"),),
+            (),
+        ),
+    )
+    reader = FakeReader()
+    router = ResearchRouter(
+        serper=serper,
+        tavily=tavily,
+        exa=exa,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=8, max_research_sources=3),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="evidence needed",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=3,
+        ),
+    )
+
+    assert exa.call_count == 1
+    assert tavily.call_count == 1
+    assert result.selected_sources == []
+    assert reader.urls == []
+    assert result.documents == []
+    assert result.sufficient is False
+    assert result.stop_reason == "evidence_candidate_fallbacks_exhausted"
+
+
 def test_annotate_source_separates_public_authority_from_educational_domains() -> None:
     for url in (
         "https://nps.gov/museum/publications/conserveogram/13-01.pdf",
