@@ -532,7 +532,7 @@ class _CliRunner:
         return AgentCapability(
             provider=self.provider,
             executable=executable,
-            version=version_line[:200],
+            version=version_text.splitlines()[0][:200],
             authenticated=True,
             auth_mode=auth_mode,
         )
