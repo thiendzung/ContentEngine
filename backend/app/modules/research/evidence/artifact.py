@@ -83,7 +83,8 @@ def _safe_diagnostic_url(value: str | None) -> str | None:
     parts = urlsplit(bounded)
     if not parts.scheme or not parts.netloc:
         return bounded.split("?", 1)[0].split("#", 1)[0]
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    safe_netloc = parts.netloc.rsplit("@", 1)[-1]
+    return urlunsplit((parts.scheme, safe_netloc, parts.path, "", ""))
 
 
 def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
