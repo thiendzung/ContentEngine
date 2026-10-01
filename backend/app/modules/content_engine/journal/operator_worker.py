@@ -647,6 +647,7 @@ async def execute_start_to_angle_job(
                 support_input,
                 support_result,
                 research_snapshot=research_failure_diagnostic_payload(research_result),
+                evaluator_identity=support_port.diagnostic_identity(),
             ),
         )
 
