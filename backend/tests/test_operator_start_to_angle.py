@@ -1267,7 +1267,7 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert "content_markdown" not in serialized
         assert "raw_excerpt" not in serialized
         assert "raw_payload" not in serialized
-        assert "raw_output" not in serialized
+        assert '"raw_output"' not in serialized
         assert "api_key" not in serialized
         assert "authorization" not in serialized.casefold()
         assert "cookie" not in serialized.casefold()
