@@ -640,21 +640,34 @@ CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input,
 
 CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow engine, weakening Assertion Audit/Source-copy, opaque score or operational migration.
 
-### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE
+### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE / P0
 
 - [x] Founder selected Option B: P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
 - [x] Pair identity/role/question/intent/promise/coverage/EN+VI lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`.
-- [x] Pre-CQ07 cleanup completed via PR #239; local main cleaned and safe-run README simplified.
-- [x] Historical exact Codex `0.159.0` audit/repin passed (#240/#241); retained as evidence, but exact patch-version pinning is superseded as an operating policy by Founder decision on 2026-10-01.
-- [x] Fresh disposable baseline + frozen P01 intake were established at Alembic `20260926_0044`; P01-R2 Run `61a75f87-b122-4f2b-b6af-bab332c428a8` now preserves attempts 1-3 as failed retry evidence.
-- [x] PR #249 merged on main `7e506aed4e895c1d0e85286fffd9ebc398bacc9a`; Coverage Support transport schema now strips provider-unsupported `uniqueItems` only on the deep-cloned runner copy.
-- [ ] #251: replace exact Codex version approval with capability-based compatibility while preserving required flags, 21 no-tool feature controls, cached-session auth and runtime version provenance.
-- [ ] Post-#251 read-only P01-R2 readiness proof, then Founder separately authorizes at most one next bounded retry to the Angle human gate.
+- [x] Fresh disposable P01-R2 intake exists at Alembic `20260926_0044`; Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves Attempts 1-4 as failed Jobs.
+- [x] PR #249 fixed the Coverage Support structured-output transport-schema compatibility defect without weakening canonical validation.
+- [x] PR #252 replaced exact Codex patch-version gating with capability-based compatibility while retaining malformed-identity/auth/no-tool fail-closed behavior.
+- [x] Attempt 4 reached semantic Coverage Support and exposed a real `insufficient_support` gap in coverage-5/6; no Angle was generated.
+- [x] #253 diagnosis proved one broad research query + support-binding semantics were the limiting layer.
+- [x] PR #255 merged coverage-aware single-query research acquisition plus explicit editorial-vs-factual support semantics.
+- [x] First Attempt-5 submission was blocked before OperatorCommand/Job creation by CWD-dependent Alembic preflight; it did not consume Attempt 5.
+- [x] PR #257 merged on main `c034b80a175a7c3b7d6278f245c79610a893f1ec`; Alembic ScriptDirectory resolution is checkout-rooted and CWD-independent.
+- [ ] Run post-#257 read-only P01-R2 readiness on exact main; if PASS, Founder may separately authorize exactly one real Attempt 5 to the Angle human gate.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
+- [ ] Complete P01 final review/content evidence without publication.
 - [ ] Run C02 independently through the same chain.
-- [ ] Compare P01/C02 breadth, depth, overlap, links and VI/EN quality.
+- [ ] Compare P01/C02 breadth, depth, overlap, truthful link intent and VI/EN quality.
 - [ ] Record whether existing identity is sufficient or a minimum durable Pillar↔Cluster relation is justified.
 - [ ] Return exact artifact IDs/hashes, approvals, quality results and final visible VI/EN content.
 
-CQ-07 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant. Historical PR #238 is evidence/history only and is not the clean execution branch.
+**P0 exit:** P01 + C02 both complete the bounded CQ-07 quality path, Founder comparison is recorded, and the Pillar↔Cluster identity decision is explicit.
+
+**P1 — Production Readiness: NOT STARTED / gated by P0.**
+- [ ] After P0 closes, create a fresh operational backup and prove isolated restore.
+- [ ] Rehearse `20260915_0034 → 20260926_0044` on a disposable restored DB; verify old-data/fingerprint invariance and exact migration chain.
+- [ ] Verify runtime/worker/health/retry safety on the candidate release without publication.
+- [ ] Only after those proofs request separate Founder authorization for operational migration/release.
+- [ ] Keep WordPress/Rank Math activation and publication outside P1 unless separately authorized.
+
+CQ-07/P0 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant. P1 does not start while P0 is open. Historical PR #238 is evidence/history only and is not the clean execution branch.
