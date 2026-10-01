@@ -80,12 +80,12 @@ from app.modules.knowledge.originality_pack import originality_pack_snapshot_has
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.contracts import IntendedUse, ProductionResearchRequest, ResearchDepth
 from app.modules.research.evidence import EvidenceResearchRequest, EvidenceResearchWorkflow
-from app.modules.research.evidence.contracts import DEFAULT_EVIDENCE_MAX_CLAIMS
 from app.modules.research.evidence.artifact import (
     persist_research_failure_diagnostic,
     research_exception_diagnostic_payload,
     research_failure_diagnostic_payload,
 )
+from app.modules.research.evidence.contracts import DEFAULT_EVIDENCE_MAX_CLAIMS
 from app.modules.research.evidence.persistence import lock_evidence_set
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
