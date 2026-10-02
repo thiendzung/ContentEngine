@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -76,6 +77,35 @@ def _bounded_text(value: str | None, *, limit: int) -> str | None:
     return normalized[:limit]
 
 
+def _safe_diagnostic_hostname(value: str) -> str | None:
+    hostname = value.strip()
+    if not hostname or "%" in hostname:
+        return None
+
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        try:
+            ascii_hostname = hostname.encode("idna").decode("ascii").rstrip(".")
+        except UnicodeError:
+            return None
+        if not ascii_hostname or len(ascii_hostname) > 253:
+            return None
+        labels = ascii_hostname.split(".")
+        for label in labels:
+            if (
+                not label
+                or len(label) > 63
+                or label.startswith("-")
+                or label.endswith("-")
+                or any(not (character.isalnum() or character == "-") for character in label)
+            ):
+                return None
+        return ascii_hostname.casefold()
+
+    return f"[{address.compressed}]" if address.version == 6 else address.compressed
+
+
 def _safe_diagnostic_url(value: str | None) -> str | None:
     if value is None:
         return None
@@ -104,7 +134,9 @@ def _safe_diagnostic_url(value: str | None) -> str | None:
     if not hostname:
         return fingerprint()
 
-    safe_host = f"[{hostname}]" if ":" in hostname and not hostname.startswith("[") else hostname
+    safe_host = _safe_diagnostic_hostname(hostname)
+    if safe_host is None:
+        return fingerprint()
     safe_netloc = f"{safe_host}:{port}" if port is not None else safe_host
     origin = f"{scheme}://{safe_netloc}" if scheme else f"//{safe_netloc}"
     if not parts.path or parts.path == "/":
