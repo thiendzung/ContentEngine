@@ -30,7 +30,10 @@ def automatic_claim_json_byte_length(value: str) -> int:
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    return len(payload.encode("utf-8"))
+    try:
+        return len(payload.encode("utf-8"))
+    except UnicodeEncodeError:
+        return AUTOMATIC_CLAIM_MAX_JSON_BYTES + 1
 
 
 type OriginalityMaterialInput = str | dict[str, object]
