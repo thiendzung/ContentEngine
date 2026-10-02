@@ -17,6 +17,10 @@ from test_operator_start_to_angle import (
 )
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
+from app.modules.content_engine.journal.operator_evidence_reuse import (
+    ReusableEvidenceSetError,
+    load_latest_reusable_evidence_set,
+)
 from app.modules.content_engine.journal.operator_manual_intake import (
     create_founder_journal_intake,
 )
@@ -33,7 +37,7 @@ from app.modules.content_engine.models import ContentCase
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Artifact
 from app.modules.knowledge.evidence_set_approval import approve_evidence_set
-from app.modules.knowledge.models import EvidenceSet, Source, SourceDocument
+from app.modules.knowledge.models import Evidence, EvidenceSet, Source, SourceDocument
 from app.modules.knowledge.persistence import content_hash, evidence_set_hash
 from app.modules.research.evidence.contracts import EvidenceRelation
 from app.modules.research.evidence.persistence import (
@@ -358,3 +362,112 @@ async def test_start_to_angle_rejects_context_only_locked_evidence_before_resear
 
         assert workflow.calls == 0
         assert runner.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_reusable_evidence_rejects_stale_source_document_snapshot() -> None:
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-stale-document"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        evidence_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="stale-document",
+        )
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
+        )
+        approval = await approve_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Exact reviewed support approved for stale-snapshot test.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval.id,
+        )
+
+        evidence = await session.get(Evidence, evidence_id)
+        assert evidence is not None and evidence.source_document_id is not None
+        document = await session.get(SourceDocument, evidence.source_document_id)
+        assert document is not None
+        document.content_hash = "0" * 64
+        await session.flush()
+
+        with pytest.raises(
+            ReusableEvidenceSetError,
+            match="operator_worker_reusable_evidence_document_invalid",
+        ):
+            await load_latest_reusable_evidence_set(
+                session,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_reusable_evidence_rejects_bad_human_review_provenance() -> None:
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-bad-review"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        evidence_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="bad-review",
+        )
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
+        )
+        approval = await approve_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Exact reviewed support approved for provenance test.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval.id,
+        )
+
+        evidence = await session.get(Evidence, evidence_id)
+        assert evidence is not None
+        evidence.quality_metadata_json = {
+            **evidence.quality_metadata_json,
+            "reviewed_by": "different-reviewer",
+        }
+        await session.flush()
+
+        with pytest.raises(
+            ReusableEvidenceSetError,
+            match="operator_worker_reusable_evidence_review_invalid",
+        ):
+            await load_latest_reusable_evidence_set(
+                session,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+            )
