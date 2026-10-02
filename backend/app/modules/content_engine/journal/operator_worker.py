@@ -32,6 +32,7 @@ from app.modules.content_engine.journal.coverage_support_depth_eval import (
     evaluate_coverage_support_depth,
     load_coverage_support_depth_input,
     persist_coverage_support_failure_diagnostic,
+    preflight_coverage_support_depth_capacity,
 )
 from app.modules.content_engine.journal.models import JournalIntakeSpec, OperatorCommand
 from app.modules.content_engine.journal.operator_angle_bundle import (
@@ -84,6 +85,7 @@ from app.modules.research.evidence.artifact import (
     research_exception_diagnostic_payload,
     research_failure_diagnostic_payload,
 )
+from app.modules.research.evidence.contracts import DEFAULT_EVIDENCE_MAX_CLAIMS
 from app.modules.research.evidence.persistence import lock_evidence_set
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
@@ -112,6 +114,33 @@ _SAFE_RUNNER_DIAGNOSTICS = {
     "agent_cli_content_filter",
     "agent_cli_nonzero_unknown",
 }
+
+
+def _preflight_coverage_support_base_input(
+    *,
+    opportunity: ContentOpportunity,
+    originality: OriginalityPack,
+) -> None:
+    """Reject deterministic oversized evaluator input before external research."""
+
+    if originality.snapshot_hash is None:
+        raise OperatorWorkerError("operator_worker_originality_invalid")
+    try:
+        preflight_coverage_support_depth_capacity(
+            coverage_requirements=list(opportunity.coverage_requirements_json),
+            originality_items=list(originality.item_refs_json),
+            originality_pack_ref={
+                "id": str(originality.id),
+                "snapshot_hash": originality.snapshot_hash,
+            },
+            max_evidence_items=DEFAULT_EVIDENCE_MAX_CLAIMS,
+        )
+    except CoverageSupportDepthRuntimeError as exc:
+        if exc.code == "coverage_support_model_input_too_large":
+            raise OperatorWorkerError(
+                "operator_worker_coverage_support_failed"
+            ) from exc
+        raise
 
 
 def _coverage_aware_research_query(opportunity: ContentOpportunity) -> str:
@@ -489,6 +518,11 @@ async def execute_start_to_angle_job(
     ):
         raise OperatorWorkerError("operator_worker_originality_invalid")
 
+    _preflight_coverage_support_base_input(
+        opportunity=opportunity,
+        originality=originality,
+    )
+
     if run.status == "pending":
         await transition_run(session, run_id=run.id, status="running")
 
@@ -523,7 +557,7 @@ async def execute_start_to_angle_job(
         ),
         content_opportunity_id=opportunity.id,
         need_hypothesis_id=content_case.need_hypothesis_id,
-        max_claims=8,
+        max_claims=DEFAULT_EVIDENCE_MAX_CLAIMS,
     )
     try:
         research_result = await evidence_workflow.run(
@@ -646,6 +680,8 @@ async def execute_start_to_angle_job(
             diagnostic_snapshot=coverage_support_failure_diagnostic_payload(
                 support_input,
                 support_result,
+                research_snapshot=research_failure_diagnostic_payload(research_result),
+                evaluator_identity=support_port.diagnostic_identity(),
             ),
         )
 

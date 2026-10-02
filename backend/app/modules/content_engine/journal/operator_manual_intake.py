@@ -54,6 +54,8 @@ from app.modules.knowledge.originality_pack import (
 )
 from app.modules.research.evidence.contracts import ORIGINALITY_MATERIAL_TYPE
 
+FOUNDER_ORIGINALITY_FIELD_MAX_CHARS = 4_000
+
 
 class FounderJournalIntakeResult(BaseModel):
     command_id: UUID
@@ -75,6 +77,13 @@ def _text(value: str, code: str) -> str:
     normalized = value.strip()
     if not normalized:
         raise OperatorControlError(code)
+    return normalized
+
+
+def _bounded_text(value: str, code: str, *, max_length: int) -> str:
+    normalized = _text(value, code)
+    if len(normalized) > max_length:
+        raise OperatorControlError(f"{code}_too_long")
     return normalized
 
 
@@ -316,6 +325,22 @@ async def create_founder_journal_intake(
         ):
             raise OperatorControlError("operator_idempotency_conflict")
         return await _replay_result(session, command=existing)
+
+    material_text = _bounded_text(
+        material_text,
+        "operator_manual_originality_material_required",
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    )
+    writer_use_text = _bounded_text(
+        writer_use_text,
+        "operator_manual_originality_writer_use_required",
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    )
+    guardrails_text = _bounded_text(
+        guardrails_text,
+        "operator_manual_originality_guardrails_required",
+        max_length=FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    )
 
     project = await session.scalar(
         select(Project).where(Project.slug == project_key).limit(1)

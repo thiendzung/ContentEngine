@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -13,7 +14,11 @@ from test_ce05_review_revise import isolated_session
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.modules.content_engine.journal.models import JournalRequiredLocale, OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
-from app.modules.content_engine.journal.operator_manual_intake import create_founder_journal_intake
+from app.modules.content_engine.journal.operator_manual_intake import (
+    FOUNDER_ORIGINALITY_FIELD_MAX_CHARS,
+    _request_hash,
+    create_founder_journal_intake,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import (
     get_operator_state_v45,
     submit_operator_command_v45,
@@ -187,11 +192,14 @@ class ControlledEvidenceWorkflow:
         *,
         relation: str = "supports",
         evidence_eligible: bool = True,
+        include_stale_originality_gap: bool = False,
     ) -> None:
         self.calls = 0
         self.relation = relation
         self.evidence_eligible = evidence_eligible
+        self.include_stale_originality_gap = include_stale_originality_gap
         self.last_request: object | None = None
+        self.last_source_url: str | None = None
 
     async def run(self, session: AsyncSession, **kwargs: object) -> EvidenceResearchResult:
         self.calls += 1
@@ -214,6 +222,7 @@ class ControlledEvidenceWorkflow:
         )
         session.add(source)
         await session.flush()
+        self.last_source_url = source.canonical_url
         text = "Relief artwork can be evaluated by inspecting materials and physical finish."
         document = SourceDocument(
             source_id=source.id,
@@ -317,12 +326,19 @@ class ControlledEvidenceWorkflow:
             evidence_set_content_hash=evidence_set.content_hash,
             evidence_set_status="draft",
             research_gaps=(
-                []
-                if self.evidence_eligible
-                else [
-                    "No Evidence member can support or qualify factual claims; "
-                    "context-only evidence cannot ground downstream factual work."
+                [
+                    "Originality gap remains: no usable approved MOTGU-owned material is "
+                    "attached to this opportunity. Reference-only items do not close this gap."
                 ]
+                if self.evidence_eligible and self.include_stale_originality_gap
+                else (
+                    []
+                    if self.evidence_eligible
+                    else [
+                        "No Evidence member can support or qualify factual claims; "
+                        "context-only evidence cannot ground downstream factual work."
+                    ]
+                )
             ),
             evidence_eligible=self.evidence_eligible,
         )
@@ -335,10 +351,16 @@ class ExplodingEvidenceWorkflow:
 
 
 class ControlledCodexRunner:
-    def __init__(self, *, support_unresolved: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        support_unresolved: bool = False,
+        support_verbose: bool = False,
+    ) -> None:
         self.calls = 0
         self.received_context: dict[str, object] | None = None
         self.support_unresolved = support_unresolved
+        self.support_verbose = support_verbose
 
     async def preflight(self) -> AgentCapability:
         return AgentCapability(
@@ -372,6 +394,16 @@ class ControlledCodexRunner:
                 assert isinstance(requirement, dict)
                 requirement_id = requirement["id"]
                 if self.support_unresolved and index == 0:
+                    rationale = (
+                        "r" * 5_000
+                        if self.support_verbose
+                        else "The exact requirement still lacks support."
+                    )
+                    gaps = (
+                        [f"{position:02d}-" + ("g" * 2_000) for position in range(30)]
+                        if self.support_verbose
+                        else ["Acquire exact support before Angle generation."]
+                    )
                     items.append(
                         {
                             "requirement_id": requirement_id,
@@ -379,8 +411,8 @@ class ControlledCodexRunner:
                             "evidence_refs": [],
                             "caveat_evidence_refs": [],
                             "originality_refs": [],
-                            "rationale": "The exact requirement still lacks support.",
-                            "gaps": ["Acquire exact support before Angle generation."],
+                            "rationale": rationale,
+                            "gaps": gaps,
                         }
                     )
                 else:
@@ -399,6 +431,7 @@ class ControlledCodexRunner:
                 provider=request.provider,
                 model=request.model,
                 runner_version="fixture-codex",
+                runner_executable="/fixture/bin/codex",
                 structured_output={"schema_version": 1, "items": items},
                 raw_output_hash="b" * 64,
                 exit_code=0,
@@ -605,6 +638,67 @@ async def test_founder_intake_requires_current_editorial_role_and_can_create_pil
             match="operator_manual_content_role_invalid",
         ):
             await create_founder_journal_intake(session, **invalid)
+
+
+@pytest.mark.asyncio
+async def test_founder_intake_bounds_new_originality_after_replay_lookup() -> None:
+    too_long = "x" * (FOUNDER_ORIGINALITY_FIELD_MAX_CHARS + 1)
+    payload = _intake_kwargs(key="cq07-originality-too-long")
+    payload["originality_material"] = too_long
+
+    http_payload = dict(payload)
+    http_payload.pop("actor_id")
+    parsed = FounderJournalIntakeRequest.model_validate(http_payload)
+    assert parsed.originality_material == too_long
+
+    async with isolated_session() as session:
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_manual_originality_material_required_too_long",
+        ):
+            await create_founder_journal_intake(session, **payload)
+
+
+@pytest.mark.asyncio
+async def test_founder_intake_replays_legacy_oversized_originality() -> None:
+    key = "cq07-legacy-oversized-replay"
+    normal = _intake_kwargs(key=key)
+    oversized = dict(normal)
+    oversized["originality_material"] = "x" * (
+        FOUNDER_ORIGINALITY_FIELD_MAX_CHARS + 1
+    )
+
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(session, **normal)
+        command = await session.get(OperatorCommand, created.command_id)
+        assert command is not None
+        command.request_hash = _request_hash(
+            project_slug=str(oversized["project_slug"]).strip(),
+            source_locale=str(oversized["source_locale"]).strip(),
+            research_country=str(oversized["research_country"]).strip().lower(),
+            required_locales=["en", "vi-VN"],
+            content_role=str(oversized["content_role"]),
+            reader=str(oversized["reader"]).strip(),
+            situation=str(oversized["situation"]).strip(),
+            need=str(oversized["need"]).strip(),
+            question=str(oversized["question"]).strip(),
+            intent=str(oversized["intent"]).strip(),
+            promise=str(oversized["promise"]).strip(),
+            coverage_requirements=list(oversized["coverage_requirements"]),
+            selection_reason=str(oversized["selection_reason"]).strip(),
+            originality_material=str(oversized["originality_material"]).strip(),
+            originality_writer_use=str(
+                oversized["originality_writer_use"]
+            ).strip(),
+            originality_guardrails=str(
+                oversized["originality_guardrails"]
+            ).strip(),
+        )
+        await session.flush()
+
+        replay = await create_founder_journal_intake(session, **oversized)
+        assert replay.replayed is True
+        assert replay.command_id == created.command_id
 
 
 def test_founder_intake_http_rejects_legacy_primary_role() -> None:
@@ -1063,6 +1157,291 @@ async def test_cq03_unresolved_support_blocks_angle_generation(
 
 
 @pytest.mark.asyncio
+async def test_coverage_support_diagnostic_survives_worker_rollback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-coverage-diagnostic-rollback"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq07-coverage-diagnostic-rollback-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq07-coverage-diagnostic",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow(
+            include_stale_originality_gap=True,
+        )
+        runner = ControlledCodexRunner(
+            support_unresolved=True,
+            support_verbose=True,
+        )
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_coverage_support_unresolved",
+        ) as exc_info:
+            async with session.begin_nested():
+                await execute_start_to_angle_job(
+                    session,
+                    job_id=leased.id,
+                    worker_id="worker-cq07-coverage-diagnostic",
+                    evidence_workflow=workflow,  # type: ignore[arg-type]
+                    runner_registry=registry,
+                )
+
+        snapshot = exc_info.value.diagnostic_snapshot
+        assert snapshot is not None
+        assert snapshot["artifact_type"] == "coverage_support_failure_diagnostic"
+        assert snapshot["diagnostic_schema_version"] == 2
+        assert snapshot["ready_for_angle"] is False
+
+        model_input_snapshot = snapshot["model_input_snapshot"]
+        assert isinstance(model_input_snapshot, dict)
+        assert runner.received_context is not None
+        exact_runner_input = runner.received_context["coverage_support_depth_input"]
+        assert isinstance(exact_runner_input, dict)
+        assert model_input_snapshot == exact_runner_input
+        canonical = json.dumps(
+            model_input_snapshot,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        assert hashlib.sha256(canonical.encode("utf-8")).hexdigest() == snapshot[
+            "input_snapshot_hash"
+        ]
+
+        coverage_requirements = model_input_snapshot["coverage_requirements"]
+        assert isinstance(coverage_requirements, list)
+        assert [item["id"] for item in coverage_requirements] == [
+            "coverage-1",
+            "coverage-2",
+        ]
+
+        evidence_input = model_input_snapshot["evidence"]
+        assert isinstance(evidence_input, list) and len(evidence_input) == 1
+        evidence_snapshot = evidence_input[0]
+        assert isinstance(evidence_snapshot, dict)
+        assert evidence_snapshot["relation"] == "supports"
+        assert evidence_snapshot["quality_metadata"] == {"fixture": True}
+        provenance = evidence_snapshot["provenance"]
+        assert isinstance(provenance, dict)
+        assert provenance["source_document_id"]
+        assert "chunk_id" in provenance
+        assert "media_observation_id" in provenance
+        assert provenance["verified_at"]
+        assert "Physical materials and finish" in str(evidence_snapshot["claim"])
+
+        originality_pack = model_input_snapshot["originality_pack"]
+        assert isinstance(originality_pack, dict)
+        originality_items = originality_pack["items"]
+        assert isinstance(originality_items, list) and originality_items
+        assert originality_items[0]["approval_ref"]
+
+        assessment = snapshot["assessment"]
+        assert isinstance(assessment, dict)
+        items = assessment["items"]
+        assert isinstance(items, list) and len(items) == 2
+        assert items[0]["requirement_id"] == "coverage-1"
+        assert items[0]["status"] == "unresolved"
+        assert len(items[0]["rationale"]) == 2_000
+        assert isinstance(items[0]["rationale_hash"], str)
+        assert len(items[0]["gaps"]) == 20
+        assert all(len(gap) <= 1_000 for gap in items[0]["gaps"])
+        assert items[0]["gaps_total"] == 30
+        assert isinstance(items[0]["gaps_hash"], str)
+        assert items[1]["requirement_id"] == "coverage-2"
+        assert items[1]["status"] == "mixed"
+
+        research_snapshot = snapshot["research_snapshot"]
+        assert isinstance(research_snapshot, dict)
+        research = research_snapshot["research"]
+        assert isinstance(research, dict)
+        selected_sources = research["selected_sources"]
+        assert isinstance(selected_sources, list) and len(selected_sources) == 1
+        selected = selected_sources[0]
+        assert isinstance(selected, dict)
+        selected_url = selected["url"]
+        assert isinstance(selected_url, str) and selected_url.startswith("url-sha256:")
+        assert "example.test" not in selected_url
+        assert workflow.last_source_url is not None
+        assert workflow.last_source_url.startswith("https://example.test/pr45/")
+        assert workflow.last_source_url not in selected_url
+        assert research["stop_reason"] == "controlled_fixture_sufficient"
+        assert research_snapshot["relation_counts"] == {"supports": 1}
+        assert research_snapshot["research_gaps"] == []
+        assert research_snapshot["omitted_stale_gaps"] == [
+            "stale_opportunity_originality_gap"
+        ]
+
+        evaluator_identity = snapshot["evaluator_identity"]
+        assert isinstance(evaluator_identity, dict)
+        assert evaluator_identity["provider"] == "codex_cli"
+        assert evaluator_identity["model"]
+        assert evaluator_identity["prompt_version"] == "journal_coverage_support_depth_en:v1"
+        assert evaluator_identity["recipe_version"] == "journal_coverage_support_depth_en_v1:v1"
+        assert evaluator_identity["runner_version"] == "fixture-codex"
+        assert evaluator_identity["runner_executable"] == "/fixture/bin/codex"
+        assert evaluator_identity["raw_output_hash"] == "b" * 64
+        assert evaluator_identity["accepted_attempt"] == 1
+        assert evaluator_identity["context_manifest_id"]
+
+        serialized = json.dumps(snapshot, sort_keys=True)
+        assert "content_markdown" not in serialized
+        assert "raw_excerpt" not in serialized
+        assert "raw_payload" not in serialized
+        assert '"raw_output"' not in serialized
+        assert "api_key" not in serialized
+        assert "authorization" not in serialized.casefold()
+        assert "cookie" not in serialized.casefold()
+        assert "do-not-persist" not in serialized
+
+        rolled_back_set = await session.scalar(
+            select(EvidenceSet).where(
+                EvidenceSet.content_case_id == created.content_case_id
+            )
+        )
+        assert rolled_back_set is None
+        assert (
+            await session.scalar(
+                select(func.count(SourceDocument.id)).where(
+                    SourceDocument.canonical_url == workflow.last_source_url
+                )
+            )
+            or 0
+        ) == 0
+        assert (
+            await session.scalar(
+                select(func.count(ModelCall.id)).where(
+                    ModelCall.run_id == created.bootstrap_run_id
+                )
+            )
+            or 0
+        ) == 0
+
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-cq07-coverage-diagnostic",
+            failure_class="insufficient_support",
+            message="operator_worker_coverage_support_unresolved",
+            diagnostic_snapshot=snapshot,
+        )
+
+        diagnostic = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == created.bootstrap_run_id,
+                Artifact.artifact_type == "coverage_support_failure_diagnostic",
+            )
+            .order_by(Artifact.version.desc())
+            .limit(1)
+        )
+        assert diagnostic is not None
+        assert diagnostic.content_json == snapshot
+        assert diagnostic.content_hash
+        step = await session.get(StepRun, leased.step_run_id)
+        assert step is not None and step.error_json is not None
+        assert step.error_json["diagnostic_artifact_id"] == str(diagnostic.id)
+        assert step.error_json["diagnostic_content_hash"] == diagnostic.content_hash
+        assert (
+            await session.scalar(
+                select(func.count(Artifact.id)).where(
+                    Artifact.run_id == created.bootstrap_run_id,
+                    Artifact.artifact_type == "angle_candidates",
+                )
+            )
+            or 0
+        ) == 0
+
+
+@pytest.mark.asyncio
+async def test_oversized_support_base_input_fails_before_research(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    payload = _intake_kwargs(key="cq07-support-preflight-too-large")
+    payload["originality_material"] = "😀" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["originality_writer_use"] = "x" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["originality_guardrails"] = "x" * FOUNDER_ORIGINALITY_FIELD_MAX_CHARS
+    payload["coverage_requirements"] = [
+        f"{index:02d}-" + ("x" * 497)
+        for index in range(12)
+    ]
+
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(session, **payload)
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq07-support-preflight-too-large-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq07-support-preflight",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow()
+        runner = ControlledCodexRunner()
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_coverage_support_failed",
+        ):
+            await execute_start_to_angle_job(
+                session,
+                job_id=leased.id,
+                worker_id="worker-cq07-support-preflight",
+                evidence_workflow=workflow,  # type: ignore[arg-type]
+                runner_registry=registry,
+            )
+
+        assert workflow.calls == 0
+        assert runner.calls == 0
+        run = await session.get(ContentRun, created.bootstrap_run_id)
+        assert run is not None and run.status == "pending"
+
+
+@pytest.mark.asyncio
 async def test_failed_research_diagnostic_survives_research_rollback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1176,7 +1555,11 @@ async def test_failed_research_diagnostic_survives_research_rollback(
         assert isinstance(selected_sources, list) and selected_sources
         selected = selected_sources[0]
         assert isinstance(selected, dict)
-        assert selected["url"].startswith("https://example.test/pr45/")
+        assert selected["url"].startswith("url-sha256:")
+        assert "example.test" not in str(selected["url"])
+        assert workflow.last_source_url is not None
+        assert workflow.last_source_url.startswith("https://example.test/pr45/")
+        assert workflow.last_source_url not in str(selected["url"])
         assert selected["intended_use"] == "context_only"
         read_documents = research["read_documents"]
         assert isinstance(read_documents, list) and read_documents

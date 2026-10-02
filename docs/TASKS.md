@@ -644,21 +644,20 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 
 - [x] Founder selected Option B: P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
 - [x] Pair identity/role/question/intent/promise/coverage/EN+VI lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`.
-- [x] Fresh disposable P01-R2 intake exists at Alembic `20260926_0044`; Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves Attempts 1-5 as failed Jobs.
+- [x] Fresh disposable P01-R2 intake exists at Alembic `20260926_0044`; Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves Attempts 1-6 as failed Jobs.
 - [x] PR #249 fixed the Coverage Support structured-output transport-schema compatibility defect without weakening canonical validation.
 - [x] PR #252 replaced exact Codex patch-version gating with capability-based compatibility while retaining malformed-identity/auth/no-tool fail-closed behavior.
 - [x] Attempt 4 reached semantic Coverage Support and exposed a real `insufficient_support` gap; no Angle was generated.
 - [x] PR #255 merged coverage-aware single-query research acquisition plus explicit editorial-vs-factual support semantics.
 - [x] PR #257 merged checkout-rooted/CWD-independent Alembic preflight; the blocked pre-#257 submission did not consume Attempt 5.
-- [x] Attempt 5 passed post-#257 readiness and ran exactly once; it failed before ModelCall with `insufficient_evidence`.
-- [x] #262 diagnosis proved 10 candidates → 3 selected discovery-only sources → 2 successful Jina reads + one bounded `http_409`; the reader failure was incidental because discovery-only sources map to `CONTEXT_ONLY`.
-- [x] #263 defines the bounded root fix: evidence-oriented acquisition/selection must produce `EVIDENCE_CANDIDATE` sources before Jina.
-- [x] PR #264 implementation keeps Serper first, Exa authority recovery, at most one Tavily recovery fallback, and filters Jina reads to required evidence candidates; no authority weakening or budget increase.
-- [x] Agent Local exact-SHA PR #264 proof passed: focused router 20, Evidence/Start-to-Angle 30, authority+second-hop 18, full backend 1290, Ruff, mypy, OpenAPI; OCR v1.12.11 had no Critical/High/Medium findings.
-- [x] GitHub CI #2067 passed on PR #264 head `2c44bf6ace3bbac84df41b27b21cd8274ee70d38`.
-- [ ] Close the one Codex P1 review finding by recording Attempt 5 / #263 / next bounded stop in canonical `AI_context.MD` + `docs/TASKS.md` within PR #264, then verify the new exact head.
-- [ ] Founder merges PR #264 after MG exact-head review; do not merge automatically.
-- [ ] Post-merge read-only P01-R2 readiness; only then may Founder separately authorize exactly one Attempt 6 to the Angle human gate.
+- [x] Attempt 5 failed before ModelCall with `insufficient_evidence`; #262/#263 isolated discovery-only source selection and PR #264 fixed the bounded evidence-candidate fallback/filtering path.
+- [x] PR #264 merged as main `9a57b4ed39404081ff4ef8ab8942ba029ce9da35`; post-merge readiness passed.
+- [x] Founder authorized exactly one Attempt 6; it ran once and failed safely at Coverage Support with only `coverage-5` unresolved; no Attempt 7 exists.
+- [x] #267 read-only postmortem proved the Attempt-6 Coverage Support diagnostic is not self-contained after rollback: referenced EvidenceSet/Evidence/SourceDocument rows are gone and full assessment/research input was not durably retained.
+- [x] MG classification for Attempt-6 root cause is `MIXED_OR_UNKNOWN`; `BINDING_EVALUATOR` is not proven from durable evidence.
+- [ ] #268 / PR #269: persist bounded full Coverage Support assessment + exact Evidence input + safe research summary across rollback; represent every provider-controlled diagnostic URL only as an opaque SHA-256 fingerprint; preserve legacy replay and pre-research size fail-fast; reserve worst-case bytes for the same bounded automatic Evidence count/text limits used by Research; automatic claim extraction must obey the same canonical-JSON byte ceiling so escape expansion cannot exceed the reserve; do not change truth/authority/retry semantics.
+- [ ] MG stabilizes the current exact head through architecture/code/test self-review and GitHub CI; Codex/OpenCodeReview findings are advisory inputs, not workflow authority. Then Founder dispatches one final Agent Local exact-head focused/full backend + Ruff/mypy/OpenAPI + OCR closeout; MG reviews that proof and Founder alone decides merge.
+- [ ] Post-merge read-only readiness; only then may Founder separately decide whether exactly one Attempt 7 is justified.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
 - [ ] Complete P01 final review/content evidence without publication.

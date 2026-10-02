@@ -270,6 +270,7 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
         self._config = config
         self._runner_registry = runner_registry
         self._timeout = timeout
+        self._last_diagnostic_identity: dict[str, object] | None = None
 
     @property
     def prompt_version(self) -> str:
@@ -288,6 +289,13 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
         except RuntimeConfigurationError as exc:
             raise CoverageSupportDepthRuntimeError("coverage_support_model_route_missing") from exc
         return route.primary.provider, route.primary.model
+
+    def diagnostic_identity(self) -> dict[str, object] | None:
+        return (
+            json.loads(json.dumps(self._last_diagnostic_identity, ensure_ascii=False))
+            if self._last_diagnostic_identity is not None
+            else None
+        )
 
     def _validate_input(self, value: object) -> dict[str, object]:
         if not isinstance(value, dict):
@@ -422,6 +430,17 @@ class CliCoverageSupportDepthModelPort(CoverageSupportDepthModelPort):
             ),
             runtime_metadata=_runtime_metadata(result, locale=self._config.locale),
         )
+        self._last_diagnostic_identity = {
+            "prompt_version": self.prompt_version,
+            "recipe_version": self.recipe_version,
+            "provider": request.provider,
+            "model": request.model,
+            "runner_version": result.runner_version,
+            "runner_executable": result.runner_executable,
+            "raw_output_hash": result.raw_output_hash,
+            "accepted_attempt": attempt,
+            "context_manifest_id": str(self._context_manifest_id),
+        }
         return result.structured_output
 
 

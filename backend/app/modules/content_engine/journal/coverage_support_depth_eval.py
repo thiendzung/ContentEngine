@@ -23,10 +23,23 @@ from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.knowledge.models import Claim, Evidence, EvidenceSet, OriginalityPack
 from app.modules.knowledge.originality_pack import originality_pack_snapshot_hash
 from app.modules.knowledge.persistence import evidence_set_hash
-from app.modules.research.evidence.contracts import is_usable_originality_item
+from app.modules.research.evidence.contracts import (
+    AUTOMATIC_CLAIM_MAX_CHARS,
+    AUTOMATIC_CLAIM_MAX_JSON_BYTES,
+    DEFAULT_EVIDENCE_MAX_CLAIMS,
+    automatic_claim_json_byte_length,
+    is_usable_originality_item,
+)
 
 COVERAGE_SUPPORT_DEPTH_ARTIFACT_TYPE = "coverage_support_depth"
 COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE = "coverage_support_failure_diagnostic"
+COVERAGE_SUPPORT_FAILURE_DIAGNOSTIC_SCHEMA_VERSION = 2
+COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS = 2_000
+COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS = 20
+COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS = 1_000
+COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES = 64_000
+COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS = DEFAULT_EVIDENCE_MAX_CLAIMS
+COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS = AUTOMATIC_CLAIM_MAX_CHARS
 COVERAGE_SUPPORT_DEPTH_GENERATOR_VERSION = "cq03.coverage_support_depth.v1"
 
 
@@ -73,20 +86,152 @@ class CoverageSupportDepthResult:
     reused: bool
 
 
-def _canonical_hash(value: object) -> str:
-    payload = json.dumps(
+def _canonical_json(value: object) -> str:
+    return json.dumps(
         value,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _canonical_hash(value: object) -> str:
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def _require_bounded_model_input(value: dict[str, object]) -> None:
+    if len(_canonical_json(value).encode("utf-8")) > COVERAGE_SUPPORT_MODEL_INPUT_MAX_BYTES:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_model_input_too_large"
+        )
 
 
 def _require_dict(value: object, code: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise CoverageSupportDepthRuntimeError(code)
     return cast(dict[str, object], value)
+
+
+def _model_input_diagnostic_snapshot(
+    source_input: CoverageSupportDepthInput,
+) -> dict[str, object]:
+    """Persist the exact sanitized evaluator input so its hash remains verifiable."""
+
+    snapshot = copy.deepcopy(source_input.model_input)
+    if _canonical_hash(snapshot) != source_input.input_snapshot_hash:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_diagnostic_input_hash_mismatch"
+        )
+    return snapshot
+
+
+def _coverage_research_diagnostic_snapshot(
+    source_input: CoverageSupportDepthInput,
+    research_snapshot: dict[str, object] | None,
+) -> dict[str, object] | None:
+    if not isinstance(research_snapshot, dict):
+        return None
+    research = research_snapshot.get("research")
+    relation_counts = research_snapshot.get("relation_counts")
+    research_gaps = research_snapshot.get("research_gaps")
+    gaps = list(research_gaps) if isinstance(research_gaps, list) else []
+    originality_pack = source_input.model_input.get("originality_pack")
+    items = originality_pack.get("items") if isinstance(originality_pack, dict) else None
+    omitted: list[str] = []
+    if isinstance(items, list) and items:
+        filtered: list[object] = []
+        for gap in gaps:
+            if isinstance(gap, str) and gap.startswith("Originality gap remains:"):
+                omitted.append("stale_opportunity_originality_gap")
+                continue
+            filtered.append(gap)
+        gaps = filtered
+    return {
+        "research": copy.deepcopy(research) if isinstance(research, dict) else {},
+        "relation_counts": (
+            copy.deepcopy(relation_counts)
+            if isinstance(relation_counts, dict)
+            else {}
+        ),
+        "research_gaps": copy.deepcopy(gaps),
+        "omitted_stale_gaps": omitted,
+    }
+
+
+def _coverage_evaluator_identity_snapshot(
+    evaluator_identity: dict[str, object] | None,
+) -> dict[str, object] | None:
+    if not isinstance(evaluator_identity, dict):
+        return None
+
+    def text_value(key: str, limit: int) -> str | None:
+        value = evaluator_identity.get(key)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise CoverageSupportDepthRuntimeError(
+                "coverage_support_evaluator_identity_invalid"
+            )
+        return value.strip()[:limit]
+
+    attempt = evaluator_identity.get("accepted_attempt")
+    if (
+        isinstance(attempt, bool)
+        or not isinstance(attempt, int)
+        or attempt < 1
+        or attempt > 2
+    ):
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_evaluator_identity_invalid"
+        )
+    return {
+        "prompt_version": text_value("prompt_version", 200),
+        "recipe_version": text_value("recipe_version", 200),
+        "provider": text_value("provider", 100),
+        "model": text_value("model", 200),
+        "runner_version": text_value("runner_version", 200),
+        "runner_executable": text_value("runner_executable", 1000),
+        "raw_output_hash": text_value("raw_output_hash", 128),
+        "accepted_attempt": attempt,
+        "context_manifest_id": text_value("context_manifest_id", 100),
+    }
+
+
+def _assessment_diagnostic_snapshot(
+    assessment: CoverageSupportDepthAssessment,
+) -> dict[str, object]:
+    """Bound model-authored prose while retaining exact output hashes and refs."""
+
+    items: list[dict[str, object]] = []
+    for item in assessment.items:
+        exact_gaps = list(item.gaps)
+        items.append(
+            {
+                "requirement_id": item.requirement_id,
+                "status": item.status,
+                "evidence_refs": list(item.evidence_refs),
+                "caveat_evidence_refs": list(item.caveat_evidence_refs),
+                "originality_refs": list(item.originality_refs),
+                "rationale": item.rationale[
+                    :COVERAGE_SUPPORT_DIAGNOSTIC_MAX_RATIONALE_CHARS
+                ],
+                "rationale_hash": hashlib.sha256(
+                    item.rationale.encode("utf-8")
+                ).hexdigest(),
+                "gaps": [
+                    gap[:COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAP_CHARS]
+                    for gap in exact_gaps[:COVERAGE_SUPPORT_DIAGNOSTIC_MAX_GAPS]
+                ],
+                "gaps_hash": _canonical_hash(exact_gaps),
+                "gaps_total": len(exact_gaps),
+            }
+        )
+    exact = assessment.to_dict()
+    return {
+        "schema_version": assessment.schema_version,
+        "content_hash": _canonical_hash(exact),
+        "items": items,
+    }
 
 
 def build_coverage_support_depth_model_input(
@@ -106,7 +251,7 @@ def build_coverage_support_depth_model_input(
         for item in originality_items
         if is_usable_originality_item(item)
     ]
-    return {
+    model_input = {
         "schema_version": COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION,
         "coverage_requirements": requirements,
         "evidence_set": copy.deepcopy(evidence_set_ref),
@@ -150,6 +295,80 @@ def build_coverage_support_depth_model_input(
             ),
         },
     }
+    _require_bounded_model_input(model_input)
+    return model_input
+
+
+def _reserved_research_evidence_items(
+    *,
+    max_evidence_items: int,
+) -> list[dict[str, object]]:
+    """Upper-bound the automatic research evidence shape before external calls."""
+
+    if (
+        max_evidence_items < 0
+        or max_evidence_items > COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS
+    ):
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_evidence_reservation_invalid"
+        )
+
+    widest_text = "😀" * COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS
+    if automatic_claim_json_byte_length(widest_text) != AUTOMATIC_CLAIM_MAX_JSON_BYTES:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_evidence_reservation_contract_invalid"
+        )
+    uuid_text = "f" * 36
+    return [
+        {
+            "evidence_id": uuid_text,
+            "claim_id": uuid_text,
+            "claim": widest_text,
+            "claim_type": "x" * 32,
+            "importance": "x" * 16,
+            "relation": "x" * 16,
+            "locator": "x" * 128,
+            "excerpt": widest_text,
+            "authority_level": "x" * 32,
+            "quality_metadata": {
+                "source_type": "x" * 32,
+                "commercial_bias": "x" * 32,
+                "authority_hint": "x" * 32,
+                "search_rank_used_as_authority": False,
+            },
+            "provenance": {
+                "source_document_id": uuid_text,
+                "chunk_id": uuid_text,
+                "media_observation_id": uuid_text,
+                "verified_at": "x" * 64,
+            },
+        }
+        for _ in range(max_evidence_items)
+    ]
+
+
+def preflight_coverage_support_depth_capacity(
+    *,
+    coverage_requirements: list[str],
+    originality_items: list[object],
+    originality_pack_ref: dict[str, object],
+    max_evidence_items: int = COVERAGE_SUPPORT_RESEARCH_MAX_EVIDENCE_ITEMS,
+) -> None:
+    """Reserve worst-case automatic Evidence payload before external research."""
+
+    build_coverage_support_depth_model_input(
+        coverage_requirements=coverage_requirements,
+        evidence_items=_reserved_research_evidence_items(
+            max_evidence_items=max_evidence_items
+        ),
+        originality_items=originality_items,
+        evidence_set_ref={
+            "id": "f" * 36,
+            "version": 2_147_483_647,
+            "content_hash": "0" * 64,
+        },
+        originality_pack_ref=originality_pack_ref,
+    )
 
 
 async def load_coverage_support_depth_input(
@@ -607,27 +826,41 @@ async def load_validated_coverage_support_depth_artifact(
 def coverage_support_failure_diagnostic_payload(
     source_input: CoverageSupportDepthInput,
     result: CoverageSupportDepthResult,
+    *,
+    research_snapshot: dict[str, object] | None = None,
+    evaluator_identity: dict[str, object] | None = None,
 ) -> dict[str, object]:
+    assessment = _assessment_diagnostic_snapshot(result.assessment)
+    assessment_items = assessment.get("items")
+    if not isinstance(assessment_items, list):
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_failure_diagnostic_assessment_invalid"
+        )
     unresolved = [
-        {
-            "requirement_id": item.requirement_id,
-            "rationale": item.rationale,
-            "gaps": list(item.gaps),
-            "evidence_refs": list(item.evidence_refs),
-            "caveat_evidence_refs": list(item.caveat_evidence_refs),
-            "originality_refs": list(item.originality_refs),
-        }
-        for item in result.assessment.items
-        if item.status == "unresolved"
+        copy.deepcopy(item)
+        for item in assessment_items
+        if isinstance(item, dict) and item.get("status") == "unresolved"
     ]
     if not unresolved or result.ready_for_angle:
         raise CoverageSupportDepthRuntimeError(
             "coverage_support_failure_diagnostic_requires_unresolved"
         )
+
+    safe_research = _coverage_research_diagnostic_snapshot(
+        source_input,
+        research_snapshot,
+    )
+    safe_evaluator_identity = _coverage_evaluator_identity_snapshot(
+        evaluator_identity
+    )
+
+    model_input_snapshot = _model_input_diagnostic_snapshot(source_input)
     return {
         "schema_version": COVERAGE_SUPPORT_DEPTH_SCHEMA_VERSION,
+        "diagnostic_schema_version": COVERAGE_SUPPORT_FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
         "artifact_type": COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
         "input_snapshot_hash": source_input.input_snapshot_hash,
+        "model_input_snapshot": model_input_snapshot,
         "opportunity": {
             "id": str(source_input.opportunity.id),
             "version": source_input.opportunity.version,
@@ -641,6 +874,9 @@ def coverage_support_failure_diagnostic_payload(
             "id": str(source_input.originality_pack.id),
             "snapshot_hash": source_input.originality_pack.snapshot_hash,
         },
+        "assessment": assessment,
+        "research_snapshot": safe_research,
+        "evaluator_identity": safe_evaluator_identity,
         "ready_for_angle": False,
         "unresolved": unresolved,
     }
