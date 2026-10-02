@@ -217,6 +217,54 @@ async def _source_documents_fingerprint(engine: AsyncEngine) -> dict[str, object
     }
 
 
+async def _full_data_fingerprint(engine: AsyncEngine) -> dict[str, object]:
+    """Hash all public-table row values without exposing row contents."""
+
+    async with engine.connect() as connection:
+        table_names = [
+            str(value)
+            for value in (
+                await connection.execute(
+                    text(
+                        "select tablename from pg_tables "
+                        "where schemaname = 'public' order by tablename"
+                    )
+                )
+            ).scalars()
+        ]
+
+        tables: dict[str, dict[str, object]] = {}
+        total_rows = 0
+        aggregate_parts: list[str] = []
+        for table_name in table_names:
+            escaped = table_name.replace('"', '""')
+            rows = [
+                str(value)
+                for value in (
+                    await connection.execute(
+                        text(
+                            f'select row_to_json(t)::text from public."{escaped}" t '
+                            "order by row_to_json(t)::text"
+                        )
+                    )
+                ).scalars()
+            ]
+            payload = "\n".join(rows).encode("utf-8")
+            digest = hashlib.sha256(payload).hexdigest()
+            count = len(rows)
+            total_rows += count
+            tables[table_name] = {"count": count, "sha256": digest}
+            aggregate_parts.append(f"{table_name}:{count}:{digest}")
+
+    aggregate = hashlib.sha256("\n".join(aggregate_parts).encode("utf-8")).hexdigest()
+    return {
+        "table_count": len(table_names),
+        "row_count": total_rows,
+        "sha256": aggregate,
+        "tables": tables,
+    }
+
+
 async def _recreate_database(target: URL) -> None:
     database_name = target.database
     if database_name is None:
@@ -360,32 +408,37 @@ async def _main() -> int:
     source_revision_before: str | None = None
     source_fingerprint_before: DatabaseFingerprint | None = None
     source_documents_before: dict[str, object] | None = None
+    source_full_data_before: dict[str, object] | None = None
 
     try:
         source_revision_before, source_fingerprint_before = await _database_state(
             source_engine
         )
         source_documents_before = await _source_documents_fingerprint(source_engine)
+        source_full_data_before = await _full_data_fingerprint(source_engine)
 
         if source_revision_before != _SOURCE_REVISION:
             raise Data02RehearsalError("source_revision_drift")
         if source_fingerprint_before.to_dict() != expected_fingerprint:
             raise Data02RehearsalError("source_fingerprint_drift")
 
-        await _recreate_database(target)
         target_created = True
+        await _recreate_database(target)
         restore_mode = _restore_backup(backup, target)
 
         target_engine = create_async_engine(target, poolclass=NullPool)
         try:
             restored_revision, restored_fingerprint = await _database_state(target_engine)
             restored_documents = await _source_documents_fingerprint(target_engine)
+            restored_full_data = await _full_data_fingerprint(target_engine)
             if restored_revision != _SOURCE_REVISION:
                 raise Data02RehearsalError("restored_source_revision_mismatch")
             if restored_fingerprint.to_dict() != expected_fingerprint:
                 raise Data02RehearsalError("restored_source_fingerprint_mismatch")
             if restored_documents != source_documents_before:
                 raise Data02RehearsalError("restored_source_documents_mismatch")
+            if restored_full_data != source_full_data_before:
+                raise Data02RehearsalError("restored_full_data_mismatch")
 
             _run_alembic_upgrade(target)
 
@@ -402,12 +455,15 @@ async def _main() -> int:
 
         source_revision_after, source_fingerprint_after = await _database_state(source_engine)
         source_documents_after = await _source_documents_fingerprint(source_engine)
+        source_full_data_after = await _full_data_fingerprint(source_engine)
         if source_revision_after != source_revision_before:
             raise Data02RehearsalError("source_revision_changed")
         if source_fingerprint_after != source_fingerprint_before:
             raise Data02RehearsalError("source_fingerprint_changed")
         if source_documents_after != source_documents_before:
             raise Data02RehearsalError("source_documents_changed")
+        if source_full_data_after != source_full_data_before:
+            raise Data02RehearsalError("source_full_data_changed")
 
         evidence = {
             "status": "READY",
@@ -417,12 +473,22 @@ async def _main() -> int:
             "source_revision_after": source_revision_after,
             "source_fingerprint": source_fingerprint_after.to_dict(),
             "source_documents_fingerprint": source_documents_after,
+            "source_full_data_fingerprint": {
+                "table_count": source_full_data_after["table_count"],
+                "row_count": source_full_data_after["row_count"],
+                "sha256": source_full_data_after["sha256"],
+            },
             "backup": str(backup),
             "manifest": str(manifest_path),
             "dump_sha256": manifest.get("dump_sha256"),
             "restore_mode": restore_mode,
             "rehearsal_database": target.database,
             "restored_revision": restored_revision,
+            "restored_full_data_fingerprint": {
+                "table_count": restored_full_data["table_count"],
+                "row_count": restored_full_data["row_count"],
+                "sha256": restored_full_data["sha256"],
+            },
             "target_revision": migrated_revision,
             "upgrade_chain": list(chain),
             "core_fingerprint_after_migration": migrated_fingerprint.to_dict(),
@@ -437,12 +503,14 @@ async def _main() -> int:
             source_revision_before is not None
             and source_fingerprint_before is not None
             and source_documents_before is not None
+            and source_full_data_before is not None
         ):
             try:
                 source_revision_after, source_fingerprint_after = await _database_state(
                     source_engine
                 )
                 source_documents_after = await _source_documents_fingerprint(source_engine)
+                source_full_data_after = await _full_data_fingerprint(source_engine)
                 post_blocker: str | None = None
                 if source_revision_after != source_revision_before:
                     post_blocker = "source_revision_changed"
@@ -450,6 +518,8 @@ async def _main() -> int:
                     post_blocker = "source_fingerprint_changed"
                 elif source_documents_after != source_documents_before:
                     post_blocker = "source_documents_changed"
+                elif source_full_data_after != source_full_data_before:
+                    post_blocker = "source_full_data_changed"
                 if post_blocker is not None:
                     if blocker is None:
                         blocker = post_blocker
