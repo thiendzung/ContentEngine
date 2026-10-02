@@ -22,8 +22,8 @@ from app.modules.system.recovery import (
     validate_restore_target,
 )
 from scripts import ops_data02_rehearsal as data02
-from scripts import ops_run02_min as run02
 from scripts import ops_release_lifecycle_0042 as event_runtime
+from scripts import ops_run02_min as run02
 
 _SOURCE_REVISION = "20260915_0034"
 _TARGET_REVISION = "20260926_0044"
@@ -56,7 +56,14 @@ def _parse_args() -> argparse.Namespace:
     start.add_argument("--authorized-head", required=True)
     start.add_argument("--state-file", type=Path, required=True)
 
-    for name in ("status", "approve-angle", "approve-outline", "approve-final", "finish", "cleanup"):
+    for name in (
+        "status",
+        "approve-angle",
+        "approve-outline",
+        "approve-final",
+        "finish",
+        "cleanup",
+    ):
         cmd = sub.add_parser(name)
         cmd.add_argument("--authorized-head", required=True)
         cmd.add_argument("--state-file", type=Path, required=True)
@@ -159,7 +166,11 @@ async def _count(engine: AsyncEngine, table_name: str) -> int:
         raise LocalE2E01Error("local_e2e01_count_table_invalid")
     async with engine.connect() as connection:
         return int(
-            (await connection.execute(text(f'SELECT count(*)::int FROM "{table_name}"'))).scalar_one()
+            (
+                await connection.execute(
+                    text(f'SELECT count(*)::int FROM "{table_name}"')
+                )
+            ).scalar_one()
         )
 
 
@@ -235,7 +246,9 @@ async def _prepare_database(backup: Path, manifest_path: Path) -> tuple[URL, dic
     }
 
 
-async def _stop_services(runtimes: dict[str, event_runtime.AsyncRuntime]) -> list[dict[str, object]]:
+async def _stop_services(
+    runtimes: dict[str, event_runtime.AsyncRuntime],
+) -> list[dict[str, object]]:
     rows, errors = await event_runtime._stop_all(runtimes)
     run02._require_graceful_shutdown(rows, errors)
     run02._require_port_free(run02._BACKEND_HOST, run02._BACKEND_PORT)
@@ -294,7 +307,11 @@ async def _run_worker(env: dict[str, str]) -> dict[str, Any]:
                 "stderr_sha256": hashlib.sha256(stderr).hexdigest(),
             },
         )
-    lines = [line.strip() for line in stdout.decode("utf-8", errors="replace").splitlines() if line.strip()]
+    lines = [
+        line.strip()
+        for line in stdout.decode("utf-8", errors="replace").splitlines()
+        if line.strip()
+    ]
     if not lines:
         raise LocalE2E01Error("local_e2e01_worker_output_missing")
     try:
@@ -306,7 +323,11 @@ async def _run_worker(env: dict[str, str]) -> dict[str, Any]:
     return payload
 
 
-async def _submit_next(client: httpx.AsyncClient, case_id: str, state: dict[str, Any]) -> dict[str, Any]:
+async def _submit_next(
+    client: httpx.AsyncClient,
+    case_id: str,
+    state: dict[str, Any],
+) -> dict[str, Any]:
     intent = state.get("primary_intent")
     if intent not in {"start", "continue", "resume"}:
         raise LocalE2E01Error(
@@ -425,7 +446,11 @@ async def _start(args: argparse.Namespace) -> dict[str, object]:
     if state_file.exists():
         raise LocalE2E01Error("local_e2e01_state_file_exists")
     backup = args.backup.expanduser().resolve()
-    manifest = args.manifest.expanduser().resolve() if args.manifest else backup.with_suffix(".json")
+    manifest = (
+        args.manifest.expanduser().resolve()
+        if args.manifest
+        else backup.with_suffix(".json")
+    )
     intake = _load_intake(args.intake.expanduser().resolve())
     run02._validate_frontend_and_checkout(args.authorized_head)
     target, database = await _prepare_database(backup, manifest)
@@ -443,7 +468,12 @@ async def _start(args: argparse.Namespace) -> dict[str, object]:
     try:
         before = await _runtime_counts(engine)
 
-        async def first(client: httpx.AsyncClient, env: dict[str, str], checkout: dict[str, object], readiness: dict[str, object]) -> dict[str, object]:
+        async def first(
+            client: httpx.AsyncClient,
+            env: dict[str, str],
+            checkout: dict[str, object],
+            readiness: dict[str, object],
+        ) -> dict[str, object]:
             created = await _api(client, "POST", "/journal/operator/intakes", intake)
             case_id = created.get("content_case_id")
             if not isinstance(case_id, str):
@@ -466,7 +496,12 @@ async def _start(args: argparse.Namespace) -> dict[str, object]:
         assert isinstance(case_id, str)
         at_gate = await _runtime_counts(engine)
 
-        async def restart(client: httpx.AsyncClient, _env: dict[str, str], checkout: dict[str, object], readiness: dict[str, object]) -> dict[str, object]:
+        async def restart(
+            client: httpx.AsyncClient,
+            _env: dict[str, str],
+            checkout: dict[str, object],
+            readiness: dict[str, object],
+        ) -> dict[str, object]:
             view = await _view(client, case_id)
             return {
                 "checkout": checkout,
@@ -525,7 +560,12 @@ async def _status(args: argparse.Namespace) -> dict[str, object]:
     if not isinstance(case_id, str):
         raise LocalE2E01Error("local_e2e01_case_not_created")
 
-    async def operation(client: httpx.AsyncClient, _env: dict[str, str], checkout: dict[str, object], readiness: dict[str, object]) -> dict[str, object]:
+    async def operation(
+        client: httpx.AsyncClient,
+        _env: dict[str, str],
+        checkout: dict[str, object],
+        readiness: dict[str, object],
+    ) -> dict[str, object]:
         return {"checkout": checkout, "readiness": readiness, "view": await _view(client, case_id)}
 
     proof = await _with_runtime(target, args.authorized_head, operation)
@@ -535,20 +575,35 @@ async def _status(args: argparse.Namespace) -> dict[str, object]:
 async def _approve_angle(args: argparse.Namespace) -> dict[str, object]:
     state_file = args.state_file.expanduser().resolve()
     state = _load_state(state_file)
-    if state.get("authorized_head") != args.authorized_head or state.get("restart_verified") is not True:
+    if (
+        state.get("authorized_head") != args.authorized_head
+        or state.get("restart_verified") is not True
+    ):
         raise LocalE2E01Error("local_e2e01_angle_authorization_state_invalid")
     target = _target_from_state(state)
     case_id = state.get("content_case_id")
     if not isinstance(case_id, str):
         raise LocalE2E01Error("local_e2e01_case_not_created")
 
-    async def operation(client: httpx.AsyncClient, env: dict[str, str], _checkout: dict[str, object], _readiness: dict[str, object]) -> dict[str, object]:
+    async def operation(
+        client: httpx.AsyncClient,
+        env: dict[str, str],
+        _checkout: dict[str, object],
+        _readiness: dict[str, object],
+    ) -> dict[str, object]:
         view = await _view(client, case_id)
         gate = _gate(view, "angle")
         candidates = gate.get("candidates")
         if not isinstance(candidates, list):
             raise LocalE2E01Error("local_e2e01_angle_candidates_missing")
-        selected = next((x for x in candidates if isinstance(x, dict) and x.get("angle_id") == args.angle_id), None)
+        selected = next(
+            (
+                x
+                for x in candidates
+                if isinstance(x, dict) and x.get("angle_id") == args.angle_id
+            ),
+            None,
+        )
         if selected is None:
             raise LocalE2E01Error("local_e2e01_angle_candidate_not_found")
         artifact = gate.get("artifact")
@@ -633,9 +688,18 @@ async def _approve_outline(args: argparse.Namespace) -> dict[str, object]:
         if next_state.get("status") == "BLOCKED":
             return {"decision": decision, "view": next_view, "receipts": receipts, "blocked": True}
         if next_state.get("human_gate") != "final_review":
-            raise LocalE2E01Error("local_e2e01_final_gate_not_reached", evidence={"state": next_state})
+            raise LocalE2E01Error(
+                "local_e2e01_final_gate_not_reached",
+                evidence={"state": next_state},
+            )
         review = await _api(client, "GET", f"/journal/review-cases/{case_id}")
-        return {"decision": decision, "view": next_view, "review": review, "receipts": receipts, "blocked": False}
+        return {
+            "decision": decision,
+            "view": next_view,
+            "review": review,
+            "receipts": receipts,
+            "blocked": False,
+        }
 
     result = await _with_runtime(target, args.authorized_head, operation)
     if result.get("blocked") is True:
@@ -657,13 +721,29 @@ async def _approve_final(args: argparse.Namespace) -> dict[str, object]:
     if not isinstance(case_id, str):
         raise LocalE2E01Error("local_e2e01_case_not_created")
 
-    async def operation(client: httpx.AsyncClient, _env: dict[str, str], _checkout: dict[str, object], _readiness: dict[str, object]) -> dict[str, object]:
+    async def operation(
+        client: httpx.AsyncClient,
+        _env: dict[str, str],
+        _checkout: dict[str, object],
+        _readiness: dict[str, object],
+    ) -> dict[str, object]:
         view = await _view(client, case_id)
         state_row = view.get("state")
         lanes = view.get("quality_lanes")
-        if not isinstance(state_row, dict) or state_row.get("human_gate") != "final_review" or not isinstance(lanes, list):
+        if (
+            not isinstance(state_row, dict)
+            or state_row.get("human_gate") != "final_review"
+            or not isinstance(lanes, list)
+        ):
             raise LocalE2E01Error("local_e2e01_final_gate_missing")
-        lane = next((x for x in lanes if isinstance(x, dict) and x.get("locale") == args.locale), None)
+        lane = next(
+            (
+                x
+                for x in lanes
+                if isinstance(x, dict) and x.get("locale") == args.locale
+            ),
+            None,
+        )
         if lane is None or not isinstance(lane.get("locale_variant_id"), str):
             raise LocalE2E01Error("local_e2e01_final_locale_not_found")
         decision = await _api(
@@ -712,7 +792,12 @@ async def _finish(args: argparse.Namespace) -> dict[str, object]:
     engine = create_async_engine(target, poolclass=NullPool)
     settings = get_settings()
     try:
-        async def operation(client: httpx.AsyncClient, _env: dict[str, str], _checkout: dict[str, object], _readiness: dict[str, object]) -> dict[str, object]:
+        async def operation(
+            client: httpx.AsyncClient,
+            _env: dict[str, str],
+            _checkout: dict[str, object],
+            _readiness: dict[str, object],
+        ) -> dict[str, object]:
             return {
                 "view": await _view(client, case_id),
                 "review": await _api(client, "GET", f"/journal/review-cases/{case_id}"),
@@ -774,7 +859,10 @@ async def _cleanup(args: argparse.Namespace) -> dict[str, object]:
     if state.get("authorized_head") != args.authorized_head:
         raise LocalE2E01Error("local_e2e01_authorized_head_mismatch")
     if state.get("phase") not in {"verified_complete", "blocked"}:
-        raise LocalE2E01Error("local_e2e01_cleanup_not_authorized", evidence={"phase": state.get("phase")})
+        raise LocalE2E01Error(
+            "local_e2e01_cleanup_not_authorized",
+            evidence={"phase": state.get("phase")},
+        )
     target = _target_from_state(state)
     await data02._drop_database(target)
     state["runtime_database_dropped"] = True
@@ -801,7 +889,12 @@ async def _main() -> int:
             result = await _cleanup(args)
         else:
             raise LocalE2E01Error("local_e2e01_command_invalid")
-    except (LocalE2E01Error, data02.Data02RehearsalError, RecoverySafetyError, run02.Run02Error) as exc:
+    except (
+        LocalE2E01Error,
+        data02.Data02RehearsalError,
+        RecoverySafetyError,
+        run02.Run02Error,
+    ) as exc:
         print(json.dumps({
             "status": "BLOCKED",
             "mode": "local_e2e01",
