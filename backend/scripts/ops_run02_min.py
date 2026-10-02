@@ -16,7 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
-from app.modules.system.recovery import RecoverySafetyError, validate_operational_database_source, validate_restore_target
+from app.modules.system.recovery import (
+    RecoverySafetyError,
+    validate_operational_database_source,
+    validate_restore_target,
+)
 from scripts import ops_data02_rehearsal as data02
 from scripts import ops_release_lifecycle as historical
 from scripts import ops_release_lifecycle_0042 as event_runtime
@@ -68,7 +72,9 @@ def _require_port_free(host: str, port: int) -> None:
             )
 
 
-def _validate_frontend_and_checkout(authorized_head: str) -> tuple[dict[str, object], dict[str, str]]:
+def _validate_frontend_and_checkout(
+    authorized_head: str,
+) -> tuple[dict[str, object], dict[str, str]]:
     try:
         checkout = historical._validate_checkout(authorized_head)
         frontend = historical._validate_frontend_build()
