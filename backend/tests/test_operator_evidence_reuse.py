@@ -7,6 +7,9 @@ import pytest
 from sqlalchemy import select
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
+from app.modules.content_engine.journal.operator_manual_intake import (
+    create_founder_journal_intake,
+)
 from app.modules.content_engine.journal.operator_vertical_slice import (
     get_operator_state_v45,
     submit_operator_command_v45,
