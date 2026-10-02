@@ -50,6 +50,7 @@ async def _reviewed_support(
     *,
     content_case: ContentCase,
     marker: str,
+    relation: EvidenceRelation = EvidenceRelation.SUPPORTS,
 ) -> UUID:
     source = Source(
         project_id=content_case.project_id,
@@ -88,7 +89,7 @@ async def _reviewed_support(
         source_document_id=document.id,
         statement=excerpt,
         excerpt=excerpt,
-        relation=EvidenceRelation.SUPPORTS,
+        relation=relation,
         reviewed_by="MG CONTENT ENGINE",
     )
     return link.evidence_id
@@ -266,6 +267,91 @@ async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research
                 session,
                 job_id=leased.id,
                 worker_id="worker-cq07-reuse-unapproved",
+                evidence_workflow=workflow,  # type: ignore[arg-type]
+                runner_registry=registry,
+            )
+
+        assert workflow.calls == 0
+        assert runner.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_start_to_angle_rejects_context_only_locked_evidence_before_research(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-context-only"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        evidence_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="context-only",
+            relation=EvidenceRelation.CONTEXT_ONLY,
+        )
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
+        )
+        approval = await approve_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Context-only fixture approved for fail-closed proof.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval.id,
+        )
+
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="cq07-reuse-context-only-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-cq07-reuse-context-only",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow()
+        runner = ControlledCodexRunner()
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        with pytest.raises(
+            OperatorWorkerError,
+            match="operator_worker_reusable_evidence_no_factual_support",
+        ):
+            await execute_start_to_angle_job(
+                session,
+                job_id=leased.id,
+                worker_id="worker-cq07-reuse-context-only",
                 evidence_workflow=workflow,  # type: ignore[arg-type]
                 runner_registry=registry,
             )
