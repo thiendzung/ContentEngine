@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import socket
@@ -138,7 +139,8 @@ async def _run_one_shot_worker(
             "one_shot_worker_failed",
             evidence={
                 "exit_code": process.returncode,
-                "stderr_tail": stderr.decode("utf-8", errors="replace")[-1000:],
+                "stdout_sha256": hashlib.sha256(stdout).hexdigest(),
+                "stderr_sha256": hashlib.sha256(stderr).hexdigest(),
             },
         )
 
@@ -216,9 +218,13 @@ async def _start_services(
             log_dir=log_dir,
             ready_markers=event_runtime._FRONTEND_READY_MARKERS,
         )
-    except Exception:
+    except Exception as exc:
         if runtimes:
-            await event_runtime._stop_all(runtimes)
+            shutdown, shutdown_errors = await event_runtime._stop_all(runtimes)
+            try:
+                _require_graceful_shutdown(shutdown, shutdown_errors)
+            except Run02Error as cleanup_exc:
+                raise cleanup_exc from exc
         raise
     return runtimes
 
