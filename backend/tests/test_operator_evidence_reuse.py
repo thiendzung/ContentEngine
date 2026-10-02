@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.modules.content_engine.journal.operator_manual_intake import (
@@ -45,11 +46,11 @@ from test_operator_start_to_angle import (
 
 
 async def _reviewed_support(
-    session,
+    session: AsyncSession,
     *,
     content_case: ContentCase,
     marker: str,
-):
+) -> UUID:
     source = Source(
         project_id=content_case.project_id,
         source_type="editorial_or_unknown",
@@ -185,7 +186,9 @@ async def test_start_to_angle_reuses_approved_locked_evidence_without_research(
             .limit(1)
         )
         assert bundle is not None
+        assert isinstance(bundle.content_json, dict)
         audit = bundle.content_json["research_execution"]
+        assert isinstance(audit, dict)
         assert audit["mode"] == "reuse_existing"
         assert audit["external_provider_calls"] == 0
         assert audit["pages_read"] == 0
