@@ -668,11 +668,12 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 
 **P0 exit:** P01 + C02 both complete the bounded CQ-07 quality path, Founder comparison is recorded, and the Pillar↔Cluster identity decision is explicit.
 
-**P1 — Local Content Production Ready: NOT STARTED / gated by P0.**
-- [ ] After P0 closes, DATA-02: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal + old-data/fingerprint invariance.
-- [ ] RUN-02 MIN: smallest local start/readiness/one-shot-worker/graceful-stop path; event/exit-driven only, no polling, no auto-migration/model/publish.
-- [ ] REC-02: crash/restart/resume, ambiguous external effect reconciliation, duplicate-action idempotency and no blind retry.
-- [ ] LOCAL-E2E-01: reuse CQ-07 proof plus one fresh distinct real case with one controlled stop/restart/resume and no case-specific patch.
+**P1 — Local Content Production Ready: ACTIVE / Founder priority override 2026-10-02.**
+- [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. PR #271 remains separate and Attempt 8 is not authorized.
+- [ ] DATA-02 / #273: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal + old-data/fingerprint invariance. Historical O1 rehearsal remains pinned and unchanged.
+- [ ] RUN-02 MIN: smallest local start/readiness/one-shot-worker/graceful-stop path; event/exit-driven only, **no polling / sleep / ps / pgrep**, no auto-migration/model/publish.
+- [ ] REC-02: crash/restart/resume, ambiguous external effect reconciliation, duplicate-action idempotency and no blind retry; event-driven only.
+- [ ] LOCAL-E2E-01: reuse CQ-07 proof where useful plus one fresh distinct real case with one controlled stop/restart/resume and no case-specific patch.
 - [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then begin real content production while later hardening is driven by observed failures.
 
-CQ-07/P0 boundaries: no auto-publish, no WordPress/Rank Math mutation, no operational migration, no generic relation schema, and no new production code unless the real pilot exposes a reproducible blocker or missing invariant. P1 implementation does not start while P0 is open. Historical PR #238 is evidence/history only and is not the clean execution branch.
+CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, operational migration or Attempt 8. Founder explicitly overrode only the previous P1 sequencing gate; P1 does not imply P0 completion or publication permission. Historical PR #238 is evidence/history only and is not the clean execution branch.
