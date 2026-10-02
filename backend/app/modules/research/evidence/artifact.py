@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import json
 from pathlib import Path
-from urllib.parse import urlsplit
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -77,75 +75,16 @@ def _bounded_text(value: str | None, *, limit: int) -> str | None:
     return normalized[:limit]
 
 
-def _safe_diagnostic_hostname(value: str) -> str | None:
-    hostname = value.strip()
-    if not hostname or "%" in hostname:
-        return None
-
-    try:
-        address = ipaddress.ip_address(hostname)
-    except ValueError:
-        try:
-            ascii_hostname = hostname.encode("idna").decode("ascii").rstrip(".")
-        except UnicodeError:
-            return None
-        if not ascii_hostname or len(ascii_hostname) > 253:
-            return None
-        labels = ascii_hostname.split(".")
-        for label in labels:
-            if (
-                not label
-                or len(label) > 63
-                or label.startswith("-")
-                or label.endswith("-")
-                or any(not (character.isalnum() or character == "-") for character in label)
-            ):
-                return None
-        return ascii_hostname.casefold()
-
-    return f"[{address.compressed}]" if address.version == 6 else address.compressed
-
-
 def _safe_diagnostic_url(value: str | None) -> str | None:
+    """Persist only a stable opaque fingerprint for provider-controlled URLs."""
+
     if value is None:
         return None
     raw = value.strip()
     if not raw:
         return ""
-
-    def fingerprint() -> str:
-        digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
-        return f"invalid-url:{digest}"
-
-    try:
-        parts = urlsplit(raw)
-    except ValueError:
-        return fingerprint()
-
-    scheme = parts.scheme.casefold()
-    if not parts.netloc or (scheme and scheme not in {"http", "https"}):
-        return fingerprint()
-
-    try:
-        hostname = parts.hostname
-        port = parts.port
-    except ValueError:
-        return fingerprint()
-    if not hostname:
-        return fingerprint()
-
-    safe_host = _safe_diagnostic_hostname(hostname)
-    if safe_host is None:
-        return fingerprint()
-    safe_netloc = f"{safe_host}:{port}" if port is not None else safe_host
-    origin = f"{scheme}://{safe_netloc}" if scheme else f"//{safe_netloc}"
-    if not parts.path or parts.path == "/":
-        return _bounded_text(origin, limit=2048)
-
-    path_fingerprint = hashlib.sha256(parts.path.encode("utf-8")).hexdigest()[:16]
-    safe = f"{origin}/__path_sha256__/{path_fingerprint}"
-    return _bounded_text(safe, limit=2048)
-
+    digest = hashlib.sha256(raw.encode("utf-8", errors="surrogatepass")).hexdigest()
+    return f"url-sha256:{digest}"
 
 def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
     return {
