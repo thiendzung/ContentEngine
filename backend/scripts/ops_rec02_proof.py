@@ -740,7 +740,10 @@ async def _main() -> int:
             "crash_recovery": crash_recovery,
             "idempotency_reconciliation": reconciliation,
             "coordination": "event_exit_callback",
-            "external_calls": 0,
+            "real_external_calls": 0,
+            "synthetic_side_effect_execute_count": reconciliation[
+                "external_execute_count"
+            ],
             "operational_source": {
                 "revision_before": source_before["revision"],
                 "revision_after": source_after["revision"],
