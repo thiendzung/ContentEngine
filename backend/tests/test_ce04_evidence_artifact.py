@@ -128,18 +128,13 @@ def test_research_failure_diagnostic_strips_url_query_fragment_and_userinfo() ->
     assert isinstance(research, dict)
     sources = research["selected_sources"]
     assert isinstance(sources, list)
-    assert str(sources[0]["url"]).startswith(
-        "https://example.test/__path_sha256__/"
-    )
-    assert str(sources[0]["parent_url"]).startswith(
-        "//example.test/__path_sha256__/"
-    )
+    assert str(sources[0]["url"]).startswith("url-sha256:")
+    assert str(sources[0]["parent_url"]).startswith("url-sha256:")
     documents = research["read_documents"]
     assert isinstance(documents, list)
-    assert documents[0]["requested_url"] == sources[0]["url"]
-    assert str(documents[0]["final_url"]).startswith(
-        "https://example.test/__path_sha256__/"
-    )
+    assert str(documents[0]["requested_url"]).startswith("url-sha256:")
+    assert str(documents[0]["final_url"]).startswith("url-sha256:")
+    assert "example.test" not in serialized
 
 
 def test_research_failure_diagnostic_fingerprints_raw_url_path() -> None:
@@ -182,12 +177,13 @@ def test_research_failure_diagnostic_fingerprints_raw_url_path() -> None:
     assert isinstance(candidates, list) and candidates
     url = candidates[0]["url"]
     assert isinstance(url, str)
-    assert url.startswith("https://example.test/__path_sha256__/")
+    assert url.startswith("url-sha256:")
     serialized = str(payload)
     assert "SECRET_PATH" not in serialized
     assert "SECRET_QUERY" not in serialized
     assert "jsessionid" not in serialized.casefold()
     assert "/app;" not in serialized
+    assert "example.test" not in serialized
 
 
 def test_research_failure_diagnostic_fingerprints_encoded_authority() -> None:
@@ -230,7 +226,7 @@ def test_research_failure_diagnostic_fingerprints_encoded_authority() -> None:
     assert isinstance(candidates, list) and candidates
     url = candidates[0]["url"]
     assert isinstance(url, str)
-    assert url.startswith("invalid-url:")
+    assert url.startswith("url-sha256:")
     serialized = str(payload)
     assert "SECRET_AUTHORITY" not in serialized
     assert "SECRET_QUERY" not in serialized
@@ -275,7 +271,7 @@ def test_research_failure_diagnostic_fingerprints_authorityless_url() -> None:
     assert isinstance(candidates, list) and candidates
     url = candidates[0]["url"]
     assert isinstance(url, str)
-    assert url.startswith("invalid-url:")
+    assert url.startswith("url-sha256:")
     serialized = str(payload)
     assert "SECRET_AUTHORITYLESS" not in serialized
     assert "https:user:" not in serialized
@@ -318,5 +314,5 @@ def test_research_failure_diagnostic_tolerates_malformed_provider_url() -> None:
     assert isinstance(candidates, list) and candidates
     url = candidates[0]["url"]
     assert isinstance(url, str)
-    assert url.startswith("invalid-url:")
+    assert url.startswith("url-sha256:")
     assert "http://[bad" not in str(payload)
