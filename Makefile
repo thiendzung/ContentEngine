@@ -10,6 +10,8 @@ EXPECTED_DUMP_SHA256 ?=
 EXPECTED_SOURCE_DOCUMENTS_COUNT ?=
 EXPECTED_SOURCE_DOCUMENTS_SHA256 ?=
 RELEASE_PROVENANCE ?= artifacts/release/release-0042-provenance.json
+LOCAL_E2E_STATE ?= artifacts/local-e2e01/session.json
+LOCAL_E2E_INTAKE ?= docs/LOCAL_E2E01_INTAKE.json
 MODEL ?=
 APPROVED_BY ?=
 OCR_BASE ?=
@@ -18,7 +20,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min rec02-proof operational-migrate operational-migrate-0042 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min rec02-proof local-e2e01-start local-e2e01-status operational-migrate operational-migrate-0042 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -103,6 +105,20 @@ rec02-proof:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make rec02-proof BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
 	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_rec02_proof "$(BACKUP)" --authorized-head "$(AUTHORIZED_HEAD)"
+
+local-e2e01-start:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required: make local-e2e01-start BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_local_e2e01 start "$(abspath $(BACKUP))" \
+		--intake "$(abspath $(LOCAL_E2E_INTAKE))" \
+		--authorized-head "$(AUTHORIZED_HEAD)" \
+		--state-file "$(abspath $(LOCAL_E2E_STATE))"
+
+local-e2e01-status:
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_local_e2e01 status \
+		--authorized-head "$(AUTHORIZED_HEAD)" \
+		--state-file "$(abspath $(LOCAL_E2E_STATE))"
 
 operational-migrate:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make operational-migrate BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
