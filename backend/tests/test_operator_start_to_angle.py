@@ -199,6 +199,7 @@ class ControlledEvidenceWorkflow:
         self.evidence_eligible = evidence_eligible
         self.include_stale_originality_gap = include_stale_originality_gap
         self.last_request: object | None = None
+        self.last_source_url: str | None = None
 
     async def run(self, session: AsyncSession, **kwargs: object) -> EvidenceResearchResult:
         self.calls += 1
@@ -221,6 +222,7 @@ class ControlledEvidenceWorkflow:
         )
         session.add(source)
         await session.flush()
+        self.last_source_url = source.canonical_url
         text = "Relief artwork can be evaluated by inspecting materials and physical finish."
         document = SourceDocument(
             source_id=source.id,
@@ -1285,8 +1287,11 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert isinstance(selected, dict)
         selected_url = selected["url"]
         assert isinstance(selected_url, str) and selected_url.startswith(
-            "https://example.test/pr45/"
+            "https://example.test/__path_sha256__/"
         )
+        assert workflow.last_source_url is not None
+        assert workflow.last_source_url.startswith("https://example.test/pr45/")
+        assert workflow.last_source_url not in selected_url
         assert research["stop_reason"] == "controlled_fixture_sufficient"
         assert research_snapshot["relation_counts"] == {"supports": 1}
         assert research_snapshot["research_gaps"] == []
@@ -1325,7 +1330,7 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         assert (
             await session.scalar(
                 select(func.count(SourceDocument.id)).where(
-                    SourceDocument.canonical_url == selected_url
+                    SourceDocument.canonical_url == workflow.last_source_url
                 )
             )
             or 0
@@ -1551,7 +1556,12 @@ async def test_failed_research_diagnostic_survives_research_rollback(
         assert isinstance(selected_sources, list) and selected_sources
         selected = selected_sources[0]
         assert isinstance(selected, dict)
-        assert selected["url"].startswith("https://example.test/pr45/")
+        assert selected["url"].startswith(
+            "https://example.test/__path_sha256__/"
+        )
+        assert workflow.last_source_url is not None
+        assert workflow.last_source_url.startswith("https://example.test/pr45/")
+        assert workflow.last_source_url not in str(selected["url"])
         assert selected["intended_use"] == "context_only"
         read_documents = research["read_documents"]
         assert isinstance(read_documents, list) and read_documents
