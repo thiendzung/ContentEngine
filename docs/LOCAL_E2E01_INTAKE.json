@@ -1,0 +1,29 @@
+{
+  "project_slug": "motgu",
+  "source_locale": "en",
+  "research_country": "vn",
+  "required_locales": [
+    "en",
+    "vi-VN"
+  ],
+  "content_role": "cluster",
+  "reader": "An international visitor in Hanoi who has found an original Vietnamese artwork they like and may buy, but is unsure how to bring that exact work home safely and legally.",
+  "situation": "The reader is close to a purchase decision. Their main hesitation is practical: cabin baggage, checked baggage, shipping, export/customs paperwork, and destination-country rules may differ by artwork, airline, route and material.",
+  "need": "Make a careful take-home decision without guessing, overpromising, or treating one airline or border rule as universal.",
+  "question": "How can I take an original Vietnamese artwork home from Hanoi without guessing about airline baggage, packing, customs, or destination rules?",
+  "intent": "informational-commercial",
+  "promise": "Give a traveler-first checklist that separates what can be prepared now from what must be checked for the exact artwork, airline, route and destination before the reader decides.",
+  "coverage_requirements": [
+    "Explain the practical choice between cabin baggage, checked baggage and shipping at overview depth, tied to the exact artwork dimensions, construction and material.",
+    "Explain that there is no universal carry-on size rule for paintings and that the operating airline, route, fare or cabin rules for the actual trip must be checked before claiming cabin suitability.",
+    "Explain Vietnam-side export or customs considerations at overview depth without claiming that every artwork can always leave Vietnam with no additional check or document.",
+    "Explain destination-country customs or biosecurity as conditional, especially for wood or other organic materials, and do not guarantee border clearance.",
+    "Explain what trustworthy purchase support should make visible before travel: exact artwork facts, dimensions, material, originality or provenance documents that actually exist, packing dimensions and any real shipping option or quote that is available.",
+    "End with a low-pressure pre-purchase checklist and a clear next step to the exact Artwork, Visit, or Ask-for-help path rather than pressure selling."
+  ],
+  "selection_reason": "LOCAL-E2E-01 fresh real MOTGU cluster. It tests the locked near-purchase logistics problem without reusing CQ07 P01/C02 and exercises factual research, editorial restraint, bilingual writing and human gates.",
+  "originality_material": "MOTGU's editorial position for this case is to reduce uncertainty rather than promise that travel is simple. Start from the exact artwork: dimensions, construction, material and the real documents that exist. Treat airline, route, fare, customs and destination rules as conditional checks, not universal guarantees. Prefer language such as travel-friendly or easy to pack only when the exact physical facts support it. The reader must be free to pause, ask for the missing fact, or decide not to buy.",
+  "originality_writer_use": "Use this only as MOTGU's first-party editorial stance and decision process. Organize the piece around: identify the exact work, choose the plausible transport path, check the actual airline or carrier, check Vietnam-side requirements when relevant, check destination rules when relevant, then decide or ask for help. Keep the article useful even when a rule cannot be generalized. Finish with calm next steps to Artwork, Visit, or Ask.",
+  "originality_guardrails": "Do not present this first-party position as external evidence. Do not invent airline limits, customs rules, biosecurity requirements, shipping prices, insurance, MOTGU services, artwork dimensions, materials, certificates, invoices or policies. Do not claim that a tube under a fixed length is universally cabin-safe. Do not claim that MOTGU paperwork guarantees customs or biosecurity clearance. Current factual claims must come from supplied researched evidence. Do not pressure the reader to buy.",
+  "idempotency_key": "local-e2e01-logistics-cluster-v1"
+}
