@@ -12,9 +12,10 @@ from app.modules.knowledge.models import (
     Evidence,
     EvidenceSet,
     EvidenceSetApproval,
+    Source,
     SourceDocument,
 )
-from app.modules.knowledge.persistence import evidence_set_hash
+from app.modules.knowledge.persistence import content_hash, evidence_set_hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +148,16 @@ async def load_latest_reusable_evidence_set(
             "operator_worker_reusable_evidence_document_invalid"
         )
 
+    source_ids = {document.source_id for document in documents}
+    sources = list(
+        (await session.scalars(select(Source).where(Source.id.in_(source_ids)))).all()
+    )
+    sources_by_id = {source.id: source for source in sources}
+    if len(sources_by_id) != len(source_ids):
+        raise ReusableEvidenceSetError(
+            "operator_worker_reusable_evidence_source_invalid"
+        )
+
     relation_counts = Counter(row.relation for row in evidence_rows)
     factual_support = False
     for evidence in evidence_rows:
@@ -170,6 +181,16 @@ async def load_latest_reusable_evidence_set(
             raise ReusableEvidenceSetError(
                 "operator_worker_reusable_evidence_provenance_invalid"
             )
+        source = sources_by_id.get(document.source_id)
+        if (
+            source is None
+            or source.project_id != project_id
+            or not isinstance(document.content_markdown, str)
+            or document.content_hash != content_hash(document.content_markdown)
+        ):
+            raise ReusableEvidenceSetError(
+                "operator_worker_reusable_evidence_document_invalid"
+            )
 
         method = provenance.get("method")
         if (
@@ -178,7 +199,6 @@ async def load_latest_reusable_evidence_set(
             or provenance.get("source_document_hash") != document.content_hash
             or not isinstance(evidence.excerpt, str)
             or not evidence.excerpt.strip()
-            or not isinstance(document.content_markdown, str)
             or _normalized_text(evidence.excerpt)
             not in _normalized_text(document.content_markdown)
         ):
