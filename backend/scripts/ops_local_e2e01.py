@@ -656,7 +656,12 @@ async def _approve_outline(args: argparse.Namespace) -> dict[str, object]:
     if not isinstance(case_id, str):
         raise LocalE2E01Error("local_e2e01_case_not_created")
 
-    async def operation(client: httpx.AsyncClient, env: dict[str, str], _checkout: dict[str, object], _readiness: dict[str, object]) -> dict[str, object]:
+    async def operation(
+        client: httpx.AsyncClient,
+        env: dict[str, str],
+        _checkout: dict[str, object],
+        _readiness: dict[str, object],
+    ) -> dict[str, object]:
         view = await _view(client, case_id)
         gate = _gate(view, "outline")
         artifact = gate.get("artifact")
