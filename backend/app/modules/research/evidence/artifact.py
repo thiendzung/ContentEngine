@@ -96,10 +96,16 @@ def _safe_diagnostic_url(value: str | None) -> str | None:
     if not parts.netloc or (scheme and scheme not in {"http", "https"}):
         return fingerprint()
 
-    safe_netloc = parts.netloc.rsplit("@", 1)[-1]
-    if not safe_netloc:
+    try:
+        hostname = parts.hostname
+        port = parts.port
+    except ValueError:
+        return fingerprint()
+    if not hostname:
         return fingerprint()
 
+    safe_host = f"[{hostname}]" if ":" in hostname and not hostname.startswith("[") else hostname
+    safe_netloc = f"{safe_host}:{port}" if port is not None else safe_host
     origin = f"{scheme}://{safe_netloc}" if scheme else f"//{safe_netloc}"
     if not parts.path or parts.path == "/":
         return _bounded_text(origin, limit=2048)
