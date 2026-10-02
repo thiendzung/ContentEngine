@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -9,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -31,7 +32,6 @@ from app.modules.harness.outbox import (
     SideEffectExecutionResult,
     SideEffectRequest,
     apply_reconciliation_result,
-    complete_outbox_intent,
     create_outbox_intent,
     prepare_outbox_dispatch,
     side_effect_request,
@@ -102,7 +102,6 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--authorized-head")
     parser.add_argument("--child-claim", action="store_true")
-    parser.add_argument("--worker-id")
     return parser.parse_args()
 
 
@@ -127,7 +126,7 @@ async def _status_counts(engine: AsyncEngine, *, table_name: str) -> dict[str, i
         rows = list(
             (
                 await connection.execute(
-                    __import__("sqlalchemy").text(
+                    text(
                         f"select status, count(*)::int from {table_name} "
                         "group by status order by status"
                     )
@@ -241,7 +240,7 @@ async def _create_synthetic_run(
         project_id=project.id,
         content_case_id=content_case.id,
         locale_variant_id=variant.id,
-        run_mode="eval",
+        run_mode="create",
         status="running",
         current_step="rec02_crash",
         settings_snapshot_id=snapshot.id,
@@ -319,8 +318,8 @@ async def _spawn_crashing_worker(
             "rec02_crash_child_unexpected_exit",
             evidence={
                 "exit_code": process.returncode,
-                "stdout_sha256": __import__("hashlib").sha256(stdout).hexdigest(),
-                "stderr_sha256": __import__("hashlib").sha256(stderr).hexdigest(),
+                "stdout_sha256": hashlib.sha256(stdout).hexdigest(),
+                "stderr_sha256": hashlib.sha256(stderr).hexdigest(),
             },
         )
     lines = [
