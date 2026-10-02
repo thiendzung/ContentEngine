@@ -48,7 +48,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**P1 / #272 is now the active delivery window by explicit Founder priority override on 2026-10-02.** The previous sequencing rule "P1 starts only after CQ-07/P0 closes" is suspended. This does **not** mark P0 complete: PR #271 remains open/paused, Attempt 8 is not authorized, and publication/WordPress/Rank Math remain locked. GitHub Codex Code Review is temporarily skipped as a gate; MG self-review, tests, OpenCodeReview/Agent Local exact-SHA evidence remain the verification path. P1 order is `DATA-02 -> RUN-02 MIN -> REC-02 -> LOCAL-E2E-01 -> PASS_LOCAL_CONTENT_PRODUCTION_READY`. DATA-02 / #273 is current: prove a fresh operational backup, isolated restore and disposable `20260915_0034 -> 20260926_0044` rehearsal with old core/source-document fingerprint invariance while keeping the operational source read-only. Operational migration remains separately Founder-authorized.
+**P1 / #272 is the active delivery window by explicit Founder priority override on 2026-10-02.** DATA-02 / #273 / PR #274 is merged and exact-head local proof passed: fresh backup, isolated restore and disposable `20260915_0034 -> 20260926_0044` rehearsal preserved full-data/core/SourceDocument invariants while the operational source stayed at 0034. RUN-02 MIN / #275 is current: prove backend + production frontend readiness against a disposable restored+migrated 0044 DB, execute exactly one idle one-shot worker, then gracefully stop via event/exit-driven coordination only. **No polling, sleep, ps or pgrep loops.** P0 remains paused rather than complete: PR #271 is open and Attempt 8 is unauthorized. GitHub Codex Code Review remains temporarily non-blocking. Operational migration and publication remain separately Founder-authorized.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -498,3 +498,5 @@ CQ-05 merged architecture:
 - no production activation, operational migration, publication or final-approval bypass in CQ-05.
 
 - 2026-10-02: Founder reprioritized delivery to P1 and asked to temporarily ignore GitHub Codex Code Review. #272 opened as the P1 tracker and #273 as DATA-02. P0 is paused rather than closed; PR #271 remains open and Attempt 8 remains unauthorized. DATA-02 adds a current `0034 -> 0044` disposable migration rehearsal without widening historical O1 proof.
+
+- 2026-10-02: DATA-02 merged via PR #274 as `65fc65c990d76ab1c6f164aa25bfab5d713cfada`. RUN-02 MIN / #275 is active and intentionally targets a disposable 0044 restore rather than migrating the operational 0034 DB. Runtime readiness uses child stdout events + one-shot HTTP checks + process exit, with an idle one-shot worker and no polling/sleep/ps/pgrep loops.
