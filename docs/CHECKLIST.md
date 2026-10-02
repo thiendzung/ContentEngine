@@ -268,13 +268,13 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Pilot explicitly answers whether existing identity is sufficient; no new Pillar↔Cluster relation is added without a concrete identity/query/update requirement.
 - [ ] No auto-publish, WordPress/Rank Math mutation or operational DB migration occurs during CQ-07.
 
-## U. P1 Local Content Production Ready — gated by P0
+## U. P1 Local Content Production Ready — ACTIVE by Founder override
 
-- [ ] Do not start P1 implementation until CQ-07/P0 is closed.
+- [x] Founder explicitly overrode the prior "P0 must close first" sequencing rule on 2026-10-02. This does not mark P0 complete and does not authorize Attempt 8/publication.
 - [ ] DATA-02 proves fresh operational backup, isolated restore and disposable `20260915_0034 → 20260926_0044` migration rehearsal with old-data/fingerprint invariance.
-- [ ] RUN-02 MIN proves safe local DB/backend/frontend readiness plus one-shot worker and graceful stop; event/exit-driven only, no polling.
-- [ ] REC-02 proves crash/restart/resume, duplicate-action idempotency and reconciliation before retry after ambiguous external effects.
-- [ ] LOCAL-E2E-01 reuses CQ-07 evidence plus one fresh distinct real case with a controlled stop/restart/resume and no case-specific patch.
+- [ ] RUN-02 MIN proves safe local DB/backend/frontend readiness plus one-shot worker and graceful stop; event/exit-driven only, **no polling, sleep, ps or pgrep loops**.
+- [ ] REC-02 proves crash/restart/resume, duplicate-action idempotency and reconciliation before retry after ambiguous external effects; event-driven only.
+- [ ] LOCAL-E2E-01 reuses CQ-07 evidence where useful plus one fresh distinct real case with a controlled stop/restart/resume and no case-specific patch.
 - [ ] Operational migration remains a separate Founder authorization after DATA-02 proof.
 - [ ] WordPress/Rank Math activation and publication remain separate work.
 - [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`.
