@@ -105,7 +105,12 @@ async def load_latest_reusable_evidence_set(
         raise ReusableEvidenceSetError(
             "operator_worker_reusable_evidence_approval_missing"
         )
-    if not approval.approved_by.strip() or not approval.approval_reason.strip():
+    if (
+        not isinstance(approval.approved_by, str)
+        or not approval.approved_by.strip()
+        or not isinstance(approval.approval_reason, str)
+        or not approval.approval_reason.strip()
+    ):
         raise ReusableEvidenceSetError(
             "operator_worker_reusable_evidence_approval_invalid"
         )
@@ -171,7 +176,9 @@ async def load_latest_reusable_evidence_set(
             method not in _ALLOWED_PROVENANCE_METHODS
             or provenance.get("source_document_id") != str(document.id)
             or provenance.get("source_document_hash") != document.content_hash
+            or not isinstance(evidence.excerpt, str)
             or not evidence.excerpt.strip()
+            or not isinstance(document.content_markdown, str)
             or _normalized_text(evidence.excerpt)
             not in _normalized_text(document.content_markdown)
         ):
