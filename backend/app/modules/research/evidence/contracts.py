@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -18,6 +19,18 @@ class EvidenceRelation(StrEnum):
 DEFAULT_EVIDENCE_MAX_CLAIMS = 8
 AUTOMATIC_CLAIM_MIN_CHARS = 40
 AUTOMATIC_CLAIM_MAX_CHARS = 600
+AUTOMATIC_CLAIM_MAX_JSON_BYTES = (AUTOMATIC_CLAIM_MAX_CHARS * 4) + 2
+
+
+def automatic_claim_json_byte_length(value: str) -> int:
+    """Return canonical JSON bytes for one automatic claim/excerpt string."""
+
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return len(payload.encode("utf-8"))
 
 
 type OriginalityMaterialInput = str | dict[str, object]
