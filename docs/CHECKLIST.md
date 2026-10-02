@@ -257,7 +257,7 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Coverage Support failure diagnostics survive rollback with bounded full assessment, Evidence input and research summary while excluding raw page/provider/model data.
 - [ ] Diagnostic URLs preserve only sanitized HTTP(S) origin plus path fingerprint; raw path/query/fragment/userinfo never survive, and malformed, authority-less or non-HTTP(S) provider URLs are fingerprinted.
 - [ ] Legacy oversized Founder-intake replays remain idempotent; new creations are bounded and deterministic oversized Coverage Support input fails before external research.
-- [ ] Pre-research Coverage Support capacity reserves worst-case bytes for the same bounded automatic Evidence count/text limits used by Research, so a deterministic size failure cannot first appear after paid/external research.
+- [ ] Pre-research Coverage Support capacity reserves worst-case bytes for the same bounded automatic Evidence count/text limits used by Research, and automatic extraction enforces the matching canonical-JSON byte ceiling so control-character escaping cannot exceed the reserve.
 - [ ] Exact-SHA regression/OCR proof passes for the diagnostic-durability fix before any Attempt 7 decision.
 - [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
 - [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
