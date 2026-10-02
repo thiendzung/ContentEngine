@@ -26,6 +26,7 @@ from app.modules.content_engine.models import (
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.outbox import (
     IdempotencyConflictError,
+    OutboxIntent,
     OutboxStateError,
     ReconciliationRequiredError,
     ReconciliationResult,
@@ -517,9 +518,19 @@ async def _prove_idempotency_and_reconciliation(
                 worker_id=worker_a,
             )
             request = side_effect_request(processing)
-            accepted = await fake.execute(request)
-            if fake.execute_count != 1:
-                raise Rec02Error("rec02_external_execute_count_invalid")
+            job_id = job.id
+            intent_id = intent.id
+
+    # Commit-before-side-effect is a hard invariant: verify the processing state
+    # from a fresh transaction before simulating external acceptance.
+    async with AsyncSession(engine, expire_on_commit=False) as verification_session:
+        durable_processing = await verification_session.get(OutboxIntent, intent_id)
+        if durable_processing is None or durable_processing.status != "processing":
+            raise Rec02Error("rec02_processing_state_not_durable_before_effect")
+
+    accepted = await fake.execute(request)
+    if fake.execute_count != 1:
+        raise Rec02Error("rec02_external_execute_count_invalid")
 
     await _callback_delay(_SHORT_LEASE_SECONDS + 0.25)
 
@@ -530,15 +541,15 @@ async def _prove_idempotency_and_reconciliation(
                 worker_id=worker_b,
                 lease_duration=timedelta(seconds=_REPLACEMENT_LEASE_SECONDS),
             )
-            if reclaimed is None or reclaimed.id != job.id:
+            if reclaimed is None or reclaimed.id != job_id:
                 raise Rec02Error("rec02_outbox_job_not_reclaimed")
 
             blind_retry_blocked = False
             try:
                 await prepare_outbox_dispatch(
                     session,
-                    intent_id=intent.id,
-                    job_id=job.id,
+                    intent_id=intent_id,
+                    job_id=job_id,
                     worker_id=worker_b,
                 )
             except ReconciliationRequiredError:
@@ -546,14 +557,14 @@ async def _prove_idempotency_and_reconciliation(
             if not blind_retry_blocked:
                 raise Rec02Error("rec02_blind_retry_not_blocked")
 
-            current = await session.get(type(intent), intent.id)
+            current = await session.get(OutboxIntent, intent_id)
             if current is None:
                 raise Rec02Error("rec02_outbox_intent_missing")
             result = await fake.reconcile(side_effect_request(current))
             reconciled = await apply_reconciliation_result(
                 session,
-                intent_id=intent.id,
-                job_id=job.id,
+                intent_id=intent_id,
+                job_id=job_id,
                 worker_id=worker_b,
                 result=result,
             )
@@ -568,8 +579,8 @@ async def _prove_idempotency_and_reconciliation(
             try:
                 await prepare_outbox_dispatch(
                     session,
-                    intent_id=intent.id,
-                    job_id=job.id,
+                    intent_id=intent_id,
+                    job_id=job_id,
                     worker_id=worker_b,
                 )
             except OutboxStateError:
@@ -579,16 +590,17 @@ async def _prove_idempotency_and_reconciliation(
 
             await complete_job(
                 session,
-                job_id=job.id,
+                job_id=job_id,
                 worker_id=worker_b,
             )
 
     return {
-        "job_id": str(job.id),
-        "intent_id": str(intent.id),
+        "job_id": str(job_id),
+        "intent_id": str(intent_id),
         "job_dedupe": "REUSED",
         "intent_replay": "REUSED",
         "changed_payload": "CONFLICT_BLOCKED",
+        "processing_commit_before_effect": "VERIFIED",
         "blind_retry_after_restart": "BLOCKED_PENDING_RECONCILIATION",
         "reconciliation": "CONFIRMED_SUCCESS",
         "external_execute_count": fake.execute_count,
