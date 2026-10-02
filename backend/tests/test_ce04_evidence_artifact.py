@@ -190,6 +190,54 @@ def test_research_failure_diagnostic_fingerprints_raw_url_path() -> None:
     assert "/app;" not in serialized
 
 
+def test_research_failure_diagnostic_fingerprints_encoded_authority() -> None:
+    project_id = uuid4()
+    candidate = SourceCandidate(
+        provider="exa",
+        query="art authenticity",
+        url=(
+            "https://user%3ASECRET_AUTHORITY%40example.test/path"
+            "?token=SECRET_QUERY#fragment"
+        ),
+        title="Encoded authority provider result",
+        source_type="unknown",
+        commercial_bias=CommercialBias.UNKNOWN,
+        intended_use=IntendedUse.DISCOVERY,
+        why_selected="Unselected encoded-authority candidate.",
+    )
+    production = ProductionResearchResult(
+        request=ProductionResearchRequest(
+            project_id=project_id,
+            query="art authenticity",
+            max_pages_to_read=1,
+        ),
+        source_candidates=[candidate],
+        stop_reason="controlled",
+        sufficient=False,
+    )
+    result = EvidenceResearchResult(
+        research=production,
+        content_case_id=uuid4(),
+        relation_counts={},
+        research_gaps=["Controlled unresolved gap."],
+        evidence_eligible=False,
+    )
+
+    payload = research_failure_diagnostic_payload(result)
+    research = payload["research"]
+    assert isinstance(research, dict)
+    candidates = research["source_candidates"]
+    assert isinstance(candidates, list) and candidates
+    url = candidates[0]["url"]
+    assert isinstance(url, str)
+    assert url.startswith("invalid-url:")
+    serialized = str(payload)
+    assert "SECRET_AUTHORITY" not in serialized
+    assert "SECRET_QUERY" not in serialized
+    assert "%3A" not in serialized
+    assert "%40" not in serialized
+
+
 def test_research_failure_diagnostic_fingerprints_authorityless_url() -> None:
     project_id = uuid4()
     candidate = SourceCandidate(
