@@ -213,4 +213,3 @@ def test_automatic_claim_json_bound_rejects_escape_expansion() -> None:
         subject_terms=set(),
         source_anchor_terms=set(),
     ) is False
-
