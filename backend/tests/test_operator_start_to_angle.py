@@ -1286,9 +1286,8 @@ async def test_coverage_support_diagnostic_survives_worker_rollback(
         selected = selected_sources[0]
         assert isinstance(selected, dict)
         selected_url = selected["url"]
-        assert isinstance(selected_url, str) and selected_url.startswith(
-            "https://example.test/__path_sha256__/"
-        )
+        assert isinstance(selected_url, str) and selected_url.startswith("url-sha256:")
+        assert "example.test" not in selected_url
         assert workflow.last_source_url is not None
         assert workflow.last_source_url.startswith("https://example.test/pr45/")
         assert workflow.last_source_url not in selected_url
@@ -1556,9 +1555,8 @@ async def test_failed_research_diagnostic_survives_research_rollback(
         assert isinstance(selected_sources, list) and selected_sources
         selected = selected_sources[0]
         assert isinstance(selected, dict)
-        assert selected["url"].startswith(
-            "https://example.test/__path_sha256__/"
-        )
+        assert selected["url"].startswith("url-sha256:")
+        assert "example.test" not in str(selected["url"])
         assert workflow.last_source_url is not None
         assert workflow.last_source_url.startswith("https://example.test/pr45/")
         assert workflow.last_source_url not in str(selected["url"])
