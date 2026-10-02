@@ -59,13 +59,12 @@ def _frontend_root() -> Path:
 def _require_port_free(host: str, port: int) -> None:
     family = socket.AF_INET6 if ":" in host else socket.AF_INET
     with socket.socket(family, socket.SOCK_STREAM) as probe:
-        try:
-            probe.bind((host, port))
-        except OSError as exc:
+        probe.settimeout(0.2)
+        if probe.connect_ex((host, port)) == 0:
             raise Run02Error(
                 "runtime_port_in_use",
                 evidence={"host": host, "port": port},
-            ) from exc
+            )
 
 
 def _validate_frontend_and_checkout(authorized_head: str) -> tuple[dict[str, object], dict[str, str]]:
@@ -377,7 +376,7 @@ async def _main() -> int:
         _require_port_free(_FRONTEND_HOST, _FRONTEND_PORT)
 
         settings = get_settings()
-        source = validate_operational_database_source(settings.database_url)
+        validate_operational_database_source(settings.database_url)
         source_before = await _source_snapshot(settings.database_url)
         if source_before["revision"] != _EXPECTED_SOURCE_REVISION:
             raise Run02Error("run02_operational_revision_drift")
