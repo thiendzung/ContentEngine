@@ -18,7 +18,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal operational-migrate operational-migrate-0042 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min operational-migrate operational-migrate-0042 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -93,6 +93,11 @@ migration-rehearsal:
 data02-rehearsal:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make data02-rehearsal BACKUP=/path/to/file.dump" && exit 2)
 	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_data02_rehearsal "$(BACKUP)"
+
+run02-min:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required: make run02-min BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	cd backend && COMPOSE_PROJECT_NAME=$(COMPOSE_PROJECT_NAME) .venv/bin/python -m scripts.ops_run02_min "$(BACKUP)" --authorized-head "$(AUTHORIZED_HEAD)"
 
 operational-migrate:
 	@test -n "$(BACKUP)" || (echo "BACKUP is required: make operational-migrate BACKUP=/path/to/file.dump AUTHORIZED_HEAD=<sha>" && exit 2)
