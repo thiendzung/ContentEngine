@@ -22,10 +22,10 @@ from app.modules.research.evidence.contracts import (
     AUTOMATIC_CLAIM_MAX_JSON_BYTES,
     AUTOMATIC_CLAIM_MIN_CHARS,
     ClaimCandidate,
-    automatic_claim_json_byte_length,
     EvidenceRelation,
     EvidenceResearchRequest,
     EvidenceResearchResult,
+    automatic_claim_json_byte_length,
     count_usable_originality_items,
 )
 from app.modules.research.evidence.persistence import (
