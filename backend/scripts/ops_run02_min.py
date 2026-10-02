@@ -280,6 +280,7 @@ async def _prepare_runtime_database(
     )
 
     source_engine = create_async_engine(source_url, poolclass=NullPool)
+    target_created = False
     try:
         source_revision, source_fingerprint = await data02._database_state(source_engine)
         source_documents = await data02._source_documents_fingerprint(source_engine)
@@ -289,6 +290,7 @@ async def _prepare_runtime_database(
         if source_fingerprint.to_dict() != expected_fingerprint:
             raise Run02Error("run02_source_fingerprint_drift")
 
+        target_created = True
         await data02._recreate_database(target)
         data02._restore_backup(backup, target)
 
@@ -327,6 +329,13 @@ async def _prepare_runtime_database(
             },
             "runtime_full_data_before": runtime_fingerprint,
         }
+    except Exception:
+        if target_created:
+            try:
+                await data02._drop_database(target)
+            except Exception:
+                pass
+        raise
     finally:
         await source_engine.dispose()
 
