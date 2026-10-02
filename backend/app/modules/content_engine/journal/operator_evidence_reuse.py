@@ -75,6 +75,8 @@ async def load_latest_reusable_evidence_set(
     members = evidence_set.evidence_ids_json
     if (
         evidence_set.locked_at is None
+        or not isinstance(evidence_set.locked_by, str)
+        or not evidence_set.locked_by.strip()
         or not isinstance(members, list)
         or not members
         or not all(isinstance(value, str) and value.strip() for value in members)
