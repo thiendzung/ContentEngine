@@ -6,6 +6,15 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from test_ce05_review_revise import isolated_session
+from test_operator_start_to_angle import (
+    ControlledCodexRunner,
+    ControlledEvidenceWorkflow,
+    ExplodingEvidenceWorkflow,
+    _activate_seeded_angle_runtime,
+    _intake_kwargs,
+    _ready_preflight,
+)
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.modules.content_engine.journal.operator_manual_intake import (
@@ -34,16 +43,6 @@ from app.modules.research.evidence.persistence import (
 from app.modules.research.evidence.reviewed_source import (
     persist_reviewed_existing_source_evidence,
 )
-from test_ce05_review_revise import isolated_session
-from test_operator_start_to_angle import (
-    ControlledCodexRunner,
-    ControlledEvidenceWorkflow,
-    ExplodingEvidenceWorkflow,
-    _activate_seeded_angle_runtime,
-    _intake_kwargs,
-    _ready_preflight,
-)
-
 
 async def _reviewed_support(
     session: AsyncSession,
