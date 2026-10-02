@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import select
@@ -13,6 +15,12 @@ from app.modules.knowledge.models import (
     SourceDocument,
 )
 from app.modules.knowledge.persistence import evidence_set_hash
+
+
+@dataclass(frozen=True, slots=True)
+class ReusableEvidenceSet:
+    evidence_set: EvidenceSet
+    relation_counts: dict[str, int]
 
 
 class ReusableEvidenceSetError(ValueError):
@@ -39,7 +47,7 @@ async def load_latest_reusable_evidence_set(
     *,
     project_id: UUID,
     content_case_id: UUID,
-) -> EvidenceSet | None:
+) -> ReusableEvidenceSet | None:
     """Return the latest exact approved+locked EvidenceSet, or None when absent.
 
     A locked snapshot is an explicit upstream decision, so malformed or unapproved
@@ -134,6 +142,7 @@ async def load_latest_reusable_evidence_set(
             "operator_worker_reusable_evidence_document_invalid"
         )
 
+    relation_counts = Counter(row.relation for row in evidence_rows)
     factual_support = False
     for evidence in evidence_rows:
         if (
@@ -190,4 +199,10 @@ async def load_latest_reusable_evidence_set(
         raise ReusableEvidenceSetError(
             "operator_worker_reusable_evidence_no_factual_support"
         )
-    return evidence_set
+    return ReusableEvidenceSet(
+        evidence_set=evidence_set,
+        relation_counts={
+            relation: relation_counts.get(relation, 0)
+            for relation in ("supports", "qualifies", "contradicts", "context_only")
+        },
+    )
