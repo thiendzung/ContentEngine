@@ -136,6 +136,49 @@ def test_research_failure_diagnostic_strips_url_query_fragment_and_userinfo() ->
     assert documents[0]["final_url"] == "https://example.test/final"
 
 
+def test_research_failure_diagnostic_fingerprints_authorityless_url() -> None:
+    project_id = uuid4()
+    candidate = SourceCandidate(
+        provider="exa",
+        query="art authenticity",
+        url="https:user:SECRET_AUTHORITYLESS@example.test/path?token=x#fragment",
+        title="Authority-less provider result",
+        source_type="unknown",
+        commercial_bias=CommercialBias.UNKNOWN,
+        intended_use=IntendedUse.DISCOVERY,
+        why_selected="Unselected authority-less candidate.",
+    )
+    production = ProductionResearchResult(
+        request=ProductionResearchRequest(
+            project_id=project_id,
+            query="art authenticity",
+            max_pages_to_read=1,
+        ),
+        source_candidates=[candidate],
+        stop_reason="controlled",
+        sufficient=False,
+    )
+    result = EvidenceResearchResult(
+        research=production,
+        content_case_id=uuid4(),
+        relation_counts={},
+        research_gaps=["Controlled unresolved gap."],
+        evidence_eligible=False,
+    )
+
+    payload = research_failure_diagnostic_payload(result)
+    research = payload["research"]
+    assert isinstance(research, dict)
+    candidates = research["source_candidates"]
+    assert isinstance(candidates, list) and candidates
+    url = candidates[0]["url"]
+    assert isinstance(url, str)
+    assert url.startswith("invalid-url:")
+    serialized = str(payload)
+    assert "SECRET_AUTHORITYLESS" not in serialized
+    assert "https:user:" not in serialized
+
+
 def test_research_failure_diagnostic_tolerates_malformed_provider_url() -> None:
     project_id = uuid4()
     candidate = SourceCandidate(
