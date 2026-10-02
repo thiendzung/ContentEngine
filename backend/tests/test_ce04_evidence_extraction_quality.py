@@ -11,6 +11,11 @@ from app.modules.research.contracts import (
     SourceCandidate,
 )
 from app.modules.research.evidence import EvidenceResearchWorkflow
+from app.modules.research.evidence.contracts import (
+    AUTOMATIC_CLAIM_MAX_CHARS,
+    AUTOMATIC_CLAIM_MAX_JSON_BYTES,
+    automatic_claim_json_byte_length,
+)
 
 
 class _UnusedRouter:
@@ -194,3 +199,18 @@ def test_claim_extraction_uses_need_statement_not_planning_label() -> None:
     assert [candidate.source_url for candidate in candidates] == [artwork_url]
     assert "comparable artworks" in candidates[0].statement
     assert "9,500" not in candidates[0].statement
+
+def test_automatic_claim_json_bound_rejects_escape_expansion() -> None:
+    workflow = EvidenceResearchWorkflow(router=_UnusedRouter())
+    widest_utf8 = "😀" * AUTOMATIC_CLAIM_MAX_CHARS
+    control_heavy = "\x00" * AUTOMATIC_CLAIM_MAX_CHARS
+
+    assert automatic_claim_json_byte_length(widest_utf8) == AUTOMATIC_CLAIM_MAX_JSON_BYTES
+    assert automatic_claim_json_byte_length(control_heavy) > AUTOMATIC_CLAIM_MAX_JSON_BYTES
+    assert workflow._usable_statement(
+        control_heavy,
+        terms=set(),
+        subject_terms=set(),
+        source_anchor_terms=set(),
+    ) is False
+
