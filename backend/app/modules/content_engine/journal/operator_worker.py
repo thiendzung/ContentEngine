@@ -38,12 +38,17 @@ from app.modules.content_engine.journal.models import JournalIntakeSpec, Operato
 from app.modules.content_engine.journal.operator_angle_bundle import (
     bind_bundle_context_manifest,
 )
+from app.modules.content_engine.journal.operator_evidence_reuse import (
+    ReusableEvidenceSetError,
+    load_latest_reusable_evidence_set,
+)
 from app.modules.content_engine.journal.operator_runtime import (
     START_TO_ANGLE_STAGE,
     get_operator_state,
 )
 from app.modules.content_engine.journal.research_handoff import (
     JournalResearchHandoff,
+    JournalResearchHandoffError,
     ResearchDecision,
 )
 from app.modules.content_engine.models import (
@@ -543,63 +548,122 @@ async def execute_start_to_angle_job(
         context=context,
     )
 
-    settings = get_settings()
-    research_request = EvidenceResearchRequest(
-        research=ProductionResearchRequest(
-            project_id=content_case.project_id,
-            query=_coverage_aware_research_query(opportunity),
-            locale=variant.locale,
-            country=spec.research_country,
-            limit=10,
-            depth=ResearchDepth.STANDARD,
-            max_pages_to_read=settings.research_max_pages_read,
-            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
-        ),
-        content_opportunity_id=opportunity.id,
-        need_hypothesis_id=content_case.need_hypothesis_id,
-        max_claims=DEFAULT_EVIDENCE_MAX_CLAIMS,
-    )
-    try:
-        research_result = await evidence_workflow.run(
-            session,
-            request=research_request,
-            run_id=run.id,
-            step_run_id=step.id,
-        )
-    except OperatorWorkerError:
-        raise
-    except Exception as exc:
-        raise OperatorWorkerError(
-            "operator_worker_research_failed",
-            diagnostic_snapshot=research_exception_diagnostic_payload(
-                research_request.research,
-                error_class=type(exc).__name__,
-            ),
-        ) from exc
-    if (
-        not research_result.evidence_eligible
-        or research_result.evidence_set_id is None
-        or research_result.evidence_set_version is None
-        or research_result.evidence_set_content_hash is None
-    ):
-        raise OperatorWorkerError(
-            "operator_worker_insufficient_evidence",
-            diagnostic_snapshot=research_failure_diagnostic_payload(research_result),
-        )
-
-    evidence_set = await _policy_lock_evidence_set(
-        session,
-        evidence_set_id=research_result.evidence_set_id,
-    )
     handoff = JournalResearchHandoff()
-    evidence_handoff = await handoff.handoff_evidence_set(
-        session,
-        project_id=content_case.project_id,
-        content_case_id=content_case.id,
-        evidence_set_id=evidence_set.id,
-        expected_version=evidence_set.version,
-        expected_content_hash=evidence_set.content_hash,
-    )
+    try:
+        reusable = await load_latest_reusable_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+        )
+    except ReusableEvidenceSetError as exc:
+        raise OperatorWorkerError(exc.code) from exc
+
+    if reusable is not None:
+        evidence_set = reusable.evidence_set
+        try:
+            evidence_handoff = await handoff.handoff_evidence_set(
+                session,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+                evidence_set_id=evidence_set.id,
+                expected_version=evidence_set.version,
+                expected_content_hash=evidence_set.content_hash,
+            )
+        except JournalResearchHandoffError as exc:
+            raise OperatorWorkerError(
+                "operator_worker_reusable_evidence_handoff_invalid"
+            ) from exc
+        research_snapshot = {
+            "research": {
+                "mode": "reuse_existing",
+                "evidence_set_id": str(evidence_handoff.evidence_set_id),
+                "evidence_set_version": evidence_handoff.version,
+                "evidence_set_content_hash": evidence_handoff.content_hash,
+                "external_provider_calls": 0,
+                "pages_read": 0,
+                "stop_reason": "reused_locked_evidence_set",
+                "sufficient": True,
+            },
+            "relation_counts": reusable.relation_counts,
+            "research_gaps": [],
+        }
+        research_execution = {
+            "executed_in_stage": START_TO_ANGLE_STAGE,
+            "mode": "reuse_existing",
+            "external_provider_calls": 0,
+            "pages_read": 0,
+            "stop_reason": "reused_locked_evidence_set",
+            "sufficient": True,
+            "evidence_count": len(evidence_handoff.evidence_ids),
+        }
+    else:
+        settings = get_settings()
+        research_request = EvidenceResearchRequest(
+            research=ProductionResearchRequest(
+                project_id=content_case.project_id,
+                query=_coverage_aware_research_query(opportunity),
+                locale=variant.locale,
+                country=spec.research_country,
+                limit=10,
+                depth=ResearchDepth.STANDARD,
+                max_pages_to_read=settings.research_max_pages_read,
+                required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            ),
+            content_opportunity_id=opportunity.id,
+            need_hypothesis_id=content_case.need_hypothesis_id,
+            max_claims=DEFAULT_EVIDENCE_MAX_CLAIMS,
+        )
+        try:
+            research_result = await evidence_workflow.run(
+                session,
+                request=research_request,
+                run_id=run.id,
+                step_run_id=step.id,
+            )
+        except OperatorWorkerError:
+            raise
+        except Exception as exc:
+            raise OperatorWorkerError(
+                "operator_worker_research_failed",
+                diagnostic_snapshot=research_exception_diagnostic_payload(
+                    research_request.research,
+                    error_class=type(exc).__name__,
+                ),
+            ) from exc
+        if (
+            not research_result.evidence_eligible
+            or research_result.evidence_set_id is None
+            or research_result.evidence_set_version is None
+            or research_result.evidence_set_content_hash is None
+        ):
+            raise OperatorWorkerError(
+                "operator_worker_insufficient_evidence",
+                diagnostic_snapshot=research_failure_diagnostic_payload(research_result),
+            )
+
+        evidence_set = await _policy_lock_evidence_set(
+            session,
+            evidence_set_id=research_result.evidence_set_id,
+        )
+        evidence_handoff = await handoff.handoff_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+        )
+        research_snapshot = research_failure_diagnostic_payload(research_result)
+        research_execution = {
+            "executed_in_stage": START_TO_ANGLE_STAGE,
+            "mode": "fresh_research",
+            "external_provider_calls": research_result.research.external_provider_calls,
+            "pages_read": len(research_result.research.documents),
+            "stop_reason": research_result.research.stop_reason,
+            "sufficient": research_result.research.sufficient,
+            "evidence_count": len(research_result.evidence_ids),
+        }
+
     originality_handoff = await handoff.handoff_originality_pack(
         session,
         content_case_id=content_case.id,
@@ -680,7 +744,7 @@ async def execute_start_to_angle_job(
             diagnostic_snapshot=coverage_support_failure_diagnostic_payload(
                 support_input,
                 support_result,
-                research_snapshot=research_failure_diagnostic_payload(research_result),
+                research_snapshot=research_snapshot,
                 evaluator_identity=support_port.diagnostic_identity(),
             ),
         )
@@ -729,14 +793,7 @@ async def execute_start_to_angle_job(
         session,
         base_bundle_artifact_id=base_bundle.id,
         context_manifest_id=manifest.id,
-        research_execution={
-            "executed_in_stage": START_TO_ANGLE_STAGE,
-            "external_provider_calls": research_result.research.external_provider_calls,
-            "pages_read": len(research_result.research.documents),
-            "stop_reason": research_result.research.stop_reason,
-            "sufficient": research_result.research.sufficient,
-            "evidence_count": len(research_result.evidence_ids),
-        },
+        research_execution=research_execution,
     )
     port = await create_cli_angle_model_port(
         session,
