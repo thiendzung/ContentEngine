@@ -271,8 +271,8 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 ## U. P1 Local Content Production Ready — ACTIVE by Founder override
 
 - [x] Founder explicitly overrode the prior "P0 must close first" sequencing rule on 2026-10-02. This does not mark P0 complete and does not authorize Attempt 8/publication.
-- [ ] DATA-02 proves fresh operational backup, isolated restore and disposable `20260915_0034 → 20260926_0044` migration rehearsal with old-data/fingerprint invariance.
-- [ ] RUN-02 MIN proves safe local DB/backend/frontend readiness plus one-shot worker and graceful stop; event/exit-driven only, **no polling, sleep, ps or pgrep loops**.
+- [x] DATA-02 proved a fresh operational backup, isolated restore and disposable `20260915_0034 → 20260926_0044` migration rehearsal with full-data/core/SourceDocument invariance and zero operational mutation.
+- [ ] RUN-02 MIN proves safe disposable-0044 DB/backend/frontend readiness plus an idle one-shot worker and graceful stop; event/exit-driven only, **no polling, sleep, ps or pgrep loops**.
 - [ ] REC-02 proves crash/restart/resume, duplicate-action idempotency and reconciliation before retry after ambiguous external effects; event-driven only.
 - [ ] LOCAL-E2E-01 reuses CQ-07 evidence where useful plus one fresh distinct real case with a controlled stop/restart/resume and no case-specific patch.
 - [ ] Operational migration remains a separate Founder authorization after DATA-02 proof.
