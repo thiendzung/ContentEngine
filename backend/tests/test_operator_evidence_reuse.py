@@ -44,6 +44,7 @@ from app.modules.research.evidence.reviewed_source import (
     persist_reviewed_existing_source_evidence,
 )
 
+
 async def _reviewed_support(
     session: AsyncSession,
     *,
