@@ -728,10 +728,23 @@ async def _finish(args: argparse.Namespace) -> dict[str, object]:
         if review.get("publication_state") != "NOT_PUBLISHED":
             raise LocalE2E01Error("local_e2e01_publication_lock_failed")
         counts = await _runtime_counts(engine)
-        if counts["publish_events"] != 0:
-            raise LocalE2E01Error("local_e2e01_publication_event_present", evidence={"publish_events": counts["publish_events"]})
-        if counts["content_versions"] < 2:
-            raise LocalE2E01Error("local_e2e01_bilingual_versions_missing", evidence={"content_versions": counts["content_versions"]})
+        baseline = state.get("counts_before")
+        if not isinstance(baseline, dict):
+            raise LocalE2E01Error("local_e2e01_baseline_counts_missing")
+        publish_delta = counts["publish_events"] - int(baseline.get("publish_events", 0))
+        version_delta = counts["content_versions"] - int(
+            baseline.get("content_versions", 0)
+        )
+        if publish_delta != 0:
+            raise LocalE2E01Error(
+                "local_e2e01_publication_event_present",
+                evidence={"publish_event_delta": publish_delta},
+            )
+        if version_delta != 2:
+            raise LocalE2E01Error(
+                "local_e2e01_bilingual_versions_missing",
+                evidence={"content_version_delta": version_delta},
+            )
         if await _source_snapshot(settings.database_url) != state.get("source_before"):
             raise LocalE2E01Error("local_e2e01_operational_source_changed")
         state["phase"] = "verified_complete"
@@ -743,6 +756,10 @@ async def _finish(args: argparse.Namespace) -> dict[str, object]:
             "restart_verified": state.get("restart_verified"),
             "review": review,
             "counts": counts,
+            "deltas": {
+                "content_versions": version_delta,
+                "publish_events": publish_delta,
+            },
             "operational_source_unchanged": True,
             "runtime_database": target.database,
             "cleanup_required": True,
