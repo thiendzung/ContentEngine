@@ -254,11 +254,14 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] PR #264 merged with conservative authority classification and bounded Exa/Tavily/Jina behavior; post-merge readiness passed.
 - [x] Attempt 6 ran exactly once and stopped safely with only `coverage-5` unresolved; no Attempt 7 was created or authorized.
 - [x] Postmortem does not overclaim `BINDING_EVALUATOR`: rollback removed the generated Evidence rows, so the durable historical root classification remains `MIXED_OR_UNKNOWN`.
-- [ ] Coverage Support failure diagnostics survive rollback with bounded full assessment, Evidence input and research summary while excluding raw page/provider/model data.
-- [ ] Provider-controlled URLs in durable diagnostics are never persisted in plaintext; every non-empty URL is represented only as `url-sha256:<full-sha256>` so no authority/path/query/fragment/userinfo secret can survive.
-- [ ] Legacy oversized Founder-intake replays remain idempotent; new creations are bounded and deterministic oversized Coverage Support input fails before external research.
-- [ ] Pre-research Coverage Support capacity reserves worst-case bytes for the same bounded automatic Evidence count/text limits used by Research, and automatic extraction enforces the matching canonical-JSON byte ceiling so control-character escaping cannot exceed the reserve.
-- [ ] Exact-SHA regression/OCR proof passes for the diagnostic-durability fix before any Attempt 7 decision.
+- [x] Coverage Support failure diagnostics survive rollback with bounded full assessment, Evidence input and research summary while excluding raw page/provider/model data.
+- [x] Provider-controlled URLs in durable diagnostics are never persisted in plaintext; every non-empty URL is represented only as `url-sha256:<full-sha256>` so no authority/path/query/fragment/userinfo secret can survive.
+- [x] Legacy oversized Founder-intake replays remain idempotent; new creations are bounded and deterministic oversized Coverage Support input fails before external research.
+- [x] Pre-research Coverage Support capacity reserves worst-case bytes for the same bounded automatic Evidence count/text limits used by Research, and automatic extraction enforces the matching canonical-JSON byte ceiling so control-character escaping cannot exceed the reserve.
+- [x] Exact-SHA regression/OCR proof passed for PR #269 and post-merge readiness passed before Attempt 7.
+- [x] Attempt 7 executed exactly once and stopped safely with `insufficient_evidence`; no Angle, queued/leased work, Attempt 8, operational mutation or publication followed.
+- [x] Attempt 7 read-only diagnosis proved `MIXED_RETRIEVAL_ADMISSION_GAP`: 20 Exa/Tavily candidates were all discovery-only and therefore correctly excluded before page reads.
+- [ ] #270 preserves strict automatic authority while adding exact approved+locked EvidenceSet reuse for the same ContentCase before external research; malformed/unapproved/context-only reusable state must fail closed.
 - [ ] Pillar and Cluster each complete the existing quality chain independently; no shortcut because they are related.
 - [ ] Pillar shows bounded breadth/navigation without consuming the Cluster's specialist depth.
 - [ ] Cluster solves one narrower reader subproblem in materially greater depth without widening into a generic Pillar.
