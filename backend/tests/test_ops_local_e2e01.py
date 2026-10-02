@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from sqlalchemy.engine import make_url
 
 from scripts import ops_local_e2e01 as local_e2e
 
@@ -10,8 +11,25 @@ from scripts import ops_local_e2e01 as local_e2e
 def test_local_e2e_contract_is_disposable_and_current() -> None:
     assert local_e2e._SOURCE_REVISION == "20260915_0034"
     assert local_e2e._TARGET_REVISION == "20260926_0044"
-    assert local_e2e._RUNTIME_DB_SUFFIX == "_local_e2e01_test"
+    assert local_e2e._RUNTIME_DB_SUFFIX == "_local_e2e01_restore_test"
     assert local_e2e._MAX_WORKER_TRANSITIONS > 0
+
+
+def test_local_e2e_restore_target_satisfies_recovery_guard() -> None:
+    source_url = (
+        "postgresql+asyncpg://contentengine:secret@localhost:5432/contentengine"
+    )
+    source = make_url(source_url)
+    target = source.set(
+        database=f"{source.database}{local_e2e._RUNTIME_DB_SUFFIX}"
+    )
+
+    validated = local_e2e.validate_restore_target(
+        source_url=source_url,
+        restore_url=target.render_as_string(hide_password=False),
+    )
+
+    assert validated.database == "contentengine_local_e2e01_restore_test"
 
 
 def test_local_e2e_source_has_no_polling_sleep_or_process_scan() -> None:
