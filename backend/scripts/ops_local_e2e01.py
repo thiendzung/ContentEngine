@@ -27,7 +27,7 @@ from scripts import ops_run02_min as run02
 
 _SOURCE_REVISION = "20260915_0034"
 _TARGET_REVISION = "20260926_0044"
-_RUNTIME_DB_SUFFIX = "_local_e2e01_test"
+_RUNTIME_DB_SUFFIX = "_local_e2e01_restore_test"
 _API_BASE = "http://127.0.0.1:8000"
 _STATE_FORMAT = 1
 _MAX_WORKER_TRANSITIONS = 32
