@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -100,7 +100,12 @@ def _safe_diagnostic_url(value: str | None) -> str | None:
     if not safe_netloc:
         return fingerprint()
 
-    safe = urlunsplit((scheme, safe_netloc, parts.path, "", ""))
+    origin = f"{scheme}://{safe_netloc}" if scheme else f"//{safe_netloc}"
+    if not parts.path or parts.path == "/":
+        return _bounded_text(origin, limit=2048)
+
+    path_fingerprint = hashlib.sha256(parts.path.encode("utf-8")).hexdigest()[:16]
+    safe = f"{origin}/__path_sha256__/{path_fingerprint}"
     return _bounded_text(safe, limit=2048)
 
 
