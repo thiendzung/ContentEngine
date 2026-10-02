@@ -19,8 +19,10 @@ from app.modules.research.contracts import (
 from app.modules.research.evidence.artifact import persist_evidence_artifact
 from app.modules.research.evidence.contracts import (
     AUTOMATIC_CLAIM_MAX_CHARS,
+    AUTOMATIC_CLAIM_MAX_JSON_BYTES,
     AUTOMATIC_CLAIM_MIN_CHARS,
     ClaimCandidate,
+    automatic_claim_json_byte_length,
     EvidenceRelation,
     EvidenceResearchRequest,
     EvidenceResearchResult,
@@ -512,6 +514,8 @@ class EvidenceResearchWorkflow:
         if (
             len(statement) < AUTOMATIC_CLAIM_MIN_CHARS
             or len(statement) > AUTOMATIC_CLAIM_MAX_CHARS
+            or automatic_claim_json_byte_length(statement)
+            > AUTOMATIC_CLAIM_MAX_JSON_BYTES
         ):
             return False
         if statement.endswith("?"):
