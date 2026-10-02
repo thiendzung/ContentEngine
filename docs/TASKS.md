@@ -671,8 +671,8 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 **P1 — Local Content Production Ready: ACTIVE / Founder priority override 2026-10-02.**
 - [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. PR #271 remains separate and Attempt 8 is not authorized.
 - [x] DATA-02 / #273 / PR #274 merged: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal passed with full-data/core/SourceDocument invariance and zero operational mutation. Historical O1 rehearsal remains pinned and unchanged.
-- [ ] RUN-02 MIN / #275: current implementation uses a disposable restored+migrated 0044 DB, stdout readiness events, one-shot HTTP verification, an idle one-shot worker and graceful child exit; **no polling / sleep / ps / pgrep**, no auto-migration/model/publish.
-- [ ] REC-02: crash/restart/resume, ambiguous external effect reconciliation, duplicate-action idempotency and no blind retry; event-driven only.
+- [x] RUN-02 MIN / #275 / PR #276 merged: disposable restored+migrated 0044 DB, stdout readiness events, one-shot HTTP verification, idle one-shot worker and graceful child exit all passed. Agent Local had one verification-protocol deviation (manual PID cleanup after a busy port); future proofs must STOP on conflicting local resources unless Founder separately authorizes cleanup.
+- [ ] REC-02 / #277: current implementation reuses generic Harness Job lease/reclaim + Outbox reconciliation on a disposable 0044 DB; crash/restart is process-exit + event-callback driven, stale completion is blocked, exact replay/dedupe is proven and ambiguous processing must reconcile before resend.
 - [ ] LOCAL-E2E-01: reuse CQ-07 proof where useful plus one fresh distinct real case with one controlled stop/restart/resume and no case-specific patch.
 - [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then begin real content production while later hardening is driven by observed failures.
 
