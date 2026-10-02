@@ -83,18 +83,24 @@ def _safe_diagnostic_url(value: str | None) -> str | None:
     if not raw:
         return ""
 
+    def fingerprint() -> str:
+        digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+        return f"invalid-url:{digest}"
+
     try:
         parts = urlsplit(raw)
     except ValueError:
-        fingerprint = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
-        return f"invalid-url:{fingerprint}"
+        return fingerprint()
+
+    scheme = parts.scheme.casefold()
+    if not parts.netloc or (scheme and scheme not in {"http", "https"}):
+        return fingerprint()
 
     safe_netloc = parts.netloc.rsplit("@", 1)[-1]
-    if safe_netloc:
-        safe = urlunsplit((parts.scheme, safe_netloc, parts.path, "", ""))
-    else:
-        safe = parts.path.split("?", 1)[0].split("#", 1)[0]
+    if not safe_netloc:
+        return fingerprint()
 
+    safe = urlunsplit((scheme, safe_netloc, parts.path, "", ""))
     return _bounded_text(safe, limit=2048)
 
 
