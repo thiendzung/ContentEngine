@@ -25,7 +25,9 @@ from app.modules.knowledge.originality_pack import originality_pack_snapshot_has
 from app.modules.knowledge.persistence import evidence_set_hash
 from app.modules.research.evidence.contracts import (
     AUTOMATIC_CLAIM_MAX_CHARS,
+    AUTOMATIC_CLAIM_MAX_JSON_BYTES,
     DEFAULT_EVIDENCE_MAX_CLAIMS,
+    automatic_claim_json_byte_length,
     is_usable_originality_item,
 )
 
@@ -312,6 +314,10 @@ def _reserved_research_evidence_items(
         )
 
     widest_text = "😀" * COVERAGE_SUPPORT_AUTOMATIC_EVIDENCE_TEXT_MAX_CHARS
+    if automatic_claim_json_byte_length(widest_text) != AUTOMATIC_CLAIM_MAX_JSON_BYTES:
+        raise CoverageSupportDepthRuntimeError(
+            "coverage_support_evidence_reservation_contract_invalid"
+        )
     uuid_text = "f" * 36
     return [
         {
