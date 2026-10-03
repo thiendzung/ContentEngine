@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_ce05_review_revise import isolated_session
 from test_operator_start_to_angle import (
@@ -17,6 +17,7 @@ from test_operator_start_to_angle import (
 )
 
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
+from app.core.database import engine
 from app.modules.content_engine.journal.operator_evidence_reuse import (
     ReusableEvidenceSetError,
     approve_reusable_evidence_set,
@@ -545,3 +546,140 @@ async def test_reusable_evidence_rejects_post_approval_nested_content_mutation()
                 project_id=content_case.project_id,
                 content_case_id=content_case.id,
             )
+
+@pytest.mark.asyncio
+async def test_reusable_evidence_rejects_older_locked_version_when_newer_draft_exists() -> None:
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-newer-draft"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        first_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="newer-draft-v1",
+        )
+        v1 = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[first_id],
+        )
+        v1_approval = await approve_reusable_evidence_set(
+            session,
+            evidence_set_id=v1.id,
+            expected_version=v1.version,
+            expected_content_hash=v1.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Version one approved for supersession test.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=v1.id,
+            locked_by="founder-evidence-review",
+            approval_id=v1_approval.id,
+        )
+
+        second_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="newer-draft-v2",
+        )
+        v2 = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[first_id, second_id],
+        )
+        assert v2.version == v1.version + 1
+        assert v2.status == "draft"
+
+        with pytest.raises(
+            ReusableEvidenceSetError,
+            match="operator_worker_reusable_evidence_latest_not_locked",
+        ):
+            await load_latest_reusable_evidence_set(
+                session,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-row-locks"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        evidence_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="row-locks",
+        )
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
+        )
+        approval = await approve_reusable_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Snapshot approved for row-lock regression.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval.id,
+        )
+
+        statements: list[str] = []
+
+        def capture_statement(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: object,
+        ) -> None:
+            normalized = " ".join(statement.casefold().split())
+            if normalized.startswith("select "):
+                statements.append(normalized)
+
+        event.listen(engine.sync_engine, "before_cursor_execute", capture_statement)
+        try:
+            reusable = await load_latest_reusable_evidence_set(
+                session,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+            )
+        finally:
+            event.remove(engine.sync_engine, "before_cursor_execute", capture_statement)
+
+        assert reusable is not None
+        locked_tables = (
+            "content_cases",
+            "evidence_sets",
+            " evidence ",
+            " claims ",
+            "source_documents",
+            " sources ",
+        )
+        for table in locked_tables:
+            assert any(
+                table in statement and " for update" in statement
+                for statement in statements
+            ), table
+
