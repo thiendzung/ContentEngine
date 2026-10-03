@@ -10,14 +10,14 @@ Live GitHub refs/PR state/CI decide repository status. Local state requires date
 
 ## Fixed collaboration
 
-- MG / ChatGPT: architecture -> code + regression tests -> self-review -> own/triage OpenCodeReview -> fixes -> prepare exact candidate SHA/PR -> review Agent Local evidence -> decide technical merge readiness.
+- MG / ChatGPT: architecture -> code + regression tests -> self-review -> run/triage OpenCodeReview as the only supplementary semantic reviewer -> fixes -> prepare exact candidate SHA/PR -> review Agent Local evidence -> decide technical merge readiness. Do not invoke GitHub Codex review/security-review automation.
 - Founder: product/editorial decisions, authorization of sensitive real executions, dispatch of local tasks, and PR merge.
 - Agent Local: sync exact SHA -> run heavy verification on the real machine (focused/full tests, disposable DB/migrations, runtime/smoke, frontend build, exact-ref OCR when local execution is required) -> return normalized evidence. Code edits only when Founder/MG dispatches an explicit bounded coding scope.
 - GitHub Actions: minimum confirmation gate only; do not duplicate the full Agent Local suite. If quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path.
 - GitHub: shared code/contracts/plans/tasks/evidence, not a direct communication channel to Agent Local.
 - Product naming: on macOS the desktop application is **ChatGPT** (OpenAI renamed the former Codex app surface). Keep technical/runtime identifiers and the packaged CLI executable such as `codex_cli` / `/Applications/ChatGPT.app/Contents/Resources/codex` unchanged unless the actual technical contract changes.
 
-A GitHub comment or roadmap does not dispatch a local task. Never claim fresh local agreement without a returned report. Canonical merge flow is `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`. During Actions quota/service outage, omit only the GitHub CI step and disclose that fact. WIP: one implementation plus related verification.
+A GitHub comment or roadmap does not dispatch a local task. Never claim fresh local agreement without a returned report. Canonical merge flow is `MG code/tests/self-review -> OpenCodeReview supplementary review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`. Do not create/comment GitHub Codex review or security-review triggers. During Actions quota/service outage, omit only the GitHub CI step and disclose that fact. WIP: one implementation plus related verification.
 
 ## Current delivery state
 
@@ -74,8 +74,8 @@ Target browser path remains:
 `Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
 
 Code-bearing PR verification process:
-`MG code/tests/self-review + OCR ownership -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub confirmation CI when available -> Founder merge`.
-If GitHub Actions quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path; never fabricate CI PASS. OCR remains advisory and never auto-fixes or merges.
+`MG code/tests/self-review -> OpenCodeReview supplementary review/triage -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub confirmation CI when available -> Founder merge`.
+GitHub Codex review/security-review automation is no longer part of the active ContentEngine process and must not be invoked. Historical Codex findings remain audit history only. If GitHub Actions quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path; never fabricate CI PASS. OpenCodeReview remains advisory and never auto-fixes or merges.
 
 ## Pilot operating priority — 2026-10-03
 
@@ -129,6 +129,7 @@ Deprioritized until evidence shows a need: broad dashboard/UI polish, WordPress/
 - 2026-10-03: Founder authorized exactly one retry on preserved LOCAL-E2E-01 lineage and then exactly one one-shot worker. Retry command `1a8e1332-51e2-494e-a713-80b1e04365aa` created job `f6645b4e-de2e-4a55-9d77-bf1e50d5321c`; worker attempt 2 failed safely on `operator_worker_coverage_support_unresolved / insufficient_support`. Diagnostic artifact `3aa059ed-52a5-4e8e-b97a-f0aed7b54de8`, hash `c70e7569e42efcf23a66a08d16d659f52bca26aa24d080bb62f065b105639d6b`. Zero ModelCall/ToolCall; operational source remained rev-0034 and unchanged. No second retry authorized.
 - 2026-10-03: Because #280 now proves an evidence-sufficiency blocker, stale PR #271 was superseded by PR #284, a clean port of the approved locked EvidenceSet reuse implementation onto current main `857b536823d8514c42da714d20e4e9ed1f5845a2`.
 - 2026-10-03: Agent Local stopped PR #284 at the first focused-test blocker: the negative fixture attempted an impossible direct locked EvidenceSet insert, violating the existing initial-draft DB guard. MG replaced that fixture with a schema-valid generic-approved+locked snapshot that intentionally lacks the stronger reuse snapshot binding. Codex then reported a valid P1: EvidenceSet approval previously bound only member IDs, so nested Evidence/Claim/SourceDocument mutation could change approved facts. MG added an immutable approval-reason snapshot marker that hashes the complete reusable factual/provenance snapshot, plus a regression that mutates nested document/evidence content consistently after approval and requires fail-closed mismatch. No schema migration was added.
+- 2026-10-03: Founder changed the review process: from this point forward MG must not invoke GitHub Codex review or security-review comments. OpenCodeReview is the only supplementary semantic reviewer; Agent Local exact-SHA verification, MG evidence review, minimum CI when available and Founder-only merge remain unchanged. Earlier Codex review records are retained as historical evidence only.
 
 ## Remaining order and completion meaning
 
