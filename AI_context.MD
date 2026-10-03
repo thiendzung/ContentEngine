@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-10-01 after Founder merged PR #264. Current main is `9a57b4ed39404081ff4ef8ab8942ba029ce9da35`. P01-R2 now preserves Attempts 1-6 as failed Jobs. Attempt 6 reached Coverage Support and left only `coverage-5` unresolved, but its generated EvidenceSet/Evidence/SourceDocument rows rolled back with the failed worker transaction, while the persisted Coverage Support diagnostic retained too little bounded input/output state to distinguish evidence absence from evaluator binding. Issue #268 is the active bounded observability/durability fix. Production activation/E2E external work remains paused.
+Updated: 2026-10-03 after Founder merged PR #279. Current main is `c6e616104abedd3432dde84e837567ac8b5ea7d3`. P1 now has DATA-02, RUN-02 MIN and REC-02 complete. PR #280 LOCAL-E2E-01 is the active production-readiness proof: exact-head static/full/frontend/OCR verification passed and the real disposable run reached research + Coverage Support, then failed closed because the connected Codex workspace is out of credits. The exact disposable lineage is preserved; no new case or automatic retry is allowed. PR #271 remains open and non-mergeable against its old base; its reusable approved EvidenceSet path must be brought onto current main and reverified before production use. PR #282 Antigravity is an optional capability fallback only, not the critical path unless the current account/model path remains unusable. Operational migration and publication remain separately Founder-authorized.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `9a57b4ed39404081ff4ef8ab8942ba029ce9da35` (merge PR #264). CQ-01 through CQ-06 are merged. CQ-07 P01-R2 preserves exactly six failed Jobs (Attempts 1-6), with no queued/leased work and no Angle artifact. PR #264 is merged and the bounded evidence-candidate fallback/filtering semantics are active. Attempt 6 advanced to Coverage Support and resolved all but `coverage-5`. Post-failure diagnosis could not prove whether the remaining gap is evidence quality or evaluator binding because generated Evidence rows were rolled back and the Coverage Support diagnostic was not self-contained. Issue #268 is the current implementation WIP. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized Attempt 7, operational migration, production activation or publication.
+Live GitHub main: `c6e616104abedd3432dde84e837567ac8b5ea7d3` (merge PR #279). CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics now survive rollback under the bounded durability contract. CQ-07 Attempt 7 later failed safely with `insufficient_evidence`; issue #270 / PR #271 is the pending reusable approved EvidenceSet path and Attempt 8 remains unauthorized. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 is active: exact-head verification passed, the fresh real case reached research + Coverage Support on a disposable 0044 DB, then failed closed on exhausted Codex workspace credits with no Angle and no operational/publication mutation. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, publication, a new LOCAL-E2E case, automatic retry, or Attempt 8.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -36,6 +36,10 @@ Live GitHub main: `9a57b4ed39404081ff4ef8ab8942ba029ce9da35` (merge PR #264). CQ
 | F6.A1 | DONE / real browser acceptance PASS | Exact fresh browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED` with operational DB non-interference. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | OpenCodeReview Delegation Mode is advisory. Historical OCR-01 evidence remains tied to v1.12.5; the current routine exact-ref baseline is upstream v1.12.11, verified as the latest release on 2026-10-01. |
 | P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release is complete: exact DB identity, backup/restore, migration to `20260915_0034`, lifecycle/restart proof, post-release preflight and fresh rev-0034 recovery proof all PASS with publication locked. |
+| P1 / DATA-02 | DONE / PR #274 merged | Fresh backup, isolated restore and disposable `0034 -> 0044` rehearsal passed without operational mutation. |
+| P1 / RUN-02 MIN | DONE / PR #276 merged | Disposable 0044 backend/frontend readiness, one-shot worker and graceful event/exit-driven shutdown proved. |
+| P1 / REC-02 | DONE / PR #279 merged / `PASS_P1_REC02` | Crash/restart, stale-worker rejection, idempotency and reconcile-before-resend proved on disposable state. |
+| P1 / LOCAL-E2E-01 | ACTIVE / PR #280 draft | Exact-head checks passed; real fresh case reached research + Coverage Support then blocked safely on workspace credits. Resume the same disposable lineage only after explicit Founder authorization. |
 | F7 | LEGACY PAUSED / audit-only lineage | Historical R4 reached `AWAITING_APPROVAL / outline` and later read-only closeout passed. This lineage is not current Content Quality WIP and must not be resumed merely to advance CQ-02. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
@@ -48,7 +52,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**P1 / #272 is the active delivery window by explicit Founder priority override on 2026-10-02.** DATA-02 / PR #274 and RUN-02 MIN / PR #276 are merged with exact-head local proof. RUN-02 established disposable-0044 backend/frontend readiness, one idle one-shot worker and graceful shutdown with event/exit-driven coordination; one Agent Local busy-port cleanup deviation was recorded and is not reusable policy. REC-02 / #277 is current: reuse the generic Harness Job lease/reclaim and Outbox reconciliation primitives on a disposable 0044 DB to prove crash/restart, stale-worker rejection, idempotent replay/conflict and reconciliation before resend. **No polling, sleep, ps or pgrep loops.** P0 remains paused rather than complete: PR #271 is open and Attempt 8 is unauthorized. GitHub Codex Code Review remains temporarily non-blocking. Operational migration and publication remain separately Founder-authorized.
+**P1 / #272 remains the active delivery window.** DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are DONE. The immediate blocker is LOCAL-E2E-01 / PR #280, not a code defect: the exact-head real run reached research + Coverage Support and failed closed because the connected Codex workspace is out of credits. Preserve ContentCase `bd91eed8-8b46-4d55-9f15-fe3ca6879a48` / Run `8b9d48a9-b82d-4279-be5c-3bfa0923aac2` on the disposable `contentengine_local_e2e01_restore_test` lineage. After a working account/model path is confirmed, Founder may authorize exactly one retry on that SAME lineage; do not create a replacement case and do not auto-retry. The next human stop remains the Angle gate. **No polling, sleep, ps or pgrep loops.** P0 remains paused rather than complete: PR #271 is open/non-mergeable and Attempt 8 is unauthorized. PR #282 is optional fallback proof only. Operational migration and publication remain separately Founder-authorized.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -72,6 +76,19 @@ Target browser path remains:
 Code-bearing PR verification process:
 `MG code/tests/self-review + OCR ownership -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub confirmation CI when available -> Founder merge`.
 If GitHub Actions quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path; never fabricate CI PASS. OCR remains advisory and never auto-fixes or merges.
+
+## Pilot operating priority — 2026-10-03
+
+Near-term goal: produce a small batch of real content that Founder accepts, then repeat it on one stable release. Engineering work must remove a demonstrated blocker to that outcome.
+
+Critical path:
+1. Finish LOCAL-E2E-01 / PR #280 on the preserved lineage after the current account/model path is usable: Angle approval -> Outline approval -> independent VI/EN Writers -> quality chain -> final approvals -> `PASS_LOCAL_CONTENT_PRODUCTION_READY`.
+2. Bring PR #271 reusable approved EvidenceSet semantics onto current main, resolve the stale/non-mergeable branch state, and reverify exact head. This is the controlled human-curated evidence path when automatic research is insufficient.
+3. Only after the above proofs, request the separate Founder authorization for operational migration/pilot storage. Disposable DB remains verification-only.
+4. Run the frozen P01 + C02 pair as the first editorial pilot on one stable release. Record Founder edits, usefulness, overlap and final VI/EN evidence.
+5. Run 2-3 additional real articles on the same release. Improve only recurring or blocking defects demonstrated by these runs.
+
+Deprioritized until evidence shows a need: broad dashboard/UI polish, WordPress/Rank Math activation, auto-publish, new framework/provider work and wider automation. PR #282 Antigravity is not part of the critical path unless the current account/model route remains unusable after an explicit capability decision.
 
 ## Current working log
 
@@ -104,6 +121,10 @@ If GitHub Actions quota/service is unavailable, record CI as unavailable and use
 - 2026-10-02: Agent Local R11 exact-head verification passed on `27144d67e90fa3fc08ebf3014b4c4eba339a8108` with 1300 backend tests, Ruff/mypy/OpenAPI and OCR clean, but the subsequent Codex review found one valid P2: automatic claim text containing C0 controls can expand to six JSON bytes per code point, exceeding the four-byte UTF-8 reserve used by the pre-research capacity check. MG added a shared canonical-JSON byte contract for automatic claims; extraction now rejects any claim/excerpt whose canonical JSON string exceeds the reserved width. R12 exact-head closeout is required; Attempt 7 remains unauthorized.
 - 2026-10-02: Agent Local R13 on `5a2b892b31499496aaaced2fa1c849d16b0c53d9` passed all functional/static/OCR gates but correctly blocked on base→head `git diff --check` due to one blank line at EOF. MG removed that whitespace and, during GitHub review closeout, also addressed an unresolved valid P1 from the prior Codex review: percent-encoded credential-like authority text could be parsed as a hostname and persisted. Diagnostic hostnames are now validated/normalized (IP or IDNA/DNS labels) and suspicious encoded authorities are fingerprinted. A new exact-head closeout is required; Attempt 7 remains unauthorized.
 - 2026-10-02: Reverse review simplified the URL-safety design further: durable diagnostics no longer retain any provider-controlled URL component at all. Every non-empty URL is now represented only as `url-sha256:<full-sha256>`; this preserves stable correlation while eliminating query/userinfo/path/authority secret classes and the need for URL-parser edge-case logic. Verification workflow is MG-led: MG architecture/code/test/self-review first, CI and Codex/OpenCodeReview are supporting evidence, then Founder dispatches one final exact-SHA Agent Local proof; Founder alone merges.
+- 2026-10-02: PR #269 merged as `639401d5c4f767e42ea131a8935abc040f7c14c3`; Attempt 7 subsequently failed safely with `insufficient_evidence`, leading to issue #270 / PR #271 for reuse of a human-reviewed approved locked EvidenceSet. Attempt 8 remains unauthorized.
+- 2026-10-02: DATA-02 / PR #274 and RUN-02 MIN / PR #276 were already merged; REC-02 / PR #279 then merged as current main `c6e616104abedd3432dde84e837567ac8b5ea7d3`, completing the recovery/idempotency/reconciliation slice.
+- 2026-10-02: LOCAL-E2E-01 / PR #280 exact-head verification passed Ruff/mypy/focused/full backend/frontend/OCR. The real disposable run reached research + Coverage Support and then failed closed because the connected Codex workspace was out of credits. The exact disposable case/run lineage is preserved and no code fix is justified for this blocker.
+- 2026-10-03: Founder reset the near-term product goal to a real Founder-approved batch and repeatability. Pilot order is now #280 -> #271 -> separately authorized operational pilot storage -> P01+C02 -> 2-3 more same-release articles. New implementation work requires a demonstrated blocker.
 
 ## Remaining order and completion meaning
 
