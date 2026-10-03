@@ -18,6 +18,7 @@ if str(_BACKEND_ROOT) not in sys.path:
 
 import httpx
 from pydantic import SecretStr
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.database import SessionLocal
@@ -54,6 +55,7 @@ from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
+from app.modules.research.contracts import ProductionResearchRequest, ProductionResearchResult
 from app.modules.research.evidence import EvidenceResearchWorkflow
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.exa import ExaProvider
@@ -71,6 +73,32 @@ def _secret_value(secret: SecretStr | None) -> str | None:
 
 def _worker_id() -> str:
     return f"operator:{socket.gethostname()}:{os.getpid()}"
+
+
+class _LazyResearchRouter:
+    """Build the external research router only if fresh research actually runs."""
+
+    def __init__(self, settings: Settings, client: httpx.AsyncClient) -> None:
+        self._settings = settings
+        self._client = client
+        self._router: ResearchRouter | None = None
+
+    async def run(
+        self,
+        session: AsyncSession,
+        *,
+        request: ProductionResearchRequest,
+        run_id: UUID | None = None,
+        step_run_id: UUID | None = None,
+    ) -> ProductionResearchResult:
+        if self._router is None:
+            self._router = _research_router(self._settings, self._client)
+        return await self._router.run(
+            session,
+            request=request,
+            run_id=run_id,
+            step_run_id=step_run_id,
+        )
 
 
 def _research_router(
@@ -219,7 +247,9 @@ async def _run(*, emit_idle: bool = True) -> None:
         if step_key == START_TO_ANGLE_STAGE:
             timeout = httpx.Timeout(settings.research_request_timeout_seconds)
             async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-                workflow = EvidenceResearchWorkflow(router=_research_router(settings, client))
+                workflow = EvidenceResearchWorkflow(
+                    router=_LazyResearchRouter(settings, client)
+                )
                 async with SessionLocal() as session:
                     async with session.begin():
                         result = await execute_start_to_angle_job(
