@@ -55,7 +55,10 @@ from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
-from app.modules.research.contracts import ProductionResearchRequest, ProductionResearchResult
+from app.modules.research.contracts import (
+    ProductionResearchRequest,
+    ProductionResearchResult,
+)
 from app.modules.research.evidence import EvidenceResearchWorkflow
 from app.modules.research.production import ProductionSufficiencyPolicy, ResearchRouter
 from app.modules.research.providers.exa import ExaProvider
