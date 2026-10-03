@@ -549,7 +549,7 @@ async def test_reusable_evidence_rejects_post_approval_nested_content_mutation()
 
 
 @pytest.mark.asyncio
-async def test_reusable_evidence_rejects_older_locked_version_when_newer_draft_exists() -> None:
+async def test_reusable_evidence_skips_older_locked_version_when_newer_draft_exists() -> None:
     async with isolated_session() as session:
         created = await create_founder_journal_intake(
             session,
@@ -598,15 +598,13 @@ async def test_reusable_evidence_rejects_older_locked_version_when_newer_draft_e
         assert v2.version == v1.version + 1
         assert v2.status == "draft"
 
-        with pytest.raises(
-            ReusableEvidenceSetError,
-            match="operator_worker_reusable_evidence_latest_not_locked",
-        ):
-            await load_latest_reusable_evidence_set(
-                session,
-                project_id=content_case.project_id,
-                content_case_id=content_case.id,
-            )
+        reusable = await load_latest_reusable_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+        )
+
+        assert reusable is None
 
 
 @pytest.mark.asyncio
