@@ -155,8 +155,8 @@ async def test_lazy_research_router_defers_serper_requirement_until_run(
     calls = 0
 
     def blocked_router(
-        settings: Settings,
-        client: httpx.AsyncClient,
+        _settings: Settings,
+        _client: httpx.AsyncClient,
     ) -> ResearchRouter:
         nonlocal calls
         calls += 1
