@@ -37,6 +37,7 @@ from app.modules.content_engine.journal.deep_quality_input import (
     load_deep_quality_input_from_search_result,
 )
 from app.modules.content_engine.journal.operator_quality import (
+    FINAL_REVISION_TASK_KEYS,
     QUALITY_AUDIT_TASK_KEYS,
     QUALITY_MAX_JOB_ATTEMPTS,
     QUALITY_REVIEW_TASK_KEYS,
@@ -88,6 +89,7 @@ from app.modules.system.settings_service import active_prompt_definition, active
 QUALITY_STEP_KEYS = tuple(
     {
         *QUALITY_REVIEW_TASK_KEYS.values(),
+        *FINAL_REVISION_TASK_KEYS.values(),
         *QUALITY_AUDIT_TASK_KEYS.values(),
         *SOURCE_COPY_TASK_KEYS.values(),
         *READER_VALUE_TASK_KEYS.values(),
@@ -234,16 +236,80 @@ async def _review_binding(
     review_step: StepRun,
     locale: str,
 ) -> tuple[ReviewReviseInput, UUID, str, SettingsSnapshot]:
-    if len(review_step.input_artifact_refs_json) != 3:
+    is_final_revision = review_step.step_key in FINAL_REVISION_TASK_KEYS.values()
+    expected_refs = 4 if is_final_revision else 3
+    if len(review_step.input_artifact_refs_json) != expected_refs:
         raise OperatorQualityWorkerError("operator_quality_review_input_refs_invalid")
-    source_id, outline_id, handoff_id = (
-        UUID(value) for value in review_step.input_artifact_refs_json
-    )
+    revision_request: dict[str, object] | None
+    if is_final_revision:
+        approval_id, final_id, source_id, outline_id = (
+            UUID(value) for value in review_step.input_artifact_refs_json
+        )
+        from app.modules.harness.models import Approval
+
+        approval = await session.get(Approval, approval_id)
+        final_artifact = await session.get(Artifact, final_id)
+        source_artifact = await session.get(Artifact, source_id)
+        if (
+            approval is None
+            or final_artifact is None
+            or source_artifact is None
+            or approval.run_id != writer_run.id
+            or final_artifact.run_id != writer_run.id
+            or source_artifact.run_id != writer_run.id
+            or approval.decision != "changes_requested"
+            or approval.artifact_id != final_artifact.id
+            or final_artifact.content_hash != source_artifact.content_hash
+        ):
+            raise OperatorQualityWorkerError("operator_quality_final_revision_binding_invalid")
+        revision_request = {
+            "approval_id": str(approval.id),
+            "requested_by": approval.actor_id,
+            "comment": approval.comment,
+            "final_artifact": {
+                "id": str(final_artifact.id),
+                "version": final_artifact.version,
+                "content_hash": final_artifact.content_hash,
+            },
+            "source_draft": {"id": str(source_id)},
+            "approved_outline": {"id": str(outline_id)},
+            "locale": locale,
+        }
+        handoffs = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.run_id == writer_run.id,
+                        Artifact.artifact_type == "writer_handoff",
+                    )
+                )
+            ).all()
+        )
+        if len(handoffs) != 1:
+            raise OperatorQualityWorkerError("operator_quality_review_handoff_conflict")
+        handoff_id = handoffs[0].id
+    else:
+        source_id, outline_id, handoff_id = (
+            UUID(value) for value in review_step.input_artifact_refs_json
+        )
+        revision_request = None
     source = await session.get(Artifact, source_id)
     outline = await session.get(Artifact, outline_id)
     handoff = await session.get(Artifact, handoff_id)
     if source is None or outline is None or handoff is None:
         raise OperatorQualityWorkerError("operator_quality_review_input_missing")
+    if is_final_revision:
+        assert revision_request is not None
+        revision_request["source_draft"] = {
+            "id": str(source.id),
+            "version": source.version,
+            "content_hash": source.content_hash,
+        }
+        revision_request["approved_outline"] = {
+            "id": str(outline.id),
+            "version": outline.version,
+            "content_hash": outline.content_hash,
+        }
     try:
         review_input = await load_review_revise_input(
             session,
@@ -255,6 +321,7 @@ async def _review_binding(
             expected_outline_version=outline.version,
             expected_outline_hash=outline.content_hash,
             locale=locale,
+            revision_request=revision_request,
         )
         config = review_revise_registry_config(locale)
         prompt = await active_prompt_definition(session, prompt_key=config.prompt_key)
@@ -288,7 +355,11 @@ async def _execute_review(
     )
     source = await session.get(Artifact, source_id)
     assert source is not None
-    outline = await session.get(Artifact, UUID(step.input_artifact_refs_json[1]))
+    outline_ref_index = 3 if step.step_key in FINAL_REVISION_TASK_KEYS.values() else 1
+    outline = await session.get(
+        Artifact,
+        UUID(step.input_artifact_refs_json[outline_ref_index]),
+    )
     assert outline is not None
     config = review_revise_registry_config(locale)
     prompt = await active_prompt_definition(session, prompt_key=config.prompt_key)
@@ -336,6 +407,7 @@ async def _execute_review(
         context_manifest_id=manifest.id,
         prompt_version=f"{prompt.prompt_key}:v{prompt.version}",
         recipe_version=f"{recipe.recipe_key}:v{recipe.version}",
+        revision_request=review_input.revision_request,
     )
     step.output_artifact_refs_json = [*step.output_artifact_refs_json, str(result.artifact.id)]
     # The existing Audit contract accepts a completed Writer lane in approval-wait
@@ -1094,9 +1166,14 @@ async def execute_quality_job(
     runner_registry: AgentRunnerRegistry,
 ) -> None:
     job, step, run = await _owned_job(session, job_id=job_id, worker_id=worker_id)
-    if step.step_key in QUALITY_REVIEW_TASK_KEYS.values():
+    if step.step_key in (*QUALITY_REVIEW_TASK_KEYS.values(), *FINAL_REVISION_TASK_KEYS.values()):
         locale = next(
-            locale for locale, key in QUALITY_REVIEW_TASK_KEYS.items() if key == step.step_key
+            locale
+            for key, locale in {
+                **{key: locale for locale, key in QUALITY_REVIEW_TASK_KEYS.items()},
+                **{key: locale for locale, key in FINAL_REVISION_TASK_KEYS.items()},
+            }.items()
+            if key == step.step_key
         )
         await _execute_review(
             session,

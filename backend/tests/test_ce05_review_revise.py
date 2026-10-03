@@ -253,6 +253,19 @@ async def test_review_revise_turns_declared_gaps_into_clean_v2_and_reuses_it() -
         assert model.calls == 1
         assert source.artifact.content_json == source_snapshot
 
+        source_sections = cast(list[object], source.draft.to_dict()["sections"])
+        revised_sections = cast(list[object], first.draft.to_dict()["sections"])
+        assert [cast(dict[str, object], item)["section_id"] for item in revised_sections] == [
+            cast(dict[str, object], item)["section_id"] for item in source_sections
+        ]
+        for source_section, revised_section in zip(source_sections, revised_sections, strict=True):
+            source_payload = cast(dict[str, object], source_section)
+            revised_payload = cast(dict[str, object], revised_section)
+            assert revised_payload.get("evidence_refs") == source_payload.get("evidence_refs")
+            assert revised_payload.get("originality_refs") == source_payload.get(
+                "originality_refs"
+            )
+
         traces = list(
             (
                 await session.scalars(

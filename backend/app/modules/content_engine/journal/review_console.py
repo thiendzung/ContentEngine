@@ -684,11 +684,19 @@ def _resolve_locale(rows: _CaseRows, variant: LocaleVariant) -> ReviewLocalePane
                 and run.locale_variant_id == variant.id
             ):
                 candidates.append(artifact)
-        if len(candidates) == 1:
-            final_artifact = candidates[0]
-        elif len(candidates) > 1:
-            consistency_state = "INCONSISTENT"
-            issues.append("multiple_unbound_final_content_artifacts")
+        if candidates:
+            # Final-content history is immutable; the newest version is the one
+            # awaiting the next Founder decision.  Ambiguity is still rejected
+            # when two artifacts claim the same version.
+            versions = [artifact.version for artifact in candidates]
+            if len(versions) != len(set(versions)):
+                consistency_state = "INCONSISTENT"
+                issues.append("multiple_unbound_final_content_artifacts")
+            else:
+                final_artifact = max(
+                    candidates,
+                    key=lambda artifact: (artifact.version, artifact.id),
+                )
 
     writer_run: ContentRun | None = None
     if version is not None and version.created_by_run_id is not None:

@@ -57,6 +57,7 @@ class ReviewReviseInput:
     source_artifact: Artifact
     source_draft: JournalDraft
     model_input: dict[str, object]
+    revision_request: dict[str, object] | None = None
 
 
 def unresolved_factual_claims(draft: JournalDraft) -> tuple[str, ...]:
@@ -374,6 +375,7 @@ def _revision_model_input(
     writer_input: WriterInput,
     source_artifact: Artifact,
     source_draft: JournalDraft,
+    revision_request: dict[str, object] | None = None,
 ) -> dict[str, object]:
     model_input = copy.deepcopy(writer_input.model_input)
     model_input.update(
@@ -412,6 +414,17 @@ def _revision_model_input(
             },
         }
     )
+    if revision_request is not None:
+        model_input["final_revision_request"] = copy.deepcopy(revision_request)
+        policy = cast(dict[str, object], model_input["revision_policy"])
+        requirements = cast(list[str], policy["requirements"])
+        requirements.extend(
+            [
+                "apply_the_exact_founder_feedback_inside_existing_truth_boundaries",
+                "preserve_the_exact_approved_outline_evidence_and_originality_bindings",
+                "do_not_add_research_urls_or_sibling_locale_input",
+            ]
+        )
     return model_input
 
 
@@ -426,6 +439,7 @@ async def load_review_revise_input(
     expected_outline_version: int,
     expected_outline_hash: str,
     locale: str,
+    revision_request: dict[str, object] | None = None,
 ) -> ReviewReviseInput:
     """Load and verify one immutable Writer draft as the only revision source."""
 
@@ -464,7 +478,9 @@ async def load_review_revise_input(
             writer_input=writer_input,
             source_artifact=source,
             source_draft=source_draft,
+            revision_request=revision_request,
         ),
+        revision_request=copy.deepcopy(revision_request),
     )
 
 
@@ -512,6 +528,7 @@ class ReviewReviseGenerator:
         context_manifest_id: UUID,
         prompt_version: str,
         recipe_version: str,
+        revision_request: dict[str, object] | None = None,
         generator_version: str = REVIEW_REVISE_GENERATOR_VERSION,
         schema_version: int = REVIEW_REVISE_SCHEMA_VERSION,
     ) -> WriterGenerationResult:
@@ -530,6 +547,7 @@ class ReviewReviseGenerator:
             expected_outline_version=expected_outline_version,
             expected_outline_hash=expected_outline_hash,
             locale=locale,
+            revision_request=revision_request,
         )
         writer_input = _revision_writer_input(review_input)
         manifest = await _execution_manifest(
