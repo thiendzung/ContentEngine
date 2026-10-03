@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import ORMExecuteState, Session
 from test_ce05_review_revise import isolated_session
 from test_operator_start_to_angle import (
     ControlledCodexRunner,
@@ -644,6 +645,14 @@ async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
         )
 
         statements: list[str] = []
+        approval_refreshes: list[bool] = []
+
+        def capture_orm_execute(state: ORMExecuteState) -> None:
+            statement = str(state.statement).casefold()
+            if "evidence_set_approvals" in statement:
+                approval_refreshes.append(
+                    bool(state.execution_options.get("populate_existing"))
+                )
 
         def capture_statement(
             _connection: object,
@@ -657,6 +666,7 @@ async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
             if normalized.startswith("select "):
                 statements.append(normalized)
 
+        event.listen(Session, "do_orm_execute", capture_orm_execute)
         event.listen(engine.sync_engine, "before_cursor_execute", capture_statement)
         try:
             reusable = await load_latest_reusable_evidence_set(
@@ -665,9 +675,12 @@ async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
                 content_case_id=content_case.id,
             )
         finally:
+            event.remove(Session, "do_orm_execute", capture_orm_execute)
             event.remove(engine.sync_engine, "before_cursor_execute", capture_statement)
 
         assert reusable is not None
+        assert approval_refreshes
+        assert all(approval_refreshes)
         locked_tables = (
             "content_cases",
             "evidence_sets",
