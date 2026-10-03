@@ -285,7 +285,7 @@ def _approval_snapshot_hash(approval: EvidenceSetApproval) -> str:
         raise ReusableEvidenceSetError(
             "operator_worker_reusable_evidence_approval_invalid"
         )
-    matches = re.findall(
+    matches: list[str] = re.findall(
         rf"(?m)^{re.escape(_REUSE_SNAPSHOT_MARKER)}([0-9a-f]{{64}})$",
         reason,
     )
