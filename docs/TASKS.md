@@ -655,9 +655,9 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 - [x] Founder authorized exactly one Attempt 6; it ran once and failed safely at Coverage Support with only `coverage-5` unresolved; no Attempt 7 exists.
 - [x] #267 read-only postmortem proved the Attempt-6 Coverage Support diagnostic is not self-contained after rollback: referenced EvidenceSet/Evidence/SourceDocument rows are gone and full assessment/research input was not durably retained.
 - [x] MG classification for Attempt-6 root cause is `MIXED_OR_UNKNOWN`; `BINDING_EVALUATOR` is not proven from durable evidence.
-- [ ] #268 / PR #269: persist bounded full Coverage Support assessment + exact Evidence input + safe research summary across rollback; represent every provider-controlled diagnostic URL only as an opaque SHA-256 fingerprint; preserve legacy replay and pre-research size fail-fast; reserve worst-case bytes for the same bounded automatic Evidence count/text limits used by Research; automatic claim extraction must obey the same canonical-JSON byte ceiling so escape expansion cannot exceed the reserve; do not change truth/authority/retry semantics.
-- [ ] MG stabilizes the current exact head through architecture/code/test self-review and GitHub CI; Codex/OpenCodeReview findings are advisory inputs, not workflow authority. Then Founder dispatches one final Agent Local exact-head focused/full backend + Ruff/mypy/OpenAPI + OCR closeout; MG reviews that proof and Founder alone decides merge.
-- [ ] Post-merge read-only readiness; only then may Founder separately decide whether exactly one Attempt 7 is justified.
+- [x] #268 / PR #269 merged: bounded Coverage Support assessment + exact Evidence input + safe research summary survive rollback; provider-controlled diagnostic URLs are stored only as opaque SHA-256 fingerprints; legacy replay and pre-research capacity guards remain fail-closed.
+- [x] Attempt 7 was separately authorized after PR #269 and failed safely with `insufficient_evidence`; no page read/factual Evidence/Coverage Support evaluator call occurred because all discovered candidates remained discovery-only.
+- [ ] #270 / PR #271: bring reusable human-reviewed + approved + locked EvidenceSet semantics onto current main, resolve the stale/non-mergeable branch state, preserve automatic strict-research behavior when no valid reusable set exists, then complete exact-head review/proof. Attempt 8 remains unauthorized.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
 - [ ] Complete P01 final review/content evidence without publication.
@@ -672,8 +672,21 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 - [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. PR #271 remains separate and Attempt 8 is not authorized.
 - [x] DATA-02 / #273 / PR #274 merged: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal passed with full-data/core/SourceDocument invariance and zero operational mutation. Historical O1 rehearsal remains pinned and unchanged.
 - [x] RUN-02 MIN / #275 / PR #276 merged: disposable restored+migrated 0044 DB, stdout readiness events, one-shot HTTP verification, idle one-shot worker and graceful child exit all passed. Agent Local had one verification-protocol deviation (manual PID cleanup after a busy port); future proofs must STOP on conflicting local resources unless Founder separately authorizes cleanup.
-- [ ] REC-02 / #277: current implementation reuses generic Harness Job lease/reclaim + Outbox reconciliation on a disposable 0044 DB; crash/restart is process-exit + event-callback driven, stale completion is blocked, exact replay/dedupe is proven and ambiguous processing must reconcile before resend.
-- [ ] LOCAL-E2E-01: reuse CQ-07 proof where useful plus one fresh distinct real case with one controlled stop/restart/resume and no case-specific patch.
-- [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then begin real content production while later hardening is driven by observed failures.
+- [x] REC-02 / #277 / PR #279 merged as main `c6e616104abedd3432dde84e837567ac8b5ea7d3`: `PASS_P1_REC02` proved process-exit/event-callback crash/restart, stale-worker rejection, exact replay/idempotency and reconcile-before-resend on disposable 0044 state.
+- [ ] LOCAL-E2E-01 / #278 / PR #280 is ACTIVE. Exact-head Ruff/mypy/focused/full backend/frontend/OCR passed. The fresh real case reached research + Coverage Support, then failed closed because the connected Codex workspace is out of credits. Preserve the same disposable case/run lineage; after a working account/model route exists, retry exactly once only with Founder authorization and stop at the Angle gate.
+- [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then move to the separately authorized operational pilot and real content batch; later hardening is driven by observed failures.
 
 CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, operational migration or Attempt 8. Founder explicitly overrode only the previous P1 sequencing gate; P1 does not imply P0 completion or publication permission. Historical PR #238 is evidence/history only and is not the clean execution branch.
+
+### PILOT-00 — Repo truth sync and pilot critical path — THIS PR
+
+- [x] Live main verified as `c6e616104abedd3432dde84e837567ac8b5ea7d3` after PR #279.
+- [x] DATA-02, RUN-02 MIN and REC-02 recorded as DONE.
+- [x] PR #280 recorded as the active P1 blocker/proof; workspace credits are an environment/account blocker, not justification for a case-specific code patch.
+- [x] Same LOCAL-E2E disposable lineage is mandatory for the next authorized retry; no replacement case and no auto-retry.
+- [x] PR #271 recorded as pending current-main integration/reverification before reusable approved EvidenceSet production use.
+- [x] PR #282 recorded as optional capability fallback, not critical path.
+- [x] Pilot order locked: #280 -> #271 -> separately authorized operational pilot storage -> P01+C02 -> 2-3 additional articles on the same release.
+- [x] Broad UI/dashboard/publishing/provider expansion is deferred until a real pilot blocker demonstrates need.
+- [ ] Founder merges the PILOT-00 docs-only PR.
+
