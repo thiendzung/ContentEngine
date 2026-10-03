@@ -771,5 +771,5 @@ def test_reusable_evidence_approval_runner_help_works_without_pythonpath() -> No
     )
 
     assert completed.returncode == 0, completed.stderr
-    assert "nested snapshot binding" in completed.stdout
-
+    normalized_help = " ".join(completed.stdout.split())
+    assert "nested snapshot binding" in normalized_help
