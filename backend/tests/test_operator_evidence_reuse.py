@@ -683,4 +683,3 @@ async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
                 table in statement and " for update" in statement
                 for statement in statements
             ), table
-
