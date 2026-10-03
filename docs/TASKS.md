@@ -657,7 +657,7 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 - [x] MG classification for Attempt-6 root cause is `MIXED_OR_UNKNOWN`; `BINDING_EVALUATOR` is not proven from durable evidence.
 - [x] #268 / PR #269 merged: bounded Coverage Support assessment + exact Evidence input + safe research summary survive rollback; provider-controlled diagnostic URLs are stored only as opaque SHA-256 fingerprints; legacy replay and pre-research capacity guards remain fail-closed.
 - [x] Attempt 7 was separately authorized after PR #269 and failed safely with `insufficient_evidence`; no page read/factual Evidence/Coverage Support evaluator call occurred because all discovered candidates remained discovery-only.
-- [ ] #270 / PR #284 ACTIVE: current-main port of reusable human-reviewed + approved + locked EvidenceSet semantics. Old PR #271 is superseded. Reuse approval must bind the complete nested Evidence/Claim/SourceDocument/Source factual-provenance snapshot, not only member IDs; post-approval nested mutation fails closed. Preserve strict automatic research behavior when no valid reusable set exists; complete MG self-review, CI, OCR and Agent Local exact-head proof before Founder merge. Attempt 8 remains unauthorized.
+- [ ] #270 / PR #284 ACTIVE: current-main port of reusable human-reviewed + approved + locked EvidenceSet semantics. Old PR #271 is superseded. Reuse approval must bind the complete nested Evidence/Claim/SourceDocument/Source factual-provenance snapshot, not only member IDs; post-approval nested mutation fails closed. Preserve strict automatic research behavior when no valid reusable set exists; complete MG self-review, OpenCodeReview, CI and Agent Local exact-head proof before Founder merge. Do not invoke GitHub Codex review/security review. Attempt 8 remains unauthorized.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
 - [ ] Complete P01 final review/content evidence without publication.
@@ -691,4 +691,5 @@ CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, oper
 - [x] Founder merged PILOT-00 / PR #283 as current main `857b536823d8514c42da714d20e4e9ed1f5845a2`.
 - [x] Founder-authorized #280 retry + one-shot worker proved the next real blocker is evidence sufficiency rather than credits.
 - [ ] PR #284 ports approved locked EvidenceSet reuse onto current main and becomes the only implementation WIP for this blocker.
+- [x] Review process updated: OpenCodeReview is the only supplementary semantic reviewer; no new GitHub Codex review/security-review invocation.
 
