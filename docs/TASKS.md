@@ -686,7 +686,7 @@ CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, oper
 - [x] Same LOCAL-E2E disposable lineage is mandatory for the next authorized retry; no replacement case and no auto-retry.
 - [x] Historical PR #271 is superseded/closed; PR #284 is the current-main implementation.
 - [x] PR #282 recorded as optional capability fallback, not critical path.
-- [x] Pilot order locked: #280 -> #271 -> separately authorized operational pilot storage -> P01+C02 -> 2-3 additional articles on the same release.
+- [x] Pilot order updated after the real evidence blocker: #284 -> prepare exact approved+locked EvidenceSet for preserved #280 ContentCase -> separately authorized #280 retry -> operational pilot storage -> P01+C02 -> 2-3 additional articles on the same release.
 - [x] Broad UI/dashboard/publishing/provider expansion is deferred until a real pilot blocker demonstrates need.
 - [x] Founder merged PILOT-00 / PR #283 as current main `857b536823d8514c42da714d20e4e9ed1f5845a2`.
 - [x] Founder-authorized #280 retry + one-shot worker proved the next real blocker is evidence sufficiency rather than credits.
