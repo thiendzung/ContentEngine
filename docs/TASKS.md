@@ -669,7 +669,7 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 **P0 exit:** P01 + C02 both complete the bounded CQ-07 quality path, Founder comparison is recorded, and the Pillar↔Cluster identity decision is explicit.
 
 **P1 — Local Content Production Ready: ACTIVE / Founder priority override 2026-10-02.**
-- [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. PR #271 remains separate and Attempt 8 is not authorized.
+- [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. Historical PR #271 is superseded by active PR #284; Attempt 8 is not authorized.
 - [x] DATA-02 / #273 / PR #274 merged: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal passed with full-data/core/SourceDocument invariance and zero operational mutation. Historical O1 rehearsal remains pinned and unchanged.
 - [x] RUN-02 MIN / #275 / PR #276 merged: disposable restored+migrated 0044 DB, stdout readiness events, one-shot HTTP verification, idle one-shot worker and graceful child exit all passed. Agent Local had one verification-protocol deviation (manual PID cleanup after a busy port); future proofs must STOP on conflicting local resources unless Founder separately authorizes cleanup.
 - [x] REC-02 / #277 / PR #279 merged as main `c6e616104abedd3432dde84e837567ac8b5ea7d3`: `PASS_P1_REC02` proved process-exit/event-callback crash/restart, stale-worker rejection, exact replay/idempotency and reconcile-before-resend on disposable 0044 state.
@@ -680,7 +680,7 @@ CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, oper
 
 ### PILOT-00 — Repo truth sync and pilot critical path — THIS PR
 
-- [x] Live main verified as `c6e616104abedd3432dde84e837567ac8b5ea7d3` after PR #279.
+- [x] Live main verified as `857b536823d8514c42da714d20e4e9ed1f5845a2` after PR #283; PR #279 remains the REC-02 merge baseline.
 - [x] DATA-02, RUN-02 MIN and REC-02 recorded as DONE.
 - [x] PR #280 recorded as the active P1 blocker/proof; workspace credits are an environment/account blocker, not justification for a case-specific code patch.
 - [x] Same LOCAL-E2E disposable lineage is mandatory for the next authorized retry; no replacement case and no auto-retry.
