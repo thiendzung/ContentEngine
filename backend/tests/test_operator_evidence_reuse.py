@@ -38,7 +38,7 @@ from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Artifact
 from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import Evidence, EvidenceSet, Source, SourceDocument
-from app.modules.knowledge.persistence import content_hash, evidence_set_hash
+from app.modules.knowledge.persistence import content_hash
 from app.modules.research.evidence.contracts import EvidenceRelation
 from app.modules.research.evidence.persistence import (
     create_or_reuse_evidence_set,
