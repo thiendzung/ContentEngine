@@ -8,6 +8,8 @@ is guaranteed to fail later.
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +19,16 @@ from app.modules.content_engine.journal.agent_bridge import (
     ANGLE_RECIPE_KEY,
     ANGLE_TASK_KEY,
 )
-from app.modules.content_engine.models import Project, SettingsSnapshot, SettingsVersion
+from app.modules.content_engine.journal.operator_evidence_reuse import (
+    ReusableEvidenceSetError,
+    load_latest_reusable_evidence_set,
+)
+from app.modules.content_engine.models import (
+    ContentCase,
+    Project,
+    SettingsSnapshot,
+    SettingsVersion,
+)
 from app.modules.harness.runtime import RuntimeConfigurationError, SettingsModelRouter
 from app.modules.system.preflight import build_operational_preflight
 from app.modules.system.settings_service import (
@@ -46,6 +57,42 @@ def _serper_check() -> dict[str, object]:
             "operator_worker_serper_required",
         )
     return _check("journal_research_serper", "READY", "configured")
+
+
+async def _research_check(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID | None,
+) -> dict[str, object]:
+    if content_case_id is None:
+        return _serper_check()
+
+    content_case = await session.get(ContentCase, content_case_id)
+    if content_case is None:
+        return _check(
+            "journal_research_serper",
+            "BLOCKED",
+            "operator_case_not_found",
+        )
+    try:
+        reusable = await load_latest_reusable_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+        )
+    except ReusableEvidenceSetError as exc:
+        return _check(
+            "journal_research_serper",
+            "BLOCKED",
+            exc.code,
+        )
+    if reusable is not None:
+        return _check(
+            "journal_research_serper",
+            "READY",
+            "not_required_reusable_evidence_set",
+        )
+    return _serper_check()
 
 
 async def _angle_settings_check(session: AsyncSession) -> dict[str, object]:
@@ -166,6 +213,8 @@ async def _angle_recipe_check(session: AsyncSession) -> dict[str, object]:
 
 async def build_journal_operator_preflight(
     session: AsyncSession,
+    *,
+    content_case_id: UUID | None = None,
 ) -> dict[str, object]:
     """Return generic local checks plus fail-closed Start-to-Angle dependencies."""
 
@@ -178,7 +227,10 @@ async def build_journal_operator_preflight(
     )
     checks.extend(
         [
-            _serper_check(),
+            await _research_check(
+                session,
+                content_case_id=content_case_id,
+            ),
             await _angle_settings_check(session),
             await _angle_prompt_check(session),
             await _angle_recipe_check(session),
