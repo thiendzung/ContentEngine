@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-Updated: 2026-10-03 after Founder merged PR #279. Current main is `c6e616104abedd3432dde84e837567ac8b5ea7d3`. P1 now has DATA-02, RUN-02 MIN and REC-02 complete. PR #280 LOCAL-E2E-01 is the active production-readiness proof: exact-head static/full/frontend/OCR verification passed and the real disposable run reached research + Coverage Support, then failed closed because the connected Codex workspace is out of credits. The exact disposable lineage is preserved; no new case or automatic retry is allowed. PR #271 remains open and non-mergeable against its old base; its reusable approved EvidenceSet path must be brought onto current main and reverified before production use. PR #282 Antigravity is an optional capability fallback only, not the critical path unless the current account/model path remains unusable. Operational migration and publication remain separately Founder-authorized.
+Updated: 2026-10-03 after Founder merged PR #283. Current main is `857b536823d8514c42da714d20e4e9ed1f5845a2`. P1 has DATA-02, RUN-02 MIN and REC-02 complete. Founder-authorized LOCAL-E2E-01 retry on PR #280 preserved the exact disposable lineage and ran one one-shot worker; it failed safely before Angle on `operator_worker_coverage_support_unresolved / insufficient_support`, with zero ModelCall/ToolCall and no operational/publication mutation. This replaces the previous credits blocker with a demonstrated evidence-sufficiency blocker. PR #284 is now the bounded current-main port of approved locked EvidenceSet reuse; stale PR #271 is superseded for implementation purposes. No further #280 retry is authorized. PR #282 Antigravity remains optional and outside the critical path. Operational migration and publication remain separately Founder-authorized.
 
 ## Read first and verify the actual ref
 
@@ -21,7 +21,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `c6e616104abedd3432dde84e837567ac8b5ea7d3` (merge PR #279). CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics now survive rollback under the bounded durability contract. CQ-07 Attempt 7 later failed safely with `insufficient_evidence`; issue #270 / PR #271 is the pending reusable approved EvidenceSet path and Attempt 8 remains unauthorized. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 is active: exact-head verification passed, the fresh real case reached research + Coverage Support on a disposable 0044 DB, then failed closed on exhausted Codex workspace credits with no Angle and no operational/publication mutation. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. Founder has not authorized operational migration, publication, a new LOCAL-E2E case, automatic retry, or Attempt 8.
+Live GitHub main: `857b536823d8514c42da714d20e4e9ed1f5845a2` (merge PR #283). CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -39,7 +39,7 @@ Live GitHub main: `c6e616104abedd3432dde84e837567ac8b5ea7d3` (merge PR #279). CQ
 | P1 / DATA-02 | DONE / PR #274 merged | Fresh backup, isolated restore and disposable `0034 -> 0044` rehearsal passed without operational mutation. |
 | P1 / RUN-02 MIN | DONE / PR #276 merged | Disposable 0044 backend/frontend readiness, one-shot worker and graceful event/exit-driven shutdown proved. |
 | P1 / REC-02 | DONE / PR #279 merged / `PASS_P1_REC02` | Crash/restart, stale-worker rejection, idempotency and reconcile-before-resend proved on disposable state. |
-| P1 / LOCAL-E2E-01 | ACTIVE / PR #280 draft | Exact-head checks passed; real fresh case reached research + Coverage Support then blocked safely on workspace credits. Resume the same disposable lineage only after explicit Founder authorization. |
+| P1 / LOCAL-E2E-01 | BLOCKED / PR #280 draft | One Founder-authorized retry + one one-shot worker ran on the preserved lineage and stopped before Angle on `insufficient_support`; zero ModelCall/ToolCall, no second retry. |
 | F7 | LEGACY PAUSED / audit-only lineage | Historical R4 reached `AWAITING_APPROVAL / outline` and later read-only closeout passed. This lineage is not current Content Quality WIP and must not be resumed merely to advance CQ-02. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
@@ -52,7 +52,7 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**P1 / #272 remains the active delivery window.** DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are DONE. The immediate blocker is LOCAL-E2E-01 / PR #280, not a code defect: the exact-head real run reached research + Coverage Support and failed closed because the connected Codex workspace is out of credits. Preserve ContentCase `bd91eed8-8b46-4d55-9f15-fe3ca6879a48` / Run `8b9d48a9-b82d-4279-be5c-3bfa0923aac2` on the disposable `contentengine_local_e2e01_restore_test` lineage. After a working account/model path is confirmed, Founder may authorize exactly one retry on that SAME lineage; do not create a replacement case and do not auto-retry. The next human stop remains the Angle gate. **No polling, sleep, ps or pgrep loops.** P0 remains paused rather than complete: PR #271 is open/non-mergeable and Attempt 8 is unauthorized. PR #282 is optional fallback proof only. Operational migration and publication remain separately Founder-authorized.
+**P1 / #272 remains the active delivery window.** DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are DONE. LOCAL-E2E-01 / PR #280 is now blocked by demonstrated evidence insufficiency, not credits: the Founder-authorized retry created exactly one retry command/job, the one-shot worker ran once, and Coverage Support stopped on `operator_worker_coverage_support_unresolved / insufficient_support` before Angle with zero ModelCall/ToolCall. Preserve ContentCase `bd91eed8-8b46-4d55-9f15-fe3ca6879a48` / Run `8b9d48a9-b82d-4279-be5c-3bfa0923aac2` on `contentengine_local_e2e01_restore_test`; no further retry is authorized. The immediate implementation WIP is PR #284: reuse only an exact human-reviewed + approved + locked EvidenceSet for the same ContentCase before fresh research, while preserving the strict automatic research path. Old PR #271 is superseded by #284. **No polling, sleep, ps or pgrep loops.** Attempt 8, operational migration and publication remain unauthorized.
 
 P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
 
@@ -82,11 +82,12 @@ If GitHub Actions quota/service is unavailable, record CI as unavailable and use
 Near-term goal: produce a small batch of real content that Founder accepts, then repeat it on one stable release. Engineering work must remove a demonstrated blocker to that outcome.
 
 Critical path:
-1. Finish LOCAL-E2E-01 / PR #280 on the preserved lineage after the current account/model path is usable: Angle approval -> Outline approval -> independent VI/EN Writers -> quality chain -> final approvals -> `PASS_LOCAL_CONTENT_PRODUCTION_READY`.
-2. Bring PR #271 reusable approved EvidenceSet semantics onto current main, resolve the stale/non-mergeable branch state, and reverify exact head. This is the controlled human-curated evidence path when automatic research is insufficient.
-3. Only after the above proofs, request the separate Founder authorization for operational migration/pilot storage. Disposable DB remains verification-only.
-4. Run the frozen P01 + C02 pair as the first editorial pilot on one stable release. Record Founder edits, usefulness, overlap and final VI/EN evidence.
-5. Run 2-3 additional real articles on the same release. Improve only recurring or blocking defects demonstrated by these runs.
+1. Complete PR #284, the current-main approved locked EvidenceSet reuse path. The LOCAL-E2E #280 retry proved this is now the concrete blocker.
+2. Prepare a human-reviewed EvidenceSet for the exact preserved #280 ContentCase through the valid evidence/approval/lock workflow; do not direct-edit workflow state.
+3. After #284 is merged and that EvidenceSet exists, Founder may separately decide whether one more #280 retry is justified. Until then, #280 remains BLOCKED.
+4. Only after P1 proof, request the separate Founder authorization for operational migration/pilot storage. Disposable DB remains verification-only.
+5. Run the frozen P01 + C02 pair as the first editorial pilot on one stable release. Record Founder edits, usefulness, overlap and final VI/EN evidence.
+6. Run 2-3 additional real articles on the same release. Improve only recurring or blocking defects demonstrated by these runs.
 
 Deprioritized until evidence shows a need: broad dashboard/UI polish, WordPress/Rank Math activation, auto-publish, new framework/provider work and wider automation. PR #282 Antigravity is not part of the critical path unless the current account/model route remains unusable after an explicit capability decision.
 
@@ -125,6 +126,8 @@ Deprioritized until evidence shows a need: broad dashboard/UI polish, WordPress/
 - 2026-10-02: DATA-02 / PR #274 and RUN-02 MIN / PR #276 were already merged; REC-02 / PR #279 then merged as current main `c6e616104abedd3432dde84e837567ac8b5ea7d3`, completing the recovery/idempotency/reconciliation slice.
 - 2026-10-02: LOCAL-E2E-01 / PR #280 exact-head verification passed Ruff/mypy/focused/full backend/frontend/OCR. The real disposable run reached research + Coverage Support and then failed closed because the connected Codex workspace was out of credits. The exact disposable case/run lineage is preserved and no code fix is justified for this blocker.
 - 2026-10-03: Founder reset the near-term product goal to a real Founder-approved batch and repeatability. Pilot order is now #280 -> #271 -> separately authorized operational pilot storage -> P01+C02 -> 2-3 more same-release articles. New implementation work requires a demonstrated blocker.
+- 2026-10-03: Founder authorized exactly one retry on preserved LOCAL-E2E-01 lineage and then exactly one one-shot worker. Retry command `1a8e1332-51e2-494e-a713-80b1e04365aa` created job `f6645b4e-de2e-4a55-9d77-bf1e50d5321c`; worker attempt 2 failed safely on `operator_worker_coverage_support_unresolved / insufficient_support`. Diagnostic artifact `3aa059ed-52a5-4e8e-b97a-f0aed7b54de8`, hash `c70e7569e42efcf23a66a08d16d659f52bca26aa24d080bb62f065b105639d6b`. Zero ModelCall/ToolCall; operational source remained rev-0034 and unchanged. No second retry authorized.
+- 2026-10-03: Because #280 now proves an evidence-sufficiency blocker, stale PR #271 was superseded by PR #284, a clean port of the approved locked EvidenceSet reuse implementation onto current main `857b536823d8514c42da714d20e4e9ed1f5845a2`.
 
 ## Remaining order and completion meaning
 
