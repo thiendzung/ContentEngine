@@ -655,9 +655,9 @@ async def get_operator_state_v45(
     if step.status in {"pending", "running"} and job is None:
         if not preflight_checked:
             preflight = await build_journal_operator_preflight(
-                session,
-                content_case_id=content_case_id,
-            )
+            session,
+            content_case_id=content_case_id,
+        )
             if preflight.get("status") != "READY":
                 return base.model_copy(
                     update={
