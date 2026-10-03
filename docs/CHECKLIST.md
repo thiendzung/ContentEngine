@@ -283,7 +283,7 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 ## V. PILOT-00 / Pilot operating discipline
 
-- [x] Live repo truth is read from GitHub before planning; current main is `c6e616104abedd3432dde84e837567ac8b5ea7d3`.
+- [x] Live repo truth is read from GitHub before planning; current main is `857b536823d8514c42da714d20e4e9ed1f5845a2`.
 - [x] DATA-02, RUN-02 MIN and REC-02 are DONE; LOCAL-E2E-01 reached a real evidence-sufficiency blocker before Angle.
 - [x] Environment/account/model blockers are distinguished from code defects; the credits blocker was cleared and the subsequent run isolated `insufficient_support` as the current blocker.
 - [x] Stale/non-mergeable PR #271 is superseded by current-main PR #284; no old-branch merge is attempted.
