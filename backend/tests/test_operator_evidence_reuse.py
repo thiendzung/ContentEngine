@@ -50,6 +50,9 @@ from app.modules.research.evidence.persistence import (
 from app.modules.research.evidence.reviewed_source import (
     persist_reviewed_existing_source_evidence,
 )
+from scripts.approve_reusable_evidence_set import (
+    approve_reusable_evidence_set_for_operator,
+)
 
 
 async def _reviewed_support(
@@ -695,3 +698,56 @@ async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
                 table in statement and " for update" in statement
                 for statement in statements
             ), table
+
+@pytest.mark.asyncio
+async def test_production_reusable_approval_command_creates_loadable_snapshot() -> None:
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-production-approval"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        evidence_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="production-approval",
+        )
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
+        )
+
+        summary = await approve_reusable_evidence_set_for_operator(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Production reusable evidence approval path.",
+        )
+        approval_id = UUID(str(summary["approval_id"]))
+
+        assert summary["evidence_set_id"] == str(evidence_set.id)
+        assert summary["version"] == evidence_set.version
+        assert summary["content_hash"] == evidence_set.content_hash
+        assert summary["provider_calls"] == 0
+
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval_id,
+        )
+        reusable = await load_latest_reusable_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+        )
+
+        assert reusable is not None
+        assert reusable.evidence_set.id == evidence_set.id
+
