@@ -702,6 +702,7 @@ async def test_reusable_evidence_loader_locks_entire_snapshot_graph() -> None:
                 for statement in statements
             ), table
 
+
 @pytest.mark.asyncio
 async def test_production_reusable_approval_command_creates_loadable_snapshot() -> None:
     async with isolated_session() as session:
@@ -753,6 +754,7 @@ async def test_production_reusable_approval_command_creates_loadable_snapshot() 
 
         assert reusable is not None
         assert reusable.evidence_set.id == evidence_set.id
+
 
 def test_reusable_evidence_approval_runner_help_works_without_pythonpath() -> None:
     backend_root = Path(__file__).resolve().parents[1]
