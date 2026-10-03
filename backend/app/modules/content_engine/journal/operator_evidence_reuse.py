@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from collections import Counter
+from datetime import datetime
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -58,9 +59,8 @@ def _canonical_hash(value: object) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _iso(value: object) -> str | None:
-    isoformat = getattr(value, "isoformat", None)
-    return isoformat() if callable(isoformat) else None
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
 
 
 async def _reusable_snapshot_hash(
