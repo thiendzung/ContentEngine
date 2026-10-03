@@ -417,9 +417,10 @@ async def load_latest_reusable_evidence_set(
     if evidence_set is None:
         return None
     if evidence_set.status != "locked":
-        raise ReusableEvidenceSetError(
-            "operator_worker_reusable_evidence_latest_not_locked"
-        )
+        # A newer draft/review snapshot supersedes any older locked version for reuse,
+        # but it is not itself a malformed reusable snapshot. Returning None preserves
+        # the canonical automatic-research path instead of falling back to stale evidence.
+        return None
 
     members = evidence_set.evidence_ids_json
     if (
