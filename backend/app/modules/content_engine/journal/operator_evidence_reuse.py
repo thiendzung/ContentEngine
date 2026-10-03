@@ -448,11 +448,14 @@ async def load_latest_reusable_evidence_set(
         )
 
     approval = await session.scalar(
-        select(EvidenceSetApproval).where(
+        select(EvidenceSetApproval)
+        .where(
             EvidenceSetApproval.evidence_set_id == evidence_set.id,
             EvidenceSetApproval.evidence_set_version == evidence_set.version,
             EvidenceSetApproval.evidence_set_content_hash == evidence_set.content_hash,
         )
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if approval is None:
         raise ReusableEvidenceSetError(
