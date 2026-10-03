@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.models import ContentCase
 from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import (
     Claim,
@@ -87,7 +88,11 @@ async def _reusable_snapshot_hash(
     evidence_rows = list(
         (
             await session.scalars(
-                select(Evidence).where(Evidence.id.in_(evidence_ids))
+                select(Evidence)
+                .where(Evidence.id.in_(evidence_ids))
+                .order_by(Evidence.id.asc())
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
         ).all()
     )
@@ -99,7 +104,15 @@ async def _reusable_snapshot_hash(
 
     claim_ids = {row.claim_id for row in evidence_rows}
     claims = list(
-        (await session.scalars(select(Claim).where(Claim.id.in_(claim_ids)))).all()
+        (
+            await session.scalars(
+                select(Claim)
+                .where(Claim.id.in_(claim_ids))
+                .order_by(Claim.id.asc())
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).all()
     )
     claims_by_id = {row.id: row for row in claims}
     if len(claims_by_id) != len(claim_ids):
@@ -115,7 +128,11 @@ async def _reusable_snapshot_hash(
     documents = list(
         (
             await session.scalars(
-                select(SourceDocument).where(SourceDocument.id.in_(document_ids))
+                select(SourceDocument)
+                .where(SourceDocument.id.in_(document_ids))
+                .order_by(SourceDocument.id.asc())
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
         ).all()
     )
@@ -127,7 +144,15 @@ async def _reusable_snapshot_hash(
 
     source_ids = {document.source_id for document in documents}
     sources = list(
-        (await session.scalars(select(Source).where(Source.id.in_(source_ids)))).all()
+        (
+            await session.scalars(
+                select(Source)
+                .where(Source.id.in_(source_ids))
+                .order_by(Source.id.asc())
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        ).all()
     )
     sources_by_id = {source.id: source for source in sources}
     if len(sources_by_id) != len(source_ids):
@@ -316,7 +341,12 @@ async def approve_reusable_evidence_set(
         raise ReusableEvidenceSetError(
             "operator_worker_reusable_evidence_approval_reason_invalid"
         )
-    evidence_set = await session.get(EvidenceSet, evidence_set_id)
+    evidence_set = await session.scalar(
+        select(EvidenceSet)
+        .where(EvidenceSet.id == evidence_set_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if evidence_set is None:
         raise ReusableEvidenceSetError(
             "operator_worker_reusable_evidence_snapshot_invalid"
@@ -349,12 +379,22 @@ async def load_latest_reusable_evidence_set(
     locked state fails closed instead of silently falling back to fresh research.
     """
 
+    content_case = await session.scalar(
+        select(ContentCase)
+        .where(ContentCase.id == content_case_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if content_case is None or content_case.project_id != project_id:
+        raise ReusableEvidenceSetError(
+            "operator_worker_reusable_evidence_case_invalid"
+        )
+
     evidence_set = await session.scalar(
         select(EvidenceSet)
         .where(
             EvidenceSet.project_id == project_id,
             EvidenceSet.content_case_id == content_case_id,
-            EvidenceSet.status == "locked",
         )
         .order_by(
             EvidenceSet.version.desc(),
@@ -362,9 +402,15 @@ async def load_latest_reusable_evidence_set(
             EvidenceSet.id.desc(),
         )
         .limit(1)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if evidence_set is None:
         return None
+    if evidence_set.status != "locked":
+        raise ReusableEvidenceSetError(
+            "operator_worker_reusable_evidence_latest_not_locked"
+        )
 
     members = evidence_set.evidence_ids_json
     if (
@@ -412,6 +458,14 @@ async def load_latest_reusable_evidence_set(
             "operator_worker_reusable_evidence_approval_invalid"
         )
     approved_snapshot_hash = _approval_snapshot_hash(approval)
+    current_snapshot_hash = await _reusable_snapshot_hash(
+        session,
+        evidence_set=evidence_set,
+    )
+    if current_snapshot_hash != approved_snapshot_hash:
+        raise ReusableEvidenceSetError(
+            "operator_worker_reusable_evidence_approval_snapshot_mismatch"
+        )
 
     evidence_rows = list(
         (
@@ -518,15 +572,6 @@ async def load_latest_reusable_evidence_set(
                 )
 
         factual_support = factual_support or evidence.relation in _FACTUAL_RELATIONS
-
-    current_snapshot_hash = await _reusable_snapshot_hash(
-        session,
-        evidence_set=evidence_set,
-    )
-    if current_snapshot_hash != approved_snapshot_hash:
-        raise ReusableEvidenceSetError(
-            "operator_worker_reusable_evidence_approval_snapshot_mismatch"
-        )
 
     if not factual_support:
         raise ReusableEvidenceSetError(
