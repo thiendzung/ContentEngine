@@ -81,6 +81,7 @@ async def curate_evidence_set(
         "content_case_id": str(content_case.id),
         "evidence_set_id": str(evidence_set.id),
         "version": evidence_set.version,
+        "content_hash": evidence_set.content_hash,
         "status": evidence_set.status,
         "evidence_ids": list(evidence_set.evidence_ids_json),
         "relation_counts": {
