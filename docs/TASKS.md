@@ -657,7 +657,7 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 - [x] MG classification for Attempt-6 root cause is `MIXED_OR_UNKNOWN`; `BINDING_EVALUATOR` is not proven from durable evidence.
 - [x] #268 / PR #269 merged: bounded Coverage Support assessment + exact Evidence input + safe research summary survive rollback; provider-controlled diagnostic URLs are stored only as opaque SHA-256 fingerprints; legacy replay and pre-research capacity guards remain fail-closed.
 - [x] Attempt 7 was separately authorized after PR #269 and failed safely with `insufficient_evidence`; no page read/factual Evidence/Coverage Support evaluator call occurred because all discovered candidates remained discovery-only.
-- [ ] #270 / PR #284 ACTIVE: current-main port of reusable human-reviewed + approved + locked EvidenceSet semantics. Old PR #271 is superseded. Preserve strict automatic research behavior when no valid reusable set exists; complete MG self-review, CI, OCR and Agent Local exact-head proof before Founder merge. Attempt 8 remains unauthorized.
+- [ ] #270 / PR #284 ACTIVE: current-main port of reusable human-reviewed + approved + locked EvidenceSet semantics. Old PR #271 is superseded. Reuse approval must bind the complete nested Evidence/Claim/SourceDocument/Source factual-provenance snapshot, not only member IDs; post-approval nested mutation fails closed. Preserve strict automatic research behavior when no valid reusable set exists; complete MG self-review, CI, OCR and Agent Local exact-head proof before Founder merge. Attempt 8 remains unauthorized.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
 - [ ] Complete P01 final review/content evidence without publication.
@@ -684,7 +684,7 @@ CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, oper
 - [x] DATA-02, RUN-02 MIN and REC-02 recorded as DONE.
 - [x] PR #280 recorded as the active P1 blocker/proof; workspace credits are an environment/account blocker, not justification for a case-specific code patch.
 - [x] Same LOCAL-E2E disposable lineage is mandatory for the next authorized retry; no replacement case and no auto-retry.
-- [x] PR #271 recorded as pending current-main integration/reverification before reusable approved EvidenceSet production use.
+- [x] Historical PR #271 is superseded/closed; PR #284 is the current-main implementation.
 - [x] PR #282 recorded as optional capability fallback, not critical path.
 - [x] Pilot order locked: #280 -> #271 -> separately authorized operational pilot storage -> P01+C02 -> 2-3 additional articles on the same release.
 - [x] Broad UI/dashboard/publishing/provider expansion is deferred until a real pilot blocker demonstrates need.
