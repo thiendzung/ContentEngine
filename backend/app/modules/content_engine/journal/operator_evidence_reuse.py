@@ -171,17 +171,26 @@ async def _reusable_snapshot_hash(
         )
         source = sources_by_id.get(document.source_id) if document is not None else None
         provenance = evidence.provenance_json
+        if claim is None or claim.project_id != evidence_set.project_id:
+            raise ReusableEvidenceSetError(
+                "operator_worker_reusable_evidence_member_invalid"
+            )
         if (
-            claim is None
-            or claim.project_id != evidence_set.project_id
-            or document is None
-            or source is None
-            or source.project_id != evidence_set.project_id
-            or evidence.verified_at is None
-            or not isinstance(provenance, dict)
-            or not isinstance(evidence.quality_metadata_json, dict)
+            document is None
             or not isinstance(document.content_markdown, str)
             or document.content_hash != content_hash(document.content_markdown)
+        ):
+            raise ReusableEvidenceSetError(
+                "operator_worker_reusable_evidence_document_invalid"
+            )
+        if source is None or source.project_id != evidence_set.project_id:
+            raise ReusableEvidenceSetError(
+                "operator_worker_reusable_evidence_source_invalid"
+            )
+        if (
+            evidence.verified_at is None
+            or not isinstance(provenance, dict)
+            or not isinstance(evidence.quality_metadata_json, dict)
             or not isinstance(evidence.excerpt, str)
             or not evidence.excerpt.strip()
             or _normalized_text(evidence.excerpt)
