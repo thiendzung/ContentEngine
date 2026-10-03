@@ -274,7 +274,8 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] DATA-02 proved a fresh operational backup, isolated restore and disposable `20260915_0034 → 20260926_0044` migration rehearsal with full-data/core/SourceDocument invariance and zero operational mutation.
 - [x] RUN-02 MIN proved safe disposable-0044 DB/backend/frontend readiness, an idle one-shot worker and graceful stop with event/exit-driven coordination. A busy-port verification deviation was recorded; unrelated local processes must not be killed by later proof tasks without explicit Founder authorization.
 - [x] REC-02 / PR #279 proved crash/restart/resume, stale-worker rejection, duplicate-action idempotency and reconciliation before retry after ambiguous external effects; event/callback/process-exit driven only.
-- [ ] LOCAL-E2E-01 / PR #280 resumes the exact preserved disposable lineage after a usable account/model route exists; one Founder-authorized retry only, no replacement case, no automatic retry, then stop at each human gate.
+- [x] LOCAL-E2E-01 / PR #280 preserved the exact disposable lineage through one Founder-authorized retry and one one-shot worker; no replacement case or automatic second retry occurred.
+- [ ] LOCAL-E2E-01 remains blocked before Angle on `insufficient_support`; no further retry until approved locked EvidenceSet reuse is merged, exact curated evidence is prepared for the same ContentCase, and Founder gives a new explicit authorization.
 - [ ] LOCAL-E2E-01 retains the controlled stop/restart/resume proof with no case-specific patch or direct SQL advancement.
 - [ ] Operational migration remains a separate Founder authorization after P1 proof and before durable pilot storage is used.
 - [ ] WordPress/Rank Math activation and publication remain separate work.
@@ -282,12 +283,16 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 
 ## V. PILOT-00 / Pilot operating discipline
 
-- [x] Live repo truth is read from GitHub before planning; current main is `c6e616104abedd3432dde84e837567ac8b5ea7d3`.
-- [x] DATA-02, RUN-02 MIN and REC-02 are DONE; LOCAL-E2E-01 is the immediate P1 path.
-- [x] Environment/account/model blockers are distinguished from code defects; no speculative code patch is created for exhausted credits.
-- [x] PR #271 is not treated as production-ready while it is stale/non-mergeable against current main.
+- [x] Live repo truth is read from GitHub before planning; current main is `857b536823d8514c42da714d20e4e9ed1f5845a2`.
+- [x] DATA-02, RUN-02 MIN and REC-02 are DONE; LOCAL-E2E-01 reached a real evidence-sufficiency blocker before Angle.
+- [x] Environment/account/model blockers are distinguished from code defects; the credits blocker was cleared and the subsequent run isolated `insufficient_support` as the current blocker.
+- [x] Stale/non-mergeable PR #271 is superseded by current-main PR #284; no old-branch merge is attempted.
 - [x] Antigravity/capability work is optional unless the current approved model route remains unusable.
-- [ ] LOCAL-E2E-01 reaches Angle -> Outline -> independent VI/EN Writers -> quality -> final approvals on the preserved lineage.
+- [ ] PR #284 binds reusable approval to the complete nested factual/provenance snapshot; exact EvidenceSetApproval is DB-refreshed + row-locked before trust; production uses `scripts.approve_reusable_evidence_set` between curate and lock; internally consistent post-approval Evidence/Claim/SourceDocument/Source mutation must fail closed.
+- [ ] PR #284 passes MG self-review, OpenCodeReview, CI when available, Agent Local exact-head verification and Founder merge.
+- [x] No new GitHub Codex review/security-review trigger is used; historical Codex review evidence remains audit-only.
+- [ ] The exact #280 ContentCase receives a valid human-reviewed + approved + locked EvidenceSet through the normal evidence workflow.
+- [ ] After a separate Founder decision, LOCAL-E2E-01 reaches Angle -> Outline -> independent VI/EN Writers -> quality -> final approvals on the preserved lineage.
 - [ ] Founder accepts P01 + C02 on one stable release and records concrete editorial corrections.
 - [ ] Two to three more real articles complete on the same release before repeatability is claimed.
 - [ ] New development work maps to a demonstrated blocker from these runs; otherwise defer it.

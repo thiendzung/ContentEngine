@@ -175,6 +175,9 @@ async def test_curated_evidence_set_is_idempotent_and_versions_changed_ids() -> 
 
         assert first["evidence_set_id"] == same["evidence_set_id"]
         assert first["version"] == same["version"] == 1
+        assert first["content_hash"] == same["content_hash"]
+        assert isinstance(first["content_hash"], str)
+        assert len(first["content_hash"]) == 64
         assert first["status"] == same["status"] == "draft"
         assert first["provider_calls"] == same["provider_calls"] == 0
         assert changed["evidence_set_id"] != first["evidence_set_id"]

@@ -657,7 +657,7 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 - [x] MG classification for Attempt-6 root cause is `MIXED_OR_UNKNOWN`; `BINDING_EVALUATOR` is not proven from durable evidence.
 - [x] #268 / PR #269 merged: bounded Coverage Support assessment + exact Evidence input + safe research summary survive rollback; provider-controlled diagnostic URLs are stored only as opaque SHA-256 fingerprints; legacy replay and pre-research capacity guards remain fail-closed.
 - [x] Attempt 7 was separately authorized after PR #269 and failed safely with `insufficient_evidence`; no page read/factual Evidence/Coverage Support evaluator call occurred because all discovered candidates remained discovery-only.
-- [ ] #270 / PR #271: bring reusable human-reviewed + approved + locked EvidenceSet semantics onto current main, resolve the stale/non-mergeable branch state, preserve automatic strict-research behavior when no valid reusable set exists, then complete exact-head review/proof. Attempt 8 remains unauthorized.
+- [ ] #270 / PR #284 ACTIVE: current-main port of reusable human-reviewed + approved + locked EvidenceSet semantics. Old PR #271 is superseded. Reuse approval binds the complete nested Evidence/Claim/SourceDocument/Source factual-provenance snapshot; the exact immutable approval row must be refreshed from DB and locked before its snapshot marker is trusted; post-approval nested mutation fails closed. Production approval is now wired through `scripts.approve_reusable_evidence_set` between curate and lock, with no one-off Python required. Preserve strict automatic research behavior when no valid reusable set exists; complete MG self-review, OpenCodeReview, CI and Agent Local exact-head proof before Founder merge. Do not invoke GitHub Codex review/security review. Attempt 8 remains unauthorized.
 - [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
 - [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
 - [ ] Complete P01 final review/content evidence without publication.
@@ -669,24 +669,27 @@ CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow e
 **P0 exit:** P01 + C02 both complete the bounded CQ-07 quality path, Founder comparison is recorded, and the Pillar↔Cluster identity decision is explicit.
 
 **P1 — Local Content Production Ready: ACTIVE / Founder priority override 2026-10-02.**
-- [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. PR #271 remains separate and Attempt 8 is not authorized.
+- [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. Historical PR #271 is superseded by active PR #284; Attempt 8 is not authorized.
 - [x] DATA-02 / #273 / PR #274 merged: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal passed with full-data/core/SourceDocument invariance and zero operational mutation. Historical O1 rehearsal remains pinned and unchanged.
 - [x] RUN-02 MIN / #275 / PR #276 merged: disposable restored+migrated 0044 DB, stdout readiness events, one-shot HTTP verification, idle one-shot worker and graceful child exit all passed. Agent Local had one verification-protocol deviation (manual PID cleanup after a busy port); future proofs must STOP on conflicting local resources unless Founder separately authorizes cleanup.
 - [x] REC-02 / #277 / PR #279 merged as main `c6e616104abedd3432dde84e837567ac8b5ea7d3`: `PASS_P1_REC02` proved process-exit/event-callback crash/restart, stale-worker rejection, exact replay/idempotency and reconcile-before-resend on disposable 0044 state.
-- [ ] LOCAL-E2E-01 / #278 / PR #280 is ACTIVE. Exact-head Ruff/mypy/focused/full backend/frontend/OCR passed. The fresh real case reached research + Coverage Support, then failed closed because the connected Codex workspace is out of credits. Preserve the same disposable case/run lineage; after a working account/model route exists, retry exactly once only with Founder authorization and stop at the Angle gate.
+- [ ] LOCAL-E2E-01 / #278 / PR #280 is BLOCKED on evidence sufficiency. Founder authorized exactly one retry and one one-shot worker on the preserved lineage; attempt 2 stopped before Angle on `operator_worker_coverage_support_unresolved / insufficient_support` with zero ModelCall/ToolCall, no new case and no second retry. Preserve the disposable lineage; do not retry again until #284 is merged and an exact approved+locked human-reviewed EvidenceSet is prepared for this ContentCase, followed by a new Founder decision.
 - [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then move to the separately authorized operational pilot and real content batch; later hardening is driven by observed failures.
 
 CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, operational migration or Attempt 8. Founder explicitly overrode only the previous P1 sequencing gate; P1 does not imply P0 completion or publication permission. Historical PR #238 is evidence/history only and is not the clean execution branch.
 
 ### PILOT-00 — Repo truth sync and pilot critical path — THIS PR
 
-- [x] Live main verified as `c6e616104abedd3432dde84e837567ac8b5ea7d3` after PR #279.
+- [x] Live main verified as `857b536823d8514c42da714d20e4e9ed1f5845a2` after PR #283; PR #279 remains the REC-02 merge baseline.
 - [x] DATA-02, RUN-02 MIN and REC-02 recorded as DONE.
 - [x] PR #280 recorded as the active P1 blocker/proof; workspace credits are an environment/account blocker, not justification for a case-specific code patch.
 - [x] Same LOCAL-E2E disposable lineage is mandatory for the next authorized retry; no replacement case and no auto-retry.
-- [x] PR #271 recorded as pending current-main integration/reverification before reusable approved EvidenceSet production use.
+- [x] Historical PR #271 is superseded/closed; PR #284 is the current-main implementation.
 - [x] PR #282 recorded as optional capability fallback, not critical path.
-- [x] Pilot order locked: #280 -> #271 -> separately authorized operational pilot storage -> P01+C02 -> 2-3 additional articles on the same release.
+- [x] Pilot order updated after the real evidence blocker: #284 -> prepare exact approved+locked EvidenceSet for preserved #280 ContentCase -> separately authorized #280 retry -> operational pilot storage -> P01+C02 -> 2-3 additional articles on the same release.
 - [x] Broad UI/dashboard/publishing/provider expansion is deferred until a real pilot blocker demonstrates need.
-- [ ] Founder merges the PILOT-00 docs-only PR.
+- [x] Founder merged PILOT-00 / PR #283 as current main `857b536823d8514c42da714d20e4e9ed1f5845a2`.
+- [x] Founder-authorized #280 retry + one-shot worker proved the next real blocker is evidence sufficiency rather than credits.
+- [ ] PR #284 ports approved locked EvidenceSet reuse onto current main and becomes the only implementation WIP for this blocker.
+- [x] Review process updated: OpenCodeReview is the only supplementary semantic reviewer; no new GitHub Codex review/security-review invocation.
 
