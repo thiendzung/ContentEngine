@@ -288,6 +288,7 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [x] Environment/account/model blockers are distinguished from code defects; the credits blocker was cleared and the subsequent run isolated `insufficient_support` as the current blocker.
 - [x] Stale/non-mergeable PR #271 is superseded by current-main PR #284; no old-branch merge is attempted.
 - [x] Antigravity/capability work is optional unless the current approved model route remains unusable.
+- [ ] PR #284 binds reusable approval to the complete nested factual/provenance snapshot; internally consistent post-approval Evidence/Claim/SourceDocument/Source mutation must fail closed.
 - [ ] PR #284 passes self-review/CI/OCR/Agent Local exact-head verification and Founder merge.
 - [ ] The exact #280 ContentCase receives a valid human-reviewed + approved + locked EvidenceSet through the normal evidence workflow.
 - [ ] After a separate Founder decision, LOCAL-E2E-01 reaches Angle -> Outline -> independent VI/EN Writers -> quality -> final approvals on the preserved lineage.
