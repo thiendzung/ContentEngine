@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -750,4 +753,21 @@ async def test_production_reusable_approval_command_creates_loadable_snapshot() 
 
         assert reusable is not None
         assert reusable.evidence_set.id == evidence_set.id
+
+def test_reusable_evidence_approval_runner_help_works_without_pythonpath() -> None:
+    backend_root = Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/approve_reusable_evidence_set.py",
+            "--help",
+        ],
+        cwd=backend_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "nested snapshot binding" in completed.stdout
 
