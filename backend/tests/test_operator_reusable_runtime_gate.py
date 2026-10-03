@@ -8,10 +8,14 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_ce05_review_revise import isolated_session
 from test_operator_evidence_reuse import _reviewed_support
-from test_operator_start_to_angle import _activate_seeded_angle_runtime, _intake_kwargs, _ready_preflight
+from test_operator_start_to_angle import (
+    _activate_seeded_angle_runtime,
+    _intake_kwargs,
+    _ready_preflight,
+)
 
 import app.modules.content_engine.journal.operator_preflight as operator_preflight
-import backend.scripts.run_operator_worker as run_operator_worker
+import scripts.run_operator_worker as run_operator_worker
 from app.core.config import Settings
 from app.modules.content_engine.journal.operator_evidence_reuse import (
     approve_reusable_evidence_set,
@@ -30,6 +34,7 @@ from app.modules.research.evidence.persistence import (
     create_or_reuse_evidence_set,
     lock_evidence_set,
 )
+from app.modules.research.production import ResearchRouter
 
 
 def _checks_by_key(result: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -152,7 +157,7 @@ async def test_lazy_research_router_defers_serper_requirement_until_run(
     def blocked_router(
         settings: Settings,
         client: httpx.AsyncClient,
-    ) -> object:
+    ) -> ResearchRouter:
         nonlocal calls
         calls += 1
         raise OperatorWorkerError("operator_worker_serper_required")
