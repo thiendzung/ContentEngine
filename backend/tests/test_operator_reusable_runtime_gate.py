@@ -8,11 +8,8 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_ce05_review_revise import isolated_session
 from test_operator_evidence_reuse import _reviewed_support
-from test_operator_start_to_angle import (
-    _activate_seeded_angle_runtime,
-    _intake_kwargs,
-    _ready_preflight,
-)
+from test_operator_preflight import _activate_angle_runtime
+from test_operator_start_to_angle import _intake_kwargs, _ready_preflight
 
 import app.modules.content_engine.journal.operator_preflight as operator_preflight
 import scripts.run_operator_worker as run_operator_worker
@@ -59,7 +56,7 @@ async def test_case_preflight_allows_reusable_evidence_without_serper(
     monkeypatch.setattr(operator_preflight, "get_settings", lambda: Settings())
 
     async with isolated_session() as session:
-        await _activate_seeded_angle_runtime(session)
+        await _activate_angle_runtime(session)
         created = await create_founder_journal_intake(
             session,
             **_intake_kwargs(key="pilot02-reusable-no-serper"),
@@ -132,7 +129,7 @@ async def test_case_preflight_still_requires_serper_without_reusable_evidence(
     monkeypatch.setattr(operator_preflight, "get_settings", lambda: Settings())
 
     async with isolated_session() as session:
-        await _activate_seeded_angle_runtime(session)
+        await _activate_angle_runtime(session)
         created = await create_founder_journal_intake(
             session,
             **_intake_kwargs(key="pilot02-fresh-research-needs-serper"),
