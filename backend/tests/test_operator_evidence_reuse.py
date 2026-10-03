@@ -547,6 +547,7 @@ async def test_reusable_evidence_rejects_post_approval_nested_content_mutation()
                 content_case_id=content_case.id,
             )
 
+
 @pytest.mark.asyncio
 async def test_reusable_evidence_rejects_older_locked_version_when_newer_draft_exists() -> None:
     async with isolated_session() as session:
