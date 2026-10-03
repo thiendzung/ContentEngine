@@ -224,19 +224,19 @@ async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research
             content_case=content_case,
             marker="unapproved",
         )
-        members = [str(evidence_id)]
-        session.add(
-            EvidenceSet(
-                project_id=content_case.project_id,
-                content_case_id=content_case.id,
-                version=1,
-                evidence_ids_json=members,
-                content_hash=evidence_set_hash(members),
-                status="locked",
-                locked_at=datetime.now(UTC),
-                locked_by="malformed-fixture",
-            )
+        # Create through the real insert contract first: every EvidenceSet must start
+        # as a clean draft. Then corrupt only the persisted approval invariant to
+        # prove the reuse trust boundary fails closed on a locked legacy/out-of-band
+        # snapshot that has no matching immutable EvidenceSetApproval.
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
         )
+        evidence_set.status = "locked"
+        evidence_set.locked_at = datetime.now(UTC)
+        evidence_set.locked_by = "malformed-fixture"
         await session.flush()
 
         state = await get_operator_state_v45(
