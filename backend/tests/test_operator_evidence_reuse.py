@@ -19,6 +19,7 @@ from test_operator_start_to_angle import (
 import app.modules.content_engine.journal.operator_vertical_slice as vertical_slice
 from app.modules.content_engine.journal.operator_evidence_reuse import (
     ReusableEvidenceSetError,
+    approve_reusable_evidence_set,
     load_latest_reusable_evidence_set,
 )
 from app.modules.content_engine.journal.operator_manual_intake import (
@@ -128,7 +129,7 @@ async def test_start_to_angle_reuses_approved_locked_evidence_without_research(
             content_case_id=content_case.id,
             evidence_ids=[evidence_id],
         )
-        approval = await approve_evidence_set(
+        approval = await approve_reusable_evidence_set(
             session,
             evidence_set_id=evidence_set.id,
             expected_version=evidence_set.version,
@@ -202,7 +203,7 @@ async def test_start_to_angle_reuses_approved_locked_evidence_without_research(
 
 
 @pytest.mark.asyncio
-async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research(
+async def test_start_to_angle_rejects_locked_evidence_without_reuse_snapshot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -214,7 +215,7 @@ async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research
         await _activate_seeded_angle_runtime(session)
         created = await create_founder_journal_intake(
             session,
-            **_intake_kwargs(key="cq07-reuse-unapproved-evidence"),
+            **_intake_kwargs(key="cq07-reuse-generic-approval"),
         )
         content_case = await session.get(ContentCase, created.content_case_id)
         assert content_case is not None
@@ -222,22 +223,31 @@ async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research
         evidence_id = await _reviewed_support(
             session,
             content_case=content_case,
-            marker="unapproved",
+            marker="generic-approval",
         )
-        # Create through the real insert contract first: every EvidenceSet must start
-        # as a clean draft. Then corrupt only the persisted approval invariant to
-        # prove the reuse trust boundary fails closed on a locked legacy/out-of-band
-        # snapshot that has no matching immutable EvidenceSetApproval.
         evidence_set = await create_or_reuse_evidence_set(
             session,
             project_id=content_case.project_id,
             content_case_id=content_case.id,
             evidence_ids=[evidence_id],
         )
-        evidence_set.status = "locked"
-        evidence_set.locked_at = datetime.now(UTC)
-        evidence_set.locked_by = "malformed-fixture"
-        await session.flush()
+        # The database correctly forbids a locked set without an exact approval.
+        # A legacy/generic approval can still exist without the stronger nested
+        # Evidence/Claim/SourceDocument snapshot binding required by this reuse path.
+        approval = await approve_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Generic approval without reusable snapshot binding.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval.id,
+        )
 
         state = await get_operator_state_v45(
             session,
@@ -248,12 +258,12 @@ async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research
             content_case_id=created.content_case_id,
             intent="start",
             expected_state_version=state.state_version,
-            idempotency_key="cq07-reuse-unapproved-evidence-start",
+            idempotency_key="cq07-reuse-generic-approval-start",
         )
         assert queued.job_id is not None
         leased = await claim_next_operator_job(
             session,
-            worker_id="worker-cq07-reuse-unapproved",
+            worker_id="worker-cq07-reuse-generic-approval",
             lease_seconds=900,
         )
         assert leased is not None
@@ -265,12 +275,12 @@ async def test_start_to_angle_rejects_unapproved_locked_evidence_before_research
 
         with pytest.raises(
             OperatorWorkerError,
-            match="operator_worker_reusable_evidence_approval_missing",
+            match="operator_worker_reusable_evidence_approval_snapshot_missing",
         ):
             await execute_start_to_angle_job(
                 session,
                 job_id=leased.id,
-                worker_id="worker-cq07-reuse-unapproved",
+                worker_id="worker-cq07-reuse-generic-approval",
                 evidence_workflow=workflow,  # type: ignore[arg-type]
                 runner_registry=registry,
             )
@@ -309,7 +319,7 @@ async def test_start_to_angle_rejects_context_only_locked_evidence_before_resear
             content_case_id=content_case.id,
             evidence_ids=[evidence_id],
         )
-        approval = await approve_evidence_set(
+        approval = await approve_reusable_evidence_set(
             session,
             evidence_set_id=evidence_set.id,
             expected_version=evidence_set.version,
@@ -385,7 +395,7 @@ async def test_reusable_evidence_rejects_stale_source_document_snapshot() -> Non
             content_case_id=content_case.id,
             evidence_ids=[evidence_id],
         )
-        approval = await approve_evidence_set(
+        approval = await approve_reusable_evidence_set(
             session,
             evidence_set_id=evidence_set.id,
             expected_version=evidence_set.version,
@@ -439,7 +449,7 @@ async def test_reusable_evidence_rejects_bad_human_review_provenance() -> None:
             content_case_id=content_case.id,
             evidence_ids=[evidence_id],
         )
-        approval = await approve_evidence_set(
+        approval = await approve_reusable_evidence_set(
             session,
             evidence_set_id=evidence_set.id,
             expected_version=evidence_set.version,
@@ -471,3 +481,68 @@ async def test_reusable_evidence_rejects_bad_human_review_provenance() -> None:
                 project_id=content_case.project_id,
                 content_case_id=content_case.id,
             )
+
+@pytest.mark.asyncio
+async def test_reusable_evidence_rejects_post_approval_nested_content_mutation() -> None:
+    async with isolated_session() as session:
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="cq07-reuse-post-approval-mutation"),
+        )
+        content_case = await session.get(ContentCase, created.content_case_id)
+        assert content_case is not None
+
+        evidence_id = await _reviewed_support(
+            session,
+            content_case=content_case,
+            marker="post-approval-mutation",
+        )
+        evidence_set = await create_or_reuse_evidence_set(
+            session,
+            project_id=content_case.project_id,
+            content_case_id=content_case.id,
+            evidence_ids=[evidence_id],
+        )
+        approval = await approve_reusable_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            expected_version=evidence_set.version,
+            expected_content_hash=evidence_set.content_hash,
+            approved_by="founder-evidence-review",
+            approval_reason="Exact nested snapshot approved for mutation guard test.",
+        )
+        await lock_evidence_set(
+            session,
+            evidence_set_id=evidence_set.id,
+            locked_by="founder-evidence-review",
+            approval_id=approval.id,
+        )
+
+        evidence = await session.get(Evidence, evidence_id)
+        assert evidence is not None and evidence.source_document_id is not None
+        document = await session.get(SourceDocument, evidence.source_document_id)
+        assert document is not None
+
+        changed = (
+            "A changed source now makes a different factual statement while remaining "
+            "internally self-consistent."
+        )
+        document.content_markdown = changed
+        document.content_hash = content_hash(changed)
+        evidence.excerpt = changed
+        evidence.provenance_json = {
+            **evidence.provenance_json,
+            "source_document_hash": document.content_hash,
+        }
+        await session.flush()
+
+        with pytest.raises(
+            ReusableEvidenceSetError,
+            match="operator_worker_reusable_evidence_approval_snapshot_mismatch",
+        ):
+            await load_latest_reusable_evidence_set(
+                session,
+                project_id=content_case.project_id,
+                content_case_id=content_case.id,
+            )
+
