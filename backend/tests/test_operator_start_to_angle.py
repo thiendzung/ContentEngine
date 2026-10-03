@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -83,11 +83,21 @@ from app.modules.research.contracts import (
 from app.modules.research.evidence.contracts import EvidenceResearchResult
 
 
-async def _ready_preflight(_session: AsyncSession | None = None) -> dict[str, object]:
+async def _ready_preflight(
+    _session: AsyncSession | None = None,
+    *,
+    content_case_id: UUID | None = None,
+) -> dict[str, object]:
+    del content_case_id
     return {"status": "READY", "checks": []}
 
 
-async def _blocked_preflight(_session: AsyncSession | None = None) -> dict[str, object]:
+async def _blocked_preflight(
+    _session: AsyncSession | None = None,
+    *,
+    content_case_id: UUID | None = None,
+) -> dict[str, object]:
+    del content_case_id
     return {
         "status": "BLOCKED",
         "checks": [
