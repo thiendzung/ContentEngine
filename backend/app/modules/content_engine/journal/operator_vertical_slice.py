@@ -654,7 +654,10 @@ async def get_operator_state_v45(
         )
     if step.status in {"pending", "running"} and job is None:
         if not preflight_checked:
-            preflight = await build_journal_operator_preflight(session)
+            preflight = await build_journal_operator_preflight(
+                session,
+                content_case_id=content_case_id,
+            )
             if preflight.get("status") != "READY":
                 return base.model_copy(
                     update={
@@ -812,7 +815,10 @@ async def submit_operator_command_v45(
     if intent not in state.allowed_intents:
         raise OperatorControlError("operator_intent_not_allowed")
     if intent in {"start", "continue", "retry"}:
-        preflight = await build_journal_operator_preflight(session)
+        preflight = await build_journal_operator_preflight(
+                session,
+                content_case_id=content_case_id,
+            )
         if preflight.get("status") != "READY":
             raise OperatorControlError("operator_preflight_blocked")
 
