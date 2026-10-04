@@ -147,7 +147,7 @@ async def submit_review_decision(
             )
             if version is None:
                 raise ReviewActionError("review_action_partial_approved_state")
-        elif decision == "changes_requested" and writer_run.status == "running":
+        elif decision == "changes_requested":
             revision_step = await session.scalar(
                 select(StepRun.id)
                 .where(
@@ -158,16 +158,20 @@ async def submit_review_decision(
             )
             if revision_step is not None:
                 raise ReviewActionError("review_action_replay_state_invalid")
-            # Older Journal rows may have been persisted through the generic
-            # harness semantics, which briefly moved a changes-requested run
-            # into ``running``. Normalize that historical shape at this narrow
-            # Journal boundary before any final-revision Continue is submitted.
-            await transition_run(
-                session,
-                run_id=writer_run.id,
-                status="waiting_approval",
-            )
-            await session.refresh(writer_run)
+            if writer_run.status == "running":
+                # Older Journal rows may have been persisted through the
+                # generic harness semantics, which briefly moved a
+                # changes-requested run into ``running``. Normalize that
+                # historical shape at this narrow Journal boundary before any
+                # final-revision Continue is submitted.
+                await transition_run(
+                    session,
+                    run_id=writer_run.id,
+                    status="waiting_approval",
+                )
+                await session.refresh(writer_run)
+            elif writer_run.status != "waiting_approval":
+                raise ReviewActionError("review_action_replay_state_invalid")
         return ReviewDecisionResult(
             content_case_id=content_case_id,
             locale_variant_id=locale_variant_id,

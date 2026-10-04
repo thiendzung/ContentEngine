@@ -17,6 +17,7 @@ from test_ce05_review_console import (
     isolated_session,
 )
 
+from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.journal.review_actions import (
     ReviewActionError,
@@ -32,10 +33,14 @@ from app.modules.harness.models import (
     Approval,
     Artifact,
     ContentRun,
+    Job,
+    ModelCall,
     QualityEvaluation,
     StepRun,
+    ToolCall,
 )
-from app.modules.harness.persistence import pause_for_approval
+from app.modules.harness.persistence import pause_for_approval, transition_run
+from app.modules.publishing.models import PublishedContent, PublishEvent
 
 
 @dataclass
@@ -217,6 +222,24 @@ async def _counts(session) -> tuple[int, int]:
         await session.scalar(select(func.count()).select_from(ContentVersion)) or 0
     )
     return approvals, versions
+
+
+async def _effect_counts(session) -> dict[str, int]:
+    return {
+        "Approval": int(await session.scalar(select(func.count(Approval.id))) or 0),
+        "OperatorCommand": int(await session.scalar(select(func.count(OperatorCommand.id))) or 0),
+        "StepRun": int(await session.scalar(select(func.count(StepRun.id))) or 0),
+        "Job": int(await session.scalar(select(func.count(Job.id))) or 0),
+        "ModelCall": int(await session.scalar(select(func.count(ModelCall.id))) or 0),
+        "ToolCall": int(await session.scalar(select(func.count(ToolCall.id))) or 0),
+        "ContentVersion": int(await session.scalar(select(func.count(ContentVersion.id))) or 0),
+        "PublishedContent": int(
+            await session.scalar(select(func.count(PublishedContent.id))) or 0
+        ),
+        "PublishEvent": int(
+            await session.scalar(select(func.count(PublishEvent.id))) or 0
+        ),
+    }
 
 
 @pytest.mark.asyncio
@@ -536,7 +559,10 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
 
 
 @pytest.mark.asyncio
-async def test_changes_requested_replay_fails_closed_if_revision_already_started() -> None:
+@pytest.mark.parametrize("writer_status", ["running", "waiting_approval"])
+async def test_changes_requested_replay_fails_closed_if_revision_already_started(
+    writer_status: str,
+) -> None:
     async with isolated_session() as session:
         fixture = await _pending_fixture(session)
         comment = "Giữ nguyên phạm vi bằng chứng và sửa giọng văn."
@@ -549,7 +575,7 @@ async def test_changes_requested_replay_fails_closed_if_revision_already_started
             comment=comment,
         )
         assert first.writer_run_status == "waiting_approval"
-        fixture.writer_run.status = "running"
+        fixture.writer_run.status = writer_status
         session.add(
             StepRun(
                 run_id=fixture.writer_run.id,
@@ -559,6 +585,7 @@ async def test_changes_requested_replay_fails_closed_if_revision_already_started
             )
         )
         await session.flush()
+        before_effects = await _effect_counts(session)
         with pytest.raises(ReviewActionError, match="review_action_replay_state_invalid"):
             await submit_review_decision(
                 session,
@@ -568,6 +595,78 @@ async def test_changes_requested_replay_fails_closed_if_revision_already_started
                 actor_id="founder",
                 comment=comment,
             )
+        assert await _effect_counts(session) == before_effects
+
+
+@pytest.mark.asyncio
+async def test_changes_requested_waiting_replay_is_idempotent() -> None:
+    async with isolated_session() as session:
+        fixture = await _pending_fixture(session)
+        comment = "Giữ nguyên phạm vi bằng chứng và sửa giọng văn."
+        first = await submit_review_decision(
+            session,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment=comment,
+        )
+        assert first.writer_run_status == "waiting_approval"
+        before = await _counts(session)
+        before_effects = await _effect_counts(session)
+        replay = await submit_review_decision(
+            session,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment=comment,
+        )
+        assert replay.replayed is True
+        assert replay.writer_run_status == "waiting_approval"
+        assert await _counts(session) == before
+        assert await _effect_counts(session) == before_effects
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("writer_status", ["failed", "cancelled", "completed"])
+async def test_changes_requested_replay_fails_closed_for_terminal_writer(
+    writer_status: str,
+) -> None:
+    async with isolated_session() as session:
+        fixture = await _pending_fixture(session)
+        comment = "Giữ nguyên phạm vi bằng chứng và sửa giọng văn."
+        first = await submit_review_decision(
+            session,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment=comment,
+        )
+        assert first.writer_run_status == "waiting_approval"
+        if writer_status == "cancelled":
+            await transition_run(
+                session, run_id=fixture.writer_run.id, status="cancelled"
+            )
+        else:
+            await transition_run(session, run_id=fixture.writer_run.id, status="running")
+            await transition_run(
+                session, run_id=fixture.writer_run.id, status=writer_status
+            )
+        before = await _counts(session)
+        before_effects = await _effect_counts(session)
+        with pytest.raises(ReviewActionError, match="review_action_replay_state_invalid"):
+            await submit_review_decision(
+                session,
+                content_case_id=fixture.content_case_id,
+                locale_variant_id=fixture.variant.id,
+                decision="changes_requested",
+                actor_id="founder",
+                comment=comment,
+            )
+        assert await _counts(session) == before
+        assert await _effect_counts(session) == before_effects
 
 
 @pytest.mark.asyncio
