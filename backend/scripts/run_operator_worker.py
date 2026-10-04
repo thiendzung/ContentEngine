@@ -55,7 +55,6 @@ from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
-from app.modules.system.runtime_maintenance import worker_runtime_gate
 from app.modules.research.contracts import (
     ProductionResearchRequest,
     ProductionResearchResult,
@@ -66,6 +65,7 @@ from app.modules.research.providers.exa import ExaProvider
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.providers.serper import SerperProvider
 from app.modules.research.providers.tavily import TavilyProvider
+from app.modules.system.runtime_maintenance import worker_runtime_gate
 
 _LEASE_SECONDS = 900
 _HEARTBEAT_SECONDS = 240
