@@ -353,7 +353,10 @@ async def _post_0044_contract(engine: AsyncEngine) -> dict[str, object]:
             ).all()
         )
         expected_prompts = {(key, 1, "active") for key in _PROMPT_KEYS}
-        if set(prompt_rows) != expected_prompts:
+        actual_prompts = {
+            (str(row[0]), int(row[1]), str(row[2])) for row in prompt_rows
+        }
+        if actual_prompts != expected_prompts:
             raise OperationalMigration0044Error("coverage_support_prompt_seed_invalid")
 
         recipe_rows = list(
@@ -374,7 +377,10 @@ async def _post_0044_contract(engine: AsyncEngine) -> dict[str, object]:
             ).all()
         )
         expected_recipes = {(key, 1, "active") for key in _RECIPE_KEYS}
-        if set(recipe_rows) != expected_recipes:
+        actual_recipes = {
+            (str(row[0]), int(row[1]), str(row[2])) for row in recipe_rows
+        }
+        if actual_recipes != expected_recipes:
             raise OperationalMigration0044Error("coverage_support_recipe_seed_invalid")
 
     return {
@@ -434,7 +440,10 @@ async def _main() -> int:
         if source.database != _EXPECTED_SOURCE_DATABASE:
             raise OperationalMigration0044Error("unexpected_operational_database")
         source_revision_manifest = _manifest_source_revision(manifest, source)
-        chain = _upgrade_chain(_alembic_script(), source_revision_manifest)
+        alembic_script = _alembic_script()
+        if alembic_script.get_current_head() != _TARGET_REVISION:
+            raise OperationalMigration0044Error("unexpected_code_migration_head")
+        chain = _upgrade_chain(alembic_script, source_revision_manifest)
         if chain != _EXPECTED_UPGRADE_CHAIN:
             raise OperationalMigration0044Error("unexpected_migration_chain")
         expected_fingerprint = _expected_fingerprint(manifest)
