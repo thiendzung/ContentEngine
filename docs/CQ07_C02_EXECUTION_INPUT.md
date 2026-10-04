@@ -1,7 +1,7 @@
 # CQ-07 C02 Real Pilot Execution Input
 
-Status: AWAITING FOUNDER EXTERNAL/MODEL EXECUTION AUTHORIZATION  
-Tracking: #303  
+Status: AWAITING FOUNDER EXTERNAL/MODEL EXECUTION AUTHORIZATION
+Tracking: #303
 Pair contract: `docs/CQ07_PILOT_CONTRACT.md`
 
 This file freezes the exact Founder manual-intake payload for the real C02 pilot.
@@ -19,31 +19,31 @@ activation or publication.
 
 ## Customer problem
 
-Reader:  
+Reader:
 A first-time buyer who is comparing Vietnamese artworks and wants to understand whether
 the exact item being offered is a unique/original work, an edition, or a print/reproduction
 without needing specialist authentication expertise.
 
-Situation:  
+Situation:
 They are looking at an artwork or listing described with terms such as original, edition
 or print, but are unsure which object-level facts, process details and documents are
 sufficient to understand what is actually being sold. In plain buyer language, the fear is:
 **“Is the artwork I am about to buy really an original work, or am I actually buying a
 print/copy/reproduction?”**
 
-Need:  
+Need:
 Reduce uncertainty by distinguishing unique/original work, edition and print/reproduction,
 then cross-checking the exact artwork's material, medium, process, authorship/originality
 information, signature, certificate, invoice and provenance record while keeping unknowns
 explicit.
 
-Primary question:  
+Primary question:
 **How do I know whether a Vietnamese artwork is an original, an edition or a print?**
 
-Primary intent:  
+Primary intent:
 `evaluate`
 
-Promise:  
+Promise:
 Explain unique/original, edition and print distinctions and show the buyer which artwork
 facts and documents to cross-check before purchase, without pretending that one visual cue
 or one certificate proves everything.
@@ -71,14 +71,14 @@ than reading like an academic authentication guide.
 
 ## Founder-owned originality input
 
-Material:  
+Material:
 MOTGU's editorial position for this pilot is that a buyer should understand the exact
 object being offered rather than rely on a single visual cue, signature, certificate or
 sales label. A careful decision comes from cross-checking the artwork's material, medium,
 process, artist/work identity, edition status where relevant, supporting documents and
 provenance information, while keeping any remaining uncertainty visible.
 
-Writer use:  
+Writer use:
 Use this only as MOTGU's first-party editorial perspective and verification framing.
 Build C02 around a concrete object-level cross-check: identify what category of object is
 being sold, inspect the exact artwork facts, compare those facts with
