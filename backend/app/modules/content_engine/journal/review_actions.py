@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.content_engine.persistence import create_next_content_version
-from app.modules.harness.models import Approval, Artifact, ContentRun
+from app.modules.harness.models import Approval, Artifact, ContentRun, StepRun
 from app.modules.harness.persistence import resolve_approval, transition_run
 
 ReviewDecision = Literal["approved", "changes_requested", "rejected"]
@@ -147,6 +147,31 @@ async def submit_review_decision(
             )
             if version is None:
                 raise ReviewActionError("review_action_partial_approved_state")
+        elif decision == "changes_requested":
+            revision_step = await session.scalar(
+                select(StepRun.id)
+                .where(
+                    StepRun.run_id == writer_run.id,
+                    StepRun.step_key.in_({"final_revision_vi", "final_revision_en"}),
+                )
+                .limit(1)
+            )
+            if revision_step is not None:
+                raise ReviewActionError("review_action_replay_state_invalid")
+            if writer_run.status == "running":
+                # Older Journal rows may have been persisted through the
+                # generic harness semantics, which briefly moved a
+                # changes-requested run into ``running``. Normalize that
+                # historical shape at this narrow Journal boundary before any
+                # final-revision Continue is submitted.
+                await transition_run(
+                    session,
+                    run_id=writer_run.id,
+                    status="waiting_approval",
+                )
+                await session.refresh(writer_run)
+            elif writer_run.status != "waiting_approval":
+                raise ReviewActionError("review_action_replay_state_invalid")
         return ReviewDecisionResult(
             content_case_id=content_case_id,
             locale_variant_id=locale_variant_id,
@@ -197,6 +222,17 @@ async def submit_review_decision(
                 final_artifact_id=final_artifact.id,
             )
         await transition_run(session, run_id=writer_run.id, status="completed")
+        await session.refresh(writer_run)
+    elif decision == "changes_requested":
+        # ``resolve_approval`` is shared by the generic harness and records a
+        # non-rejection as ``running``. Journal final-review changes_requested
+        # is different: the Writer must remain paused until an explicit
+        # final_revision Continue dispatches work.
+        await transition_run(
+            session,
+            run_id=writer_run.id,
+            status="waiting_approval",
+        )
         await session.refresh(writer_run)
     else:
         await session.refresh(writer_run)
