@@ -537,22 +537,22 @@ async def _main() -> int:
                 runtime_locked = _runtime_guard()
 
                 evidence.update(
-                {
-                    "revision_before": revision_before,
-                    "core_fingerprint_before": core_before.to_dict(),
-                    "source_documents_before": source_documents_before,
-                    "source_full_data_before": {
-                        "table_count": full_data_before["table_count"],
-                        "row_count": full_data_before["row_count"],
-                        "sha256": full_data_before["sha256"],
-                    },
-                    "frozen_tables_before": frozen_before,
-                    "runtime_work_before": runtime_work_before,
-                    "runtime_work_during_lock": runtime_during_lock,
-                    "runtime_locked": runtime_locked,
-                    "maintenance_gate": "EXCLUSIVE",
-                }
-            )
+                    {
+                        "revision_before": revision_before,
+                        "core_fingerprint_before": core_before.to_dict(),
+                        "source_documents_before": source_documents_before,
+                        "source_full_data_before": {
+                            "table_count": full_data_before["table_count"],
+                            "row_count": full_data_before["row_count"],
+                            "sha256": full_data_before["sha256"],
+                        },
+                        "frozen_tables_before": frozen_before,
+                        "runtime_work_before": runtime_work_before,
+                        "runtime_work_during_lock": runtime_during_lock,
+                        "runtime_locked": runtime_locked,
+                        "maintenance_gate": "EXCLUSIVE",
+                    }
+                )
 
                 migration_attempted = True
                 _run_source_upgrade(source)
