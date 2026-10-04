@@ -528,7 +528,7 @@ async def _main() -> int:
             maintenance_connection
         )
         if not exclusive_lock_acquired:
-            raise OperationalMigration0044Error("worker_runtime_active")
+            raise OperationalMigration0044Error("maintenance_gate_busy")
 
         runtime_during_lock = await _runtime_work_state(engine)
         if runtime_during_lock != runtime_work_before:
