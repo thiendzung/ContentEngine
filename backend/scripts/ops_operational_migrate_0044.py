@@ -23,6 +23,7 @@ from app.modules.system.runtime_maintenance import (
     release_maintenance_exclusive,
     try_acquire_maintenance_exclusive,
 )
+from scripts import ops_release_lifecycle_0042 as release_lifecycle_0042
 from scripts.ops_data02_rehearsal import (
     Data02RehearsalError,
     _EXPECTED_UPGRADE_CHAIN,
@@ -213,39 +214,18 @@ async def _frozen_table_fingerprints(
     return result
 
 
-async def _runtime_work_state(engine: AsyncEngine) -> dict[str, int]:
-    statements = {
-        "queued_or_leased_jobs": (
-            "select count(*) from jobs where status in ('queued','leased')"
-        ),
-        "pending_or_running_steps": (
-            "select count(*) from step_runs where status in ('pending','running')"
-        ),
-        "pending_or_running_runs": (
-            "select count(*) from content_runs where status in ('pending','running')"
-        ),
-        "pending_or_running_model_calls": (
-            "select count(*) from model_calls where status in ('pending','running')"
-        ),
-        "pending_or_running_tool_calls": (
-            "select count(*) from tool_calls where status in ('pending','running')"
-        ),
-        "active_outbox_intents": (
-            "select count(*) from outbox_intents "
-            "where status in ('pending','processing','needs_reconciliation')"
-        ),
-    }
-    async with engine.connect() as connection:
-        return {
-            key: int((await connection.execute(text(statement))).scalar_one())
-            for key, statement in statements.items()
-        }
+async def _runtime_work_state(engine: AsyncEngine) -> dict[str, object]:
+    """Reuse the already-proven rev-0042 quiescence contract.
 
+    That contract blocks nonterminal jobs, model/tool/outbox activity and
+    malformed active Run/Step state, while allowing only the exact durable
+    paused-retry shape previously proven on the operational database.
+    """
 
-def _require_quiescent(state: dict[str, int]) -> None:
-    active = {key: value for key, value in state.items() if value != 0}
-    if active:
-        raise OperationalMigration0044Error("operational_runtime_not_quiescent")
+    try:
+        return await release_lifecycle_0042._assert_release_quiescent_state(engine)
+    except release_lifecycle_0042.ReleaseLifecycleError as exc:
+        raise OperationalMigration0044Error(exc.code) from exc
 
 
 def _run_source_upgrade(source: URL) -> None:
@@ -531,8 +511,6 @@ async def _main() -> int:
             raise OperationalMigration0044Error("source_documents_drift")
         if full_data_before.get("sha256") != args.expected_source_full_data_sha256:
             raise OperationalMigration0044Error("source_full_data_drift")
-        _require_quiescent(runtime_work_before)
-
         async with engine.connect() as maintenance_connection:
             exclusive_lock_acquired = await try_acquire_maintenance_exclusive(
                 maintenance_connection
@@ -542,7 +520,6 @@ async def _main() -> int:
 
             try:
                 runtime_during_lock = await _runtime_work_state(engine)
-                _require_quiescent(runtime_during_lock)
                 runtime_locked = _runtime_guard()
 
                 evidence.update(
@@ -586,8 +563,6 @@ async def _main() -> int:
                     raise OperationalMigration0044Error(
                         "frozen_runtime_tables_changed_by_migration"
                     )
-                _require_quiescent(runtime_work_after)
-
                 evidence.update(
                     {
                         "revision_after": revision_after,
