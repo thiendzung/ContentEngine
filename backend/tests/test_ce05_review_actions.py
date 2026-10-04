@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
@@ -275,6 +276,205 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
         assert panel.next_action == "REVISION_REQUESTED"
         assert panel.final_approval is not None
         assert panel.final_approval.decision == "changes_requested"
+
+
+@pytest.mark.asyncio
+async def test_final_revision_v2_approval_creates_version_two_and_completes() -> None:
+    async with isolated_session() as session:
+        fixture = await _pending_fixture(session)
+        requested = await submit_review_decision(
+            session,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment="Làm rõ câu kết.",
+        )
+        assert requested.writer_run_status == "running"
+        revised_payload = dict(fixture.final_artifact.content_json)
+        revised_payload["closing_markdown"] = "Hãy kiểm tra câu hỏi tiếp theo."
+        revised = Artifact(
+            run_id=fixture.writer_run.id,
+            artifact_type="journal_draft",
+            locale="en",
+            version=5,
+            content_json=revised_payload,
+            content_hash=_hash(revised_payload),
+        )
+        session.add(revised)
+        revised_final = Artifact(
+            run_id=fixture.writer_run.id,
+            artifact_type="final_content",
+            locale="en",
+            version=2,
+            content_json=revised_payload,
+            content_hash=_hash(revised_payload),
+        )
+        session.add(revised_final)
+        await session.flush()
+        audit_candidates = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.artifact_type == "assertion_audit",
+                        Artifact.locale == "en",
+                    )
+                )
+            ).all()
+        )
+        old_audit = next(
+            candidate
+            for candidate in audit_candidates
+            if isinstance(candidate.content_json, dict)
+            and candidate.content_json.get("source_draft", {}).get("id")
+            == str(fixture.source_draft.id)
+        )
+        assert old_audit is not None
+        audit_payload = copy.deepcopy(old_audit.content_json)
+        assert isinstance(audit_payload, dict)
+        audit_payload["source_draft"] = {
+            "id": str(revised.id),
+            "version": revised.version,
+            "content_hash": revised.content_hash,
+        }
+        new_audit = Artifact(
+            run_id=old_audit.run_id,
+            artifact_type="assertion_audit",
+            locale="en",
+            version=old_audit.version + 1,
+            content_json=audit_payload,
+            content_hash=_hash(audit_payload),
+        )
+        session.add(new_audit)
+        await session.flush()
+        old_audit_eval = await session.scalar(
+            select(QualityEvaluation).where(QualityEvaluation.artifact_id == old_audit.id)
+        )
+        assert old_audit_eval is not None
+        session.add(
+            QualityEvaluation(
+                run_id=old_audit_eval.run_id,
+                artifact_id=new_audit.id,
+                evaluator_key=old_audit_eval.evaluator_key,
+                evaluator_version=old_audit_eval.evaluator_version,
+                evaluator_type=old_audit_eval.evaluator_type,
+                result=old_audit_eval.result,
+                severity=old_audit_eval.severity,
+                findings_json=old_audit_eval.findings_json,
+            )
+        )
+        copy_candidates = list(
+            (
+                await session.scalars(
+                    select(Artifact).where(
+                        Artifact.artifact_type == "source_copy_check",
+                        Artifact.locale == "en",
+                    )
+                )
+            ).all()
+        )
+        old_copy = next(
+            candidate
+            for candidate in copy_candidates
+            if isinstance(candidate.content_json, dict)
+            and candidate.content_json.get("source_draft", {}).get("id")
+            == str(fixture.source_draft.id)
+        )
+        assert old_copy is not None
+        copy_payload = copy.deepcopy(old_copy.content_json)
+        assert isinstance(copy_payload, dict)
+        copy_payload["source_draft"] = audit_payload["source_draft"]
+        copy_payload["assertion_audit"] = {
+            "artifact": {
+                "id": str(new_audit.id),
+                "version": new_audit.version,
+                "content_hash": new_audit.content_hash,
+            }
+        }
+        new_copy = Artifact(
+            run_id=old_copy.run_id,
+            artifact_type="source_copy_check",
+            locale="en",
+            version=old_copy.version + 1,
+            content_json=copy_payload,
+            content_hash=_hash(copy_payload),
+        )
+        session.add(new_copy)
+        await session.flush()
+        old_copy_eval = await session.scalar(
+            select(QualityEvaluation).where(QualityEvaluation.artifact_id == old_copy.id)
+        )
+        assert old_copy_eval is not None
+        session.add(
+            QualityEvaluation(
+                run_id=old_copy_eval.run_id,
+                artifact_id=new_copy.id,
+                evaluator_key=old_copy_eval.evaluator_key,
+                evaluator_version=old_copy_eval.evaluator_version,
+                evaluator_type=old_copy_eval.evaluator_type,
+                result=old_copy_eval.result,
+                severity=old_copy_eval.severity,
+                findings_json=old_copy_eval.findings_json,
+            )
+        )
+        checkpoint_payload = {
+            "pending_approval": {
+                "step_key": "final_review",
+                "artifact_id": str(revised_final.id),
+            }
+        }
+        checkpoint = await session.scalar(
+            select(Artifact)
+            .where(
+                Artifact.run_id == fixture.writer_run.id,
+                Artifact.artifact_type == "checkpoint",
+            )
+            .order_by(Artifact.version.desc())
+        )
+        assert checkpoint is not None
+        session.add(
+            Artifact(
+                run_id=fixture.writer_run.id,
+                artifact_type="checkpoint",
+                locale="en",
+                version=checkpoint.version + 1,
+                content_json=checkpoint_payload,
+                content_hash=_hash(checkpoint_payload),
+            )
+        )
+        session.add(
+            ContentVersion(
+                content_item_id=fixture.writer_run.content_item_id,
+                version_no=1,
+                change_reason="Prior revised draft snapshot",
+                status="draft",
+                content_json=fixture.final_artifact.content_json,
+                created_by_run_id=fixture.writer_run.id,
+                final_artifact_id=fixture.final_artifact.id,
+            )
+        )
+        fixture.writer_run.status = "waiting_approval"
+        await session.flush()
+        result = await submit_review_decision(
+            session,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
+            decision="approved",
+            actor_id="founder",
+            comment="Duyệt bản sửa v2.",
+        )
+        assert result.content_version_id is not None
+        assert result.content_version_no == 2
+        version = await session.get(ContentVersion, result.content_version_id)
+        assert version is not None
+        assert version.final_artifact_id == revised_final.id
+        assert version.version_no == 2
+        assert fixture.writer_run.status == "completed"
+        assert await session.scalar(
+            select(func.count(ContentVersion.id)).where(
+                ContentVersion.content_item_id == fixture.writer_run.content_item_id
+            )
+        ) == 2
 
 
 @pytest.mark.asyncio

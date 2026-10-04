@@ -35,6 +35,10 @@ from app.modules.content_engine.journal.deep_quality_execution import (
     load_persisted_deep_quality_result,
 )
 from app.modules.content_engine.journal.deep_quality_input import DeepQualityInput
+from app.modules.content_engine.journal.final_revision import (
+    FINAL_REVISION_STEP_KEYS,
+    load_final_revision_requests,
+)
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
@@ -93,6 +97,7 @@ from app.modules.system.settings_service import active_prompt_definition, active
 QUALITY_LOCALES = ("vi-VN", "en")
 # The task keys are part of the approved registry contract and must remain exact.
 QUALITY_REVIEW_TASK_KEYS = {"vi-VN": "review_revise_vi", "en": "review_revise_en"}
+FINAL_REVISION_TASK_KEYS = FINAL_REVISION_STEP_KEYS
 QUALITY_AUDIT_TASK_KEYS = {"vi-VN": "assertion_audit_vi", "en": "assertion_audit_en"}
 QUALITY_MAX_JOB_ATTEMPTS = 2
 _QUALITY_INTEGRITY_FAILURE_MARKERS = (
@@ -1037,18 +1042,31 @@ async def _review_stage(
 ) -> QualityStage:
     if writer.run is None:
         return QualityStage()
-    steps = list(
+    step_keys = {
+        QUALITY_REVIEW_TASK_KEYS[locale],
+        FINAL_REVISION_TASK_KEYS[locale],
+    }
+    all_steps = list(
         (
             await session.scalars(
                 select(StepRun)
                 .where(
                     StepRun.run_id == writer.run.id,
-                    StepRun.step_key == QUALITY_REVIEW_TASK_KEYS[locale],
+                    StepRun.step_key.in_(step_keys),
                 )
                 .order_by(StepRun.attempt, StepRun.created_at, StepRun.id)
             )
         ).all()
     )
+    revision_steps = [
+        row for row in all_steps if row.step_key == FINAL_REVISION_TASK_KEYS[locale]
+    ]
+    review_steps = [
+        row for row in all_steps if row.step_key == QUALITY_REVIEW_TASK_KEYS[locale]
+    ]
+    # Final-revision attempts are a bounded retry lane after the original review;
+    # do not count the original review attempt against the revision retry budget.
+    steps = revision_steps or review_steps
     if len(steps) > QUALITY_MAX_JOB_ATTEMPTS:
         raise OperatorControlError("operator_quality_review_attempt_conflict", locale)
     if not steps:
@@ -1212,11 +1230,17 @@ async def get_quality_progress(
                         )
                     ).all()
                 )
-                if len(finals) > 1:
-                    raise OperatorControlError(
-                        "operator_quality_final_artifact_conflict", writer.required_locale
+                current_finals = [
+                    artifact
+                    for artifact in finals
+                    if audit_input_draft is not None
+                    and artifact.content_hash == audit_input_draft.content_hash
+                ]
+                if current_finals:
+                    final_content = max(
+                        current_finals,
+                        key=lambda artifact: (artifact.version, artifact.id),
                     )
-                final_content = finals[0] if finals else None
                 final_steps = list(
                     (
                         await session.scalars(
@@ -1227,11 +1251,22 @@ async def get_quality_progress(
                         )
                     ).all()
                 )
-                if len(final_steps) > 1:
-                    raise OperatorControlError(
-                        "operator_quality_final_step_conflict", writer.required_locale
-                    )
-                final_review = final_steps[0] if final_steps else None
+                if final_content is not None:
+                    matching_steps = [
+                        row
+                        for row in final_steps
+                        if str(final_content.id) in row.output_artifact_refs_json
+                        or (
+                            row.status == "completed"
+                            and row.input_artifact_refs_json
+                            and row.input_artifact_refs_json[0]
+                            == str(final_content.id)
+                        )
+                    ]
+                    final_review = max(
+                        matching_steps,
+                        key=lambda row: (row.attempt, row.created_at, row.id),
+                    ) if matching_steps else None
                 checkpoint = await get_latest_checkpoint(session, run_id=writer.run.id)
         lane = QualityLane(
             locale=writer.required_locale,
@@ -1265,12 +1300,114 @@ async def pending_quality_commands(
             await session.scalars(
                 select(OperatorCommand).where(
                     OperatorCommand.content_case_id == content_case_id,
-                    OperatorCommand.resolved_action_key == "writers_to_quality",
+                    OperatorCommand.resolved_action_key.in_(
+                        ("writers_to_quality", "final_revision")
+                    ),
                     OperatorCommand.status == "queued",
                 )
             )
         ).all()
     )
+
+
+async def _final_revision_lane_state(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+) -> tuple[bool, bool, bool, bool]:
+    """Return active, exhausted, retryable and all-completed revision lanes."""
+
+    requests = await load_final_revision_requests(session, content_case_id=content_case_id)
+    if not requests:
+        return False, False, False, False
+    active = exhausted = retryable = False
+    all_completed = True
+    for request in requests:
+        step = await session.scalar(
+            select(StepRun)
+            .where(
+                StepRun.run_id == request.writer_run.id,
+                StepRun.step_key == request.step_key,
+            )
+            .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+        )
+        if step is None:
+            all_completed = False
+            continue
+        job = await session.scalar(
+            select(Job)
+            .where(Job.step_run_id == step.id)
+            .order_by(Job.updated_at.desc(), Job.id.desc())
+            .limit(1)
+        )
+        if job is not None and job.status in {"queued", "leased"}:
+            active = True
+            all_completed = False
+        elif (
+            step.status == "completed"
+            and job is not None
+            and job.status == "completed"
+        ):
+            continue
+        elif job is not None and job.status in {"failed", "cancelled"}:
+            all_completed = False
+            if (
+                step.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            ):
+                exhausted = True
+            else:
+                retryable = True
+        else:
+            all_completed = False
+    return active, exhausted, retryable, all_completed
+
+
+async def settle_final_revision_commands(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    state_version: str,
+    progress: QualityProgress | None,
+) -> None:
+    """Settle revision parents from all requested lanes, never one job id."""
+
+    commands = list(
+        (
+            await session.scalars(
+                select(OperatorCommand).where(
+                    OperatorCommand.content_case_id == content_case_id,
+                    OperatorCommand.resolved_action_key == "final_revision",
+                    OperatorCommand.status.in_({"accepted", "queued", "failed"}),
+                )
+            )
+        ).all()
+    )
+    commands = [
+        command
+        for command in commands
+        if command.error_code != "operator_final_revision_cancelled"
+    ]
+    if not commands:
+        return
+    active, exhausted, retryable, all_completed = await _final_revision_lane_state(
+        session, content_case_id=content_case_id
+    )
+    if active:
+        return
+    if exhausted:
+        status, error = "failed", "operator_final_revision_retry_exhausted"
+    elif retryable:
+        status, error = "failed", "operator_final_revision_job_failed"
+    elif all_completed and progress is not None and progress.final_gate_ready:
+        status, error = "completed", None
+    else:
+        return
+    for command in commands:
+        command.status = status
+        command.error_code = error
+        command.state_after = state_version
+    await session.flush()
 
 
 async def settle_quality_command(
@@ -1291,9 +1428,17 @@ async def settle_quality_command(
         status, error = "failed", "operator_quality_job_failed"
     else:
         return
-    for command in await pending_quality_commands(
+    commands = await pending_quality_commands(
         session, content_case_id=progress.content_case_id
-    ):
+    )
+    final_revision_active, _exhausted, _retryable, _all_completed = (
+        await _final_revision_lane_state(
+            session, content_case_id=progress.content_case_id
+        )
+    )
+    for command in commands:
+        if command.resolved_action_key == "final_revision" and final_revision_active:
+            continue
         command.status = status
         command.error_code = error
         command.state_after = state_version
@@ -2115,7 +2260,7 @@ async def prepare_final_gates(
                 )
             ).all()
         )
-        if len(steps) > 1 or (steps and steps[0].attempt != 1):
+        if len({row.attempt for row in steps}) != len(steps):
             raise OperatorControlError("operator_quality_final_step_conflict", lane.locale)
         if lane.reader_value.artifact is None or lane.search_ai.artifact is None:
             raise OperatorControlError("operator_quality_final_readiness_missing", lane.locale)
@@ -2135,22 +2280,28 @@ async def prepare_final_gates(
             str(lane.search_ai.artifact.id),
             str(lane.deep_quality.artifact.id),
         ]
+        matching_steps = [
+            row
+            for row in steps
+            if row.input_artifact_refs_json
+            and row.input_artifact_refs_json[0] == str(lane.revised_draft.id)
+        ]
         step = (
-            steps[0]
-            if steps
+            matching_steps[-1]
+            if matching_steps
             else StepRun(
                 run_id=lane.writer.run.id,
                 step_key="final_review",
-                attempt=1,
+                attempt=(max((row.attempt for row in steps), default=0) + 1),
                 status="pending",
                 input_artifact_refs_json=expected_final_inputs,
                 output_artifact_refs_json=[],
             )
         )
-        if not steps:
+        if not matching_steps:
             session.add(step)
             await session.flush()
-        elif set(expected_final_inputs) - set(step.input_artifact_refs_json):
+        elif step.input_artifact_refs_json != expected_final_inputs:
             raise OperatorControlError("operator_quality_final_step_input_stale", lane.locale)
         if step.status == "pending":
             await transition_step_run(session, step_run_id=step.id, status="running")
@@ -2167,24 +2318,28 @@ async def prepare_final_gates(
                 )
             ).all()
         )
-        if len(finals) > 1:
+        current_finals = [
+            row for row in finals if row.content_hash == lane.revised_draft.content_hash
+        ]
+        if len(current_finals) > 1:
             raise OperatorControlError("operator_quality_final_artifact_conflict", lane.locale)
-        if finals:
-            final = finals[0]
+        if current_finals:
+            final = current_finals[0]
             if (
-                final.version != 1
+                final.version <= 0
                 or final.step_run_id != step.id
                 or final.content_json != copy.deepcopy(lane.revised_draft.content_json)
                 or final.content_hash != lane.revised_draft.content_hash
             ):
                 raise OperatorControlError("operator_quality_final_artifact_stale", lane.locale)
         else:
+            next_version = max((row.version for row in finals), default=0) + 1
             final = Artifact(
                 run_id=lane.writer.run.id,
                 step_run_id=step.id,
                 artifact_type="final_content",
                 locale=lane.locale,
-                version=1,
+                version=next_version,
                 content_json=copy.deepcopy(lane.revised_draft.content_json),
                 content_hash=lane.revised_draft.content_hash,
             )
@@ -2239,12 +2394,14 @@ __all__ = [
     "QUALITY_LOCALES",
     "QUALITY_MAX_JOB_ATTEMPTS",
     "QUALITY_REVIEW_TASK_KEYS",
+    "FINAL_REVISION_TASK_KEYS",
     "QualityLane",
     "QualityProgress",
     "QualityStage",
     "get_quality_progress",
     "pending_quality_commands",
     "prepare_final_gates",
+    "settle_final_revision_commands",
     "settle_quality_command",
     "submit_writers_to_quality_command",
 ]

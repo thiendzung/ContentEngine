@@ -15,6 +15,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.final_revision import (
+    FinalRevisionBindingError,
+    load_final_revision_requests,
+)
 from app.modules.content_engine.journal.models import AngleApproval, OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
@@ -24,7 +28,9 @@ from app.modules.content_engine.journal.operator_control import (
 )
 from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.journal.operator_quality import (
+    QUALITY_MAX_JOB_ATTEMPTS,
     get_quality_progress,
+    pending_quality_commands,
     submit_writers_to_quality_command,
 )
 from app.modules.content_engine.journal.operator_vertical_slice import START_TO_ANGLE_STAGE
@@ -49,7 +55,7 @@ from app.modules.content_engine.journal.outline_agent_bridge import (
 )
 from app.modules.content_engine.journal.writer import WriterGenerationError, ensure_writer_run
 from app.modules.content_engine.models import ContentCase, SettingsSnapshot
-from app.modules.harness.models import Artifact, ContentRun, Job, StepRun
+from app.modules.harness.models import Artifact, ContentRun, Job, StepRun, utc_now
 from app.modules.harness.persistence import enqueue_job, transition_run
 from app.modules.harness.runtime import RuntimeConfigurationError, SettingsModelRouter
 from app.modules.system.settings_service import (
@@ -68,6 +74,7 @@ OperatorActionKey = Literal[
     "outline_to_writers",
     "writers_to_quality",
     "finalize_content",
+    "final_revision",
     "complete",
 ]
 
@@ -93,6 +100,152 @@ _GATE_CONTINUATIONS: dict[str, OperatorActionKey] = {
 }
 _F2_EXECUTABLE_CONTINUATIONS = {"angle"}
 _AUTHORITATIVE_COMPLETION_BLOCKERS = {"operator_completion_binding_invalid"}
+
+
+async def _final_revision_state_overlay(
+    session: AsyncSession,
+    *,
+    state: OperatorState,
+) -> OperatorState:
+    """Expose a bounded changes-requested continuation over the old final gate."""
+
+    try:
+        requests = await load_final_revision_requests(
+            session,
+            content_case_id=state.content_case_id,
+        )
+    except FinalRevisionBindingError as exc:
+        return state.model_copy(
+            update={
+                "status": "BLOCKED",
+                "phase": "Duyệt cuối",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "human_gate": None,
+                "blocker_code": exc.code,
+                "blocker_message": str(exc),
+            }
+        )
+    if not requests:
+        return state
+
+    statuses: list[str] = []
+    exhausted = False
+    focused_step: StepRun | None = None
+    focused_run: ContentRun | None = None
+    for request in requests:
+        focused_run = request.writer_run
+        step = (
+            await session.scalar(
+                select(StepRun)
+                .where(
+                    StepRun.run_id == request.writer_run.id,
+                    StepRun.step_key == request.step_key,
+                )
+                .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+            )
+        )
+        if step is None:
+            statuses.append("ready")
+            continue
+        focused_step = step
+        job = await _latest_job(session, step_run_id=step.id)
+        if job is not None and job.status in {"queued", "leased"}:
+            statuses.append(job.status)
+        elif step.status == "completed":
+            statuses.append("completed")
+        elif job is not None and job.status in {"failed", "cancelled"}:
+            if step.attempt >= QUALITY_MAX_JOB_ATTEMPTS or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+                exhausted = True
+                statuses.append("exhausted")
+            else:
+                statuses.append("failed")
+        else:
+            statuses.append("blocked")
+    if exhausted:
+        return state.model_copy(
+            update={
+                "status": "BLOCKED",
+                "phase": "Rà soát bản sửa",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "human_gate": None,
+                "current_run_id": focused_run.id if focused_run else state.current_run_id,
+                "current_step_run_id": focused_step.id if focused_step else None,
+                "blocker_code": "operator_final_revision_retry_exhausted",
+                "blocker_message": (
+                    "Final revision retry budget exhausted; no further retry is allowed."
+                ),
+            }
+        )
+    if any(value == "failed" for value in statuses):
+        return state.model_copy(
+            update={
+                "status": "BLOCKED",
+                "phase": "Rà soát bản sửa",
+                "primary_intent": "retry",
+                "allowed_intents": ["retry"],
+                "human_gate": None,
+                "current_run_id": focused_run.id if focused_run else state.current_run_id,
+                "current_step_run_id": focused_step.id if focused_step else None,
+                "blocker_code": "operator_final_revision_job_failed",
+                "blocker_message": (
+                    "Final revision technical job failed; retry requires a new bounded intent."
+                ),
+            }
+        )
+    if any(value in {"queued", "leased"} for value in statuses):
+        active = "leased" if "leased" in statuses else "queued"
+        return state.model_copy(
+            update={
+                "status": "RUNNING" if active == "leased" else "QUEUED",
+                "phase": "Rà soát bản sửa",
+                "primary_intent": None,
+                "allowed_intents": ["cancel"] if active == "queued" else [],
+                "human_gate": None,
+                "current_run_id": focused_run.id if focused_run else state.current_run_id,
+                "current_step_run_id": focused_step.id if focused_step else None,
+                "blocker_code": None,
+                "blocker_message": None,
+            }
+        )
+    if any(value == "blocked" for value in statuses) or (
+        any(value == "completed" for value in statuses)
+        and any(value == "ready" for value in statuses)
+    ):
+        return state.model_copy(
+            update={
+                "status": "BLOCKED",
+                "phase": "Rà soát bản sửa",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "human_gate": None,
+                "current_run_id": focused_run.id if focused_run else state.current_run_id,
+                "current_step_run_id": focused_step.id if focused_step else None,
+                "blocker_code": "operator_final_revision_step_blocked",
+                "blocker_message": (
+                    "Final revision has a durable step without a matching active job."
+                ),
+            }
+        )
+    if all(value == "ready" for value in statuses):
+        return state.model_copy(
+            update={
+                "status": "READY",
+                "phase": "Rà soát bản sửa",
+                "primary_intent": "continue",
+                "allowed_intents": ["continue"],
+                "human_gate": None,
+                "current_run_id": focused_run.id if focused_run else state.current_run_id,
+                "current_step_run_id": None,
+                "blocker_code": None,
+                "blocker_message": None,
+                "last_checkpoint": (
+                    "Founder đã yêu cầu sửa; sẵn sàng chạy lại đúng locale bị yêu cầu."
+                ),
+            }
+        )
+    return state
 
 
 class ResolvedOperatorAction(BaseModel):
@@ -633,7 +786,8 @@ async def get_operator_state(
     state = await _outline_state_overlay(session, state=state)
     state = await _angle_continuation_state_overlay(session, state=state)
     state = await _writer_state_overlay(session, state=state)
-    return await _quality_state_overlay(session, state=state)
+    state = await _quality_state_overlay(session, state=state)
+    return await _final_revision_state_overlay(session, state=state)
 
 
 async def _bound_focus(
@@ -695,6 +849,22 @@ async def resolve_next_operator_action(
         )
 
     run, step = await _bound_focus(session, state=state)
+    if (
+        state.phase == "Rà soát bản sửa"
+        or state.blocker_code == "operator_final_revision_job_failed"
+    ):
+        return ResolvedOperatorAction(
+            content_case_id=content_case_id,
+            state_version=state.state_version,
+            status=state.status,
+            action_key="final_revision",
+            intent=state.primary_intent,
+            executable=state.primary_intent in {"continue", "retry"}
+            and state.status in {"READY", "BLOCKED"},
+            current_run_id=state.current_run_id,
+            current_step_run_id=state.current_step_run_id,
+            blocker_code=state.blocker_code,
+        )
     writer_progress = await get_writer_lane_progress(
         session,
         content_case_id=content_case_id,
@@ -1078,6 +1248,255 @@ def _writer_job_dedupe_key(
     return f"operator:writer:{digest}"
 
 
+def _final_revision_command_hash(
+    *, content_case_id: UUID, intent: OperatorIntent, state_version: str
+) -> str:
+    return _command_hash(
+        content_case_id=content_case_id,
+        intent=intent,
+        state_version=state_version,
+        action_key="final_revision",
+    )
+
+
+async def _submit_final_revision_command(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    intent: OperatorIntent,
+    expected_state_version: str,
+    idempotency_key: str,
+    actor_id: str,
+) -> OperatorCommandResult:
+    if intent not in {"continue", "retry", "cancel"}:
+        raise OperatorControlError("operator_intent_not_allowed")
+    key = idempotency_key.strip()
+    if not key or len(key) > 200 or len(expected_state_version) != 64:
+        raise OperatorControlError("operator_idempotency_key_invalid")
+    request_hash = _final_revision_command_hash(
+        content_case_id=content_case_id,
+        intent=intent,
+        state_version=expected_state_version,
+    )
+    await lock_operator_idempotency(session, key=key)
+    existing = await session.scalar(
+        select(OperatorCommand).where(OperatorCommand.idempotency_key == key)
+    )
+    if existing is not None:
+        if existing.content_case_id != content_case_id or existing.request_hash != request_hash:
+            raise OperatorControlError("operator_idempotency_conflict")
+        return OperatorCommandResult(
+            command_id=existing.id,
+            content_case_id=content_case_id,
+            intent=cast(OperatorIntent, existing.intent),
+            status=existing.status,
+            state_before=existing.state_before,
+            state_after=existing.state_after,
+            job_id=existing.job_id,
+            replayed=True,
+        )
+    locked_case = await session.scalar(
+        select(ContentCase)
+        .where(ContentCase.id == content_case_id, ContentCase.content_type == "journal")
+        .with_for_update()
+    )
+    if locked_case is None:
+        raise OperatorControlError("operator_case_not_found")
+    state = await get_operator_state(
+        session, content_case_id=content_case_id, preflight_checked=True
+    )
+    if state.state_version != expected_state_version:
+        raise OperatorControlError("operator_state_stale")
+    if intent == "continue" and not state.status == "READY":
+        raise OperatorControlError("operator_intent_not_allowed")
+    if intent == "retry" and state.blocker_code == "operator_final_revision_retry_exhausted":
+        raise OperatorControlError("operator_final_revision_retry_exhausted")
+    if intent == "retry" and state.blocker_code != "operator_final_revision_job_failed":
+        raise OperatorControlError("operator_retry_requires_failed_final_revision")
+    try:
+        requests = await load_final_revision_requests(
+            session, content_case_id=content_case_id
+        )
+    except FinalRevisionBindingError as exc:
+        raise OperatorControlError(exc.code) from exc
+    if not requests:
+        raise OperatorControlError("operator_final_revision_request_missing")
+    retry_requests = []
+    if intent == "retry":
+        for request in requests:
+            latest = await session.scalar(
+                select(StepRun)
+                .where(
+                    StepRun.run_id == request.writer_run.id,
+                    StepRun.step_key == request.step_key,
+                )
+                .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+            )
+            latest_job = await _latest_job(session, step_run_id=latest.id) if latest else None
+            if latest is None or latest.status != "failed":
+                if latest is not None and latest.status == "completed":
+                    continue
+                raise OperatorControlError("operator_final_revision_retry_step_missing")
+            if latest_job is None or latest_job.status not in {"failed", "cancelled"}:
+                raise OperatorControlError("operator_final_revision_retry_job_missing")
+            if (
+                latest.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or latest_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            ):
+                raise OperatorControlError("operator_final_revision_retry_exhausted")
+            retry_requests.append(request)
+        if not retry_requests:
+            raise OperatorControlError("operator_final_revision_retry_step_missing")
+    dispatch_requests = retry_requests if intent == "retry" else requests
+    command = OperatorCommand(
+        content_case_id=content_case_id,
+        run_id=dispatch_requests[0].writer_run.id,
+        step_run_id=None,
+        job_id=None,
+        intent=intent,
+        idempotency_key=key,
+        request_hash=request_hash,
+        expected_state_version=expected_state_version,
+        resolved_action_key="final_revision",
+        status="accepted",
+        error_code=None,
+        actor_id=actor_id,
+        state_before=expected_state_version,
+        state_after=None,
+    )
+    session.add(command)
+    await session.flush()
+    if intent == "cancel":
+        for request in requests:
+            step = await session.scalar(
+                select(StepRun)
+                .where(
+                    StepRun.run_id == request.writer_run.id,
+                    StepRun.step_key == request.step_key,
+                )
+                .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+            )
+            job = await _latest_job(session, step_run_id=step.id) if step is not None else None
+            if step is None or job is None or job.status != "queued":
+                raise OperatorControlError("operator_cancel_requires_queued_final_revision_job")
+            job.status = "cancelled"
+            job.updated_at = utc_now()
+            # The database trigger permits only running -> failed for StepRun
+            # failure. Promote the still-queued step through running in the
+            # same transaction so cancellation leaves a retryable terminal
+            # record without weakening the transition contract.
+            step.status = "running"
+            await session.flush()
+            step.status = "failed"
+            step.completed_at = utc_now()
+            step.error_json = {
+                "class": "operator_final_revision_cancelled",
+                "message": "Founder cancelled the final-revision dispatch.",
+            }
+            if request.writer_run.status == "running":
+                await transition_run(
+                    session, run_id=request.writer_run.id, status="waiting_approval"
+                )
+            request.writer_run.completed_at = None
+            request.writer_run.failure_code = "operator_final_revision_cancelled"
+            request.writer_run.failure_message = "Founder cancelled the final-revision dispatch."
+        command.status = "cancelled"
+        await session.flush()
+        after = await get_operator_state(
+            session, content_case_id=content_case_id, preflight_checked=True
+        )
+        command.state_after = after.state_version
+        for prior in await pending_quality_commands(
+            session, content_case_id=content_case_id
+        ):
+            if prior.id != command.id and prior.resolved_action_key == "final_revision":
+                prior.status = "cancelled"
+                prior.error_code = "operator_final_revision_cancelled"
+                prior.state_after = after.state_version
+        await session.flush()
+        return OperatorCommandResult(
+            command_id=command.id,
+            content_case_id=content_case_id,
+            intent=intent,
+            status=command.status,
+            state_before=expected_state_version,
+            state_after=command.state_after,
+            job_id=None,
+            replayed=False,
+        )
+    for request in dispatch_requests:
+        step_rows = list(
+            (
+                await session.scalars(
+                    select(StepRun)
+                    .where(
+                        StepRun.run_id == request.writer_run.id,
+                        StepRun.step_key == request.step_key,
+                    )
+                    .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+                )
+            ).all()
+        )
+        if intent == "retry":
+            if not step_rows or step_rows[0].status != "failed":
+                raise OperatorControlError("operator_final_revision_retry_step_missing")
+            step_attempt = step_rows[0].attempt + 1
+        else:
+            if step_rows:
+                raise OperatorControlError("operator_final_revision_step_conflict")
+            step_attempt = 1
+        step = StepRun(
+            run_id=request.writer_run.id,
+            step_key=request.step_key,
+            attempt=step_attempt,
+            status="pending",
+            input_artifact_refs_json=[
+                str(request.approval.id),
+                str(request.final_artifact.id),
+                str(request.source_draft.id),
+                str(request.outline_artifact.id),
+            ],
+            output_artifact_refs_json=[],
+        )
+        session.add(step)
+        await session.flush()
+        if request.writer_run.status != "running":
+            if request.writer_run.status != "waiting_approval":
+                raise OperatorControlError("operator_final_revision_retry_run_state_invalid")
+            await transition_run(
+                session, run_id=request.writer_run.id, status="running"
+            )
+        request.writer_run.completed_at = None
+        request.writer_run.failure_code = None
+        request.writer_run.failure_message = None
+        request.writer_run.current_step = request.step_key
+        queued = await enqueue_job(
+            session,
+            run_id=request.writer_run.id,
+            step_run_id=step.id,
+            dedupe_key=f"operator:final-revision:{command.id}:{request.locale}:{step_attempt}",
+        )
+        if command.job_id is None:
+            command.job_id = queued.id
+    command.status = "queued"
+    await session.flush()
+    after = await get_operator_state(
+        session, content_case_id=content_case_id, preflight_checked=True
+    )
+    command.state_after = after.state_version
+    await session.flush()
+    return OperatorCommandResult(
+        command_id=command.id,
+        content_case_id=content_case_id,
+        intent=intent,
+        status=command.status,
+        state_before=expected_state_version,
+        state_after=command.state_after,
+        job_id=command.job_id,
+        replayed=False,
+    )
+
+
 async def _submit_outline_to_writers_command(
     session: AsyncSession,
     *,
@@ -1358,6 +1777,15 @@ async def submit_operator_command(
         select(OperatorCommand).where(OperatorCommand.idempotency_key == idempotency_key.strip())
     )
     if existing is not None:
+        if existing.resolved_action_key == "final_revision":
+            return await _submit_final_revision_command(
+                session,
+                content_case_id=content_case_id,
+                intent=intent,
+                expected_state_version=expected_state_version,
+                idempotency_key=idempotency_key,
+                actor_id=actor_id,
+            )
         if existing.resolved_action_key == "writers_to_quality":
             return await submit_writers_to_quality_command(
                 session,
@@ -1394,6 +1822,15 @@ async def submit_operator_command(
         content_case_id=content_case_id,
         preflight_checked=True,
     )
+    if resolved.action_key == "final_revision":
+        return await _submit_final_revision_command(
+            session,
+            content_case_id=content_case_id,
+            intent=intent,
+            expected_state_version=expected_state_version,
+            idempotency_key=idempotency_key,
+            actor_id=actor_id,
+        )
     if resolved.action_key == "angle_to_outline":
         if knowledge_brief_id is not None:
             raise OperatorControlError("operator_knowledge_brief_binding_start_only")
