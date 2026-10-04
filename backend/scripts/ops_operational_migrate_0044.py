@@ -26,6 +26,7 @@ from app.modules.system.runtime_maintenance import (
     release_maintenance_exclusive,
     try_acquire_maintenance_exclusive,
 )
+from scripts import ops_operational_migrate_0042 as migrate_0042
 from scripts import ops_release_lifecycle_0042 as release_lifecycle_0042
 from scripts.ops_data02_rehearsal import (
     _EXPECTED_UPGRADE_CHAIN,
@@ -258,6 +259,12 @@ def _run_source_upgrade(source: URL) -> None:
 
 
 async def _post_0044_contract(engine: AsyncEngine) -> dict[str, object]:
+    try:
+        schema_0042 = await migrate_0042._schema_objects(engine)
+        migrate_0042._require_expected_schema(schema_0042)
+    except migrate_0042.CurrentOperationalMigrationError as exc:
+        raise OperationalMigration0044Error(exc.code) from exc
+
     async with engine.connect() as connection:
         publication_tables = {
             table_name: (
@@ -367,6 +374,7 @@ async def _post_0044_contract(engine: AsyncEngine) -> dict[str, object]:
             raise OperationalMigration0044Error("coverage_support_recipe_seed_invalid")
 
     return {
+        "schema_0042": schema_0042,
         "publication_tables": publication_tables,
         "publication_counts": publication_counts,
         "coverage_requirements_null_rows": null_coverage,
