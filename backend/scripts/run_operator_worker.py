@@ -21,7 +21,7 @@ from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, engine
 from app.modules.content_engine.journal.operator_outline_worker import (
     OperatorOutlineWorkerError,
     claim_or_reclaim_outline_job,
@@ -65,6 +65,7 @@ from app.modules.research.providers.exa import ExaProvider
 from app.modules.research.providers.jina import JinaReader
 from app.modules.research.providers.serper import SerperProvider
 from app.modules.research.providers.tavily import TavilyProvider
+from app.modules.system.runtime_maintenance import worker_runtime_gate
 
 _LEASE_SECONDS = 900
 _HEARTBEAT_SECONDS = 240
@@ -227,7 +228,7 @@ async def _claim_job(*, worker_id: str) -> tuple[UUID, str] | None:
             return job.id, step.step_key
 
 
-async def _run(*, emit_idle: bool = True) -> None:
+async def _run_after_maintenance_gate(*, emit_idle: bool = True) -> None:
     settings = get_settings()
     worker_id = _worker_id()
     claimed = await _claim_job(worker_id=worker_id)
@@ -428,6 +429,11 @@ async def _run(*, emit_idle: bool = True) -> None:
             }
         )
     print(json.dumps(payload, sort_keys=True))
+
+
+async def _run(*, emit_idle: bool = True) -> None:
+    async with worker_runtime_gate(engine):
+        await _run_after_maintenance_gate(emit_idle=emit_idle)
 
 
 def main() -> None:
