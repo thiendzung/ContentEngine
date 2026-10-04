@@ -30,9 +30,11 @@ from app.modules.content_engine.journal.operator_runtime import (
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
+from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
 from app.modules.content_engine.models import ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, Job, StepRun, ToolCall, utc_now
+from app.modules.publishing.models import PublishedContent, PublishEvent
 
 
 async def _revision_fixture(
@@ -740,6 +742,117 @@ async def test_final_revision_worker_failure_returns_run_to_waiting_approval_bef
 
 
 @pytest.mark.asyncio
+async def test_final_revision_production_failures_exhaust_retry_without_third_attempt() -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline, _selected = await _revision_fixture(
+            session, locales=("en",)
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        initial = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-revision-exhaustion-initial",
+        )
+        first_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="final-revision-exhaustion-worker-1"
+        )
+        assert first_job is not None and first_job.id == initial.job_id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=first_job.id,
+            worker_id="final-revision-exhaustion-worker-1",
+            failure_class="fixture_failure_attempt_1",
+            message="first bounded fixture failure",
+        )
+        failed_once = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert failed_once.blocker_code == "operator_final_revision_job_failed"
+        retry = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="retry",
+            expected_state_version=failed_once.state_version,
+            idempotency_key="final-revision-exhaustion-retry",
+        )
+        second_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="final-revision-exhaustion-worker-2"
+        )
+        assert second_job is not None and second_job.id == retry.job_id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=second_job.id,
+            worker_id="final-revision-exhaustion-worker-2",
+            failure_class="fixture_failure_attempt_2",
+            message="second bounded fixture failure",
+        )
+        exhausted = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert exhausted.status == "BLOCKED"
+        assert exhausted.blocker_code == "operator_final_revision_retry_exhausted"
+        assert exhausted.primary_intent is None
+        assert exhausted.allowed_intents == []
+        assert exhausted.human_gate is None
+        writer_request = (await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        ))[0]
+        assert writer_request.writer_run.status == "waiting_approval"
+        retry_row = await session.get(OperatorCommand, retry.command_id)
+        assert retry_row is not None
+        assert retry_row.status == "failed"
+        assert retry_row.error_code == "operator_final_revision_retry_exhausted"
+        command_count = await session.scalar(
+            select(func.count(OperatorCommand.id)).where(
+                OperatorCommand.content_case_id == fixture.run.content_case_id,
+                OperatorCommand.resolved_action_key == "final_revision",
+            )
+        )
+        step_count = await session.scalar(
+            select(func.count(StepRun.id)).where(
+                StepRun.run_id == writer_request.writer_run.id,
+                StepRun.step_key == "final_revision_en",
+            )
+        )
+        job_count = await session.scalar(
+            select(func.count(Job.id)).where(Job.run_id == writer_request.writer_run.id)
+        )
+        with pytest.raises(OperatorControlError, match="operator_final_revision_retry_exhausted"):
+            await submit_operator_command(
+                session,
+                content_case_id=fixture.run.content_case_id,
+                intent="retry",
+                expected_state_version=exhausted.state_version,
+                idempotency_key="final-revision-exhaustion-forbidden-third",
+            )
+        assert await session.scalar(
+            select(func.count(OperatorCommand.id)).where(
+                OperatorCommand.content_case_id == fixture.run.content_case_id,
+                OperatorCommand.resolved_action_key == "final_revision",
+            )
+        ) == command_count
+        assert await session.scalar(
+            select(func.count(StepRun.id)).where(
+                StepRun.run_id == writer_request.writer_run.id,
+                StepRun.step_key == "final_revision_en",
+            )
+        ) == step_count
+        assert await session.scalar(
+            select(func.count(Job.id)).where(Job.run_id == writer_request.writer_run.id)
+        ) == job_count
+        assert await session.scalar(
+            select(func.count(Job.id)).where(
+                Job.run_id == writer_request.writer_run.id,
+                Job.status.in_({"queued", "leased"}),
+            )
+        ) == 0
+
+
+@pytest.mark.asyncio
 async def test_final_revision_real_worker_quality_chain_approves_v2_to_complete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -820,20 +933,25 @@ async def test_final_revision_real_worker_quality_chain_approves_v2_to_complete(
         )
         assert state.status == "AWAITING_APPROVAL"
         assert state.human_gate == "final_review"
+        assert await session.scalar(select(func.count(ContentVersion.id))) == 0
+        assert await session.scalar(select(func.count(PublishedContent.id))) == 0
+        assert await session.scalar(select(func.count(PublishEvent.id))) == 0
         for lane in progress.lanes:
             old_final = selected[lane.locale]["final"]
-            session.add(
-                ContentVersion(
-                    content_item_id=lane.final_item.id,  # type: ignore[union-attr]
-                    version_no=1,
-                    change_reason="Prior revised draft snapshot",
-                    status="draft",
-                    content_json=old_final.content_json,
-                    created_by_run_id=lane.writer.run.id,  # type: ignore[union-attr]
-                    final_artifact_id=old_final.id,
+            assert lane.final_content is not None
+            assert lane.final_content.version == 2
+            assert lane.final_content.id != old_final.id
+            old_approval = selected[lane.locale]["approval"]
+            assert old_approval.artifact_id == old_final.id
+            assert (
+                await session.scalar(
+                    select(func.count(Approval.id)).where(
+                        Approval.run_id == lane.writer.run.id,  # type: ignore[union-attr]
+                        Approval.artifact_id == lane.final_content.id,
+                    )
                 )
+                == 0
             )
-        await session.flush()
         for lane in progress.lanes:
             state = await get_operator_state(
                 session, content_case_id=fixture.run.content_case_id
@@ -850,13 +968,32 @@ async def test_final_revision_real_worker_quality_chain_approves_v2_to_complete(
             )
             assert approval.approval_id is not None
         versions = list((await session.scalars(select(ContentVersion))).all())
-        assert {version.version_no for version in versions if version.status == "approved"} == {2}
+        assert len(versions) == 2
+        for lane in progress.lanes:
+            lane_versions = [
+                version for version in versions if version.content_item_id == lane.final_item.id
+            ]
+            assert len(lane_versions) == 1
+            version = lane_versions[0]
+            assert version.version_no == 1
+            assert version.status == "approved"
+            assert version.final_artifact_id == lane.final_content.id
+            assert version.content_json == lane.final_content.content_json
+            assert version.created_by_run_id == lane.writer.run.id  # type: ignore[union-attr]
         complete = await get_operator_state(
             session, content_case_id=fixture.run.content_case_id
         )
         assert complete.status == "COMPLETE"
         parent = await session.get(OperatorCommand, command.command_id)
         assert parent is not None and parent.status == "completed"
+        detail = await get_action_aware_review_case(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert detail.next_action == "APPROVED_NOT_PUBLISHED"
+        assert detail.consistency_state == "CONSISTENT"
+        assert all(panel.next_action == "APPROVED_NOT_PUBLISHED" for panel in detail.locales)
+        assert await session.scalar(select(func.count(PublishedContent.id))) == 0
+        assert await session.scalar(select(func.count(PublishEvent.id))) == 0
 
 
 @pytest.mark.asyncio

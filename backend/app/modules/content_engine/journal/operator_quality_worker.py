@@ -36,6 +36,7 @@ from app.modules.content_engine.journal.deep_quality_input import (
     DeepQualityInput,
     load_deep_quality_input_from_search_result,
 )
+from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_quality import (
     FINAL_REVISION_TASK_KEYS,
     QUALITY_AUDIT_TASK_KEYS,
@@ -1094,7 +1095,11 @@ async def fail_quality_job(
     elif step.error_json is None:
         step.error_json = {"class": failure_class[:100], "message": message[:2000]}
     if step.step_key in FINAL_REVISION_TASK_KEYS.values():
-        run.failure_code = failure_class[:100]
+        run.failure_code = (
+            "operator_final_revision_retry_exhausted"
+            if step.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            else failure_class[:100]
+        )
         run.failure_message = message[:2000]
         if run.status == "running":
             await transition_run(session, run_id=run.id, status="waiting_approval")
@@ -1161,6 +1166,29 @@ async def fail_quality_job(
     )
     state = await get_operator_state(session, content_case_id=run.content_case_id)
     await settle_quality_command(session, progress=progress, state_version=state.state_version)
+    if (
+        step.step_key in FINAL_REVISION_TASK_KEYS.values()
+        and step.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+        and state.blocker_code == "operator_final_revision_retry_exhausted"
+    ):
+        pending_revision_commands = list(
+            (
+                await session.scalars(
+                    select(OperatorCommand).where(
+                        OperatorCommand.content_case_id == run.content_case_id,
+                        OperatorCommand.resolved_action_key == "final_revision",
+                        OperatorCommand.status.in_({"queued", "failed"}),
+                    )
+                )
+            ).all()
+        )
+        for command in pending_revision_commands:
+            if command.error_code == "operator_final_revision_cancelled":
+                continue
+            command.status = "failed"
+            command.error_code = "operator_final_revision_retry_exhausted"
+            command.state_after = state.state_version
+        await session.flush()
 
 
 async def execute_quality_job(

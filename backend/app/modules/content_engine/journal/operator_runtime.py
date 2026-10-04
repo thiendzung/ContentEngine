@@ -28,6 +28,7 @@ from app.modules.content_engine.journal.operator_control import (
 )
 from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.journal.operator_quality import (
+    QUALITY_MAX_JOB_ATTEMPTS,
     get_quality_progress,
     pending_quality_commands,
     submit_writers_to_quality_command,
@@ -129,6 +130,7 @@ async def _final_revision_state_overlay(
         return state
 
     statuses: list[str] = []
+    exhausted = False
     focused_step: StepRun | None = None
     focused_run: ContentRun | None = None
     for request in requests:
@@ -153,9 +155,29 @@ async def _final_revision_state_overlay(
         elif step.status == "completed":
             statuses.append("completed")
         elif job is not None and job.status in {"failed", "cancelled"}:
-            statuses.append("failed")
+            if step.attempt >= QUALITY_MAX_JOB_ATTEMPTS or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
+                exhausted = True
+                statuses.append("exhausted")
+            else:
+                statuses.append("failed")
         else:
             statuses.append("blocked")
+    if exhausted:
+        return state.model_copy(
+            update={
+                "status": "BLOCKED",
+                "phase": "Rà soát bản sửa",
+                "primary_intent": None,
+                "allowed_intents": [],
+                "human_gate": None,
+                "current_run_id": focused_run.id if focused_run else state.current_run_id,
+                "current_step_run_id": focused_step.id if focused_step else None,
+                "blocker_code": "operator_final_revision_retry_exhausted",
+                "blocker_message": (
+                    "Final revision retry budget exhausted; no further retry is allowed."
+                ),
+            }
+        )
     if any(value == "failed" for value in statuses):
         return state.model_copy(
             update={
@@ -1287,6 +1309,8 @@ async def _submit_final_revision_command(
         raise OperatorControlError("operator_state_stale")
     if intent == "continue" and not state.status == "READY":
         raise OperatorControlError("operator_intent_not_allowed")
+    if intent == "retry" and state.blocker_code == "operator_final_revision_retry_exhausted":
+        raise OperatorControlError("operator_final_revision_retry_exhausted")
     if intent == "retry" and state.blocker_code != "operator_final_revision_job_failed":
         raise OperatorControlError("operator_retry_requires_failed_final_revision")
     try:
@@ -1315,6 +1339,11 @@ async def _submit_final_revision_command(
                 raise OperatorControlError("operator_final_revision_retry_step_missing")
             if latest_job is None or latest_job.status not in {"failed", "cancelled"}:
                 raise OperatorControlError("operator_final_revision_retry_job_missing")
+            if (
+                latest.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or latest_job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            ):
+                raise OperatorControlError("operator_final_revision_retry_exhausted")
             retry_requests.append(request)
         if not retry_requests:
             raise OperatorControlError("operator_final_revision_retry_step_missing")
