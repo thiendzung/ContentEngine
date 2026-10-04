@@ -21,7 +21,7 @@ from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, engine
 from app.modules.content_engine.journal.operator_outline_worker import (
     OperatorOutlineWorkerError,
     claim_or_reclaim_outline_job,
@@ -55,6 +55,7 @@ from app.modules.harness.agent_runner import AgentRunnerRegistry, CodexCliRunner
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.harness.persistence import transition_run
 from app.modules.harness.policy import BudgetLimits
+from app.modules.system.runtime_maintenance import worker_runtime_gate
 from app.modules.research.contracts import (
     ProductionResearchRequest,
     ProductionResearchResult,
@@ -227,7 +228,7 @@ async def _claim_job(*, worker_id: str) -> tuple[UUID, str] | None:
             return job.id, step.step_key
 
 
-async def _run(*, emit_idle: bool = True) -> None:
+async def _run_after_maintenance_gate(*, emit_idle: bool = True) -> None:
     settings = get_settings()
     worker_id = _worker_id()
     claimed = await _claim_job(worker_id=worker_id)
@@ -428,6 +429,11 @@ async def _run(*, emit_idle: bool = True) -> None:
             }
         )
     print(json.dumps(payload, sort_keys=True))
+
+
+async def _run(*, emit_idle: bool = True) -> None:
+    async with worker_runtime_gate(engine):
+        await _run_after_maintenance_gate(emit_idle=emit_idle)
 
 
 def main() -> None:
