@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,7 @@ from app.modules.content_engine.journal.final_revision import (
 )
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
+from app.modules.content_engine.journal.operator_quality import settle_quality_command
 from app.modules.content_engine.journal.operator_runtime import (
     get_operator_state,
     resolve_next_operator_action,
@@ -668,3 +671,45 @@ async def test_final_revision_cancel_marks_step_and_run_coherent_for_retry() -> 
             session, content_case_id=fixture.run.content_case_id
         )
         assert retry_state.blocker_code == "operator_final_revision_job_failed"
+
+
+@pytest.mark.asyncio
+async def test_final_revision_parent_command_settles_at_final_gate() -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline, _selected = await _revision_fixture(
+            session, locales=("en",)
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        command = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-revision-settlement",
+        )
+        step = await session.scalar(select(StepRun).where(StepRun.step_key == "final_revision_en"))
+        assert step is not None
+        job = await session.scalar(select(Job).where(Job.step_run_id == step.id))
+        assert job is not None
+        step.status = "running"
+        await session.flush()
+        step.status = "completed"
+        step.completed_at = utc_now()
+        job.status = "completed"
+        await session.flush()
+        await settle_quality_command(
+            session,
+            progress=SimpleNamespace(
+                content_case_id=fixture.run.content_case_id,
+                has_active_job=False,
+                final_gate_ready=True,
+                has_content_block=False,
+                has_exhausted_failure=False,
+                has_retryable_failure=False,
+            ),
+            state_version="a" * 64,
+        )
+        row = await session.get(OperatorCommand, command.command_id)
+        assert row is not None and row.status == "completed"
