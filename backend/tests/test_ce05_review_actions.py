@@ -28,7 +28,13 @@ from app.modules.content_engine.models import (
     LocaleVariant,
     SettingsSnapshot,
 )
-from app.modules.harness.models import Approval, Artifact, ContentRun, QualityEvaluation
+from app.modules.harness.models import (
+    Approval,
+    Artifact,
+    ContentRun,
+    QualityEvaluation,
+    StepRun,
+)
 from app.modules.harness.persistence import pause_for_approval
 
 
@@ -266,7 +272,7 @@ async def test_review_action_changes_requested_is_durable_and_requires_comment()
         )
         after = await _counts(session)
         assert after == (before[0] + 1, before[1])
-        assert result.writer_run_status == "running"
+        assert result.writer_run_status == "waiting_approval"
         detail = await get_action_aware_review_case(
             session,
             content_case_id=fixture.content_case_id,
@@ -290,7 +296,7 @@ async def test_final_revision_v2_approval_creates_version_two_and_completes() ->
             actor_id="founder",
             comment="Làm rõ câu kết.",
         )
-        assert requested.writer_run_status == "running"
+        assert requested.writer_run_status == "waiting_approval"
         revised_payload = dict(fixture.final_artifact.content_json)
         revised_payload["closing_markdown"] = "Hãy kiểm tra câu hỏi tiếp theo."
         revised = Artifact(
@@ -527,6 +533,41 @@ async def test_review_action_exact_replay_creates_no_duplicate() -> None:
         assert replay.approval_id == first.approval_id
         assert replay.content_version_id == first.content_version_id
         assert await _counts(session) == counts
+
+
+@pytest.mark.asyncio
+async def test_changes_requested_replay_fails_closed_if_revision_already_started() -> None:
+    async with isolated_session() as session:
+        fixture = await _pending_fixture(session)
+        comment = "Giữ nguyên phạm vi bằng chứng và sửa giọng văn."
+        first = await submit_review_decision(
+            session,
+            content_case_id=fixture.content_case_id,
+            locale_variant_id=fixture.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment=comment,
+        )
+        assert first.writer_run_status == "waiting_approval"
+        fixture.writer_run.status = "running"
+        session.add(
+            StepRun(
+                run_id=fixture.writer_run.id,
+                step_key="final_revision_en",
+                attempt=1,
+                status="pending",
+            )
+        )
+        await session.flush()
+        with pytest.raises(ReviewActionError, match="review_action_replay_state_invalid"):
+            await submit_review_decision(
+                session,
+                content_case_id=fixture.content_case_id,
+                locale_variant_id=fixture.variant.id,
+                decision="changes_requested",
+                actor_id="founder",
+                comment=comment,
+            )
 
 
 @pytest.mark.asyncio

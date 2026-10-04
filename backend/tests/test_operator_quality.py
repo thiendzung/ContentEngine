@@ -39,9 +39,20 @@ from app.modules.content_engine.journal.quality_readiness import (
     READINESS_CRITERIA,
     READINESS_HANDOFF_TYPES,
 )
+from app.modules.content_engine.journal.review_action_view import get_action_aware_review_case
+from app.modules.content_engine.journal.review_actions import submit_review_decision
 from app.modules.content_engine.models import ContentItem, ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
-from app.modules.harness.models import Approval, Artifact, ContentRun, Job, StepRun, utc_now
+from app.modules.harness.models import (
+    Approval,
+    Artifact,
+    ContentRun,
+    Job,
+    ModelCall,
+    StepRun,
+    ToolCall,
+    utc_now,
+)
 
 
 class _CapturePort:
@@ -517,6 +528,377 @@ async def _complete_healthy_lane_from_audit(
         runner_registry=runner_registry,
         worker_prefix=worker_prefix,
     )
+
+
+async def _complete_full_f4_final_gate(
+    session: AsyncSession,
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    prefix: str,
+) -> tuple[object, dict[str, dict[str, object]], object]:
+    """Build the real bilingual F4 chain through final_review without providers."""
+    fixture, writer_outputs, outline_result = await _complete_f3_writers(session)
+    case_id = fixture.run.content_case_id
+    await _dispatch_quality(session, fixture=fixture)
+
+    review_ports = {
+        locale: _CapturePort(copy.deepcopy(payload))
+        for locale, payload in writer_outputs.items()
+    }
+
+    async def fake_review_port(
+        _session: AsyncSession, *, locale: str, **kwargs: object
+    ) -> _CapturePort:
+        del _session, kwargs
+        return review_ports[locale]
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_review_revise_model_port",
+        fake_review_port,
+    )
+    registry = AgentRunnerRegistry()
+    for index in range(2):
+        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id=f"{prefix}-review-{index}"
+        )
+        assert job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=job.id,
+            worker_id=f"{prefix}-review-{index}",
+            runner_registry=registry,
+        )
+
+    quality = await get_quality_progress(
+        session, content_case_id=case_id, source_run_id=None
+    )
+    assert quality is not None
+    audit_ports: dict[str, _CapturePort] = {}
+    for lane in quality.lanes:
+        assert lane.revised_draft is not None and lane.writer.run is not None
+        audit_input = await load_assertion_audit_input(
+            session,
+            writer_run_id=lane.writer.run.id,
+            revised_draft_artifact_id=lane.revised_draft.id,
+            expected_revised_draft_version=lane.revised_draft.version,
+            expected_revised_draft_hash=lane.revised_draft.content_hash,
+            outline_artifact_id=outline_result.artifact.id,
+            expected_outline_version=outline_result.artifact.version,
+            expected_outline_hash=outline_result.artifact.content_hash,
+            locale=lane.locale,
+        )
+        audit_ports[lane.locale] = _CapturePort(_passing_output(audit_input))
+
+    async def fake_audit_port(
+        _session: AsyncSession, *, locale: str, **kwargs: object
+    ) -> _CapturePort:
+        del _session, kwargs
+        return audit_ports[locale]
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_assertion_audit_model_port",
+        fake_audit_port,
+    )
+    for index in range(2):
+        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id=f"{prefix}-audit-{index}"
+        )
+        assert job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=job.id,
+            worker_id=f"{prefix}-audit-{index}",
+            runner_registry=registry,
+        )
+
+    for index in range(2):
+        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id=f"{prefix}-source-copy-{index}"
+        )
+        assert job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=job.id,
+            worker_id=f"{prefix}-source-copy-{index}",
+            runner_registry=registry,
+        )
+
+    for locale in ("vi-VN", "en"):
+        await _complete_readiness_lane(
+            session,
+            case_id=case_id,
+            locale=locale,
+            monkeypatch=monkeypatch,
+            runner_registry=registry,
+            worker_prefix=f"{prefix}-{locale}-readiness",
+        )
+
+    deep_ports = {
+        locale: _CapturePort(_passing_deep_quality_output(locale))
+        for locale in ("vi-VN", "en")
+    }
+
+    async def fake_deep_quality_port(
+        _session: AsyncSession, *, locale: str, **kwargs: object
+    ) -> _CapturePort:
+        del _session, kwargs
+        return deep_ports[locale]
+
+    monkeypatch.setattr(
+        operator_quality_worker,
+        "create_cli_deep_quality_model_port",
+        fake_deep_quality_port,
+    )
+    for index in range(2):
+        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id=f"{prefix}-deep-{index}"
+        )
+        assert job is not None
+        await operator_quality_worker.execute_quality_job(
+            session,
+            job_id=job.id,
+            worker_id=f"{prefix}-deep-{index}",
+            runner_registry=registry,
+        )
+
+    final_quality = await get_quality_progress(
+        session, content_case_id=case_id, source_run_id=None
+    )
+    assert final_quality is not None and final_quality.final_gate_ready is True
+    assert all(lane.final_content is not None for lane in final_quality.lanes)
+    assert all(lane.writer.run is not None for lane in final_quality.lanes)
+    assert all(lane.writer.run.status == "waiting_approval" for lane in final_quality.lanes)
+    return fixture, writer_outputs, outline_result
+
+
+async def _async_case_counts(session: AsyncSession, case_id: UUID) -> dict[str, int]:
+    run_ids = list(
+        (
+            await session.scalars(
+                select(ContentRun.id).where(ContentRun.content_case_id == case_id)
+            )
+        ).all()
+    )
+    counts: dict[str, int] = {}
+    for name, model, column in (
+        ("Approval", Approval, Approval.run_id),
+        ("OperatorCommand", OperatorCommand, OperatorCommand.run_id),
+        ("Job", Job, Job.run_id),
+        ("StepRun", StepRun, StepRun.run_id),
+        ("ModelCall", ModelCall, ModelCall.run_id),
+        ("ToolCall", ToolCall, ToolCall.run_id),
+    ):
+        counts[name] = int(
+            await session.scalar(select(func.count(model.id)).where(column.in_(run_ids))) or 0
+        )
+    counts["ContentVersion"] = int(
+        await session.scalar(
+            select(func.count(ContentVersion.id)).where(
+                ContentVersion.content_item_id.in_(
+                    select(ContentItem.id).where(ContentItem.content_case_id == case_id)
+                )
+            )
+        )
+        or 0
+    )
+    return counts
+
+
+@pytest.mark.asyncio
+async def test_final_review_changes_requested_preserves_full_f4_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline = await _complete_full_f4_final_gate(
+            session, monkeypatch=monkeypatch, prefix="final-review-a"
+        )
+        case_id = fixture.run.content_case_id
+        before = await _async_case_counts(session, case_id)
+        progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        en_lane = next(lane for lane in progress.lanes if lane.locale == "en")
+        assert vi_lane.final_content is not None and vi_lane.writer.run is not None
+        assert en_lane.final_content is not None and en_lane.writer.run is not None
+        assert vi_lane.writer.run.status == "waiting_approval"
+        assert en_lane.writer.run.status == "waiting_approval"
+
+        result = await submit_review_decision(
+            session,
+            content_case_id=case_id,
+            locale_variant_id=vi_lane.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment="Paraphrase the repeated customs caveat.",
+        )
+        assert result.writer_run_status == "waiting_approval"
+        after = await _async_case_counts(session, case_id)
+        assert after == {**before, "Approval": before["Approval"] + 1}
+        assert after["ContentVersion"] == before["ContentVersion"] == 0
+        assert after["Job"] == before["Job"]
+        assert after["OperatorCommand"] == before["OperatorCommand"]
+        assert after["ModelCall"] == before["ModelCall"]
+        assert after["ToolCall"] == before["ToolCall"]
+
+        detail = await get_action_aware_review_case(session, content_case_id=case_id)
+        panels = {panel.locale: panel for panel in detail.locales}
+        assert panels["vi-VN"].next_action == "REVISION_REQUESTED"
+        assert panels["vi-VN"].final_approval is not None
+        assert panels["vi-VN"].final_approval.decision == "changes_requested"
+        assert panels["en"].next_action == "AWAITING_FOUNDER_APPROVAL"
+        state = await get_operator_state(session, content_case_id=case_id)
+        assert state.status == "READY"
+        assert state.primary_intent == "continue"
+        action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action.action_key == "final_revision"
+        assert action.status == "READY"
+        assert action.intent == "continue"
+        assert action.executable is True
+
+
+@pytest.mark.asyncio
+async def test_bilingual_final_review_changes_requested_dispatches_both_revision_lanes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline = await _complete_full_f4_final_gate(
+            session, monkeypatch=monkeypatch, prefix="final-review-b"
+        )
+        case_id = fixture.run.content_case_id
+        progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress is not None
+        lanes = {lane.locale: lane for lane in progress.lanes}
+        comments = {
+            "vi-VN": "Paraphrase the repeated customs caveat.",
+            "en": "Make the travel decision advice less formulaic.",
+        }
+        for locale in ("vi-VN", "en"):
+            lane = lanes[locale]
+            assert lane.final_content is not None
+            requested = await submit_review_decision(
+                session,
+                content_case_id=case_id,
+                locale_variant_id=lane.variant.id,
+                decision="changes_requested",
+                actor_id="founder",
+                comment=comments[locale],
+            )
+            assert requested.writer_run_status == "waiting_approval"
+            readable = await get_action_aware_review_case(
+                session, content_case_id=case_id
+            )
+            assert readable.consistency_state == "CONSISTENT"
+            panels = {panel.locale: panel for panel in readable.locales}
+            assert panels[locale].next_action == "REVISION_REQUESTED"
+
+        progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress is not None
+        assert all(lane.writer.run is not None for lane in progress.lanes)
+        assert all(lane.writer.run.status == "waiting_approval" for lane in progress.lanes)
+        readable = await get_action_aware_review_case(session, content_case_id=case_id)
+        assert readable.next_action == "REVISION_REQUESTED"
+        before = await _async_case_counts(session, case_id)
+        action = await resolve_next_operator_action(session, content_case_id=case_id)
+        assert action.action_key == "final_revision"
+        assert action.status == "READY"
+        assert action.intent == "continue"
+        assert action.executable is True
+        command = await submit_operator_command(
+            session,
+            content_case_id=case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-review-b-final-revision",
+        )
+        assert command.status == "queued"
+        assert command.job_id is not None
+        progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress is not None
+        assert all(lane.writer.run.status == "running" for lane in progress.lanes)
+        revision_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.step_key.in_({"final_revision_vi", "final_revision_en"})
+                    )
+                )
+            ).all()
+        )
+        assert sorted((step.step_key, step.attempt) for step in revision_steps) == [
+            ("final_revision_en", 1),
+            ("final_revision_vi", 1),
+        ]
+        revision_jobs = list(
+            (
+                await session.scalars(
+                    select(Job).where(Job.step_run_id.in_([step.id for step in revision_steps]))
+                )
+            ).all()
+        )
+        assert len(revision_jobs) == 2
+        assert all(job.status == "queued" for job in revision_jobs)
+        state = await get_operator_state(session, content_case_id=case_id)
+        assert state.status in {"QUEUED", "RUNNING"}
+        after = await _async_case_counts(session, case_id)
+        assert after["Approval"] == before["Approval"]
+        assert after["OperatorCommand"] == before["OperatorCommand"] + 1
+        assert after["ModelCall"] == before["ModelCall"]
+        assert after["ToolCall"] == before["ToolCall"]
+
+
+@pytest.mark.asyncio
+async def test_historical_running_changes_requested_replay_normalizes_to_waiting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline = await _complete_full_f4_final_gate(
+            session, monkeypatch=monkeypatch, prefix="final-review-c"
+        )
+        case_id = fixture.run.content_case_id
+        progress = await get_quality_progress(
+            session, content_case_id=case_id, source_run_id=None
+        )
+        assert progress is not None
+        vi_lane = next(lane for lane in progress.lanes if lane.locale == "vi-VN")
+        assert vi_lane.final_content is not None and vi_lane.writer.run is not None
+        comment = "Normalize this historical revision request."
+        first = await submit_review_decision(
+            session,
+            content_case_id=case_id,
+            locale_variant_id=vi_lane.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment=comment,
+        )
+        assert first.replayed is False
+        vi_lane.writer.run.status = "running"
+        await session.flush()
+        before = await _async_case_counts(session, case_id)
+        replay = await submit_review_decision(
+            session,
+            content_case_id=case_id,
+            locale_variant_id=vi_lane.variant.id,
+            decision="changes_requested",
+            actor_id="founder",
+            comment=comment,
+        )
+        assert replay.replayed is True
+        assert replay.writer_run_status == "waiting_approval"
+        assert await _async_case_counts(session, case_id) == before
+        detail = await get_action_aware_review_case(session, content_case_id=case_id)
+        assert detail.consistency_state == "CONSISTENT"
+        state = await get_operator_state(session, content_case_id=case_id)
+        assert state.status == "READY"
 
 
 @pytest.mark.asyncio
