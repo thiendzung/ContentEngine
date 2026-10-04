@@ -29,6 +29,7 @@ from app.modules.content_engine.journal.operator_control import (
 from app.modules.content_engine.journal.operator_locking import lock_operator_idempotency
 from app.modules.content_engine.journal.operator_quality import (
     get_quality_progress,
+    pending_quality_commands,
     submit_writers_to_quality_command,
 )
 from app.modules.content_engine.journal.operator_vertical_slice import START_TO_ANGLE_STAGE
@@ -1363,8 +1364,11 @@ async def _submit_final_revision_command(
                 "class": "operator_final_revision_cancelled",
                 "message": "Founder cancelled the final-revision dispatch.",
             }
-            request.writer_run.status = "failed"
-            request.writer_run.completed_at = utc_now()
+            if request.writer_run.status == "running":
+                await transition_run(
+                    session, run_id=request.writer_run.id, status="waiting_approval"
+                )
+            request.writer_run.completed_at = None
             request.writer_run.failure_code = "operator_final_revision_cancelled"
             request.writer_run.failure_message = "Founder cancelled the final-revision dispatch."
         command.status = "cancelled"
@@ -1373,6 +1377,13 @@ async def _submit_final_revision_command(
             session, content_case_id=content_case_id, preflight_checked=True
         )
         command.state_after = after.state_version
+        for prior in await pending_quality_commands(
+            session, content_case_id=content_case_id
+        ):
+            if prior.id != command.id and prior.resolved_action_key == "final_revision":
+                prior.status = "cancelled"
+                prior.error_code = "operator_final_revision_cancelled"
+                prior.state_after = after.state_version
         await session.flush()
         return OperatorCommandResult(
             command_id=command.id,
@@ -1421,12 +1432,14 @@ async def _submit_final_revision_command(
         session.add(step)
         await session.flush()
         if request.writer_run.status != "running":
-            # Final-revision retry intentionally reopens the failed writer lane;
-            # the generic run transition table remains terminal for ordinary runs.
-            request.writer_run.status = "running"
-            request.writer_run.completed_at = None
-            request.writer_run.failure_code = None
-            request.writer_run.failure_message = None
+            if request.writer_run.status != "waiting_approval":
+                raise OperatorControlError("operator_final_revision_retry_run_state_invalid")
+            await transition_run(
+                session, run_id=request.writer_run.id, status="running"
+            )
+        request.writer_run.completed_at = None
+        request.writer_run.failure_code = None
+        request.writer_run.failure_message = None
         request.writer_run.current_step = request.step_key
         queued = await enqueue_job(
             session,

@@ -1093,7 +1093,12 @@ async def fail_quality_job(
         step.error_json = {"class": failure_class[:100], "message": message[:2000]}
     elif step.error_json is None:
         step.error_json = {"class": failure_class[:100], "message": message[:2000]}
-    if step.step_key in QUALITY_REVIEW_TASK_KEYS.values():
+    if step.step_key in FINAL_REVISION_TASK_KEYS.values():
+        run.failure_code = failure_class[:100]
+        run.failure_message = message[:2000]
+        if run.status == "running":
+            await transition_run(session, run_id=run.id, status="waiting_approval")
+    elif step.step_key in QUALITY_REVIEW_TASK_KEYS.values():
         if step.attempt >= QUALITY_MAX_JOB_ATTEMPTS or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS:
             run.failure_code = "operator_quality_retry_exhausted"
             run.failure_message = message[:2000]

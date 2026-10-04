@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import copy
 from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from test_ce05_outline import isolated_session
-from test_operator_quality import _CapturePort, _complete_f3_writers
+from test_operator_quality import (
+    _CapturePort,
+    _complete_f3_writers,
+    _complete_healthy_lane_from_audit,
+)
 
 from app.modules.content_engine.journal import operator_quality_worker
 from app.modules.content_engine.journal.final_revision import (
@@ -14,13 +19,18 @@ from app.modules.content_engine.journal.final_revision import (
 )
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import OperatorControlError
-from app.modules.content_engine.journal.operator_quality import settle_quality_command
+from app.modules.content_engine.journal.operator_decisions import submit_operator_decision
+from app.modules.content_engine.journal.operator_quality import (
+    get_quality_progress,
+    settle_quality_command,
+)
 from app.modules.content_engine.journal.operator_runtime import (
     get_operator_state,
     resolve_next_operator_action,
     submit_operator_command,
 )
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
+from app.modules.content_engine.models import ContentVersion
 from app.modules.harness.agent_runner import AgentRunnerRegistry
 from app.modules.harness.models import Approval, Artifact, Job, StepRun, ToolCall, utc_now
 
@@ -589,6 +599,12 @@ async def test_final_revision_retry_reopens_only_failed_locale_and_separates_att
         vi_job = await session.scalar(select(Job).where(Job.step_run_id == vi_step.id))
         assert en_job is not None and vi_job is not None
         now = utc_now()
+        requests = await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        en_request = next(request for request in requests if request.locale == "en")
+        en_request.writer_run.status = "waiting_approval"
+        en_request.writer_run.completed_at = None
         en_step.status = "running"
         vi_step.status = "running"
         await session.flush()
@@ -659,6 +675,8 @@ async def test_final_revision_cancel_marks_step_and_run_coherent_for_retry() -> 
             idempotency_key="final-revision-cancel-coherent",
         )
         assert cancelled.status == "cancelled"
+        initial_row = await session.get(OperatorCommand, queued.command_id)
+        assert initial_row is not None and initial_row.status == "cancelled"
         step = await session.scalar(select(StepRun).where(StepRun.step_key == "final_revision_en"))
         job = await session.scalar(select(Job).where(Job.step_run_id == step.id)) if step else None
         assert step is not None and step.status == "failed"
@@ -666,11 +684,179 @@ async def test_final_revision_cancel_marks_step_and_run_coherent_for_retry() -> 
         requests = await load_final_revision_requests(
             session, content_case_id=fixture.run.content_case_id
         )
-        assert requests[0].writer_run.status == "failed"
+        assert requests[0].writer_run.status == "waiting_approval"
         retry_state = await get_operator_state(
             session, content_case_id=fixture.run.content_case_id
         )
         assert retry_state.blocker_code == "operator_final_revision_job_failed"
+
+
+@pytest.mark.asyncio
+async def test_final_revision_worker_failure_returns_run_to_waiting_approval_before_retry() -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline, _selected = await _revision_fixture(
+            session, locales=("en",)
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        queued = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-revision-production-failure",
+        )
+        job = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="final-revision-production-failure-worker"
+        )
+        assert job is not None and job.id == queued.job_id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=job.id,
+            worker_id="final-revision-production-failure-worker",
+            failure_class="fixture_failure",
+            message="bounded fixture failure",
+        )
+        requests = await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert requests[0].writer_run.status == "waiting_approval"
+        failed_state = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        retry = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="retry",
+            expected_state_version=failed_state.state_version,
+            idempotency_key="final-revision-production-failure-retry",
+        )
+        assert retry.status == "queued"
+        requests = await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert requests[0].writer_run.status == "running"
+
+
+@pytest.mark.asyncio
+async def test_final_revision_real_worker_quality_chain_approves_v2_to_complete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with isolated_session() as session:
+        fixture, outputs, outline, selected = await _revision_fixture(
+            session, locales=("vi-VN", "en")
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        command = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-revision-real-chain",
+        )
+        ports = {}
+        for locale, original in outputs.items():
+            revised_output = copy.deepcopy(original)
+            assert isinstance(revised_output, dict)
+            revised_output["closing_markdown"] = (
+                "Verify the next question you can answer."
+                if locale == "en"
+                else "Hãy kiểm tra câu hỏi tiếp theo bạn có thể trả lời."
+            )
+            ports[locale] = _CapturePort(revised_output)
+
+        async def fake_review_port(
+            *_args: object, locale: str, **_kwargs: object
+        ) -> _CapturePort:
+            return ports[locale]
+
+        monkeypatch.setattr(
+            operator_quality_worker,
+            "create_cli_review_revise_model_port",
+            fake_review_port,
+        )
+        registry = AgentRunnerRegistry()
+        revision_jobs = []
+        for index in range(2):
+            revision_job = await operator_quality_worker.claim_or_reclaim_quality_job(
+                session, worker_id=f"final-revision-real-chain-worker-{index}"
+            )
+            assert revision_job is not None
+            revision_jobs.append(revision_job)
+            await operator_quality_worker.execute_quality_job(
+                session,
+                job_id=revision_job.id,
+                worker_id=f"final-revision-real-chain-worker-{index}",
+                runner_registry=registry,
+            )
+        assert len(revision_jobs) == 2
+        assert command.job_id in {job.id for job in revision_jobs}
+        progress = await get_quality_progress(
+            session, content_case_id=fixture.run.content_case_id, source_run_id=None
+        )
+        assert progress is not None
+        for lane in progress.lanes:
+            assert lane.audit.step is not None and lane.audit.job is not None
+            await _complete_healthy_lane_from_audit(
+                session,
+                case_id=fixture.run.content_case_id,
+                outline_result=outline,
+                step_run_id=lane.audit.step.id,
+                monkeypatch=monkeypatch,
+                worker_prefix=f"final-revision-real-chain-quality-{lane.locale}",
+                runner_registry=registry,
+            )
+        progress = await get_quality_progress(
+            session, content_case_id=fixture.run.content_case_id, source_run_id=None
+        )
+        assert progress is not None and progress.final_gate_ready is True
+        assert all(lane.final_content is not None for lane in progress.lanes)
+        assert all(lane.final_content.version == 2 for lane in progress.lanes)  # type: ignore[union-attr]
+        state = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert state.status == "AWAITING_APPROVAL"
+        assert state.human_gate == "final_review"
+        for lane in progress.lanes:
+            old_final = selected[lane.locale]["final"]
+            session.add(
+                ContentVersion(
+                    content_item_id=lane.final_item.id,  # type: ignore[union-attr]
+                    version_no=1,
+                    change_reason="Prior revised draft snapshot",
+                    status="draft",
+                    content_json=old_final.content_json,
+                    created_by_run_id=lane.writer.run.id,  # type: ignore[union-attr]
+                    final_artifact_id=old_final.id,
+                )
+            )
+        await session.flush()
+        for lane in progress.lanes:
+            state = await get_operator_state(
+                session, content_case_id=fixture.run.content_case_id
+            )
+            approval = await submit_operator_decision(
+                session,
+                content_case_id=fixture.run.content_case_id,
+                scope="final",
+                decision="approved",
+                expected_state_version=state.state_version,
+                idempotency_key=f"final-revision-real-chain-approve-v2-{lane.locale}",
+                locale_variant_id=lane.variant.id,
+                comment="Approve the exact revised v2.",
+            )
+            assert approval.approval_id is not None
+        versions = list((await session.scalars(select(ContentVersion))).all())
+        assert {version.version_no for version in versions if version.status == "approved"} == {2}
+        complete = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert complete.status == "COMPLETE"
+        parent = await session.get(OperatorCommand, command.command_id)
+        assert parent is not None and parent.status == "completed"
 
 
 @pytest.mark.asyncio
