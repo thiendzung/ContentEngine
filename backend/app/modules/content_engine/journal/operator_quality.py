@@ -35,7 +35,10 @@ from app.modules.content_engine.journal.deep_quality_execution import (
     load_persisted_deep_quality_result,
 )
 from app.modules.content_engine.journal.deep_quality_input import DeepQualityInput
-from app.modules.content_engine.journal.final_revision import FINAL_REVISION_STEP_KEYS
+from app.modules.content_engine.journal.final_revision import (
+    FINAL_REVISION_STEP_KEYS,
+    load_final_revision_requests,
+)
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     OperatorCommandResult,
@@ -1307,6 +1310,106 @@ async def pending_quality_commands(
     )
 
 
+async def _final_revision_lane_state(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+) -> tuple[bool, bool, bool, bool]:
+    """Return active, exhausted, retryable and all-completed revision lanes."""
+
+    requests = await load_final_revision_requests(session, content_case_id=content_case_id)
+    if not requests:
+        return False, False, False, False
+    active = exhausted = retryable = False
+    all_completed = True
+    for request in requests:
+        step = await session.scalar(
+            select(StepRun)
+            .where(
+                StepRun.run_id == request.writer_run.id,
+                StepRun.step_key == request.step_key,
+            )
+            .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+        )
+        if step is None:
+            all_completed = False
+            continue
+        job = await session.scalar(
+            select(Job)
+            .where(Job.step_run_id == step.id)
+            .order_by(Job.updated_at.desc(), Job.id.desc())
+            .limit(1)
+        )
+        if job is not None and job.status in {"queued", "leased"}:
+            active = True
+            all_completed = False
+        elif (
+            step.status == "completed"
+            and job is not None
+            and job.status == "completed"
+        ):
+            continue
+        elif job is not None and job.status in {"failed", "cancelled"}:
+            all_completed = False
+            if (
+                step.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+                or job.attempt >= QUALITY_MAX_JOB_ATTEMPTS
+            ):
+                exhausted = True
+            else:
+                retryable = True
+        else:
+            all_completed = False
+    return active, exhausted, retryable, all_completed
+
+
+async def settle_final_revision_commands(
+    session: AsyncSession,
+    *,
+    content_case_id: UUID,
+    state_version: str,
+    progress: QualityProgress | None,
+) -> None:
+    """Settle revision parents from all requested lanes, never one job id."""
+
+    commands = list(
+        (
+            await session.scalars(
+                select(OperatorCommand).where(
+                    OperatorCommand.content_case_id == content_case_id,
+                    OperatorCommand.resolved_action_key == "final_revision",
+                    OperatorCommand.status.in_({"accepted", "queued", "failed"}),
+                )
+            )
+        ).all()
+    )
+    commands = [
+        command
+        for command in commands
+        if command.error_code != "operator_final_revision_cancelled"
+    ]
+    if not commands:
+        return
+    active, exhausted, retryable, all_completed = await _final_revision_lane_state(
+        session, content_case_id=content_case_id
+    )
+    if active:
+        return
+    if exhausted:
+        status, error = "failed", "operator_final_revision_retry_exhausted"
+    elif retryable:
+        status, error = "failed", "operator_final_revision_job_failed"
+    elif all_completed and progress is not None and progress.final_gate_ready:
+        status, error = "completed", None
+    else:
+        return
+    for command in commands:
+        command.status = status
+        command.error_code = error
+        command.state_after = state_version
+    await session.flush()
+
+
 async def settle_quality_command(
     session: AsyncSession,
     *,
@@ -1325,9 +1428,17 @@ async def settle_quality_command(
         status, error = "failed", "operator_quality_job_failed"
     else:
         return
-    for command in await pending_quality_commands(
+    commands = await pending_quality_commands(
         session, content_case_id=progress.content_case_id
-    ):
+    )
+    final_revision_active, _exhausted, _retryable, _all_completed = (
+        await _final_revision_lane_state(
+            session, content_case_id=progress.content_case_id
+        )
+    )
+    for command in commands:
+        if command.resolved_action_key == "final_revision" and final_revision_active:
+            continue
         command.status = status
         command.error_code = error
         command.state_after = state_version
@@ -2290,6 +2401,7 @@ __all__ = [
     "get_quality_progress",
     "pending_quality_commands",
     "prepare_final_gates",
+    "settle_final_revision_commands",
     "settle_quality_command",
     "submit_writers_to_quality_command",
 ]

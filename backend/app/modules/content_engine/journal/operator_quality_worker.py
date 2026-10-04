@@ -36,7 +36,6 @@ from app.modules.content_engine.journal.deep_quality_input import (
     DeepQualityInput,
     load_deep_quality_input_from_search_result,
 )
-from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_quality import (
     FINAL_REVISION_TASK_KEYS,
     QUALITY_AUDIT_TASK_KEYS,
@@ -44,6 +43,7 @@ from app.modules.content_engine.journal.operator_quality import (
     QUALITY_REVIEW_TASK_KEYS,
     get_quality_progress,
     prepare_final_gates,
+    settle_final_revision_commands,
     settle_quality_command,
 )
 from app.modules.content_engine.journal.quality_readiness import (
@@ -1166,30 +1166,12 @@ async def fail_quality_job(
     )
     state = await get_operator_state(session, content_case_id=run.content_case_id)
     await settle_quality_command(session, progress=progress, state_version=state.state_version)
-    if (
-        step.step_key in FINAL_REVISION_TASK_KEYS.values()
-        and step.attempt >= QUALITY_MAX_JOB_ATTEMPTS
-        and state.blocker_code == "operator_final_revision_retry_exhausted"
-    ):
-        pending_revision_commands = list(
-            (
-                await session.scalars(
-                    select(OperatorCommand).where(
-                        OperatorCommand.content_case_id == run.content_case_id,
-                        OperatorCommand.resolved_action_key == "final_revision",
-                        OperatorCommand.job_id == job.id,
-                        OperatorCommand.status.in_({"queued", "failed"}),
-                    )
-                )
-            ).all()
-        )
-        for command in pending_revision_commands:
-            if command.error_code == "operator_final_revision_cancelled":
-                continue
-            command.status = "failed"
-            command.error_code = "operator_final_revision_retry_exhausted"
-            command.state_after = state.state_version
-        await session.flush()
+    await settle_final_revision_commands(
+        session,
+        content_case_id=run.content_case_id,
+        state_version=state.state_version,
+        progress=progress,
+    )
 
 
 async def execute_quality_job(

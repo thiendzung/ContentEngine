@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -850,6 +851,151 @@ async def test_final_revision_production_failures_exhaust_retry_without_third_at
                 Job.status.in_({"queued", "leased"}),
             )
         ) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reverse_lane_order", [False, True])
+async def test_final_revision_bilingual_settlement_waits_for_all_lanes(
+    reverse_lane_order: bool,
+) -> None:
+    async with isolated_session() as session:
+        locales = ("en", "vi-VN") if reverse_lane_order else ("vi-VN", "en")
+        fixture, _outputs, _outline, _selected = await _revision_fixture(
+            session, locales=locales
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        initial = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key=f"final-revision-multilane-initial-{reverse_lane_order}",
+        )
+        initial_jobs: list[Job] = []
+        for index in range(2):
+            job = await operator_quality_worker.claim_or_reclaim_quality_job(
+                session, worker_id=f"final-revision-multilane-initial-{index}"
+            )
+            assert job is not None
+            initial_jobs.append(job)
+            await operator_quality_worker.fail_quality_job(
+                session,
+                job_id=job.id,
+                worker_id=f"final-revision-multilane-initial-{index}",
+                failure_class="multilane_attempt_1",
+                message="bounded bilingual attempt one failure",
+            )
+        assert initial.job_id in {job.id for job in initial_jobs}
+        requests = await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert {request.writer_run.status for request in requests} == {"waiting_approval"}
+        retryable = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert retryable.blocker_code == "operator_final_revision_job_failed"
+        retry = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="retry",
+            expected_state_version=retryable.state_version,
+            idempotency_key=f"final-revision-multilane-retry-{reverse_lane_order}",
+        )
+        retry_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.step_key.in_({"final_revision_vi", "final_revision_en"}),
+                        StepRun.attempt == 2,
+                    )
+                )
+            ).all()
+        )
+        assert len(retry_steps) == 2
+        retry_jobs = {
+            step.step_key: await session.scalar(select(Job).where(Job.step_run_id == step.id))
+            for step in retry_steps
+        }
+        assert all(job is not None and job.status == "queued" for job in retry_jobs.values())
+        retry_row = await session.get(OperatorCommand, retry.command_id)
+        assert retry_row is not None and retry_row.status == "queued"
+        parent_job = next(
+            job for job in retry_jobs.values() if job is not None and job.id == retry.job_id
+        )
+        sibling_job = next(
+            job for job in retry_jobs.values() if job is not None and job.id != retry.job_id
+        )
+        parent_job.available_at = utc_now() + timedelta(minutes=5)
+        sibling_job.available_at = utc_now() - timedelta(seconds=1)
+        await session.flush()
+        sibling_failed = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="final-revision-multilane-sibling"
+        )
+        assert sibling_failed is not None and sibling_failed.id == sibling_job.id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=sibling_failed.id,
+            worker_id="final-revision-multilane-sibling",
+            failure_class="multilane_attempt_2_sibling",
+            message="bounded sibling exhaustion",
+        )
+        retry_row = await session.get(OperatorCommand, retry.command_id)
+        assert retry_row is not None and retry_row.status == "queued"
+        assert retry_row.error_code is None
+        state_after_sibling = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert state_after_sibling.blocker_code == "operator_final_revision_retry_exhausted"
+        parent_job.available_at = utc_now() - timedelta(seconds=1)
+        await session.flush()
+        parent_failed = await operator_quality_worker.claim_or_reclaim_quality_job(
+            session, worker_id="final-revision-multilane-parent"
+        )
+        assert parent_failed is not None and parent_failed.id == parent_job.id
+        await operator_quality_worker.fail_quality_job(
+            session,
+            job_id=parent_failed.id,
+            worker_id="final-revision-multilane-parent",
+            failure_class="multilane_attempt_2_parent",
+            message="bounded parent-lane exhaustion",
+        )
+        exhausted = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert exhausted.blocker_code == "operator_final_revision_retry_exhausted"
+        assert exhausted.primary_intent is None
+        assert "retry" not in exhausted.allowed_intents
+        retry_row = await session.get(OperatorCommand, retry.command_id)
+        assert retry_row is not None
+        assert retry_row.status == "failed"
+        assert retry_row.error_code == "operator_final_revision_retry_exhausted"
+        assert await session.scalar(
+            select(func.count(Job.id)).where(
+                Job.run_id == fixture.run.id,
+                Job.status.in_({"queued", "leased"}),
+                Job.step_run_id.in_(select(StepRun.id).where(
+                    StepRun.step_key.in_({"final_revision_vi", "final_revision_en"})
+                )),
+            )
+        ) == 0
+        assert sorted(step.attempt for step in retry_steps) == [2, 2]
+        all_revision_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.step_key.in_({"final_revision_vi", "final_revision_en"})
+                    )
+                )
+            ).all()
+        )
+        assert sorted((step.step_key, step.attempt) for step in all_revision_steps) == [
+            ("final_revision_en", 1),
+            ("final_revision_en", 2),
+            ("final_revision_vi", 1),
+            ("final_revision_vi", 2),
+        ]
 
 
 @pytest.mark.asyncio
