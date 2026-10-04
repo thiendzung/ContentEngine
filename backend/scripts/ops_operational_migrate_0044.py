@@ -520,6 +520,10 @@ async def _main() -> int:
 
             try:
                 runtime_during_lock = await _runtime_work_state(engine)
+                if runtime_during_lock != runtime_work_before:
+                    raise OperationalMigration0044Error(
+                        "operational_runtime_state_changed_before_migration"
+                    )
                 runtime_locked = _runtime_guard()
 
                 evidence.update(
