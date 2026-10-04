@@ -531,11 +531,12 @@ async def _main() -> int:
             if not exclusive_lock_acquired:
                 raise OperationalMigration0044Error("worker_runtime_active")
 
-            runtime_during_lock = await _runtime_work_state(engine)
-            _require_quiescent(runtime_during_lock)
-            runtime_locked = _runtime_guard()
+            try:
+                runtime_during_lock = await _runtime_work_state(engine)
+                _require_quiescent(runtime_during_lock)
+                runtime_locked = _runtime_guard()
 
-            evidence.update(
+                evidence.update(
                 {
                     "revision_before": revision_before,
                     "core_fingerprint_before": core_before.to_dict(),
@@ -553,40 +554,47 @@ async def _main() -> int:
                 }
             )
 
-            migration_attempted = True
-            _run_source_upgrade(source)
+                migration_attempted = True
+                _run_source_upgrade(source)
 
-            revision_after, core_after = await _database_state(engine)
-            source_documents_after = await _source_documents_fingerprint(engine)
-            frozen_after = await _frozen_table_fingerprints(engine)
-            runtime_work_after = await _runtime_work_state(engine)
-            post_contract = await _post_0044_contract(engine)
+                revision_after, core_after = await _database_state(engine)
+                source_documents_after = await _source_documents_fingerprint(engine)
+                frozen_after = await _frozen_table_fingerprints(engine)
+                runtime_work_after = await _runtime_work_state(engine)
+                post_contract = await _post_0044_contract(engine)
 
-            if revision_after != _TARGET_REVISION:
-                raise OperationalMigration0044Error("migrated_revision_mismatch")
-            if core_after != core_before:
-                raise OperationalMigration0044Error("core_fingerprint_changed_by_migration")
-            if source_documents_after != source_documents_before:
-                raise OperationalMigration0044Error("source_documents_changed_by_migration")
-            if frozen_after != frozen_before:
-                raise OperationalMigration0044Error("frozen_runtime_tables_changed_by_migration")
-            _require_quiescent(runtime_work_after)
+                if revision_after != _TARGET_REVISION:
+                    raise OperationalMigration0044Error("migrated_revision_mismatch")
+                if core_after != core_before:
+                    raise OperationalMigration0044Error(
+                        "core_fingerprint_changed_by_migration"
+                    )
+                if source_documents_after != source_documents_before:
+                    raise OperationalMigration0044Error(
+                        "source_documents_changed_by_migration"
+                    )
+                if frozen_after != frozen_before:
+                    raise OperationalMigration0044Error(
+                        "frozen_runtime_tables_changed_by_migration"
+                    )
+                _require_quiescent(runtime_work_after)
 
-            evidence.update(
-                {
-                    "revision_after": revision_after,
-                    "core_fingerprint_after": core_after.to_dict(),
-                    "source_documents_after": source_documents_after,
-                    "frozen_tables_after": frozen_after,
-                    "runtime_work_after": runtime_work_after,
-                    "post_0044_contract": post_contract,
-                    "runtime_after": _runtime_guard(),
-                    "application_runtime": "STOPPED",
-                }
-            )
-
-            await release_maintenance_exclusive(maintenance_connection)
-            exclusive_lock_acquired = False
+                evidence.update(
+                    {
+                        "revision_after": revision_after,
+                        "core_fingerprint_after": core_after.to_dict(),
+                        "source_documents_after": source_documents_after,
+                        "frozen_tables_after": frozen_after,
+                        "runtime_work_after": runtime_work_after,
+                        "post_0044_contract": post_contract,
+                        "runtime_after": _runtime_guard(),
+                        "application_runtime": "STOPPED",
+                    }
+                )
+            finally:
+                if exclusive_lock_acquired:
+                    await release_maintenance_exclusive(maintenance_connection)
+                    exclusive_lock_acquired = False
     except (
         OperationalMigration0044Error,
         Data02RehearsalError,
@@ -622,13 +630,6 @@ async def _main() -> int:
                     )
             except Exception:
                 secondary_blockers.append("post_migration_source_verification_failed")
-
-        if exclusive_lock_acquired:
-            try:
-                async with engine.connect() as cleanup_connection:
-                    await release_maintenance_exclusive(cleanup_connection)
-            except Exception:
-                secondary_blockers.append("maintenance_gate_release_failed")
 
         try:
             _runtime_guard()
