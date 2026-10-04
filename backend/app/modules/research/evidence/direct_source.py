@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Protocol
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,23 @@ from app.modules.research.utils import annotate_source
 
 class PageReader(Protocol):
     async def read(self, url: str, *, query: str) -> PageReadResponse: ...
+
+
+def _normalize_locked_url(value: str) -> str:
+    candidate = value.strip()
+    parts = urlsplit(candidate)
+    path = parts.path or "/"
+    if path != "/":
+        path = path.rstrip("/")
+    return urlunsplit(
+        (
+            parts.scheme.lower(),
+            parts.netloc.lower(),
+            path,
+            parts.query,
+            "",
+        )
+    )
 
 
 class DirectSourceResearchRunner:
@@ -42,12 +60,22 @@ class DirectSourceResearchRunner:
             raise ValueError("direct_source_requires_one_page_read")
 
         page = await self._reader.read(self._source_url, query=request.query)
-        source_url = page.document.final_url or page.document.url or self._source_url
+        locked_url = _normalize_locked_url(self._source_url)
+        for returned_url in (
+            page.document.requested_url,
+            page.document.url,
+            page.document.final_url,
+        ):
+            if returned_url is None:
+                continue
+            if _normalize_locked_url(returned_url) != locked_url:
+                raise ValueError("direct_source_url_binding_mismatch")
+
         source = annotate_source(
             provider="direct_source",
             query=request.query,
-            url=source_url,
-            title=page.document.title or source_url,
+            url=self._source_url,
+            title=page.document.title or self._source_url,
             snippet="",
             found_via="human_review_locked_url",
         )
