@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 import scripts.run_operator_worker as worker
+from app.core.database import engine as test_engine
 from app.modules.system import runtime_maintenance as maintenance
 
 
@@ -104,6 +105,17 @@ async def test_worker_runtime_gate_holds_shared_lock_for_invocation() -> None:
         "select pg_advisory_unlock_shared(:lock_key)",
     ]
     assert connection.commits == 2
+
+
+@pytest.mark.asyncio
+async def test_real_postgres_worker_gate_excludes_maintenance() -> None:
+    async with maintenance.worker_runtime_gate(test_engine):
+        async with test_engine.connect() as exclusive:
+            assert await maintenance.try_acquire_maintenance_exclusive(exclusive) is False
+
+    async with test_engine.connect() as exclusive:
+        assert await maintenance.try_acquire_maintenance_exclusive(exclusive) is True
+        await maintenance.release_maintenance_exclusive(exclusive)
 
 
 @pytest.mark.asyncio
