@@ -1043,7 +1043,7 @@ async def _review_stage(
         QUALITY_REVIEW_TASK_KEYS[locale],
         FINAL_REVISION_TASK_KEYS[locale],
     }
-    steps = list(
+    all_steps = list(
         (
             await session.scalars(
                 select(StepRun)
@@ -1055,6 +1055,15 @@ async def _review_stage(
             )
         ).all()
     )
+    revision_steps = [
+        row for row in all_steps if row.step_key == FINAL_REVISION_TASK_KEYS[locale]
+    ]
+    review_steps = [
+        row for row in all_steps if row.step_key == QUALITY_REVIEW_TASK_KEYS[locale]
+    ]
+    # Final-revision attempts are a bounded retry lane after the original review;
+    # do not count the original review attempt against the revision retry budget.
+    steps = revision_steps or review_steps
     if len(steps) > QUALITY_MAX_JOB_ATTEMPTS:
         raise OperatorControlError("operator_quality_review_attempt_conflict", locale)
     if not steps:
@@ -1288,7 +1297,9 @@ async def pending_quality_commands(
             await session.scalars(
                 select(OperatorCommand).where(
                     OperatorCommand.content_case_id == content_case_id,
-                    OperatorCommand.resolved_action_key == "writers_to_quality",
+                    OperatorCommand.resolved_action_key.in_(
+                        ("writers_to_quality", "final_revision")
+                    ),
                     OperatorCommand.status == "queued",
                 )
             )

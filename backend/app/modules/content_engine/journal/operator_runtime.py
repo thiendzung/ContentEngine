@@ -1296,9 +1296,31 @@ async def _submit_final_revision_command(
         raise OperatorControlError(exc.code) from exc
     if not requests:
         raise OperatorControlError("operator_final_revision_request_missing")
+    retry_requests = []
+    if intent == "retry":
+        for request in requests:
+            latest = await session.scalar(
+                select(StepRun)
+                .where(
+                    StepRun.run_id == request.writer_run.id,
+                    StepRun.step_key == request.step_key,
+                )
+                .order_by(StepRun.attempt.desc(), StepRun.id.desc())
+            )
+            latest_job = await _latest_job(session, step_run_id=latest.id) if latest else None
+            if latest is None or latest.status != "failed":
+                if latest is not None and latest.status == "completed":
+                    continue
+                raise OperatorControlError("operator_final_revision_retry_step_missing")
+            if latest_job is None or latest_job.status not in {"failed", "cancelled"}:
+                raise OperatorControlError("operator_final_revision_retry_job_missing")
+            retry_requests.append(request)
+        if not retry_requests:
+            raise OperatorControlError("operator_final_revision_retry_step_missing")
+    dispatch_requests = retry_requests if intent == "retry" else requests
     command = OperatorCommand(
         content_case_id=content_case_id,
-        run_id=requests[0].writer_run.id,
+        run_id=dispatch_requests[0].writer_run.id,
         step_run_id=None,
         job_id=None,
         intent=intent,
@@ -1325,10 +1347,26 @@ async def _submit_final_revision_command(
                 .order_by(StepRun.attempt.desc(), StepRun.id.desc())
             )
             job = await _latest_job(session, step_run_id=step.id) if step is not None else None
-            if job is None or job.status != "queued":
+            if step is None or job is None or job.status != "queued":
                 raise OperatorControlError("operator_cancel_requires_queued_final_revision_job")
             job.status = "cancelled"
             job.updated_at = utc_now()
+            # The database trigger permits only running -> failed for StepRun
+            # failure. Promote the still-queued step through running in the
+            # same transaction so cancellation leaves a retryable terminal
+            # record without weakening the transition contract.
+            step.status = "running"
+            await session.flush()
+            step.status = "failed"
+            step.completed_at = utc_now()
+            step.error_json = {
+                "class": "operator_final_revision_cancelled",
+                "message": "Founder cancelled the final-revision dispatch.",
+            }
+            request.writer_run.status = "failed"
+            request.writer_run.completed_at = utc_now()
+            request.writer_run.failure_code = "operator_final_revision_cancelled"
+            request.writer_run.failure_message = "Founder cancelled the final-revision dispatch."
         command.status = "cancelled"
         await session.flush()
         after = await get_operator_state(
@@ -1346,7 +1384,7 @@ async def _submit_final_revision_command(
             job_id=None,
             replayed=False,
         )
-    for request in requests:
+    for request in dispatch_requests:
         step_rows = list(
             (
                 await session.scalars(
@@ -1383,7 +1421,12 @@ async def _submit_final_revision_command(
         session.add(step)
         await session.flush()
         if request.writer_run.status != "running":
-            await transition_run(session, run_id=request.writer_run.id, status="running")
+            # Final-revision retry intentionally reopens the failed writer lane;
+            # the generic run transition table remains terminal for ordinary runs.
+            request.writer_run.status = "running"
+            request.writer_run.completed_at = None
+            request.writer_run.failure_code = None
+            request.writer_run.failure_message = None
         request.writer_run.current_step = request.step_key
         queued = await enqueue_job(
             session,

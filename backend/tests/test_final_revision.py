@@ -19,7 +19,7 @@ from app.modules.content_engine.journal.operator_runtime import (
 )
 from app.modules.content_engine.journal.operator_writers import get_writer_lane_progress
 from app.modules.harness.agent_runner import AgentRunnerRegistry
-from app.modules.harness.models import Approval, Artifact, Job, StepRun, ToolCall
+from app.modules.harness.models import Approval, Artifact, Job, StepRun, ToolCall, utc_now
 
 
 async def _revision_fixture(
@@ -555,3 +555,116 @@ async def test_final_revision_model_input_contains_exact_binding_and_no_tool_cal
         serialized = str(model_input)
         assert "other_locale_draft" not in serialized
         assert await session.scalar(select(func.count(ToolCall.id))) == 0
+
+
+@pytest.mark.asyncio
+async def test_final_revision_retry_reopens_only_failed_locale_and_separates_attempt_budget(
+) -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline, _selected = await _revision_fixture(
+            session, locales=("vi-VN", "en")
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        first = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-revision-retry-initial",
+        )
+        assert first.status == "queued"
+        en_step = await session.scalar(
+            select(StepRun).where(StepRun.step_key == "final_revision_en")
+        )
+        vi_step = await session.scalar(
+            select(StepRun).where(StepRun.step_key == "final_revision_vi")
+        )
+        assert en_step is not None and vi_step is not None
+        en_job = await session.scalar(select(Job).where(Job.step_run_id == en_step.id))
+        vi_job = await session.scalar(select(Job).where(Job.step_run_id == vi_step.id))
+        assert en_job is not None and vi_job is not None
+        now = utc_now()
+        en_step.status = "running"
+        vi_step.status = "running"
+        await session.flush()
+        en_step.status = "failed"
+        en_step.completed_at = now
+        en_job.status = "failed"
+        vi_step.status = "completed"
+        vi_step.completed_at = now
+        vi_job.status = "completed"
+        await session.flush()
+        failed_state = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert failed_state.blocker_code == "operator_final_revision_job_failed"
+        retry = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="retry",
+            expected_state_version=failed_state.state_version,
+            idempotency_key="final-revision-retry-only-failed",
+        )
+        assert retry.status == "queued"
+        retry_steps = list(
+            (
+                await session.scalars(
+                    select(StepRun).where(
+                        StepRun.step_key.in_(
+                            {"final_revision_vi", "final_revision_en"}
+                        )
+                    )
+                )
+            ).all()
+        )
+        assert sorted((step.step_key, step.attempt) for step in retry_steps) == [
+            ("final_revision_en", 1),
+            ("final_revision_en", 2),
+            ("final_revision_vi", 1),
+        ]
+        requests = await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert any(request.writer_run.status == "running" for request in requests)
+
+
+@pytest.mark.asyncio
+async def test_final_revision_cancel_marks_step_and_run_coherent_for_retry() -> None:
+    async with isolated_session() as session:
+        fixture, _outputs, _outline, _selected = await _revision_fixture(
+            session, locales=("en",)
+        )
+        action = await resolve_next_operator_action(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        queued = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="continue",
+            expected_state_version=action.state_version,
+            idempotency_key="final-revision-cancel-initial",
+        )
+        assert queued.status == "queued"
+        running = await get_operator_state(session, content_case_id=fixture.run.content_case_id)
+        cancelled = await submit_operator_command(
+            session,
+            content_case_id=fixture.run.content_case_id,
+            intent="cancel",
+            expected_state_version=running.state_version,
+            idempotency_key="final-revision-cancel-coherent",
+        )
+        assert cancelled.status == "cancelled"
+        step = await session.scalar(select(StepRun).where(StepRun.step_key == "final_revision_en"))
+        job = await session.scalar(select(Job).where(Job.step_run_id == step.id)) if step else None
+        assert step is not None and step.status == "failed"
+        assert job is not None and job.status == "cancelled"
+        requests = await load_final_revision_requests(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert requests[0].writer_run.status == "failed"
+        retry_state = await get_operator_state(
+            session, content_case_id=fixture.run.content_case_id
+        )
+        assert retry_state.blocker_code == "operator_final_revision_job_failed"

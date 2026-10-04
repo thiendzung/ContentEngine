@@ -16,7 +16,7 @@ Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verificatio
 | F3 | DONE / acceptance PASS / PR #104 MERGED | Independent VI/EN Writers accepted. |
 | F4 | DONE / acceptance PASS / PR #105 MERGED | Exact quality path reaches final_review. |
 | F5 | DONE / PASS_F5_FINALIZATION | #109 + #113 merged; #110 accepted COMPLETE / Approved / Not published. |
-| F5.2 | DEFERRED / not normal-path blocker | Implement bounded revision continuation after changes_requested; do not advertise it in F6-MINI. |
+| F5.2 | IMPLEMENTED / bounded review route | Bounded revision continuation after changes_requested is implemented and remains behind the final-review human gate; do not advertise it in F6-MINI. |
 | F6-MINI | DONE / browser acceptance PASS / PR #117 MERGED | Browser workspace is merged and the bounded browser acceptance path passed; #116 is closed. |
 | F6.A1 | DONE / real browser acceptance PASS | Exact browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`; #118 is closed. |
 | OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
@@ -57,14 +57,14 @@ Exact contract: `logs/2026-09-16-f3-independent-writers-plan.md`.
 
 - [x] Review binds exact final bytes, applicable checks and package identity for each required locale.
 - [x] Approve/request changes/reject have explicit durable outcomes; unsupported actions are not advertised.
-- [ ] F5.2: a changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
+- [x] F5.2: a changed artifact cannot inherit its previous approval; the bounded revision route reruns affected checks and asks for approval again.
 - [x] Reuse canonical ContentItem/ContentVersion persistence; never silently overwrite approved history.
 - [x] Finalization is atomic or durably recoverable; partial locale completion never reports COMPLETE.
 - [x] Required locale membership AND exact approved lineage determine COMPLETE, not row count.
 - [x] Replay/stale approval/partial failure/restart tests and exact-head local acceptance PASS.
 - [x] Publication remains absent; UI reads Approved / Not published.
 
-Backend normal-path completion is an F5 acceptance outcome, not a claim that local production deployment or full UI is finished. `changes_requested` / `rejected` are durable decisions, but the bounded revision continuation after `changes_requested` remains F5.2 and is intentionally not exposed by F6-MINI.
+Backend normal-path completion is an F5 acceptance outcome, not a claim that local production deployment or full UI is finished. `changes_requested` / `rejected` are durable decisions; the bounded revision continuation after `changes_requested` is implemented as F5.2 and remains behind the final-review human gate, intentionally not exposed by F6-MINI.
 
 ## F6 - Minimum full UI (three bounded tasks, not a new app)
 
@@ -692,4 +692,3 @@ CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, oper
 - [x] Founder-authorized #280 retry + one-shot worker proved the next real blocker is evidence sufficiency rather than credits.
 - [ ] PR #284 ports approved locked EvidenceSet reuse onto current main and becomes the only implementation WIP for this blocker.
 - [x] Review process updated: OpenCodeReview is the only supplementary semantic reviewer; no new GitHub Codex review/security-review invocation.
-
