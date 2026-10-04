@@ -1177,6 +1177,7 @@ async def fail_quality_job(
                     select(OperatorCommand).where(
                         OperatorCommand.content_case_id == run.content_case_id,
                         OperatorCommand.resolved_action_key == "final_revision",
+                        OperatorCommand.job_id == job.id,
                         OperatorCommand.status.in_({"queued", "failed"}),
                     )
                 )
