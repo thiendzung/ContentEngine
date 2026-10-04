@@ -200,23 +200,47 @@ def test_expected_source_fingerprint_arguments_fail_closed(
         )
 
 
-def test_quiescent_state_requires_every_runtime_counter_zero() -> None:
-    state = {
-        "queued_or_leased_jobs": 0,
-        "pending_or_running_steps": 0,
-        "pending_or_running_runs": 0,
-        "pending_or_running_model_calls": 0,
-        "pending_or_running_tool_calls": 0,
-        "active_outbox_intents": 0,
+@pytest.mark.asyncio
+async def test_runtime_work_state_reuses_proven_release_quiescence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = {
+        "jobs": {"failed": 2},
+        "paused_operator_retries": [{"run_id": "r1"}],
     }
-    migrate._require_quiescent(state)
 
-    state["queued_or_leased_jobs"] = 1
+    async def ready(_engine: object) -> dict[str, object]:
+        return expected
+
+    monkeypatch.setattr(
+        migrate.release_lifecycle_0042,
+        "_assert_release_quiescent_state",
+        ready,
+    )
+
+    assert await migrate._runtime_work_state(object()) == expected  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_runtime_work_state_maps_release_blocker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def blocked(_engine: object) -> dict[str, object]:
+        raise migrate.release_lifecycle_0042.ReleaseLifecycleError(
+            "nonterminal_jobs_present"
+        )
+
+    monkeypatch.setattr(
+        migrate.release_lifecycle_0042,
+        "_assert_release_quiescent_state",
+        blocked,
+    )
+
     with pytest.raises(
         migrate.OperationalMigration0044Error,
-        match="operational_runtime_not_quiescent",
+        match="nonterminal_jobs_present",
     ):
-        migrate._require_quiescent(state)
+        await migrate._runtime_work_state(object())  # type: ignore[arg-type]
 
 
 def test_source_upgrade_targets_exact_0044_operational_database(
