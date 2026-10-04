@@ -9,6 +9,7 @@ AUTHORIZED_HEAD ?=
 EXPECTED_DUMP_SHA256 ?=
 EXPECTED_SOURCE_DOCUMENTS_COUNT ?=
 EXPECTED_SOURCE_DOCUMENTS_SHA256 ?=
+EXPECTED_SOURCE_FULL_DATA_SHA256 ?=
 RELEASE_PROVENANCE ?= artifacts/release/release-0042-provenance.json
 MODEL ?=
 APPROVED_BY ?=
@@ -18,7 +19,7 @@ OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min rec02-proof operational-migrate operational-migrate-0042 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min rec02-proof operational-migrate operational-migrate-0042 operational-migrate-0044 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -120,6 +121,20 @@ operational-migrate-0042:
 		--expected-dump-sha256 "$(EXPECTED_DUMP_SHA256)" \
 		--expected-source-documents-count "$(EXPECTED_SOURCE_DOCUMENTS_COUNT)" \
 		--expected-source-documents-sha256 "$(EXPECTED_SOURCE_DOCUMENTS_SHA256)"
+
+operational-migrate-0044:
+	@test -n "$(BACKUP)" || (echo "BACKUP is required" && exit 2)
+	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
+	@test -n "$(EXPECTED_DUMP_SHA256)" || (echo "EXPECTED_DUMP_SHA256 is required" && exit 2)
+	@test -n "$(EXPECTED_SOURCE_DOCUMENTS_COUNT)" || (echo "EXPECTED_SOURCE_DOCUMENTS_COUNT is required" && exit 2)
+	@test -n "$(EXPECTED_SOURCE_DOCUMENTS_SHA256)" || (echo "EXPECTED_SOURCE_DOCUMENTS_SHA256 is required" && exit 2)
+	@test -n "$(EXPECTED_SOURCE_FULL_DATA_SHA256)" || (echo "EXPECTED_SOURCE_FULL_DATA_SHA256 is required" && exit 2)
+	cd backend && .venv/bin/python -m scripts.ops_operational_migrate_0044 "$(BACKUP)" \
+		--authorized-head "$(AUTHORIZED_HEAD)" \
+		--expected-dump-sha256 "$(EXPECTED_DUMP_SHA256)" \
+		--expected-source-documents-count "$(EXPECTED_SOURCE_DOCUMENTS_COUNT)" \
+		--expected-source-documents-sha256 "$(EXPECTED_SOURCE_DOCUMENTS_SHA256)" \
+		--expected-source-full-data-sha256 "$(EXPECTED_SOURCE_FULL_DATA_SHA256)"
 
 release-build-0042:
 	@test -n "$(AUTHORIZED_HEAD)" || (echo "AUTHORIZED_HEAD is required" && exit 2)
