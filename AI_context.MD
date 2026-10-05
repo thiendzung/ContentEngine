@@ -1,8 +1,8 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-01A Canonical Question Map
+## Current WIP — QM-01B Classification / Clustering v2
 
-Founder authorized implementation on 2026-10-05. Branch `feat/qm-01a-canonical-question-map` is based on merged main `a0c4147b971da357d5c0ffe7ae759dd6f30a1518` and tracked by issue #329. Scope is intentionally narrow: canonical `NeedHypothesis` + persisted supporting `SEARCH` Signals -> deterministic locale-specific Question Map read model -> stable `snapshot_hash` -> read-only `GET /question-map` API. Question Map remains derived decision-support, not an independent truth store. No DB migration/table, no model call, no ContentOpportunity mutation and no UI are authorized in QM-01A. Exact task boundary: `docs/logs/2026-10-05-qm-01a-canonical-question-map.md`.
+Founder authorized implementation on 2026-10-05. Branch `feat/qm-01b-classification-clustering-v2` is based on merged QM-01A main `94e6b324ee0dc35a3c1cbaaafc0cc8f0fa3eb3a7` and tracked by issue #331. QM-01B keeps Question Map as derived decision-support only: canonical Need + supporting SEARCH Signals remain authoritative inputs; the new path adds locale-aware EN/VI classification, explicit unresolved/off-scope states, answer-job clustering keyed by Need + locale + intent + answer_job, and deterministic primary-question selection by provenance/independent repetition. Legacy OpportunityMap classification/decision semantics are intentionally unchanged. No DB migration/table, no model/provider call, no ContentOpportunity mutation and no UI are authorized in QM-01B. Exact task boundary: `docs/logs/2026-10-05-qm-01b-classification-clustering-v2.md`.
 
 ## Read first and verify the actual ref
 
