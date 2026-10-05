@@ -56,6 +56,31 @@ public protocol CommandRunning: Sendable {
     ) async throws -> CommandResult
 }
 
+public protocol RuntimeProbing: Sendable {
+    func responds(to url: URL) async -> Bool
+}
+
+public struct FoundationRuntimeProbe: RuntimeProbing {
+    private let session: URLSession
+
+    public init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    public func responds(to url: URL) async -> Bool {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 0.8
+        do {
+            let (_, response) = try await session.data(for: request)
+            return response is HTTPURLResponse
+        } catch {
+            return false
+        }
+    }
+}
+
+
 public struct FoundationCommandRunner: CommandRunning {
     public init() {}
 
@@ -153,19 +178,19 @@ public final class LifecycleController: @unchecked Sendable {
 
     private let config: AppConfig
     private let runner: any CommandRunning
+    private let probe: any RuntimeProbing
     private let fileManager: FileManager
-    private let session: URLSession
 
     public init(
         config: AppConfig,
         runner: any CommandRunning = FoundationCommandRunner(),
-        fileManager: FileManager = .default,
-        session: URLSession = .shared
+        probe: any RuntimeProbing = FoundationRuntimeProbe(),
+        fileManager: FileManager = .default
     ) {
         self.config = config
         self.runner = runner
+        self.probe = probe
         self.fileManager = fileManager
-        self.session = session
     }
 
     public func status() async -> ManagedRuntimeStatus {
@@ -656,7 +681,7 @@ public final class LifecycleController: @unchecked Sendable {
             ]
             for url in urls {
                 group.addTask {
-                    await self.endpointResponds(url)
+                    await self.probe.responds(to: url)
                 }
             }
 
@@ -665,18 +690,6 @@ public final class LifecycleController: @unchecked Sendable {
                 any = any || responds
             }
             return any
-        }
-    }
-
-    private func endpointResponds(_ url: URL) async -> Bool {
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 0.8
-        do {
-            let (_, response) = try await session.data(for: request)
-            return response is HTTPURLResponse
-        } catch {
-            return false
         }
     }
 
