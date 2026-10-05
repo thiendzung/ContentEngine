@@ -17,9 +17,14 @@ from app.modules.research.keyword_plan.classification_v2 import (
     CLASSIFIER_VERSION,
     classify_question_v2,
 )
-from app.modules.research.keyword_plan.question_map import build_question_map
+from app.modules.research.keyword_plan.clustering_v2 import CLUSTERING_VERSION
+from app.modules.research.keyword_plan.question_map import (
+    QUESTION_MAP_SCHEMA_VERSION,
+    build_question_map,
+)
 
 QUESTION_COVERAGE_SCHEMA_VERSION = 1
+EXPECTED_CONTENT_COVERAGE_SCHEMA_VERSION = 1
 
 QuestionCoverageStatus = Literal[
     "ANSWERED",
@@ -348,6 +353,44 @@ def join_question_map_with_coverage(
     question_map: dict[str, object],
     content_coverage: dict[str, object],
 ) -> dict[str, object]:
+    if question_map.get("schema_version") != QUESTION_MAP_SCHEMA_VERSION:
+        raise QuestionCoverageError(
+            "question_coverage_question_map_schema_unsupported"
+        )
+    if (
+        content_coverage.get("schema_version")
+        != EXPECTED_CONTENT_COVERAGE_SCHEMA_VERSION
+    ):
+        raise QuestionCoverageError(
+            "question_coverage_content_coverage_schema_unsupported"
+        )
+
+    question_project = _required_dict(
+        question_map.get("project"),
+        "question_coverage_project_projection_invalid",
+    )
+    coverage_project = _required_dict(
+        content_coverage.get("project"),
+        "question_coverage_project_projection_invalid",
+    )
+    if str(question_project.get("id", "")) != str(
+        coverage_project.get("id", "")
+    ):
+        raise QuestionCoverageError("question_coverage_project_mismatch")
+
+    source_policy = _required_dict(
+        question_map.get("source_policy"),
+        "question_coverage_question_map_projection_invalid",
+    )
+    if source_policy.get("classifier_version") != CLASSIFIER_VERSION:
+        raise QuestionCoverageError(
+            "question_coverage_classifier_version_mismatch"
+        )
+    if source_policy.get("clustering_version") != CLUSTERING_VERSION:
+        raise QuestionCoverageError(
+            "question_coverage_clustering_version_mismatch"
+        )
+
     locale = _normalized(question_map.get("locale"))
     need = _required_dict(
         question_map.get("need"),
@@ -455,6 +498,7 @@ def join_question_map_with_coverage(
             "schema_version"
         ),
         "classifier_version": CLASSIFIER_VERSION,
+        "clustering_version": CLUSTERING_VERSION,
         "counts": counts,
         "clusters": joined_clusters,
         "semantics": {
