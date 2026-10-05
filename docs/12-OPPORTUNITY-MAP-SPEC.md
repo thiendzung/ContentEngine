@@ -91,6 +91,36 @@ confidence, query quality và trạng thái classification. Không re-infer cano
   không chọn đơn thuần vì query ngắn.
 - Legacy `OpportunityMapService` chưa đổi semantics trong QM-01B.
 
+### Question Map × Content Coverage — QM-01C
+
+QM-01C không tạo thêm một coverage truth store. Nó join hai read model đã có:
+
+```text
+Question cluster = Need + locale + intent + answer_job
+             +
+canonical Content Coverage state
+             ↓
+derived cluster coverage
+```
+
+Trạng thái cluster:
+
+- `ANSWERED`: có đúng một primary ContentItem phù hợp đang published;
+- `STALE`: primary published answer có revision mới chưa publish hoặc là target của
+  selected UPDATE/REFRESH;
+- `COLLISION`: nhiều primary answers cạnh tranh cùng cluster; khi chưa có item,
+  nhiều selected CREATE plans cùng cluster cũng là collision;
+- `PARTIAL`: đã có work/plan phù hợp nhưng chưa có primary published answer; published
+  content chỉ ở supporting-Need cũng chỉ là partial;
+- `MISSING`: không có classified matching content/work/plan;
+- `INSUFFICIENT_DATA`: có candidate cùng intent nhưng semantics không đủ chắc để match,
+  nên fail closed thay vì kết luận MISSING.
+
+Existing item/opportunity question language được reclassify bằng cùng deterministic v2
+classifier chỉ để join. Không thay Need, ContentOpportunity hay Content Coverage authority.
+Off-scope/truncated/unresolved không được tính là answered. `GET /question-map` giữ nguyên;
+coverage-aware projection dùng endpoint riêng `GET /question-map/coverage`.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
