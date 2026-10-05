@@ -97,15 +97,20 @@ def test_classification_v2_recognizes_vietnamese_authenticity_independently() ->
 
 
 def test_classification_v2_budget_cue_beats_first_time_stage_phrase() -> None:
-    result = classify_question_v2(
+    english = classify_question_v2(
         "What budget should I set for my first painting?",
         locale="en",
     )
+    vietnamese = classify_question_v2(
+        "Ngân sách bao nhiêu cho bức đầu tiên?",
+        locale="vi",
+    )
 
-    assert result.topic_key == "price"
-    assert result.answer_job == "plan_budget"
-    assert result.intent is Intent.EVALUATE
-    assert result.audience_stage.value == "first_time_buyer"
+    for result in (english, vietnamese):
+        assert result.topic_key == "price"
+        assert result.answer_job == "plan_budget"
+        assert result.intent is Intent.EVALUATE
+        assert result.audience_stage.value == "first_time_buyer"
 
 
 def test_classification_v2_splits_budget_from_value_answer_jobs() -> None:
