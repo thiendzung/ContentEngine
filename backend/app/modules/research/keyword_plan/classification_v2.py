@@ -44,7 +44,17 @@ class _TopicRule:
 _TOPIC_RULES: tuple[_TopicRule, ...] = (
     _TopicRule(
         "price",
-        ("price", "cost", "budget", "expensive", "affordable", "worth", "value"),
+        (
+            "price",
+            "cost",
+            "budget",
+            "spend",
+            "how much",
+            "expensive",
+            "affordable",
+            "worth",
+            "value",
+        ),
         ("giá", "bao nhiêu tiền", "ngân sách", "đắt", "rẻ", "đáng tiền", "giá trị"),
         QuestionType.PRICE,
         "plan_budget",
@@ -52,14 +62,31 @@ _TOPIC_RULES: tuple[_TopicRule, ...] = (
     _TopicRule(
         "authenticity",
         ("authentic", "original", "genuine", "fake", "verify", "certificate", "provenance"),
-        ("nguyên bản", "nguyên gốc", "tranh thật", "tranh giả", "xác thực", "chứng nhận", "nguồn gốc"),
+        (
+            "nguyên bản",
+            "nguyên gốc",
+            "tranh thật",
+            "tranh giả",
+            "xác thực",
+            "chứng nhận",
+            "nguồn gốc",
+        ),
         QuestionType.TRUST,
         "verify_authenticity",
     ),
     _TopicRule(
         "logistics",
         ("shipping", "ship", "carry", "transport", "luggage", "customs", "delivery", "bring home"),
-        ("vận chuyển", "gửi tranh", "mang về", "hành lý", "hải quan", "giao hàng", "xách về", "đóng gói"),
+        (
+            "vận chuyển",
+            "gửi tranh",
+            "mang về",
+            "hành lý",
+            "hải quan",
+            "giao hàng",
+            "xách về",
+            "đóng gói",
+        ),
         QuestionType.LOGISTICS,
         "plan_transport",
     ),
@@ -73,7 +100,16 @@ _TOPIC_RULES: tuple[_TopicRule, ...] = (
     _TopicRule(
         "visit",
         ("gallery", "studio", "visit", "hanoi", "artist house", "where to buy", "where can i see"),
-        ("phòng tranh", "gallery", "xưởng", "studio", "tham quan", "hà nội", "mua ở đâu", "xem ở đâu"),
+        (
+            "phòng tranh",
+            "gallery",
+            "xưởng",
+            "studio",
+            "tham quan",
+            "hà nội",
+            "mua ở đâu",
+            "xem ở đâu",
+        ),
         QuestionType.VISIT,
         "find_place_to_view",
     ),
@@ -100,14 +136,32 @@ _TOPIC_RULES: tuple[_TopicRule, ...] = (
     ),
     _TopicRule(
         "choosing",
-        ("choose", "choosing", "pick", "taste", "right painting", "first painting", "first artwork"),
+        (
+            "choose",
+            "choosing",
+            "pick",
+            "taste",
+            "right painting",
+            "first painting",
+            "first artwork",
+        ),
         ("chọn tranh", "chọn tác phẩm", "gu", "bức phù hợp", "bức đầu tiên", "lần đầu mua tranh"),
         QuestionType.HOW,
         "choose_with_confidence",
     ),
     _TopicRule(
         "painting_technique",
-        ("painting technique", "brushwork", "composition", "perspective", "color mixing", "rule in painting"),
+        (
+            "painting technique",
+            "brushwork",
+            "composition",
+            "perspective",
+            "color mixing",
+            "mix paint",
+            "mix oil paint",
+            "oil paint color",
+            "rule in painting",
+        ),
         ("kỹ thuật vẽ", "nét cọ", "bố cục", "phối cảnh", "phối màu", "quy tắc hội họa"),
         QuestionType.HOW,
         "learn_art_making",
@@ -123,8 +177,8 @@ _TOPIC_RULES: tuple[_TopicRule, ...] = (
     ),
 )
 
-_COMPARE_EN = (" vs ", " versus ", "compare", "difference", " or ")
-_COMPARE_VI = (" so với ", "khác nhau", "khác gì", "hay ", "nên chọn")
+_COMPARE_EN = ("vs", "versus", "compare", "difference", "or")
+_COMPARE_VI = ("so với", "khác nhau", "khác gì", "hay", "nên chọn")
 _FIRST_TIME_EN = ("first time", "first painting", "first artwork", "first art")
 _FIRST_TIME_VI = ("lần đầu", "bức đầu tiên", "tác phẩm đầu tiên")
 _READY_EN = ("buy now", "purchase now", "available", "inquire", "order")
@@ -363,10 +417,10 @@ def classify_question_v2(
     audience_stage = _audience_stage(text, locale, topic_key, intent)
     quality = _query_quality(value, off_scope=bool(rule and rule.off_scope))
 
+    unsupported_locale = locale_family(locale) not in {"en", "vi"}
     unresolved = (
         quality is QueryQuality.USABLE
-        and rule is None
-        and answer_job == "unresolved"
+        and (rule is None or unsupported_locale)
     )
     if unresolved:
         confidence = Confidence.LOW
