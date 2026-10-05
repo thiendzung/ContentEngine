@@ -83,12 +83,16 @@ def _motgu_signal(
     )
 
 
-def _coverage_item(item_id: str) -> dict[str, object]:
+def _coverage_item(
+    item_id: str,
+    *,
+    need_role: str = "primary",
+) -> dict[str, object]:
     return {
         "id": item_id,
         "canonical_key": f"journal:{item_id}",
         "content_case_id": f"case-{item_id}",
-        "need_role": "primary",
+        "need_role": need_role,
         "locale": "en",
         "content_role": "cluster",
         "primary_question": "What budget should I set for a painting?",
@@ -118,11 +122,17 @@ def _question_coverage(
     need: NeedHypothesis,
     coverage_status: str = "MISSING",
     content_refs: tuple[str, ...] = (),
+    supporting_refs: tuple[str, ...] = (),
     plan_refs: tuple[str, ...] = (),
+    do_not_write_refs: tuple[str, ...] = (),
     unresolved: bool = False,
     search_signal_count: int = 2,
 ) -> dict[str, object]:
     items = [_coverage_item(item_id) for item_id in content_refs]
+    items.extend(
+        _coverage_item(item_id, need_role="supporting")
+        for item_id in supporting_refs
+    )
     plans = [_coverage_plan(plan_id) for plan_id in plan_refs]
     return {
         "schema_version": 1,
@@ -170,7 +180,7 @@ def _question_coverage(
                         if unresolved
                         else []
                     ),
-                    "do_not_write_opportunity_refs": [],
+                    "do_not_write_opportunity_refs": list(do_not_write_refs),
                 },
             }
         ],
@@ -182,7 +192,9 @@ def _plan(
     need: NeedHypothesis,
     coverage_status: str = "MISSING",
     content_refs: tuple[str, ...] = (),
+    supporting_refs: tuple[str, ...] = (),
     plan_refs: tuple[str, ...] = (),
+    do_not_write_refs: tuple[str, ...] = (),
     motgu: bool = False,
     unresolved: bool = False,
     search_signal_count: int = 2,
@@ -193,7 +205,9 @@ def _plan(
             need=need,
             coverage_status=coverage_status,
             content_refs=content_refs,
+            supporting_refs=supporting_refs,
             plan_refs=plan_refs,
+            do_not_write_refs=do_not_write_refs,
             unresolved=unresolved,
             search_signal_count=search_signal_count,
         ),
@@ -300,7 +314,39 @@ def test_partial_content_maps_to_update_and_plan_only_reuses_create_direction() 
     assert content["existing_content_refs"] == ["item-1"]
     assert plan_only["decision"] == "CREATE"
     assert plan_only["existing_plan_refs"] == ["plan-1"]
+    assert plan_only["selection_readiness"] == "REUSE_EXISTING_PLAN"
     assert plan_only["priority"] == "NEXT"
+
+
+def test_supporting_only_partial_does_not_become_update_target() -> None:
+    row = _recommendation(
+        _plan(
+            need=_need(),
+            coverage_status="PARTIAL",
+            supporting_refs=("support-item",),
+        )
+    )
+
+    assert row["decision"] == "CREATE"
+    assert row["existing_content_refs"] == []
+    assert row["coverage_refs"]["all_matched_content_items"] == [
+        "support-item"
+    ]
+
+
+def test_selected_do_not_write_plan_blocks_new_create_recommendation() -> None:
+    row = _recommendation(
+        _plan(
+            need=_need(),
+            coverage_status="MISSING",
+            do_not_write_refs=("plan-no",),
+        )
+    )
+
+    assert row["decision"] == "DO_NOT_WRITE"
+    assert row["selection_readiness"] == "BLOCKED"
+    assert row["priority"] == "NO"
+    assert row["existing_plan_refs"] == ["plan-no"]
 
 
 def test_collision_with_content_maps_to_merge() -> None:
