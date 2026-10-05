@@ -330,6 +330,23 @@ def test_question_coverage_missing_when_no_matching_candidate_exists() -> None:
     assert _status(result) == "MISSING"
 
 
+def test_question_coverage_fails_closed_on_stored_vs_derived_intent_conflict() -> None:
+    result = join_question_map_with_coverage(
+        question_map=_question_map_fixture(),
+        content_coverage=_coverage_fixture(
+            items=[
+                _item(
+                    item_id="conflict-item",
+                    question="What budget should I set for a painting?",
+                    intent="learn",
+                )
+            ]
+        ),
+    )
+
+    assert _status(result) == "INSUFFICIENT_DATA"
+
+
 def test_question_coverage_fails_closed_when_same_intent_candidate_is_unresolved() -> None:
     result = join_question_map_with_coverage(
         question_map=_question_map_fixture(),
