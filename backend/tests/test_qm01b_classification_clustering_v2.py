@@ -139,14 +139,19 @@ def test_classification_v2_fails_closed_for_unsupported_locale() -> None:
 
 
 def test_classification_v2_keeps_truncated_query_cluster_ineligible() -> None:
-    result = classify_question_v2(
-        "How to choose a painting that",
-        locale="en",
-    )
+    text = "How to choose a painting that"
+    result = classify_question_v2(text, locale="en")
 
     assert result.query_quality is QueryQuality.TRUNCATED
     assert result.classification_status == "classified"
     assert not result.semantic_fallback_required
+
+    clusters = build_question_clusters_v2(
+        need_id="need-1",
+        locale="en",
+        questions=[_question(key="truncated", text=text)],
+    )
+    assert clusters == []
 
 
 def test_classification_v2_keeps_vietnamese_art_making_off_scope() -> None:
@@ -184,6 +189,33 @@ def test_clustering_v2_uses_intent_and_answer_job_not_topic_only() -> None:
         "plan_budget",
         "understand_value",
     }
+
+
+def test_cluster_identity_binds_need_locale_intent_and_answer_job() -> None:
+    question = _question(
+        key="auth",
+        text="How can I verify an original painting?",
+    )
+
+    first = build_question_clusters_v2(
+        need_id="need-1",
+        locale="en",
+        questions=[question],
+    )
+    second_need = build_question_clusters_v2(
+        need_id="need-2",
+        locale="en",
+        questions=[question],
+    )
+    second_locale = build_question_clusters_v2(
+        need_id="need-1",
+        locale="en-gb",
+        questions=[question],
+    )
+
+    assert len(first) == 1
+    assert first[0].cluster_key != second_need[0].cluster_key
+    assert first[0].cluster_key != second_locale[0].cluster_key
 
 
 def test_clustering_v2_excludes_unresolved_and_off_scope_questions() -> None:
