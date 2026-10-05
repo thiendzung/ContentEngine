@@ -121,6 +121,17 @@ def test_classification_v2_keeps_low_confidence_language_unresolved() -> None:
     assert result.confidence is Confidence.LOW
 
 
+def test_classification_v2_fails_closed_for_unsupported_locale() -> None:
+    result = classify_question_v2(
+        "How do I know if this painting is original?",
+        locale="fr",
+    )
+
+    assert result.classification_status == "unresolved"
+    assert result.semantic_fallback_required
+    assert result.confidence is Confidence.LOW
+
+
 def test_classification_v2_keeps_vietnamese_art_making_off_scope() -> None:
     result = classify_question_v2(
         "Cách phối màu sơn dầu cho đẹp?",
@@ -325,6 +336,21 @@ async def test_question_map_v2_exposes_classification_clusters_and_versions() ->
         assert isinstance(clusters, list)
         assert len(clusters) == 1
         assert clusters[0]["answer_job"] == "plan_budget"
+        assert (
+            clusters[0]["primary_question"]
+            == "How much should I spend on my first painting?"
+        )
+
+        first_question = next(
+            row
+            for row in questions
+            if isinstance(row, dict)
+            and row["normalized_text"]
+            == "how much should i spend on my first painting"
+        )
+        first_classification = first_question["classification"]
+        assert isinstance(first_classification, dict)
+        assert "need_type" not in first_classification
 
         summary = payload["classification_summary"]
         assert isinstance(summary, dict)
