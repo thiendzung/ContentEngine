@@ -180,17 +180,20 @@ public final class LifecycleController: @unchecked Sendable {
     private let runner: any CommandRunning
     private let probe: any RuntimeProbing
     private let fileManager: FileManager
+    private let launchAgentDirectoryOverride: URL?
 
     public init(
         config: AppConfig,
         runner: any CommandRunning = FoundationCommandRunner(),
         probe: any RuntimeProbing = FoundationRuntimeProbe(),
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        launchAgentDirectory: URL? = nil
     ) {
         self.config = config
         self.runner = runner
         self.probe = probe
         self.fileManager = fileManager
+        self.launchAgentDirectoryOverride = launchAgentDirectory
     }
 
     public func status() async -> ManagedRuntimeStatus {
@@ -460,6 +463,10 @@ public final class LifecycleController: @unchecked Sendable {
     }
 
     private var launchAgentDirectory: URL {
+        if let launchAgentDirectoryOverride {
+            return launchAgentDirectoryOverride
+        }
+
         let base = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
