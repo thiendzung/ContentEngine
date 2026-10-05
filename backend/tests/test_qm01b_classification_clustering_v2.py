@@ -51,6 +51,7 @@ def _question(
     locale: str = "en",
     source_priority: int = 5,
     source_count: int = 1,
+    independent_source_count: int | None = None,
 ) -> QuestionForClustering:
     return QuestionForClustering(
         question_key=key,
@@ -58,6 +59,11 @@ def _question(
         normalized_text=text.casefold(),
         signal_refs=tuple(f"signal-{key}-{i}" for i in range(source_count)),
         source_count=source_count,
+        independent_source_count=(
+            source_count
+            if independent_source_count is None
+            else independent_source_count
+        ),
         source_priority=source_priority,
         classification=classify_question_v2(text, locale=locale),
     )
