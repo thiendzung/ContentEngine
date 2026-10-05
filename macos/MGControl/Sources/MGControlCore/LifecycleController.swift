@@ -621,9 +621,8 @@ public final class LifecycleController: @unchecked Sendable {
     }
 
     private var commandEnvironment: [String: String] {
-        var environment = ProcessInfo.processInfo.environment
         let home = fileManager.homeDirectoryForCurrentUser.path
-        let additions = [
+        let path = [
             "\(home)/.local/bin",
             "/opt/homebrew/bin",
             "/usr/local/bin",
@@ -631,13 +630,21 @@ public final class LifecycleController: @unchecked Sendable {
             "/bin",
             "/usr/sbin",
             "/sbin",
+        ].joined(separator: ":")
+
+        var environment = [
+            "PATH": path,
+            "HOME": home,
+            "PYTHONUNBUFFERED": "1",
         ]
-        let existing = environment["PATH"] ?? ""
-        environment["PATH"] = (additions + [existing])
-            .filter { !$0.isEmpty }
-            .joined(separator: ":")
-        environment["HOME"] = home
-        environment["PYTHONUNBUFFERED"] = "1"
+        if let lang = ProcessInfo.processInfo.environment["LANG"],
+           !lang.isEmpty {
+            environment["LANG"] = lang
+        }
+        if let tmpdir = ProcessInfo.processInfo.environment["TMPDIR"],
+           !tmpdir.isEmpty {
+            environment["TMPDIR"] = tmpdir
+        }
         return environment
     }
 
