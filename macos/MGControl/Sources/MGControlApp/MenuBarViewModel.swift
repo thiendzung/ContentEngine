@@ -109,10 +109,11 @@ final class MenuBarViewModel: ObservableObject {
     func startEngine() async {
         guard !isBusy else { return }
         isBusy = true
-        lifecycleMessage = nil
+        lifecycleMessage = "Đang khởi động ContentEngine…"
 
         do {
             lifecycleStatus = try await lifecycle.start()
+            lifecycleMessage = nil
             snapshot = await service.refresh()
         } catch {
             lifecycleStatus = await lifecycle.status()
@@ -125,10 +126,11 @@ final class MenuBarViewModel: ObservableObject {
     func stopEngine() async {
         guard !isBusy else { return }
         isBusy = true
-        lifecycleMessage = nil
+        lifecycleMessage = "Đang dừng các dịch vụ do MG quản lý…"
 
         do {
             lifecycleStatus = try await lifecycle.stop()
+            lifecycleMessage = nil
             snapshot = await service.refresh()
         } catch {
             lifecycleStatus = await lifecycle.status()
