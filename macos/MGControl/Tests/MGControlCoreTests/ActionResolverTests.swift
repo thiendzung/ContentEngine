@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import MGControlCore
 
-final class ActionResolverTests: XCTestCase {
-    func testResolvesOneContinueRetryAndCancelTarget() {
+struct ActionResolverTests {
+    @Test func resolvesOneContinueRetryAndCancelTarget() {
         let continueID = UUID()
         let retryID = UUID()
         let cancelID = UUID()
@@ -34,13 +35,13 @@ final class ActionResolverTests: XCTestCase {
             states: states
         )
 
-        XCTAssertEqual(result.continueTarget?.caseID, continueID)
-        XCTAssertEqual(result.retryTarget?.caseID, retryID)
-        XCTAssertEqual(result.cancelTarget?.caseID, cancelID)
-        XCTAssertFalse(result.isAmbiguous)
+        #expect(result.continueTarget?.caseID == continueID)
+        #expect(result.retryTarget?.caseID == retryID)
+        #expect(result.cancelTarget?.caseID == cancelID)
+        #expect(!result.isAmbiguous)
     }
 
-    func testResumeMapsToContinueButton() {
+    @Test func resumeMapsToContinueButton() {
         let id = UUID()
         let result = ActionResolver.resolve(
             board: [boardCase(id: id, title: "Bài")],
@@ -49,10 +50,10 @@ final class ActionResolverTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(result.continueTarget?.intent, .resume)
+        #expect(result.continueTarget?.intent == .resume)
     }
 
-    func testMultipleContinueCandidatesFailClosed() {
+    @Test func multipleContinueCandidatesFailClosed() {
         let first = UUID()
         let second = UUID()
         let result = ActionResolver.resolve(
@@ -66,11 +67,11 @@ final class ActionResolverTests: XCTestCase {
             ]
         )
 
-        XCTAssertNil(result.continueTarget)
-        XCTAssertTrue(result.isAmbiguous)
+        #expect(result.continueTarget == nil)
+        #expect(result.isAmbiguous)
     }
 
-    func testCompletedCaseDoesNotExposeAction() {
+    @Test func completedCaseDoesNotExposeAction() {
         let id = UUID()
         let result = ActionResolver.resolve(
             board: [boardCase(id: id, title: "Xong")],
@@ -83,8 +84,8 @@ final class ActionResolverTests: XCTestCase {
             ]
         )
 
-        XCTAssertNil(result.continueTarget)
-        XCTAssertNil(result.cancelTarget)
+        #expect(result.continueTarget == nil)
+        #expect(result.cancelTarget == nil)
     }
 
     private func boardCase(
