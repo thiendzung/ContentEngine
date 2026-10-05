@@ -6,14 +6,6 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.modules.research.keyword_plan.contracts import (
-    AudienceStage,
-    Confidence,
-    Intent,
-    QueryQuality,
-    QuestionType,
-)
-
 
 CLUSTERING_VERSION = "question-map-clustering-v2"
 
@@ -23,13 +15,13 @@ class QuestionClassificationLike(Protocol):
     def classification_status(self) -> str: ...
 
     @property
-    def question_type(self) -> QuestionType: ...
+    def question_type(self) -> str: ...
 
     @property
-    def intent(self) -> Intent: ...
+    def intent(self) -> str: ...
 
     @property
-    def audience_stage(self) -> AudienceStage: ...
+    def audience_stage(self) -> str: ...
 
     @property
     def topic_key(self) -> str: ...
@@ -38,10 +30,10 @@ class QuestionClassificationLike(Protocol):
     def answer_job(self) -> str: ...
 
     @property
-    def confidence(self) -> Confidence: ...
+    def confidence(self) -> str: ...
 
     @property
-    def query_quality(self) -> QueryQuality: ...
+    def query_quality(self) -> str: ...
 
     @property
     def semantic_fallback_required(self) -> bool: ...
@@ -76,7 +68,7 @@ def cluster_eligible(question: QuestionForClustering) -> bool:
     classification = question.classification
     return (
         classification.classification_status == "classified"
-        and classification.query_quality is QueryQuality.USABLE
+        and classification.query_quality == "usable"
         and not classification.semantic_fallback_required
         and classification.answer_job != "unresolved"
     )
@@ -117,7 +109,7 @@ def build_question_clusters_v2(
         if not cluster_eligible(question):
             continue
         key = (
-            question.classification.intent.value,
+            str(question.classification.intent),
             question.classification.answer_job,
         )
         grouped.setdefault(key, []).append(question)
