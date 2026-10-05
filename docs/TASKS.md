@@ -7,26 +7,39 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-01B — Classification / Clustering v2 — IMPLEMENTATION WIP
+## QM-01C — Question Map × Content Coverage — IMPLEMENTATION WIP
 
-Tracking: issue #331. Exact task: `logs/2026-10-05-qm-01b-classification-clustering-v2.md`.
+Tracking: issue #333. Exact task: `logs/2026-10-05-qm-01c-question-coverage-join.md`.
 
-- [x] Branch from merged QM-01A main `94e6b324ee0dc35a3c1cbaaafc0cc8f0fa3eb3a7`.
-- [x] Keep canonical Need and SEARCH Signal ownership unchanged.
-- [x] Add isolated locale-aware EN/VI classifier v2; legacy `classify.py` remains unchanged.
-- [x] Do not re-infer canonical Need type.
-- [x] Add derived question type / intent / audience stage / topic / answer job / confidence / quality / unresolved state.
-- [x] Unsupported or low-confidence semantics fail closed as unresolved; no model/provider fallback is executed.
-- [x] Add deterministic cluster key = Need + locale + intent + answer_job.
-- [x] Keep unresolved/off-scope questions visible but cluster-ineligible.
-- [x] Replace shortest-query primary selection with provenance -> independent repetition -> stable tie-break.
-- [x] Raise Question Map read-model schema to v2 while preserving QM-01A base count contract.
-- [x] Add focused EN/VI, answer-job, unresolved, off-scope, provenance and cluster tests.
+- [x] Branch from merged QM-01B main `b01849bbf4028c1e6a21b2c41248cdb643b597cb`.
+- [x] Keep Question Map and Content Coverage as separate existing authorities.
+- [x] Add read-only cluster coverage join; do not mutate ContentOpportunity or workflow state.
+- [x] Match by Need + normalized locale + stored intent + v2 answer_job.
+- [x] Reuse classifier v2 for existing content/planning candidate language.
+- [x] Add ANSWERED / PARTIAL / MISSING / STALE / COLLISION states.
+- [x] Add INSUFFICIENT_DATA fail-closed state for unresolved same-intent candidate semantics.
+- [x] Supporting-Need published content remains PARTIAL, never primary ANSWERED.
+- [x] Selected UPDATE/REFRESH target or newer unpublished revision marks matching published content STALE.
+- [x] Multiple primary answers or duplicate CREATE plans become COLLISION.
+- [x] Preserve existing `GET /question-map`; add separate read-only `GET /question-map/coverage`.
+- [x] Add deterministic join `snapshot_hash` and focused status/read-only tests.
 - [ ] MG self-review exact branch diff.
 - [ ] Agent Local exact-SHA focused/full backend verification.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Minimal GitHub CI confirmation if available.
 - [ ] Founder merge.
+
+## QM-01B — Classification / Clustering v2 — DONE / PR #332 MERGED
+
+Tracking: issue #331. Exact task: `logs/2026-10-05-qm-01b-classification-clustering-v2.md`.
+
+- [x] Locale-aware deterministic EN/VI classifier v2 with explicit unresolved/off-scope states.
+- [x] Cluster identity = Need + locale + intent + answer_job.
+- [x] Primary selection = provenance -> independent repetition -> stable tie-break.
+- [x] Legacy OpportunityMap semantics remained unchanged.
+- [x] Ruff/mypy PASS; 19 focused + 40 regressions + 1413 full backend PASS.
+- [x] OCR exact-ref zero findings; GitHub CI #2242 SUCCESS.
+- [x] Founder merged PR #332 as main `b01849bbf4028c1e6a21b2c41248cdb643b597cb`.
 
 ## QM-01A — Canonical Question Map — DONE / PR #330 MERGED
 
