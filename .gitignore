@@ -32,3 +32,6 @@ coverage/
 # Local artifacts
 artifacts/
 tmp/
+
+# Local macOS app bundle
+/MG Control.app/
