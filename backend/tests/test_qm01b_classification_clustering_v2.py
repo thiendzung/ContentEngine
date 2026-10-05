@@ -138,6 +138,17 @@ def test_classification_v2_fails_closed_for_unsupported_locale() -> None:
     assert result.confidence is Confidence.LOW
 
 
+def test_classification_v2_keeps_truncated_query_cluster_ineligible() -> None:
+    result = classify_question_v2(
+        "How to choose a painting that",
+        locale="en",
+    )
+
+    assert result.query_quality is QueryQuality.TRUNCATED
+    assert result.classification_status == "classified"
+    assert not result.semantic_fallback_required
+
+
 def test_classification_v2_keeps_vietnamese_art_making_off_scope() -> None:
     result = classify_question_v2(
         "Cách phối màu sơn dầu cho đẹp?",
