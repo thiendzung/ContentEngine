@@ -304,20 +304,20 @@ def _decision_for_cluster(
     plan_refs = _plan_refs(coverage)
     do_not_write_refs = _do_not_write_refs(coverage)
 
+    if need.status == "REJECTED":
+        return (
+            "DO_NOT_WRITE",
+            [],
+            sorted(set(plan_refs + do_not_write_refs)),
+            ["canonical_need_rejected"],
+        )
+
     if do_not_write_refs:
         return (
             "DO_NOT_WRITE",
             [],
             sorted(set(plan_refs + do_not_write_refs)),
             ["selected_do_not_write_plan_exists"],
-        )
-
-    if need.status == "REJECTED":
-        return (
-            "DO_NOT_WRITE",
-            [],
-            plan_refs,
-            ["canonical_need_rejected"],
         )
 
     if status == "MISSING":
