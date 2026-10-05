@@ -178,6 +178,9 @@ struct MenuBarView: View {
         guard let target = model.continueTarget else {
             return "Tiếp tục"
         }
+        if target.intent == .start {
+            return "Bắt đầu tác vụ — \(target.title)"
+        }
         return "Tiếp tục — \(target.title)"
     }
 
