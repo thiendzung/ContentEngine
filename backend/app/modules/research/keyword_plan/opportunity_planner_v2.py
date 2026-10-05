@@ -293,7 +293,6 @@ def _decision_for_cluster(
     *,
     coverage: dict[str, object],
     need: NeedHypothesis,
-    has_right_to_win: bool,
 ) -> tuple[
     PlannerDecision,
     list[str],
@@ -341,18 +340,11 @@ def _decision_for_cluster(
             raise OpportunityPlannerError(
                 "opportunity_planner_answered_target_missing"
             )
-        if has_right_to_win:
-            return (
-                "UPDATE",
-                content_refs,
-                plan_refs,
-                ["answered_but_first_party_value_available"],
-            )
         return (
             "LINK_ONLY",
             content_refs,
             plan_refs,
-            ["answered_without_new_first_party_value"],
+            ["answered_without_proven_distinct_new_value"],
         )
 
     if status == "PARTIAL":
@@ -429,7 +421,6 @@ def _priority(
     coverage_status: str,
     need_status: str,
     search_signal_count: int,
-    has_right_to_win: bool,
     selection_readiness: SelectionReadiness,
 ) -> tuple[PlannerPriority, list[str]]:
     reasons: list[str] = []
@@ -452,14 +443,8 @@ def _priority(
         reasons.append("single_search_signal")
     else:
         reasons.append("no_search_signal")
-    reasons.append(
-        "first_party_right_to_win_signal_available"
-        if has_right_to_win
-        else "right_to_win_gap"
-    )
-    if search_signal_count >= 2 and has_right_to_win:
-        return "NOW", reasons
-    if search_signal_count >= 2 or has_right_to_win:
+    reasons.append("right_to_win_unproven")
+    if search_signal_count >= 2:
         return "NEXT", reasons
     return "LATER", reasons
 
@@ -473,11 +458,9 @@ def _recommendation(
 ) -> dict[str, object]:
     coverage = _coverage_payload(cluster)
     coverage_status = str(coverage["status"])
-    has_right_to_win = right_to_win.get("right_to_win_proven") is True
     decision, target_refs, plan_refs, decision_reasons = _decision_for_cluster(
         coverage=coverage,
         need=need,
-        has_right_to_win=has_right_to_win,
     )
     readiness, readiness_reasons = _selection_readiness(
         coverage_status=coverage_status,
@@ -496,7 +479,6 @@ def _recommendation(
         coverage_status=coverage_status,
         need_status=need.status,
         search_signal_count=signal_count,
-        has_right_to_win=has_right_to_win,
         selection_readiness=readiness,
     )
     answer_job = cluster.get("answer_job")
