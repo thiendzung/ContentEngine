@@ -13,6 +13,24 @@ Tiện ích macOS trên thanh menu để thao tác nhanh với ContentEngine.
 - không tự retry mutation khi kết quả mạng không rõ;
 - `Khởi động / Dừng hệ thống` đã có vị trí UI nhưng cố ý chưa bật cho tới MC-05, vì lifecycle operational hiện phải được khóa với release/runtime thật trước khi cho phép điều khiển tiến trình.
 
+## Mở bằng icon trong Finder
+
+Từ repo root, tạo app bundle local một lần:
+
+```sh
+zsh macos/MGControl/package-app.zsh
+```
+
+Sau đó repo root sẽ có:
+
+```text
+MG Control.app
+```
+
+Chỉ cần double-click **MG Control.app** trong Finder để mở MG Control. App bundle được build release, có icon chữ **MG**, chạy dạng menu-bar accessory và không hiện Dock icon.
+
+`MG Control.app` là artifact local nên được gitignore; khi source MG Control thay đổi, chạy lại lệnh package để cập nhật app.
+
 ## Chạy local
 
 ```sh
