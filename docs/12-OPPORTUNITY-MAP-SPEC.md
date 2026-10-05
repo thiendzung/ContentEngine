@@ -145,17 +145,22 @@ Không dùng score 0–100. Bảy chiều bắt buộc:
 - Business Connection: derived rule, chưa phải canonical entity binding;
 - Evidence Readiness: suy từ canonical Need status, không re-score Need.
 
-Right-to-Win ở bước này chỉ là first-party planning signal. Nó không phải locked
-EvidenceSet, không phải approved OriginalityPack và không mở quyền viết bài.
+Linked supporting MOTGU Signal ở bước này chỉ là first-party planning-relevance evidence.
+Nó **không đủ để chứng minh Right-to-Win**. QM-01D vì vậy trả
+`right_to_win_proven=false` cho Signal-only state; Signal không phải locked EvidenceSet,
+không phải approved OriginalityPack và không mở quyền viết bài.
 
 Decision policy:
 
 - `MISSING → CREATE`;
 - `STALE → REFRESH`;
-- `ANSWERED → LINK_ONLY`, hoặc `UPDATE` nếu có first-party Right-to-Win để
-  đề xuất giá trị bổ sung;
-- `PARTIAL → UPDATE` khi đã có matching ContentItem, nếu chỉ có plan thì giữ
-  hướng `CREATE` và phải reuse plan ref;
+- `ANSWERED → LINK_ONLY` trong QM-01D; linked MOTGU Signal một mình không đủ để
+  nâng thành UPDATE;
+- `PARTIAL → UPDATE` khi đã có matching **primary** ContentItem; supporting-Need-only
+  content không được dùng làm target;
+- nếu PARTIAL chỉ có plan thì giữ hướng `CREATE` nhưng readiness là
+  `REUSE_EXISTING_PLAN`, không tạo thêm durable plan;
+- selected `DO_NOT_WRITE` plan chặn fresh CREATE recommendation;
 - `COLLISION → MERGE` khi có nhiều ContentItem; plan-only collision bị BLOCKED
   để không tạo thêm duplicate plan;
 - `INSUFFICIENT_DATA → DO_NOT_WRITE / RESEARCH_REQUIRED` ở snapshot hiện tại;
