@@ -26,11 +26,11 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("ContentEngine")
                     .font(.headline)
-                if let message = model.snapshot.message {
+                if let message = model.displayMessage {
                     Text(message)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(3)
                 }
             }
 
@@ -40,7 +40,7 @@ struct MenuBarView: View {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
-                Text(model.snapshot.engineStatus.vietnameseLabel)
+                Text(model.displayEngineStatus.vietnameseLabel)
                     .font(.subheadline.weight(.medium))
             }
         }
@@ -54,18 +54,18 @@ struct MenuBarView: View {
                 systemImage: "play.fill",
                 title: "Khởi động",
                 color: .green,
-                enabled: model.canStartEngine && !model.isBusy
+                enabled: model.canStartEngine
             ) {
-                // MC-05 sẽ nối lifecycle local sau khi khóa đúng release/runtime.
+                Task { await model.startEngine() }
             }
 
             ControlIconButton(
                 systemImage: "stop.fill",
                 title: "Dừng hệ thống",
                 color: .red,
-                enabled: model.canStopEngine && !model.isBusy
+                enabled: model.canStopEngine
             ) {
-                // MC-05 sẽ nối graceful stop; không reset DB/history.
+                Task { await model.stopEngine() }
             }
 
             ControlIconButton(
@@ -158,9 +158,13 @@ struct MenuBarView: View {
     }
 
     private var statusColor: Color {
-        switch model.snapshot.engineStatus {
+        switch model.displayEngineStatus {
+        case .starting:
+            return .blue
         case .running:
             return .green
+        case .external:
+            return .orange
         case .stopped:
             return .secondary
         case .error:
