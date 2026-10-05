@@ -1,8 +1,8 @@
 # QM-01C — Question Map × Content Coverage join
 
-Date: 2026-10-05  
-Tracking: issue #333  
-Branch: `feat/qm-01c-question-coverage-join`  
+Date: 2026-10-05
+Tracking: issue #333
+Branch: `feat/qm-01c-question-coverage-join`
 Base: `b01849bbf4028c1e6a21b2c41248cdb643b597cb`
 
 ## Goal
