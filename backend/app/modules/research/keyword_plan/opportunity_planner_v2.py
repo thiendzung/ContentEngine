@@ -75,7 +75,9 @@ def _required_list(value: object, code: str) -> list[object]:
 
 def _strings(value: object) -> list[str]:
     if not isinstance(value, list):
-        return []
+        raise OpportunityPlannerError(
+            "opportunity_planner_string_list_invalid"
+        )
     return sorted(
         {
             item.strip()
@@ -189,9 +191,18 @@ def _business_path(answer_job: str) -> dict[str, object]:
 def _right_to_win(
     supporting_motgu_signals: list[Signal],
     *,
+    project_id: UUID,
     locale: str,
 ) -> dict[str, object]:
     normalized_locale = locale.strip().casefold()
+    for signal in supporting_motgu_signals:
+        if (
+            signal.project_id != project_id
+            or signal.source_kind != "MOTGU"
+        ):
+            raise OpportunityPlannerError(
+                "opportunity_planner_right_to_win_signal_invalid"
+            )
     relevant = [
         signal
         for signal in supporting_motgu_signals
@@ -578,6 +589,7 @@ def plan_opportunity_projection(
 
     right_to_win = _right_to_win(
         supporting_motgu_signals,
+        project_id=need.project_id,
         locale=locale,
     )
     evidence_readiness = _need_evidence_readiness(need)
@@ -720,16 +732,23 @@ async def build_opportunity_plan_v2(
         )
     ).all()
 
-    supporting_motgu_signals: list[Signal] = []
+    supporting_motgu_candidates: list[Signal] = []
     support_refs: list[str] = []
     contradiction_refs: list[str] = []
     for link, signal in rows:
         if link.relation == "supports":
             support_refs.append(str(signal.id))
             if signal.source_kind == "MOTGU":
-                supporting_motgu_signals.append(signal)
+                supporting_motgu_candidates.append(signal)
         elif link.relation == "contradicts":
             contradiction_refs.append(str(signal.id))
+
+    contradiction_set = set(contradiction_refs)
+    supporting_motgu_signals = [
+        signal
+        for signal in supporting_motgu_candidates
+        if str(signal.id) not in contradiction_set
+    ]
 
     return plan_opportunity_projection(
         question_coverage=question_coverage,
