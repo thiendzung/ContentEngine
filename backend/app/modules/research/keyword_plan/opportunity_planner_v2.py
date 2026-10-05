@@ -516,34 +516,14 @@ def _recommendation(
     }
 
 
-async def build_opportunity_plan_v2(
-    session: AsyncSession,
+def plan_opportunity_projection(
     *,
-    project_id: UUID,
-    need_id: UUID,
-    locale: str,
+    question_coverage: dict[str, object],
+    need: NeedHypothesis,
+    supporting_motgu_signals: list[Signal],
+    support_refs: list[str],
+    contradiction_refs: list[str],
 ) -> dict[str, object]:
-    project = await session.get(Project, project_id)
-    if project is None:
-        raise OpportunityPlannerError(
-            "opportunity_planner_project_not_found"
-        )
-    need = await session.get(NeedHypothesis, need_id)
-    if need is None or need.project_id != project.id:
-        raise OpportunityPlannerError(
-            "opportunity_planner_need_not_found"
-        )
-
-    try:
-        question_coverage = await build_question_coverage(
-            session,
-            project_id=project.id,
-            need_id=need.id,
-            locale=locale,
-        )
-    except QuestionCoverageError as exc:
-        raise OpportunityPlannerError(exc.code) from exc
-
     if (
         question_coverage.get("schema_version")
         != QUESTION_COVERAGE_SCHEMA_VERSION
@@ -552,31 +532,27 @@ async def build_opportunity_plan_v2(
             "opportunity_planner_question_coverage_schema_unsupported"
         )
 
-    rows = (
-        await session.execute(
-            select(NeedHypothesisSignal, Signal)
-            .join(Signal, Signal.id == NeedHypothesisSignal.signal_id)
-            .where(
-                NeedHypothesisSignal.need_hypothesis_id == need.id,
-                Signal.project_id == project.id,
-            )
-            .order_by(
-                NeedHypothesisSignal.relation,
-                Signal.id,
-            )
+    coverage_project = _required_dict(
+        question_coverage.get("project"),
+        "opportunity_planner_project_projection_invalid",
+    )
+    if str(coverage_project.get("id", "")) != str(need.project_id):
+        raise OpportunityPlannerError(
+            "opportunity_planner_project_mismatch"
         )
-    ).all()
 
-    supporting_motgu_signals: list[Signal] = []
-    support_refs: list[str] = []
-    contradiction_refs: list[str] = []
-    for link, signal in rows:
-        if link.relation == "supports":
-            support_refs.append(str(signal.id))
-            if signal.source_kind == "MOTGU":
-                supporting_motgu_signals.append(signal)
-        elif link.relation == "contradicts":
-            contradiction_refs.append(str(signal.id))
+    coverage_need = _required_dict(
+        question_coverage.get("need"),
+        "opportunity_planner_need_projection_invalid",
+    )
+    if str(coverage_need.get("id", "")) != str(need.id):
+        raise OpportunityPlannerError("opportunity_planner_need_mismatch")
+
+    coverage_hash = question_coverage.get("snapshot_hash")
+    if not isinstance(coverage_hash, str) or len(coverage_hash) != 64:
+        raise OpportunityPlannerError(
+            "opportunity_planner_question_coverage_hash_invalid"
+        )
 
     right_to_win = _right_to_win(supporting_motgu_signals)
     evidence_readiness = _need_evidence_readiness(need)
@@ -635,10 +611,7 @@ async def build_opportunity_plan_v2(
     snapshot: dict[str, object] = {
         "schema_version": OPPORTUNITY_PLANNER_SCHEMA_VERSION,
         "policy_version": OPPORTUNITY_PLANNER_POLICY_VERSION,
-        "project": {
-            "id": str(project.id),
-            "slug": project.slug,
-        },
+        "project": coverage_project,
         "need": {
             "id": str(need.id),
             "version": need.version,
@@ -652,9 +625,7 @@ async def build_opportunity_plan_v2(
             ),
         },
         "locale": str(question_coverage.get("locale", "")).casefold(),
-        "question_coverage_snapshot_hash": question_coverage.get(
-            "snapshot_hash"
-        ),
+        "question_coverage_snapshot_hash": coverage_hash,
         "need_signal_state": {
             "support_signal_refs": sorted(set(support_refs)),
             "contradiction_signal_refs": sorted(
@@ -681,6 +652,43 @@ async def build_opportunity_plan_v2(
     }
 
 
+async def build_opportunity_plan_v2(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    need_id: UUID,
+    locale: str,
+) -> dict[str, object]:
+    project = await session.get(Project, project_id)
+    if project is None:
+        raise OpportunityPlannerError(
+            "opportunity_planner_project_not_found"
+        )
+    need = await session.get(NeedHypothesis, need_id)
+    if need is None or need.project_id != project.id:
+        raise OpportunityPlannerError(
+            "opportunity_planner_need_not_found"
+        )
+
+    try:
+        question_coverage = await build_question_coverage(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale=locale,
+        )
+    except QuestionCoverageError as exc:
+        raise OpportunityPlannerError(exc.code) from exc
+
+    return plan_opportunity_projection(
+        question_coverage=question_coverage,
+        need=need,
+        supporting_motgu_signals=supporting_motgu_signals,
+        support_refs=support_refs,
+        contradiction_refs=contradiction_refs,
+    )
+
+
 __all__ = [
     "OPPORTUNITY_PLANNER_POLICY_VERSION",
     "OPPORTUNITY_PLANNER_SCHEMA_VERSION",
@@ -689,4 +697,5 @@ __all__ = [
     "PlannerPriority",
     "SelectionReadiness",
     "build_opportunity_plan_v2",
+    "plan_opportunity_projection",
 ]
