@@ -93,24 +93,38 @@ def _classify_candidate(
     cluster_intent: str,
     cluster_answer_job: str,
 ) -> tuple[str, str | None]:
-    if _normalized(stored_intent) != cluster_intent:
-        return "irrelevant", None
+    normalized_stored_intent = _normalized(stored_intent)
     if not isinstance(question, str) or not question.strip():
-        return "unresolved", "candidate_question_missing"
+        if normalized_stored_intent == cluster_intent:
+            return "unresolved", "candidate_question_missing"
+        return "irrelevant", None
 
     classification = classify_question_v2(question, locale=locale)
+    derived_intent = str(classification.intent)
+    derived_answer_job = classification.answer_job
     if (
         classification.classification_status != "classified"
         or str(classification.query_quality) != "usable"
         or classification.semantic_fallback_required
     ):
-        return "unresolved", "candidate_semantics_unresolved"
+        if normalized_stored_intent == cluster_intent:
+            return "unresolved", "candidate_semantics_unresolved"
+        return "irrelevant", None
 
-    if str(classification.intent) != cluster_intent:
-        return "unresolved", "stored_intent_classifier_mismatch"
-    if classification.answer_job != cluster_answer_job:
+    if (
+        derived_answer_job == cluster_answer_job
+        and derived_intent == cluster_intent
+    ):
+        if normalized_stored_intent != cluster_intent:
+            return "unresolved", "stored_intent_classifier_mismatch"
+        return "match", None
+
+    if normalized_stored_intent == cluster_intent:
+        if derived_intent != cluster_intent:
+            return "unresolved", "stored_intent_classifier_mismatch"
         return "other_job", None
-    return "match", None
+
+    return "irrelevant", None
 
 
 def _item_is_stale(
