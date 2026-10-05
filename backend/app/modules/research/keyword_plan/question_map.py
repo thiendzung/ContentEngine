@@ -242,9 +242,13 @@ async def build_question_map(
         "counts": {
             "questions": len(questions),
             "search_signals": len(all_signal_refs),
+        },
+        "classification_summary": {
             "classified_questions": classified_count,
             "unresolved_questions": unresolved_count,
             "off_scope_questions": off_scope_count,
+        },
+        "cluster_summary": {
             "clusters": len(cluster_payloads),
         },
         "questions": questions,
