@@ -24,9 +24,11 @@ Tiện ích macOS trên thanh menu để thao tác nhanh với ContentEngine.
 4. chạy `docker compose up -d --wait postgres` để bảo đảm PostgreSQL sẵn sàng, không migrate;
 5. chạy `scripts.ops_release_preflight`;
 6. chỉ khi preflight PASS mới bootstrap ba job `launchd` riêng của MG:
-   - backend;
-   - frontend production;
-   - operator worker hiện có.
+   - backend — chạy ngay;
+   - frontend production — chạy ngay;
+   - operator worker — đăng ký ở chế độ on-demand, không chạy polling nền.
+
+Khi một lệnh workflow `start / continue / resume / retry` được backend xác nhận và có `job_id`, MG mới `kickstart` worker one-shot để xử lý đúng một job rồi thoát.
 
 `Dừng hệ thống` chỉ `bootout` đúng ba job có label của MG. PostgreSQL, DB/history và runtime bên ngoài MG không bị dừng/xóa.
 
