@@ -63,6 +63,34 @@ Human selection không tự đổi hypothesis sang SUPPORTED.
 
 Các phần bên dưới là contract của công cụ Keyword/Question Map bên trong Opportunity Map.
 
+### Canonical Question Map read-model boundary — QM-01A / QM-01B
+
+Sau Customer Living Map, Question Map không được tự tạo Customer Need mới. Read model
+hiện tại chỉ đọc canonical `NeedHypothesis` và các `SEARCH` Signal đang `supports`
+Need đó trong đúng project/locale.
+
+QM-01B thêm classification/clustering như **derived semantics**, không đổi source of truth:
+
+```text
+Canonical Need + supporting SEARCH Signals
+→ locale-specific Question Map
+→ deterministic EN/VI classification
+→ answer_job
+→ cluster = Need + locale + intent + answer_job
+```
+
+Các field classification gồm question type, intent, audience stage, topic, answer job,
+confidence, query quality và trạng thái classification. Không re-infer canonical Need type.
+
+- EN và VI được phân loại độc lập; không dịch EN sang VI.
+- Query off-scope/unresolved vẫn được giữ để truy nguyên nhưng không được vào cluster.
+- Locale chưa hỗ trợ hoặc ngôn ngữ không đủ chắc chắn phải `unresolved`, không đoán.
+- QM-01B không gọi model/provider. `semantic_fallback_required` chỉ là cờ để giữ biên
+  fail-closed cho một slice riêng sau này.
+- Primary question ưu tiên provenance gần khách hơn, sau đó independent repetition,
+  không chọn đơn thuần vì query ngắn.
+- Legacy `OpportunityMapService` chưa đổi semantics trong QM-01B.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
