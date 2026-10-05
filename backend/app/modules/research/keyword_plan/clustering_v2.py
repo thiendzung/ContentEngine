@@ -6,7 +6,13 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.modules.research.keyword_plan.contracts import Intent, QueryQuality
+from app.modules.research.keyword_plan.contracts import (
+    AudienceStage,
+    Confidence,
+    Intent,
+    QueryQuality,
+    QuestionType,
+)
 
 
 CLUSTERING_VERSION = "question-map-clustering-v2"
@@ -17,19 +23,28 @@ class QuestionClassificationLike(Protocol):
     def classification_status(self) -> str: ...
 
     @property
-    def query_quality(self) -> QueryQuality: ...
-
-    @property
-    def semantic_fallback_required(self) -> bool: ...
-
-    @property
-    def answer_job(self) -> str: ...
+    def question_type(self) -> QuestionType: ...
 
     @property
     def intent(self) -> Intent: ...
 
     @property
+    def audience_stage(self) -> AudienceStage: ...
+
+    @property
     def topic_key(self) -> str: ...
+
+    @property
+    def answer_job(self) -> str: ...
+
+    @property
+    def confidence(self) -> Confidence: ...
+
+    @property
+    def query_quality(self) -> QueryQuality: ...
+
+    @property
+    def semantic_fallback_required(self) -> bool: ...
 
 
 @dataclass(slots=True, frozen=True)
