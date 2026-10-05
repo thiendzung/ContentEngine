@@ -86,13 +86,13 @@ def _classification_payload(question: QuestionForClustering) -> dict[str, object
     return {
         "version": CLASSIFIER_VERSION,
         "status": classification.classification_status,
-        "question_type": classification.question_type.value,
-        "intent": classification.intent.value,
-        "audience_stage": classification.audience_stage.value,
+        "question_type": str(classification.question_type),
+        "intent": str(classification.intent),
+        "audience_stage": str(classification.audience_stage),
         "topic_key": classification.topic_key,
         "answer_job": classification.answer_job,
-        "confidence": classification.confidence.value,
-        "query_quality": classification.query_quality.value,
+        "confidence": str(classification.confidence),
+        "query_quality": str(classification.query_quality),
         "semantic_fallback_required": classification.semantic_fallback_required,
     }
 
