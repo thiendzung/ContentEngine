@@ -12,6 +12,7 @@ public enum ActionResolver {
         }
 
         let actionable = candidates.filter { state in
+            state.allowedIntents.contains(.start) ||
             state.allowedIntents.contains(.continueWork) ||
             state.allowedIntents.contains(.resume) ||
             state.allowedIntents.contains(.retry) ||
@@ -30,7 +31,9 @@ public enum ActionResolver {
 
         let continueCandidates = actionable.compactMap { state -> OperatorActionTarget? in
             let intent: OperatorIntent?
-            if state.allowedIntents.contains(.continueWork) {
+            if state.allowedIntents.contains(.start) {
+                intent = .start
+            } else if state.allowedIntents.contains(.continueWork) {
                 intent = .continueWork
             } else if state.allowedIntents.contains(.resume) {
                 intent = .resume
