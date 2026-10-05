@@ -1,8 +1,8 @@
 # QM-01B — Classification / Clustering v2
 
-Date: 2026-10-05  
-Tracking: issue #331  
-Branch: `feat/qm-01b-classification-clustering-v2`  
+Date: 2026-10-05
+Tracking: issue #331
+Branch: `feat/qm-01b-classification-clustering-v2`
 Base: `94e6b324ee0dc35a3c1cbaaafc0cc8f0fa3eb3a7`
 
 ## Goal
