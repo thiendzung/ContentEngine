@@ -258,6 +258,23 @@ def test_question_coverage_stale_when_selected_update_targets_match() -> None:
     assert _status(result) == "STALE"
 
 
+def test_question_coverage_fails_closed_when_update_target_misses_cluster_item() -> None:
+    result = join_question_map_with_coverage(
+        question_map=_question_map_fixture(),
+        content_coverage=_coverage_fixture(
+            opportunities=[
+                _opportunity(
+                    opportunity_id="op-update",
+                    decision="UPDATE",
+                    refs=["missing-item"],
+                )
+            ],
+        ),
+    )
+
+    assert _status(result) == "INSUFFICIENT_DATA"
+
+
 def test_question_coverage_collision_for_multiple_primary_matches() -> None:
     result = join_question_map_with_coverage(
         question_map=_question_map_fixture(),
