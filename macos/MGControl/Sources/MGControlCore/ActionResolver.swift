@@ -11,7 +11,24 @@ public enum ActionResolver {
             $0.status != "COMPLETE"
         }
 
-        let continueCandidates = candidates.compactMap { state -> OperatorActionTarget? in
+        let actionable = candidates.filter { state in
+            state.allowedIntents.contains(.continueWork) ||
+            state.allowedIntents.contains(.resume) ||
+            state.allowedIntents.contains(.retry) ||
+            state.allowedIntents.contains(.cancel)
+        }
+
+        let actionableCaseIDs = Set(actionable.map(\.contentCaseID))
+        guard actionableCaseIDs.count <= 1 else {
+            return OperatorActionTargets(
+                continueTarget: nil,
+                retryTarget: nil,
+                cancelTarget: nil,
+                isAmbiguous: true
+            )
+        }
+
+        let continueCandidates = actionable.compactMap { state -> OperatorActionTarget? in
             let intent: OperatorIntent?
             if state.allowedIntents.contains(.continueWork) {
                 intent = .continueWork
@@ -29,7 +46,7 @@ public enum ActionResolver {
             )
         }
 
-        let retryCandidates = candidates.compactMap { state -> OperatorActionTarget? in
+        let retryCandidates = actionable.compactMap { state -> OperatorActionTarget? in
             guard state.allowedIntents.contains(.retry) else { return nil }
             return OperatorActionTarget(
                 caseID: state.contentCaseID,
@@ -39,7 +56,7 @@ public enum ActionResolver {
             )
         }
 
-        let cancelCandidates = candidates.compactMap { state -> OperatorActionTarget? in
+        let cancelCandidates = actionable.compactMap { state -> OperatorActionTarget? in
             guard state.allowedIntents.contains(.cancel) else { return nil }
             return OperatorActionTarget(
                 caseID: state.contentCaseID,
@@ -49,16 +66,11 @@ public enum ActionResolver {
             )
         }
 
-        let ambiguous =
-            continueCandidates.count > 1 ||
-            retryCandidates.count > 1 ||
-            cancelCandidates.count > 1
-
         return OperatorActionTargets(
-            continueTarget: continueCandidates.count == 1 ? continueCandidates[0] : nil,
-            retryTarget: retryCandidates.count == 1 ? retryCandidates[0] : nil,
-            cancelTarget: cancelCandidates.count == 1 ? cancelCandidates[0] : nil,
-            isAmbiguous: ambiguous
+            continueTarget: continueCandidates.first,
+            retryTarget: retryCandidates.first,
+            cancelTarget: cancelCandidates.first,
+            isAmbiguous: false
         )
     }
 }
