@@ -6,6 +6,28 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
+
+## MGCTRL-01 — macOS Menu Bar Control v0.1 — IMPLEMENTATION WIP
+
+Tracking: issue #327. Exact task: `logs/2026-10-05-mgctrl-01-menu-bar-v01.md`.
+
+- [x] Create native SwiftUI/SwiftPM shell under `macos/MGControl/`.
+- [x] Menu-bar label `MG`, accessory app policy, compact 100% Vietnamese window.
+- [x] Add icon controls with tooltip/accessibility labels.
+- [x] Reuse Control Center + Production Board + Operator state read APIs.
+- [x] Add quick routes for Việc cần tôi / Tạo bài mới / Sản xuất / Bản đồ nội dung / Hệ thống.
+- [x] Add fail-closed Continue/Retry/Cancel using backend-advertised intents, exact state version and idempotency key.
+- [x] No continuous polling; refresh on menu open and once after confirmed mutation.
+- [x] Lost/ambiguous mutation result is not automatically resent.
+- [x] Keep Start/Stop visible but disabled until MC-05 lifecycle is separately proven against the actual operational runtime.
+- [ ] Agent Local exact-SHA `swift build` + `swift test`.
+- [ ] Agent Local real macOS visual proof: menu bar, hover titles, dark/light, reopen/quit.
+- [ ] Agent Local real local-API read/action smoke without unauthorized operational mutation.
+- [ ] MG review exact-SHA local evidence and applicable OCR.
+- [ ] Minimal GitHub CI confirmation if available.
+- [ ] Founder merge.
+
+
 ## Current queue
 
 | ID | State | Next exit |
