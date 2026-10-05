@@ -43,34 +43,38 @@ Add a native macOS menu-bar remote control for ContentEngine with the text icon 
   - Bản đồ nội dung
   - Hệ thống
   - Mở ContentEngine
-- No background polling. Refresh happens on menu open and once after a confirmed mutation.
+- No background status polling. Refresh happens on menu open and once after a confirmed mutation.
 - Ambiguous/lost mutation response is not resent automatically.
-- Start/Stop controls are rendered but intentionally disabled in this slice.
+- Finder `MG Control.app` packaging is included as a local ignored artifact.
+- Founder later authorized MC-05 in the same workstream after observing disabled Start/Stop controls.
 
-## Start/Stop boundary
+## MC-05 Start/Stop boundary
 
-MC-05 is not enabled yet because current operational lifecycle is safety-sensitive and operational DB/runtime activation remains separately authorized. Do not wire Start/Stop to ad-hoc shell/process discovery.
+MC-05 is implemented with dedicated `launchd` ownership instead of ad-hoc process discovery:
 
-When MC-05 is opened, it must:
-- preserve operational DB/history;
-- own only processes it starts or use an explicitly reviewed lifecycle authority;
-- use termination callbacks/event-driven lifecycle;
-- never use continuous `sleep/ps/pgrep` polling;
-- fail closed if process ownership is ambiguous.
+- Start refuses backend/frontend that are already responding outside MG ownership.
+- Start validates backend venv, frontend dependencies and production build.
+- Start may run `docker compose up -d --wait postgres`; it does not migrate the DB.
+- Start requires `scripts.ops_release_preflight` to PASS before runtime bootstrap.
+- Backend and frontend are registered under dedicated MG labels and run immediately.
+- Operator worker is registered under a dedicated MG label with `RunAtLoad=false`; confirmed workflow commands with a `job_id` kick one one-shot worker, so MG does not introduce a persistent polling worker loop.
+- Stop only boots out MG-owned labels. It does not stop PostgreSQL, delete data, mutate history or kill external runtime.
+- Lifecycle status uses one-shot `launchctl print` calls; no continuous `sleep/ps/pgrep` polling.
+- LaunchAgent environment is minimal and secret-free by construction.
+- Missing/partial/ambiguous ownership fails closed.
 
 ## Verification required
 
-Not run remotely:
-- `swift build`
-- `swift test`
-- real macOS MenuBarExtra visual proof
-- real ContentEngine local API integration
-- dark/light mode
-- repeated app open/quit
-- exact-ref OCR if applicable to this UI slice
+Pre-MC-05 exact-SHA proof already established Swift build/tests, Finder app packaging, native UI, read-only API integration and OCR. Because MC-05 changes runtime ownership, a fresh exact-SHA Agent Local proof is required before merge:
 
-Agent Local must run those checks on the exact candidate SHA before MG can state READY TO MERGE.
+- `swift build` + `swift test`;
+- exact-ref OCR for the MC-05 diff;
+- safe Start/Stop proof in a disposable/non-operational environment;
+- verify backend/frontend labels run and worker label remains on-demand when idle;
+- verify a synthetic/test confirmed command can kick one worker once if a disposable test lineage is available;
+- prove Stop removes only MG labels and leaves PostgreSQL/data untouched;
+- rebuild and reinstall `MG Control.app` in Founder repo root.
 
 ## Stop condition
 
-Stop after v0.1 shell + read-only state + quick menu + safe Continue/Retry/Cancel are implemented and a PR is prepared. Do not activate operational migration, WordPress/publish, or Start/Stop process lifecycle in this slice.
+Do not merge until the new MC-05 exact SHA passes local verification. Do not authorize operational migration, WordPress/publish or destructive DB/process actions as part of this slice.
