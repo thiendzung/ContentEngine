@@ -80,12 +80,14 @@ Each recommendation exposes:
 
 ## Right-to-Win safety
 
-A supporting first-party MOTGU Signal can justify a planning hypothesis that MOTGU has
-something specific to add. It does not prove factual support or editorial originality.
+A supporting first-party MOTGU Signal can show that MOTGU has direct/customer/site
+evidence relevant to planning. It does **not** by itself prove that MOTGU has a unique
+Right-to-Win, factual support or editorial originality.
 
 The projection therefore always states:
 
-- first-party signal is planning evidence only;
+- first-party signal is planning-relevance evidence only;
+- `right_to_win_proven=false` in this slice;
 - it is not a locked EvidenceSet;
 - it is not an approved OriginalityPack;
 - it does not authorize drafting.
@@ -111,12 +113,16 @@ Coverage is the first decision axis.
 
 - `MISSING -> CREATE`.
 - `STALE -> REFRESH` with explicit ContentItem targets.
-- `ANSWERED -> LINK_ONLY` when no first-party Right-to-Win signal exists.
-- `ANSWERED -> UPDATE` when first-party Right-to-Win is present, still subject to human
-  selection and downstream evidence/originality gates.
+- `ANSWERED -> LINK_ONLY` in QM-01D. A supporting MOTGU Signal alone is demand/relevance
+  evidence and is not enough to prove distinct new value for UPDATE.
+- QM-01D intentionally has no automatic `ANSWERED -> UPDATE` promotion from Signal data.
+  A later slice may add a canonical approved material/right-to-win input if the product
+  needs that distinction.
 - `PARTIAL -> UPDATE` when matching ContentItem exists.
-- plan-only `PARTIAL -> CREATE` direction, while exposing existing plan refs so the
-  caller reuses rather than duplicates planning work.
+- plan-only `PARTIAL -> CREATE` direction plus `REUSE_EXISTING_PLAN`; existing plan
+  refs are exposed so the caller reuses rather than duplicates planning work.
+- supporting-Need-only content is visible for context but is never an UPDATE target.
+- an existing selected `DO_NOT_WRITE` plan blocks a fresh CREATE recommendation.
 - content-item `COLLISION -> MERGE` with explicit targets.
 - plan-only `COLLISION -> CREATE + BLOCKED/NO`; another durable CREATE plan must not
   be created until the duplicate selected plans are reconciled.
@@ -133,8 +139,9 @@ No synthetic score.
 - non-SUPPORTED Need -> `LATER` unless already blocked.
 - existing-content actions -> `NEXT`.
 - plan-only partial work -> `NEXT`.
-- CREATE + repeated search evidence + first-party Right-to-Win -> `NOW`.
-- CREATE + one of those two signals -> `NEXT`.
+- QM-01D does not emit `NOW` from a first-party Signal alone because Right-to-Win is
+  still unproven.
+- CREATE + repeated search evidence -> `NEXT`.
 - otherwise -> `LATER`.
 
 ## API
