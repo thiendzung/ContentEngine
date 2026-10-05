@@ -52,7 +52,7 @@ struct MenuBarView: View {
         HStack(spacing: 8) {
             ControlIconButton(
                 systemImage: "play.fill",
-                title: "Khởi động",
+                title: "Khởi động ContentEngine",
                 color: .green,
                 enabled: model.canStartEngine
             ) {
@@ -61,17 +61,20 @@ struct MenuBarView: View {
 
             ControlIconButton(
                 systemImage: "stop.fill",
-                title: "Dừng hệ thống",
+                title: "Dừng ContentEngine",
                 color: .red,
                 enabled: model.canStopEngine
             ) {
                 Task { await model.stopEngine() }
             }
 
+            Divider()
+                .frame(height: 22)
+
             ControlIconButton(
-                systemImage: "forward.fill",
-                title: continueHelp,
-                color: .blue,
+                systemImage: primaryWorkflowPresentation.systemImage,
+                title: primaryWorkflowHelp,
+                color: primaryWorkflowColor,
                 enabled: model.continueTarget != nil && !model.isBusy
             ) {
                 guard let target = model.continueTarget else { return }
@@ -174,28 +177,44 @@ struct MenuBarView: View {
         }
     }
 
-    private var continueHelp: String {
+    private var primaryWorkflowPresentation: PrimaryWorkflowControlPresentation {
+        ControlPresentation.primaryWorkflow(
+            for: model.continueTarget?.intent
+        )
+    }
+
+    private var primaryWorkflowHelp: String {
         guard let target = model.continueTarget else {
-            return "Tiếp tục"
+            return primaryWorkflowPresentation.title
         }
-        if target.intent == .start {
-            return "Bắt đầu tác vụ — \(target.title)"
+        return "\(primaryWorkflowPresentation.title) — \(target.title)"
+    }
+
+    private var primaryWorkflowColor: Color {
+        switch model.continueTarget?.intent {
+        case .start:
+            return .purple
+        case .continueWork:
+            return .blue
+        case .resume:
+            return .cyan
+        case .retry, .cancel, .none:
+            return .secondary
         }
-        return "Tiếp tục — \(target.title)"
     }
 
     private var retryHelp: String {
         guard let target = model.retryTarget else {
-            return "Thử lại"
+            return "Chưa có bước có thể thử lại"
         }
-        return "Thử lại — \(target.title)"
+        return "Thử lại bước hiện tại — \(target.title)"
     }
 
     private var cancelHelp: String {
         guard let target = model.cancelTarget else {
-            return "Hủy tác vụ"
+            return "Chưa có tác vụ có thể hủy"
         }
-        return "Hủy tác vụ — \(target.title)"
+        return "Hủy tác vụ đang chờ — \(target.title)"
     }
 }
 
