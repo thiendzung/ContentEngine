@@ -131,12 +131,12 @@ public enum LifecycleError: Error, LocalizedError, Equatable {
             return "ContentEngine đang chạy ngoài MG Control. Không tự giành quyền quản lý."
         case .partialManagedRuntime:
             return "Runtime do MG quản lý đang ở trạng thái không đầy đủ. Hãy bấm Dừng rồi thử lại."
-        case .commandFailed(let value):
-            return value
-        case .preflightBlocked(let value):
-            return "Không thể khởi động: \(value)"
-        case .launchdFailed(let value):
-            return "Không thể điều khiển dịch vụ: \(value)"
+        case .commandFailed:
+            return "Không khởi động được PostgreSQL. Kiểm tra Docker rồi thử lại."
+        case .preflightBlocked:
+            return "Kiểm tra an toàn chưa đạt. Mở Hệ thống để xem chi tiết."
+        case .launchdFailed:
+            return "Không thể điều khiển các dịch vụ do MG quản lý. Mở Hệ thống để kiểm tra."
         case .commandOutputUnavailable:
             return "Không thể tạo file log tạm cho tác vụ."
         }
