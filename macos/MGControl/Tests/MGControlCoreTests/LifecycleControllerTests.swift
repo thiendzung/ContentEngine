@@ -9,6 +9,7 @@ struct LifecycleControllerTests {
             programArguments: ["/bin/echo", "ok"],
             workingDirectory: "/tmp",
             environment: ["PATH": "/usr/bin:/bin"],
+            runAtLoad: true,
             stdoutPath: "/tmp/out.log",
             stderrPath: "/tmp/err.log"
         )
@@ -20,6 +21,21 @@ struct LifecycleControllerTests {
             plist["ProgramArguments"] as? [String] ==
                 ["/bin/echo", "ok"]
         )
+    }
+
+    @Test func onDemandWorkerPlistDoesNotRunAtLoad() {
+        let plist = LifecycleController.launchAgentPlist(
+            label: LifecycleController.workerLabel,
+            programArguments: ["/usr/bin/python3", "-m", "scripts.run_operator_worker"],
+            workingDirectory: "/tmp/backend",
+            environment: ["PATH": "/usr/bin:/bin"],
+            runAtLoad: false,
+            stdoutPath: "/tmp/worker.log",
+            stderrPath: "/tmp/worker-error.log"
+        )
+
+        #expect(plist["RunAtLoad"] as? Bool == false)
+        #expect(plist["KeepAlive"] as? Bool == false)
     }
 
     @Test func lifecycleLabelsAreDedicatedToMGControl() {
