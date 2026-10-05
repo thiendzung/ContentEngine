@@ -38,6 +38,7 @@ PlannerPriority = Literal["NOW", "NEXT", "LATER", "NO"]
 SelectionReadiness = Literal[
     "READY_FOR_HUMAN_SELECTION",
     "RESEARCH_REQUIRED",
+    "REUSE_EXISTING_PLAN",
     "BLOCKED",
 ]
 
@@ -235,7 +236,11 @@ def _coverage_payload(cluster: dict[str, object]) -> dict[str, object]:
     return coverage
 
 
-def _content_refs(coverage: dict[str, object]) -> list[str]:
+def _content_refs(
+    coverage: dict[str, object],
+    *,
+    primary_only: bool,
+) -> list[str]:
     rows = _required_list(
         coverage.get("matched_content_items"),
         "opportunity_planner_coverage_projection_invalid",
@@ -246,6 +251,8 @@ def _content_refs(coverage: dict[str, object]) -> list[str]:
             raw,
             "opportunity_planner_coverage_projection_invalid",
         )
+        if primary_only and row.get("need_role") != "primary":
+            continue
         item_id = row.get("id")
         if isinstance(item_id, str) and item_id.strip():
             refs.append(item_id.strip())
@@ -269,6 +276,10 @@ def _plan_refs(coverage: dict[str, object]) -> list[str]:
     return sorted(set(refs))
 
 
+def _do_not_write_refs(coverage: dict[str, object]) -> list[str]:
+    return _strings(coverage.get("do_not_write_opportunity_refs"))
+
+
 def _decision_for_cluster(
     *,
     coverage: dict[str, object],
@@ -281,8 +292,17 @@ def _decision_for_cluster(
     list[str],
 ]:
     status = str(coverage["status"])
-    content_refs = _content_refs(coverage)
+    content_refs = _content_refs(coverage, primary_only=True)
     plan_refs = _plan_refs(coverage)
+    do_not_write_refs = _do_not_write_refs(coverage)
+
+    if do_not_write_refs:
+        return (
+            "DO_NOT_WRITE",
+            [],
+            sorted(set(plan_refs + do_not_write_refs)),
+            ["selected_do_not_write_plan_exists"],
+        )
 
     if need.status == "REJECTED":
         return (
@@ -382,6 +402,8 @@ def _selection_readiness(
         return "RESEARCH_REQUIRED", ["coverage_semantics_insufficient"]
     if "duplicate_plan_collision_requires_reconciliation" in decision_reasons:
         return "BLOCKED", ["duplicate_selected_plans_require_reconciliation"]
+    if "matching_create_plan_or_work_exists" in decision_reasons:
+        return "REUSE_EXISTING_PLAN", ["reuse_existing_selected_plan"]
     if decision == "DO_NOT_WRITE":
         return "BLOCKED", ["decision_is_do_not_write"]
     if need_status != "SUPPORTED":
@@ -506,8 +528,13 @@ def _recommendation(
             "evidence_readiness": evidence_readiness,
         },
         "coverage_refs": {
-            "matched_content_items": target_refs,
+            "target_primary_content_items": target_refs,
+            "all_matched_content_items": _content_refs(
+                coverage,
+                primary_only=False,
+            ),
             "matched_selected_opportunities": plan_refs,
+            "do_not_write_opportunities": _do_not_write_refs(coverage),
             "unresolved_candidates": coverage.get(
                 "unresolved_candidates",
                 [],
