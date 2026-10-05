@@ -7,7 +7,7 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## MGCTRL-01 — macOS Menu Bar Control v0.1 — IMPLEMENTATION WIP
+## MGCTRL-01 — macOS Menu Bar Control v0.1 — MC-05 VERIFICATION WIP
 
 Tracking: issue #327. Exact task: `logs/2026-10-05-mgctrl-01-menu-bar-v01.md`.
 
@@ -17,13 +17,16 @@ Tracking: issue #327. Exact task: `logs/2026-10-05-mgctrl-01-menu-bar-v01.md`.
 - [x] Reuse Control Center + Production Board + Operator state read APIs.
 - [x] Add quick routes for Việc cần tôi / Tạo bài mới / Sản xuất / Bản đồ nội dung / Hệ thống.
 - [x] Add fail-closed Continue/Retry/Cancel using backend-advertised intents, exact state version and idempotency key.
-- [x] No continuous polling; refresh on menu open and once after confirmed mutation.
-- [x] Lost/ambiguous mutation result is not automatically resent.
-- [x] Keep Start/Stop visible but disabled until MC-05 lifecycle is separately proven against the actual operational runtime.
-- [ ] Agent Local exact-SHA `swift build` + `swift test`.
-- [ ] Agent Local real macOS visual proof: menu bar, hover titles, dark/light, reopen/quit.
-- [ ] Agent Local real local-API read/action smoke without unauthorized operational mutation.
-- [ ] MG review exact-SHA local evidence and applicable OCR.
+- [x] Fail closed across multiple actionable ContentCases.
+- [x] Package a clickable local `MG Control.app` with MG icon.
+- [x] Implement MC-05 Start/Stop with dedicated `launchd` labels; no `sleep/ps/pgrep` status polling.
+- [x] Start refuses an external runtime, validates prerequisites, starts PostgreSQL without migration, requires release preflight, then owns backend/frontend/worker jobs.
+- [x] Stop only boots out MG-owned jobs and leaves PostgreSQL/DB/history/external runtime untouched.
+- [x] Lost/ambiguous workflow mutation result is not automatically resent.
+- [ ] Agent Local exact-SHA `swift build` + `swift test` after MC-05.
+- [ ] Agent Local safe lifecycle proof in disposable environment: Start -> status -> Stop, exact launchd ownership, zero operational DB mutation.
+- [ ] Agent Local rebuild/install updated `MG Control.app` in Founder repo root.
+- [ ] Exact-ref OCR for MC-05 diff and MG review.
 - [ ] Minimal GitHub CI confirmation if available.
 - [ ] Founder merge.
 
