@@ -15,13 +15,16 @@ Tracking: issue #335. Exact task: `logs/2026-10-06-qm-01d-opportunity-planner-v2
 - [x] Keep Question Map, Question Coverage and canonical Need/Signal state as existing authorities.
 - [x] Add read-only Opportunity Planner v2; no ContentOpportunity/HumanSelection mutation.
 - [x] Expose 7 explainable dimensions without a synthetic score.
-- [x] Derive Right-to-Win only from linked supporting MOTGU Signals; contradiction refs stay separate.
+- [x] Keep linked supporting MOTGU Signals as first-party planning-relevance evidence; contradiction refs stay separate.
+- [x] Do not claim Right-to-Win from Signal data alone; `right_to_win_proven=false` until a canonical approved-material input exists.
 - [x] Keep first-party Signal evidence explicitly weaker than locked EvidenceSet / approved OriginalityPack.
 - [x] Map canonical Need status to opportunity-planning evidence readiness without re-scoring Need truth.
 - [x] Recommend CREATE / UPDATE / REFRESH / MERGE / LINK_ONLY / DO_NOT_WRITE deterministically.
 - [x] Require explicit ContentItem target refs for non-CREATE existing-content actions.
-- [x] Block plan-only collision from creating another durable plan.
-- [x] Add NOW / NEXT / LATER / NO priority reasons without 0–100 scoring.
+- [x] Supporting-only content is contextual coverage, never an UPDATE/REFRESH/MERGE/LINK_ONLY target.
+- [x] Reuse existing selected CREATE planning for plan-only PARTIAL; block plan-only collision from another durable plan.
+- [x] Honor selected DO_NOT_WRITE planning and canonical REJECTED Need as fail-closed guards.
+- [x] Add NOW / NEXT / LATER / NO vocabulary without 0–100 scoring; current Signal-only Right-to-Win state does not emit NOW.
 - [x] Preserve existing Question Map/Coverage routes; add read-only `GET /question-map/opportunities`.
 - [x] Add deterministic planner `snapshot_hash` and focused decision/read-only tests.
 - [ ] MG self-review exact branch diff.
