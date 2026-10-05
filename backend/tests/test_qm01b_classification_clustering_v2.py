@@ -96,6 +96,18 @@ def test_classification_v2_recognizes_vietnamese_authenticity_independently() ->
     assert result.confidence is not Confidence.LOW
 
 
+def test_classification_v2_budget_cue_beats_first_time_stage_phrase() -> None:
+    result = classify_question_v2(
+        "What budget should I set for my first painting?",
+        locale="en",
+    )
+
+    assert result.topic_key == "price"
+    assert result.answer_job == "plan_budget"
+    assert result.intent is Intent.EVALUATE
+    assert result.audience_stage.value == "first_time_buyer"
+
+
 def test_classification_v2_splits_budget_from_value_answer_jobs() -> None:
     budget = classify_question_v2(
         "How much should I spend on my first painting?",
