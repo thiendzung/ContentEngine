@@ -188,27 +188,36 @@ def _business_path(answer_job: str) -> dict[str, object]:
 
 def _right_to_win(
     supporting_motgu_signals: list[Signal],
+    *,
+    locale: str,
 ) -> dict[str, object]:
-    refs = sorted(str(signal.id) for signal in supporting_motgu_signals)
+    normalized_locale = locale.strip().casefold()
+    relevant = [
+        signal
+        for signal in supporting_motgu_signals
+        if signal.locale.strip().casefold() == normalized_locale
+    ]
+    refs = sorted(str(signal.id) for signal in relevant)
     scopes: dict[str, int] = defaultdict(int)
-    locales: set[str] = set()
     independence: set[str] = set()
-    for signal in supporting_motgu_signals:
+    for signal in relevant:
         scopes[signal.scope] += 1
-        locales.add(signal.locale.strip().casefold())
         independence.add(signal.independence_group or signal.fingerprint)
 
-    status = "FIRST_PARTY_SIGNAL_AVAILABLE" if refs else "GAP"
+    status = "UNPROVEN_FIRST_PARTY_SIGNAL" if refs else "GAP"
     return {
         "status": status,
+        "right_to_win_proven": False,
+        "planning_signal_available": bool(refs),
         "signal_refs": refs,
         "signal_count": len(refs),
         "independent_signal_count": len(independence),
         "scopes": dict(sorted(scopes.items())),
-        "locales": sorted(locale for locale in locales if locale),
-        "basis": "linked_supporting_MOTGU_signals",
+        "locale": normalized_locale,
+        "basis": "linked_supporting_MOTGU_signals_only",
         "limitations": [
-            "First-party signals support planning only.",
+            "First-party signals support planning relevance only.",
+            "They do not prove a MOTGU Right-to-Win.",
             "They are not a locked EvidenceSet.",
             "They are not an approved OriginalityPack.",
         ],
@@ -464,9 +473,7 @@ def _recommendation(
 ) -> dict[str, object]:
     coverage = _coverage_payload(cluster)
     coverage_status = str(coverage["status"])
-    has_right_to_win = (
-        right_to_win.get("status") == "FIRST_PARTY_SIGNAL_AVAILABLE"
-    )
+    has_right_to_win = right_to_win.get("right_to_win_proven") is True
     decision, target_refs, plan_refs, decision_reasons = _decision_for_cluster(
         coverage=coverage,
         need=need,
@@ -581,7 +588,16 @@ def plan_opportunity_projection(
             "opportunity_planner_question_coverage_hash_invalid"
         )
 
-    right_to_win = _right_to_win(supporting_motgu_signals)
+    locale = str(question_coverage.get("locale", "")).strip().casefold()
+    if not locale:
+        raise OpportunityPlannerError(
+            "opportunity_planner_locale_invalid"
+        )
+
+    right_to_win = _right_to_win(
+        supporting_motgu_signals,
+        locale=locale,
+    )
     evidence_readiness = _need_evidence_readiness(need)
     raw_clusters = _required_list(
         question_coverage.get("clusters"),
@@ -651,7 +667,7 @@ def plan_opportunity_projection(
                 else None
             ),
         },
-        "locale": str(question_coverage.get("locale", "")).casefold(),
+        "locale": locale,
         "question_coverage_snapshot_hash": coverage_hash,
         "need_signal_state": {
             "support_signal_refs": sorted(set(support_refs)),
