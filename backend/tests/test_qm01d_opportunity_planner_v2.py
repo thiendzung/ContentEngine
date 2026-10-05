@@ -227,15 +227,17 @@ def _recommendation(plan: dict[str, object]) -> dict[str, object]:
     return row
 
 
-def test_missing_supported_cluster_with_first_party_signal_is_create_now() -> None:
+def test_first_party_signal_does_not_claim_right_to_win_or_create_now() -> None:
     need = _need()
     plan = _plan(need=need, motgu=True)
     row = _recommendation(plan)
 
     assert row["decision"] == "CREATE"
-    assert row["priority"] == "NOW"
+    assert row["priority"] == "NEXT"
     assert row["selection_readiness"] == "READY_FOR_HUMAN_SELECTION"
-    assert plan["right_to_win"]["status"] == "FIRST_PARTY_SIGNAL_AVAILABLE"
+    assert plan["right_to_win"]["status"] == "UNPROVEN_FIRST_PARTY_SIGNAL"
+    assert plan["right_to_win"]["right_to_win_proven"] is False
+    assert plan["right_to_win"]["planning_signal_available"] is True
     assert plan["semantics"]["does_not_authorize_drafting"] is True
 
 
@@ -267,7 +269,7 @@ def test_answered_without_new_first_party_value_is_link_only() -> None:
     assert row["priority"] == "NEXT"
 
 
-def test_answered_with_first_party_value_is_update() -> None:
+def test_answered_first_party_signal_alone_does_not_force_update() -> None:
     row = _recommendation(
         _plan(
             need=_need(),
@@ -277,7 +279,7 @@ def test_answered_with_first_party_value_is_update() -> None:
         )
     )
 
-    assert row["decision"] == "UPDATE"
+    assert row["decision"] == "LINK_ONLY"
     assert row["existing_content_refs"] == ["item-1"]
 
 
@@ -433,10 +435,31 @@ def test_projection_exposes_seven_dimensions_without_synthetic_score() -> None:
     assert "score" not in row
     assert dimensions["business_connection"]["status"] == "DERIVED_UNBOUND"
     assert dimensions["motgu_right_to_win"]["limitations"] == [
-        "First-party signals support planning only.",
+        "First-party signals support planning relevance only.",
+        "They do not prove a MOTGU Right-to-Win.",
         "They are not a locked EvidenceSet.",
         "They are not an approved OriginalityPack.",
     ]
+
+
+def test_right_to_win_filters_first_party_signals_by_locale() -> None:
+    need = _need()
+    en_signal = _motgu_signal(project_id=need.project_id)
+    vi_signal = _motgu_signal(project_id=need.project_id)
+    vi_signal.locale = "vi"
+
+    plan = plan_opportunity_projection(
+        question_coverage=_question_coverage(need=need),
+        need=need,
+        supporting_motgu_signals=[en_signal, vi_signal],
+        support_refs=[str(en_signal.id), str(vi_signal.id)],
+        contradiction_refs=[],
+    )
+
+    right_to_win = plan["right_to_win"]
+    assert right_to_win["signal_refs"] == [str(en_signal.id)]
+    assert right_to_win["locale"] == "en"
+    assert right_to_win["right_to_win_proven"] is False
 
 
 def test_projection_fails_closed_on_upstream_identity_and_hash_mismatch() -> None:
@@ -604,7 +627,8 @@ async def test_opportunity_planner_route_is_read_only_and_uses_only_supporting_m
         assert payload == replay
         row = _recommendation(payload)
         assert row["decision"] == "CREATE"
-        assert row["priority"] == "NOW"
+        assert row["priority"] == "NEXT"
+        assert payload["right_to_win"]["right_to_win_proven"] is False
         assert str(motgu.id) in payload["right_to_win"]["signal_refs"]
         assert str(contradiction.id) not in payload["right_to_win"]["signal_refs"]
         assert str(contradiction.id) in (
