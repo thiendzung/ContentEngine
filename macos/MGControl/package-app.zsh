@@ -130,6 +130,7 @@ make_png 512 icon_512x512.png
 cp "$TMP_DIR/icon-1024.png" "$ICONSET/icon_512x512@2x.png"
 
 /usr/bin/iconutil -c icns "$ICONSET" -o "$APP_PATH/Contents/Resources/MGControl.icns"
+/usr/bin/codesign --force --deep --sign - "$APP_PATH" >/dev/null
 /usr/bin/touch "$APP_PATH"
 
 echo "Đã tạo: $APP_PATH"
