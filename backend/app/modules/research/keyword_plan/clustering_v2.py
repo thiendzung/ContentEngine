@@ -13,12 +13,23 @@ CLUSTERING_VERSION = "question-map-clustering-v2"
 
 
 class QuestionClassificationLike(Protocol):
-    classification_status: str
-    query_quality: QueryQuality
-    semantic_fallback_required: bool
-    answer_job: str
-    intent: Intent
-    topic_key: str
+    @property
+    def classification_status(self) -> str: ...
+
+    @property
+    def query_quality(self) -> QueryQuality: ...
+
+    @property
+    def semantic_fallback_required(self) -> bool: ...
+
+    @property
+    def answer_job(self) -> str: ...
+
+    @property
+    def intent(self) -> Intent: ...
+
+    @property
+    def topic_key(self) -> str: ...
 
 
 @dataclass(slots=True, frozen=True)
