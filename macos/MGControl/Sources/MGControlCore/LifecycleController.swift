@@ -189,9 +189,9 @@ public final class LifecycleController: @unchecked Sendable {
         if registered == 0 {
             return .stopped
         }
-        if registered == Self.labels.count {
+        if registered == Self.labels.count && running == Self.labels.count {
             return ManagedRuntimeStatus(
-                state: running == Self.labels.count ? .running : .starting,
+                state: .running,
                 registeredJobs: registered,
                 runningJobs: running
             )
@@ -270,7 +270,15 @@ public final class LifecycleController: @unchecked Sendable {
             throw error
         }
 
-        return await status()
+        let launched = await status()
+        if launched.state == .running {
+            return launched
+        }
+        return ManagedRuntimeStatus(
+            state: .starting,
+            registeredJobs: launched.registeredJobs,
+            runningJobs: launched.runningJobs
+        )
     }
 
     public func stop() async throws -> ManagedRuntimeStatus {
