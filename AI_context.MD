@@ -1,5 +1,10 @@
 # AI_context.MD - ContentEngine shared working window
 
+## Current WIP — MGCTRL-01 macOS Menu Bar Control v0.1
+
+Founder authorized direct implementation on 2026-10-05. Branch `feat/mgctrl-01-menu-bar-v01` is based on live main `dca2efc19879be6dba70d6c5b7765ad766be5349` and tracked by issue #327. Scope is a native SwiftUI `MenuBarExtra` remote control: Vietnamese UI, read-only Control Center/Operator state, quick routes, and safe backend-authorized Continue/Retry/Cancel. No background polling. Start/Stop are visible but intentionally disabled until a separate MC-05 lifecycle slice proves safe operational ownership; no DB migration, publication or WordPress activation is authorized. Exact task/evidence boundary: `docs/logs/2026-10-05-mgctrl-01-menu-bar-v01.md`.
+
+
 Updated: 2026-10-03 after Founder merged PR #283. Current main is `857b536823d8514c42da714d20e4e9ed1f5845a2`. P1 has DATA-02, RUN-02 MIN and REC-02 complete. Founder-authorized LOCAL-E2E-01 retry on PR #280 preserved the exact disposable lineage and ran one one-shot worker; it failed safely before Angle on `operator_worker_coverage_support_unresolved / insufficient_support`, with zero ModelCall/ToolCall and no operational/publication mutation. This replaces the previous credits blocker with a demonstrated evidence-sufficiency blocker. PR #284 is now the bounded current-main port of approved locked EvidenceSet reuse; stale PR #271 is superseded for implementation purposes. No further #280 retry is authorized. PR #282 Antigravity remains optional and outside the critical path. Operational migration and publication remain separately Founder-authorized.
 
 ## Read first and verify the actual ref
