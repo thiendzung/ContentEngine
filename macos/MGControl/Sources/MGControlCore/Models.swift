@@ -1,15 +1,21 @@
 import Foundation
 
 public enum EngineStatus: Equatable, Sendable {
+    case starting
     case running
+    case external
     case stopped
     case error
     case unknown
 
     public var vietnameseLabel: String {
         switch self {
+        case .starting:
+            return "Đang khởi động"
         case .running:
             return "Đang chạy"
+        case .external:
+            return "Đang chạy ngoài MG"
         case .stopped:
             return "Đã dừng"
         case .error:
