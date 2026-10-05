@@ -363,16 +363,18 @@ def join_question_map_with_coverage(
         content_coverage.get("needs"),
         "question_coverage_content_coverage_projection_invalid",
     )
-    matching_lanes = [
-        _required_dict(
-            lane,
+    matching_lanes: list[dict[str, object]] = []
+    for raw_lane in lanes:
+        lane = _required_dict(
+            raw_lane,
             "question_coverage_content_coverage_projection_invalid",
         )
-        for lane in lanes
-        if isinstance(lane, dict)
-        and str(lane.get("need", {}).get("id", ""))
-        == need_id
-    ]
+        lane_need = _required_dict(
+            lane.get("need"),
+            "question_coverage_content_coverage_projection_invalid",
+        )
+        if str(lane_need.get("id", "")) == need_id:
+            matching_lanes.append(lane)
     if len(matching_lanes) != 1:
         raise QuestionCoverageError("question_coverage_need_lane_missing")
     lane = matching_lanes[0]
