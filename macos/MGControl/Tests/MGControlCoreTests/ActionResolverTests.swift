@@ -3,41 +3,22 @@ import Testing
 @testable import MGControlCore
 
 struct ActionResolverTests {
-    @Test func resolvesOneContinueRetryAndCancelTarget() {
-        let continueID = UUID()
-        let retryID = UUID()
-        let cancelID = UUID()
-
-        let board = [
-            boardCase(id: continueID, title: "Pillar"),
-            boardCase(id: retryID, title: "Cluster"),
-            boardCase(id: cancelID, title: "Đang chạy"),
-        ]
-        let states = [
-            continueID: state(
-                id: continueID,
-                allowed: [.continueWork]
-            ),
-            retryID: state(
-                id: retryID,
-                status: "BLOCKED",
-                allowed: [.retry]
-            ),
-            cancelID: state(
-                id: cancelID,
-                status: "RUNNING",
-                allowed: [.cancel]
-            ),
-        ]
+    @Test func resolvesActionsForOneActionableCase() {
+        let id = UUID()
 
         let result = ActionResolver.resolve(
-            board: board,
-            states: states
+            board: [boardCase(id: id, title: "Pillar")],
+            states: [
+                id: state(
+                    id: id,
+                    allowed: [.continueWork, .retry, .cancel]
+                )
+            ]
         )
 
-        #expect(result.continueTarget?.caseID == continueID)
-        #expect(result.retryTarget?.caseID == retryID)
-        #expect(result.cancelTarget?.caseID == cancelID)
+        #expect(result.continueTarget?.caseID == id)
+        #expect(result.retryTarget?.caseID == id)
+        #expect(result.cancelTarget?.caseID == id)
         #expect(!result.isAmbiguous)
     }
 
@@ -68,6 +49,29 @@ struct ActionResolverTests {
         )
 
         #expect(result.continueTarget == nil)
+        #expect(result.isAmbiguous)
+    }
+
+    @Test func differentActionsAcrossDifferentCasesFailClosed() {
+        let continueID = UUID()
+        let cancelID = UUID()
+        let result = ActionResolver.resolve(
+            board: [
+                boardCase(id: continueID, title: "Tiếp tục bài A"),
+                boardCase(id: cancelID, title: "Hủy bài B"),
+            ],
+            states: [
+                continueID: state(id: continueID, allowed: [.continueWork]),
+                cancelID: state(
+                    id: cancelID,
+                    status: "RUNNING",
+                    allowed: [.cancel]
+                ),
+            ]
+        )
+
+        #expect(result.continueTarget == nil)
+        #expect(result.cancelTarget == nil)
         #expect(result.isAmbiguous)
     }
 
