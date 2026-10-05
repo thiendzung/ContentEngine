@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import Protocol
 
-from app.modules.research.keyword_plan.contracts import QueryQuality
-from app.modules.research.keyword_plan.classification_v2 import QuestionClassificationV2
+from app.modules.research.keyword_plan.contracts import Intent, QueryQuality
 
 
 CLUSTERING_VERSION = "question-map-clustering-v2"
+
+
+class QuestionClassificationLike(Protocol):
+    classification_status: str
+    query_quality: QueryQuality
+    semantic_fallback_required: bool
+    answer_job: str
+    intent: Intent
+    topic_key: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -21,7 +30,7 @@ class QuestionForClustering:
     source_count: int
     independent_source_count: int
     source_priority: int
-    classification: QuestionClassificationV2
+    classification: QuestionClassificationLike
 
 
 @dataclass(slots=True, frozen=True)
@@ -126,6 +135,7 @@ def build_question_clusters_v2(
 
 __all__ = [
     "CLUSTERING_VERSION",
+    "QuestionClassificationLike",
     "QuestionClusterV2",
     "QuestionForClustering",
     "build_question_clusters_v2",
