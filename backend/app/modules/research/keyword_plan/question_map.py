@@ -104,6 +104,7 @@ def _question_payload(question: QuestionForClustering) -> dict[str, object]:
         "normalized_text": question.normalized_text,
         "signal_refs": list(question.signal_refs),
         "source_count": question.source_count,
+        "independent_source_count": question.independent_source_count,
         "source_priority": question.source_priority,
         "classification": _classification_payload(question),
         "cluster_eligible": cluster_eligible(question),
@@ -176,6 +177,12 @@ async def build_question_map(
                 normalized_text=normalized,
                 signal_refs=refs,
                 source_count=len(refs),
+                independent_source_count=len(
+                    {
+                        row.independence_group or row.fingerprint
+                        for row in signals
+                    }
+                ),
                 source_priority=min(_signal_priority(row) for row in signals),
                 classification=classification,
             )
