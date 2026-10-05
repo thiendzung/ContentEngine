@@ -8,6 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.modules.content_engine.models import Project
+from app.modules.research.keyword_plan.opportunity_planner_v2 import (
+    OpportunityPlannerError,
+    build_opportunity_plan_v2,
+)
 from app.modules.research.keyword_plan.question_coverage import (
     QuestionCoverageError,
     build_question_coverage,
@@ -21,13 +25,15 @@ router = APIRouter(prefix="/question-map", tags=["question-map"])
 
 
 def _question_map_http_error(
-    exc: QuestionMapError | QuestionCoverageError,
+    exc: QuestionMapError | QuestionCoverageError | OpportunityPlannerError,
 ) -> HTTPException:
     not_found = {
         "question_map_project_not_found",
         "question_map_need_not_found",
         "content_coverage_project_not_found",
         "content_coverage_need_not_found",
+        "opportunity_planner_project_not_found",
+        "opportunity_planner_need_not_found",
     }
     status_code = 404 if exc.code in not_found else 409
     return HTTPException(
@@ -96,4 +102,30 @@ async def get_question_coverage(
             locale=locale,
         )
     except (QuestionMapError, QuestionCoverageError) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.get("/opportunities", response_model=dict[str, object])
+async def get_opportunity_plan_v2(
+    need_id: UUID,
+    locale: str = Query(min_length=1, max_length=32),
+    project_slug: str = Query(default="motgu", min_length=1, max_length=100),
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, object]:
+    try:
+        project_id = await _project_id_from_slug(
+            session,
+            project_slug=project_slug,
+        )
+        return await build_opportunity_plan_v2(
+            session,
+            project_id=project_id,
+            need_id=need_id,
+            locale=locale,
+        )
+    except (
+        QuestionMapError,
+        QuestionCoverageError,
+        OpportunityPlannerError,
+    ) as exc:
         raise _question_map_http_error(exc) from exc

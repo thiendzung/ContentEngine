@@ -7,27 +7,42 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-01C — Question Map × Content Coverage — IMPLEMENTATION WIP
+## QM-01D — Opportunity Planner v2 — IMPLEMENTATION WIP
 
-Tracking: issue #333. Exact task: `logs/2026-10-05-qm-01c-question-coverage-join.md`.
+Tracking: issue #335. Exact task: `logs/2026-10-06-qm-01d-opportunity-planner-v2.md`.
 
-- [x] Branch from merged QM-01B main `b01849bbf4028c1e6a21b2c41248cdb643b597cb`.
-- [x] Keep Question Map and Content Coverage as separate existing authorities.
-- [x] Add read-only cluster coverage join; do not mutate ContentOpportunity or workflow state.
-- [x] Match by Need + normalized locale + stored intent + v2 answer_job.
-- [x] Reuse classifier v2 for existing content/planning candidate language.
-- [x] Add ANSWERED / PARTIAL / MISSING / STALE / COLLISION states.
-- [x] Add INSUFFICIENT_DATA fail-closed state for unresolved same-intent candidate semantics.
-- [x] Supporting-Need published content remains PARTIAL, never primary ANSWERED.
-- [x] Selected UPDATE/REFRESH target or newer unpublished revision marks matching published content STALE.
-- [x] Multiple primary answers or duplicate CREATE plans become COLLISION.
-- [x] Preserve existing `GET /question-map`; add separate read-only `GET /question-map/coverage`.
-- [x] Add deterministic join `snapshot_hash` and focused status/read-only tests.
+- [x] Branch from merged QM-01C main `db6aa1901191210c0975e2516a463229b5f8caef`.
+- [x] Keep Question Map, Question Coverage and canonical Need/Signal state as existing authorities.
+- [x] Add read-only Opportunity Planner v2; no ContentOpportunity/HumanSelection mutation.
+- [x] Expose 7 explainable dimensions without a synthetic score.
+- [x] Keep linked supporting MOTGU Signals as first-party planning-relevance evidence; contradiction refs stay separate.
+- [x] Do not claim Right-to-Win from Signal data alone; `right_to_win_proven=false` until a canonical approved-material input exists.
+- [x] Keep first-party Signal evidence explicitly weaker than locked EvidenceSet / approved OriginalityPack.
+- [x] Map canonical Need status to opportunity-planning evidence readiness without re-scoring Need truth.
+- [x] Recommend CREATE / UPDATE / REFRESH / MERGE / LINK_ONLY / DO_NOT_WRITE deterministically.
+- [x] Require explicit ContentItem target refs for non-CREATE existing-content actions.
+- [x] Supporting-only content is contextual coverage, never an UPDATE/REFRESH/MERGE/LINK_ONLY target.
+- [x] Reuse existing selected CREATE planning for plan-only PARTIAL; block plan-only collision from another durable plan.
+- [x] Honor selected DO_NOT_WRITE planning and canonical REJECTED Need as fail-closed guards.
+- [x] Add NOW / NEXT / LATER / NO vocabulary without 0–100 scoring; current Signal-only Right-to-Win state does not emit NOW.
+- [x] Preserve existing Question Map/Coverage routes; add read-only `GET /question-map/opportunities`.
+- [x] Add deterministic planner `snapshot_hash` and focused decision/read-only tests.
 - [ ] MG self-review exact branch diff.
 - [ ] Agent Local exact-SHA focused/full backend verification.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Minimal GitHub CI confirmation if available.
 - [ ] Founder merge.
+
+## QM-01C — Question Map × Content Coverage — DONE / PR #334 MERGED
+
+Tracking: issue #333. Exact task: `logs/2026-10-05-qm-01c-question-coverage-join.md`.
+
+- [x] Read-only Question Map × Content Coverage join.
+- [x] ANSWERED / PARTIAL / MISSING / STALE / COLLISION / INSUFFICIENT_DATA semantics.
+- [x] Existing `GET /question-map` preserved; separate `GET /question-map/coverage`.
+- [x] 33 focused + 40 adjacent regressions + 1427 full backend PASS.
+- [x] OCR exact-ref zero findings; GitHub CI #2253 SUCCESS.
+- [x] Founder merged PR #334 as main `db6aa1901191210c0975e2516a463229b5f8caef`.
 
 ## QM-01B — Classification / Clustering v2 — DONE / PR #332 MERGED
 
