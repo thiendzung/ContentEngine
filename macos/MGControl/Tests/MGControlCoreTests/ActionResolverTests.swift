@@ -22,6 +22,18 @@ struct ActionResolverTests {
         #expect(!result.isAmbiguous)
     }
 
+    @Test func startMapsToPrimaryWorkflowButton() {
+        let id = UUID()
+        let result = ActionResolver.resolve(
+            board: [boardCase(id: id, title: "Bài mới")],
+            states: [
+                id: state(id: id, allowed: [.start])
+            ]
+        )
+
+        #expect(result.continueTarget?.intent == .start)
+    }
+
     @Test func resumeMapsToContinueButton() {
         let id = UUID()
         let result = ActionResolver.resolve(
