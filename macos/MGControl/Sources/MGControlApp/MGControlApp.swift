@@ -17,10 +17,12 @@ struct MGControlApp: App {
         let config = AppConfig.load()
         let client = ContentEngineClient(config: config)
         let service = ControlService(client: client)
+        let lifecycle = LifecycleController(config: config)
         _model = StateObject(
             wrappedValue: MenuBarViewModel(
                 config: config,
-                service: service
+                service: service,
+                lifecycle: lifecycle
             )
         )
     }
