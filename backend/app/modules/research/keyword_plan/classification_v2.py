@@ -225,27 +225,25 @@ def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
     return any(_contains_term(text, term) for term in terms)
 
 
-def _match_score(text: str, terms: tuple[str, ...]) -> tuple[int, int]:
-    matched = [term for term in terms if _contains_term(text, term)]
-    if not matched:
-        return (0, 0)
-    return (len(matched), max(len(term.split()) for term in matched))
+def _matched_terms(text: str, terms: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(term for term in terms if _contains_term(text, term))
 
 
 def _topic_rule(text: str, locale: str) -> tuple[_TopicRule | None, Confidence]:
     best: _TopicRule | None = None
-    best_score = (0, 0)
+    best_matches: tuple[str, ...] = ()
     for rule in _TOPIC_RULES:
-        score = _match_score(text, _terms_for(rule, locale))
-        if score > best_score:
+        matched = _matched_terms(text, _terms_for(rule, locale))
+        if len(matched) > len(best_matches):
             best = rule
-            best_score = score
+            best_matches = matched
     if best is None:
         return None, Confidence.LOW
-    matched_count, longest_phrase = best_score
+
+    longest_phrase = max(len(term.split()) for term in best_matches)
     confidence = (
         Confidence.HIGH
-        if matched_count >= 2 or longest_phrase >= 2
+        if len(best_matches) >= 2 or longest_phrase >= 2
         else Confidence.MEDIUM
     )
     return best, confidence
