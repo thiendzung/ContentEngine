@@ -122,11 +122,13 @@ public struct OperatorCommandResult: Decodable, Equatable, Sendable {
     public let contentCaseID: UUID
     public let intent: OperatorIntent
     public let status: String
+    public let jobID: UUID?
 
     enum CodingKeys: String, CodingKey {
         case contentCaseID = "content_case_id"
         case intent
         case status
+        case jobID = "job_id"
     }
 }
 
