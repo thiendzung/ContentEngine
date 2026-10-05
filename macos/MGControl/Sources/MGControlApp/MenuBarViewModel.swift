@@ -147,8 +147,21 @@ final class MenuBarViewModel: ObservableObject {
         lifecycleMessage = nil
 
         do {
-            _ = try await service.perform(target: target)
+            let result = try await service.perform(target: target)
             actionInFlight = nil
+
+            if result.jobID != nil,
+               target.intent != .cancel,
+               lifecycleStatus.ownsRuntime {
+                do {
+                    try await lifecycle.triggerWorkerOnce()
+                } catch {
+                    lifecycleMessage =
+                        "Lệnh đã được ghi nhận nhưng worker chưa khởi động: " +
+                        localized(error)
+                }
+            }
+
             snapshot = await service.refresh()
             lifecycleStatus = await lifecycle.status()
         } catch {
