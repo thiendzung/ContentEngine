@@ -178,13 +178,29 @@ _TOPIC_RULES: tuple[_TopicRule, ...] = (
 )
 
 _COMPARE_EN = ("vs", "versus", "compare", "difference", "or")
-_COMPARE_VI = ("so với", "khác nhau", "khác gì", "hay", "nên chọn")
+_COMPARE_VI = ("so với", "khác nhau", "khác gì", "hay là", "nên chọn")
 _FIRST_TIME_EN = ("first time", "first painting", "first artwork", "first art")
 _FIRST_TIME_VI = ("lần đầu", "bức đầu tiên", "tác phẩm đầu tiên")
 _READY_EN = ("buy now", "purchase now", "available", "inquire", "order")
 _READY_VI = ("mua ngay", "đặt mua", "còn bán", "liên hệ mua", "đặt hàng")
 _AFTER_EN = ("after buying", "after purchase", "already bought", "i own")
 _AFTER_VI = ("sau khi mua", "đã mua", "đang sở hữu")
+
+_INCOMPLETE_ENDINGS_EN = {
+    "q",
+    "qu",
+    "qui",
+    "choo",
+    "gall",
+    "painti",
+}
+_INCOMPLETE_END_PHRASES_EN = (
+    "how to choose a painting that",
+    "what should i know before buying",
+    "before buying",
+    "first time buyer worries about",
+    "can i take a painting",
+)
 
 
 def locale_family(locale: str) -> str:
@@ -391,13 +407,26 @@ def _audience_stage(
     return AudienceStage.EXPLORING
 
 
-def _query_quality(value: str, *, off_scope: bool) -> QueryQuality:
+def _query_quality(
+    value: str,
+    *,
+    locale: str,
+    off_scope: bool,
+) -> QueryQuality:
     text = normalize_text(value)
     raw = value.strip()
     if not text:
         return QueryQuality.MALFORMED
     if raw.endswith(("...", "-", "/", "|")):
         return QueryQuality.TRUNCATED
+
+    if locale_family(locale) == "en":
+        last_word = text.split()[-1]
+        if last_word in _INCOMPLETE_ENDINGS_EN:
+            return QueryQuality.TRUNCATED
+        if any(text.endswith(phrase) for phrase in _INCOMPLETE_END_PHRASES_EN):
+            return QueryQuality.TRUNCATED
+
     if off_scope:
         return QueryQuality.OFF_SCOPE
     return QueryQuality.USABLE
@@ -415,7 +444,11 @@ def classify_question_v2(
     answer_job = _answer_job(text, locale, rule, question_type)
     intent = _intent(text, locale, topic_key, answer_job, question_type)
     audience_stage = _audience_stage(text, locale, topic_key, intent)
-    quality = _query_quality(value, off_scope=bool(rule and rule.off_scope))
+    quality = _query_quality(
+        value,
+        locale=locale,
+        off_scope=bool(rule and rule.off_scope),
+    )
 
     unsupported_locale = locale_family(locale) not in {"en", "vi"}
     unresolved = rule is None or unsupported_locale
