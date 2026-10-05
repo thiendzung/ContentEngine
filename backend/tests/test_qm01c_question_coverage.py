@@ -199,6 +199,17 @@ def test_question_coverage_fails_closed_on_projection_contract_mismatch() -> Non
             content_coverage=bad_project,
         )
 
+    bad_hash = _question_map_fixture()
+    bad_hash["snapshot_hash"] = "not-a-hash"
+    with pytest.raises(
+        ValueError,
+        match="question_coverage_question_map_hash_invalid",
+    ):
+        join_question_map_with_coverage(
+            question_map=bad_hash,
+            content_coverage=coverage,
+        )
+
 
 def test_question_coverage_answered_requires_primary_published_match() -> None:
     result = join_question_map_with_coverage(
