@@ -47,4 +47,20 @@ struct LifecycleControllerTests {
 
         #expect(root.path == "/tmp/contentengine-root")
     }
+
+    @Test func lifecycleEnvironmentIsSecretFreeByConstruction() {
+        let environment = LifecycleController.safeEnvironment(
+            home: "/Users/tester",
+            lang: "vi_VN.UTF-8",
+            tmpdir: "/tmp/"
+        )
+
+        #expect(environment["HOME"] == "/Users/tester")
+        #expect(environment["LANG"] == "vi_VN.UTF-8")
+        #expect(environment["TMPDIR"] == "/tmp/")
+        #expect(environment["PYTHONUNBUFFERED"] == "1")
+        #expect(environment["DATABASE_URL"] == nil)
+        #expect(environment["OPENAI_API_KEY"] == nil)
+        #expect(environment["WORDPRESS_APPLICATION_PASSWORD"] == nil)
+    }
 }
