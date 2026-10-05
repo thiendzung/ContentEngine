@@ -116,6 +116,7 @@ public enum LifecycleError: Error, LocalizedError, Equatable {
     case prerequisiteMissing(String)
     case externalRuntimeActive
     case partialManagedRuntime
+    case workerBusy
     case commandFailed(String)
     case preflightBlocked(String)
     case launchdFailed(String)
@@ -131,6 +132,8 @@ public enum LifecycleError: Error, LocalizedError, Equatable {
             return "ContentEngine đang chạy ngoài MG Control. Không tự giành quyền quản lý."
         case .partialManagedRuntime:
             return "Runtime do MG quản lý đang ở trạng thái không đầy đủ. Hãy bấm Dừng rồi thử lại."
+        case .workerBusy:
+            return "Đang có tác vụ chạy. Hãy chờ hoàn tất hoặc hủy tác vụ trước khi dừng hệ thống."
         case .commandFailed:
             return "Không khởi động được PostgreSQL. Kiểm tra Docker rồi thử lại."
         case .preflightBlocked:
@@ -321,6 +324,11 @@ public final class LifecycleController: @unchecked Sendable {
     }
 
     public func stop() async throws -> ManagedRuntimeStatus {
+        let worker = await launchdState(label: Self.workerLabel)
+        if worker.running {
+            throw LifecycleError.workerBusy
+        }
+
         var failures: [String] = []
 
         for label in Self.labels.reversed() {
