@@ -21,6 +21,7 @@ class QuestionForClustering:
     normalized_text: str
     signal_refs: tuple[str, ...]
     source_count: int
+    independent_source_count: int
     source_priority: int
     classification: QuestionClassificationV2
 
@@ -64,6 +65,7 @@ def _primary(group: list[QuestionForClustering]) -> QuestionForClustering:
         group,
         key=lambda item: (
             item.source_priority,
+            -item.independent_source_count,
             -item.source_count,
             item.normalized_text,
             item.question_key,
