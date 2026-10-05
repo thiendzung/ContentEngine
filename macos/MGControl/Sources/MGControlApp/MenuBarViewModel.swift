@@ -11,30 +11,74 @@ final class MenuBarViewModel: ObservableObject {
         actionTargets: .empty,
         message: nil
     )
+    @Published private(set) var lifecycleStatus = ManagedRuntimeStatus.stopped
+    @Published private(set) var lifecycleMessage: String?
     @Published private(set) var isBusy = false
     @Published private(set) var actionInFlight: OperatorIntent?
 
     let config: AppConfig
     private let service: ControlService
+    private let lifecycle: LifecycleController
 
     init(
         config: AppConfig,
-        service: ControlService
+        service: ControlService,
+        lifecycle: LifecycleController
     ) {
         self.config = config
         self.service = service
+        self.lifecycle = lifecycle
     }
 
     var needsMeCount: Int {
         snapshot.summary?.counts.needsHuman ?? snapshot.needsMe.count
     }
 
+    var displayEngineStatus: EngineStatus {
+        switch lifecycleStatus.state {
+        case .running:
+            return snapshot.engineStatus == .running ? .running : .starting
+        case .starting:
+            return .starting
+        case .partial:
+            return .error
+        case .stopped:
+            if snapshot.engineStatus == .running {
+                return .external
+            }
+            return snapshot.engineStatus
+        }
+    }
+
+    var displayMessage: String? {
+        if let lifecycleMessage {
+            return lifecycleMessage
+        }
+
+        switch lifecycleStatus.state {
+        case .partial:
+            return "Runtime MG đang không đầy đủ. Bấm Dừng để dọn các dịch vụ do MG quản lý."
+        case .running, .starting:
+            if snapshot.engineStatus != .running {
+                return "Dịch vụ do MG quản lý đã được gọi; đang chờ API sẵn sàng."
+            }
+        case .stopped:
+            if snapshot.engineStatus == .running {
+                return "ContentEngine đang chạy ngoài MG Control; MG sẽ không tự dừng runtime này."
+            }
+        }
+
+        return snapshot.message
+    }
+
     var canStartEngine: Bool {
-        false
+        lifecycleStatus.state == .stopped &&
+        snapshot.engineStatus != .running &&
+        !isBusy
     }
 
     var canStopEngine: Bool {
-        false
+        lifecycleStatus.ownsRuntime && !isBusy
     }
 
     var continueTarget: OperatorActionTarget? {
@@ -52,7 +96,45 @@ final class MenuBarViewModel: ObservableObject {
     func refresh() async {
         guard !isBusy else { return }
         isBusy = true
-        snapshot = await service.refresh()
+        lifecycleMessage = nil
+
+        async let nextSnapshot = service.refresh()
+        async let nextLifecycle = lifecycle.status()
+
+        snapshot = await nextSnapshot
+        lifecycleStatus = await nextLifecycle
+        isBusy = false
+    }
+
+    func startEngine() async {
+        guard !isBusy else { return }
+        isBusy = true
+        lifecycleMessage = nil
+
+        do {
+            lifecycleStatus = try await lifecycle.start()
+            snapshot = await service.refresh()
+        } catch {
+            lifecycleStatus = await lifecycle.status()
+            lifecycleMessage = localized(error)
+        }
+
+        isBusy = false
+    }
+
+    func stopEngine() async {
+        guard !isBusy else { return }
+        isBusy = true
+        lifecycleMessage = nil
+
+        do {
+            lifecycleStatus = try await lifecycle.stop()
+            snapshot = await service.refresh()
+        } catch {
+            lifecycleStatus = await lifecycle.status()
+            lifecycleMessage = localized(error)
+        }
+
         isBusy = false
     }
 
@@ -60,11 +142,13 @@ final class MenuBarViewModel: ObservableObject {
         guard !isBusy else { return }
         isBusy = true
         actionInFlight = target.intent
+        lifecycleMessage = nil
 
         do {
             _ = try await service.perform(target: target)
             actionInFlight = nil
             snapshot = await service.refresh()
+            lifecycleStatus = await lifecycle.status()
         } catch {
             actionInFlight = nil
             snapshot = ControlSnapshot(
@@ -85,5 +169,14 @@ final class MenuBarViewModel: ObservableObject {
 
     func quit() {
         NSApplication.shared.terminate(nil)
+    }
+
+    private func localized(_ error: Error) -> String {
+        if let value = error as? LocalizedError,
+           let description = value.errorDescription,
+           !description.isEmpty {
+            return description
+        }
+        return "Thao tác hệ thống thất bại. Mở Hệ thống để kiểm tra."
     }
 }
