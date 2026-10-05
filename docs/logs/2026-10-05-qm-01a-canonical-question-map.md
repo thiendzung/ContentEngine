@@ -1,8 +1,8 @@
 # QM-01A — Canonical Question Map read model
 
-Date: 2026-10-05  
-Tracking: issue #329  
-Branch: `feat/qm-01a-canonical-question-map`  
+Date: 2026-10-05
+Tracking: issue #329
+Branch: `feat/qm-01a-canonical-question-map`
 Base: `a0c4147b971da357d5c0ffe7ae759dd6f30a1518`
 
 ## Goal
