@@ -35,7 +35,7 @@ def _stable_hash(value: object) -> str:
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
-    ).encode("utf-8")
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -102,7 +102,7 @@ async def build_question_map(
                 "question_key": hashlib.sha256(
                     (
                         f"{need.id}\x1f{normalized_locale}\x1f{normalized}"
-                    ).encode("utf-8")
+                    ).encode()
                 ).hexdigest()[:24],
                 "text": representative.observed_text.strip(),
                 "normalized_text": normalized,
