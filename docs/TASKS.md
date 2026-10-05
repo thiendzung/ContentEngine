@@ -7,22 +7,38 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-01A — Canonical Question Map — IMPLEMENTATION WIP
+## QM-01B — Classification / Clustering v2 — IMPLEMENTATION WIP
 
-Tracking: issue #329. Exact task: `logs/2026-10-05-qm-01a-canonical-question-map.md`.
+Tracking: issue #331. Exact task: `logs/2026-10-05-qm-01b-classification-clustering-v2.md`.
 
-- [x] Branch from merged main `a0c4147b971da357d5c0ffe7ae759dd6f30a1518`.
-- [x] Build deterministic locale-specific Question Map from canonical Need + persisted supporting SEARCH Signals.
-- [x] Preserve Signal provenance refs and dedupe equivalent search language.
-- [x] Add stable `snapshot_hash`.
-- [x] Add read-only `GET /question-map` API.
-- [x] No new table/migration, no model call, no Opportunity mutation, no UI.
-- [x] Add regression tests for determinism, locale isolation, provenance, empty view, cross-project fail-closed and read-only behavior.
+- [x] Branch from merged QM-01A main `94e6b324ee0dc35a3c1cbaaafc0cc8f0fa3eb3a7`.
+- [x] Keep canonical Need and SEARCH Signal ownership unchanged.
+- [x] Add isolated locale-aware EN/VI classifier v2; legacy `classify.py` remains unchanged.
+- [x] Do not re-infer canonical Need type.
+- [x] Add derived question type / intent / audience stage / topic / answer job / confidence / quality / unresolved state.
+- [x] Unsupported or low-confidence semantics fail closed as unresolved; no model/provider fallback is executed.
+- [x] Add deterministic cluster key = Need + locale + intent + answer_job.
+- [x] Keep unresolved/off-scope questions visible but cluster-ineligible.
+- [x] Replace shortest-query primary selection with provenance -> independent repetition -> stable tie-break.
+- [x] Raise Question Map read-model schema to v2 while preserving QM-01A base count contract.
+- [x] Add focused EN/VI, answer-job, unresolved, off-scope, provenance and cluster tests.
 - [ ] MG self-review exact branch diff.
-- [ ] Agent Local exact-SHA targeted/full backend verification.
+- [ ] Agent Local exact-SHA focused/full backend verification.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Minimal GitHub CI confirmation if available.
 - [ ] Founder merge.
+
+## QM-01A — Canonical Question Map — DONE / PR #330 MERGED
+
+Tracking: issue #329. Exact task: `logs/2026-10-05-qm-01a-canonical-question-map.md`.
+
+- [x] Canonical Need + supporting SEARCH Signals -> locale-specific read-only Question Map.
+- [x] Deterministic normalize/dedupe + Signal provenance refs + stable `snapshot_hash`.
+- [x] `GET /question-map`.
+- [x] No new table/migration, model call, Opportunity mutation or UI.
+- [x] Ruff/mypy PASS; 5 QM tests + 40 regressions + 1399 full backend PASS.
+- [x] OCR exact-ref zero findings; GitHub CI #2225 SUCCESS.
+- [x] Founder merged PR #330 as main `94e6b324ee0dc35a3c1cbaaafc0cc8f0fa3eb3a7`.
 
 ## MGCTRL-01 — macOS Menu Bar Control v0.1 — MC-05 VERIFICATION WIP
 
