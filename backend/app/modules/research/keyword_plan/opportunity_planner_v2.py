@@ -680,6 +680,32 @@ async def build_opportunity_plan_v2(
     except QuestionCoverageError as exc:
         raise OpportunityPlannerError(exc.code) from exc
 
+    rows = (
+        await session.execute(
+            select(NeedHypothesisSignal, Signal)
+            .join(Signal, Signal.id == NeedHypothesisSignal.signal_id)
+            .where(
+                NeedHypothesisSignal.need_hypothesis_id == need.id,
+                Signal.project_id == project.id,
+            )
+            .order_by(
+                NeedHypothesisSignal.relation,
+                Signal.id,
+            )
+        )
+    ).all()
+
+    supporting_motgu_signals: list[Signal] = []
+    support_refs: list[str] = []
+    contradiction_refs: list[str] = []
+    for link, signal in rows:
+        if link.relation == "supports":
+            support_refs.append(str(signal.id))
+            if signal.source_kind == "MOTGU":
+                supporting_motgu_signals.append(signal)
+        elif link.relation == "contradicts":
+            contradiction_refs.append(str(signal.id))
+
     return plan_opportunity_projection(
         question_coverage=question_coverage,
         need=need,
