@@ -7,6 +7,23 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
+## QM-01A — Canonical Question Map — IMPLEMENTATION WIP
+
+Tracking: issue #329. Exact task: `logs/2026-10-05-qm-01a-canonical-question-map.md`.
+
+- [x] Branch from merged main `a0c4147b971da357d5c0ffe7ae759dd6f30a1518`.
+- [x] Build deterministic locale-specific Question Map from canonical Need + persisted supporting SEARCH Signals.
+- [x] Preserve Signal provenance refs and dedupe equivalent search language.
+- [x] Add stable `snapshot_hash`.
+- [x] Add read-only `GET /question-map` API.
+- [x] No new table/migration, no model call, no Opportunity mutation, no UI.
+- [x] Add regression tests for determinism, locale isolation, provenance, empty view, cross-project fail-closed and read-only behavior.
+- [ ] MG self-review exact branch diff.
+- [ ] Agent Local exact-SHA targeted/full backend verification.
+- [ ] Exact-ref OpenCodeReview.
+- [ ] Minimal GitHub CI confirmation if available.
+- [ ] Founder merge.
+
 ## MGCTRL-01 — macOS Menu Bar Control v0.1 — MC-05 VERIFICATION WIP
 
 Tracking: issue #327. Exact task: `logs/2026-10-05-mgctrl-01-menu-bar-v01.md`.
