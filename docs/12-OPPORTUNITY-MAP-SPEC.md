@@ -121,6 +121,51 @@ classifier chỉ để join. Không thay Need, ContentOpportunity hay Content Co
 Off-scope/truncated/unresolved không được tính là answered. `GET /question-map` giữ nguyên;
 coverage-aware projection dùng endpoint riêng `GET /question-map/coverage`.
 
+### Opportunity Planner v2 — QM-01D
+
+QM-01D biến Question Map + coverage thành recommendation nhưng vẫn chưa tạo
+`ContentOpportunity`.
+
+```text
+Question cluster
++ coverage
++ canonical Need state
++ linked supporting MOTGU first-party Signals
+→ 7 explainable dimensions
+→ decision + priority + human-selection readiness
+```
+
+Không dùng score 0–100. Bảy chiều bắt buộc:
+
+- Audience Fit: canonical audience binding hoặc `SCOPE_ONLY`;
+- Problem Strength: giữ nguyên Need status/type/version;
+- Search Evidence: cluster Signal refs + question count;
+- Content Gap: trạng thái QM-01C;
+- MOTGU Right-to-Win: chỉ linked supporting `MOTGU` Signals;
+- Business Connection: derived rule, chưa phải canonical entity binding;
+- Evidence Readiness: suy từ canonical Need status, không re-score Need.
+
+Right-to-Win ở bước này chỉ là first-party planning signal. Nó không phải locked
+EvidenceSet, không phải approved OriginalityPack và không mở quyền viết bài.
+
+Decision policy:
+
+- `MISSING → CREATE`;
+- `STALE → REFRESH`;
+- `ANSWERED → LINK_ONLY`, hoặc `UPDATE` nếu có first-party Right-to-Win để
+  đề xuất giá trị bổ sung;
+- `PARTIAL → UPDATE` khi đã có matching ContentItem, nếu chỉ có plan thì giữ
+  hướng `CREATE` và phải reuse plan ref;
+- `COLLISION → MERGE` khi có nhiều ContentItem; plan-only collision bị BLOCKED
+  để không tạo thêm duplicate plan;
+- `INSUFFICIENT_DATA → DO_NOT_WRITE / RESEARCH_REQUIRED` ở snapshot hiện tại;
+- Need `REJECTED → DO_NOT_WRITE / NO`.
+
+Non-CREATE action dựa trên existing content phải trả explicit ContentItem refs.
+Human selection vẫn là bước riêng. Planner không persist recommendation.
+
+Endpoint: `GET /question-map/opportunities`.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
