@@ -432,15 +432,18 @@ def join_question_map_with_coverage(
         "COLLISION",
         "INSUFFICIENT_DATA",
     )
-    counts = {
-        status: sum(
-            1
-            for cluster in joined_clusters
-            if isinstance(cluster.get("coverage"), dict)
-            and cluster["coverage"].get("status") == status
+    counts: dict[str, int] = {status: 0 for status in statuses}
+    for cluster in joined_clusters:
+        coverage = _required_dict(
+            cluster.get("coverage"),
+            "question_coverage_cluster_projection_invalid",
         )
-        for status in statuses
-    }
+        coverage_status = coverage.get("status")
+        if not isinstance(coverage_status, str) or coverage_status not in counts:
+            raise QuestionCoverageError(
+                "question_coverage_cluster_status_invalid"
+            )
+        counts[coverage_status] += 1
 
     snapshot: dict[str, object] = {
         "schema_version": QUESTION_COVERAGE_SCHEMA_VERSION,
