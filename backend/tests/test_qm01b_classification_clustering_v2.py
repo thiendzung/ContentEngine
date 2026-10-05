@@ -222,6 +222,34 @@ def test_cluster_primary_question_prefers_stronger_source_before_repetition() ->
     assert clusters[0].primary_question_key == "paa"
 
 
+def test_cluster_primary_question_prefers_independent_repetition() -> None:
+    questions = [
+        _question(
+            key="duplicate-heavy",
+            text="How much should I spend on art?",
+            source_priority=3,
+            source_count=3,
+            independent_source_count=1,
+        ),
+        _question(
+            key="independent",
+            text="What budget should I set for a painting?",
+            source_priority=3,
+            source_count=2,
+            independent_source_count=2,
+        ),
+    ]
+
+    clusters = build_question_clusters_v2(
+        need_id="need-1",
+        locale="en",
+        questions=questions,
+    )
+
+    assert len(clusters) == 1
+    assert clusters[0].primary_question_key == "independent"
+
+
 @pytest.mark.asyncio
 async def test_question_map_v2_exposes_classification_clusters_and_versions() -> None:
     async with isolated_session() as session:
