@@ -418,10 +418,7 @@ def classify_question_v2(
     quality = _query_quality(value, off_scope=bool(rule and rule.off_scope))
 
     unsupported_locale = locale_family(locale) not in {"en", "vi"}
-    unresolved = (
-        quality is QueryQuality.USABLE
-        and (rule is None or unsupported_locale)
-    )
+    unresolved = rule is None or unsupported_locale
     if unresolved:
         confidence = Confidence.LOW
 
@@ -434,7 +431,9 @@ def classify_question_v2(
         confidence=confidence,
         query_quality=quality,
         classification_status="unresolved" if unresolved else "classified",
-        semantic_fallback_required=unresolved,
+        semantic_fallback_required=(
+            unresolved and quality is QueryQuality.USABLE
+        ),
     )
 
 
