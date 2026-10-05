@@ -1,8 +1,8 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-01B Classification / Clustering v2
+## Current WIP — QM-01C Question Map × Content Coverage
 
-Founder authorized implementation on 2026-10-05. Branch `feat/qm-01b-classification-clustering-v2` is based on merged QM-01A main `94e6b324ee0dc35a3c1cbaaafc0cc8f0fa3eb3a7` and tracked by issue #331. QM-01B keeps Question Map as derived decision-support only: canonical Need + supporting SEARCH Signals remain authoritative inputs; the new path adds locale-aware EN/VI classification, explicit unresolved/off-scope states, answer-job clustering keyed by Need + locale + intent + answer_job, and deterministic primary-question selection by provenance/independent repetition. Legacy OpportunityMap classification/decision semantics are intentionally unchanged. No DB migration/table, no model/provider call, no ContentOpportunity mutation and no UI are authorized in QM-01B. Exact task boundary: `docs/logs/2026-10-05-qm-01b-classification-clustering-v2.md`.
+Founder authorized implementation on 2026-10-05. Branch `feat/qm-01c-question-coverage-join` is based on merged QM-01B main `b01849bbf4028c1e6a21b2c41248cdb643b597cb` and tracked by issue #333. QM-01C is a read-only derived join: Question Map remains authoritative for Need + locale + intent + answer_job clusters, and existing Content Coverage remains authoritative for content/publication/revision/planning facts. The join derives ANSWERED / PARTIAL / MISSING / STALE / COLLISION plus fail-closed INSUFFICIENT_DATA when same-intent candidate semantics cannot be safely classified. Existing `GET /question-map` remains unchanged; QM-01C adds separate `GET /question-map/coverage`. No DB migration/table, model/provider call, ContentOpportunity mutation, UI, publication or operational workflow execution is authorized. Exact task boundary: `docs/logs/2026-10-05-qm-01c-question-coverage-join.md`.
 
 ## Read first and verify the actual ref
 
