@@ -259,6 +259,11 @@ def _cluster_coverage(
                 }
             )
 
+    matched_item_ids = {
+        str(item.get("id", ""))
+        for item in matched_items
+        if str(item.get("id", ""))
+    }
     matched_opportunities: list[dict[str, object]] = []
     do_not_write_refs: list[str] = []
     for opportunity in same_locale_opportunities:
@@ -270,12 +275,29 @@ def _cluster_coverage(
             cluster_answer_job=answer_job,
         )
         if relation == "match":
-            if opportunity.get("decision") == "DO_NOT_WRITE":
+            decision = opportunity.get("decision")
+            if decision == "DO_NOT_WRITE":
                 do_not_write_refs.append(str(opportunity.get("id", "")))
-            else:
-                matched_opportunities.append(
-                    _project_opportunity(opportunity)
-                )
+                continue
+            if decision in {"UPDATE", "REFRESH"}:
+                raw_refs = opportunity.get("existing_content_refs")
+                refs = {
+                    ref.strip()
+                    for ref in raw_refs
+                    if isinstance(ref, str) and ref.strip()
+                } if isinstance(raw_refs, list) else set()
+                if not refs or not (refs & matched_item_ids):
+                    unresolved_candidates.append(
+                        {
+                            "kind": "selected_opportunity",
+                            "id": str(opportunity.get("id", "")),
+                            "reason": "selected_update_target_cluster_mismatch",
+                        }
+                    )
+                    continue
+            matched_opportunities.append(
+                _project_opportunity(opportunity)
+            )
         elif relation == "unresolved":
             unresolved_candidates.append(
                 {
