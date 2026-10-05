@@ -1,0 +1,256 @@
+import MGControlCore
+import SwiftUI
+
+struct MenuBarView: View {
+    @ObservedObject var model: MenuBarViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            statusHeader
+            Divider()
+            controlStrip
+            Divider()
+            quickMenu
+            Divider()
+            footer
+        }
+        .frame(width: 330)
+        .background(.regularMaterial)
+        .task {
+            await model.refresh()
+        }
+    }
+
+    private var statusHeader: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ContentEngine")
+                    .font(.headline)
+                if let message = model.snapshot.message {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 12)
+
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                Text(model.snapshot.engineStatus.vietnameseLabel)
+                    .font(.subheadline.weight(.medium))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    private var controlStrip: some View {
+        HStack(spacing: 8) {
+            ControlIconButton(
+                systemImage: "play.fill",
+                title: "Khởi động",
+                color: .green,
+                enabled: model.canStartEngine && !model.isBusy
+            ) {
+                // MC-05 sẽ nối lifecycle local sau khi khóa đúng release/runtime.
+            }
+
+            ControlIconButton(
+                systemImage: "stop.fill",
+                title: "Dừng hệ thống",
+                color: .red,
+                enabled: model.canStopEngine && !model.isBusy
+            ) {
+                // MC-05 sẽ nối graceful stop; không reset DB/history.
+            }
+
+            ControlIconButton(
+                systemImage: "forward.fill",
+                title: continueHelp,
+                color: .blue,
+                enabled: model.continueTarget != nil && !model.isBusy
+            ) {
+                guard let target = model.continueTarget else { return }
+                Task { await model.perform(target) }
+            }
+
+            ControlIconButton(
+                systemImage: "arrow.clockwise",
+                title: retryHelp,
+                color: .orange,
+                enabled: model.retryTarget != nil && !model.isBusy
+            ) {
+                guard let target = model.retryTarget else { return }
+                Task { await model.perform(target) }
+            }
+
+            ControlIconButton(
+                systemImage: "xmark",
+                title: cancelHelp,
+                color: .red,
+                enabled: model.cancelTarget != nil && !model.isBusy
+            ) {
+                guard let target = model.cancelTarget else { return }
+                Task { await model.perform(target) }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private var quickMenu: some View {
+        VStack(spacing: 2) {
+            QuickMenuRow(
+                route: .needsMe,
+                trailingCount: model.needsMeCount
+            ) {
+                model.open(.needsMe)
+            }
+
+            QuickMenuRow(route: .newJournal) {
+                model.open(.newJournal)
+            }
+
+            QuickMenuRow(route: .production) {
+                model.open(.production)
+            }
+
+            QuickMenuRow(route: .contentMap) {
+                model.open(.contentMap)
+            }
+
+            QuickMenuRow(route: .system) {
+                model.open(.system)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+    }
+
+    private var footer: some View {
+        VStack(spacing: 2) {
+            QuickMenuRow(route: .dashboard) {
+                model.open(.dashboard)
+            }
+
+            Button {
+                model.quit()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "power")
+                        .frame(width: 18)
+                    Text("Thoát MG")
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+    }
+
+    private var statusColor: Color {
+        switch model.snapshot.engineStatus {
+        case .running:
+            return .green
+        case .stopped:
+            return .secondary
+        case .error:
+            return .red
+        case .unknown:
+            return .orange
+        }
+    }
+
+    private var continueHelp: String {
+        guard let target = model.continueTarget else {
+            return "Tiếp tục"
+        }
+        return "Tiếp tục — \(target.title)"
+    }
+
+    private var retryHelp: String {
+        guard let target = model.retryTarget else {
+            return "Thử lại"
+        }
+        return "Thử lại — \(target.title)"
+    }
+
+    private var cancelHelp: String {
+        guard let target = model.cancelTarget else {
+            return "Hủy tác vụ"
+        }
+        return "Hủy tác vụ — \(target.title)"
+    }
+}
+
+private struct ControlIconButton: View {
+    let systemImage: String
+    let title: String
+    let color: Color
+    let enabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(enabled ? color : Color.secondary)
+                .frame(width: 38, height: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.primary.opacity(enabled ? 0.07 : 0.035))
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .help(title)
+        .accessibilityLabel(Text(title))
+    }
+}
+
+private struct QuickMenuRow: View {
+    let route: QuickRoute
+    var trailingCount: Int? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: route.systemImage)
+                    .frame(width: 18)
+                    .foregroundStyle(.secondary)
+
+                Text(route.title)
+
+                Spacer()
+
+                if let trailingCount, trailingCount > 0 {
+                    Text("\(trailingCount)")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Color.orange.opacity(0.18))
+                        )
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .frame(height: 34)
+        .accessibilityLabel(
+            trailingCount.map { Text("\(route.title), \($0)") } ?? Text(route.title)
+        )
+    }
+}
