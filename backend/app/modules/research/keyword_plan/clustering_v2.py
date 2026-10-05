@@ -5,9 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from app.modules.research.keyword_plan.classification_v2 import (
-    QuestionClassificationV2,
-)
+from app.modules.research.keyword_plan.classification_v2 import QuestionClassificationV2
 from app.modules.research.keyword_plan.contracts import QueryQuality
 
 
