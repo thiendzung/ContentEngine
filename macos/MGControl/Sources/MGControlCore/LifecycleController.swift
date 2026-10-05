@@ -620,8 +620,11 @@ public final class LifecycleController: @unchecked Sendable {
         }
     }
 
-    private var commandEnvironment: [String: String] {
-        let home = fileManager.homeDirectoryForCurrentUser.path
+    static func safeEnvironment(
+        home: String,
+        lang: String?,
+        tmpdir: String?
+    ) -> [String: String] {
         let path = [
             "\(home)/.local/bin",
             "/opt/homebrew/bin",
@@ -637,15 +640,21 @@ public final class LifecycleController: @unchecked Sendable {
             "HOME": home,
             "PYTHONUNBUFFERED": "1",
         ]
-        if let lang = ProcessInfo.processInfo.environment["LANG"],
-           !lang.isEmpty {
+        if let lang, !lang.isEmpty {
             environment["LANG"] = lang
         }
-        if let tmpdir = ProcessInfo.processInfo.environment["TMPDIR"],
-           !tmpdir.isEmpty {
+        if let tmpdir, !tmpdir.isEmpty {
             environment["TMPDIR"] = tmpdir
         }
         return environment
+    }
+
+    private var commandEnvironment: [String: String] {
+        Self.safeEnvironment(
+            home: fileManager.homeDirectoryForCurrentUser.path,
+            lang: ProcessInfo.processInfo.environment["LANG"],
+            tmpdir: ProcessInfo.processInfo.environment["TMPDIR"]
+        )
     }
 
     private func concise(
