@@ -494,6 +494,33 @@ def test_projection_fails_closed_on_upstream_identity_and_hash_mismatch() -> Non
             contradiction_refs=[],
         )
 
+    bad_locale = dict(coverage)
+    bad_locale["locale"] = ""
+    with pytest.raises(
+        OpportunityPlannerError,
+        match="opportunity_planner_locale_invalid",
+    ):
+        plan_opportunity_projection(
+            question_coverage=bad_locale,
+            need=need,
+            supporting_motgu_signals=[],
+            support_refs=[],
+            contradiction_refs=[],
+        )
+
+    foreign_signal = _motgu_signal(project_id=uuid4())
+    with pytest.raises(
+        OpportunityPlannerError,
+        match="opportunity_planner_right_to_win_signal_invalid",
+    ):
+        plan_opportunity_projection(
+            question_coverage=coverage,
+            need=need,
+            supporting_motgu_signals=[foreign_signal],
+            support_refs=[str(foreign_signal.id)],
+            contradiction_refs=[],
+        )
+
 
 async def _db_project(session: AsyncSession) -> Project:
     project = Project(
@@ -588,6 +615,22 @@ async def test_opportunity_planner_route_is_read_only_and_uses_only_supporting_m
             source_kind="MOTGU",
             scope="motgu_direct",
         )
+        conflicted = await _db_signal(
+            session,
+            project,
+            need,
+            text="One reviewed observation has conflicting relation labels.",
+            source_kind="MOTGU",
+            scope="motgu_direct",
+        )
+        session.add(
+            NeedHypothesisSignal(
+                need_hypothesis_id=need.id,
+                signal_id=conflicted.id,
+                relation="contradicts",
+            )
+        )
+        await session.flush()
         contradiction = await _db_signal(
             session,
             project,
@@ -630,6 +673,13 @@ async def test_opportunity_planner_route_is_read_only_and_uses_only_supporting_m
         assert row["priority"] == "NEXT"
         assert payload["right_to_win"]["right_to_win_proven"] is False
         assert str(motgu.id) in payload["right_to_win"]["signal_refs"]
+        assert str(conflicted.id) not in payload["right_to_win"]["signal_refs"]
+        assert str(conflicted.id) in (
+            payload["need_signal_state"]["support_signal_refs"]
+        )
+        assert str(conflicted.id) in (
+            payload["need_signal_state"]["contradiction_signal_refs"]
+        )
         assert str(contradiction.id) not in payload["right_to_win"]["signal_refs"]
         assert str(contradiction.id) in (
             payload["need_signal_state"]["contradiction_signal_refs"]
