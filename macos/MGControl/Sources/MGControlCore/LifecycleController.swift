@@ -185,17 +185,30 @@ public final class LifecycleController: @unchecked Sendable {
 
         let registered = checks.filter(\.registered).count
         let running = checks.filter(\.running).count
+        let byLabel = Dictionary(
+            uniqueKeysWithValues: checks.map { ($0.label, $0) }
+        )
 
         if registered == 0 {
             return .stopped
         }
-        if registered == Self.labels.count && running == Self.labels.count {
+
+        let coreRegistered = Self.coreLabels.allSatisfy {
+            byLabel[$0]?.registered == true
+        }
+        let coreRunning = Self.coreLabels.allSatisfy {
+            byLabel[$0]?.running == true
+        }
+        let workerRegistered = byLabel[Self.workerLabel]?.registered == true
+
+        if coreRegistered && coreRunning && workerRegistered {
             return ManagedRuntimeStatus(
                 state: .running,
                 registeredJobs: registered,
                 runningJobs: running
             )
         }
+
         return ManagedRuntimeStatus(
             state: .partial,
             registeredJobs: registered,
@@ -248,7 +261,7 @@ public final class LifecycleController: @unchecked Sendable {
                 bootstrapped.append(label)
             }
 
-            for label in Self.labels {
+            for label in Self.coreLabels {
                 let result = try await runner.run(
                     executable: URL(fileURLWithPath: "/bin/launchctl"),
                     arguments: [
@@ -279,6 +292,32 @@ public final class LifecycleController: @unchecked Sendable {
             registeredJobs: launched.registeredJobs,
             runningJobs: launched.runningJobs
         )
+    }
+
+    public func triggerWorkerOnce() async throws {
+        let worker = await launchdState(label: Self.workerLabel)
+        guard worker.registered else {
+            throw LifecycleError.partialManagedRuntime
+        }
+        if worker.running {
+            return
+        }
+
+        let result = try await runner.run(
+            executable: URL(fileURLWithPath: "/bin/launchctl"),
+            arguments: [
+                "kickstart",
+                "-p",
+                "\(launchdDomain)/\(Self.workerLabel)",
+            ],
+            currentDirectory: nil,
+            environment: nil
+        )
+        guard result.exitCode == 0 else {
+            throw LifecycleError.launchdFailed(
+                concise(result.output, fallback: Self.workerLabel)
+            )
+        }
     }
 
     public func stop() async throws -> ManagedRuntimeStatus {
@@ -326,6 +365,7 @@ public final class LifecycleController: @unchecked Sendable {
         programArguments: [String],
         workingDirectory: String,
         environment: [String: String],
+        runAtLoad: Bool,
         stdoutPath: String,
         stderrPath: String
     ) -> [String: Any] {
@@ -334,13 +374,18 @@ public final class LifecycleController: @unchecked Sendable {
             "ProgramArguments": programArguments,
             "WorkingDirectory": workingDirectory,
             "EnvironmentVariables": environment,
-            "RunAtLoad": true,
+            "RunAtLoad": runAtLoad,
             "KeepAlive": false,
             "ProcessType": "Background",
             "StandardOutPath": stdoutPath,
             "StandardErrorPath": stderrPath,
         ]
     }
+
+    private static let coreLabels = [
+        backendLabel,
+        frontendLabel,
+    ]
 
     private static let labels = [
         backendLabel,
@@ -349,6 +394,7 @@ public final class LifecycleController: @unchecked Sendable {
     ]
 
     private struct LaunchdJobState: Sendable {
+        let label: String
         let registered: Bool
         let running: Bool
     }
@@ -473,7 +519,7 @@ public final class LifecycleController: @unchecked Sendable {
         )
 
         let environment = commandEnvironment
-        let jobs: [(String, [String], URL)] = [
+        let jobs: [(String, [String], URL, Bool)] = [
             (
                 Self.backendLabel,
                 [
@@ -487,7 +533,8 @@ public final class LifecycleController: @unchecked Sendable {
                     "8000",
                     "--no-access-log",
                 ],
-                backendRoot
+                backendRoot,
+                true
             ),
             (
                 Self.frontendLabel,
@@ -499,26 +546,29 @@ public final class LifecycleController: @unchecked Sendable {
                     "--port",
                     "3000",
                 ],
-                frontendRoot
+                frontendRoot,
+                true
             ),
             (
                 Self.workerLabel,
                 [
                     backendPython.path,
                     "-m",
-                    "scripts.run_operator_worker_loop",
+                    "scripts.run_operator_worker",
                 ],
-                backendRoot
+                backendRoot,
+                false
             ),
         ]
 
-        for (label, arguments, workingDirectory) in jobs {
+        for (label, arguments, workingDirectory, runAtLoad) in jobs {
             let safeName = label.replacingOccurrences(of: ".", with: "-")
             let plist = Self.launchAgentPlist(
                 label: label,
                 programArguments: arguments,
                 workingDirectory: workingDirectory.path,
                 environment: environment,
+                runAtLoad: runAtLoad,
                 stdoutPath: logDirectory
                     .appending(path: "\(safeName).log").path,
                 stderrPath: logDirectory
@@ -577,12 +627,14 @@ public final class LifecycleController: @unchecked Sendable {
             environment: nil
         ), result.exitCode == 0 else {
             return LaunchdJobState(
+                label: label,
                 registered: false,
                 running: false
             )
         }
 
         return LaunchdJobState(
+            label: label,
             registered: true,
             running: result.output.contains("state = running")
         )
