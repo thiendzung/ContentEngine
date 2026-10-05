@@ -53,6 +53,10 @@ def _question_map_fixture() -> dict[str, object]:
         },
         "locale": "en",
         "snapshot_hash": "q" * 64,
+        "source_policy": {
+            "classifier_version": "question-map-classifier-v2",
+            "clustering_version": "question-map-clustering-v2",
+        },
         "clusters": [
             {
                 "cluster_key": "cluster-budget",
@@ -76,6 +80,7 @@ def _coverage_fixture(
 ) -> dict[str, object]:
     return {
         "schema_version": 1,
+        "project": {"id": "project-1", "slug": "motgu", "name": "MOTGU"},
         "needs": [
             {
                 "need": {"id": "need-1"},
@@ -162,6 +167,37 @@ def _status(result: dict[str, object]) -> str:
     status = coverage["status"]
     assert isinstance(status, str)
     return status
+
+
+def test_question_coverage_fails_closed_on_projection_contract_mismatch() -> None:
+    question_map = _question_map_fixture()
+    coverage = _coverage_fixture()
+
+    bad_schema = dict(question_map)
+    bad_schema["schema_version"] = 999
+    with pytest.raises(
+        ValueError,
+        match="question_coverage_question_map_schema_unsupported",
+    ):
+        join_question_map_with_coverage(
+            question_map=bad_schema,
+            content_coverage=coverage,
+        )
+
+    bad_project = _coverage_fixture()
+    bad_project["project"] = {
+        "id": "foreign-project",
+        "slug": "foreign",
+        "name": "Foreign",
+    }
+    with pytest.raises(
+        ValueError,
+        match="question_coverage_project_mismatch",
+    ):
+        join_question_map_with_coverage(
+            question_map=question_map,
+            content_coverage=bad_project,
+        )
 
 
 def test_question_coverage_answered_requires_primary_published_match() -> None:
