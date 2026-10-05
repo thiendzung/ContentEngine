@@ -387,10 +387,23 @@ def join_question_map_with_coverage(
         content_coverage.get("project"),
         "question_coverage_project_projection_invalid",
     )
-    if str(question_project.get("id", "")) != str(
-        coverage_project.get("id", "")
-    ):
+    question_project_id = str(question_project.get("id", "")).strip()
+    coverage_project_id = str(coverage_project.get("id", "")).strip()
+    if not question_project_id or not coverage_project_id:
+        raise QuestionCoverageError(
+            "question_coverage_project_projection_invalid"
+        )
+    if question_project_id != coverage_project_id:
         raise QuestionCoverageError("question_coverage_project_mismatch")
+
+    question_map_hash = question_map.get("snapshot_hash")
+    if (
+        not isinstance(question_map_hash, str)
+        or len(question_map_hash) != 64
+    ):
+        raise QuestionCoverageError(
+            "question_coverage_question_map_hash_invalid"
+        )
 
     source_policy = _required_dict(
         question_map.get("source_policy"),
@@ -507,7 +520,7 @@ def join_question_map_with_coverage(
         "project": question_map.get("project"),
         "need": need,
         "locale": locale,
-        "question_map_snapshot_hash": question_map.get("snapshot_hash"),
+        "question_map_snapshot_hash": question_map_hash,
         "content_coverage_schema_version": content_coverage.get(
             "schema_version"
         ),
