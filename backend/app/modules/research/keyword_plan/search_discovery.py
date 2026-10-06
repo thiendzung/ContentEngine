@@ -508,6 +508,24 @@ async def _persist_observation_groups(
             f"{representative['query']}"
         )
         signal.independence_group = fingerprint
+        prior_artifact_refs = prior.get("artifact_refs")
+        artifact_refs = {
+            str(value)
+            for value in (
+                prior_artifact_refs
+                if isinstance(prior_artifact_refs, list)
+                else []
+            )
+            if isinstance(value, str) and value
+        }
+        artifact_refs.update(
+            str(row["artifact_ref"])
+            for row in occurrences
+            if row.get("artifact_ref")
+        )
+        if request.artifact_ref:
+            artifact_refs.add(request.artifact_ref)
+
         signal.provenance_json = {
             "origin": SEARCH_DISCOVERY_POLICY_VERSION,
             "provider": representative.get("provider"),
@@ -515,11 +533,7 @@ async def _persist_observation_groups(
             "locator": representative.get("query"),
             "source_ref": representative.get("source_url"),
             "artifact_ref": representative.get("artifact_ref"),
-            "artifact_refs": sorted({
-                str(row["artifact_ref"])
-                for row in occurrences
-                if row.get("artifact_ref")
-            }),
+            "artifact_refs": sorted(artifact_refs),
             "question_eligible": question_eligible,
             "customer_truth_eligible": False,
             "factual_evidence_eligible": False,
