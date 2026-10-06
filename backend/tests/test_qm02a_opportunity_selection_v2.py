@@ -424,6 +424,42 @@ async def test_founder_can_select_exact_pillar_candidate_without_child_cases() -
 
 
 @pytest.mark.asyncio
+async def test_unseen_stale_architecture_snapshot_is_rejected() -> None:
+    async with isolated_session() as session:
+        project, need, _ = await _canonical_inputs(session)
+        architecture = await build_content_architecture(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        candidates = architecture["candidates"]
+        assert isinstance(candidates, list)
+        cluster = next(
+            row
+            for row in candidates
+            if isinstance(row, dict) and row["role"] == "cluster"
+        )
+        request = _architecture_request(
+            project=project,
+            need=need,
+            architecture=architecture,
+            candidate=cluster,
+        )
+        request.expected_architecture_snapshot_hash = "f" * 64
+
+        with pytest.raises(
+            OpportunitySelectionError,
+            match="opportunity_selection_stale_architecture_snapshot",
+        ):
+            await persist_selected_opportunity(
+                session,
+                project_id=project.id,
+                request=request,
+            )
+
+
+@pytest.mark.asyncio
 async def test_founder_can_select_exact_cluster_candidate_from_architecture() -> None:
     async with isolated_session() as session:
         project, need, _ = await _canonical_inputs(session)
