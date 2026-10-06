@@ -47,6 +47,7 @@ class ProductionDecisionRoute(BaseModel):
     opportunity_id: UUID
     opportunity_version: int
     human_selection_id: UUID
+    selection_snapshot_hash: str
     need_hypothesis_id: UUID
     locale: str
     decision: str
@@ -67,6 +68,18 @@ def _stable_hash(value: object) -> str:
         ensure_ascii=False,
     ).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _selection_snapshot_hash(selection: HumanSelection) -> str:
+    return _stable_hash(
+        {
+            "id": str(selection.id),
+            "content_opportunity_id": str(selection.content_opportunity_id),
+            "selected_by": selection.selected_by,
+            "reason": selection.reason,
+            "selected_at": selection.selected_at.isoformat(),
+        }
+    )
 
 
 def _parse_target_refs(values: object) -> list[UUID]:
@@ -284,6 +297,11 @@ async def build_production_decision_route(
         raise ProductionDecisionRouterError(
             "production_route_opportunity_version_invalid"
         )
+    locale = opportunity.locale.strip().casefold()
+    if not locale:
+        raise ProductionDecisionRouterError(
+            "production_route_locale_invalid"
+        )
 
     selection = await _exact_selection(
         session,
@@ -315,8 +333,9 @@ async def build_production_decision_route(
         "opportunity_id": str(opportunity.id),
         "opportunity_version": opportunity.version,
         "human_selection_id": str(selection.id),
+        "selection_snapshot_hash": _selection_snapshot_hash(selection),
         "need_hypothesis_id": str(opportunity.need_hypothesis_id),
-        "locale": opportunity.locale.strip().casefold(),
+        "locale": locale,
         "decision": opportunity.decision,
         "route": route,
         "target_content_item_ids": [str(value) for value in target_ids],
