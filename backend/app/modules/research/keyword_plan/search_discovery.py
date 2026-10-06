@@ -21,6 +21,7 @@ from app.modules.content_engine.models import (
     Project,
     Signal,
 )
+from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.research.contracts import (
     ProductionResearchRequest,
     ProductionResearchResult,
@@ -589,6 +590,70 @@ async def _persist_observation_groups(
     )
 
 
+async def _protected_content_counts(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+) -> dict[str, int]:
+    return {
+        "opportunities": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(ContentOpportunity)
+                .where(ContentOpportunity.project_id == project_id)
+            )
+            or 0
+        ),
+        "selections": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(HumanSelection)
+                .join(
+                    ContentOpportunity,
+                    ContentOpportunity.id
+                    == HumanSelection.content_opportunity_id,
+                )
+                .where(ContentOpportunity.project_id == project_id)
+            )
+            or 0
+        ),
+        "cases": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(ContentCase)
+                .where(ContentCase.project_id == project_id)
+            )
+            or 0
+        ),
+        "runs": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(ContentRun)
+                .where(ContentRun.project_id == project_id)
+            )
+            or 0
+        ),
+        "steps": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(StepRun)
+                .join(ContentRun, ContentRun.id == StepRun.run_id)
+                .where(ContentRun.project_id == project_id)
+            )
+            or 0
+        ),
+        "jobs": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(Job)
+                .join(ContentRun, ContentRun.id == Job.run_id)
+                .where(ContentRun.project_id == project_id)
+            )
+            or 0
+        ),
+    }
+
+
 def _provider_decisions(
     result: ProductionResearchResult,
     *,
@@ -700,37 +765,10 @@ async def run_search_discovery(
         need.reviewed_at,
         need.review_reason,
     )
-    before_counts = {
-        "opportunities": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(ContentOpportunity)
-                .where(ContentOpportunity.project_id == project.id)
-            )
-            or 0
-        ),
-        "selections": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(HumanSelection)
-                .join(
-                    ContentOpportunity,
-                    ContentOpportunity.id
-                    == HumanSelection.content_opportunity_id,
-                )
-                .where(ContentOpportunity.project_id == project.id)
-            )
-            or 0
-        ),
-        "cases": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(ContentCase)
-                .where(ContentCase.project_id == project.id)
-            )
-            or 0
-        ),
-    }
+    before_counts = await _protected_content_counts(
+        session,
+        project_id=project.id,
+    )
 
     captured_at = datetime.now(UTC).isoformat()
     result = SearchDiscoveryResult(
@@ -911,43 +949,10 @@ async def run_search_discovery(
             "search_discovery_need_state_mutated"
         )
 
-    after_counts = {
-        "opportunities": int(
-            await session.scalar(
-                select(ContentOpportunity)
-                .where(ContentOpportunity.project_id == project.id)
-                .with_only_columns(
-                    __import__("sqlalchemy").func.count()
-                )
-            )
-            or 0
-        ),
-        "selections": int(
-            await session.scalar(
-                select(HumanSelection)
-                .join(
-                    ContentOpportunity,
-                    ContentOpportunity.id
-                    == HumanSelection.content_opportunity_id,
-                )
-                .where(ContentOpportunity.project_id == project.id)
-                .with_only_columns(
-                    __import__("sqlalchemy").func.count()
-                )
-            )
-            or 0
-        ),
-        "cases": int(
-            await session.scalar(
-                select(ContentCase)
-                .where(ContentCase.project_id == project.id)
-                .with_only_columns(
-                    __import__("sqlalchemy").func.count()
-                )
-            )
-            or 0
-        ),
-    }
+    after_counts = await _protected_content_counts(
+        session,
+        project_id=project.id,
+    )
     if after_counts != before_counts:
         raise SearchDiscoveryError(
             "search_discovery_unexpected_content_mutation"
