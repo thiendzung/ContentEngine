@@ -198,6 +198,7 @@ async def build_question_map(
         {
             "cluster_key": cluster.cluster_key,
             "intent": cluster.intent,
+            "audience_stage": cluster.audience_stage,
             "answer_job": cluster.answer_job,
             "primary_question_key": cluster.primary_question_key,
             "primary_question": cluster.primary_question,
