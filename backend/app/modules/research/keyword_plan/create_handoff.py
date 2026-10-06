@@ -31,6 +31,10 @@ from app.modules.research.keyword_plan.production_admission import (
     ProductionAdmissionError,
     build_production_admission,
 )
+from app.modules.research.keyword_plan.opportunity_selection_v2 import (
+    OpportunitySelectionError,
+    validate_persisted_opportunity_selection,
+)
 from app.modules.research.keyword_plan.production_decision_router import (
     ProductionDecisionRouterError,
     build_production_decision_route,
@@ -78,52 +82,6 @@ def _normalize_hash(value: str, *, code: str) -> str:
     ):
         raise CreateProductionHandoffError(code)
     return normalized
-
-
-def _require_qm02a_selection_lineage(
-    opportunity: ContentOpportunity,
-) -> None:
-    reasons = opportunity.reasons_json
-    if not isinstance(reasons, list) or any(
-        not isinstance(item, str) for item in reasons
-    ):
-        raise CreateProductionHandoffError(
-            "create_handoff_qm02a_lineage_required"
-        )
-    reason_set = set(reasons)
-    required = {
-        "qm02a_exact_planner_selection",
-        "selection_contract:qm02a-v1",
-    }
-    if not required.issubset(reason_set):
-        raise CreateProductionHandoffError(
-            "create_handoff_qm02a_lineage_required"
-        )
-
-    def marker(prefix: str) -> str:
-        matches = [
-            item.removeprefix(prefix)
-            for item in reasons
-            if item.startswith(prefix)
-        ]
-        if len(matches) != 1 or not matches[0]:
-            raise CreateProductionHandoffError(
-                "create_handoff_qm02a_lineage_required"
-            )
-        return matches[0]
-
-    planner_hash = marker("planner_snapshot:")
-    coverage_hash = marker("question_coverage_snapshot:")
-    _normalize_hash(
-        planner_hash,
-        code="create_handoff_qm02a_lineage_required",
-    )
-    _normalize_hash(
-        coverage_hash,
-        code="create_handoff_qm02a_lineage_required",
-    )
-    marker("planner_policy:")
-    marker("planner_cluster:")
 
 
 def _request_hash(
@@ -263,8 +221,6 @@ async def materialize_create_handoff(
         raise CreateProductionHandoffError(
             "create_handoff_opportunity_not_found"
         )
-    _require_qm02a_selection_lineage(locked_opportunity)
-
     locked_need = await session.scalar(
         select(NeedHypothesis)
         .where(
@@ -307,6 +263,17 @@ async def materialize_create_handoff(
         raise CreateProductionHandoffError(
             "create_handoff_requires_create_route"
         )
+
+    try:
+        await validate_persisted_opportunity_selection(
+            session,
+            project_id=project_id,
+            opportunity=locked_opportunity,
+        )
+    except OpportunitySelectionError as exc:
+        raise CreateProductionHandoffError(
+            f"create_handoff_{exc.code}"
+        ) from exc
 
     try:
         admission = await build_production_admission(
