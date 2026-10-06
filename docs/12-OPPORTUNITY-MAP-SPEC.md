@@ -365,10 +365,32 @@ khi exact Question/Search/Coverage/duplicate gates tạo ra
 `READY_FOR_HUMAN_SELECTION`, Founder đã chọn đúng candidate, route/admission vẫn current
 và D1 recompute lại các guard trong cùng transaction.
 
-**Implementation note:** merged QM-02D1 tại baseline F1R0 vẫn còn hard gate lịch sử
-`required_need_status=SUPPORTED`. Issue #354 / F1R1 phải thay production guard này cho
-khớp contract hai trục trước khi rerun real F1 pilot. F1R0 chỉ khóa architecture, không
-thay production code.
+**F1R1 implementation:** planner Content Readiness không còn dùng `SUPPORTED` như
+điều kiện duy nhất. `PROPOSED | TESTING | SUPPORTED` có thể đạt
+`READY_FOR_HUMAN_SELECTION` khi cluster usable, có SEARCH lineage, coverage quyết định được,
+không có duplicate/reuse/collision blocker và decision không phải `DO_NOT_WRITE`.
+`REJECTED` luôn block; `INSUFFICIENT_EVIDENCE` luôn research-required.
+
+QM-02D1 khóa cả selected opportunity và canonical Need trong cùng transaction. Trước
+khi nới truth-status gate, D1 bắt buộc opportunity giữ một **durable QM-02A selection receipt**
+hợp lệ: exact contract marker; current planner policy marker; một planner snapshot hash; một
+cluster key; một Question Coverage snapshot hash; một selection-payload hash khớp exact
+ContentOpportunity bytes; deterministic ContentOpportunity/HumanSelection IDs sinh từ
+`planner_snapshot_hash + cluster_key`; đúng một HumanSelection khớp actor/reason/time; và
+SEARCH signal lineage hợp lệ. Exact tập Signal đã được Founder chọn còn được bind
+bằng `selection_signal_set` hash, và chính tập Signal này cũng nằm trong
+`selection_payload` hash. Vì vậy thêm/bớt một SEARCH link hợp lệ sau thời điểm selection
+vẫn làm receipt stale và D1 fail closed.
+
+D1 **không recompute live planner snapshot** để chứng minh old selection, vì việc persist
+selection tự làm Content Coverage thay đổi và live planner có thể hợp lệ nhưng khác snapshot
+đã được Founder chọn. Thay vào đó mutation boundary kiểm tra immutable/deterministic receipt
+của đúng QM-02A selection. Marker giả, policy cũ, payload bị sửa, deterministic ID sai,
+HumanSelection không khớp hoặc Signal set drift đều fail closed.
+
+D1 chỉ materialize khi current Need thuộc `PROPOSED | TESTING | SUPPORTED`; nếu Need đã
+thành `REJECTED` hoặc `INSUFFICIENT_EVIDENCE` thì fail closed. Exact route/admission,
+idempotency, replay và downstream Evidence/Originality gates vẫn giữ nguyên.
 
 Output production mới của slice này chỉ gồm:
 

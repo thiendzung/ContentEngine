@@ -15,16 +15,27 @@ from app.modules.content_engine.models import (
     ContentExperiment,
     ContentItem,
     ContentOpportunity,
+    ContentOpportunitySignal,
     ContentVersion,
     HumanSelection,
     LocaleVariant,
     NeedHypothesis,
+    NeedHypothesisSignal,
     Project,
+    Signal,
 )
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.research.keyword_plan.create_handoff import (
     CreateProductionHandoffError,
     materialize_create_handoff,
+)
+from app.modules.research.keyword_plan.opportunity_planner_v2 import (
+    OPPORTUNITY_PLANNER_POLICY_VERSION,
+    build_opportunity_plan_v2,
+)
+from app.modules.research.keyword_plan.opportunity_selection_v2 import (
+    OpportunitySelectionRequest,
+    persist_selected_opportunity,
 )
 from app.modules.research.keyword_plan.production_admission import (
     build_production_admission,
@@ -80,6 +91,42 @@ async def _need(
     return need
 
 
+async def _search_signal(
+    session: AsyncSession,
+    *,
+    project: Project,
+    need: NeedHypothesis,
+    text: str,
+) -> Signal:
+    signal = Signal(
+        project_id=project.id,
+        source_kind="SEARCH",
+        scope="market_web",
+        observed_text=text,
+        source_url=f"https://example.com/{uuid4().hex}",
+        locale="en",
+        context="QM-02D1 fixture",
+        captured_at=datetime.now(UTC),
+        fingerprint=uuid4().hex,
+        independence_group=uuid4().hex,
+        provenance_json={
+            "provider": "fixture",
+            "method": "people_also_ask",
+        },
+    )
+    session.add(signal)
+    await session.flush()
+    session.add(
+        NeedHypothesisSignal(
+            need_hypothesis_id=need.id,
+            signal_id=signal.id,
+            relation="supports",
+        )
+    )
+    await session.flush()
+    return signal
+
+
 async def _selected_opportunity(
     session: AsyncSession,
     *,
@@ -88,6 +135,66 @@ async def _selected_opportunity(
     decision: str,
     target_ids: list[UUID],
 ) -> ContentOpportunity:
+    if (
+        decision == "CREATE"
+        and not target_ids
+        and need.status in {"PROPOSED", "TESTING", "SUPPORTED"}
+    ):
+        await _search_signal(
+            session,
+            project=project,
+            need=need,
+            text="How much should I spend on my first painting?",
+        )
+        await _search_signal(
+            session,
+            project=project,
+            need=need,
+            text="What budget should I set for a painting?",
+        )
+        plan = await build_opportunity_plan_v2(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        recommendations = plan["recommendations"]
+        assert isinstance(recommendations, list)
+        assert len(recommendations) == 1
+        recommendation = recommendations[0]
+        assert isinstance(recommendation, dict)
+        assert recommendation["decision"] == "CREATE"
+        assert (
+            recommendation["selection_readiness"]
+            == "READY_FOR_HUMAN_SELECTION"
+        )
+        result = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=OpportunitySelectionRequest(
+                project_slug=project.slug,
+                need_id=need.id,
+                locale="en",
+                cluster_key=str(recommendation["cluster_key"]),
+                expected_planner_snapshot_hash=str(plan["snapshot_hash"]),
+                selected_by="founder",
+                selection_reason=(
+                    "Founder selected this exact opportunity."
+                ),
+                promise="Give a practical decision path.",
+                coverage_requirements=[
+                    "Explain the decision criteria.",
+                    "Show what the buyer should verify.",
+                ],
+            ),
+        )
+        opportunity = await session.get(
+            ContentOpportunity,
+            result.content_opportunity_id,
+        )
+        assert opportunity is not None
+        return opportunity
+
     selected_at = datetime.now(UTC)
     opportunity = ContentOpportunity(
         project_id=project.id,
@@ -110,7 +217,7 @@ async def _selected_opportunity(
         next_discovery_step="Materialize only after admission.",
         decision=decision,
         priority="NOW" if decision == "CREATE" else "NEXT",
-        reasons_json=["qm02d1_fixture"],
+        reasons_json=["manual_fixture"],
         suggested_content_type="journal",
         suggested_role="cluster",
         version=1,
@@ -265,6 +372,283 @@ async def _counts(session: AsyncSession) -> dict[str, int]:
 
 
 @pytest.mark.asyncio
+async def test_create_handoff_requires_qm02a_selection_lineage() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        opportunity.reasons_json = ["manual_fixture_without_qm02a_lineage"]
+        await session.flush()
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match="create_handoff_opportunity_selection_lineage_invalid",
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+async def test_later_valid_search_link_invalidates_selection_receipt() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        later_signal = await _search_signal(
+            session,
+            project=project,
+            need=need,
+            text="What should I verify before buying original art?",
+        )
+        session.add(
+            ContentOpportunitySignal(
+                content_opportunity_id=opportunity.id,
+                signal_id=later_signal.id,
+            )
+        )
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_signal_set_stale"
+            ),
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+async def test_stale_planner_policy_marker_fails_closed() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        opportunity.reasons_json = [
+            (
+                "planner_policy:stale-policy"
+                if reason.startswith("planner_policy:")
+                else reason
+            )
+            for reason in opportunity.reasons_json
+        ]
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_lineage_policy_stale"
+            ),
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+
+@pytest.mark.asyncio
+async def test_selection_payload_tamper_fails_closed() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        opportunity.promise = "Tampered after Founder selection."
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_payload_mismatch"
+            ),
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+
+@pytest.mark.asyncio
+async def test_forged_lineage_markers_fail_closed_at_d1_boundary() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        original_reasons = list(opportunity.reasons_json)
+        forged_reasons: list[str] = []
+        for reason in original_reasons:
+            if reason.startswith("planner_snapshot:"):
+                forged_reasons.append(f"planner_snapshot:{'f' * 64}")
+            elif reason.startswith("planner_cluster:"):
+                forged_reasons.append("planner_cluster:forged-cluster")
+            elif reason.startswith("question_coverage_snapshot:"):
+                forged_reasons.append(
+                    f"question_coverage_snapshot:{'e' * 64}"
+                )
+            elif reason.startswith("planner_policy:"):
+                forged_reasons.append(
+                    f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}"
+                )
+            else:
+                forged_reasons.append(reason)
+        opportunity.reasons_json = forged_reasons
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_identity_mismatch"
+            ),
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["PROPOSED", "TESTING", "SUPPORTED"])
+async def test_create_handoff_allows_materializable_need_states(
+    status: str,
+) -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(
+            session,
+            project_id=project.id,
+            status=status,
+        )
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        result = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=f"qm02d1:{uuid4()}",
+        )
+        after = await _counts(session)
+
+        stored_need = await session.get(NeedHypothesis, need.id)
+        assert stored_need is not None
+        assert stored_need.status == status
+        assert result.replayed is False
+        assert after["case"] == before["case"] + 1
+        assert after["variant"] == before["variant"] + 1
+        assert after["command"] == before["command"] + 1
+        for key in ("run", "step", "job"):
+            assert after[key] == before[key]
+
+
+@pytest.mark.asyncio
 async def test_create_handoff_materializes_only_case_variant_and_receipt() -> None:
     async with isolated_session() as session:
         project = await _project(session)
@@ -349,6 +733,55 @@ async def test_exact_replay_returns_same_receipt_without_new_rows() -> None:
             idempotency_key=key,
         )
         before_replay = await _counts(session)
+
+        replay = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=key,
+        )
+        after_replay = await _counts(session)
+
+        assert replay.replayed is True
+        assert replay.command_id == first.command_id
+        assert replay.content_case_id == first.content_case_id
+        assert replay.source_locale_variant_id == first.source_locale_variant_id
+        assert after_replay == before_replay
+
+
+@pytest.mark.asyncio
+async def test_exact_replay_survives_later_need_rejection() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        key = f"qm02d1:{uuid4()}"
+        first = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=key,
+        )
+        before_replay = await _counts(session)
+
+        need.status = "REJECTED"
+        need.version += 1
+        await session.flush()
 
         replay = await materialize_create_handoff(
             session,
@@ -573,7 +1006,7 @@ async def test_current_non_admitted_create_is_rejected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_need_state_drift_blocks_materialization() -> None:
+async def test_rejected_need_state_drift_blocks_materialization() -> None:
     async with isolated_session() as session:
         project = await _project(session)
         need = await _need(session, project_id=project.id)
@@ -597,7 +1030,7 @@ async def test_need_state_drift_blocks_materialization() -> None:
 
         with pytest.raises(
             CreateProductionHandoffError,
-            match="create_handoff_requires_supported_need",
+            match="create_handoff_need_rejected",
         ):
             await materialize_create_handoff(
                 session,
@@ -614,6 +1047,45 @@ async def test_need_state_drift_blocks_materialization() -> None:
         assert after["command"] == before["command"]
         for key in ("item", "version", "experiment", "run", "step", "job"):
             assert after[key] == before[key]
+
+
+@pytest.mark.asyncio
+async def test_insufficient_evidence_need_blocks_materialization() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(
+            session,
+            project_id=project.id,
+            status="INSUFFICIENT_EVIDENCE",
+        )
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match="create_handoff_need_insufficient_evidence",
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
 
 
 @pytest.mark.asyncio

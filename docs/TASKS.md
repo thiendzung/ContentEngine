@@ -16,7 +16,7 @@ Tracking: issue #346. Architecture remediation: #353 → #354 → #355 → #356.
 - [x] Preserve that first run as diagnostic evidence; do not fake-promote a Need or use raw SQL to force the pilot through.
 - [x] #353 / F1R0: lock Customer Truth confidence and Content Readiness as independent axes.
 - [x] #352 is non-blocking Learning/Customer-Truth work; direct interviews may improve truth confidence but are not a QM prerequisite.
-- [ ] #354 / F1R1: replace the production `SUPPORTED` hard gate with derived Content Readiness while keeping `REJECTED` blocked and `INSUFFICIENT_EVIDENCE` research-required.
+- [x] #354 / F1R1 implementation: planner Content Readiness is derived from Question/Search/Coverage/duplicate gates; `PROPOSED|TESTING|SUPPORTED` may be selectable; `REJECTED` blocks; `INSUFFICIENT_EVIDENCE` is research-required; D1 uses the same bounded status policy and verifies the durable QM-02A selection receipt. Verification pending exact-SHA rerun after OCR remediation.
 - [ ] #355 / F1R2: complete deterministic Pillar/Cluster projection and exact lineage.
 - [ ] #356 / F1R3: run real Search Discovery with immutable capture + deterministic replay.
 - [ ] Rerun F1A: find one real non-rejected/non-insufficient Need whose Question/Search/Coverage gates yield `CREATE + READY_FOR_HUMAN_SELECTION`.
@@ -38,7 +38,7 @@ Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.
 - [x] Bind caller to exact QM-02B route snapshot + QM-02C admission snapshot.
 - [x] Lock the selected opportunity before final route/admission recheck.
 - [x] Recompute route + admission in the same transaction before materialization.
-- [x] Historical merged D1 behavior required canonical Need `SUPPORTED`; #353 records this as superseded architecture and #354 must replace the production guard before the pilot rerun.
+- [x] Historical D1 `SUPPORTED`-only guard is replaced by F1R1 bounded current-Need policy: allow `PROPOSED|TESTING|SUPPORTED`; block `REJECTED|INSUFFICIENT_EVIDENCE`; preserve exact route/admission/idempotency/replay and validate deterministic QM-02A receipt identity/payload/policy/HumanSelection and exact selected SEARCH Signal set; later Signal-link drift fails closed.
 - [x] Reuse existing `create_or_reuse_journal_case` for exactly one Journal ContentCase + source-locale LocaleVariant.
 - [x] Add durable idempotency/audit receipt using existing OperatorCommand infrastructure.
 - [x] Exact replay returns the same receipt; conflicting replay fails closed.

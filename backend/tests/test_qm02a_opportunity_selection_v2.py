@@ -377,6 +377,48 @@ async def test_exact_replay_is_idempotent_after_new_plan_changes_coverage() -> N
 
 
 @pytest.mark.asyncio
+async def test_exact_replay_rejects_later_signal_link_change() -> None:
+    async with isolated_session() as session:
+        project, need, _ = await _canonical_inputs(session)
+        plan = await build_opportunity_plan_v2(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        request = _request(project=project, need=need, plan=plan)
+        first = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+
+        later_signal = await _search_signal(
+            session,
+            project,
+            need,
+            text="What should I verify before buying original art?",
+        )
+        session.add(
+            ContentOpportunitySignal(
+                content_opportunity_id=first.content_opportunity_id,
+                signal_id=later_signal.id,
+            )
+        )
+        await session.flush()
+
+        with pytest.raises(
+            OpportunitySelectionError,
+            match="opportunity_selection_signal_set_stale",
+        ):
+            await persist_selected_opportunity(
+                session,
+                project_id=project.id,
+                request=request,
+            )
+
+
+@pytest.mark.asyncio
 async def test_exact_replay_survives_later_need_state_change() -> None:
     async with isolated_session() as session:
         project, need, _ = await _canonical_inputs(session)
@@ -476,11 +518,53 @@ async def test_stale_unseen_planner_snapshot_is_rejected_before_persistence() ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["PROPOSED", "TESTING"])
+async def test_content_ready_unsettled_need_can_persist_selection_without_promotion(
+    status: str,
+) -> None:
+    async with isolated_session() as session:
+        project, need, _ = await _canonical_inputs(
+            session,
+            status=status,
+        )
+        plan = await build_opportunity_plan_v2(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        recommendation = _one_recommendation(plan)
+        assert recommendation["selection_readiness"] == "READY_FOR_HUMAN_SELECTION"
+        assert plan["customer_truth"]["status"] == status
+
+        result = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=_request(project=project, need=need, plan=plan),
+        )
+
+        stored_need = await session.get(NeedHypothesis, need.id)
+        assert stored_need is not None
+        assert stored_need.status == status
+        assert result.replayed is False
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(ContentExperiment)
+            )
+        ) == 0
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(ContentCase)
+            )
+        ) == 0
+
+
+@pytest.mark.asyncio
 async def test_non_ready_recommendation_cannot_create_durable_plan() -> None:
     async with isolated_session() as session:
         project, need, _ = await _canonical_inputs(
             session,
-            status="PROPOSED",
+            status="INSUFFICIENT_EVIDENCE",
         )
         plan = await build_opportunity_plan_v2(
             session,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, Field
@@ -140,7 +141,25 @@ def _hash64(value: object, code: str) -> str:
     return text.lower()
 
 
-def _opportunity_payload_hash(row: ContentOpportunity) -> str:
+def _signal_ref_strings(signal_ids: Iterable[UUID]) -> list[str]:
+    return sorted({str(signal_id) for signal_id in signal_ids})
+
+
+def _signal_set_hash(signal_ids: Iterable[UUID]) -> str:
+    raw = json.dumps(
+        _signal_ref_strings(signal_ids),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _opportunity_payload_hash(
+    row: ContentOpportunity,
+    *,
+    signal_ids: Iterable[UUID],
+) -> str:
     payload = {
         "id": str(row.id),
         "project_id": str(row.project_id),
@@ -165,6 +184,7 @@ def _opportunity_payload_hash(row: ContentOpportunity) -> str:
         "version": row.version,
         "selected_by": row.selected_by,
         "selection_reason": row.selection_reason,
+        "signal_refs": _signal_ref_strings(signal_ids),
     }
     raw = json.dumps(
         payload,
@@ -305,12 +325,168 @@ async def _validate_content_refs(
         )
 
 
+def _single_lineage_marker(
+    reasons: list[str],
+    *,
+    prefix: str,
+    code: str,
+) -> str:
+    matches = [
+        item.removeprefix(prefix)
+        for item in reasons
+        if item.startswith(prefix)
+    ]
+    if len(matches) != 1 or not matches[0]:
+        raise OpportunitySelectionError(code)
+    return matches[0]
+
+
+async def validate_persisted_opportunity_selection(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    opportunity: ContentOpportunity,
+) -> None:
+    """Verify one durable QM-02A selection receipt without replaying live planner state."""
+
+    reasons = opportunity.reasons_json
+    if not isinstance(reasons, list) or any(
+        not isinstance(item, str) for item in reasons
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+    if reasons.count("qm02a_exact_planner_selection") != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+    if reasons.count("selection_contract:qm02a-v1") != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+
+    planner_hash = _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="planner_snapshot:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+    planner_policy = _single_lineage_marker(
+        reasons,
+        prefix="planner_policy:",
+        code="opportunity_selection_lineage_invalid",
+    )
+    if planner_policy != OPPORTUNITY_PLANNER_POLICY_VERSION:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_policy_stale"
+        )
+    cluster_key = _text(
+        _single_lineage_marker(
+            reasons,
+            prefix="planner_cluster:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+        max_length=128,
+    )
+    _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="question_coverage_snapshot:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+    payload_hash = _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="selection_payload:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+    selected_signal_set_hash = _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="selection_signal_set:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+
+    expected_opportunity_id = _stable_id(
+        "content-opportunity",
+        planner_hash=planner_hash,
+        cluster_key=cluster_key,
+    )
+    if opportunity.id != expected_opportunity_id:
+        raise OpportunitySelectionError(
+            "opportunity_selection_identity_mismatch"
+        )
+    selections = list(
+        (
+            await session.scalars(
+                select(HumanSelection)
+                .where(
+                    HumanSelection.content_opportunity_id == opportunity.id
+                )
+                .order_by(HumanSelection.id)
+            )
+        ).all()
+    )
+    if len(selections) != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_durable_selection_inconsistent"
+        )
+    selection = selections[0]
+    expected_selection_id = _stable_id(
+        "human-selection",
+        planner_hash=planner_hash,
+        cluster_key=cluster_key,
+    )
+    if (
+        selection.id != expected_selection_id
+        or selection.selected_by != opportunity.selected_by
+        or selection.reason != opportunity.selection_reason
+        or selection.selected_at != opportunity.selected_at
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_durable_selection_inconsistent"
+        )
+
+    linked_signal_ids = await _validate_existing_signal_lineage(
+        session,
+        opportunity_id=opportunity.id,
+        project_id=project_id,
+        need_id=opportunity.need_hypothesis_id,
+        locale=opportunity.locale,
+    )
+    if not linked_signal_ids:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_lineage_missing"
+        )
+    if _signal_set_hash(linked_signal_ids) != selected_signal_set_hash:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_set_stale"
+        )
+    if payload_hash != _opportunity_payload_hash(
+        opportunity,
+        signal_ids=linked_signal_ids,
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_payload_mismatch"
+        )
+
+
 def _lineage_reasons(
     recommendation: dict[str, object],
     *,
     planner_hash: str,
     cluster_key: str,
     question_coverage_hash: str,
+    signal_refs: list[UUID],
 ) -> list[str]:
     reasons = _string_list(
         recommendation.get("reason_codes"),
@@ -325,6 +501,7 @@ def _lineage_reasons(
                 f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}",
                 f"planner_cluster:{cluster_key}",
                 f"question_coverage_snapshot:{question_coverage_hash}",
+                f"selection_signal_set:{_signal_set_hash(signal_refs)}",
             ]
         )
     )
@@ -392,16 +569,6 @@ def _assert_existing_replay(
             "opportunity_selection_replay_conflict"
         )
 
-    payload_markers = [
-        item.removeprefix("selection_payload:")
-        for item in reasons
-        if item.startswith("selection_payload:")
-    ]
-    if payload_markers != [_opportunity_payload_hash(row)]:
-        raise OpportunitySelectionError(
-            "opportunity_selection_replay_conflict"
-        )
-
 
 async def _validate_existing_signal_lineage(
     session: AsyncSession,
@@ -410,7 +577,7 @@ async def _validate_existing_signal_lineage(
     project_id: UUID,
     need_id: UUID,
     locale: str,
-) -> None:
+) -> set[UUID]:
     rows = (
         await session.execute(
             select(Signal)
@@ -451,6 +618,7 @@ async def _validate_existing_signal_lineage(
         raise OpportunitySelectionError(
             "opportunity_selection_signal_lineage_conflict"
         )
+    return linked_ids
 
 
 async def persist_selected_opportunity(
@@ -555,12 +723,10 @@ async def persist_selected_opportunity(
             raise OpportunitySelectionError(
                 "opportunity_selection_replay_conflict"
             )
-        await _validate_existing_signal_lineage(
+        await validate_persisted_opportunity_selection(
             session,
-            opportunity_id=opportunity_id,
             project_id=project_id,
-            need_id=need.id,
-            locale=locale,
+            opportunity=existing,
         )
         return OpportunitySelectionResult(
             schema_version=OPPORTUNITY_SELECTION_SCHEMA_VERSION,
@@ -658,6 +824,7 @@ async def persist_selected_opportunity(
         planner_hash=planner_hash,
         cluster_key=cluster_key,
         question_coverage_hash=question_coverage_hash,
+        signal_refs=signal_refs,
     )
 
     selected_at = utc_now()
@@ -693,7 +860,10 @@ async def persist_selected_opportunity(
             opportunity.reasons_json
             + [
                 "selection_contract:qm02a-v1",
-                f"selection_payload:{_opportunity_payload_hash(opportunity)}",
+                (
+                    "selection_payload:"
+                    f"{_opportunity_payload_hash(opportunity, signal_ids=signal_refs)}"
+                ),
             ]
         )
     )
@@ -736,4 +906,5 @@ __all__ = [
     "OpportunitySelectionRequest",
     "OpportunitySelectionResult",
     "persist_selected_opportunity",
+    "validate_persisted_opportunity_selection",
 ]

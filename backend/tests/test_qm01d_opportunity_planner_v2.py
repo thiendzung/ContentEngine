@@ -402,7 +402,7 @@ def test_rejected_need_overrides_gap_and_is_do_not_write() -> None:
     assert row["selection_readiness"] == "BLOCKED"
 
 
-def test_proposed_need_keeps_candidate_but_requires_research() -> None:
+def test_proposed_need_can_be_content_ready_without_truth_promotion() -> None:
     need = _need(
         status="PROPOSED",
         missing_evidence=["review direct buyer evidence"],
@@ -411,12 +411,73 @@ def test_proposed_need_keeps_candidate_but_requires_research() -> None:
     row = _recommendation(plan)
 
     assert row["decision"] == "CREATE"
-    assert row["selection_readiness"] == "RESEARCH_REQUIRED"
-    assert row["priority"] == "LATER"
+    assert row["selection_readiness"] == "READY_FOR_HUMAN_SELECTION"
+    assert row["content_readiness"]["status"] == "READY_FOR_HUMAN_SELECTION"
+    assert row["priority"] == "NEXT"
+    assert plan["customer_truth"]["status"] == "PROPOSED"
+    assert plan["customer_truth"]["separate_from_content_readiness"] is True
     assert plan["evidence_readiness"]["status"] == "RESEARCH_REQUIRED"
     assert plan["evidence_readiness"]["known_gaps"] == [
         "review direct buyer evidence"
     ]
+
+
+def test_testing_need_can_be_content_ready_when_planning_gates_pass() -> None:
+    need = _need(status="TESTING")
+    plan = _plan(need=need)
+    row = _recommendation(plan)
+
+    assert row["decision"] == "CREATE"
+    assert row["selection_readiness"] == "READY_FOR_HUMAN_SELECTION"
+    assert row["priority"] == "NEXT"
+    assert plan["customer_truth"]["status"] == "TESTING"
+
+
+def test_insufficient_evidence_need_requires_research_even_with_search_gap() -> None:
+    need = _need(status="INSUFFICIENT_EVIDENCE")
+    plan = _plan(need=need)
+    row = _recommendation(plan)
+
+    assert row["decision"] == "CREATE"
+    assert row["selection_readiness"] == "RESEARCH_REQUIRED"
+    assert row["priority"] == "LATER"
+    assert "canonical_need_evidence_insufficient" in row["reason_codes"]
+
+
+def test_missing_search_lineage_requires_research_even_for_supported_need() -> None:
+    row = _recommendation(
+        _plan(
+            need=_need(status="SUPPORTED"),
+            search_signal_count=0,
+        )
+    )
+
+    assert row["decision"] == "CREATE"
+    assert row["selection_readiness"] == "RESEARCH_REQUIRED"
+    assert row["priority"] == "LATER"
+    assert "search_lineage_missing" in row["reason_codes"]
+
+
+def test_unusable_cluster_requires_research() -> None:
+    need = _need(status="PROPOSED")
+    coverage = _question_coverage(need=need)
+    clusters = coverage["clusters"]
+    assert isinstance(clusters, list)
+    cluster = clusters[0]
+    assert isinstance(cluster, dict)
+    cluster["primary_question"] = ""
+
+    plan = plan_opportunity_projection(
+        question_coverage=coverage,
+        need=need,
+        supporting_motgu_signals=[],
+        support_refs=[],
+        contradiction_refs=[],
+    )
+    row = _recommendation(plan)
+
+    assert row["selection_readiness"] == "RESEARCH_REQUIRED"
+    assert "question_cluster_not_usable" in row["reason_codes"]
 
 
 def test_projection_exposes_seven_dimensions_without_synthetic_score() -> None:
