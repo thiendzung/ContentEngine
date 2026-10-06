@@ -764,6 +764,7 @@ def _assert_existing_architecture_replay(
     locale: str,
     architecture_hash: str,
     candidate_key: str,
+    planner_hash: str,
     promise: str,
     coverage: list[str],
     reason: str,
@@ -800,6 +801,7 @@ def _assert_existing_architecture_replay(
         "selection_contract:qm02a-v2",
         f"content_architecture_snapshot:{architecture_hash}",
         f"content_architecture_candidate:{candidate_key}",
+        f"planner_snapshot:{planner_hash}",
     }
     if not required.issubset(set(reasons)):
         raise OpportunitySelectionError(
@@ -1050,6 +1052,7 @@ async def persist_selected_opportunity(
                 locale=locale,
                 architecture_hash=architecture_hash,
                 candidate_key=architecture_candidate_key,
+                planner_hash=planner_hash,
                 promise=promise,
                 coverage=coverage,
                 reason=reason,
