@@ -359,12 +359,19 @@ async def test_exact_replay_is_idempotent_after_new_plan_changes_coverage() -> N
         assert replay.human_selection_id == first.human_selection_id
         assert (
             await session.scalar(
-                select(func.count()).select_from(ContentOpportunity)
+                select(func.count())
+                .select_from(ContentOpportunity)
+                .where(ContentOpportunity.project_id == project.id)
             )
         ) == 1
         assert (
             await session.scalar(
-                select(func.count()).select_from(HumanSelection)
+                select(func.count())
+                .select_from(HumanSelection)
+                .where(
+                    HumanSelection.content_opportunity_id
+                    == first.content_opportunity_id
+                )
             )
         ) == 1
 
@@ -428,7 +435,9 @@ async def test_stale_unseen_planner_snapshot_is_rejected_before_persistence() ->
 
         assert (
             await session.scalar(
-                select(func.count()).select_from(ContentOpportunity)
+                select(func.count())
+                .select_from(ContentOpportunity)
+                .where(ContentOpportunity.project_id == project.id)
             )
         ) == 0
 
@@ -540,7 +549,9 @@ async def test_existing_selected_plan_blocks_duplicate_selection_from_new_snapsh
 
         assert (
             await session.scalar(
-                select(func.count()).select_from(ContentOpportunity)
+                select(func.count())
+                .select_from(ContentOpportunity)
+                .where(ContentOpportunity.project_id == project.id)
             )
         ) == 1
 
