@@ -100,7 +100,7 @@ Required verification:
 - missing Search lineage and unusable cluster require more research;
 - duplicate/reuse/collision behavior remains fail-closed;
 - QM-02A can persist Founder selection for ready PROPOSED/TESTING without mutating Need;
-- QM-02D1 first requires exact QM-02A planner-selection lineage, then can materialize PROPOSED/TESTING/SUPPORTED but blocks REJECTED/INSUFFICIENT_EVIDENCE;
+- QM-02D1 first verifies the durable QM-02A selection receipt (current planner policy, deterministic opportunity/selection IDs, exact selection payload hash, one matching HumanSelection and valid SEARCH lineage), then can materialize PROPOSED/TESTING/SUPPORTED but blocks REJECTED/INSUFFICIENT_EVIDENCE;
 - exact replay/stale route/stale admission/no auto Run-Step-Job remain unchanged;
 - Ruff + mypy + focused/full backend + OCR + Agent Local exact-SHA proof.
 
