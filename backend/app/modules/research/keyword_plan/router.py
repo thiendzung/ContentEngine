@@ -18,6 +18,11 @@ from app.modules.research.keyword_plan.opportunity_selection_v2 import (
     OpportunitySelectionResult,
     persist_selected_opportunity,
 )
+from app.modules.research.keyword_plan.production_admission import (
+    ProductionAdmissionError,
+    ProductionAdmissionResult,
+    build_production_admission,
+)
 from app.modules.research.keyword_plan.production_decision_router import (
     ProductionDecisionRoute,
     ProductionDecisionRouterError,
@@ -41,6 +46,7 @@ def _question_map_http_error(
         | QuestionCoverageError
         | OpportunityPlannerError
         | OpportunitySelectionError
+        | ProductionAdmissionError
         | ProductionDecisionRouterError
     ),
 ) -> HTTPException:
@@ -199,5 +205,33 @@ async def get_production_decision_route(
     except (
         QuestionMapError,
         ProductionDecisionRouterError,
+    ) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.get(
+    "/opportunities/{opportunity_id}/admission",
+    response_model=ProductionAdmissionResult,
+)
+async def get_production_admission(
+    opportunity_id: UUID,
+    expected_route_snapshot_hash: str = Query(min_length=64, max_length=64),
+    project_slug: str = Query(default="motgu", min_length=1, max_length=100),
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ProductionAdmissionResult:
+    try:
+        project_id = await _project_id_from_slug(
+            session,
+            project_slug=project_slug,
+        )
+        return await build_production_admission(
+            session,
+            project_id=project_id,
+            opportunity_id=opportunity_id,
+            expected_route_snapshot_hash=expected_route_snapshot_hash,
+        )
+    except (
+        QuestionMapError,
+        ProductionAdmissionError,
     ) as exc:
         raise _question_map_http_error(exc) from exc

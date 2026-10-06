@@ -265,6 +265,46 @@ Endpoint:
 Existing Journal CREATE guard vẫn giữ nguyên: `create_or_reuse_journal_case` chỉ nhận
 `decision=CREATE`.
 
+### Production Admission Gate — QM-02C
+
+QM-02C consume exact QM-02B route snapshot và chỉ trả lời một câu:
+
+> disposition đã chọn có còn an toàn để materialize ngay lúc này không?
+
+Nó là read-only admission gate, không phải workflow engine.
+
+Input bắt buộc có exact `expected_route_snapshot_hash`. Backend luôn recompute current
+QM-02B route trước khi quyết định admission.
+
+Bounded statuses:
+
+- `ADMITTED`;
+- `NO_PRODUCTION`;
+- `RECONCILIATION_REQUIRED`;
+- `BLOCKED_ROUTE_STALE`;
+- `BLOCKED_SELECTION_STALE`;
+- `BLOCKED_OPPORTUNITY_STALE`;
+- `BLOCKED_TARGET_STALE`;
+- `BLOCKED_ALREADY_MATERIALIZED`;
+- `BLOCKED_PRODUCTION_CONFLICT`.
+
+CREATE chỉ `ADMITTED` khi chưa có ContentCase bind vào selected opportunity.
+UPDATE/REFRESH chỉ `ADMITTED` khi exact target lineage không có active
+`pending/running/waiting_approval/failed` ContentRun và không có production binding trái contract.
+LINK_ONLY/DO_NOT_WRITE không vào production. MERGE đi reconciliation, không vào normal
+production admission.
+
+QM-02C không chạy Evidence/Originality. Các gate đó vẫn nằm downstream sau khi có
+ContentCase. Không tạo DB row/admission record mới.
+
+Endpoint:
+
+`GET /question-map/opportunities/{opportunity_id}/admission`
+
+Admission response có deterministic snapshot hash nhưng chỉ là read model. QM-02D1 sau này
+phải recompute route + admission trong cùng transaction, kiểm tra exact expected hashes rồi
+mới materialize CREATE để tránh TOCTOU.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
