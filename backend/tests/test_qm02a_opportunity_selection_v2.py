@@ -136,7 +136,7 @@ async def _canonical_inputs(
             session,
             project,
             need,
-            text="What budget should I set for a painting?",
+            text="What budget should I set for my first painting?",
         ),
     ]
     return project, need, signals
