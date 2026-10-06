@@ -715,6 +715,98 @@ def _lineage_reasons(
     )
 
 
+def _architecture_lineage_reasons(
+    candidate: dict[str, object],
+    *,
+    planner_hash: str,
+    question_coverage_hash: str,
+    architecture_hash: str,
+    candidate_key: str,
+    role: ArchitectureRole,
+    member_cluster_keys: list[str],
+    signal_refs: list[UUID],
+) -> list[str]:
+    reasons = _string_list(
+        candidate.get("reason_codes"),
+        "opportunity_selection_reason_codes_invalid",
+    )
+    return sorted(
+        set(
+            reasons
+            + [
+                "qm02a_exact_planner_selection",
+                "selection_contract:qm02a-v2",
+                f"planner_snapshot:{planner_hash}",
+                f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}",
+                f"question_coverage_snapshot:{question_coverage_hash}",
+                f"content_architecture_snapshot:{architecture_hash}",
+                (
+                    "content_architecture_policy:"
+                    f"{CONTENT_ARCHITECTURE_POLICY_VERSION}"
+                ),
+                f"content_architecture_candidate:{candidate_key}",
+                f"content_architecture_role:{role}",
+                f"selection_signal_set:{_signal_set_hash(signal_refs)}",
+            ]
+            + [
+                f"content_architecture_member:{cluster_key}"
+                for cluster_key in member_cluster_keys
+            ]
+        )
+    )
+
+
+def _assert_existing_architecture_replay(
+    row: ContentOpportunity,
+    *,
+    need_id: UUID,
+    project_id: UUID,
+    locale: str,
+    architecture_hash: str,
+    candidate_key: str,
+    promise: str,
+    coverage: list[str],
+    reason: str,
+    selected_by: str,
+) -> None:
+    expected = {
+        "project_id": project_id,
+        "need_hypothesis_id": need_id,
+        "locale": locale,
+        "promise": promise,
+        "coverage_requirements_json": coverage,
+        "selected_by": selected_by,
+        "selection_reason": reason,
+    }
+    for field, expected_value in expected.items():
+        if getattr(row, field) != expected_value:
+            raise OpportunitySelectionError(
+                "opportunity_selection_replay_conflict"
+            )
+    if row.selected_at is None:
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+
+    reasons = row.reasons_json
+    if not isinstance(reasons, list) or any(
+        not isinstance(item, str) for item in reasons
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+    required = {
+        "qm02a_exact_planner_selection",
+        "selection_contract:qm02a-v2",
+        f"content_architecture_snapshot:{architecture_hash}",
+        f"content_architecture_candidate:{candidate_key}",
+    }
+    if not required.issubset(set(reasons)):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+
+
 def _assert_existing_replay(
     row: ContentOpportunity,
     *,
