@@ -137,8 +137,7 @@ async def _status_for_current_route(
             await session.scalars(
                 select(ContentCase)
                 .where(
-                    ContentCase.content_opportunity_id == route.opportunity_id,
-                    ContentCase.content_type == "journal",
+                    ContentCase.content_opportunity_id == route.opportunity_id
                 )
                 .order_by(ContentCase.id)
             )
@@ -146,15 +145,15 @@ async def _status_for_current_route(
     )
 
     if route.route == "CREATE_NEW_CONTENT":
-        if len(bound_cases) == 1:
+        if len(bound_cases) == 1 and bound_cases[0].content_type == "journal":
             return (
                 "BLOCKED_ALREADY_MATERIALIZED",
                 ["production_admission_create_already_materialized"],
             )
-        if len(bound_cases) > 1:
+        if bound_cases:
             return (
                 "BLOCKED_PRODUCTION_CONFLICT",
-                ["production_admission_duplicate_case_binding"],
+                ["production_admission_case_binding_conflict"],
             )
         return (
             "ADMITTED",
