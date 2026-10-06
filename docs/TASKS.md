@@ -16,6 +16,7 @@ Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.
 - [x] Bind caller to exact QM-02B route snapshot + QM-02C admission snapshot.
 - [x] Lock the selected opportunity before final route/admission recheck.
 - [x] Recompute route + admission in the same transaction before materialization.
+- [x] Require canonical Need still `SUPPORTED`; preserve the legacy `PROPOSED` default everywhere else.
 - [x] Reuse existing `create_or_reuse_journal_case` for exactly one Journal ContentCase + source-locale LocaleVariant.
 - [x] Add durable idempotency/audit receipt using existing OperatorCommand infrastructure.
 - [x] Exact replay returns the same receipt; conflicting replay fails closed.
