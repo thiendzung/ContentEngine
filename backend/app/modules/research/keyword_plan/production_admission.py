@@ -93,7 +93,7 @@ def _router_error_status(code: str) -> ProductionAdmissionStatus:
     return "BLOCKED_OPPORTUNITY_STALE"
 
 
-async def _active_run_count(
+async def _blocking_run_count(
     session: AsyncSession,
     *,
     content_case_id: UUID,
@@ -102,7 +102,7 @@ async def _active_run_count(
         select(func.count(ContentRun.id)).where(
             ContentRun.content_case_id == content_case_id,
             ContentRun.status.in_(
-                ("pending", "running", "waiting_approval")
+                ("pending", "running", "waiting_approval", "failed")
             ),
         )
     )
@@ -189,13 +189,13 @@ async def _status_for_current_route(
                 "BLOCKED_TARGET_STALE",
                 ["production_admission_target_missing"],
             )
-        if await _active_run_count(
+        if await _blocking_run_count(
             session,
             content_case_id=item.content_case_id,
         ):
             return (
                 "BLOCKED_PRODUCTION_CONFLICT",
-                ["production_admission_target_has_active_run"],
+                ["production_admission_target_has_unresolved_run"],
             )
         return (
             "ADMITTED",
