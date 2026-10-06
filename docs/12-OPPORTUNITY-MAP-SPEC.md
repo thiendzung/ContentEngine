@@ -708,6 +708,30 @@ Durable architecture-selection lineage records the exact planner snapshot, archi
 snapshot/policy/candidate, editorial role, member cluster keys, selected Signal set and
 selection payload. Exact replay uses this frozen receipt; stale/tampered lineage fails closed.
 
+### F1R3 — real Search-language acquisition boundary
+
+Question Map không tự gọi provider. F1R3 thêm bounded acquisition bridge ở trước canonical
+SEARCH Signal store:
+
+```text
+existing canonical Need
+→ bounded seed set
+→ Serper (+ Tavily/Exa fallback khi cần)
+→ immutable capture
+→ normalized canonical SEARCH Signals
+→ Question Map
+→ Content Architecture
+```
+
+Cùng normalized query từ nhiều provider/method không được tính thành nhiều nhu cầu độc lập.
+PAA/Related/Autocomplete được phép trở thành Question Map input và được link vào exact Need.
+Organic/source-discovery context vẫn giữ project-level Signal + `planning_need_refs` nhưng
+không tạo Need support link và bị loại khỏi question derivation.
+
+Search acquisition chỉ ghi planning SEARCH Signals và question-eligible Need links. Nó không
+thay đổi Need status/version, không tự chọn opportunity và không materialize content. Search
+provenance không phải factual Evidence và không thay Evidence/Originality downstream.
+
 ## 10. Content decision
 
 Mỗi opportunity phải trả một trong:

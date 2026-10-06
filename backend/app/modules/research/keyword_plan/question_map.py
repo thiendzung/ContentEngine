@@ -150,6 +150,8 @@ async def build_question_map(
     for _link, signal in rows:
         if signal.locale.strip().casefold() != normalized_locale:
             continue
+        if signal.provenance_json.get("question_eligible") is False:
+            continue
         normalized = normalize_text(signal.observed_text)
         if not normalized:
             continue
@@ -243,6 +245,7 @@ async def build_question_map(
             "signal_source_kind": "SEARCH",
             "need_relation": "supports",
             "canonical_need": True,
+            "explicit_context_only_signals_excluded": True,
             "classifier_version": CLASSIFIER_VERSION,
             "clustering_version": CLUSTERING_VERSION,
             "model_call": False,

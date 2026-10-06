@@ -217,6 +217,53 @@ async def test_internal_knowledge_sufficient_skips_all_external_calls(
 
 
 @pytest.mark.asyncio
+async def test_explicit_search_discovery_forces_serper_despite_internal_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def retrieve(
+        *args: object,
+        **kwargs: object,
+    ) -> tuple[RetrievalHit, ...]:
+        del args, kwargs
+        return (_hit(exact_phrase=True),)
+
+    monkeypatch.setattr(production_module, "retrieve_chunks", retrieve)
+    serper = FakeProvider(
+        "serper",
+        _response(
+            "serper",
+            question_count=3,
+            source_count=3,
+            low_bias_count=1,
+        ),
+    )
+    router = ResearchRouter(
+        serper=serper,
+        sufficiency=ProductionSufficiencyPolicy(min_internal_hits=1),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="first artwork buying questions",
+            max_pages_to_read=0,
+            force_external_discovery=True,
+        ),
+    )
+
+    assert serper.call_count == 1
+    assert result.sufficient is True
+    assert result.stop_reason == "serper_sufficient"
+    assert any(
+        decision.provider == "internal_knowledge"
+        and decision.reason
+        == "external_search_language_discovery_explicitly_required"
+        for decision in result.decisions
+    )
+
+
+@pytest.mark.asyncio
 async def test_evidence_oriented_request_does_not_stop_on_internal_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

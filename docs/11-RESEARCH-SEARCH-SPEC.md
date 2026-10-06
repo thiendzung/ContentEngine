@@ -267,6 +267,73 @@ Discovery Research phải trả lời tối thiểu:
 - MOTGU có khả năng nói điều gì khác biệt;
 - cần Evidence Research gì tiếp theo.
 
+### F1R3 — bounded Search Discovery into Question Map
+
+F1R3 dùng **canonical Need đã tồn tại** làm planning anchor. Search Discovery không tạo
+Need mới và không thay đổi trạng thái Customer Truth.
+
+Provider policy:
+
+- Serper là external search-language provider mặc định: PAA, Related Searches,
+  Autocomplete và Organic context;
+- internal knowledge không được phép làm short-circuit Serper khi request đã ghi rõ
+  `force_external_discovery=true`;
+- Tavily/Exa chỉ dùng bounded fallback theo ResearchRouter hiện có khi Serper chưa đủ;
+- Jina không chạy trong pure search-language pass vì đây chưa phải factual page reading;
+- không thêm provider chỉ để tăng provider count.
+
+Normalization/persistence:
+
+- cùng một normalized query trong cùng project + locale được coi là một demand observation;
+- nhiều API/query paths được gộp vào provenance `observations[]`, không nhân thành nhiều
+  nhu cầu độc lập;
+- `independence_group` dùng normalized query fingerprint;
+- mỗi Signal giữ exact provider/method/query/hop/source/position và capture artifact refs;
+- raw provider excerpt bounded được giữ trong immutable JSON capture để audit/replay fixture;
+- PAA/Related/Autocomplete là question-eligible và mới được link vào canonical Need cho
+  Question Map planning;
+- Organic/Source Discovery được giữ làm project-level context với `planning_need_refs`
+  trong provenance nhưng không tạo `NeedHypothesisSignal(supports)`, nên không làm nhiễu
+  Need support lineage và không tự trở thành Question Map question.
+
+Bounded expansion:
+
+```text
+canonical Need
++ bounded seed queries
+    ↓
+Serper
+    ↓
+PAA / Related / Autocomplete / Organic
+    ↓
+normalize + dedupe
+    ↓
+usable classified question expansion
+    ↓
+max 1–2 hops / explicit total-query limit
+    ↓
+canonical SEARCH Signals
+    ↓
+Question Map → Coverage → Content Architecture
+```
+
+Determinism contract:
+
+- Internet live output không được giả định deterministic;
+- exact captured input phải normalize/dedupe/classify/cluster thành cùng projection;
+- sau persistence, build Question Map hai lần phải cùng snapshot;
+- build Content Architecture hai lần phải cùng snapshot;
+- live rerun có thể có SERP mới và được coi là observation mới, không phải test flake.
+
+Authority boundary:
+
+- Search Signal là planning/search-language evidence;
+- `customer_truth_eligible=false`;
+- `factual_evidence_eligible=false`;
+- không tự promote Need;
+- không tự tạo ContentOpportunity/HumanSelection/ContentCase;
+- không tự chạy Writer/Publish.
+
 ## 7. Evidence Research flow
 
 ```text
