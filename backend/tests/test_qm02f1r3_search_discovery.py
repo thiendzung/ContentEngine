@@ -17,6 +17,7 @@ from app.modules.content_engine.models import (
     Project,
     Signal,
 )
+from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.research.contracts import (
     ProductionResearchRequest,
     ProductionResearchResult,
@@ -282,6 +283,32 @@ async def _counts(
             )
             or 0
         ),
+        "runs": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(ContentRun)
+                .where(ContentRun.project_id == project_id)
+            )
+            or 0
+        ),
+        "steps": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(StepRun)
+                .join(ContentRun, ContentRun.id == StepRun.run_id)
+                .where(ContentRun.project_id == project_id)
+            )
+            or 0
+        ),
+        "jobs": int(
+            await session.scalar(
+                select(func.count())
+                .select_from(Job)
+                .join(ContentRun, ContentRun.id == Job.run_id)
+                .where(ContentRun.project_id == project_id)
+            )
+            or 0
+        ),
     }
 
 
@@ -345,6 +372,9 @@ async def test_bounded_search_discovery_reaches_question_and_architecture_maps()
         assert after_first["opportunities"] == before["opportunities"]
         assert after_first["selections"] == before["selections"]
         assert after_first["cases"] == before["cases"]
+        assert after_first["runs"] == before["runs"]
+        assert after_first["steps"] == before["steps"]
+        assert after_first["jobs"] == before["jobs"]
 
         await session.refresh(need)
         assert need.status == "PROPOSED"
