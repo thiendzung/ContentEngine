@@ -29,6 +29,45 @@ review gallery khác là `MARKET / market_web`; inquiry là `MOTGU / motgu_direc
 SUPPORTED không đổi nguồn MARKET thành MOTGU và không có nghĩa đúng với mọi khách.
 Founder-proposed hypothesis được phép chưa có signal, nhưng phải ghi rõ missing evidence.
 
+### Hai trục độc lập — Customer Truth vs Content Readiness (QM-02F1R0)
+
+Question Map không được dùng trạng thái Customer Truth như một proxy duy nhất cho việc
+có nên thử content hay không.
+
+**Customer Truth confidence** giữ nguyên canonical Need status:
+
+- `PROPOSED`;
+- `TESTING`;
+- `SUPPORTED`;
+- `REJECTED`;
+- `INSUFFICIENT_EVIDENCE`.
+
+**Content Readiness** là derived planning/admission state, không phải truth store mới.
+QM không tự đổi Need status.
+
+Ma trận tối thiểu:
+
+| Customer Truth | Content Readiness policy |
+|---|---|
+| `PROPOSED` | có thể đạt `READY_FOR_HUMAN_SELECTION` nếu Question/Search/Coverage/duplicate gates đủ rõ |
+| `TESTING` | có thể đạt `READY_FOR_HUMAN_SELECTION` nếu các planning gates đủ rõ |
+| `SUPPORTED` | vẫn có thể là `RESEARCH_REQUIRED` nếu Question/Search/Coverage chưa đủ |
+| `REJECTED` | luôn `BLOCKED` |
+| `INSUFFICIENT_EVIDENCE` | `RESEARCH_REQUIRED`; không materialize content experiment |
+
+Founder Selection là **authorization để thử một content experiment đã qua planning gates**,
+không phải bằng chứng làm Need đúng hơn. Founder Selection không được bypass stale,
+duplicate/reuse/collision, route/admission hoặc target-lineage guard.
+
+Search/PAA/Related/Autocomplete và organic SERP context là planning/search-language Signals.
+Chúng không được tự nâng `PROPOSED/TESTING` thành `SUPPORTED`, không được biến thành
+Customer Truth và không phải factual Evidence cho Writer. Evidence/Originality vẫn là
+downstream authority sau khi ContentCase được materialize.
+
+#352 (thu thập customer evidence trực tiếp) là Learning/Customer-Truth work bổ trợ,
+không còn là prerequisite để Question Map planning tiếp tục. Nếu có dữ liệu thật mới,
+nó đi vào canonical Customer Truth theo review riêng; không mở content gate bằng quota phỏng vấn.
+
 ### Hợp đồng biên tập của ContentOpportunity
 
 - reader + audience scope;
@@ -317,8 +356,19 @@ Caller phải bind:
 - idempotency key.
 
 Với request mới, backend dùng cùng một DB transaction để khóa selected ContentOpportunity,
-recompute route, require canonical Need vẫn `SUPPORTED`, recompute admission, require exact hashes + `ADMITTED`, rồi mới reuse
-`create_or_reuse_journal_case` với explicit `SUPPORTED` Need guard.
+recompute route + Content Readiness, fail closed nếu Need là `REJECTED` hoặc
+`INSUFFICIENT_EVIDENCE`, recompute admission, require exact hashes + `ADMITTED`, rồi mới
+reuse `create_or_reuse_journal_case` với exact selected/planner lineage.
+
+`PROPOSED | TESTING | SUPPORTED` không tự động được materialize: chúng chỉ có thể đi tiếp
+khi exact Question/Search/Coverage/duplicate gates tạo ra
+`READY_FOR_HUMAN_SELECTION`, Founder đã chọn đúng candidate, route/admission vẫn current
+và D1 recompute lại các guard trong cùng transaction.
+
+**Implementation note:** merged QM-02D1 tại baseline F1R0 vẫn còn hard gate lịch sử
+`required_need_status=SUPPORTED`. Issue #354 / F1R1 phải thay production guard này cho
+khớp contract hai trục trước khi rerun real F1 pilot. F1R0 chỉ khóa architecture, không
+thay production code.
 
 Output production mới của slice này chỉ gồm:
 

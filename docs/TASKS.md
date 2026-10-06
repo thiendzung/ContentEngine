@@ -7,26 +7,27 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-02F1 — Early Real CREATE Pilot — BLOCKED BY REAL DATA READINESS
+## QM-02F1 — Early Real CREATE Pilot — REMEDIATION IN PROGRESS
 
-Tracking: issue #346.
+Tracking: issue #346. Architecture remediation: #353 → #354 → #355 → #356.
 
 - [x] QM-02D1 merged before pilot.
-- [x] Run F1A read-only discovery on exact merged main.
-- [x] Confirm operational project `motgu` and requested locale path.
-- [x] Confirm no eligible real candidate exists under the F1 contract.
-- [x] Record blocker factually: operational dataset has no canonical `SUPPORTED` Need eligible for the real CREATE pilot.
-- [x] Keep F0A/F0B1 results as diagnostic/data-readiness evidence only; do not expand the QM lane into Customer Truth implementation.
-- [x] Close out-of-scope CT-02 proposal as not planned for the current QM lane.
-- [ ] F1A exit gate: find one real `SUPPORTED` Need with usable SEARCH lineage and Planner `CREATE + READY_FOR_HUMAN_SELECTION`.
-- [ ] Founder approves the exact F1A candidate.
+- [x] Run the first F1A read-only discovery and identify the old hard `SUPPORTED` gate.
+- [x] Preserve that first run as diagnostic evidence; do not fake-promote a Need or use raw SQL to force the pilot through.
+- [x] #353 / F1R0: lock Customer Truth confidence and Content Readiness as independent axes.
+- [x] #352 is non-blocking Learning/Customer-Truth work; direct interviews may improve truth confidence but are not a QM prerequisite.
+- [ ] #354 / F1R1: replace the production `SUPPORTED` hard gate with derived Content Readiness while keeping `REJECTED` blocked and `INSUFFICIENT_EVIDENCE` research-required.
+- [ ] #355 / F1R2: complete deterministic Pillar/Cluster projection and exact lineage.
+- [ ] #356 / F1R3: run real Search Discovery with immutable capture + deterministic replay.
+- [ ] Rerun F1A: find one real non-rejected/non-insufficient Need whose Question/Search/Coverage gates yield `CREATE + READY_FOR_HUMAN_SELECTION`.
+- [ ] Founder approves the exact F1A candidate; selection is authorization, not Customer Truth evidence.
 - [ ] F1B persists exact QM-02A selection.
 - [ ] Recompute exact QM-02B route and QM-02C admission.
 - [ ] QM-02D1 materializes exactly one ContentCase + source LocaleVariant + one OperatorCommand receipt.
 - [ ] Prove zero ContentRun/StepRun/Job, no auto-Start, no duplicate lineage, safe exact replay.
 - [ ] Mark QM-02F1 PASS.
 
-**Gate:** QM-02D2 / QM-02D3 do not start until QM-02F1 PASS. No fake Need promotion, raw SQL workaround, or out-of-scope subsystem implementation is allowed to force the pilot through.
+**Gate:** QM-02D2 / QM-02D3 do not start until #357 architecture checkpoint PASS. Search language remains planning evidence, not factual article evidence.
 
 ## QM-02D1 — CREATE Production Handoff — DONE / PR #345 MERGED
 
@@ -37,7 +38,7 @@ Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.
 - [x] Bind caller to exact QM-02B route snapshot + QM-02C admission snapshot.
 - [x] Lock the selected opportunity before final route/admission recheck.
 - [x] Recompute route + admission in the same transaction before materialization.
-- [x] Require canonical Need still `SUPPORTED`; preserve the legacy `PROPOSED` default everywhere else.
+- [x] Historical merged D1 behavior required canonical Need `SUPPORTED`; #353 records this as superseded architecture and #354 must replace the production guard before the pilot rerun.
 - [x] Reuse existing `create_or_reuse_journal_case` for exactly one Journal ContentCase + source-locale LocaleVariant.
 - [x] Add durable idempotency/audit receipt using existing OperatorCommand infrastructure.
 - [x] Exact replay returns the same receipt; conflicting replay fails closed.

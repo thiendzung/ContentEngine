@@ -51,6 +51,14 @@ QM-02D1 must not:
 - publish;
 - handle UPDATE / REFRESH / MERGE.
 
+## Supersession note — QM-02F1R0
+
+This log records the contract that was actually merged in QM-02D1 and is retained as historical evidence.
+Its `SUPPORTED`-only Need gate was later identified by the real F1 pilot as an architecture defect.
+Issue #353 supersedes that policy with the two-axis Customer Truth / Content Readiness contract;
+issue #354 is responsible for changing production code. Do not read the historical steps below as
+the current desired QM gate.
+
 ## Transaction / TOCTOU contract
 
 For a new request:

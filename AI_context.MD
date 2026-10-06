@@ -1,17 +1,44 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02F1 Early Real CREATE Pilot
+## Current WIP — QM-02F1 remediation / F1R0 → F1R1
 
-Founder merged QM-02D1 / PR #345. Current Question Map main is `99dab3ac9c18d24ee16c2c344533f56ec968ec5f`. QM-02F1 is tracked by issue #346 and is an operational pilot, not a new workflow implementation.
+Founder merged QM-02D1 and the first real F1A read-only attempt exposed an architecture defect: the planning/production path treated canonical Need `SUPPORTED` as the sole gate for a bounded content experiment.
 
-Canonical pilot flow:
-`SUPPORTED Need -> Question Map -> Coverage -> Planner -> Founder Selection -> QM-02B Route -> QM-02C Admission -> QM-02D1 CREATE Handoff -> ContentCase + source LocaleVariant`.
+The revised contract is:
 
-F1A was executed read-only and is currently **BLOCKED_BY_REAL_DATA_READINESS**: the operational MOTGU dataset has no canonical `SUPPORTED` Need eligible under the F1 contract. F0A/F0B1 findings are retained only as diagnostic/data-readiness evidence. Do not expand this QM lane into Customer Truth implementation, do not fake-promote a Need, and do not use raw SQL or another workaround to force the pilot to pass.
+```text
+Customer Truth confidence
+PROPOSED | TESTING | SUPPORTED | REJECTED | INSUFFICIENT_EVIDENCE
+                │
+                │ remains canonical truth state
+                ▼
+Question/Search/Coverage/duplicate planning gates
+                │
+                ▼
+Content Readiness
+READY_FOR_HUMAN_SELECTION | RESEARCH_REQUIRED | BLOCKED
+                │
+                ▼
+Founder Selection
+                │
+                ▼
+Route → Admission → bounded D1 materialization
+```
 
-F1B has not started. QM-02D2 UPDATE/REFRESH and QM-02D3 MERGE remain blocked until QM-02F1 passes its existing checklist: one real eligible SUPPORTED Need, explicit Founder selection, exact route/admission hashes, one bounded CREATE materialization, zero auto-Start/runtime rows, no duplicate lineage, and safe replay.
+Rules:
+- `PROPOSED | TESTING | SUPPORTED` may be selectable only when exact planning gates pass.
+- `SUPPORTED` may still require more content research when Question/Search/Coverage is weak.
+- `REJECTED` is blocked.
+- `INSUFFICIENT_EVIDENCE` is research-required and cannot materialize the content experiment.
+- Founder Selection authorizes an editorial experiment; it does not promote or validate Customer Truth.
+- Search/PAA/Related/Autocomplete/organic context remain planning signals, never factual Evidence or automatic Customer Truth.
+- Evidence/Originality remain downstream factual/originality authorities after ContentCase creation.
+- #352 direct-customer collection is useful Learning/Customer-Truth work but non-blocking for the QM remediation path.
 
-Out-of-scope issue #349 was closed as not planned for the current QM lane.
+Current sequence:
+`#353 F1R0 docs contract → #354 F1R1 production readiness code → #355 Pillar/Cluster → #356 real Search → rerun #346 → #357 architecture checkpoint`.
+
+At this exact branch, #353 is docs-only. Production code still contains the historical `SUPPORTED` guard and must not be treated as fixed until #354 is implemented, verified and merged. D2/D3 remain locked until #357 PASS.
 
 ## Read first and verify the actual ref
 
@@ -63,30 +90,19 @@ Neither authorizes publication.
 
 ## Immediate task
 
-**P1 / #272 remains the active delivery window.** DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are DONE. LOCAL-E2E-01 / PR #280 is now blocked by demonstrated evidence insufficiency, not credits: the Founder-authorized retry created exactly one retry command/job, the one-shot worker ran once, and Coverage Support stopped on `operator_worker_coverage_support_unresolved / insufficient_support` before Angle with zero ModelCall/ToolCall. Preserve ContentCase `bd91eed8-8b46-4d55-9f15-fe3ca6879a48` / Run `8b9d48a9-b82d-4279-be5c-3bfa0923aac2` on `contentengine_local_e2e01_restore_test`; no further retry is authorized. The immediate implementation WIP is PR #284: reuse only an exact human-reviewed + approved + locked EvidenceSet for the same ContentCase before fresh research, while preserving the strict automatic research path. Old PR #271 is superseded by #284. **No polling, sleep, ps or pgrep loops.** Attempt 8, operational migration and publication remain unauthorized.
+Complete #353 as a docs-only architecture lock on baseline `c2e7f81407f066b2f3bc773b6193810bba55da0c`, then move directly to #354. Do not rerun the real F1 pilot before #354–#356 are merged.
 
-P2 / O1 and E2E readiness evidence remain retained but paused; do not advance A2/WordPress/migration/publish work without a new Founder decision.
+For #353:
+- docs/spec/tasks/context must agree on the two-axis contract;
+- no production code;
+- #352 is explicitly non-blocking;
+- historical D1 `SUPPORTED` behavior is preserved as history but marked superseded by the new contract;
+- do not claim operational behavior changed.
 
-F7 Case #2 (`#143`) has four earlier consumed audit-only executions: `6b8d33d2-1e38-48e8-ad01-858875619640`, `2b41fd83-bea8-4f6e-bd43-3dcec48cee2b`, `e51f6b14-b048-4d5d-873b-635f7ea6ae40`, and R3 `9c185c18-af9f-4c81-9d81-8f6243bbebfc`. PR #160 fixed truthful Codex runner identity/executable integrity; PR #161 fixed educational-domain authority promotion. Fresh R4 case `d50d824d-8cc7-4e1a-b31f-d01cda4515f4` reached `AWAITING_APPROVAL / angle` with locked factual evidence and truthful runner metadata. Founder personally selected `angle-environment-checklist`. Agent Local later submitted Continue exactly once and the normal Outline path produced artifact `f671fa9d-3ab8-4ccd-abfc-beb3581f8077` v1 hash `eb48b9e08969d71c4a4bdc23cd4c61ae68ccbfa0b02888c748d5a45c311894ad`, leaving the run at `AWAITING_APPROVAL / outline`. That execution used pre-#162 SHA `39336052...`; #162 was docs-only, so no rerun was needed. Agent Local subsequently returned `PASS_F7_2B_READONLY_CLOSEOUT` on exact main `ed7e76ced561886940c1add77a85bf350c3f9ca5`, confirming preflight PASS, durable Outline state, exactly one Continue/Outline path, zero downstream mutations and the corrected EvidenceSet composition of 6 `supports` + 2 `context_only`. The closeout also exposed #167: Outline `runtime_metadata_json` persisted runner version but not `runner_executable`.
-
-Closeout evidence:
-- PR #137 merged as release code baseline `545ca28042c489462606aa47bcbd2c11052fa3fe`;
-- operational DB `contentengine` is at `20260915_0034` / CURRENT;
-- O1.3 final lifecycle proof passed external + internal preflight, startup/shutdown, restart/shutdown, loopback listener checks and durable-state invariance;
-- O1.3 final state left backend/frontend/worker STOPPED and content/model/tool/publication delta NONE;
-- O1.4 created a fresh format-v2 post-release backup at rev `20260915_0034`, dump SHA-256 `578d9bad504e9c7b129e95e28c8c58b10c3965f1e54c7714227b767653bc7d42`;
-- O1.4 isolated restore reproduced the exact frozen core fingerprint and revision, then removed `contentengine_restore_test`;
-- PostgreSQL container/volume/listener, source DB, historical operational checkout and publication lock remained unchanged;
-- O1.1 pre-migration rev-0027 recovery material and O1.4 post-release rev-0034 recovery material are both retained.
-
-P2 completion did not authorize blanket content/model execution or publication. The four pre-R4 Case #2 executions remain consumed audit evidence and must never be retried/continued/approved. R4 has reached and passed the Angle human gate, and Founder manually selected the Angle. F7.2B execution and read-only closeout have both passed. Do not rerun Continue or the historical Outline model. Before Founder Outline approval, close #167 by shipping the bounded metadata-persistence fix and regression proof. Publication remains locked.
-
-Target browser path remains:
-`Start -> Angle review/approve -> Continue -> Outline review/approve -> Continue -> independent VI/EN Writers -> Continue -> Quality -> final review -> per-required-locale approval -> COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`.
-
-Code-bearing PR verification process:
-`MG code/tests/self-review -> OpenCodeReview supplementary review/triage -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub confirmation CI when available -> Founder merge`.
-GitHub Codex review/security-review automation is no longer part of the active ContentEngine process and must not be invoked. Historical Codex findings remain audit history only. If GitHub Actions quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path; never fabricate CI PASS. OpenCodeReview remains advisory and never auto-fixes or merges.
+For #354:
+- change the real planner/admission/materialization gate;
+- preserve stale/replay/duplicate/Founder-selection safety;
+- no Need mutation, no auto Writer/Publish.
 
 ## Pilot operating priority — 2026-10-03
 
