@@ -372,10 +372,18 @@ không có duplicate/reuse/collision blocker và decision không phải `DO_NOT_
 `REJECTED` luôn block; `INSUFFICIENT_EVIDENCE` luôn research-required.
 
 QM-02D1 khóa cả selected opportunity và canonical Need trong cùng transaction. Trước
-khi nới truth-status gate, D1 bắt buộc opportunity giữ exact QM-02A planner-selection lineage
-(`qm02a_exact_planner_selection`, selection contract, planner snapshot/policy/cluster và
-Question Coverage snapshot). Vì vậy Founder/manual opportunity ngoài Question Map không thể
-dùng endpoint này để bypass planner.
+khi nới truth-status gate, D1 bắt buộc opportunity giữ một **durable QM-02A selection receipt**
+hợp lệ: exact contract marker; current planner policy marker; một planner snapshot hash; một
+cluster key; một Question Coverage snapshot hash; một selection-payload hash khớp exact
+ContentOpportunity bytes; deterministic ContentOpportunity/HumanSelection IDs sinh từ
+`planner_snapshot_hash + cluster_key`; đúng một HumanSelection khớp actor/reason/time; và
+SEARCH signal lineage hợp lệ.
+
+D1 **không recompute live planner snapshot** để chứng minh old selection, vì việc persist
+selection tự làm Content Coverage thay đổi và live planner có thể hợp lệ nhưng khác snapshot
+đã được Founder chọn. Thay vào đó mutation boundary kiểm tra immutable/deterministic receipt
+của đúng QM-02A selection. Marker giả, policy cũ, payload bị sửa, deterministic ID sai hoặc
+HumanSelection/signal lineage không khớp đều fail closed.
 
 D1 chỉ materialize khi current Need thuộc `PROPOSED | TESTING | SUPPORTED`; nếu Need đã
 thành `REJECTED` hoặc `INSUFFICIENT_EVIDENCE` thì fail closed. Exact route/admission,
