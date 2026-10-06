@@ -60,11 +60,12 @@ For a new request:
 3. lock the exact selected ContentOpportunity row;
 4. recompute QM-02B route;
 5. require exact route snapshot hash and `CREATE_NEW_CONTENT`;
-6. recompute QM-02C admission inside the same transaction;
-7. require exact admission snapshot hash and `ADMITTED`;
-8. call existing `create_or_reuse_journal_case`;
-9. require that the case was newly materialized;
-10. persist the bounded receipt.
+6. require the canonical Need to still be `SUPPORTED` (QM-02A only permits selection from this state);
+7. recompute QM-02C admission inside the same transaction;
+8. require exact admission snapshot hash and `ADMITTED`;
+9. call existing `create_or_reuse_journal_case` with the explicit `SUPPORTED` Need guard;
+10. require that the case was newly materialized;
+11. persist the bounded receipt.
 
 The opportunity row lock serializes different idempotency keys targeting the same opportunity, so a later competing request must observe the already-materialized state instead of creating duplicate production.
 
