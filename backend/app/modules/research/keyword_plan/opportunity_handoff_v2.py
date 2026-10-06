@@ -11,9 +11,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import (
+    ContentCase,
+    ContentItem,
     ContentOpportunity,
     ContentOpportunitySignal,
     HumanSelection,
+    LocaleVariant,
     NeedHypothesis,
     NeedHypothesisSignal,
     OpportunityPlannerHandoff,
@@ -242,6 +245,50 @@ async def _validate_search_signal_refs(
     return sorted(set(signal_ids), key=str)
 
 
+async def _validate_primary_target_refs(
+    session: AsyncSession,
+    *,
+    need: NeedHypothesis,
+    locale: str,
+    refs: list[str],
+) -> None:
+    for raw in refs:
+        try:
+            item_id = UUID(raw)
+        except ValueError as exc:
+            raise OpportunityHandoffError(
+                "opportunity_handoff_existing_target_ref_invalid"
+            ) from exc
+        row = (
+            await session.execute(
+                select(ContentItem, ContentCase, LocaleVariant)
+                .join(
+                    ContentCase,
+                    ContentCase.id == ContentItem.content_case_id,
+                )
+                .join(
+                    LocaleVariant,
+                    LocaleVariant.id == ContentItem.locale_variant_id,
+                )
+                .where(ContentItem.id == item_id)
+            )
+        ).one_or_none()
+        if row is None:
+            raise OpportunityHandoffError(
+                "opportunity_handoff_existing_target_missing"
+            )
+        item, content_case, variant = row
+        if (
+            item.project_id != need.project_id
+            or content_case.project_id != need.project_id
+            or content_case.need_hypothesis_id != need.id
+            or variant.locale.strip().casefold() != locale
+        ):
+            raise OpportunityHandoffError(
+                "opportunity_handoff_existing_target_binding_invalid"
+            )
+
+
 def _primary_target_refs(
     recommendation: dict[str, object],
     *,
@@ -364,6 +411,10 @@ async def _select_new_opportunity(
         recommendation.get("priority"),
         "opportunity_handoff_priority_invalid",
     )
+    if priority not in {"NOW", "NEXT", "LATER", "NO"}:
+        raise OpportunityHandoffError(
+            "opportunity_handoff_priority_invalid"
+        )
     answer_job = _required_str(
         recommendation.get("answer_job"),
         "opportunity_handoff_answer_job_invalid",
@@ -371,6 +422,12 @@ async def _select_new_opportunity(
     target_refs = _primary_target_refs(
         recommendation,
         decision=decision,
+    )
+    await _validate_primary_target_refs(
+        session,
+        need=need,
+        locale=locale,
+        refs=target_refs,
     )
     reason_codes = _required_string_list(
         recommendation.get("reason_codes"),
@@ -602,20 +659,6 @@ async def select_opportunity_plan_v2(
         reason=selection_reason,
     )
 
-    existing_by_key = (
-        await session.execute(
-            select(OpportunityPlannerHandoff)
-            .where(OpportunityPlannerHandoff.idempotency_key == key)
-            .with_for_update()
-        )
-    ).scalar_one_or_none()
-    if existing_by_key is not None:
-        if existing_by_key.request_hash != request_hash:
-            raise OpportunityHandoffError(
-                "opportunity_handoff_idempotency_conflict"
-            )
-        return _receipt(existing_by_key, replayed=True)
-
     need = (
         await session.execute(
             select(NeedHypothesis)
@@ -630,6 +673,20 @@ async def select_opportunity_plan_v2(
         raise OpportunityHandoffError(
             "opportunity_handoff_need_not_found"
         )
+
+    existing_by_key = (
+        await session.execute(
+            select(OpportunityPlannerHandoff)
+            .where(OpportunityPlannerHandoff.idempotency_key == key)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if existing_by_key is not None:
+        if existing_by_key.request_hash != request_hash:
+            raise OpportunityHandoffError(
+                "opportunity_handoff_idempotency_conflict"
+            )
+        return _receipt(existing_by_key, replayed=True)
 
     try:
         planner = await build_opportunity_plan_v2(
