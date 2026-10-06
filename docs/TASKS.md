@@ -7,31 +7,41 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-01D — Opportunity Planner v2 — IMPLEMENTATION WIP
+## QM-02A — Selected Planner Handoff — IMPLEMENTATION WIP
 
-Tracking: issue #335. Exact task: `logs/2026-10-06-qm-01d-opportunity-planner-v2.md`.
+Tracking: issue #338. Exact task: `logs/2026-10-06-qm-02a-selected-handoff.md`.
 
-- [x] Branch from merged QM-01C main `db6aa1901191210c0975e2516a463229b5f8caef`.
-- [x] Keep Question Map, Question Coverage and canonical Need/Signal state as existing authorities.
-- [x] Add read-only Opportunity Planner v2; no ContentOpportunity/HumanSelection mutation.
-- [x] Expose 7 explainable dimensions without a synthetic score.
-- [x] Keep linked supporting MOTGU Signals as first-party planning-relevance evidence; contradiction refs stay separate.
-- [x] Do not claim Right-to-Win from Signal data alone; `right_to_win_proven=false` until a canonical approved-material input exists.
-- [x] Keep first-party Signal evidence explicitly weaker than locked EvidenceSet / approved OriginalityPack.
-- [x] Map canonical Need status to opportunity-planning evidence readiness without re-scoring Need truth.
-- [x] Recommend CREATE / UPDATE / REFRESH / MERGE / LINK_ONLY / DO_NOT_WRITE deterministically.
-- [x] Require explicit ContentItem target refs for non-CREATE existing-content actions.
-- [x] Supporting-only content is contextual coverage, never an UPDATE/REFRESH/MERGE/LINK_ONLY target.
-- [x] Reuse existing selected CREATE planning for plan-only PARTIAL; block plan-only collision from another durable plan.
-- [x] Honor selected DO_NOT_WRITE planning and canonical REJECTED Need as fail-closed guards.
-- [x] Add NOW / NEXT / LATER / NO vocabulary without 0–100 scoring; current Signal-only Right-to-Win state does not emit NOW.
-- [x] Preserve existing Question Map/Coverage routes; add read-only `GET /question-map/opportunities`.
-- [x] Add deterministic planner `snapshot_hash` and focused decision/read-only tests.
+- [x] Branch from merged QM-01D main `c078de099c4bc22bed3f239b23b537b0c294924e`.
+- [x] Reuse the existing canonical Need; do not create founder_manual or duplicate customer truth.
+- [x] Revalidate exact live planner snapshot + exact cluster before first persistence.
+- [x] Require explicit Founder/editorial promise + 1..12 ordered coverage requirements + selection reason.
+- [x] Client cannot override Need/question/intent/decision/priority/target refs.
+- [x] Persist exactly one ContentOpportunity + one HumanSelection and exact SEARCH support links.
+- [x] Keep MOTGU material refs empty and differentiation explicitly unproven at selection.
+- [x] Non-CREATE actions preserve exact primary ContentItem targets.
+- [x] REUSE_EXISTING_PLAN / RESEARCH_REQUIRED / BLOCKED / DO_NOT_WRITE cannot create a new plan.
+- [x] Deterministic selection identity supports replay after the first write changes Coverage/planner state.
+- [x] Conflicting replay fails closed instead of rewriting the durable selection.
+- [x] Add `POST /question-map/opportunities/select`.
+- [x] No ContentExperiment/ContentCase/workflow/model/provider/UI/migration in QM-02A.
+- [x] Add focused persistence/replay/stale/non-ready/target tests.
 - [ ] MG self-review exact branch diff.
 - [ ] Agent Local exact-SHA focused/full backend verification.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] Minimal GitHub CI confirmation if available.
 - [ ] Founder merge.
+
+## QM-01D — Opportunity Planner v2 — DONE / PR #336 MERGED
+
+Tracking: issue #335. Exact task: `logs/2026-10-06-qm-01d-opportunity-planner-v2.md`.
+
+- [x] Read-only planner over Question Map + Coverage + canonical Need/Signal state.
+- [x] Seven explainable dimensions; no synthetic score.
+- [x] Signal-only state keeps `right_to_win_proven=false`.
+- [x] CREATE / UPDATE / REFRESH / MERGE / LINK_ONLY / DO_NOT_WRITE recommendations.
+- [x] Focused QM-01A/B/C/D: 50 PASS; adjacent/legacy 40 PASS; full backend 1444 PASS.
+- [x] OCR exact-ref zero findings; GitHub CI #2265 SUCCESS.
+- [x] Founder merged PR #336 as main `c078de099c4bc22bed3f239b23b537b0c294924e`.
 
 ## QM-01C — Question Map × Content Coverage — DONE / PR #334 MERGED
 
