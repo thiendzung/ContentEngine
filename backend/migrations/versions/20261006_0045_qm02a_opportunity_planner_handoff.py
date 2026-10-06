@@ -119,12 +119,12 @@ def upgrade() -> None:
             name="ck_opportunity_planner_handoff_need_version_positive",
         ),
         sa.CheckConstraint(
-            "resolution in ('CREATED','REUSED')",
+            "resolution in ('SELECTED','REUSED')",
             name="ck_opportunity_planner_handoff_resolution",
         ),
         sa.CheckConstraint(
-            "resolution <> 'CREATED' or human_selection_id is not null",
-            name="ck_opportunity_planner_handoff_created_selection",
+            "resolution <> 'SELECTED' or human_selection_id is not null",
+            name="ck_opportunity_planner_handoff_selected_selection",
         ),
         sa.CheckConstraint(
             "btrim(cluster_key) <> ''",
