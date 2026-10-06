@@ -724,13 +724,13 @@ existing canonical Need
 ```
 
 Cùng normalized query từ nhiều provider/method không được tính thành nhiều nhu cầu độc lập.
-PAA/Related/Autocomplete được phép trở thành Question Map input; Organic/source-discovery
-context vẫn giữ provenance nhưng bị loại khỏi question derivation khi
-`question_eligible=false`.
+PAA/Related/Autocomplete được phép trở thành Question Map input và được link vào exact Need.
+Organic/source-discovery context vẫn giữ project-level Signal + `planning_need_refs` nhưng
+không tạo Need support link và bị loại khỏi question derivation.
 
-Search acquisition chỉ ghi planning Signals + exact Need link. Nó không thay đổi Need
-status/version, không tự chọn opportunity và không materialize content. Search provenance
-không phải factual Evidence và không thay Evidence/Originality downstream.
+Search acquisition chỉ ghi planning SEARCH Signals và question-eligible Need links. Nó không
+thay đổi Need status/version, không tự chọn opportunity và không materialize content. Search
+provenance không phải factual Evidence và không thay Evidence/Originality downstream.
 
 ## 10. Content decision
 
