@@ -294,7 +294,7 @@ async def test_bounded_search_discovery_reaches_question_and_architecture_maps()
         }
 
         assert after_first["signals"] == before["signals"] + 6
-        assert after_first["need_links"] == before["need_links"] + 6
+        assert after_first["need_links"] == before["need_links"] + 5
         assert after_first["opportunities"] == before["opportunities"]
         assert after_first["selections"] == before["selections"]
         assert after_first["cases"] == before["cases"]
@@ -332,6 +332,13 @@ async def test_bounded_search_discovery_reaches_question_and_architecture_maps()
         )
         assert organic is not None
         assert organic.provenance_json["question_eligible"] is False
+        assert organic.provenance_json["planning_need_refs"] == [
+            str(need.id)
+        ]
+        assert await session.get(
+            NeedHypothesisSignal,
+            (need.id, organic.id, "supports"),
+        ) is None
 
         question_map = await build_question_map(
             session,
