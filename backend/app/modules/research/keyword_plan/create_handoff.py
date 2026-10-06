@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal import operator_runtime
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.journal.operator_control import (
     CreatedJournalCase,
@@ -146,11 +147,7 @@ async def _replay_result(
         content_case=content_case,
         opportunity=opportunity,
     )
-    from app.modules.content_engine.journal.operator_runtime import (
-        get_operator_state,
-    )
-
-    state = await get_operator_state(
+    state = await operator_runtime.get_operator_state(
         session,
         content_case_id=content_case.id,
     )
