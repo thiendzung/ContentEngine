@@ -19,12 +19,21 @@ from app.modules.content_engine.models import (
     HumanSelection,
     LocaleVariant,
     NeedHypothesis,
+    NeedHypothesisSignal,
     Project,
+    Signal,
 )
 from app.modules.harness.models import ContentRun, Job, StepRun
 from app.modules.research.keyword_plan.create_handoff import (
     CreateProductionHandoffError,
     materialize_create_handoff,
+)
+from app.modules.research.keyword_plan.opportunity_planner_v2 import (
+    build_opportunity_plan_v2,
+)
+from app.modules.research.keyword_plan.opportunity_selection_v2 import (
+    OpportunitySelectionRequest,
+    persist_selected_opportunity,
 )
 from app.modules.research.keyword_plan.production_admission import (
     build_production_admission,
@@ -80,6 +89,42 @@ async def _need(
     return need
 
 
+async def _search_signal(
+    session: AsyncSession,
+    *,
+    project: Project,
+    need: NeedHypothesis,
+    text: str,
+) -> Signal:
+    signal = Signal(
+        project_id=project.id,
+        source_kind="SEARCH",
+        scope="market_web",
+        observed_text=text,
+        source_url=f"https://example.com/{uuid4().hex}",
+        locale="en",
+        context="QM-02D1 fixture",
+        captured_at=datetime.now(UTC),
+        fingerprint=uuid4().hex,
+        independence_group=uuid4().hex,
+        provenance_json={
+            "provider": "fixture",
+            "method": "people_also_ask",
+        },
+    )
+    session.add(signal)
+    await session.flush()
+    session.add(
+        NeedHypothesisSignal(
+            need_hypothesis_id=need.id,
+            signal_id=signal.id,
+            relation="supports",
+        )
+    )
+    await session.flush()
+    return signal
+
+
 async def _selected_opportunity(
     session: AsyncSession,
     *,
@@ -88,6 +133,66 @@ async def _selected_opportunity(
     decision: str,
     target_ids: list[UUID],
 ) -> ContentOpportunity:
+    if (
+        decision == "CREATE"
+        and not target_ids
+        and need.status in {"PROPOSED", "TESTING", "SUPPORTED"}
+    ):
+        await _search_signal(
+            session,
+            project=project,
+            need=need,
+            text="How much should I spend on my first painting?",
+        )
+        await _search_signal(
+            session,
+            project=project,
+            need=need,
+            text="What budget should I set for a painting?",
+        )
+        plan = await build_opportunity_plan_v2(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        recommendations = plan["recommendations"]
+        assert isinstance(recommendations, list)
+        assert len(recommendations) == 1
+        recommendation = recommendations[0]
+        assert isinstance(recommendation, dict)
+        assert recommendation["decision"] == "CREATE"
+        assert (
+            recommendation["selection_readiness"]
+            == "READY_FOR_HUMAN_SELECTION"
+        )
+        result = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=OpportunitySelectionRequest(
+                project_slug=project.slug,
+                need_id=need.id,
+                locale="en",
+                cluster_key=str(recommendation["cluster_key"]),
+                expected_planner_snapshot_hash=str(plan["snapshot_hash"]),
+                selected_by="founder",
+                selection_reason=(
+                    "Founder selected this exact opportunity."
+                ),
+                promise="Give a practical decision path.",
+                coverage_requirements=[
+                    "Explain the decision criteria.",
+                    "Show what the buyer should verify.",
+                ],
+            ),
+        )
+        opportunity = await session.get(
+            ContentOpportunity,
+            result.content_opportunity_id,
+        )
+        assert opportunity is not None
+        return opportunity
+
     selected_at = datetime.now(UTC)
     opportunity = ContentOpportunity(
         project_id=project.id,
@@ -110,15 +215,7 @@ async def _selected_opportunity(
         next_discovery_step="Materialize only after admission.",
         decision=decision,
         priority="NOW" if decision == "CREATE" else "NEXT",
-        reasons_json=[
-            "qm02a_exact_planner_selection",
-            "selection_contract:qm02a-v1",
-            f"planner_snapshot:{'a' * 64}",
-            "planner_policy:qm-opportunity-planner-v2.1",
-            "planner_cluster:cluster-fixture",
-            f"question_coverage_snapshot:{'b' * 64}",
-            f"selection_payload:{'c' * 64}",
-        ],
+        reasons_json=["manual_fixture"],
         suggested_content_type="journal",
         suggested_role="cluster",
         version=1,
