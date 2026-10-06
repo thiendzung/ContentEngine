@@ -1,53 +1,46 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02F1R3 bounded real Search Discovery
+## Current WIP — QM-02D2 UPDATE / REFRESH Production Handoff
 
-Founder merged PR #365 / #355. Current main baseline is
-`ddb2380073119742d7aaf8c814ef0b1f50893c3d`.
+F1R0/R1/R2/R3, the real CREATE pilot (#346), and architecture checkpoint (#357) are complete.
+Current merged-main baseline for D2 is:
+`3bfb98c22e024480b93604b2b26b91f22ed7369f` (merge PR #366 / QM-02F1R3).
 
-F1R3 closes the remaining gap between the existing provider stack and the canonical
-Question Map. The authority flow is:
+Active branch:
+`feat/qm-02d2-update-refresh-handoff`
+
+D2 extends the already-proven selection → route → admission → handoff discipline to existing
+canonical content without creating a competing article:
 
 ```text
-existing canonical Need
-        +
-bounded seed queries
+selected UPDATE / REFRESH opportunity
         ↓
-explicit external Search Discovery
+exact target ContentItem
++ exact current immutable ContentVersion
++ route target-state snapshot
         ↓
-Serper PAA / Related / Autocomplete / Organic
-        │
-        └─ Tavily / Exa bounded fallback only when existing router needs it
+exact admission
         ↓
-immutable bounded capture
+revision ContentCase + source LocaleVariant
++ durable OperatorCommand receipt
         ↓
-normalize / dedupe / provenance aggregation
-        ↓
-canonical SEARCH Signals linked to the existing Need
-        ↓
-Question Map → Coverage → Content Architecture
+no ContentItem / ContentVersion / Run / Job yet
 ```
 
-Rules:
-- an explicit search-language run cannot be short-circuited by internal-knowledge sufficiency;
-- pure F1R3 does not use Jina because it is not factual page-reading work;
-- PAA/Related/Autocomplete are question-eligible and may receive the exact planning Need link;
-- Organic/Source Discovery is preserved as project-level context with planning Need refs but
-  receives no Need support link and is excluded from Question Map question derivation;
-- same normalized query across provider/query variants is one canonical planning observation,
-  with provider/method/query/hop/source provenance aggregated rather than fake demand count;
-- every F1R3 SEARCH Signal is marked `customer_truth_eligible=false` and
-  `factual_evidence_eligible=false`;
-- Need status/version/review state must not change;
-- no ContentOpportunity, HumanSelection or ContentCase is created by Search Discovery;
-- no Writer/Publish;
-- live Internet output may vary; determinism is required for the transformation of one
-  captured input, plus repeated read-model builds over the persisted state.
+Locked design decisions:
+- revision execution/audit scope gets a ContentCase bound to the exact selected UPDATE/REFRESH opportunity;
+- canonical article identity remains the existing target ContentItem;
+- D2 creates no competing ContentItem and no placeholder ContentVersion;
+- target current ContentVersion is frozen in the route and receipt;
+- ContentVersion append locks the target ContentItem before allocating the next version;
+- D2 locks opportunity + Need + target item/case/variant/current version before final route/admission recheck;
+- Need gate remains PROPOSED|TESTING|SUPPORTED allowed only with exact selected lineage; REJECTED and INSUFFICIENT_EVIDENCE fail closed;
+- no auto Start, Evidence/Originality, model/provider/tool, Writer or Publish;
+- exact replay returns the old receipt before mutable-state revalidation;
+- the shared target/version snapshot contract is reused by D3; D3 must not invent a second identity model.
 
-Branch `feat/qm-02f1r3-search-discovery` contains the implementation and regression tests.
-The operational real-provider pilot must run only after exact-SHA code verification and must
-reuse one existing canonical Need; it must not create/promote a Need to force a result.
-
+Implementation is in progress on #358. Do not start #359 implementation in parallel until D2 shared
+contracts are exact-SHA verified and technically merge-ready.
 ## Read first and verify the actual ref
 
 Read `AGENTS.md`, this file, `docs/TASKS.md`, `docs/CHECKLIST.md`, the canonical plan and the exact assigned task. Inspect local changes before fetching/synchronizing. Never reset, stash, clean, overwrite `.env`, or switch an active runtime to another checkout automatically.
@@ -67,7 +60,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current Question Map track: `ddb2380073119742d7aaf8c814ef0b1f50893c3d` (merge PR #365 / QM-02F1R2). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main for the current Question Map track: `3bfb98c22e024480b93604b2b26b91f22ed7369f` (merge PR #366 / QM-02F1R3).ntext, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -98,42 +91,27 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Close #356 / QM-02F1R3 in two gates.
+Close #358 / QM-02D2 on one exact candidate SHA.
 
-### Gate A — code exact-SHA
+Required proof:
+- UPDATE route binds exactly one canonical target + current immutable ContentVersion;
+- REFRESH route binds exactly one stale canonical target + current immutable ContentVersion;
+- item/version/status drift changes route snapshot and fails closed;
+- admission binds exact target snapshot hashes;
+- active target production blocks;
+- exact selected QM-02A lineage is required;
+- D2 creates exactly one revision ContentCase + source LocaleVariant + receipt;
+- target ContentItem identity is preserved and no new ContentItem/ContentVersion is created;
+- receipt binds exact target ContentVersion;
+- exact replay returns same case/variant/receipt with zero row delta;
+- distinct-key duplicate materialization fails closed;
+- later Need rejection does not invalidate old exact replay but blocks a new handoff;
+- PROPOSED/TESTING/SUPPORTED policy remains aligned with F1R1;
+- zero ContentRun/StepRun/Job and no auto Start/Evidence/Originality/Writer/Publish;
+- Ruff + mypy + focused QM chain + full backend + OCR Delegation + Agent Local exact-SHA proof;
+- minimal GitHub CI confirmation.
 
-Prove:
-- explicit external Search Discovery forces Serper even when internal knowledge is sufficient;
-- provider stack remains `Serper -> bounded Tavily/Exa fallback`; no SerpAPI addition;
-- pure search-language discovery does not invoke Jina;
-- query expansion is bounded by hop, per-hop expansion and total-query limits;
-- same normalized phrase across PAA/Related/Autocomplete/provider/query paths persists as one
-  canonical F1R3 SEARCH Signal with aggregated exact provenance;
-- no fake independence: `independence_group` is normalized query fingerprint;
-- Organic/source context is stored but does not become a Question Map question;
-- off-scope/malformed/truncated observations keep provenance but cannot create usable clusters;
-- Need truth state is unchanged;
-- zero ContentOpportunity/HumanSelection/ContentCase/Run/Step/Job/Writer/Publish side effects;
-- repeated identical captured inputs produce the same Question Map and Content Architecture
-  snapshots;
-- locale identity remains separate;
-- Ruff + mypy + focused chain + full backend + OCR Delegation + GitHub CI pass.
-
-### Gate B — bounded real-provider operational pilot
-
-Only after Gate A passes:
-- inspect the operational DB read-only and choose one existing first-time-art-buyer Need;
-- derive a small seed set from that canonical Need + existing approved/deep-research context;
-- run one locale at a time, max one hop initially and a small total-query budget;
-- allow only SEARCH Signal + NeedHypothesisSignal planning writes and JSON artifact capture;
-- verify exact Need status/version is unchanged and no selection/materialization rows appear;
-- report PAA/Related/Autocomplete/Organic counts, provider/fallback decisions, dedupe provenance,
-  Question Map breadth and Pillar/Cluster map;
-- rebuild Question Map and Content Architecture twice and require equal hashes;
-- do not treat a second live Internet run as a deterministic fixture.
-
-Do not begin #346 rerun until #356 is merged and its real-provider pilot is accepted.
-
+Do not start D3 implementation until this shared target/version contract is verified.
 ## Pilot operating priority — 2026-10-03
 
 Near-term goal: produce a small batch of real content that Founder accepts, then repeat it on one stable release. Engineering work must remove a demonstrated blocker to that outcome.
