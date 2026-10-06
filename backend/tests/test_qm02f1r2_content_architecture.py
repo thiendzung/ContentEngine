@@ -274,6 +274,47 @@ def test_existing_pillar_content_blocks_new_pillar_selection() -> None:
     assert pillar["existing_content_refs"] == [item_id]
 
 
+def test_selected_pillar_plan_blocks_second_pillar_candidate() -> None:
+    need_id = str(uuid4())
+    plan_id = str(uuid4())
+    payload = build_content_architecture_projection(
+        planner=_planner(
+            need_id=need_id,
+            locale="en",
+            rows=_canonical_rows(),
+        ),
+        content_coverage=_coverage(
+            need_id=need_id,
+            locale="en",
+            opportunities=[
+                {
+                    "id": plan_id,
+                    "locale": "en",
+                    "decision": "CREATE",
+                    "priority": "NEXT",
+                    "suggested_role": "pillar",
+                    "question": "Buy a first original artwork with confidence.",
+                    "intent": "mixed",
+                    "existing_content_refs": [],
+                    "selection_refs": [],
+                }
+            ],
+        ),
+    )
+
+    candidates = payload["candidates"]
+    assert isinstance(candidates, list)
+    pillar = next(
+        row
+        for row in candidates
+        if isinstance(row, dict) and row["role"] == "pillar"
+    )
+    assert pillar["decision"] == "DO_NOT_WRITE"
+    assert pillar["selection_readiness"] == "BLOCKED"
+    assert pillar["selectable"] is False
+    assert pillar["existing_plan_refs"] == [plan_id]
+
+
 def test_candidate_identity_is_locale_specific() -> None:
     need_id = str(uuid4())
     rows = _canonical_rows()
