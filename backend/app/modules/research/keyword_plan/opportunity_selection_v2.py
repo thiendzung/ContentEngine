@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, Field
@@ -136,6 +138,41 @@ def _hash64(value: object, code: str) -> str:
     except ValueError as exc:
         raise OpportunitySelectionError(code) from exc
     return text.lower()
+
+
+def _opportunity_payload_hash(row: ContentOpportunity) -> str:
+    payload = {
+        "id": str(row.id),
+        "project_id": str(row.project_id),
+        "need_hypothesis_id": str(row.need_hypothesis_id),
+        "locale": row.locale,
+        "reader": row.reader,
+        "situation": row.situation,
+        "need": row.need,
+        "question": row.question,
+        "intent": row.intent,
+        "promise": row.promise,
+        "coverage_requirements": list(row.coverage_requirements_json),
+        "motgu_material_refs": list(row.motgu_material_refs_json),
+        "material_gaps": list(row.material_gaps_json),
+        "existing_content_refs": list(row.existing_content_refs_json),
+        "what_is_actually_new": row.what_is_actually_new,
+        "next_discovery_step": row.next_discovery_step,
+        "decision": row.decision,
+        "priority": row.priority,
+        "suggested_content_type": row.suggested_content_type,
+        "suggested_role": row.suggested_role,
+        "version": row.version,
+        "selected_by": row.selected_by,
+        "selection_reason": row.selection_reason,
+    }
+    raw = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    return hashlib.sha256(raw).hexdigest()
 
 
 def _stable_id(kind: str, *, planner_hash: str, cluster_key: str) -> UUID:
@@ -296,7 +333,8 @@ def _lineage_reasons(
 def _assert_existing_replay(
     row: ContentOpportunity,
     *,
-    need: NeedHypothesis,
+    need_id: UUID,
+    project_id: UUID,
     locale: str,
     planner_hash: str,
     cluster_key: str,
@@ -306,21 +344,11 @@ def _assert_existing_replay(
     selected_by: str,
 ) -> None:
     expected = {
-        "project_id": need.project_id,
-        "need_hypothesis_id": need.id,
+        "project_id": project_id,
+        "need_hypothesis_id": need_id,
         "locale": locale,
-        "reader": need.audience_scope,
-        "situation": need.situation,
-        "need": need.statement,
         "promise": promise,
         "coverage_requirements_json": coverage,
-        "motgu_material_refs_json": [],
-        "material_gaps_json": [_MATERIAL_GAP],
-        "what_is_actually_new": _NOT_NEW_YET,
-        "next_discovery_step": _NEXT_STEP,
-        "suggested_content_type": "journal",
-        "suggested_role": "cluster",
-        "version": 1,
         "selected_by": selected_by,
         "selection_reason": reason,
     }
@@ -341,13 +369,35 @@ def _assert_existing_replay(
         raise OpportunitySelectionError(
             "opportunity_selection_replay_conflict"
         )
+    reason_set = set(reasons)
     required_lineage = {
         "qm02a_exact_planner_selection",
+        "selection_contract:qm02a-v1",
         f"planner_snapshot:{planner_hash}",
-        f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}",
         f"planner_cluster:{cluster_key}",
     }
-    if not required_lineage.issubset(set(reasons)):
+    if not required_lineage.issubset(reason_set):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+    if not any(item.startswith("planner_policy:") for item in reason_set):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+    if not any(
+        item.startswith("question_coverage_snapshot:")
+        for item in reason_set
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+
+    payload_markers = [
+        item.removeprefix("selection_payload:")
+        for item in reasons
+        if item.startswith("selection_payload:")
+    ]
+    if payload_markers != [_opportunity_payload_hash(row)]:
         raise OpportunitySelectionError(
             "opportunity_selection_replay_conflict"
         )
@@ -470,7 +520,8 @@ async def persist_selected_opportunity(
     if existing is not None:
         _assert_existing_replay(
             existing,
-            need=need,
+            need_id=need.id,
+            project_id=project_id,
             locale=locale,
             planner_hash=planner_hash,
             cluster_key=cluster_key,
@@ -636,6 +687,15 @@ async def persist_selected_opportunity(
         selected_by=selected_by,
         selected_at=selected_at,
         selection_reason=reason,
+    )
+    opportunity.reasons_json = sorted(
+        set(
+            opportunity.reasons_json
+            + [
+                "selection_contract:qm02a-v1",
+                f"selection_payload:{_opportunity_payload_hash(opportunity)}",
+            ]
+        )
     )
     session.add(opportunity)
     await session.flush()
