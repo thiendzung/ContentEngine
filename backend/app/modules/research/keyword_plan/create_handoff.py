@@ -36,7 +36,7 @@ from app.modules.research.keyword_plan.production_decision_router import (
     build_production_decision_route,
 )
 
-CREATE_HANDOFF_POLICY_VERSION = "qm-create-handoff-v1.1"
+CREATE_HANDOFF_POLICY_VERSION = "qm-create-handoff-v1"
 _MATERIALIZABLE_NEED_STATUSES = frozenset({"PROPOSED", "TESTING", "SUPPORTED"})
 
 
