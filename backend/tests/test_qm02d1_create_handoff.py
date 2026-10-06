@@ -297,6 +297,13 @@ async def test_create_handoff_materializes_only_case_variant_and_receipt() -> No
         assert result.admission_snapshot_hash == admission_hash
         assert result.state.status == "NOT_READY"
         assert result.state.blocker_code == "operator_pipeline_start_not_wired"
+        receipt = await session.get(OperatorCommand, result.command_id)
+        assert receipt is not None
+        assert receipt.run_id is None
+        assert receipt.step_run_id is None
+        assert receipt.job_id is None
+        assert receipt.result_ref_id == result.source_locale_variant_id
+        assert receipt.resolved_action_key == "materialize_question_map_create"
         assert after["case"] == before["case"] + 1
         assert after["variant"] == before["variant"] + 1
         assert after["command"] == before["command"] + 1
