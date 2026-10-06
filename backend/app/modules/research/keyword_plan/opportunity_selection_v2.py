@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable
+from typing import cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, Field
@@ -363,7 +364,7 @@ def _candidate_role(candidate: dict[str, object]) -> ArchitectureRole:
         raise OpportunitySelectionError(
             "opportunity_selection_architecture_role_invalid"
         )
-    return value  # type: ignore[return-value]
+    return cast(ArchitectureRole, value)
 
 
 def _candidate_member_clusters(
