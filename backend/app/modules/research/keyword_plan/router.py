@@ -3,11 +3,17 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.modules.content_engine.models import Project
+from app.modules.research.keyword_plan.create_handoff import (
+    CreateProductionHandoffError,
+    CreateProductionHandoffResult,
+    materialize_create_handoff,
+)
 from app.modules.research.keyword_plan.opportunity_planner_v2 import (
     OpportunityPlannerError,
     build_opportunity_plan_v2,
@@ -40,12 +46,22 @@ from app.modules.research.keyword_plan.question_map import (
 router = APIRouter(prefix="/question-map", tags=["question-map"])
 
 
+class CreateProductionHandoffRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_slug: str = Field(default="motgu", min_length=1, max_length=100)
+    expected_route_snapshot_hash: str = Field(min_length=64, max_length=64)
+    expected_admission_snapshot_hash: str = Field(min_length=64, max_length=64)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
 def _question_map_http_error(
     exc: (
         QuestionMapError
         | QuestionCoverageError
         | OpportunityPlannerError
         | OpportunitySelectionError
+        | CreateProductionHandoffError
         | ProductionAdmissionError
         | ProductionDecisionRouterError
     ),
@@ -59,8 +75,19 @@ def _question_map_http_error(
         "opportunity_planner_need_not_found",
         "opportunity_selection_need_not_found",
         "production_route_opportunity_not_found",
+        "create_handoff_opportunity_not_found",
     }
-    status_code = 404 if exc.code in not_found else 409
+    invalid = {
+        "create_handoff_route_hash_invalid",
+        "create_handoff_admission_hash_invalid",
+        "create_handoff_idempotency_key_invalid",
+    }
+    if exc.code in not_found:
+        status_code = 404
+    elif exc.code in invalid:
+        status_code = 422
+    else:
+        status_code = 409
     return HTTPException(
         status_code=status_code,
         detail={
@@ -233,5 +260,40 @@ async def get_production_admission(
     except (
         QuestionMapError,
         ProductionAdmissionError,
+    ) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/materialize-create",
+    response_model=CreateProductionHandoffResult,
+)
+async def create_production_handoff(
+    opportunity_id: UUID,
+    request: CreateProductionHandoffRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CreateProductionHandoffResult:
+    try:
+        async with session.begin():
+            project_id = await _project_id_from_slug(
+                session,
+                project_slug=request.project_slug,
+            )
+            return await materialize_create_handoff(
+                session,
+                project_id=project_id,
+                opportunity_id=opportunity_id,
+                expected_route_snapshot_hash=(
+                    request.expected_route_snapshot_hash
+                ),
+                expected_admission_snapshot_hash=(
+                    request.expected_admission_snapshot_hash
+                ),
+                idempotency_key=request.idempotency_key,
+                actor_id="founder",
+            )
+    except (
+        QuestionMapError,
+        CreateProductionHandoffError,
     ) as exc:
         raise _question_map_http_error(exc) from exc
