@@ -330,7 +330,9 @@ def test_supporting_only_partial_does_not_become_update_target() -> None:
     )
 
     assert row["decision"] == "CREATE"
+    assert row["selection_readiness"] == "READY_FOR_HUMAN_SELECTION"
     assert row["existing_content_refs"] == []
+    assert row["existing_plan_refs"] == []
     assert row["coverage_refs"]["all_matched_content_items"] == [
         "support-item"
     ]
