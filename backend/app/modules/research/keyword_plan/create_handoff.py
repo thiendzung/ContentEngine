@@ -80,6 +80,52 @@ def _normalize_hash(value: str, *, code: str) -> str:
     return normalized
 
 
+def _require_qm02a_selection_lineage(
+    opportunity: ContentOpportunity,
+) -> None:
+    reasons = opportunity.reasons_json
+    if not isinstance(reasons, list) or any(
+        not isinstance(item, str) for item in reasons
+    ):
+        raise CreateProductionHandoffError(
+            "create_handoff_qm02a_lineage_required"
+        )
+    reason_set = set(reasons)
+    required = {
+        "qm02a_exact_planner_selection",
+        "selection_contract:qm02a-v1",
+    }
+    if not required.issubset(reason_set):
+        raise CreateProductionHandoffError(
+            "create_handoff_qm02a_lineage_required"
+        )
+
+    def marker(prefix: str) -> str:
+        matches = [
+            item.removeprefix(prefix)
+            for item in reasons
+            if item.startswith(prefix)
+        ]
+        if len(matches) != 1 or not matches[0]:
+            raise CreateProductionHandoffError(
+                "create_handoff_qm02a_lineage_required"
+            )
+        return matches[0]
+
+    planner_hash = marker("planner_snapshot:")
+    coverage_hash = marker("question_coverage_snapshot:")
+    _normalize_hash(
+        planner_hash,
+        code="create_handoff_qm02a_lineage_required",
+    )
+    _normalize_hash(
+        coverage_hash,
+        code="create_handoff_qm02a_lineage_required",
+    )
+    marker("planner_policy:")
+    marker("planner_cluster:")
+
+
 def _request_hash(
     *,
     project_id: UUID,
@@ -217,6 +263,7 @@ async def materialize_create_handoff(
         raise CreateProductionHandoffError(
             "create_handoff_opportunity_not_found"
         )
+    _require_qm02a_selection_lineage(locked_opportunity)
 
     locked_need = await session.scalar(
         select(NeedHypothesis)
