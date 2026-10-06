@@ -172,11 +172,6 @@ async def _status_for_current_route(
         "REVISE_EXISTING_CONTENT",
         "REFRESH_EXISTING_CONTENT",
     }:
-        if bound_cases:
-            return (
-                "BLOCKED_PRODUCTION_CONFLICT",
-                ["production_admission_revision_has_new_case_binding"],
-            )
         if (
             len(route.target_content_item_ids) != 1
             or len(route.target_snapshots) != 1
@@ -200,29 +195,47 @@ async def _status_for_current_route(
                 "BLOCKED_TARGET_STALE",
                 ["production_admission_target_missing"],
             )
-        existing_revision = await session.scalar(
-            select(OperatorCommand.id)
-            .where(
-                OperatorCommand.content_case_id == item.content_case_id,
-                OperatorCommand.result_ref_id
-                == target.current_content_version_id,
-                OperatorCommand.resolved_action_key.in_(
+
+        if bound_cases:
+            if len(bound_cases) == 1:
+                revision_case = bound_cases[0]
+                expected_action = (
+                    "materialize_question_map_update"
+                    if route.route == "REVISE_EXISTING_CONTENT"
+                    else "materialize_question_map_refresh"
+                )
+                matching_receipts = list(
                     (
-                        "materialize_question_map_update",
-                        "materialize_question_map_refresh",
+                        await session.scalars(
+                            select(OperatorCommand)
+                            .where(
+                                OperatorCommand.content_case_id
+                                == revision_case.id,
+                                OperatorCommand.result_ref_id
+                                == target.current_content_version_id,
+                                OperatorCommand.resolved_action_key
+                                == expected_action,
+                                OperatorCommand.status.in_(
+                                    ("accepted", "queued", "completed")
+                                ),
+                            )
+                            .order_by(OperatorCommand.id)
+                        )
+                    ).all()
+                )
+                if len(matching_receipts) == 1:
+                    return (
+                        "BLOCKED_ALREADY_MATERIALIZED",
+                        [
+                            "production_admission_revision_"
+                            "already_materialized"
+                        ],
                     )
-                ),
-                OperatorCommand.status.in_(
-                    ("accepted", "queued", "completed")
-                ),
-            )
-            .limit(1)
-        )
-        if existing_revision is not None:
             return (
-                "BLOCKED_ALREADY_MATERIALIZED",
-                ["production_admission_revision_already_materialized"],
+                "BLOCKED_PRODUCTION_CONFLICT",
+                ["production_admission_revision_case_binding_conflict"],
             )
+
         if await _blocking_run_count(
             session,
             content_case_id=item.content_case_id,
