@@ -154,6 +154,7 @@ def _question_coverage(
             {
                 "cluster_key": "cluster-budget",
                 "intent": "evaluate",
+                "audience_stage": "evaluating",
                 "answer_job": "plan_budget",
                 "primary_question_key": "question-budget",
                 "primary_question": "How much should I spend on art?",
