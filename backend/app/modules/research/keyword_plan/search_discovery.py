@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import (
@@ -649,36 +649,30 @@ async def run_search_discovery(
     before_counts = {
         "opportunities": int(
             await session.scalar(
-                select(ContentOpportunity)
+                select(func.count())
+                .select_from(ContentOpportunity)
                 .where(ContentOpportunity.project_id == project.id)
-                .with_only_columns(
-                    __import__("sqlalchemy").func.count()
-                )
             )
             or 0
         ),
         "selections": int(
             await session.scalar(
-                select(HumanSelection)
+                select(func.count())
+                .select_from(HumanSelection)
                 .join(
                     ContentOpportunity,
                     ContentOpportunity.id
                     == HumanSelection.content_opportunity_id,
                 )
                 .where(ContentOpportunity.project_id == project.id)
-                .with_only_columns(
-                    __import__("sqlalchemy").func.count()
-                )
             )
             or 0
         ),
         "cases": int(
             await session.scalar(
-                select(ContentCase)
+                select(func.count())
+                .select_from(ContentCase)
                 .where(ContentCase.project_id == project.id)
-                .with_only_columns(
-                    __import__("sqlalchemy").func.count()
-                )
             )
             or 0
         ),
@@ -912,6 +906,8 @@ def capture_hash(result: SearchDiscoveryResult) -> str:
     """Hash stable discovery semantics while excluding run timestamps."""
 
     payload = result.as_dict()
+    payload.pop("created_signal_ids", None)
+    payload.pop("reused_signal_ids", None)
     calls = payload.get("provider_calls")
     if isinstance(calls, list):
         payload["provider_calls"] = [
