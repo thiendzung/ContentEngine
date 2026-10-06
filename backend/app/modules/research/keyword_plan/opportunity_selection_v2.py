@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, Field
@@ -140,7 +141,25 @@ def _hash64(value: object, code: str) -> str:
     return text.lower()
 
 
-def _opportunity_payload_hash(row: ContentOpportunity) -> str:
+def _signal_ref_strings(signal_ids: Iterable[UUID]) -> list[str]:
+    return sorted({str(signal_id) for signal_id in signal_ids})
+
+
+def _signal_set_hash(signal_ids: Iterable[UUID]) -> str:
+    raw = json.dumps(
+        _signal_ref_strings(signal_ids),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _opportunity_payload_hash(
+    row: ContentOpportunity,
+    *,
+    signal_ids: Iterable[UUID],
+) -> str:
     payload = {
         "id": str(row.id),
         "project_id": str(row.project_id),
@@ -165,6 +184,7 @@ def _opportunity_payload_hash(row: ContentOpportunity) -> str:
         "version": row.version,
         "selected_by": row.selected_by,
         "selection_reason": row.selection_reason,
+        "signal_refs": _signal_ref_strings(signal_ids),
     }
     raw = json.dumps(
         payload,
@@ -387,6 +407,14 @@ async def validate_persisted_opportunity_selection(
         ),
         "opportunity_selection_lineage_invalid",
     )
+    selected_signal_set_hash = _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="selection_signal_set:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
 
     expected_opportunity_id = _stable_id(
         "content-opportunity",
@@ -397,11 +425,6 @@ async def validate_persisted_opportunity_selection(
         raise OpportunitySelectionError(
             "opportunity_selection_identity_mismatch"
         )
-    if payload_hash != _opportunity_payload_hash(opportunity):
-        raise OpportunitySelectionError(
-            "opportunity_selection_payload_mismatch"
-        )
-
     selections = list(
         (
             await session.scalars(
@@ -444,6 +467,17 @@ async def validate_persisted_opportunity_selection(
         raise OpportunitySelectionError(
             "opportunity_selection_signal_lineage_missing"
         )
+    if _signal_set_hash(linked_signal_ids) != selected_signal_set_hash:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_set_stale"
+        )
+    if payload_hash != _opportunity_payload_hash(
+        opportunity,
+        signal_ids=linked_signal_ids,
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_payload_mismatch"
+        )
 
 
 def _lineage_reasons(
@@ -452,6 +486,7 @@ def _lineage_reasons(
     planner_hash: str,
     cluster_key: str,
     question_coverage_hash: str,
+    signal_refs: list[UUID],
 ) -> list[str]:
     reasons = _string_list(
         recommendation.get("reason_codes"),
@@ -466,6 +501,7 @@ def _lineage_reasons(
                 f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}",
                 f"planner_cluster:{cluster_key}",
                 f"question_coverage_snapshot:{question_coverage_hash}",
+                f"selection_signal_set:{_signal_set_hash(signal_refs)}",
             ]
         )
     )
@@ -532,17 +568,6 @@ def _assert_existing_replay(
         raise OpportunitySelectionError(
             "opportunity_selection_replay_conflict"
         )
-
-    payload_markers = [
-        item.removeprefix("selection_payload:")
-        for item in reasons
-        if item.startswith("selection_payload:")
-    ]
-    if payload_markers != [_opportunity_payload_hash(row)]:
-        raise OpportunitySelectionError(
-            "opportunity_selection_replay_conflict"
-        )
-
 
 async def _validate_existing_signal_lineage(
     session: AsyncSession,
@@ -798,6 +823,7 @@ async def persist_selected_opportunity(
         planner_hash=planner_hash,
         cluster_key=cluster_key,
         question_coverage_hash=question_coverage_hash,
+        signal_refs=signal_refs,
     )
 
     selected_at = utc_now()
@@ -833,7 +859,10 @@ async def persist_selected_opportunity(
             opportunity.reasons_json
             + [
                 "selection_contract:qm02a-v1",
-                f"selection_payload:{_opportunity_payload_hash(opportunity)}",
+                (
+                    "selection_payload:"
+                    f"{_opportunity_payload_hash(opportunity, signal_ids=signal_refs)}"
+                ),
             ]
         )
     )
