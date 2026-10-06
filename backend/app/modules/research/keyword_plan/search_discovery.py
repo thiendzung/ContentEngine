@@ -335,6 +335,7 @@ def _observation_payload(
     row: SearchDiscoveryObservation,
     *,
     captured_at: str,
+    artifact_ref: str | None,
 ) -> dict[str, object]:
     return {
         "observation_key": row.observation_key,
@@ -348,6 +349,7 @@ def _observation_payload(
         "snippet": row.snippet,
         "position": row.position,
         "question_eligible": row.question_eligible,
+        "artifact_ref": artifact_ref,
         "captured_at": captured_at,
     }
 
@@ -431,7 +433,11 @@ async def _persist_observation_groups(
             fingerprint=fingerprint,
         )
         additions = [
-            _observation_payload(row, captured_at=captured_at)
+            _observation_payload(
+                row,
+                captured_at=captured_at,
+                artifact_ref=request.artifact_ref,
+            )
             for row in group
         ]
 
@@ -508,7 +514,12 @@ async def _persist_observation_groups(
             "method": representative.get("method"),
             "locator": representative.get("query"),
             "source_ref": representative.get("source_url"),
-            "artifact_ref": request.artifact_ref,
+            "artifact_ref": representative.get("artifact_ref"),
+            "artifact_refs": sorted({
+                str(row["artifact_ref"])
+                for row in occurrences
+                if row.get("artifact_ref")
+            }),
             "question_eligible": question_eligible,
             "customer_truth_eligible": False,
             "factual_evidence_eligible": False,
@@ -574,6 +585,9 @@ def _provider_calls(
             "status": row.status,
             "result_count": row.result_count,
             "reason": row.reason,
+            "raw_excerpt_hash": hashlib.sha256(
+                row.raw_excerpt.encode()
+            ).hexdigest(),
             "captured_at": row.captured_at,
         }
         for row in result.calls
