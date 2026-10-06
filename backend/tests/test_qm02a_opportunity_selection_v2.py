@@ -377,6 +377,48 @@ async def test_exact_replay_is_idempotent_after_new_plan_changes_coverage() -> N
 
 
 @pytest.mark.asyncio
+async def test_exact_replay_rejects_later_signal_link_change() -> None:
+    async with isolated_session() as session:
+        project, need, _ = await _canonical_inputs(session)
+        plan = await build_opportunity_plan_v2(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        request = _request(project=project, need=need, plan=plan)
+        first = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+
+        later_signal = await _search_signal(
+            session,
+            project,
+            need,
+            text="What should I verify before buying original art?",
+        )
+        session.add(
+            ContentOpportunitySignal(
+                content_opportunity_id=first.content_opportunity_id,
+                signal_id=later_signal.id,
+            )
+        )
+        await session.flush()
+
+        with pytest.raises(
+            OpportunitySelectionError,
+            match="opportunity_selection_signal_set_stale",
+        ):
+            await persist_selected_opportunity(
+                session,
+                project_id=project.id,
+                request=request,
+            )
+
+
+@pytest.mark.asyncio
 async def test_exact_replay_survives_later_need_state_change() -> None:
     async with isolated_session() as session:
         project, need, _ = await _canonical_inputs(session)
