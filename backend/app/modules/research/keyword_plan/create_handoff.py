@@ -262,6 +262,8 @@ async def materialize_create_handoff(
             session,
             content_opportunity_id=opportunity_id,
             expected_opportunity_version=route.opportunity_version,
+            required_need_status="SUPPORTED",
+            need_status_error_code="create_handoff_requires_supported_need",
         )
     except OperatorControlError as exc:
         raise CreateProductionHandoffError(exc.code) from exc
