@@ -128,10 +128,11 @@ def _canonical_rows() -> list[dict[str, object]]:
             signal_suffix="0000000001",
         ),
         _recommendation(
-            cluster_key="original-vs-print",
-            answer_job="compare_options",
-            question="What is the difference between an original and a print?",
-            intent="compare",
+            cluster_key="questions-before-buying",
+            answer_job="choose_with_confidence",
+            question="What should I ask before buying my first artwork?",
+            intent="evaluate",
+            audience_stage="first_time_buyer",
             signal_suffix="0000000002",
         ),
         _recommendation(
