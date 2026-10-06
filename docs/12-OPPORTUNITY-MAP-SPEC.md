@@ -224,6 +224,47 @@ Endpoint mutation:
 
 QM-02A không tự chạy Lens/Angle/Writer/Publish.
 
+### Production Decision Router — QM-02B
+
+Sau khi đã có durable ContentOpportunity + HumanSelection, hệ thống không được mặc định rằng
+mọi selection đều tạo bài mới.
+
+```text
+selected ContentOpportunity
++ exactly one matching HumanSelection
++ exact target ContentItem lineage
+→ production route
+```
+
+Mapping:
+
+- `CREATE → CREATE_NEW_CONTENT`
+- `UPDATE → REVISE_EXISTING_CONTENT`
+- `REFRESH → REFRESH_EXISTING_CONTENT`
+- `MERGE → RECONCILE_CONTENT`
+- `LINK_ONLY → NO_PRODUCTION`
+- `DO_NOT_WRITE → STOP`
+
+QM-02B là read-only. Nó chưa tạo ContentCase/ContentVersion/run/job.
+
+Fail-closed rules:
+
+- phải có đúng một durable HumanSelection khớp convenience selection fields;
+- CREATE có 0 target;
+- UPDATE / REFRESH / LINK_ONLY có đúng 1 target;
+- MERGE có ít nhất 2 target;
+- DO_NOT_WRITE có 0 target;
+- target phải là ContentItem cùng project, cùng locale và có primary ContentCase Need đúng
+  với canonical Need của opportunity;
+- supporting-Need-only content không được dùng làm production target.
+
+Endpoint:
+
+`GET /question-map/opportunities/{opportunity_id}/route`
+
+Existing Journal CREATE guard vẫn giữ nguyên: `create_or_reuse_journal_case` chỉ nhận
+`decision=CREATE`.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
