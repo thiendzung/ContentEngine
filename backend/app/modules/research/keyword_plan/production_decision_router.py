@@ -345,7 +345,22 @@ async def build_production_decision_route(
         "reason_codes": reason_codes,
     }
     return ProductionDecisionRoute(
-        **snapshot,
+        schema_version=PRODUCTION_DECISION_ROUTER_SCHEMA_VERSION,
+        policy_version=PRODUCTION_DECISION_ROUTER_POLICY_VERSION,
+        project_id=project_id,
+        opportunity_id=opportunity.id,
+        opportunity_version=opportunity.version,
+        human_selection_id=selection.id,
+        selection_snapshot_hash=_selection_snapshot_hash(selection),
+        need_hypothesis_id=opportunity.need_hypothesis_id,
+        locale=locale,
+        decision=opportunity.decision,
+        route=route,
+        target_content_item_ids=target_ids,
+        admission_candidate=admission_candidate,
+        reconciliation_required=reconciliation_required,
+        production_forbidden=production_forbidden,
+        reason_codes=reason_codes,
         snapshot_hash=_stable_hash(snapshot),
     )
 
