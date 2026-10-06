@@ -145,11 +145,17 @@ async def _status_for_current_route(
     )
 
     if route.route == "CREATE_NEW_CONTENT":
-        if len(bound_cases) == 1 and bound_cases[0].content_type == "journal":
-            return (
-                "BLOCKED_ALREADY_MATERIALIZED",
-                ["production_admission_create_already_materialized"],
-            )
+        if len(bound_cases) == 1:
+            existing = bound_cases[0]
+            if (
+                existing.content_type == "journal"
+                and existing.project_id == route.project_id
+                and existing.need_hypothesis_id == route.need_hypothesis_id
+            ):
+                return (
+                    "BLOCKED_ALREADY_MATERIALIZED",
+                    ["production_admission_create_already_materialized"],
+                )
         if bound_cases:
             return (
                 "BLOCKED_PRODUCTION_CONFLICT",
