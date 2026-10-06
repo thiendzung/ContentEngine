@@ -305,6 +305,40 @@ Admission response có deterministic snapshot hash nhưng chỉ là read model. 
 phải recompute route + admission trong cùng transaction, kiểm tra exact expected hashes rồi
 mới materialize CREATE để tránh TOCTOU.
 
+### CREATE Production Handoff — QM-02D1
+
+QM-02D1 là mutation boundary đầu tiên sau Question Map planning và chỉ nhận
+`CREATE_NEW_CONTENT`.
+
+Caller phải bind:
+
+- exact QM-02B route snapshot hash;
+- exact QM-02C admission snapshot hash;
+- idempotency key.
+
+Với request mới, backend dùng cùng một DB transaction để khóa selected ContentOpportunity,
+recompute route, recompute admission, require exact hashes + `ADMITTED`, rồi mới reuse
+`create_or_reuse_journal_case`.
+
+Output production mới của slice này chỉ gồm:
+
+- đúng một Journal ContentCase;
+- đúng một source-locale LocaleVariant;
+- một durable OperatorCommand receipt để khóa idempotency/audit.
+
+Không tạo ContentRun/StepRun/Job và không auto-Start. Evidence/Originality vẫn là downstream
+authority. UPDATE/REFRESH/MERGE không được đi qua endpoint này.
+
+Endpoint:
+
+`POST /question-map/opportunities/{opportunity_id}/materialize-create`
+
+Exact replay cùng idempotency/request trả receipt cũ mà không materialize lại. Một request
+khác dùng cùng idempotency key phải fail closed. Opportunity row lock là concurrency boundary
+cho các idempotency key khác nhau cùng nhắm một selected opportunity.
+
+Sau khi QM-02D1 merge phải chạy QM-02F1 early real CREATE pilot trước khi mở D2/D3.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
