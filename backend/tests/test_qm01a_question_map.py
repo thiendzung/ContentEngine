@@ -162,6 +162,44 @@ async def test_question_map_is_deterministic_and_provenance_bounded() -> None:
 
 
 @pytest.mark.asyncio
+async def test_question_map_excludes_explicit_context_only_search_signal() -> None:
+    async with isolated_session() as session:
+        project = await _project(session, "motgu")
+        need = await _need(session, project_id=project.id)
+        question = await _signal(
+            session,
+            project_id=project.id,
+            text="How do I know this painting is original?",
+        )
+        context = await _signal(
+            session,
+            project_id=project.id,
+            text="Complete guide to buying original art",
+        )
+        context.provenance_json = {
+            "provider": "serper",
+            "method": "organic",
+            "question_eligible": False,
+        }
+        await _link(session, need=need, signal=question)
+        await _link(session, need=need, signal=context)
+
+        payload = await build_question_map(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+
+        assert payload["counts"] == {
+            "questions": 1,
+            "search_signals": 1,
+        }
+        assert payload["signal_refs"] == [str(question.id)]
+        assert payload["questions"][0]["text"] == question.observed_text
+
+
+@pytest.mark.asyncio
 async def test_question_map_is_locale_specific_and_ignores_noncanonical_evidence() -> None:
     async with isolated_session() as session:
         project = await _project(session, "motgu")
