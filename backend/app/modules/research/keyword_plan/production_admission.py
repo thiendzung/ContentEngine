@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.models import ContentCase, ContentItem
 from app.modules.harness.models import ContentRun
 from app.modules.research.keyword_plan.production_decision_router import (
@@ -20,8 +21,8 @@ from app.modules.research.keyword_plan.production_decision_router import (
     build_production_decision_route,
 )
 
-PRODUCTION_ADMISSION_SCHEMA_VERSION = 1
-PRODUCTION_ADMISSION_POLICY_VERSION = "qm-production-admission-v1"
+PRODUCTION_ADMISSION_SCHEMA_VERSION = 2
+PRODUCTION_ADMISSION_POLICY_VERSION = "qm-production-admission-v2"
 
 ProductionAdmissionStatus = Literal[
     "ADMITTED",
@@ -54,6 +55,7 @@ class ProductionAdmissionResult(BaseModel):
     route: ProductionRoute | None
     selection_snapshot_hash: str | None
     target_content_item_ids: list[UUID]
+    target_snapshot_hashes: list[str]
     status: ProductionAdmissionStatus
     reason_codes: list[str]
     snapshot_hash: str
@@ -175,19 +177,51 @@ async def _status_for_current_route(
                 "BLOCKED_PRODUCTION_CONFLICT",
                 ["production_admission_revision_has_new_case_binding"],
             )
-        if len(route.target_content_item_ids) != 1:
+        if (
+            len(route.target_content_item_ids) != 1
+            or len(route.target_snapshots) != 1
+        ):
             return (
                 "BLOCKED_TARGET_STALE",
                 ["production_admission_revision_target_count_invalid"],
+            )
+        target = route.target_snapshots[0]
+        if target.current_content_version_id is None:
+            return (
+                "BLOCKED_TARGET_STALE",
+                ["production_admission_revision_target_version_missing"],
             )
         item = await session.get(
             ContentItem,
             route.target_content_item_ids[0],
         )
-        if item is None:
+        if item is None or item.content_case_id != target.content_case_id:
             return (
                 "BLOCKED_TARGET_STALE",
                 ["production_admission_target_missing"],
+            )
+        existing_revision = await session.scalar(
+            select(OperatorCommand.id)
+            .where(
+                OperatorCommand.content_case_id == item.content_case_id,
+                OperatorCommand.result_ref_id
+                == target.current_content_version_id,
+                OperatorCommand.resolved_action_key.in_(
+                    (
+                        "materialize_question_map_update",
+                        "materialize_question_map_refresh",
+                    )
+                ),
+                OperatorCommand.status.in_(
+                    ("accepted", "queued", "completed")
+                ),
+            )
+            .limit(1)
+        )
+        if existing_revision is not None:
+            return (
+                "BLOCKED_ALREADY_MATERIALIZED",
+                ["production_admission_revision_already_materialized"],
             )
         if await _blocking_run_count(
             session,
@@ -217,6 +251,7 @@ def _result(
     route: ProductionRoute | None,
     selection_snapshot_hash: str | None,
     target_content_item_ids: list[UUID],
+    target_snapshot_hashes: list[str],
     status: ProductionAdmissionStatus,
     reason_codes: list[str],
 ) -> ProductionAdmissionResult:
@@ -232,6 +267,7 @@ def _result(
         "target_content_item_ids": [
             str(value) for value in target_content_item_ids
         ],
+        "target_snapshot_hashes": target_snapshot_hashes,
         "status": status,
         "reason_codes": reason_codes,
     }
@@ -245,6 +281,7 @@ def _result(
         route=route,
         selection_snapshot_hash=selection_snapshot_hash,
         target_content_item_ids=target_content_item_ids,
+        target_snapshot_hashes=target_snapshot_hashes,
         status=status,
         reason_codes=reason_codes,
         snapshot_hash=_stable_hash(snapshot),
@@ -277,6 +314,7 @@ async def build_production_admission(
             route=None,
             selection_snapshot_hash=None,
             target_content_item_ids=[],
+            target_snapshot_hashes=[],
             status=_router_error_status(exc.code),
             reason_codes=[exc.code],
         )
@@ -290,6 +328,9 @@ async def build_production_admission(
             route=route.route,
             selection_snapshot_hash=route.selection_snapshot_hash,
             target_content_item_ids=route.target_content_item_ids,
+            target_snapshot_hashes=[
+                row.snapshot_hash for row in route.target_snapshots
+            ],
             status="BLOCKED_ROUTE_STALE",
             reason_codes=[
                 "production_admission_route_snapshot_mismatch"
@@ -308,6 +349,9 @@ async def build_production_admission(
         route=route.route,
         selection_snapshot_hash=route.selection_snapshot_hash,
         target_content_item_ids=route.target_content_item_ids,
+        target_snapshot_hashes=[
+            row.snapshot_hash for row in route.target_snapshots
+        ],
         status=status,
         reason_codes=reason_codes,
     )
