@@ -453,7 +453,6 @@ def _priority(
     *,
     decision: PlannerDecision,
     coverage_status: str,
-    need_status: str,
     search_signal_count: int,
     selection_readiness: SelectionReadiness,
 ) -> tuple[PlannerPriority, list[str]]:
@@ -512,7 +511,6 @@ def _recommendation(
     priority, priority_reasons = _priority(
         decision=decision,
         coverage_status=coverage_status,
-        need_status=need.status,
         search_signal_count=signal_count,
         selection_readiness=readiness,
     )
