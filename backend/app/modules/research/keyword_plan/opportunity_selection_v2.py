@@ -222,6 +222,49 @@ def _stable_id(kind: str, *, planner_hash: str, cluster_key: str) -> UUID:
     )
 
 
+def _architecture_stable_id(
+    kind: str,
+    *,
+    architecture_hash: str,
+    candidate_key: str,
+) -> UUID:
+    return uuid5(
+        NAMESPACE_URL,
+        (
+            "https://contentengine.motgu/qm02a-architecture/"
+            f"{kind}/{architecture_hash}/{candidate_key}"
+        ),
+    )
+
+
+def _architecture_candidate(
+    architecture: dict[str, object],
+    *,
+    candidate_key: str,
+) -> dict[str, object]:
+    rows = _required_list(
+        architecture.get("candidates"),
+        "opportunity_selection_architecture_projection_invalid",
+    )
+    matches: list[dict[str, object]] = []
+    for raw in rows:
+        row = _required_dict(
+            raw,
+            "opportunity_selection_architecture_projection_invalid",
+        )
+        if row.get("candidate_key") == candidate_key:
+            matches.append(row)
+    if not matches:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_candidate_not_found"
+        )
+    if len(matches) != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_candidate_ambiguous"
+        )
+    return matches[0]
+
+
 def _recommendation(
     planner: dict[str, object],
     *,
