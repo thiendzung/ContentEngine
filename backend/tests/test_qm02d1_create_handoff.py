@@ -326,6 +326,16 @@ async def _target_item(
     )
     session.add(item)
     await session.flush()
+    session.add(
+        ContentVersion(
+            content_item_id=item.id,
+            version_no=1,
+            change_reason="Existing target fixture.",
+            status="draft",
+            content_json={"fixture": True},
+        )
+    )
+    await session.flush()
     return item
 
 
