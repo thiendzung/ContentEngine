@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-CLUSTERING_VERSION = "question-map-clustering-v2"
+CLUSTERING_VERSION = "question-map-clustering-v2.1"
 
 
 class QuestionClassificationLike(Protocol):
