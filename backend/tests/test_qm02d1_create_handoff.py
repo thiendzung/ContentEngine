@@ -265,6 +265,53 @@ async def _counts(session: AsyncSession) -> dict[str, int]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["PROPOSED", "TESTING", "SUPPORTED"])
+async def test_create_handoff_allows_materializable_need_states(
+    status: str,
+) -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(
+            session,
+            project_id=project.id,
+            status=status,
+        )
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        result = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=f"qm02d1:{uuid4()}",
+        )
+        after = await _counts(session)
+
+        stored_need = await session.get(NeedHypothesis, need.id)
+        assert stored_need is not None
+        assert stored_need.status == status
+        assert result.replayed is False
+        assert after["case"] == before["case"] + 1
+        assert after["variant"] == before["variant"] + 1
+        assert after["command"] == before["command"] + 1
+        for key in ("run", "step", "job"):
+            assert after[key] == before[key]
+
+
+@pytest.mark.asyncio
 async def test_create_handoff_materializes_only_case_variant_and_receipt() -> None:
     async with isolated_session() as session:
         project = await _project(session)
@@ -573,7 +620,7 @@ async def test_current_non_admitted_create_is_rejected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_need_state_drift_blocks_materialization() -> None:
+async def test_rejected_need_state_drift_blocks_materialization() -> None:
     async with isolated_session() as session:
         project = await _project(session)
         need = await _need(session, project_id=project.id)
@@ -597,7 +644,7 @@ async def test_need_state_drift_blocks_materialization() -> None:
 
         with pytest.raises(
             CreateProductionHandoffError,
-            match="create_handoff_requires_supported_need",
+            match="create_handoff_need_rejected",
         ):
             await materialize_create_handoff(
                 session,
@@ -614,6 +661,45 @@ async def test_need_state_drift_blocks_materialization() -> None:
         assert after["command"] == before["command"]
         for key in ("item", "version", "experiment", "run", "step", "job"):
             assert after[key] == before[key]
+
+
+@pytest.mark.asyncio
+async def test_insufficient_evidence_need_blocks_materialization() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(
+            session,
+            project_id=project.id,
+            status="INSUFFICIENT_EVIDENCE",
+        )
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match="create_handoff_need_insufficient_evidence",
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
 
 
 @pytest.mark.asyncio
