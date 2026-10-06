@@ -12,6 +12,12 @@ from app.modules.research.keyword_plan.opportunity_planner_v2 import (
     OpportunityPlannerError,
     build_opportunity_plan_v2,
 )
+from app.modules.research.keyword_plan.opportunity_selection_v2 import (
+    OpportunitySelectionError,
+    OpportunitySelectionRequest,
+    OpportunitySelectionResult,
+    persist_selected_opportunity,
+)
 from app.modules.research.keyword_plan.question_coverage import (
     QuestionCoverageError,
     build_question_coverage,
@@ -25,7 +31,12 @@ router = APIRouter(prefix="/question-map", tags=["question-map"])
 
 
 def _question_map_http_error(
-    exc: QuestionMapError | QuestionCoverageError | OpportunityPlannerError,
+    exc: (
+        QuestionMapError
+        | QuestionCoverageError
+        | OpportunityPlannerError
+        | OpportunitySelectionError
+    ),
 ) -> HTTPException:
     not_found = {
         "question_map_project_not_found",
@@ -34,6 +45,7 @@ def _question_map_http_error(
         "content_coverage_need_not_found",
         "opportunity_planner_project_not_found",
         "opportunity_planner_need_not_found",
+        "opportunity_selection_need_not_found",
     }
     status_code = 404 if exc.code in not_found else 409
     return HTTPException(
@@ -127,5 +139,32 @@ async def get_opportunity_plan_v2(
         QuestionMapError,
         QuestionCoverageError,
         OpportunityPlannerError,
+    ) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.post(
+    "/opportunities/select",
+    response_model=OpportunitySelectionResult,
+)
+async def select_opportunity_plan_v2(
+    request: OpportunitySelectionRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OpportunitySelectionResult:
+    try:
+        project_id = await _project_id_from_slug(
+            session,
+            project_slug=request.project_slug,
+        )
+        return await persist_selected_opportunity(
+            session,
+            project_id=project_id,
+            request=request,
+        )
+    except (
+        QuestionMapError,
+        QuestionCoverageError,
+        OpportunityPlannerError,
+        OpportunitySelectionError,
     ) as exc:
         raise _question_map_http_error(exc) from exc
