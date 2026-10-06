@@ -679,6 +679,35 @@ Buying Your First Original Painting
 └── What if I know nothing about art?
 ```
 
+### F1R2 — deterministic Content Architecture contract
+
+Question cluster identity binds the canonical Need + locale + intent + audience stage +
+answer job. Two questions sharing topic/intent but serving different journey stages are not
+silently collapsed into one cluster.
+
+`Content Architecture` is a derived, read-only projection over the exact Planner snapshot
+and same-locale Content Coverage. It does not create another truth store.
+
+Pillar candidate rules:
+
+- only clusters already classified as usable and editorially ready contribute breadth;
+- `DO_NOT_WRITE`, off-scope, malformed/truncated and unresolved clusters do not contribute;
+- at least three distinct ready member clusters, distinct answer jobs and distinct primary
+  questions are required by the current bounded policy;
+- insufficient breadth returns no Pillar candidate rather than inventing one;
+- an existing/selected same-Need same-locale Pillar blocks a new Pillar CREATE candidate;
+- every Pillar freezes exact member cluster keys and the union of their SEARCH Signal refs;
+- EN/VI architecture snapshots are independent; translated demand is not assumed equivalent.
+
+Founder selection accepts either one exact Cluster candidate or one exact Pillar candidate.
+The editorial role comes from the selected architecture snapshot, never from arbitrary client
+input. A Pillar selection persists exactly one ContentOpportunity + one HumanSelection; it
+does not create child ContentCases or invent parent/child relationships.
+
+Durable architecture-selection lineage records the exact planner snapshot, architecture
+snapshot/policy/candidate, editorial role, member cluster keys, selected Signal set and
+selection payload. Exact replay uses this frozen receipt; stale/tampered lineage fails closed.
+
 ## 10. Content decision
 
 Mỗi opportunity phải trả một trong:

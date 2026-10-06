@@ -284,6 +284,7 @@ def _selected_opportunity_payload(
         "locale": opportunity.locale,
         "decision": opportunity.decision,
         "priority": opportunity.priority,
+        "suggested_role": opportunity.suggested_role,
         "question": opportunity.question,
         "intent": opportunity.intent,
         "existing_content_refs": [

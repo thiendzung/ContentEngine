@@ -5,9 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable
+from typing import cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,13 @@ from app.modules.content_engine.models import (
     NeedHypothesisSignal,
     Signal,
     utc_now,
+)
+from app.modules.research.keyword_plan.content_architecture import (
+    CONTENT_ARCHITECTURE_POLICY_VERSION,
+    ArchitectureRole,
+    ContentArchitectureError,
+    build_content_architecture,
+    content_architecture_candidate_key,
 )
 from app.modules.research.keyword_plan.opportunity_planner_v2 import (
     OPPORTUNITY_PLANNER_POLICY_VERSION,
@@ -50,10 +58,22 @@ class OpportunitySelectionError(ValueError):
 
 
 class OpportunitySelectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     project_slug: str = Field(default="motgu", min_length=1, max_length=100)
     need_id: UUID
     locale: str = Field(min_length=1, max_length=32)
-    cluster_key: str = Field(min_length=1, max_length=128)
+    cluster_key: str | None = Field(default=None, min_length=1, max_length=128)
+    architecture_candidate_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+    )
+    expected_architecture_snapshot_hash: str | None = Field(
+        default=None,
+        min_length=64,
+        max_length=64,
+    )
     expected_planner_snapshot_hash: str = Field(min_length=64, max_length=64)
     selected_by: str = Field(default="founder", min_length=1, max_length=200)
     selection_reason: str = Field(min_length=1, max_length=2_000)
@@ -66,7 +86,10 @@ class OpportunitySelectionResult(BaseModel):
     content_opportunity_id: UUID
     human_selection_id: UUID
     planner_snapshot_hash: str
-    cluster_key: str
+    cluster_key: str | None = None
+    architecture_snapshot_hash: str | None = None
+    architecture_candidate_key: str | None = None
+    role: ArchitectureRole = "cluster"
     decision: str
     priority: str
     replayed: bool
@@ -202,6 +225,49 @@ def _stable_id(kind: str, *, planner_hash: str, cluster_key: str) -> UUID:
     )
 
 
+def _architecture_stable_id(
+    kind: str,
+    *,
+    architecture_hash: str,
+    candidate_key: str,
+) -> UUID:
+    return uuid5(
+        NAMESPACE_URL,
+        (
+            "https://contentengine.motgu/qm02a-architecture/"
+            f"{kind}/{architecture_hash}/{candidate_key}"
+        ),
+    )
+
+
+def _architecture_candidate(
+    architecture: dict[str, object],
+    *,
+    candidate_key: str,
+) -> dict[str, object]:
+    rows = _required_list(
+        architecture.get("candidates"),
+        "opportunity_selection_architecture_projection_invalid",
+    )
+    matches: list[dict[str, object]] = []
+    for raw in rows:
+        row = _required_dict(
+            raw,
+            "opportunity_selection_architecture_projection_invalid",
+        )
+        if row.get("candidate_key") == candidate_key:
+            matches.append(row)
+    if not matches:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_candidate_not_found"
+        )
+    if len(matches) != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_candidate_ambiguous"
+        )
+    return matches[0]
+
+
 def _recommendation(
     planner: dict[str, object],
     *,
@@ -262,6 +328,59 @@ def _content_refs(recommendation: dict[str, object]) -> list[UUID]:
         raise OpportunitySelectionError(
             "opportunity_selection_content_refs_invalid"
         ) from exc
+
+
+def _candidate_signal_refs(candidate: dict[str, object]) -> list[UUID]:
+    refs = _string_list(
+        candidate.get("signal_refs"),
+        "opportunity_selection_signal_refs_invalid",
+    )
+    try:
+        return sorted((UUID(value) for value in refs), key=str)
+    except ValueError as exc:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_refs_invalid"
+        ) from exc
+
+
+def _candidate_content_refs(candidate: dict[str, object]) -> list[UUID]:
+    refs = _string_list(
+        candidate.get("existing_content_refs"),
+        "opportunity_selection_content_refs_invalid",
+    )
+    try:
+        return sorted((UUID(value) for value in refs), key=str)
+    except ValueError as exc:
+        raise OpportunitySelectionError(
+            "opportunity_selection_content_refs_invalid"
+        ) from exc
+
+
+def _candidate_role(candidate: dict[str, object]) -> ArchitectureRole:
+    value = _text(
+        candidate.get("role"),
+        "opportunity_selection_architecture_role_invalid",
+        max_length=16,
+    )
+    if value not in {"pillar", "cluster"}:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_role_invalid"
+        )
+    return cast(ArchitectureRole, value)
+
+
+def _candidate_member_clusters(
+    candidate: dict[str, object],
+) -> list[str]:
+    members = _string_list(
+        candidate.get("member_cluster_keys"),
+        "opportunity_selection_architecture_members_invalid",
+    )
+    if not members:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_members_invalid"
+        )
+    return sorted(members)
 
 
 async def _validate_signal_refs(
@@ -341,13 +460,40 @@ def _single_lineage_marker(
     return matches[0]
 
 
+def _selection_contract(reasons: list[str]) -> str:
+    markers = [
+        item.removeprefix("selection_contract:")
+        for item in reasons
+        if item.startswith("selection_contract:")
+    ]
+    if len(markers) != 1 or markers[0] not in {"qm02a-v1", "qm02a-v2"}:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+    return markers[0]
+
+
+def _architecture_member_markers(reasons: list[str]) -> list[str]:
+    members = sorted({
+        item.removeprefix("content_architecture_member:")
+        for item in reasons
+        if item.startswith("content_architecture_member:")
+        and item.removeprefix("content_architecture_member:")
+    })
+    if not members:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+    return members
+
+
 async def validate_persisted_opportunity_selection(
     session: AsyncSession,
     *,
     project_id: UUID,
     opportunity: ContentOpportunity,
 ) -> None:
-    """Verify one durable QM-02A selection receipt without replaying live planner state."""
+    """Verify one durable QM-02A selection receipt without live replanning."""
 
     reasons = opportunity.reasons_json
     if not isinstance(reasons, list) or any(
@@ -360,10 +506,7 @@ async def validate_persisted_opportunity_selection(
         raise OpportunitySelectionError(
             "opportunity_selection_lineage_invalid"
         )
-    if reasons.count("selection_contract:qm02a-v1") != 1:
-        raise OpportunitySelectionError(
-            "opportunity_selection_lineage_invalid"
-        )
+    contract = _selection_contract(reasons)
 
     planner_hash = _hash64(
         _single_lineage_marker(
@@ -382,15 +525,6 @@ async def validate_persisted_opportunity_selection(
         raise OpportunitySelectionError(
             "opportunity_selection_lineage_policy_stale"
         )
-    cluster_key = _text(
-        _single_lineage_marker(
-            reasons,
-            prefix="planner_cluster:",
-            code="opportunity_selection_lineage_invalid",
-        ),
-        "opportunity_selection_lineage_invalid",
-        max_length=128,
-    )
     _hash64(
         _single_lineage_marker(
             reasons,
@@ -416,11 +550,92 @@ async def validate_persisted_opportunity_selection(
         "opportunity_selection_lineage_invalid",
     )
 
-    expected_opportunity_id = _stable_id(
-        "content-opportunity",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
+    if contract == "qm02a-v1":
+        cluster_key = _text(
+            _single_lineage_marker(
+                reasons,
+                prefix="planner_cluster:",
+                code="opportunity_selection_lineage_invalid",
+            ),
+            "opportunity_selection_lineage_invalid",
+            max_length=128,
+        )
+        expected_opportunity_id = _stable_id(
+            "content-opportunity",
+            planner_hash=planner_hash,
+            cluster_key=cluster_key,
+        )
+        expected_selection_id = _stable_id(
+            "human-selection",
+            planner_hash=planner_hash,
+            cluster_key=cluster_key,
+        )
+    else:
+        architecture_hash = _hash64(
+            _single_lineage_marker(
+                reasons,
+                prefix="content_architecture_snapshot:",
+                code="opportunity_selection_lineage_invalid",
+            ),
+            "opportunity_selection_lineage_invalid",
+        )
+        architecture_policy = _single_lineage_marker(
+            reasons,
+            prefix="content_architecture_policy:",
+            code="opportunity_selection_lineage_invalid",
+        )
+        if architecture_policy != CONTENT_ARCHITECTURE_POLICY_VERSION:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_policy_stale"
+            )
+        candidate_key = _text(
+            _single_lineage_marker(
+                reasons,
+                prefix="content_architecture_candidate:",
+                code="opportunity_selection_lineage_invalid",
+            ),
+            "opportunity_selection_lineage_invalid",
+            max_length=128,
+        )
+        role = _text(
+            _single_lineage_marker(
+                reasons,
+                prefix="content_architecture_role:",
+                code="opportunity_selection_lineage_invalid",
+            ),
+            "opportunity_selection_lineage_invalid",
+            max_length=16,
+        )
+        if role not in {"pillar", "cluster"}:
+            raise OpportunitySelectionError(
+                "opportunity_selection_lineage_invalid"
+            )
+        members = _architecture_member_markers(reasons)
+        expected_candidate_key = content_architecture_candidate_key(
+            need_id=str(opportunity.need_hypothesis_id),
+            locale=opportunity.locale,
+            role=cast(ArchitectureRole, role),
+            member_cluster_keys=members,
+        )
+        if candidate_key != expected_candidate_key:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_identity_mismatch"
+            )
+        if opportunity.suggested_role != role:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_role_mismatch"
+            )
+        expected_opportunity_id = _architecture_stable_id(
+            "content-opportunity",
+            architecture_hash=architecture_hash,
+            candidate_key=candidate_key,
+        )
+        expected_selection_id = _architecture_stable_id(
+            "human-selection",
+            architecture_hash=architecture_hash,
+            candidate_key=candidate_key,
+        )
+
     if opportunity.id != expected_opportunity_id:
         raise OpportunitySelectionError(
             "opportunity_selection_identity_mismatch"
@@ -441,11 +656,6 @@ async def validate_persisted_opportunity_selection(
             "opportunity_selection_durable_selection_inconsistent"
         )
     selection = selections[0]
-    expected_selection_id = _stable_id(
-        "human-selection",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
     if (
         selection.id != expected_selection_id
         or selection.selected_by != opportunity.selected_by
@@ -505,6 +715,100 @@ def _lineage_reasons(
             ]
         )
     )
+
+
+def _architecture_lineage_reasons(
+    candidate: dict[str, object],
+    *,
+    planner_hash: str,
+    question_coverage_hash: str,
+    architecture_hash: str,
+    candidate_key: str,
+    role: ArchitectureRole,
+    member_cluster_keys: list[str],
+    signal_refs: list[UUID],
+) -> list[str]:
+    reasons = _string_list(
+        candidate.get("reason_codes"),
+        "opportunity_selection_reason_codes_invalid",
+    )
+    return sorted(
+        set(
+            reasons
+            + [
+                "qm02a_exact_planner_selection",
+                "selection_contract:qm02a-v2",
+                f"planner_snapshot:{planner_hash}",
+                f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}",
+                f"question_coverage_snapshot:{question_coverage_hash}",
+                f"content_architecture_snapshot:{architecture_hash}",
+                (
+                    "content_architecture_policy:"
+                    f"{CONTENT_ARCHITECTURE_POLICY_VERSION}"
+                ),
+                f"content_architecture_candidate:{candidate_key}",
+                f"content_architecture_role:{role}",
+                f"selection_signal_set:{_signal_set_hash(signal_refs)}",
+            ]
+            + [
+                f"content_architecture_member:{cluster_key}"
+                for cluster_key in member_cluster_keys
+            ]
+        )
+    )
+
+
+def _assert_existing_architecture_replay(
+    row: ContentOpportunity,
+    *,
+    need_id: UUID,
+    project_id: UUID,
+    locale: str,
+    architecture_hash: str,
+    candidate_key: str,
+    planner_hash: str,
+    promise: str,
+    coverage: list[str],
+    reason: str,
+    selected_by: str,
+) -> None:
+    expected = {
+        "project_id": project_id,
+        "need_hypothesis_id": need_id,
+        "locale": locale,
+        "promise": promise,
+        "coverage_requirements_json": coverage,
+        "selected_by": selected_by,
+        "selection_reason": reason,
+    }
+    for field, expected_value in expected.items():
+        if getattr(row, field) != expected_value:
+            raise OpportunitySelectionError(
+                "opportunity_selection_replay_conflict"
+            )
+    if row.selected_at is None:
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+
+    reasons = row.reasons_json
+    if not isinstance(reasons, list) or any(
+        not isinstance(item, str) for item in reasons
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+    required = {
+        "qm02a_exact_planner_selection",
+        "selection_contract:qm02a-v2",
+        f"content_architecture_snapshot:{architecture_hash}",
+        f"content_architecture_candidate:{candidate_key}",
+        f"planner_snapshot:{planner_hash}",
+    }
+    if not required.issubset(set(reasons)):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
 
 
 def _assert_existing_replay(
@@ -627,18 +931,13 @@ async def persist_selected_opportunity(
     project_id: UUID,
     request: OpportunitySelectionRequest,
 ) -> OpportunitySelectionResult:
-    """Persist exactly one current planner recommendation after explicit selection."""
+    """Persist one exact legacy cluster or Content Architecture candidate."""
 
     locale = _text(
         request.locale,
         "opportunity_selection_locale_invalid",
         max_length=32,
     ).casefold()
-    cluster_key = _text(
-        request.cluster_key,
-        "opportunity_selection_cluster_key_invalid",
-        max_length=128,
-    )
     planner_hash = _hash64(
         request.expected_planner_snapshot_hash,
         "opportunity_selection_snapshot_hash_invalid",
@@ -660,6 +959,50 @@ async def persist_selected_opportunity(
     )
     coverage = _coverage_requirements(request.coverage_requirements)
 
+    legacy_cluster_key = (
+        _text(
+            request.cluster_key,
+            "opportunity_selection_cluster_key_invalid",
+            max_length=128,
+        )
+        if request.cluster_key is not None
+        else None
+    )
+    architecture_candidate_key = (
+        _text(
+            request.architecture_candidate_key,
+            "opportunity_selection_architecture_candidate_invalid",
+            max_length=128,
+        )
+        if request.architecture_candidate_key is not None
+        else None
+    )
+    architecture_hash = (
+        _hash64(
+            request.expected_architecture_snapshot_hash,
+            "opportunity_selection_architecture_hash_invalid",
+        )
+        if request.expected_architecture_snapshot_hash is not None
+        else None
+    )
+    architecture_mode = (
+        architecture_candidate_key is not None
+        or architecture_hash is not None
+    )
+    if architecture_mode:
+        if (
+            architecture_candidate_key is None
+            or architecture_hash is None
+            or legacy_cluster_key is not None
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_request_invalid"
+            )
+    elif legacy_cluster_key is None:
+        raise OpportunitySelectionError(
+            "opportunity_selection_cluster_key_invalid"
+        )
+
     need = await session.scalar(
         select(NeedHypothesis)
         .where(
@@ -673,31 +1016,65 @@ async def persist_selected_opportunity(
             "opportunity_selection_need_not_found"
         )
 
-    opportunity_id = _stable_id(
-        "content-opportunity",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
-    selection_id = _stable_id(
-        "human-selection",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
+    if architecture_mode:
+        assert architecture_hash is not None
+        assert architecture_candidate_key is not None
+        opportunity_id = _architecture_stable_id(
+            "content-opportunity",
+            architecture_hash=architecture_hash,
+            candidate_key=architecture_candidate_key,
+        )
+        selection_id = _architecture_stable_id(
+            "human-selection",
+            architecture_hash=architecture_hash,
+            candidate_key=architecture_candidate_key,
+        )
+    else:
+        assert legacy_cluster_key is not None
+        opportunity_id = _stable_id(
+            "content-opportunity",
+            planner_hash=planner_hash,
+            cluster_key=legacy_cluster_key,
+        )
+        selection_id = _stable_id(
+            "human-selection",
+            planner_hash=planner_hash,
+            cluster_key=legacy_cluster_key,
+        )
 
     existing = await session.get(ContentOpportunity, opportunity_id)
     if existing is not None:
-        _assert_existing_replay(
-            existing,
-            need_id=need.id,
-            project_id=project_id,
-            locale=locale,
-            planner_hash=planner_hash,
-            cluster_key=cluster_key,
-            promise=promise,
-            coverage=coverage,
-            reason=reason,
-            selected_by=selected_by,
-        )
+        if architecture_mode:
+            assert architecture_hash is not None
+            assert architecture_candidate_key is not None
+            _assert_existing_architecture_replay(
+                existing,
+                need_id=need.id,
+                project_id=project_id,
+                locale=locale,
+                architecture_hash=architecture_hash,
+                candidate_key=architecture_candidate_key,
+                planner_hash=planner_hash,
+                promise=promise,
+                coverage=coverage,
+                reason=reason,
+                selected_by=selected_by,
+            )
+        else:
+            assert legacy_cluster_key is not None
+            _assert_existing_replay(
+                existing,
+                need_id=need.id,
+                project_id=project_id,
+                locale=locale,
+                planner_hash=planner_hash,
+                cluster_key=legacy_cluster_key,
+                promise=promise,
+                coverage=coverage,
+                reason=reason,
+                selected_by=selected_by,
+            )
+
         selections = list(
             (
                 await session.scalars(
@@ -733,7 +1110,10 @@ async def persist_selected_opportunity(
             content_opportunity_id=existing.id,
             human_selection_id=selection.id,
             planner_snapshot_hash=planner_hash,
-            cluster_key=cluster_key,
+            cluster_key=legacy_cluster_key,
+            architecture_snapshot_hash=architecture_hash,
+            architecture_candidate_key=architecture_candidate_key,
+            role=cast(ArchitectureRole, existing.suggested_role),
             decision=existing.decision,
             priority=existing.priority,
             replayed=True,
@@ -759,28 +1139,135 @@ async def persist_selected_opportunity(
             "opportunity_selection_planner_policy_mismatch"
         )
 
-    recommendation = _recommendation(planner, cluster_key=cluster_key)
-    if recommendation.get("selection_readiness") != "READY_FOR_HUMAN_SELECTION":
-        raise OpportunitySelectionError(
-            "opportunity_selection_not_ready"
+    question_coverage_hash = _hash64(
+        planner.get("question_coverage_snapshot_hash"),
+        "opportunity_selection_coverage_hash_invalid",
+    )
+
+    if architecture_mode:
+        assert architecture_hash is not None
+        assert architecture_candidate_key is not None
+        try:
+            architecture = await build_content_architecture(
+                session,
+                project_id=project_id,
+                need_id=need.id,
+                locale=locale,
+            )
+        except ContentArchitectureError as exc:
+            raise OpportunitySelectionError(exc.code) from exc
+        if architecture.get("snapshot_hash") != architecture_hash:
+            raise OpportunitySelectionError(
+                "opportunity_selection_stale_architecture_snapshot"
+            )
+        if architecture.get("policy_version") != CONTENT_ARCHITECTURE_POLICY_VERSION:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_policy_mismatch"
+            )
+        if architecture.get("planner_snapshot_hash") != planner_hash:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_planner_mismatch"
+            )
+
+        candidate = _architecture_candidate(
+            architecture,
+            candidate_key=architecture_candidate_key,
+        )
+        if (
+            candidate.get("selectable") is not True
+            or candidate.get("selection_readiness")
+            != "READY_FOR_HUMAN_SELECTION"
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+        role = _candidate_role(candidate)
+        member_cluster_keys = _candidate_member_clusters(candidate)
+        decision = _text(
+            candidate.get("decision"),
+            "opportunity_selection_decision_invalid",
+            max_length=32,
+        )
+        priority = _text(
+            candidate.get("priority"),
+            "opportunity_selection_priority_invalid",
+            max_length=16,
+        )
+        if decision == "DO_NOT_WRITE":
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+        signal_refs = _candidate_signal_refs(candidate)
+        content_refs = _candidate_content_refs(candidate)
+        question = _text(
+            candidate.get("primary_question"),
+            "opportunity_selection_question_invalid",
+            max_length=4_000,
+        )
+        intent = _text(
+            candidate.get("intent"),
+            "opportunity_selection_intent_invalid",
+            max_length=64,
+        )
+        lineage_reasons = _architecture_lineage_reasons(
+            candidate,
+            planner_hash=planner_hash,
+            question_coverage_hash=question_coverage_hash,
+            architecture_hash=architecture_hash,
+            candidate_key=architecture_candidate_key,
+            role=role,
+            member_cluster_keys=member_cluster_keys,
+            signal_refs=signal_refs,
+        )
+    else:
+        assert legacy_cluster_key is not None
+        recommendation = _recommendation(
+            planner,
+            cluster_key=legacy_cluster_key,
+        )
+        if (
+            recommendation.get("selection_readiness")
+            != "READY_FOR_HUMAN_SELECTION"
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+
+        role = "cluster"
+        decision = _text(
+            recommendation.get("decision"),
+            "opportunity_selection_decision_invalid",
+            max_length=32,
+        )
+        priority = _text(
+            recommendation.get("priority"),
+            "opportunity_selection_priority_invalid",
+            max_length=16,
+        )
+        if decision == "DO_NOT_WRITE":
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+        signal_refs = _signal_refs(recommendation)
+        content_refs = _content_refs(recommendation)
+        question = _text(
+            recommendation.get("primary_question"),
+            "opportunity_selection_question_invalid",
+            max_length=4_000,
+        )
+        intent = _text(
+            recommendation.get("intent"),
+            "opportunity_selection_intent_invalid",
+            max_length=64,
+        )
+        lineage_reasons = _lineage_reasons(
+            recommendation,
+            planner_hash=planner_hash,
+            cluster_key=legacy_cluster_key,
+            question_coverage_hash=question_coverage_hash,
+            signal_refs=signal_refs,
         )
 
-    decision = _text(
-        recommendation.get("decision"),
-        "opportunity_selection_decision_invalid",
-        max_length=32,
-    )
-    priority = _text(
-        recommendation.get("priority"),
-        "opportunity_selection_priority_invalid",
-        max_length=16,
-    )
-    if decision == "DO_NOT_WRITE":
-        raise OpportunitySelectionError(
-            "opportunity_selection_not_ready"
-        )
-
-    content_refs = _content_refs(recommendation)
     decisions_requiring_target = {"UPDATE", "REFRESH", "MERGE", "LINK_ONLY"}
     if decision in decisions_requiring_target and not content_refs:
         raise OpportunitySelectionError(
@@ -791,7 +1278,6 @@ async def persist_selected_opportunity(
             "opportunity_selection_create_target_conflict"
         )
 
-    signal_refs = _signal_refs(recommendation)
     await _validate_signal_refs(
         session,
         project_id=project_id,
@@ -803,28 +1289,6 @@ async def persist_selected_opportunity(
         session,
         project_id=project_id,
         content_ids=content_refs,
-    )
-
-    question = _text(
-        recommendation.get("primary_question"),
-        "opportunity_selection_question_invalid",
-        max_length=4_000,
-    )
-    intent = _text(
-        recommendation.get("intent"),
-        "opportunity_selection_intent_invalid",
-        max_length=64,
-    )
-    question_coverage_hash = _hash64(
-        planner.get("question_coverage_snapshot_hash"),
-        "opportunity_selection_coverage_hash_invalid",
-    )
-    lineage_reasons = _lineage_reasons(
-        recommendation,
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-        question_coverage_hash=question_coverage_hash,
-        signal_refs=signal_refs,
     )
 
     selected_at = utc_now()
@@ -849,7 +1313,7 @@ async def persist_selected_opportunity(
         priority=priority,
         reasons_json=lineage_reasons,
         suggested_content_type="journal",
-        suggested_role="cluster",
+        suggested_role=role,
         version=1,
         selected_by=selected_by,
         selected_at=selected_at,
@@ -859,12 +1323,16 @@ async def persist_selected_opportunity(
         set(
             opportunity.reasons_json
             + [
-                "selection_contract:qm02a-v1",
                 (
                     "selection_payload:"
                     f"{_opportunity_payload_hash(opportunity, signal_ids=signal_refs)}"
                 ),
             ]
+            + (
+                ["selection_contract:qm02a-v1"]
+                if not architecture_mode
+                else []
+            )
         )
     )
     session.add(opportunity)
@@ -893,7 +1361,10 @@ async def persist_selected_opportunity(
         content_opportunity_id=opportunity.id,
         human_selection_id=selection.id,
         planner_snapshot_hash=planner_hash,
-        cluster_key=cluster_key,
+        cluster_key=legacy_cluster_key,
+        architecture_snapshot_hash=architecture_hash,
+        architecture_candidate_key=architecture_candidate_key,
+        role=role,
         decision=decision,
         priority=priority,
         replayed=False,

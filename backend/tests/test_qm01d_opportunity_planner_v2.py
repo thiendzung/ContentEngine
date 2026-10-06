@@ -154,6 +154,7 @@ def _question_coverage(
             {
                 "cluster_key": "cluster-budget",
                 "intent": "evaluate",
+                "audience_stage": "evaluating",
                 "answer_job": "plan_budget",
                 "primary_question_key": "question-budget",
                 "primary_question": "How much should I spend on art?",
@@ -729,9 +730,25 @@ async def test_opportunity_planner_route_is_read_only_and_uses_only_supporting_m
         )
 
         assert payload == replay
-        row = _recommendation(payload)
-        assert row["decision"] == "CREATE"
-        assert row["priority"] == "NEXT"
+        recommendations = payload["recommendations"]
+        assert isinstance(recommendations, list)
+        assert len(recommendations) == 2
+        assert all(
+            isinstance(row, dict)
+            and row["decision"] == "CREATE"
+            and row["priority"] == "LATER"
+            for row in recommendations
+        )
+        assert {
+            row["audience_stage"]
+            for row in recommendations
+            if isinstance(row, dict)
+        } == {"evaluating", "first_time_buyer"}
+        assert {
+            row["answer_job"]
+            for row in recommendations
+            if isinstance(row, dict)
+        } == {"plan_budget"}
         assert payload["right_to_win"]["right_to_win_proven"] is False
         assert str(motgu.id) in payload["right_to_win"]["signal_refs"]
         assert str(conflicted.id) not in payload["right_to_win"]["signal_refs"]

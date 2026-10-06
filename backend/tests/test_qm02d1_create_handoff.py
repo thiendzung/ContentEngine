@@ -25,6 +25,9 @@ from app.modules.content_engine.models import (
     Signal,
 )
 from app.modules.harness.models import ContentRun, Job, StepRun
+from app.modules.research.keyword_plan.content_architecture import (
+    build_content_architecture,
+)
 from app.modules.research.keyword_plan.create_handoff import (
     CreateProductionHandoffError,
     materialize_create_handoff,
@@ -150,7 +153,7 @@ async def _selected_opportunity(
             session,
             project=project,
             need=need,
-            text="What budget should I set for a painting?",
+            text="What budget should I set for my first painting?",
         )
         plan = await build_opportunity_plan_v2(
             session,
@@ -645,6 +648,107 @@ async def test_create_handoff_allows_materializable_need_states(
         assert after["variant"] == before["variant"] + 1
         assert after["command"] == before["command"] + 1
         for key in ("run", "step", "job"):
+            assert after[key] == before[key]
+
+
+@pytest.mark.asyncio
+async def test_pillar_architecture_selection_materializes_one_pillar_case_only() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(
+            session,
+            project_id=project.id,
+            status="PROPOSED",
+        )
+        for text in (
+            "How much should I spend on my first painting?",
+            "What budget should I set for my first painting?",
+            "How do I know if a painting is original?",
+            "What size painting fits my wall?",
+            "Can I carry a painting home on a flight?",
+        ):
+            await _search_signal(
+                session,
+                project=project,
+                need=need,
+                text=text,
+            )
+
+        architecture = await build_content_architecture(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        candidates = architecture["candidates"]
+        assert isinstance(candidates, list)
+        pillar = next(
+            row
+            for row in candidates
+            if isinstance(row, dict) and row["role"] == "pillar"
+        )
+        assert pillar["selectable"] is True
+
+        selection = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=OpportunitySelectionRequest(
+                project_slug=project.slug,
+                need_id=need.id,
+                locale="en",
+                architecture_candidate_key=str(
+                    pillar["candidate_key"]
+                ),
+                expected_architecture_snapshot_hash=str(
+                    architecture["snapshot_hash"]
+                ),
+                expected_planner_snapshot_hash=str(
+                    architecture["planner_snapshot_hash"]
+                ),
+                selected_by="founder",
+                selection_reason=(
+                    "Founder selected the exact pillar candidate."
+                ),
+                promise="Orient the buyer across the whole decision space.",
+                coverage_requirements=[
+                    "Cover the exact committed member questions.",
+                    "Delegate narrow depth to later clusters when useful.",
+                ],
+            ),
+        )
+        opportunity = await session.get(
+            ContentOpportunity,
+            selection.content_opportunity_id,
+        )
+        assert opportunity is not None
+        assert opportunity.suggested_role == "pillar"
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+        result = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=f"qm02d1:{uuid4()}",
+        )
+        after = await _counts(session)
+
+        variant = await session.get(
+            LocaleVariant,
+            result.source_locale_variant_id,
+        )
+        assert variant is not None
+        assert variant.content_role == "pillar"
+        assert after["case"] == before["case"] + 1
+        assert after["variant"] == before["variant"] + 1
+        assert after["command"] == before["command"] + 1
+        for key in ("item", "version", "experiment", "run", "step", "job"):
             assert after[key] == before[key]
 
 

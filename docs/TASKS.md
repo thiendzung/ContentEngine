@@ -16,8 +16,8 @@ Tracking: issue #346. Architecture remediation: #353 → #354 → #355 → #356.
 - [x] Preserve that first run as diagnostic evidence; do not fake-promote a Need or use raw SQL to force the pilot through.
 - [x] #353 / F1R0: lock Customer Truth confidence and Content Readiness as independent axes.
 - [x] #352 is non-blocking Learning/Customer-Truth work; direct interviews may improve truth confidence but are not a QM prerequisite.
-- [x] #354 / F1R1 implementation: planner Content Readiness is derived from Question/Search/Coverage/duplicate gates; `PROPOSED|TESTING|SUPPORTED` may be selectable; `REJECTED` blocks; `INSUFFICIENT_EVIDENCE` is research-required; D1 uses the same bounded status policy and verifies the durable QM-02A selection receipt. Verification pending exact-SHA rerun after OCR remediation.
-- [ ] #355 / F1R2: complete deterministic Pillar/Cluster projection and exact lineage.
+- [x] #354 / F1R1 merged: planner Content Readiness is derived from Question/Search/Coverage/duplicate gates; `PROPOSED|TESTING|SUPPORTED` may be selectable; `REJECTED` blocks; `INSUFFICIENT_EVIDENCE` is research-required; D1 verifies the durable QM-02A selection receipt and exact selected Signal set.
+- [x] #355 / F1R2 implementation: stage-aware cluster identity + deterministic locale-specific Content Architecture + exact Pillar/Cluster Founder selection + durable member/Search lineage + one-case Pillar D1 integration. Exact-SHA verification pending.
 - [ ] #356 / F1R3: run real Search Discovery with immutable capture + deterministic replay.
 - [ ] Rerun F1A: find one real non-rejected/non-insufficient Need whose Question/Search/Coverage gates yield `CREATE + READY_FOR_HUMAN_SELECTION`.
 - [ ] Founder approves the exact F1A candidate; selection is authorization, not Customer Truth evidence.

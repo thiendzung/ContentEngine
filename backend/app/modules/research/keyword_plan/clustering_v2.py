@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-CLUSTERING_VERSION = "question-map-clustering-v2"
+CLUSTERING_VERSION = "question-map-clustering-v2.1"
 
 
 class QuestionClassificationLike(Protocol):
@@ -54,6 +54,7 @@ class QuestionForClustering:
 class QuestionClusterV2:
     cluster_key: str
     intent: str
+    audience_stage: str
     answer_job: str
     primary_question_key: str
     primary_question: str
@@ -78,9 +79,13 @@ def _cluster_key(
     need_id: str,
     locale: str,
     intent: str,
+    audience_stage: str,
     answer_job: str,
 ) -> str:
-    payload = f"{need_id}\x1f{locale}\x1f{intent}\x1f{answer_job}".encode()
+    payload = (
+        f"{need_id}\x1f{locale}\x1f{intent}\x1f"
+        f"{audience_stage}\x1f{answer_job}"
+    ).encode()
     return hashlib.sha256(payload).hexdigest()[:24]
 
 
@@ -103,18 +108,21 @@ def build_question_clusters_v2(
     locale: str,
     questions: list[QuestionForClustering],
 ) -> list[QuestionClusterV2]:
-    grouped: dict[tuple[str, str], list[QuestionForClustering]] = {}
+    grouped: dict[tuple[str, str, str], list[QuestionForClustering]] = {}
     for question in questions:
         if not cluster_eligible(question):
             continue
         key = (
             str(question.classification.intent),
+            str(question.classification.audience_stage),
             question.classification.answer_job,
         )
         grouped.setdefault(key, []).append(question)
 
     clusters: list[QuestionClusterV2] = []
-    for (intent, answer_job), group in sorted(grouped.items()):
+    for (intent, audience_stage, answer_job), group in sorted(
+        grouped.items()
+    ):
         primary = _primary(group)
         question_keys = tuple(sorted(item.question_key for item in group))
         signal_refs = tuple(
@@ -135,9 +143,11 @@ def build_question_clusters_v2(
                     need_id=need_id,
                     locale=locale,
                     intent=intent,
+                    audience_stage=audience_stage,
                     answer_job=answer_job,
                 ),
                 intent=intent,
+                audience_stage=audience_stage,
                 answer_job=answer_job,
                 primary_question_key=primary.question_key,
                 primary_question=primary.text,

@@ -24,7 +24,7 @@ from app.modules.research.keyword_plan.question_coverage import (
 )
 
 OPPORTUNITY_PLANNER_SCHEMA_VERSION = 1
-OPPORTUNITY_PLANNER_POLICY_VERSION = "qm-opportunity-planner-v2.2"
+OPPORTUNITY_PLANNER_POLICY_VERSION = "qm-opportunity-planner-v2.3"
 
 PlannerDecision = Literal[
     "CREATE",
@@ -410,6 +410,7 @@ def _cluster_is_usable(cluster: dict[str, object]) -> bool:
     required_text = (
         cluster.get("cluster_key"),
         cluster.get("intent"),
+        cluster.get("audience_stage"),
         cluster.get("answer_job"),
         cluster.get("primary_question"),
     )
@@ -523,6 +524,7 @@ def _recommendation(
     return {
         "cluster_key": cluster.get("cluster_key"),
         "intent": cluster.get("intent"),
+        "audience_stage": cluster.get("audience_stage"),
         "answer_job": answer_job,
         "primary_question": cluster.get("primary_question"),
         "decision": decision,

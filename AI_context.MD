@@ -1,44 +1,50 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02F1 remediation / F1R0 → F1R1
+## Current WIP — QM-02F1R2 Pillar / Cluster Map
 
-Founder merged QM-02D1 and the first real F1A read-only attempt exposed an architecture defect: the planning/production path treated canonical Need `SUPPORTED` as the sole gate for a bounded content experiment.
+Founder merged PR #364 / #354. Main baseline for F1R2 is
+`b8a24a003cd5e421af903442491876f2ba0189fd`.
 
-The revised contract is:
+F1R2 turns the existing Question Map + Planner + Coverage chain into a deterministic,
+locale-specific Content Architecture:
 
 ```text
-Customer Truth confidence
-PROPOSED | TESTING | SUPPORTED | REJECTED | INSUFFICIENT_EVIDENCE
-                │
-                │ remains canonical truth state
-                ▼
-Question/Search/Coverage/duplicate planning gates
-                │
-                ▼
-Content Readiness
-READY_FOR_HUMAN_SELECTION | RESEARCH_REQUIRED | BLOCKED
-                │
-                ▼
-Founder Selection
-                │
-                ▼
-Route → Admission → bounded D1 materialization
+Canonical Need + locale
+        +
+usable SEARCH Question clusters
+(intent + audience stage + answer job)
+        +
+Content Coverage / selected-plan collision state
+        ↓
+Content Architecture
+        ├─ exact Cluster candidates
+        └─ optional Pillar candidate when breadth is real
+                ↓
+Founder selects exactly one Pillar or Cluster
+                ↓
+one ContentOpportunity + one HumanSelection
+                ↓
+existing Route / Admission / D1
 ```
 
 Rules:
-- `PROPOSED | TESTING | SUPPORTED` may be selectable only when exact planning gates pass.
-- `SUPPORTED` may still require more content research when Question/Search/Coverage is weak.
-- `REJECTED` is blocked.
-- `INSUFFICIENT_EVIDENCE` is research-required and cannot materialize the content experiment.
-- Founder Selection authorizes an editorial experiment; it does not promote or validate Customer Truth.
-- Search/PAA/Related/Autocomplete/organic context remain planning signals, never factual Evidence or automatic Customer Truth.
-- Evidence/Originality remain downstream factual/originality authorities after ContentCase creation.
-- #352 direct-customer collection is useful Learning/Customer-Truth work but non-blocking for the QM remediation path.
+- cluster identity now includes audience stage; same intent/answer job across different stages
+  is not silently collapsed;
+- no Pillar is forced when fewer than three genuinely distinct ready answer jobs/questions
+  remain;
+- DO_NOT_WRITE/unready clusters do not inflate Pillar breadth;
+- EN/VI architecture is separate; translated demand is not assumed equivalent;
+- same-Need same-locale existing/selected Pillar blocks another Pillar CREATE;
+- Founder role comes from the exact architecture candidate, not client input;
+- Pillar lineage freezes architecture snapshot, member cluster keys and union SEARCH refs;
+- Pillar selection persists one opportunity + one selection only; no child ContentCases or
+  parent/child relation is invented;
+- D1 can materialize the selected Pillar as exactly one Pillar ContentCase/LocaleVariant;
+  it still creates no Run/Step/Job and does not auto-start Writer/Publish.
 
-Current sequence:
-`#353 F1R0 docs contract → #354 F1R1 production readiness code → #355 Pillar/Cluster → #356 real Search → rerun #346 → #357 architecture checkpoint`.
-
-On this F1R1 branch, #354 production code is implemented but not yet verified/merged. Planner readiness now derives from usable Question cluster + SEARCH lineage + decisive Coverage + duplicate/reuse/collision guards; Need truth status remains separate. D1 allows only current `PROPOSED|TESTING|SUPPORTED` and fails closed on `REJECTED|INSUFFICIENT_EVIDENCE`. D2/D3 remain locked until #357 PASS.
+Branch `feat/qm-02f1r2-content-architecture` contains the implementation and tests.
+Exact-SHA Agent Local + OCR + GitHub CI are still required before Founder merge.
+#356 / real Search does not start until #355 is merged.
 
 ## Read first and verify the actual ref
 
@@ -59,7 +65,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current Question Map track: `99dab3ac9c18d24ee16c2c344533f56ec968ec5f` (merge PR #345). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main for the current Question Map track: `b8a24a003cd5e421af903442491876f2ba0189fd` (merge PR #364 / QM-02F1R1). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -90,21 +96,27 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Close #354 / F1R1 on exact candidate SHA.
+Close #355 / F1R2 on one exact candidate SHA.
 
 Required verification:
-- planner: PROPOSED and TESTING can become `READY_FOR_HUMAN_SELECTION` when Search/Question/Coverage gates pass;
-- SUPPORTED remains compatible;
-- REJECTED blocks;
-- INSUFFICIENT_EVIDENCE is research-required;
-- missing Search lineage and unusable cluster require more research;
-- duplicate/reuse/collision behavior remains fail-closed;
-- QM-02A can persist Founder selection for ready PROPOSED/TESTING without mutating Need;
-- QM-02D1 first verifies the durable QM-02A selection receipt (current planner policy, deterministic opportunity/selection IDs, exact selection payload hash including selected Signal refs, one matching HumanSelection, exact selected Signal-set hash and valid SEARCH lineage), then can materialize PROPOSED/TESTING/SUPPORTED but blocks REJECTED/INSUFFICIENT_EVIDENCE;
-- exact replay/stale route/stale admission/no auto Run-Step-Job remain unchanged;
-- Ruff + mypy + focused/full backend + OCR + Agent Local exact-SHA proof.
+- stage-aware clustering remains deterministic and locale-specific;
+- Content Architecture is a read-only projection, no new truth store/schema;
+- canonical multi-cluster Need forms one Pillar only when breadth threshold is met;
+- insufficient breadth yields Cluster-only architecture;
+- DO_NOT_WRITE/unready clusters do not create fake Pillar breadth;
+- existing/selected Pillar collision blocks another Pillar CREATE;
+- every member cluster exposes intent, stage, answer job, primary question, coverage and
+  decision;
+- Founder can select exact Pillar or Cluster from an exact architecture snapshot;
+- role cannot be supplied independently by the client;
+- Pillar receipt binds exact member cluster keys + union SEARCH Signal refs;
+- exact replay is safe after Coverage changes;
+- old cluster-only selection path remains covered;
+- D1 materializes one selected Pillar case only, with zero child cases / Run / Step / Job /
+  Writer / Publish;
+- Ruff + mypy + focused chain + full backend + OCR Delegation + Agent Local exact-SHA proof.
 
-Do not rerun the real F1 pilot until #354–#356 are merged.
+Do not start #356 until #355 is merged.
 
 ## Pilot operating priority — 2026-10-03
 
