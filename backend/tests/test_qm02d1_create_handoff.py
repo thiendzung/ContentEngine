@@ -15,6 +15,7 @@ from app.modules.content_engine.models import (
     ContentExperiment,
     ContentItem,
     ContentOpportunity,
+    ContentOpportunitySignal,
     ContentVersion,
     HumanSelection,
     LocaleVariant,
@@ -394,6 +395,58 @@ async def test_create_handoff_requires_qm02a_selection_lineage() -> None:
         with pytest.raises(
             CreateProductionHandoffError,
             match="create_handoff_opportunity_selection_lineage_invalid",
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+async def test_later_valid_search_link_invalidates_selection_receipt() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        later_signal = await _search_signal(
+            session,
+            project=project,
+            need=need,
+            text="What should I verify before buying original art?",
+        )
+        session.add(
+            ContentOpportunitySignal(
+                content_opportunity_id=opportunity.id,
+                signal_id=later_signal.id,
+            )
+        )
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_signal_set_stale"
+            ),
         ):
             await materialize_create_handoff(
                 session,
