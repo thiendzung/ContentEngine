@@ -377,6 +377,39 @@ async def test_exact_replay_is_idempotent_after_new_plan_changes_coverage() -> N
 
 
 @pytest.mark.asyncio
+async def test_exact_replay_survives_later_need_state_change() -> None:
+    async with isolated_session() as session:
+        project, need, _ = await _canonical_inputs(session)
+        plan = await build_opportunity_plan_v2(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        request = _request(project=project, need=need, plan=plan)
+        first = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+
+        need.status = "REJECTED"
+        need.statement = "Later reviewed state changed this Need."
+        need.version += 1
+        await session.flush()
+
+        replay = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+
+        assert replay.replayed is True
+        assert replay.content_opportunity_id == first.content_opportunity_id
+        assert replay.human_selection_id == first.human_selection_id
+
+
+@pytest.mark.asyncio
 async def test_conflicting_replay_fails_closed() -> None:
     async with isolated_session() as session:
         project, need, _ = await _canonical_inputs(session)
