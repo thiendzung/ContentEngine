@@ -29,6 +29,7 @@ from app.modules.research.keyword_plan.create_handoff import (
     materialize_create_handoff,
 )
 from app.modules.research.keyword_plan.opportunity_planner_v2 import (
+    OPPORTUNITY_PLANNER_POLICY_VERSION,
     build_opportunity_plan_v2,
 )
 from app.modules.research.keyword_plan.opportunity_selection_v2 import (
@@ -393,6 +394,64 @@ async def test_create_handoff_requires_qm02a_selection_lineage() -> None:
         with pytest.raises(
             CreateProductionHandoffError,
             match="create_handoff_qm02a_lineage_required",
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+async def test_forged_lineage_markers_fail_closed_at_d1_boundary() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        original_reasons = list(opportunity.reasons_json)
+        forged_reasons: list[str] = []
+        for reason in original_reasons:
+            if reason.startswith("planner_snapshot:"):
+                forged_reasons.append(f"planner_snapshot:{'f' * 64}")
+            elif reason.startswith("planner_cluster:"):
+                forged_reasons.append("planner_cluster:forged-cluster")
+            elif reason.startswith("question_coverage_snapshot:"):
+                forged_reasons.append(
+                    f"question_coverage_snapshot:{'e' * 64}"
+                )
+            elif reason.startswith("planner_policy:"):
+                forged_reasons.append(
+                    f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}"
+                )
+            else:
+                forged_reasons.append(reason)
+        opportunity.reasons_json = forged_reasons
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_identity_mismatch"
+            ),
         ):
             await materialize_create_handoff(
                 session,
