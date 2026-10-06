@@ -24,7 +24,7 @@ from app.modules.research.keyword_plan.question_coverage import (
 )
 
 OPPORTUNITY_PLANNER_SCHEMA_VERSION = 1
-OPPORTUNITY_PLANNER_POLICY_VERSION = "qm-opportunity-planner-v2.1"
+OPPORTUNITY_PLANNER_POLICY_VERSION = "qm-opportunity-planner-v2.2"
 
 PlannerDecision = Literal[
     "CREATE",
@@ -110,6 +110,8 @@ def _need_evidence_readiness(need: NeedHypothesis) -> dict[str, object]:
             else None
         ),
         "reason_codes": [reason],
+        "axis": "customer_truth",
+        "separate_from_content_readiness": True,
         "does_not_replace_locked_evidence_set": True,
         "does_not_authorize_drafting": True,
     }
@@ -401,15 +403,37 @@ def _decision_for_cluster(
     )
 
 
+def _cluster_is_usable(cluster: dict[str, object]) -> bool:
+    question_count = cluster.get("question_count")
+    if isinstance(question_count, bool) or not isinstance(question_count, int):
+        return False
+    required_text = (
+        cluster.get("cluster_key"),
+        cluster.get("intent"),
+        cluster.get("answer_job"),
+        cluster.get("primary_question"),
+    )
+    return question_count > 0 and all(
+        isinstance(value, str) and bool(value.strip())
+        for value in required_text
+    )
+
+
 def _selection_readiness(
     *,
     coverage_status: str,
     need_status: str,
     decision: PlannerDecision,
     decision_reasons: list[str],
+    search_signal_count: int,
+    cluster_usable: bool,
 ) -> tuple[SelectionReadiness, list[str]]:
     if need_status == "REJECTED":
         return "BLOCKED", ["canonical_need_rejected"]
+    if need_status == "INSUFFICIENT_EVIDENCE":
+        return "RESEARCH_REQUIRED", ["canonical_need_evidence_insufficient"]
+    if need_status not in {"PROPOSED", "TESTING", "SUPPORTED"}:
+        return "BLOCKED", ["canonical_need_status_unsupported"]
     if coverage_status == "INSUFFICIENT_DATA":
         return "RESEARCH_REQUIRED", ["coverage_semantics_insufficient"]
     if "duplicate_plan_collision_requires_reconciliation" in decision_reasons:
@@ -418,11 +442,10 @@ def _selection_readiness(
         return "REUSE_EXISTING_PLAN", ["reuse_existing_selected_plan"]
     if decision == "DO_NOT_WRITE":
         return "BLOCKED", ["decision_is_do_not_write"]
-    if need_status != "SUPPORTED":
-        return (
-            "RESEARCH_REQUIRED",
-            [f"canonical_need_status:{need_status}"],
-        )
+    if not cluster_usable:
+        return "RESEARCH_REQUIRED", ["question_cluster_not_usable"]
+    if search_signal_count < 1:
+        return "RESEARCH_REQUIRED", ["search_lineage_missing"]
     return "READY_FOR_HUMAN_SELECTION", []
 
 
@@ -439,9 +462,8 @@ def _priority(
         return "NO", ["decision_is_do_not_write"]
     if selection_readiness == "BLOCKED":
         return "NO", ["selection_readiness_blocked"]
-    if need_status != "SUPPORTED":
-        reasons.append("need_requires_more_research")
-        return "LATER", reasons
+    if selection_readiness == "RESEARCH_REQUIRED":
+        return "LATER", ["content_readiness_requires_more_research"]
     if decision in {"REFRESH", "UPDATE", "MERGE", "LINK_ONLY"}:
         reasons.append(f"existing_content_action:{decision}")
         return "NEXT", reasons
@@ -473,18 +495,20 @@ def _recommendation(
         coverage=coverage,
         need=need,
     )
-    readiness, readiness_reasons = _selection_readiness(
-        coverage_status=coverage_status,
-        need_status=need.status,
-        decision=decision,
-        decision_reasons=decision_reasons,
-    )
     search_dimension = _search_dimension(cluster)
     signal_count = search_dimension.get("signal_count")
     if isinstance(signal_count, bool) or not isinstance(signal_count, int):
         raise OpportunityPlannerError(
             "opportunity_planner_search_projection_invalid"
         )
+    readiness, readiness_reasons = _selection_readiness(
+        coverage_status=coverage_status,
+        need_status=need.status,
+        decision=decision,
+        decision_reasons=decision_reasons,
+        search_signal_count=signal_count,
+        cluster_usable=_cluster_is_usable(cluster),
+    )
     priority, priority_reasons = _priority(
         decision=decision,
         coverage_status=coverage_status,
@@ -506,6 +530,12 @@ def _recommendation(
         "decision": decision,
         "priority": priority,
         "selection_readiness": readiness,
+        "content_readiness": {
+            "status": readiness,
+            "reason_codes": sorted(set(readiness_reasons)),
+            "derived": True,
+            "separate_from_customer_truth": True,
+        },
         "existing_content_refs": target_refs,
         "existing_plan_refs": plan_refs,
         "reason_codes": sorted(
@@ -670,6 +700,18 @@ def plan_opportunity_projection(
             ),
         },
         "right_to_win": right_to_win,
+        "customer_truth": {
+            "status": need.status,
+            "need_version": need.version,
+            "known_gaps": sorted(set(need.missing_evidence_json)),
+            "reviewed_by": need.reviewed_by,
+            "reviewed_at": (
+                need.reviewed_at.isoformat()
+                if need.reviewed_at is not None
+                else None
+            ),
+            "separate_from_content_readiness": True,
+        },
         "evidence_readiness": evidence_readiness,
         "counts": counts,
         "recommendations": recommendations,
@@ -681,6 +723,7 @@ def plan_opportunity_projection(
             "does_not_authorize_drafting": True,
             "locked_evidence_set_still_required_downstream": True,
             "approved_originality_pack_still_required_downstream": True,
+            "search_signals_are_planning_not_factual_evidence": True,
         },
     }
     return {
