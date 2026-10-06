@@ -38,7 +38,7 @@ Rules:
 Current sequence:
 `#353 F1R0 docs contract → #354 F1R1 production readiness code → #355 Pillar/Cluster → #356 real Search → rerun #346 → #357 architecture checkpoint`.
 
-At this exact branch, #353 is docs-only. Production code still contains the historical `SUPPORTED` guard and must not be treated as fixed until #354 is implemented, verified and merged. D2/D3 remain locked until #357 PASS.
+On this F1R1 branch, #354 production code is implemented but not yet verified/merged. Planner readiness now derives from usable Question cluster + SEARCH lineage + decisive Coverage + duplicate/reuse/collision guards; Need truth status remains separate. D1 allows only current `PROPOSED|TESTING|SUPPORTED` and fails closed on `REJECTED|INSUFFICIENT_EVIDENCE`. D2/D3 remain locked until #357 PASS.
 
 ## Read first and verify the actual ref
 
@@ -90,19 +90,21 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #353 as a docs-only architecture lock on baseline `c2e7f81407f066b2f3bc773b6193810bba55da0c`, then move directly to #354. Do not rerun the real F1 pilot before #354–#356 are merged.
+Close #354 / F1R1 on exact candidate SHA.
 
-For #353:
-- docs/spec/tasks/context must agree on the two-axis contract;
-- no production code;
-- #352 is explicitly non-blocking;
-- historical D1 `SUPPORTED` behavior is preserved as history but marked superseded by the new contract;
-- do not claim operational behavior changed.
+Required verification:
+- planner: PROPOSED and TESTING can become `READY_FOR_HUMAN_SELECTION` when Search/Question/Coverage gates pass;
+- SUPPORTED remains compatible;
+- REJECTED blocks;
+- INSUFFICIENT_EVIDENCE is research-required;
+- missing Search lineage and unusable cluster require more research;
+- duplicate/reuse/collision behavior remains fail-closed;
+- QM-02A can persist Founder selection for ready PROPOSED/TESTING without mutating Need;
+- QM-02D1 can materialize PROPOSED/TESTING/SUPPORTED but blocks REJECTED/INSUFFICIENT_EVIDENCE;
+- exact replay/stale route/stale admission/no auto Run-Step-Job remain unchanged;
+- Ruff + mypy + focused/full backend + OCR + Agent Local exact-SHA proof.
 
-For #354:
-- change the real planner/admission/materialization gate;
-- preserve stale/replay/duplicate/Founder-selection safety;
-- no Need mutation, no auto Writer/Publish.
+Do not rerun the real F1 pilot until #354–#356 are merged.
 
 ## Pilot operating priority — 2026-10-03
 
