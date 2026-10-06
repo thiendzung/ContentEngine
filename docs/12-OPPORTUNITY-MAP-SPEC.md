@@ -171,6 +171,59 @@ Human selection vẫn là bước riêng. Planner không persist recommendation.
 
 Endpoint: `GET /question-map/opportunities`.
 
+### Selected Planner Handoff — QM-02A
+
+QM-02A là write boundary đầu tiên của Question Map v2. Nó không tạo một planner thứ hai.
+
+```text
+exact QM-01D planner snapshot
++ one exact READY_FOR_HUMAN_SELECTION cluster
++ Founder/editorial promise
++ 1..12 ordered coverage requirements
++ human selection reason
+→ durable ContentOpportunity
+→ exactly one durable HumanSelection
+```
+
+Reverse boundary:
+
+- không rebuild legacy `OpportunityMapResult` chỉ để gọi persistence cũ;
+- không dùng Founder manual intake vì path đó tạo một `founder_manual` Need mới;
+- không tạo ContentCase / ContentExperiment trong selection handoff;
+- không cho client tự gửi decision/priority/question/intent/target refs.
+
+Canonical mapping:
+
+- Need / reader scope / situation lấy từ exact `NeedHypothesis`;
+- question / intent / decision / priority / target refs lấy từ exact planner recommendation;
+- promise + ordered coverage commitments là explicit Founder/editorial input;
+- signal links chỉ gồm exact supporting SEARCH Signals của cluster trong đúng Need/project/locale;
+- `motgu_material_refs_json=[]` ở QM-02A vì Signal-only planner state chưa chứng minh Right-to-Win;
+- `what_is_actually_new` phải nói rõ chưa được established thay vì bịa differentiation.
+
+Write gate phải fail closed nếu:
+
+- planner snapshot đã stale trước first persistence;
+- cluster không tồn tại/ambiguous;
+- readiness khác `READY_FOR_HUMAN_SELECTION`;
+- required existing ContentItem target invalid;
+- signal lineage không đúng Need/project/locale;
+- replay đổi promise / coverage requirements / actor / selection reason.
+
+Idempotency nuance: first persistence làm Content Coverage thay đổi, vì vậy live planner snapshot sau đó
+có thể đổi. Exact replay được nhận diện bằng deterministic selection identity từ
+`planner_snapshot_hash + cluster_key`; replay hợp lệ trả lại receipt cũ, không ép old planner
+snapshot vẫn là current snapshot.
+
+Durable reasons giữ bounded lineage marker tới planner snapshot, planner policy, cluster key và
+Question Coverage snapshot. Đây là audit lineage, không phải planner truth store mới.
+
+Endpoint mutation:
+
+`POST /question-map/opportunities/select`
+
+QM-02A không tự chạy Lens/Angle/Writer/Publish.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.
