@@ -1,8 +1,8 @@
 # QM-02B — Production Decision Router
 
-Date: 2026-10-06  
-Tracking: issue #340  
-Branch: `feat/qm-02b-decision-router`  
+Date: 2026-10-06
+Tracking: issue #340
+Branch: `feat/qm-02b-decision-router`
 Base: `164824ceb178febccf26f675ca14884c4d1d825f`
 
 ## Goal
