@@ -110,7 +110,15 @@ async def _selected_opportunity(
         next_discovery_step="Materialize only after admission.",
         decision=decision,
         priority="NOW" if decision == "CREATE" else "NEXT",
-        reasons_json=["qm02d1_fixture"],
+        reasons_json=[
+            "qm02a_exact_planner_selection",
+            "selection_contract:qm02a-v1",
+            f"planner_snapshot:{'a' * 64}",
+            "planner_policy:qm-opportunity-planner-v2.1",
+            "planner_cluster:cluster-fixture",
+            f"question_coverage_snapshot:{'b' * 64}",
+            f"selection_payload:{'c' * 64}",
+        ],
         suggested_content_type="journal",
         suggested_role="cluster",
         version=1,
@@ -262,6 +270,43 @@ async def _counts(session: AsyncSession) -> dict[str, int]:
         )
         result[key] = int(value or 0)
     return result
+
+
+@pytest.mark.asyncio
+async def test_create_handoff_requires_qm02a_selection_lineage() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        opportunity.reasons_json = ["manual_fixture_without_qm02a_lineage"]
+        await session.flush()
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        before = await _counts(session)
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match="create_handoff_qm02a_lineage_required",
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
 
 
 @pytest.mark.asyncio
