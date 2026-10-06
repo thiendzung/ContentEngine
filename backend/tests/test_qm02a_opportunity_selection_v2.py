@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -288,6 +289,25 @@ async def _existing_primary_item(
     session.add(item)
     await session.flush()
     return item
+
+
+def test_selection_request_rejects_client_supplied_role() -> None:
+    with pytest.raises(ValidationError):
+        OpportunitySelectionRequest.model_validate(
+            {
+                "project_slug": "motgu",
+                "need_id": str(uuid4()),
+                "locale": "en",
+                "architecture_candidate_key": "candidate",
+                "expected_architecture_snapshot_hash": "a" * 64,
+                "expected_planner_snapshot_hash": "b" * 64,
+                "selected_by": "founder",
+                "selection_reason": "Choose exact candidate.",
+                "promise": "Help the buyer decide.",
+                "coverage_requirements": ["Cover the decision."],
+                "role": "pillar",
+            }
+        )
 
 
 @pytest.mark.asyncio
