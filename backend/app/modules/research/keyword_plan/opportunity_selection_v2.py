@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from typing import cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +58,8 @@ class OpportunitySelectionError(ValueError):
 
 
 class OpportunitySelectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     project_slug: str = Field(default="motgu", min_length=1, max_length=100)
     need_id: UUID
     locale: str = Field(min_length=1, max_length=32)
