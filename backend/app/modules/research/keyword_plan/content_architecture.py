@@ -219,6 +219,14 @@ def _cluster_candidate(
         dimensions.get("search_evidence"),
         "content_architecture_cluster_projection_invalid",
     )
+    content_gap = _required_dict(
+        dimensions.get("content_gap"),
+        "content_architecture_cluster_projection_invalid",
+    )
+    coverage_status = _required_text(
+        content_gap.get("status"),
+        "content_architecture_cluster_projection_invalid",
+    )
     signal_refs = _string_list(
         search.get("signal_refs"),
         "content_architecture_cluster_projection_invalid",
@@ -249,6 +257,7 @@ def _cluster_candidate(
         "decision": decision,
         "priority": priority,
         "selection_readiness": readiness,
+        "coverage_status": coverage_status,
         "selectable": (
             readiness == "READY_FOR_HUMAN_SELECTION"
             and decision != "DO_NOT_WRITE"
@@ -341,6 +350,7 @@ def _pillar_candidate(
         "selection_readiness": (
             "BLOCKED" if has_collision else "READY_FOR_HUMAN_SELECTION"
         ),
+        "coverage_status": "COLLISION" if has_collision else "MIXED",
         "selectable": not has_collision,
         "existing_content_refs": collision[
             "existing_pillar_content_refs"
@@ -363,6 +373,7 @@ def _pillar_candidate(
                 "primary_question": row["primary_question"],
                 "decision": row["decision"],
                 "selection_readiness": row["selection_readiness"],
+                "coverage_status": row["coverage_status"],
                 "existing_content_refs": row["existing_content_refs"],
                 "existing_plan_refs": row["existing_plan_refs"],
             }
