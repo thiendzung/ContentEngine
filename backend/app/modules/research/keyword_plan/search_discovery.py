@@ -526,6 +526,18 @@ async def _persist_observation_groups(
         if request.artifact_ref:
             artifact_refs.add(request.artifact_ref)
 
+        prior_need_refs = prior.get("planning_need_refs")
+        planning_need_refs = {
+            str(value)
+            for value in (
+                prior_need_refs
+                if isinstance(prior_need_refs, list)
+                else []
+            )
+            if isinstance(value, str) and value
+        }
+        planning_need_refs.add(str(request.need_id))
+
         signal.provenance_json = {
             "origin": SEARCH_DISCOVERY_POLICY_VERSION,
             "provider": representative.get("provider"),
@@ -534,6 +546,7 @@ async def _persist_observation_groups(
             "source_ref": representative.get("source_url"),
             "artifact_ref": representative.get("artifact_ref"),
             "artifact_refs": sorted(artifact_refs),
+            "planning_need_refs": sorted(planning_need_refs),
             "question_eligible": question_eligible,
             "customer_truth_eligible": False,
             "factual_evidence_eligible": False,
@@ -542,18 +555,19 @@ async def _persist_observation_groups(
             "observations": occurrences,
         }
 
-        link = await session.get(
-            NeedHypothesisSignal,
-            (request.need_id, signal.id, "supports"),
-        )
-        if link is None:
-            session.add(
-                NeedHypothesisSignal(
-                    need_hypothesis_id=request.need_id,
-                    signal_id=signal.id,
-                    relation="supports",
-                )
+        if question_eligible:
+            link = await session.get(
+                NeedHypothesisSignal,
+                (request.need_id, signal.id, "supports"),
             )
+            if link is None:
+                session.add(
+                    NeedHypothesisSignal(
+                        need_hypothesis_id=request.need_id,
+                        signal_id=signal.id,
+                        relation="supports",
+                    )
+                )
         persisted.append(signal.id)
 
     await session.flush()
