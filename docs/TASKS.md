@@ -16,7 +16,7 @@ Tracking: issue #342. Exact task: `logs/2026-10-06-qm-02c-production-admission.m
 - [x] Require exact expected QM-02B route snapshot hash.
 - [x] Recompute the current route and fail closed on route/selection/opportunity/target drift.
 - [x] CREATE blocks if its opportunity already materialized.
-- [x] UPDATE / REFRESH block on active target production lineage.
+- [x] UPDATE / REFRESH block on unresolved target production lineage.
 - [x] LINK_ONLY / DO_NOT_WRITE return NO_PRODUCTION.
 - [x] MERGE returns RECONCILIATION_REQUIRED.
 - [x] Add deterministic admission snapshot hash + read-only endpoint.
