@@ -327,6 +327,59 @@ def _content_refs(recommendation: dict[str, object]) -> list[UUID]:
         ) from exc
 
 
+def _candidate_signal_refs(candidate: dict[str, object]) -> list[UUID]:
+    refs = _string_list(
+        candidate.get("signal_refs"),
+        "opportunity_selection_signal_refs_invalid",
+    )
+    try:
+        return sorted((UUID(value) for value in refs), key=str)
+    except ValueError as exc:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_refs_invalid"
+        ) from exc
+
+
+def _candidate_content_refs(candidate: dict[str, object]) -> list[UUID]:
+    refs = _string_list(
+        candidate.get("existing_content_refs"),
+        "opportunity_selection_content_refs_invalid",
+    )
+    try:
+        return sorted((UUID(value) for value in refs), key=str)
+    except ValueError as exc:
+        raise OpportunitySelectionError(
+            "opportunity_selection_content_refs_invalid"
+        ) from exc
+
+
+def _candidate_role(candidate: dict[str, object]) -> ArchitectureRole:
+    value = _text(
+        candidate.get("role"),
+        "opportunity_selection_architecture_role_invalid",
+        max_length=16,
+    )
+    if value not in {"pillar", "cluster"}:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_role_invalid"
+        )
+    return value  # type: ignore[return-value]
+
+
+def _candidate_member_clusters(
+    candidate: dict[str, object],
+) -> list[str]:
+    members = _string_list(
+        candidate.get("member_cluster_keys"),
+        "opportunity_selection_architecture_members_invalid",
+    )
+    if not members:
+        raise OpportunitySelectionError(
+            "opportunity_selection_architecture_members_invalid"
+        )
+    return sorted(members)
+
+
 async def _validate_signal_refs(
     session: AsyncSession,
     *,
