@@ -22,6 +22,9 @@ from app.modules.content_engine.models import (
     Project,
     Signal,
 )
+from app.modules.research.keyword_plan.content_architecture import (
+    build_content_architecture,
+)
 from app.modules.research.keyword_plan.opportunity_planner_v2 import (
     build_opportunity_plan_v2,
 )
@@ -172,6 +175,54 @@ def _request(
     )
 
 
+async def _pillar_inputs(
+    session: AsyncSession,
+    *,
+    status: str = "PROPOSED",
+) -> tuple[Project, NeedHypothesis]:
+    project, need, _ = await _canonical_inputs(session, status=status)
+    for text in (
+        "How do I know if a painting is original?",
+        "What size painting fits my wall?",
+        "Can I carry a painting home on a flight?",
+    ):
+        await _search_signal(
+            session,
+            project,
+            need,
+            text=text,
+        )
+    return project, need
+
+
+def _architecture_request(
+    *,
+    project: Project,
+    need: NeedHypothesis,
+    architecture: dict[str, object],
+    candidate: dict[str, object],
+) -> OpportunitySelectionRequest:
+    return OpportunitySelectionRequest(
+        project_slug=project.slug,
+        need_id=need.id,
+        locale="en",
+        architecture_candidate_key=str(candidate["candidate_key"]),
+        expected_architecture_snapshot_hash=str(
+            architecture["snapshot_hash"]
+        ),
+        expected_planner_snapshot_hash=str(
+            architecture["planner_snapshot_hash"]
+        ),
+        selected_by="founder",
+        selection_reason="Founder selected the exact architecture candidate.",
+        promise="Give the buyer a bounded, practical decision path.",
+        coverage_requirements=[
+            "Cover the exact committed member questions.",
+            "Keep broad overview separate from cluster-level depth.",
+        ],
+    )
+
+
 async def _existing_primary_item(
     session: AsyncSession,
     *,
@@ -237,6 +288,160 @@ async def _existing_primary_item(
     session.add(item)
     await session.flush()
     return item
+
+
+@pytest.mark.asyncio
+async def test_founder_can_select_exact_pillar_candidate_without_child_cases() -> None:
+    async with isolated_session() as session:
+        project, need = await _pillar_inputs(session)
+        architecture = await build_content_architecture(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        candidates = architecture["candidates"]
+        assert isinstance(candidates, list)
+        pillar = next(
+            row
+            for row in candidates
+            if isinstance(row, dict) and row["role"] == "pillar"
+        )
+        assert pillar["selectable"] is True
+        request = _architecture_request(
+            project=project,
+            need=need,
+            architecture=architecture,
+            candidate=pillar,
+        )
+
+        first = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+
+        opportunity = await session.get(
+            ContentOpportunity,
+            first.content_opportunity_id,
+        )
+        assert opportunity is not None
+        assert first.role == "pillar"
+        assert opportunity.suggested_role == "pillar"
+        assert opportunity.question == need.statement
+        assert opportunity.decision == "CREATE"
+        assert (
+            await session.scalar(
+                select(func.count())
+                .select_from(ContentCase)
+                .where(ContentCase.project_id == project.id)
+            )
+        ) == 0
+        assert (
+            await session.scalar(
+                select(func.count())
+                .select_from(ContentOpportunity)
+                .where(ContentOpportunity.project_id == project.id)
+            )
+        ) == 1
+        assert (
+            await session.scalar(
+                select(func.count())
+                .select_from(HumanSelection)
+                .where(
+                    HumanSelection.content_opportunity_id == opportunity.id
+                )
+            )
+        ) == 1
+
+        linked = set(
+            (
+                await session.scalars(
+                    select(ContentOpportunitySignal.signal_id).where(
+                        ContentOpportunitySignal.content_opportunity_id
+                        == opportunity.id
+                    )
+                )
+            ).all()
+        )
+        expected_refs = {
+            UUID(value)
+            for value in pillar["signal_refs"]
+            if isinstance(value, str)
+        }
+        assert linked == expected_refs
+        assert any(
+            reason
+            == (
+                "content_architecture_snapshot:"
+                f"{architecture['snapshot_hash']}"
+            )
+            for reason in opportunity.reasons_json
+        )
+        member_markers = [
+            reason
+            for reason in opportunity.reasons_json
+            if reason.startswith("content_architecture_member:")
+        ]
+        assert len(member_markers) >= 3
+
+        changed = await build_content_architecture(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        assert changed["snapshot_hash"] != architecture["snapshot_hash"]
+
+        replay = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+        assert replay.replayed is True
+        assert replay.content_opportunity_id == first.content_opportunity_id
+        assert replay.human_selection_id == first.human_selection_id
+
+
+@pytest.mark.asyncio
+async def test_founder_can_select_exact_cluster_candidate_from_architecture() -> None:
+    async with isolated_session() as session:
+        project, need, _ = await _canonical_inputs(session)
+        architecture = await build_content_architecture(
+            session,
+            project_id=project.id,
+            need_id=need.id,
+            locale="en",
+        )
+        candidates = architecture["candidates"]
+        assert isinstance(candidates, list)
+        cluster = next(
+            row
+            for row in candidates
+            if isinstance(row, dict) and row["role"] == "cluster"
+        )
+        request = _architecture_request(
+            project=project,
+            need=need,
+            architecture=architecture,
+            candidate=cluster,
+        )
+
+        result = await persist_selected_opportunity(
+            session,
+            project_id=project.id,
+            request=request,
+        )
+        opportunity = await session.get(
+            ContentOpportunity,
+            result.content_opportunity_id,
+        )
+
+        assert opportunity is not None
+        assert result.role == "cluster"
+        assert opportunity.suggested_role == "cluster"
+        assert result.architecture_candidate_key == cluster["candidate_key"]
+        assert result.cluster_key is None
 
 
 @pytest.mark.asyncio
