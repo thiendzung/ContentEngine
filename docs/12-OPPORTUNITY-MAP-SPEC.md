@@ -317,8 +317,8 @@ Caller phải bind:
 - idempotency key.
 
 Với request mới, backend dùng cùng một DB transaction để khóa selected ContentOpportunity,
-recompute route, recompute admission, require exact hashes + `ADMITTED`, rồi mới reuse
-`create_or_reuse_journal_case`.
+recompute route, require canonical Need vẫn `SUPPORTED`, recompute admission, require exact hashes + `ADMITTED`, rồi mới reuse
+`create_or_reuse_journal_case` với explicit `SUPPORTED` Need guard.
 
 Output production mới của slice này chỉ gồm:
 
