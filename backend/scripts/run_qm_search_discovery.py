@@ -181,6 +181,7 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                 "statement": need.statement,
             },
         }
+        capture_created = False
         try:
             with output.open("x", encoding="utf-8") as capture_file:
                 capture_file.write(
@@ -192,9 +193,11 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                         default=str,
                     )
                 )
+            capture_created = True
             await session.commit()
         except Exception:
-            output.unlink(missing_ok=True)
+            if capture_created:
+                output.unlink(missing_ok=True)
             raise
 
     summary = {
