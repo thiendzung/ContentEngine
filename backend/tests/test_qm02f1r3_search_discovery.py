@@ -274,6 +274,14 @@ async def test_bounded_search_discovery_reaches_question_and_architecture_maps()
 
         assert len(first.executed_queries) == 3
         assert len(runner.requests) == 3
+        assert first.provider_calls
+        assert all(
+            isinstance(row.get("raw_excerpt"), str)
+            and row["raw_excerpt"]
+            and isinstance(row.get("raw_excerpt_hash"), str)
+            and len(row["raw_excerpt_hash"]) == 64
+            for row in first.provider_calls
+        )
         assert all(
             item.force_external_discovery
             and item.max_pages_to_read == 0
