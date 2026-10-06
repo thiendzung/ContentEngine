@@ -166,6 +166,8 @@ async def create_or_reuse_journal_case(
     *,
     content_opportunity_id: UUID,
     expected_opportunity_version: int,
+    required_need_status: str = "PROPOSED",
+    need_status_error_code: str = "pr_e_does_not_auto_promote_need_hypothesis",
 ) -> CreatedJournalCase:
     opportunity = await session.get(ContentOpportunity, content_opportunity_id)
     if opportunity is None:
@@ -203,6 +205,8 @@ async def create_or_reuse_journal_case(
             project_id=opportunity.project_id,
             content_opportunity_id=opportunity.id,
             need_hypothesis_id=opportunity.need_hypothesis_id,
+            required_need_status=required_need_status,
+            need_status_error_code=need_status_error_code,
         )
     except ValueError as exc:
         raise OperatorControlError(str(exc)) from exc
