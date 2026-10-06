@@ -150,7 +150,7 @@ async def _selected_opportunity(
             session,
             project=project,
             need=need,
-            text="What budget should I set for a painting?",
+            text="What budget should I set for my first painting?",
         )
         plan = await build_opportunity_plan_v2(
             session,
