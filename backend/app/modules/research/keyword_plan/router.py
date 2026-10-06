@@ -18,6 +18,11 @@ from app.modules.research.keyword_plan.opportunity_selection_v2 import (
     OpportunitySelectionResult,
     persist_selected_opportunity,
 )
+from app.modules.research.keyword_plan.production_decision_router import (
+    ProductionDecisionRoute,
+    ProductionDecisionRouterError,
+    build_production_decision_route,
+)
 from app.modules.research.keyword_plan.question_coverage import (
     QuestionCoverageError,
     build_question_coverage,
@@ -36,6 +41,7 @@ def _question_map_http_error(
         | QuestionCoverageError
         | OpportunityPlannerError
         | OpportunitySelectionError
+        | ProductionDecisionRouterError
     ),
 ) -> HTTPException:
     not_found = {
@@ -46,6 +52,7 @@ def _question_map_http_error(
         "opportunity_planner_project_not_found",
         "opportunity_planner_need_not_found",
         "opportunity_selection_need_not_found",
+        "production_route_opportunity_not_found",
     }
     status_code = 404 if exc.code in not_found else 409
     return HTTPException(
@@ -166,5 +173,31 @@ async def select_opportunity_plan_v2(
         QuestionCoverageError,
         OpportunityPlannerError,
         OpportunitySelectionError,
+    ) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.get(
+    "/opportunities/{opportunity_id}/route",
+    response_model=ProductionDecisionRoute,
+)
+async def get_production_decision_route(
+    opportunity_id: UUID,
+    project_slug: str = Query(default="motgu", min_length=1, max_length=100),
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ProductionDecisionRoute:
+    try:
+        project_id = await _project_id_from_slug(
+            session,
+            project_slug=project_slug,
+        )
+        return await build_production_decision_route(
+            session,
+            project_id=project_id,
+            opportunity_id=opportunity_id,
+        )
+    except (
+        QuestionMapError,
+        ProductionDecisionRouterError,
     ) as exc:
         raise _question_map_http_error(exc) from exc
