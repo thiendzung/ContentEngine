@@ -21,6 +21,13 @@ from app.modules.content_engine.models import (
     Signal,
     utc_now,
 )
+from app.modules.research.keyword_plan.content_architecture import (
+    CONTENT_ARCHITECTURE_POLICY_VERSION,
+    ArchitectureRole,
+    ContentArchitectureError,
+    build_content_architecture,
+    content_architecture_candidate_key,
+)
 from app.modules.research.keyword_plan.opportunity_planner_v2 import (
     OPPORTUNITY_PLANNER_POLICY_VERSION,
     OpportunityPlannerError,
@@ -53,7 +60,17 @@ class OpportunitySelectionRequest(BaseModel):
     project_slug: str = Field(default="motgu", min_length=1, max_length=100)
     need_id: UUID
     locale: str = Field(min_length=1, max_length=32)
-    cluster_key: str = Field(min_length=1, max_length=128)
+    cluster_key: str | None = Field(default=None, min_length=1, max_length=128)
+    architecture_candidate_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+    )
+    expected_architecture_snapshot_hash: str | None = Field(
+        default=None,
+        min_length=64,
+        max_length=64,
+    )
     expected_planner_snapshot_hash: str = Field(min_length=64, max_length=64)
     selected_by: str = Field(default="founder", min_length=1, max_length=200)
     selection_reason: str = Field(min_length=1, max_length=2_000)
@@ -66,7 +83,10 @@ class OpportunitySelectionResult(BaseModel):
     content_opportunity_id: UUID
     human_selection_id: UUID
     planner_snapshot_hash: str
-    cluster_key: str
+    cluster_key: str | None = None
+    architecture_snapshot_hash: str | None = None
+    architecture_candidate_key: str | None = None
+    role: ArchitectureRole = "cluster"
     decision: str
     priority: str
     replayed: bool
