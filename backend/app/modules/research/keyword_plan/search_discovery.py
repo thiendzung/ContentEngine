@@ -599,6 +599,7 @@ def _provider_calls(
             "status": row.status,
             "result_count": row.result_count,
             "reason": row.reason,
+            "raw_excerpt": row.raw_excerpt,
             "raw_excerpt_hash": hashlib.sha256(
                 row.raw_excerpt.encode()
             ).hexdigest(),
