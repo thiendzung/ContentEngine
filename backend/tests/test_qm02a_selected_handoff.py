@@ -21,9 +21,11 @@ from app.modules.content_engine.models import (
     LocaleVariant,
     NeedHypothesis,
     NeedHypothesisSignal,
-    OpportunityPlannerHandoff,
     Project,
     Signal,
+)
+from app.modules.research.keyword_plan.opportunity_handoff_models import (
+    OpportunityPlannerHandoff,
 )
 from app.modules.research.keyword_plan.opportunity_handoff_v2 import (
     OpportunityHandoffError,
