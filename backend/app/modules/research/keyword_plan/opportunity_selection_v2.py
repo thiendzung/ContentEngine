@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content_engine.models import (
-    ContentExperiment,
     ContentItem,
     ContentOpportunity,
     ContentOpportunitySignal,
@@ -283,39 +282,18 @@ def _lineage_reasons(
     )
 
 
-def _assert_existing_opportunity(
+def _assert_existing_replay(
     row: ContentOpportunity,
     *,
     need: NeedHypothesis,
     locale: str,
-    recommendation: dict[str, object],
+    planner_hash: str,
+    cluster_key: str,
     promise: str,
     coverage: list[str],
     reason: str,
     selected_by: str,
-    content_refs: list[UUID],
-    reasons: list[str],
 ) -> None:
-    question = _text(
-        recommendation.get("primary_question"),
-        "opportunity_selection_question_invalid",
-        max_length=4_000,
-    )
-    intent = _text(
-        recommendation.get("intent"),
-        "opportunity_selection_intent_invalid",
-        max_length=64,
-    )
-    decision = _text(
-        recommendation.get("decision"),
-        "opportunity_selection_decision_invalid",
-        max_length=32,
-    )
-    priority = _text(
-        recommendation.get("priority"),
-        "opportunity_selection_priority_invalid",
-        max_length=16,
-    )
     expected = {
         "project_id": need.project_id,
         "need_hypothesis_id": need.id,
@@ -323,18 +301,12 @@ def _assert_existing_opportunity(
         "reader": need.audience_scope,
         "situation": need.situation,
         "need": need.statement,
-        "question": question,
-        "intent": intent,
         "promise": promise,
         "coverage_requirements_json": coverage,
         "motgu_material_refs_json": [],
         "material_gaps_json": [_MATERIAL_GAP],
-        "existing_content_refs_json": [str(value) for value in content_refs],
         "what_is_actually_new": _NOT_NEW_YET,
         "next_discovery_step": _NEXT_STEP,
-        "decision": decision,
-        "priority": priority,
-        "reasons_json": reasons,
         "suggested_content_type": "journal",
         "suggested_role": "cluster",
         "version": 1,
@@ -349,6 +321,74 @@ def _assert_existing_opportunity(
     if row.selected_at is None:
         raise OpportunitySelectionError(
             "opportunity_selection_replay_conflict"
+        )
+
+    reasons = row.reasons_json
+    if not isinstance(reasons, list) or any(
+        not isinstance(item, str) for item in reasons
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+    required_lineage = {
+        "qm02a_exact_planner_selection",
+        f"planner_snapshot:{planner_hash}",
+        f"planner_policy:{OPPORTUNITY_PLANNER_POLICY_VERSION}",
+        f"planner_cluster:{cluster_key}",
+    }
+    if not required_lineage.issubset(set(reasons)):
+        raise OpportunitySelectionError(
+            "opportunity_selection_replay_conflict"
+        )
+
+
+async def _validate_existing_signal_lineage(
+    session: AsyncSession,
+    *,
+    opportunity_id: UUID,
+    project_id: UUID,
+    need_id: UUID,
+    locale: str,
+) -> None:
+    rows = (
+        await session.execute(
+            select(Signal)
+            .join(
+                ContentOpportunitySignal,
+                ContentOpportunitySignal.signal_id == Signal.id,
+            )
+            .join(
+                NeedHypothesisSignal,
+                NeedHypothesisSignal.signal_id == Signal.id,
+            )
+            .where(
+                ContentOpportunitySignal.content_opportunity_id
+                == opportunity_id,
+                NeedHypothesisSignal.need_hypothesis_id == need_id,
+                NeedHypothesisSignal.relation == "supports",
+            )
+        )
+    ).scalars().all()
+    linked_ids = set(
+        (
+            await session.scalars(
+                select(ContentOpportunitySignal.signal_id).where(
+                    ContentOpportunitySignal.content_opportunity_id
+                    == opportunity_id
+                )
+            )
+        ).all()
+    )
+    valid_ids = {
+        row.id
+        for row in rows
+        if row.project_id == project_id
+        and row.source_kind == "SEARCH"
+        and row.locale.strip().casefold() == locale
+    }
+    if linked_ids != valid_ids:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_lineage_conflict"
         )
 
 
@@ -407,6 +447,73 @@ async def persist_selected_opportunity(
     if need is None:
         raise OpportunitySelectionError(
             "opportunity_selection_need_not_found"
+        )
+
+    opportunity_id = _stable_id(
+        "content-opportunity",
+        planner_hash=planner_hash,
+        cluster_key=cluster_key,
+    )
+    selection_id = _stable_id(
+        "human-selection",
+        planner_hash=planner_hash,
+        cluster_key=cluster_key,
+    )
+
+    existing = await session.get(ContentOpportunity, opportunity_id)
+    if existing is not None:
+        _assert_existing_replay(
+            existing,
+            need=need,
+            locale=locale,
+            planner_hash=planner_hash,
+            cluster_key=cluster_key,
+            promise=promise,
+            coverage=coverage,
+            reason=reason,
+            selected_by=selected_by,
+        )
+        selections = list(
+            (
+                await session.scalars(
+                    select(HumanSelection)
+                    .where(
+                        HumanSelection.content_opportunity_id == opportunity_id
+                    )
+                    .order_by(HumanSelection.id)
+                )
+            ).all()
+        )
+        if len(selections) != 1:
+            raise OpportunitySelectionError(
+                "opportunity_selection_durable_selection_inconsistent"
+            )
+        selection = selections[0]
+        if (
+            selection.id != selection_id
+            or selection.selected_by != selected_by
+            or selection.reason != reason
+            or selection.selected_at != existing.selected_at
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_replay_conflict"
+            )
+        await _validate_existing_signal_lineage(
+            session,
+            opportunity_id=opportunity_id,
+            project_id=project_id,
+            need_id=need.id,
+            locale=locale,
+        )
+        return OpportunitySelectionResult(
+            schema_version=OPPORTUNITY_SELECTION_SCHEMA_VERSION,
+            content_opportunity_id=existing.id,
+            human_selection_id=selection.id,
+            planner_snapshot_hash=planner_hash,
+            cluster_key=cluster_key,
+            decision=existing.decision,
+            priority=existing.priority,
+            replayed=True,
         )
 
     try:
@@ -497,81 +604,6 @@ async def persist_selected_opportunity(
         question_coverage_hash=question_coverage_hash,
     )
 
-    opportunity_id = _stable_id(
-        "content-opportunity",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
-    selection_id = _stable_id(
-        "human-selection",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
-
-    existing = await session.get(ContentOpportunity, opportunity_id)
-    if existing is not None:
-        _assert_existing_opportunity(
-            existing,
-            need=need,
-            locale=locale,
-            recommendation=recommendation,
-            promise=promise,
-            coverage=coverage,
-            reason=reason,
-            selected_by=selected_by,
-            content_refs=content_refs,
-            reasons=lineage_reasons,
-        )
-        selections = list(
-            (
-                await session.scalars(
-                    select(HumanSelection)
-                    .where(
-                        HumanSelection.content_opportunity_id == opportunity_id
-                    )
-                    .order_by(HumanSelection.id)
-                )
-            ).all()
-        )
-        if len(selections) != 1:
-            raise OpportunitySelectionError(
-                "opportunity_selection_durable_selection_inconsistent"
-            )
-        selection = selections[0]
-        if (
-            selection.id != selection_id
-            or selection.selected_by != selected_by
-            or selection.reason != reason
-            or selection.selected_at != existing.selected_at
-        ):
-            raise OpportunitySelectionError(
-                "opportunity_selection_replay_conflict"
-            )
-        linked = set(
-            (
-                await session.scalars(
-                    select(ContentOpportunitySignal.signal_id).where(
-                        ContentOpportunitySignal.content_opportunity_id
-                        == opportunity_id
-                    )
-                )
-            ).all()
-        )
-        if linked != set(signal_refs):
-            raise OpportunitySelectionError(
-                "opportunity_selection_signal_lineage_conflict"
-            )
-        return OpportunitySelectionResult(
-            schema_version=OPPORTUNITY_SELECTION_SCHEMA_VERSION,
-            content_opportunity_id=existing.id,
-            human_selection_id=selection.id,
-            planner_snapshot_hash=planner_hash,
-            cluster_key=cluster_key,
-            decision=decision,
-            priority=priority,
-            replayed=True,
-        )
-
     selected_at = utc_now()
     opportunity = ContentOpportunity(
         id=opportunity_id,
@@ -620,16 +652,6 @@ async def persist_selected_opportunity(
     )
     session.add(selection)
     await session.flush()
-
-    experiment_count = await session.scalar(
-        select(ContentExperiment.id)
-        .where(ContentExperiment.content_opportunity_id == opportunity.id)
-        .limit(1)
-    )
-    if experiment_count is not None:
-        raise OpportunitySelectionError(
-            "opportunity_selection_unexpected_experiment"
-        )
 
     return OpportunitySelectionResult(
         schema_version=OPPORTUNITY_SELECTION_SCHEMA_VERSION,
