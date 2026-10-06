@@ -31,9 +31,9 @@ Question Map → Coverage → Content Architecture
 Rules:
 - an explicit search-language run cannot be short-circuited by internal-knowledge sufficiency;
 - pure F1R3 does not use Jina because it is not factual page-reading work;
-- PAA/Related/Autocomplete are question-eligible;
-- Organic/Source Discovery is preserved as context but explicitly excluded from Question Map
-  question derivation;
+- PAA/Related/Autocomplete are question-eligible and may receive the exact planning Need link;
+- Organic/Source Discovery is preserved as project-level context with planning Need refs but
+  receives no Need support link and is excluded from Question Map question derivation;
 - same normalized query across provider/query variants is one canonical planning observation,
   with provider/method/query/hop/source provenance aggregated rather than fake demand count;
 - every F1R3 SEARCH Signal is marked `customer_truth_eligible=false` and
