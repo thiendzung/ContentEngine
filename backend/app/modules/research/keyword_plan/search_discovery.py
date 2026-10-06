@@ -491,6 +491,10 @@ async def _persist_observation_groups(
             additions,
         )
         representative = _representative_occurrence(occurrences)
+        current_question_eligible = any(
+            row.question_eligible
+            for row in group
+        )
         question_eligible = any(
             bool(row.get("question_eligible"))
             for row in occurrences
@@ -555,7 +559,7 @@ async def _persist_observation_groups(
             "observations": occurrences,
         }
 
-        if question_eligible:
+        if current_question_eligible:
             link = await session.get(
                 NeedHypothesisSignal,
                 (request.need_id, signal.id, "supports"),
