@@ -208,7 +208,7 @@ def test_clustering_v2_uses_intent_and_answer_job_not_topic_only() -> None:
     }
 
 
-def test_cluster_identity_binds_need_locale_intent_and_answer_job() -> None:
+def test_cluster_identity_binds_need_locale_intent_stage_and_answer_job() -> None:
     question = _question(
         key="auth",
         text="How can I verify an original painting?",
@@ -233,6 +233,32 @@ def test_cluster_identity_binds_need_locale_intent_and_answer_job() -> None:
     assert len(first) == 1
     assert first[0].cluster_key != second_need[0].cluster_key
     assert first[0].cluster_key != second_locale[0].cluster_key
+
+
+def test_clustering_v2_splits_same_answer_job_across_audience_stages() -> None:
+    questions = [
+        _question(
+            key="first-time",
+            text="How much should I spend on my first painting?",
+        ),
+        _question(
+            key="evaluating",
+            text="How much should I spend on a painting?",
+        ),
+    ]
+
+    clusters = build_question_clusters_v2(
+        need_id="need-1",
+        locale="en",
+        questions=questions,
+    )
+
+    assert len(clusters) == 2
+    assert {cluster.answer_job for cluster in clusters} == {"plan_budget"}
+    assert {cluster.audience_stage for cluster in clusters} == {
+        "first_time_buyer",
+        "evaluating",
+    }
 
 
 def test_clustering_v2_excludes_unresolved_and_off_scope_questions() -> None:
@@ -266,7 +292,7 @@ def test_cluster_primary_question_prefers_stronger_source_before_repetition() ->
         ),
         _question(
             key="paa",
-            text="What budget should I set for my first painting?",
+            text="What budget should I set for a painting?",
             source_priority=2,
             source_count=1,
         ),
@@ -430,6 +456,7 @@ async def test_question_map_v2_exposes_classification_clusters_and_versions() ->
         assert isinstance(clusters, list)
         assert len(clusters) == 1
         assert clusters[0]["answer_job"] == "plan_budget"
+        assert clusters[0]["audience_stage"] == "first_time_buyer"
         assert (
             clusters[0]["primary_question"]
             == "How much should I spend on my first painting?"
