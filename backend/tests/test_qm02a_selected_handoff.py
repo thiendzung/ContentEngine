@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import func, select, text
@@ -337,11 +337,11 @@ async def test_qm02a_selects_missing_cluster_once_with_exact_lineage() -> None:
 
         opportunity = await session.get(
             ContentOpportunity,
-            receipt["content_opportunity_id"],
+            UUID(str(receipt["content_opportunity_id"])),
         )
         selection = await session.get(
             HumanSelection,
-            receipt["human_selection_id"],
+            UUID(str(receipt["human_selection_id"])),
         )
         assert opportunity is not None
         assert selection is not None
@@ -601,7 +601,7 @@ async def test_qm02a_link_only_preserves_exact_primary_content_target() -> None:
         )
         opportunity = await session.get(
             ContentOpportunity,
-            receipt["content_opportunity_id"],
+            UUID(str(receipt["content_opportunity_id"])),
         )
         assert opportunity is not None
         assert opportunity.decision == "LINK_ONLY"
@@ -641,7 +641,7 @@ async def test_qm02a_handoff_lineage_is_database_immutable() -> None:
 
         stored = await session.get(
             OpportunityPlannerHandoff,
-            receipt["handoff_id"],
+            UUID(str(receipt["handoff_id"])),
         )
         assert stored is not None
         assert stored.selection_reason == "Create immutable lineage."
