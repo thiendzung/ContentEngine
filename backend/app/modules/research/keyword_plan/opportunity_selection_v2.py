@@ -433,13 +433,17 @@ async def validate_persisted_opportunity_selection(
             "opportunity_selection_durable_selection_inconsistent"
         )
 
-    await _validate_existing_signal_lineage(
+    linked_signal_ids = await _validate_existing_signal_lineage(
         session,
         opportunity_id=opportunity.id,
         project_id=project_id,
         need_id=opportunity.need_hypothesis_id,
         locale=opportunity.locale,
     )
+    if not linked_signal_ids:
+        raise OpportunitySelectionError(
+            "opportunity_selection_signal_lineage_missing"
+        )
 
 
 def _lineage_reasons(
@@ -547,7 +551,7 @@ async def _validate_existing_signal_lineage(
     project_id: UUID,
     need_id: UUID,
     locale: str,
-) -> None:
+) -> set[UUID]:
     rows = (
         await session.execute(
             select(Signal)
@@ -588,6 +592,7 @@ async def _validate_existing_signal_lineage(
         raise OpportunitySelectionError(
             "opportunity_selection_signal_lineage_conflict"
         )
+    return linked_ids
 
 
 async def persist_selected_opportunity(
