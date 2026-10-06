@@ -290,7 +290,7 @@ Bounded statuses:
 
 CREATE chỉ `ADMITTED` khi chưa có ContentCase bind vào selected opportunity.
 UPDATE/REFRESH chỉ `ADMITTED` khi exact target lineage không có active
-`pending/running/waiting_approval` ContentRun và không có production binding trái contract.
+`pending/running/waiting_approval/failed` ContentRun và không có production binding trái contract.
 LINK_ONLY/DO_NOT_WRITE không vào production. MERGE đi reconciliation, không vào normal
 production admission.
 
