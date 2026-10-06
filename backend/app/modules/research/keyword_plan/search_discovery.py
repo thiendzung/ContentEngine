@@ -337,8 +337,15 @@ def _observation_payload(
     captured_at: str,
     artifact_ref: str | None,
 ) -> dict[str, object]:
+    capture_key = hashlib.sha256(
+        (
+            f"{row.observation_key}\x1f"
+            f"{artifact_ref or 'uncaptured'}"
+        ).encode()
+    ).hexdigest()
     return {
-        "observation_key": row.observation_key,
+        "observation_key": capture_key,
+        "semantic_observation_key": row.observation_key,
         "provider": row.provider,
         "method": row.method,
         "query": row.query,
