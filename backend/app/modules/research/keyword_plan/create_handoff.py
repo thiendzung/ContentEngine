@@ -27,13 +27,13 @@ from app.modules.content_engine.models import (
     LocaleVariant,
     NeedHypothesis,
 )
-from app.modules.research.keyword_plan.production_admission import (
-    ProductionAdmissionError,
-    build_production_admission,
-)
 from app.modules.research.keyword_plan.opportunity_selection_v2 import (
     OpportunitySelectionError,
     validate_persisted_opportunity_selection,
+)
+from app.modules.research.keyword_plan.production_admission import (
+    ProductionAdmissionError,
+    build_production_admission,
 )
 from app.modules.research.keyword_plan.production_decision_router import (
     ProductionDecisionRouterError,
