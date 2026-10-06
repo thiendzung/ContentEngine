@@ -7,7 +7,28 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-02D1 — CREATE Production Handoff — IMPLEMENTATION WIP
+## QM-02F1 — Early Real CREATE Pilot — BLOCKED BY REAL DATA READINESS
+
+Tracking: issue #346.
+
+- [x] QM-02D1 merged before pilot.
+- [x] Run F1A read-only discovery on exact merged main.
+- [x] Confirm operational project `motgu` and requested locale path.
+- [x] Confirm no eligible real candidate exists under the F1 contract.
+- [x] Record blocker factually: operational dataset has no canonical `SUPPORTED` Need eligible for the real CREATE pilot.
+- [x] Keep F0A/F0B1 results as diagnostic/data-readiness evidence only; do not expand the QM lane into Customer Truth implementation.
+- [x] Close out-of-scope CT-02 proposal as not planned for the current QM lane.
+- [ ] F1A exit gate: find one real `SUPPORTED` Need with usable SEARCH lineage and Planner `CREATE + READY_FOR_HUMAN_SELECTION`.
+- [ ] Founder approves the exact F1A candidate.
+- [ ] F1B persists exact QM-02A selection.
+- [ ] Recompute exact QM-02B route and QM-02C admission.
+- [ ] QM-02D1 materializes exactly one ContentCase + source LocaleVariant + one OperatorCommand receipt.
+- [ ] Prove zero ContentRun/StepRun/Job, no auto-Start, no duplicate lineage, safe exact replay.
+- [ ] Mark QM-02F1 PASS.
+
+**Gate:** QM-02D2 / QM-02D3 do not start until QM-02F1 PASS. No fake Need promotion, raw SQL workaround, or out-of-scope subsystem implementation is allowed to force the pilot through.
+
+## QM-02D1 — CREATE Production Handoff — DONE / PR #345 MERGED
 
 Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.
 
@@ -22,12 +43,13 @@ Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.
 - [x] Exact replay returns the same receipt; conflicting replay fails closed.
 - [x] No ContentRun/StepRun/Job, no auto-Start, no Evidence/Originality/model/provider/publish.
 - [x] Add focused CREATE handoff tests.
-- [ ] MG exact diff self-review.
-- [ ] Agent Local exact-SHA focused/full backend + concurrency verification.
-- [ ] Exact-ref OpenCodeReview.
-- [ ] GitHub minimum CI confirmation if available.
-- [ ] Founder merge.
-- [ ] QM-02F1 early real CREATE pilot after merge.
+- [x] MG exact diff self-review.
+- [x] Agent Local exact-SHA focused/full backend + concurrency verification.
+- [x] Exact-ref OpenCodeReview.
+- [x] GitHub CI #2291 SUCCESS.
+- [x] Founder merged PR #345.
+- [x] Merge/main: `99dab3ac9c18d24ee16c2c344533f56ec968ec5f`.
+- [x] Start QM-02F1 early real CREATE pilot after merge.
 
 ## QM-02C — Production Admission Gate — DONE / PR #343 MERGED
 
