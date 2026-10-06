@@ -290,9 +290,11 @@ Normalization/persistence:
 - `independence_group` dùng normalized query fingerprint;
 - mỗi Signal giữ exact provider/method/query/hop/source/position và capture artifact refs;
 - raw provider excerpt bounded được giữ trong immutable JSON capture để audit/replay fixture;
-- PAA/Related/Autocomplete là question-eligible;
-- Organic/Source Discovery được giữ làm context nhưng `question_eligible=false`, nên không
-  tự trở thành Question Map question.
+- PAA/Related/Autocomplete là question-eligible và mới được link vào canonical Need cho
+  Question Map planning;
+- Organic/Source Discovery được giữ làm project-level context với `planning_need_refs`
+  trong provenance nhưng không tạo `NeedHypothesisSignal(supports)`, nên không làm nhiễu
+  Need support lineage và không tự trở thành Question Map question.
 
 Bounded expansion:
 
