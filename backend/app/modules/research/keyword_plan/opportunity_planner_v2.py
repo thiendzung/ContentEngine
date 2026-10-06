@@ -410,6 +410,7 @@ def _cluster_is_usable(cluster: dict[str, object]) -> bool:
     required_text = (
         cluster.get("cluster_key"),
         cluster.get("intent"),
+        cluster.get("audience_stage"),
         cluster.get("answer_job"),
         cluster.get("primary_question"),
     )
