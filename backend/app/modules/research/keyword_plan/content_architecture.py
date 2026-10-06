@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -178,7 +178,7 @@ def _cluster_candidate(
     recommendation: dict[str, object],
     need_id: str,
     locale: str,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     cluster_key = _required_text(
         recommendation.get("cluster_key"),
         "content_architecture_cluster_projection_invalid",
@@ -272,9 +272,9 @@ def _pillar_candidate(
     *,
     need: dict[str, object],
     locale: str,
-    clusters: list[dict[str, object]],
+    clusters: list[dict[str, Any]],
     collision: dict[str, object],
-) -> dict[str, object] | None:
+) -> dict[str, Any] | None:
     eligible = [
         row
         for row in clusters
@@ -459,10 +459,10 @@ def build_content_architecture_projection(
         clusters=clusters,
         collision=collision,
     )
-    candidates = [
-        *( [pillar] if pillar is not None else [] ),
-        *clusters,
-    ]
+    candidates: list[dict[str, Any]] = []
+    if pillar is not None:
+        candidates.append(pillar)
+    candidates.extend(clusters)
 
     snapshot: dict[str, object] = {
         "schema_version": CONTENT_ARCHITECTURE_SCHEMA_VERSION,
