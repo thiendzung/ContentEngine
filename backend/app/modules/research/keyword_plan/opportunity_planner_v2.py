@@ -366,11 +366,18 @@ def _decision_for_cluster(
                 plan_refs,
                 ["matching_content_incomplete"],
             )
+        if plan_refs:
+            return (
+                "CREATE",
+                [],
+                plan_refs,
+                ["matching_create_plan_or_work_exists"],
+            )
         return (
             "CREATE",
             [],
-            plan_refs,
-            ["matching_create_plan_or_work_exists"],
+            [],
+            ["supporting_coverage_only"],
         )
 
     if status == "COLLISION":
