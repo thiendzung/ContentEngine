@@ -228,11 +228,12 @@ async def _route_hash(
     return route.snapshot_hash
 
 
-async def _active_run(
+async def _run(
     session: AsyncSession,
     *,
     project: Project,
     item: ContentItem,
+    status: str,
 ) -> ContentRun:
     snapshot = SettingsSnapshot(
         project_id=project.id,
@@ -248,7 +249,7 @@ async def _active_run(
         locale_variant_id=item.locale_variant_id,
         content_item_id=item.id,
         run_mode="update",
-        status="pending",
+        status=status,
         current_step=None,
         settings_snapshot_id=snapshot.id,
         started_at=datetime.now(UTC),
@@ -496,7 +497,13 @@ async def test_update_without_active_run_is_admitted() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_blocks_on_active_target_run() -> None:
+@pytest.mark.parametrize(
+    "run_status",
+    ["pending", "running", "waiting_approval", "failed"],
+)
+async def test_update_blocks_on_unresolved_target_run(
+    run_status: str,
+) -> None:
     async with isolated_session() as session:
         project = await _project(session)
         need = await _need(session, project_id=project.id)
@@ -504,7 +511,7 @@ async def test_update_blocks_on_active_target_run() -> None:
             session,
             project=project,
             need=need,
-            suffix="update-busy",
+            suffix=f"update-busy-{run_status}",
         )
         opportunity, _ = await _selected_opportunity(
             session,
@@ -518,10 +525,11 @@ async def test_update_blocks_on_active_target_run() -> None:
             project=project,
             opportunity=opportunity,
         )
-        await _active_run(
+        await _run(
             session,
             project=project,
             item=target,
+            status=run_status,
         )
 
         result = await build_production_admission(
@@ -532,6 +540,9 @@ async def test_update_blocks_on_active_target_run() -> None:
         )
 
         assert result.status == "BLOCKED_PRODUCTION_CONFLICT"
+        assert result.reason_codes == [
+            "production_admission_target_has_unresolved_run"
+        ]
 
 
 @pytest.mark.asyncio
