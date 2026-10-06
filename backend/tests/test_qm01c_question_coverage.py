@@ -20,6 +20,10 @@ from app.modules.content_engine.models import (
     Project,
     Signal,
 )
+from app.modules.research.keyword_plan.classification_v2 import (
+    CLASSIFIER_VERSION,
+)
+from app.modules.research.keyword_plan.clustering_v2 import CLUSTERING_VERSION
 from app.modules.research.keyword_plan.question_coverage import (
     build_question_coverage,
     join_question_map_with_coverage,
@@ -54,8 +58,8 @@ def _question_map_fixture() -> dict[str, object]:
         "locale": "en",
         "snapshot_hash": "q" * 64,
         "source_policy": {
-            "classifier_version": "question-map-classifier-v2",
-            "clustering_version": "question-map-clustering-v2",
+            "classifier_version": CLASSIFIER_VERSION,
+            "clustering_version": CLUSTERING_VERSION,
         },
         "clusters": [
             {
@@ -208,6 +212,19 @@ def test_question_coverage_fails_closed_on_projection_contract_mismatch() -> Non
     ):
         join_question_map_with_coverage(
             question_map=bad_hash,
+            content_coverage=coverage,
+        )
+
+    stale_clustering = _question_map_fixture()
+    source_policy = stale_clustering["source_policy"]
+    assert isinstance(source_policy, dict)
+    source_policy["clustering_version"] = "question-map-clustering-v2"
+    with pytest.raises(
+        ValueError,
+        match="question_coverage_clustering_version_mismatch",
+    ):
+        join_question_map_with_coverage(
+            question_map=stale_clustering,
             content_coverage=coverage,
         )
 
