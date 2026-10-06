@@ -144,6 +144,7 @@ class ResearchRouter:
             internal_sufficient
             and normalized_request.parent_url is None
             and normalized_request.required_intended_use is None
+            and not normalized_request.force_external_discovery
         ):
             result.sufficient = True
             result.stop_reason = "internal_knowledge_sufficient"
@@ -157,11 +158,15 @@ class ResearchRouter:
             self._mark_external_skipped(result, "internal_knowledge_sufficient")
             return result
 
-        internal_reason = (
-            "internal_context_available_but_second_hop_requires_external"
-            if internal_sufficient and normalized_request.parent_url is not None
-            else "insufficient_for_request_external_search_required"
-        )
+        if (
+            internal_sufficient
+            and normalized_request.force_external_discovery
+        ):
+            internal_reason = "external_search_language_discovery_explicitly_required"
+        elif internal_sufficient and normalized_request.parent_url is not None:
+            internal_reason = "internal_context_available_but_second_hop_requires_external"
+        else:
+            internal_reason = "insufficient_for_request_external_search_required"
         result.decisions.append(
             ProviderDecision(
                 provider="internal_knowledge",
@@ -463,6 +468,7 @@ class ResearchRouter:
                 "country": request.country,
                 "limit": request.limit,
                 "parent_url": request.parent_url,
+                "force_external_discovery": request.force_external_discovery,
                 "reason": reason,
             },
         )
