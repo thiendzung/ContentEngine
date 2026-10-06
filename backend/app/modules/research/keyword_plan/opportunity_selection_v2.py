@@ -305,6 +305,143 @@ async def _validate_content_refs(
         )
 
 
+def _single_lineage_marker(
+    reasons: list[str],
+    *,
+    prefix: str,
+    code: str,
+) -> str:
+    matches = [
+        item.removeprefix(prefix)
+        for item in reasons
+        if item.startswith(prefix)
+    ]
+    if len(matches) != 1 or not matches[0]:
+        raise OpportunitySelectionError(code)
+    return matches[0]
+
+
+async def validate_persisted_opportunity_selection(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    opportunity: ContentOpportunity,
+) -> None:
+    """Verify one durable QM-02A selection receipt without replaying live planner state."""
+
+    reasons = opportunity.reasons_json
+    if not isinstance(reasons, list) or any(
+        not isinstance(item, str) for item in reasons
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+    if reasons.count("qm02a_exact_planner_selection") != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+    if reasons.count("selection_contract:qm02a-v1") != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_invalid"
+        )
+
+    planner_hash = _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="planner_snapshot:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+    planner_policy = _single_lineage_marker(
+        reasons,
+        prefix="planner_policy:",
+        code="opportunity_selection_lineage_invalid",
+    )
+    if planner_policy != OPPORTUNITY_PLANNER_POLICY_VERSION:
+        raise OpportunitySelectionError(
+            "opportunity_selection_lineage_policy_stale"
+        )
+    cluster_key = _text(
+        _single_lineage_marker(
+            reasons,
+            prefix="planner_cluster:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+        max_length=128,
+    )
+    _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="question_coverage_snapshot:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+    payload_hash = _hash64(
+        _single_lineage_marker(
+            reasons,
+            prefix="selection_payload:",
+            code="opportunity_selection_lineage_invalid",
+        ),
+        "opportunity_selection_lineage_invalid",
+    )
+
+    expected_opportunity_id = _stable_id(
+        "content-opportunity",
+        planner_hash=planner_hash,
+        cluster_key=cluster_key,
+    )
+    if opportunity.id != expected_opportunity_id:
+        raise OpportunitySelectionError(
+            "opportunity_selection_identity_mismatch"
+        )
+    if payload_hash != _opportunity_payload_hash(opportunity):
+        raise OpportunitySelectionError(
+            "opportunity_selection_payload_mismatch"
+        )
+
+    selections = list(
+        (
+            await session.scalars(
+                select(HumanSelection)
+                .where(
+                    HumanSelection.content_opportunity_id == opportunity.id
+                )
+                .order_by(HumanSelection.id)
+            )
+        ).all()
+    )
+    if len(selections) != 1:
+        raise OpportunitySelectionError(
+            "opportunity_selection_durable_selection_inconsistent"
+        )
+    selection = selections[0]
+    expected_selection_id = _stable_id(
+        "human-selection",
+        planner_hash=planner_hash,
+        cluster_key=cluster_key,
+    )
+    if (
+        selection.id != expected_selection_id
+        or selection.selected_by != opportunity.selected_by
+        or selection.reason != opportunity.selection_reason
+        or selection.selected_at != opportunity.selected_at
+    ):
+        raise OpportunitySelectionError(
+            "opportunity_selection_durable_selection_inconsistent"
+        )
+
+    await _validate_existing_signal_lineage(
+        session,
+        opportunity_id=opportunity.id,
+        project_id=project_id,
+        need_id=opportunity.need_hypothesis_id,
+        locale=opportunity.locale,
+    )
+
+
 def _lineage_reasons(
     recommendation: dict[str, object],
     *,
@@ -555,12 +692,10 @@ async def persist_selected_opportunity(
             raise OpportunitySelectionError(
                 "opportunity_selection_replay_conflict"
             )
-        await _validate_existing_signal_lineage(
+        await validate_persisted_opportunity_selection(
             session,
-            opportunity_id=opportunity_id,
             project_id=project_id,
-            need_id=need.id,
-            locale=locale,
+            opportunity=existing,
         )
         return OpportunitySelectionResult(
             schema_version=OPPORTUNITY_SELECTION_SCHEMA_VERSION,
@@ -736,4 +871,5 @@ __all__ = [
     "OpportunitySelectionRequest",
     "OpportunitySelectionResult",
     "persist_selected_opportunity",
+    "validate_persisted_opportunity_selection",
 ]
