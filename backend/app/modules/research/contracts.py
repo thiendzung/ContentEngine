@@ -175,6 +175,7 @@ class ProductionResearchRequest:
     preferred_source_types: tuple[str, ...] = ()
     required_intended_use: IntendedUse | None = None
     parent_url: str | None = None
+    force_external_discovery: bool = False
 
 
 @dataclass(slots=True, frozen=True)
