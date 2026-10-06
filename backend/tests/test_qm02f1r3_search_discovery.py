@@ -288,7 +288,7 @@ async def test_bounded_search_discovery_reaches_question_and_architecture_maps()
             for row in first.breadth
         } == {
             "carry_home",
-            "fit_space",
+            "choose_size",
             "plan_budget",
             "verify_authenticity",
         }
