@@ -9,6 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
+from app.modules.content_engine.journal.operator_control import (
+    OperatorControlError,
+    create_or_reuse_journal_case,
+)
 from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
@@ -532,6 +536,43 @@ async def test_route_rejects_target_from_different_locale() -> None:
                 session,
                 project_id=project.id,
                 opportunity_id=opportunity.id,
+            )
+
+
+@pytest.mark.asyncio
+async def test_existing_operator_create_guard_still_rejects_update_route() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id)
+        target = await _target_item(
+            session,
+            project=project,
+            need=need,
+            suffix="operator-guard",
+        )
+        opportunity, _ = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="UPDATE",
+            target_ids=[target.id],
+        )
+
+        route = await build_production_decision_route(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+        )
+        assert route.route == "REVISE_EXISTING_CONTENT"
+
+        with pytest.raises(
+            OperatorControlError,
+            match="operator_create_requires_create_opportunity",
+        ):
+            await create_or_reuse_journal_case(
+                session,
+                content_opportunity_id=opportunity.id,
+                expected_opportunity_version=opportunity.version,
             )
 
 
