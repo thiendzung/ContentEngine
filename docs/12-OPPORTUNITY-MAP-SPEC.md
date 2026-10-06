@@ -365,10 +365,16 @@ khi exact Question/Search/Coverage/duplicate gates tạo ra
 `READY_FOR_HUMAN_SELECTION`, Founder đã chọn đúng candidate, route/admission vẫn current
 và D1 recompute lại các guard trong cùng transaction.
 
-**Implementation note:** merged QM-02D1 tại baseline F1R0 vẫn còn hard gate lịch sử
-`required_need_status=SUPPORTED`. Issue #354 / F1R1 phải thay production guard này cho
-khớp contract hai trục trước khi rerun real F1 pilot. F1R0 chỉ khóa architecture, không
-thay production code.
+**F1R1 implementation:** planner Content Readiness không còn dùng `SUPPORTED` như
+điều kiện duy nhất. `PROPOSED | TESTING | SUPPORTED` có thể đạt
+`READY_FOR_HUMAN_SELECTION` khi cluster usable, có SEARCH lineage, coverage quyết định được,
+không có duplicate/reuse/collision blocker và decision không phải `DO_NOT_WRITE`.
+`REJECTED` luôn block; `INSUFFICIENT_EVIDENCE` luôn research-required.
+
+QM-02D1 khóa cả selected opportunity và canonical Need trong cùng transaction. D1 chỉ
+materialize khi current Need thuộc `PROPOSED | TESTING | SUPPORTED`; nếu Need đã thành
+`REJECTED` hoặc `INSUFFICIENT_EVIDENCE` thì fail closed. Exact route/admission,
+idempotency, replay và downstream Evidence/Originality gates vẫn giữ nguyên.
 
 Output production mới của slice này chỉ gồm:
 
