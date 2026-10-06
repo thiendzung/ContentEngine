@@ -7,29 +7,42 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-02A — Selected Planner Handoff — IMPLEMENTATION WIP
+## QM-02B — Production Decision Router — IMPLEMENTATION WIP
+
+Tracking: issue #340. Exact task: `logs/2026-10-06-qm-02b-decision-router.md`.
+
+- [x] Branch from merged QM-02A main `164824ceb178febccf26f675ca14884c4d1d825f`.
+- [x] Keep the router read-only; no production mutation.
+- [x] Require exactly one matching durable HumanSelection.
+- [x] Map all six durable decisions to explicit production routes.
+- [x] CREATE has zero targets.
+- [x] UPDATE / REFRESH / LINK_ONLY require exactly one target.
+- [x] MERGE requires at least two targets and routes to reconciliation.
+- [x] DO_NOT_WRITE routes to STOP.
+- [x] Revalidate target project + primary Need + locale lineage.
+- [x] Supporting-Need-only content cannot become a production target.
+- [x] Preserve existing Journal CREATE guard; do not weaken operator semantics.
+- [x] Add deterministic read-only route snapshot and endpoint.
+- [x] Add focused six-decision + fail-closed tests.
+- [ ] MG exact diff self-review.
+- [ ] Agent Local exact-SHA focused/full backend verification.
+- [ ] Exact-ref OpenCodeReview.
+- [ ] GitHub minimum CI confirmation if available.
+- [ ] Founder merge.
+
+## QM-02A — Selected Planner Handoff — DONE / PR #339 MERGED
 
 Tracking: issue #338. Exact task: `logs/2026-10-06-qm-02a-selected-handoff.md`.
 
-- [x] Branch from merged QM-01D main `c078de099c4bc22bed3f239b23b537b0c294924e`.
-- [x] Reuse the existing canonical Need; do not create founder_manual or duplicate customer truth.
-- [x] Revalidate exact live planner snapshot + exact cluster before first persistence.
-- [x] Require explicit Founder/editorial promise + 1..12 ordered coverage requirements + selection reason.
-- [x] Client cannot override Need/question/intent/decision/priority/target refs.
-- [x] Persist exactly one ContentOpportunity + one HumanSelection and exact SEARCH support links.
-- [x] Keep MOTGU material refs empty and differentiation explicitly unproven at selection.
-- [x] Non-CREATE actions preserve exact primary ContentItem targets.
-- [x] REUSE_EXISTING_PLAN / RESEARCH_REQUIRED / BLOCKED / DO_NOT_WRITE cannot create a new plan.
-- [x] Deterministic selection identity supports replay after the first write changes Coverage/planner state.
-- [x] Conflicting replay fails closed instead of rewriting the durable selection.
-- [x] Add `POST /question-map/opportunities/select`.
-- [x] No ContentExperiment/ContentCase/workflow/model/provider/UI/migration in QM-02A.
-- [x] Add focused persistence/replay/stale/non-ready/target tests.
-- [ ] MG self-review exact branch diff.
-- [ ] Agent Local exact-SHA focused/full backend verification.
-- [ ] Exact-ref OpenCodeReview.
-- [ ] Minimal GitHub CI confirmation if available.
-- [ ] Founder merge.
+- [x] Existing canonical Need reused.
+- [x] Exact live planner snapshot + cluster gate.
+- [x] Explicit Founder promise + ordered coverage requirements + selection reason.
+- [x] Exactly one ContentOpportunity + one HumanSelection + SEARCH lineage.
+- [x] Deterministic replay after Coverage and later Need state changes.
+- [x] REUSE_EXISTING_PLAN / non-ready states fail closed.
+- [x] Focused A-D + QM-02A: 59 PASS; adjacent/legacy 46 PASS; full backend 1453 PASS.
+- [x] OCR zero findings; GitHub CI #2267 SUCCESS.
+- [x] Founder merged PR #339 as main `164824ceb178febccf26f675ca14884c4d1d825f`.
 
 ## QM-01D — Opportunity Planner v2 — DONE / PR #336 MERGED
 
