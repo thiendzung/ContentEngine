@@ -68,7 +68,7 @@ Evidence and Originality remain downstream after ContentCase materialization.
 8. UPDATE / REFRESH:
    - exact target route required;
    - any ContentCase incorrectly bound to the update/refresh opportunity -> conflict;
-   - target lineage with `pending/running/waiting_approval` ContentRun -> conflict;
+   - target lineage with `pending/running/waiting_approval/failed` ContentRun -> conflict;
    - otherwise -> `ADMITTED`.
 9. LINK_ONLY / DO_NOT_WRITE -> `NO_PRODUCTION`.
 10. MERGE -> `RECONCILIATION_REQUIRED`.
