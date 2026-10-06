@@ -127,6 +127,17 @@ def _string_list(value: object, code: str) -> list[str]:
     return result
 
 
+def _hash64(value: object, code: str) -> str:
+    text = _text(value, code, max_length=64)
+    if len(text) != 64:
+        raise OpportunitySelectionError(code)
+    try:
+        int(text, 16)
+    except ValueError as exc:
+        raise OpportunitySelectionError(code) from exc
+    return text.lower()
+
+
 def _stable_id(kind: str, *, planner_hash: str, cluster_key: str) -> UUID:
     return uuid5(
         NAMESPACE_URL,
@@ -410,15 +421,10 @@ async def persist_selected_opportunity(
         "opportunity_selection_cluster_key_invalid",
         max_length=128,
     )
-    planner_hash = _text(
+    planner_hash = _hash64(
         request.expected_planner_snapshot_hash,
         "opportunity_selection_snapshot_hash_invalid",
-        max_length=64,
     )
-    if len(planner_hash) != 64:
-        raise OpportunitySelectionError(
-            "opportunity_selection_snapshot_hash_invalid"
-        )
     selected_by = _text(
         request.selected_by,
         "opportunity_selection_actor_required",
@@ -592,10 +598,9 @@ async def persist_selected_opportunity(
         "opportunity_selection_intent_invalid",
         max_length=64,
     )
-    question_coverage_hash = _text(
+    question_coverage_hash = _hash64(
         planner.get("question_coverage_snapshot_hash"),
         "opportunity_selection_coverage_hash_invalid",
-        max_length=64,
     )
     lineage_reasons = _lineage_reasons(
         recommendation,
