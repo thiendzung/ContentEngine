@@ -38,11 +38,6 @@ from app.modules.research.keyword_plan.production_decision_router import (
     ProductionDecisionRouterError,
     build_production_decision_route,
 )
-from app.modules.research.keyword_plan.revision_handoff import (
-    RevisionProductionHandoffError,
-    RevisionProductionHandoffResult,
-    materialize_revision_handoff,
-)
 from app.modules.research.keyword_plan.question_coverage import (
     QuestionCoverageError,
     build_question_coverage,
@@ -50,6 +45,11 @@ from app.modules.research.keyword_plan.question_coverage import (
 from app.modules.research.keyword_plan.question_map import (
     QuestionMapError,
     build_question_map,
+)
+from app.modules.research.keyword_plan.revision_handoff import (
+    RevisionProductionHandoffError,
+    RevisionProductionHandoffResult,
+    materialize_revision_handoff,
 )
 
 router = APIRouter(prefix="/question-map", tags=["question-map"])
