@@ -181,16 +181,16 @@ async def _run(args: argparse.Namespace, settings: Settings) -> Path:
                 "statement": need.statement,
             },
         }
-        output.write_text(
-            json.dumps(
-                payload,
-                ensure_ascii=False,
-                sort_keys=True,
-                indent=2,
-                default=str,
-            ),
-            encoding="utf-8",
-        )
+        with output.open("x", encoding="utf-8") as capture_file:
+            capture_file.write(
+                json.dumps(
+                    payload,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    indent=2,
+                    default=str,
+                )
+            )
         await session.commit()
 
     summary = {
