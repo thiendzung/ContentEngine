@@ -190,6 +190,45 @@ class FakeSearchDiscoveryRunner:
         return result
 
 
+class CrossNeedEligibilityRunner:
+    async def run(
+        self,
+        session: AsyncSession,
+        *,
+        request: ProductionResearchRequest,
+        run_id=None,
+        step_run_id=None,
+    ) -> ProductionResearchResult:
+        del session, run_id, step_run_id
+        kind = (
+            ResearchSignalKind.PEOPLE_ALSO_ASK
+            if request.query == "question-seed"
+            else ResearchSignalKind.ORGANIC
+        )
+        result = ProductionResearchResult(request=request)
+        result.signals.append(
+            SearchSignal(
+                provider="serper",
+                query=request.query,
+                kind=kind,
+                text="How do I know if a painting is original?",
+                title=(
+                    "How do I know if a painting is original?"
+                    if kind is ResearchSignalKind.ORGANIC
+                    else None
+                ),
+                url=(
+                    "https://example.com/authenticity"
+                    if kind is ResearchSignalKind.ORGANIC
+                    else None
+                ),
+            )
+        )
+        result.sufficient = True
+        result.stop_reason = "serper_sufficient"
+        return result
+
+
 async def _counts(
     session: AsyncSession,
     *,
@@ -384,6 +423,70 @@ async def test_bounded_search_discovery_reaches_question_and_architecture_maps()
         assert second.question_map_snapshot_hash == first.question_map_snapshot_hash
         assert second.architecture_snapshot_hash == first.architecture_snapshot_hash
         assert capture_hash(second) == hash_first
+
+
+@pytest.mark.asyncio
+async def test_context_only_reuse_does_not_leak_question_link_across_needs() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        question_need = await _need(session, project_id=project.id)
+        context_need = await _need(session, project_id=project.id)
+        runner = CrossNeedEligibilityRunner()
+
+        question_result = await run_search_discovery(
+            session,
+            runner=runner,
+            request=SearchDiscoveryRequest(
+                project_id=project.id,
+                need_id=question_need.id,
+                locale="en",
+                country="us",
+                seed_queries=("question-seed",),
+                max_hops=0,
+                max_total_queries=1,
+            ),
+        )
+        context_result = await run_search_discovery(
+            session,
+            runner=runner,
+            request=SearchDiscoveryRequest(
+                project_id=project.id,
+                need_id=context_need.id,
+                locale="en",
+                country="us",
+                seed_queries=("context-seed",),
+                max_hops=0,
+                max_total_queries=1,
+            ),
+        )
+
+        assert question_result.persisted_signal_ids == (
+            context_result.persisted_signal_ids
+        )
+        signal_id = question_result.persisted_signal_ids[0]
+        signal = await session.get(Signal, signal_id)
+        assert signal is not None
+        assert signal.provenance_json["question_eligible"] is True
+        assert signal.provenance_json["planning_need_refs"] == sorted(
+            [str(question_need.id), str(context_need.id)]
+        )
+        assert await session.get(
+            NeedHypothesisSignal,
+            (question_need.id, signal_id, "supports"),
+        ) is not None
+        assert await session.get(
+            NeedHypothesisSignal,
+            (context_need.id, signal_id, "supports"),
+        ) is None
+
+        context_map = await build_question_map(
+            session,
+            project_id=project.id,
+            need_id=context_need.id,
+            locale="en",
+        )
+        assert context_map["counts"]["questions"] == 0
+        assert context_map["signal_refs"] == []
 
 
 @pytest.mark.asyncio
