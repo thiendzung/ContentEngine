@@ -96,28 +96,6 @@ def _request_hash(
     )
 
 
-async def _source_variant_for_receipt(
-    session: AsyncSession,
-    *,
-    content_case: ContentCase,
-    opportunity: ContentOpportunity,
-) -> LocaleVariant:
-    variant = await session.scalar(
-        select(LocaleVariant)
-        .where(
-            LocaleVariant.content_case_id == content_case.id,
-            LocaleVariant.locale == opportunity.locale,
-        )
-        .order_by(LocaleVariant.created_at, LocaleVariant.id)
-        .limit(1)
-    )
-    if variant is None:
-        raise CreateProductionHandoffError(
-            "create_handoff_receipt_variant_missing"
-        )
-    return variant
-
-
 async def _replay_result(
     session: AsyncSession,
     *,
@@ -142,11 +120,15 @@ async def _replay_result(
         raise CreateProductionHandoffError(
             "create_handoff_receipt_opportunity_missing"
         )
-    variant = await _source_variant_for_receipt(
-        session,
-        content_case=content_case,
-        opportunity=opportunity,
-    )
+    if command.result_ref_id is None:
+        raise CreateProductionHandoffError(
+            "create_handoff_receipt_variant_missing"
+        )
+    variant = await session.get(LocaleVariant, command.result_ref_id)
+    if variant is None or variant.content_case_id != content_case.id:
+        raise CreateProductionHandoffError(
+            "create_handoff_receipt_variant_mismatch"
+        )
     state = await operator_runtime.get_operator_state(
         session,
         content_case_id=content_case.id,
@@ -294,7 +276,7 @@ async def materialize_create_handoff(
         run_id=None,
         step_run_id=None,
         job_id=None,
-        result_ref_id=None,
+        result_ref_id=created.source_locale_variant_id,
         intent="create",
         idempotency_key=key,
         request_hash=request_hash,
