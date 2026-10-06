@@ -927,18 +927,13 @@ async def persist_selected_opportunity(
     project_id: UUID,
     request: OpportunitySelectionRequest,
 ) -> OpportunitySelectionResult:
-    """Persist exactly one current planner recommendation after explicit selection."""
+    """Persist one exact legacy cluster or Content Architecture candidate."""
 
     locale = _text(
         request.locale,
         "opportunity_selection_locale_invalid",
         max_length=32,
     ).casefold()
-    cluster_key = _text(
-        request.cluster_key,
-        "opportunity_selection_cluster_key_invalid",
-        max_length=128,
-    )
     planner_hash = _hash64(
         request.expected_planner_snapshot_hash,
         "opportunity_selection_snapshot_hash_invalid",
@@ -960,6 +955,50 @@ async def persist_selected_opportunity(
     )
     coverage = _coverage_requirements(request.coverage_requirements)
 
+    legacy_cluster_key = (
+        _text(
+            request.cluster_key,
+            "opportunity_selection_cluster_key_invalid",
+            max_length=128,
+        )
+        if request.cluster_key is not None
+        else None
+    )
+    architecture_candidate_key = (
+        _text(
+            request.architecture_candidate_key,
+            "opportunity_selection_architecture_candidate_invalid",
+            max_length=128,
+        )
+        if request.architecture_candidate_key is not None
+        else None
+    )
+    architecture_hash = (
+        _hash64(
+            request.expected_architecture_snapshot_hash,
+            "opportunity_selection_architecture_hash_invalid",
+        )
+        if request.expected_architecture_snapshot_hash is not None
+        else None
+    )
+    architecture_mode = (
+        architecture_candidate_key is not None
+        or architecture_hash is not None
+    )
+    if architecture_mode:
+        if (
+            architecture_candidate_key is None
+            or architecture_hash is None
+            or legacy_cluster_key is not None
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_request_invalid"
+            )
+    elif legacy_cluster_key is None:
+        raise OpportunitySelectionError(
+            "opportunity_selection_cluster_key_invalid"
+        )
+
     need = await session.scalar(
         select(NeedHypothesis)
         .where(
@@ -973,31 +1012,64 @@ async def persist_selected_opportunity(
             "opportunity_selection_need_not_found"
         )
 
-    opportunity_id = _stable_id(
-        "content-opportunity",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
-    selection_id = _stable_id(
-        "human-selection",
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-    )
+    if architecture_mode:
+        assert architecture_hash is not None
+        assert architecture_candidate_key is not None
+        opportunity_id = _architecture_stable_id(
+            "content-opportunity",
+            architecture_hash=architecture_hash,
+            candidate_key=architecture_candidate_key,
+        )
+        selection_id = _architecture_stable_id(
+            "human-selection",
+            architecture_hash=architecture_hash,
+            candidate_key=architecture_candidate_key,
+        )
+    else:
+        assert legacy_cluster_key is not None
+        opportunity_id = _stable_id(
+            "content-opportunity",
+            planner_hash=planner_hash,
+            cluster_key=legacy_cluster_key,
+        )
+        selection_id = _stable_id(
+            "human-selection",
+            planner_hash=planner_hash,
+            cluster_key=legacy_cluster_key,
+        )
 
     existing = await session.get(ContentOpportunity, opportunity_id)
     if existing is not None:
-        _assert_existing_replay(
-            existing,
-            need_id=need.id,
-            project_id=project_id,
-            locale=locale,
-            planner_hash=planner_hash,
-            cluster_key=cluster_key,
-            promise=promise,
-            coverage=coverage,
-            reason=reason,
-            selected_by=selected_by,
-        )
+        if architecture_mode:
+            assert architecture_hash is not None
+            assert architecture_candidate_key is not None
+            _assert_existing_architecture_replay(
+                existing,
+                need_id=need.id,
+                project_id=project_id,
+                locale=locale,
+                architecture_hash=architecture_hash,
+                candidate_key=architecture_candidate_key,
+                promise=promise,
+                coverage=coverage,
+                reason=reason,
+                selected_by=selected_by,
+            )
+        else:
+            assert legacy_cluster_key is not None
+            _assert_existing_replay(
+                existing,
+                need_id=need.id,
+                project_id=project_id,
+                locale=locale,
+                planner_hash=planner_hash,
+                cluster_key=legacy_cluster_key,
+                promise=promise,
+                coverage=coverage,
+                reason=reason,
+                selected_by=selected_by,
+            )
+
         selections = list(
             (
                 await session.scalars(
@@ -1033,7 +1105,10 @@ async def persist_selected_opportunity(
             content_opportunity_id=existing.id,
             human_selection_id=selection.id,
             planner_snapshot_hash=planner_hash,
-            cluster_key=cluster_key,
+            cluster_key=legacy_cluster_key,
+            architecture_snapshot_hash=architecture_hash,
+            architecture_candidate_key=architecture_candidate_key,
+            role=cast(ArchitectureRole, existing.suggested_role),
             decision=existing.decision,
             priority=existing.priority,
             replayed=True,
@@ -1059,28 +1134,135 @@ async def persist_selected_opportunity(
             "opportunity_selection_planner_policy_mismatch"
         )
 
-    recommendation = _recommendation(planner, cluster_key=cluster_key)
-    if recommendation.get("selection_readiness") != "READY_FOR_HUMAN_SELECTION":
-        raise OpportunitySelectionError(
-            "opportunity_selection_not_ready"
+    question_coverage_hash = _hash64(
+        planner.get("question_coverage_snapshot_hash"),
+        "opportunity_selection_coverage_hash_invalid",
+    )
+
+    if architecture_mode:
+        assert architecture_hash is not None
+        assert architecture_candidate_key is not None
+        try:
+            architecture = await build_content_architecture(
+                session,
+                project_id=project_id,
+                need_id=need.id,
+                locale=locale,
+            )
+        except ContentArchitectureError as exc:
+            raise OpportunitySelectionError(exc.code) from exc
+        if architecture.get("snapshot_hash") != architecture_hash:
+            raise OpportunitySelectionError(
+                "opportunity_selection_stale_architecture_snapshot"
+            )
+        if architecture.get("policy_version") != CONTENT_ARCHITECTURE_POLICY_VERSION:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_policy_mismatch"
+            )
+        if architecture.get("planner_snapshot_hash") != planner_hash:
+            raise OpportunitySelectionError(
+                "opportunity_selection_architecture_planner_mismatch"
+            )
+
+        candidate = _architecture_candidate(
+            architecture,
+            candidate_key=architecture_candidate_key,
+        )
+        if (
+            candidate.get("selectable") is not True
+            or candidate.get("selection_readiness")
+            != "READY_FOR_HUMAN_SELECTION"
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+        role = _candidate_role(candidate)
+        member_cluster_keys = _candidate_member_clusters(candidate)
+        decision = _text(
+            candidate.get("decision"),
+            "opportunity_selection_decision_invalid",
+            max_length=32,
+        )
+        priority = _text(
+            candidate.get("priority"),
+            "opportunity_selection_priority_invalid",
+            max_length=16,
+        )
+        if decision == "DO_NOT_WRITE":
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+        signal_refs = _candidate_signal_refs(candidate)
+        content_refs = _candidate_content_refs(candidate)
+        question = _text(
+            candidate.get("primary_question"),
+            "opportunity_selection_question_invalid",
+            max_length=4_000,
+        )
+        intent = _text(
+            candidate.get("intent"),
+            "opportunity_selection_intent_invalid",
+            max_length=64,
+        )
+        lineage_reasons = _architecture_lineage_reasons(
+            candidate,
+            planner_hash=planner_hash,
+            question_coverage_hash=question_coverage_hash,
+            architecture_hash=architecture_hash,
+            candidate_key=architecture_candidate_key,
+            role=role,
+            member_cluster_keys=member_cluster_keys,
+            signal_refs=signal_refs,
+        )
+    else:
+        assert legacy_cluster_key is not None
+        recommendation = _recommendation(
+            planner,
+            cluster_key=legacy_cluster_key,
+        )
+        if (
+            recommendation.get("selection_readiness")
+            != "READY_FOR_HUMAN_SELECTION"
+        ):
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+
+        role = "cluster"
+        decision = _text(
+            recommendation.get("decision"),
+            "opportunity_selection_decision_invalid",
+            max_length=32,
+        )
+        priority = _text(
+            recommendation.get("priority"),
+            "opportunity_selection_priority_invalid",
+            max_length=16,
+        )
+        if decision == "DO_NOT_WRITE":
+            raise OpportunitySelectionError(
+                "opportunity_selection_not_ready"
+            )
+        signal_refs = _signal_refs(recommendation)
+        content_refs = _content_refs(recommendation)
+        question = _text(
+            recommendation.get("primary_question"),
+            "opportunity_selection_question_invalid",
+            max_length=4_000,
+        )
+        intent = _text(
+            recommendation.get("intent"),
+            "opportunity_selection_intent_invalid",
+            max_length=64,
+        )
+        lineage_reasons = _lineage_reasons(
+            recommendation,
+            planner_hash=planner_hash,
+            cluster_key=legacy_cluster_key,
+            question_coverage_hash=question_coverage_hash,
+            signal_refs=signal_refs,
         )
 
-    decision = _text(
-        recommendation.get("decision"),
-        "opportunity_selection_decision_invalid",
-        max_length=32,
-    )
-    priority = _text(
-        recommendation.get("priority"),
-        "opportunity_selection_priority_invalid",
-        max_length=16,
-    )
-    if decision == "DO_NOT_WRITE":
-        raise OpportunitySelectionError(
-            "opportunity_selection_not_ready"
-        )
-
-    content_refs = _content_refs(recommendation)
     decisions_requiring_target = {"UPDATE", "REFRESH", "MERGE", "LINK_ONLY"}
     if decision in decisions_requiring_target and not content_refs:
         raise OpportunitySelectionError(
@@ -1091,7 +1273,6 @@ async def persist_selected_opportunity(
             "opportunity_selection_create_target_conflict"
         )
 
-    signal_refs = _signal_refs(recommendation)
     await _validate_signal_refs(
         session,
         project_id=project_id,
@@ -1103,28 +1284,6 @@ async def persist_selected_opportunity(
         session,
         project_id=project_id,
         content_ids=content_refs,
-    )
-
-    question = _text(
-        recommendation.get("primary_question"),
-        "opportunity_selection_question_invalid",
-        max_length=4_000,
-    )
-    intent = _text(
-        recommendation.get("intent"),
-        "opportunity_selection_intent_invalid",
-        max_length=64,
-    )
-    question_coverage_hash = _hash64(
-        planner.get("question_coverage_snapshot_hash"),
-        "opportunity_selection_coverage_hash_invalid",
-    )
-    lineage_reasons = _lineage_reasons(
-        recommendation,
-        planner_hash=planner_hash,
-        cluster_key=cluster_key,
-        question_coverage_hash=question_coverage_hash,
-        signal_refs=signal_refs,
     )
 
     selected_at = utc_now()
@@ -1149,7 +1308,7 @@ async def persist_selected_opportunity(
         priority=priority,
         reasons_json=lineage_reasons,
         suggested_content_type="journal",
-        suggested_role="cluster",
+        suggested_role=role,
         version=1,
         selected_by=selected_by,
         selected_at=selected_at,
@@ -1159,12 +1318,16 @@ async def persist_selected_opportunity(
         set(
             opportunity.reasons_json
             + [
-                "selection_contract:qm02a-v1",
                 (
                     "selection_payload:"
                     f"{_opportunity_payload_hash(opportunity, signal_ids=signal_refs)}"
                 ),
             ]
+            + (
+                ["selection_contract:qm02a-v1"]
+                if not architecture_mode
+                else []
+            )
         )
     )
     session.add(opportunity)
@@ -1193,7 +1356,10 @@ async def persist_selected_opportunity(
         content_opportunity_id=opportunity.id,
         human_selection_id=selection.id,
         planner_snapshot_hash=planner_hash,
-        cluster_key=cluster_key,
+        cluster_key=legacy_cluster_key,
+        architecture_snapshot_hash=architecture_hash,
+        architecture_candidate_key=architecture_candidate_key,
+        role=role,
         decision=decision,
         priority=priority,
         replayed=False,
