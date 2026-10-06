@@ -393,7 +393,7 @@ async def test_create_handoff_requires_qm02a_selection_lineage() -> None:
 
         with pytest.raises(
             CreateProductionHandoffError,
-            match="create_handoff_qm02a_lineage_required",
+            match="create_handoff_opportunity_selection_lineage_invalid",
         ):
             await materialize_create_handoff(
                 session,
@@ -405,6 +405,89 @@ async def test_create_handoff_requires_qm02a_selection_lineage() -> None:
             )
 
         assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+async def test_stale_planner_policy_marker_fails_closed() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        opportunity.reasons_json = [
+            (
+                "planner_policy:stale-policy"
+                if reason.startswith("planner_policy:")
+                else reason
+            )
+            for reason in opportunity.reasons_json
+        ]
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_lineage_policy_stale"
+            ),
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
+
+
+@pytest.mark.asyncio
+async def test_selection_payload_tamper_fails_closed() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        opportunity.promise = "Tampered after Founder selection."
+        await session.flush()
+
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+
+        with pytest.raises(
+            CreateProductionHandoffError,
+            match=(
+                "create_handoff_"
+                "opportunity_selection_payload_mismatch"
+            ),
+        ):
+            await materialize_create_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                expected_route_snapshot_hash=route_hash,
+                expected_admission_snapshot_hash=admission_hash,
+                idempotency_key=f"qm02d1:{uuid4()}",
+            )
 
 
 @pytest.mark.asyncio
