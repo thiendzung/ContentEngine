@@ -1,8 +1,17 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02D1 CREATE Production Handoff
+## Current WIP — QM-02F1 Early Real CREATE Pilot
 
-Founder merged QM-02C / PR #343 on 2026-10-06. Current Question Map main is `a0e4bc3180aa3c7f401fe32f8416a2eb4152962b`. Branch `feat/qm-02d1-create-handoff` is tracked by issue #344. QM-02D1 is the first mutation after Question Map planning: it accepts CREATE only, binds the caller to exact QM-02B route + QM-02C admission snapshot hashes, locks the selected opportunity, recomputes route/admission in the same DB transaction, requires the canonical Need still be `SUPPORTED`, then reuses `create_or_reuse_journal_case` with an explicit `SUPPORTED` guard to materialize exactly one Journal ContentCase plus one source-locale LocaleVariant. It records only a bounded existing OperatorCommand idempotency/audit receipt; no ContentRun/StepRun/Job, auto-Start, Evidence/Originality/model/provider/UI/publication or migration is authorized. Exact replay returns the same receipt; conflicting idempotency fails closed. After QM-02D1 is verified and merged, run QM-02F1 early real CREATE pilot before opening UPDATE/REFRESH/MERGE. Exact task boundary: `docs/logs/2026-10-06-qm-02d1-create-handoff.md`.
+Founder merged QM-02D1 / PR #345. Current Question Map main is `99dab3ac9c18d24ee16c2c344533f56ec968ec5f`. QM-02F1 is tracked by issue #346 and is an operational pilot, not a new workflow implementation.
+
+Canonical pilot flow:
+`SUPPORTED Need -> Question Map -> Coverage -> Planner -> Founder Selection -> QM-02B Route -> QM-02C Admission -> QM-02D1 CREATE Handoff -> ContentCase + source LocaleVariant`.
+
+F1A was executed read-only and is currently **BLOCKED_BY_REAL_DATA_READINESS**: the operational MOTGU dataset has no canonical `SUPPORTED` Need eligible under the F1 contract. F0A/F0B1 findings are retained only as diagnostic/data-readiness evidence. Do not expand this QM lane into Customer Truth implementation, do not fake-promote a Need, and do not use raw SQL or another workaround to force the pilot to pass.
+
+F1B has not started. QM-02D2 UPDATE/REFRESH and QM-02D3 MERGE remain blocked until QM-02F1 passes its existing checklist: one real eligible SUPPORTED Need, explicit Founder selection, exact route/admission hashes, one bounded CREATE materialization, zero auto-Start/runtime rows, no duplicate lineage, and safe replay.
+
+Out-of-scope issue #349 was closed as not planned for the current QM lane.
 
 ## Read first and verify the actual ref
 
@@ -23,7 +32,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current Question Map track: `c078de099c4bc22bed3f239b23b537b0c294924e` (merge PR #336). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main for the current Question Map track: `99dab3ac9c18d24ee16c2c344533f56ec968ec5f` (merge PR #345). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
