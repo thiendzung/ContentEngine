@@ -7,28 +7,39 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-02B — Production Decision Router — IMPLEMENTATION WIP
+## QM-02C — Production Admission Gate — IMPLEMENTATION WIP
 
-Tracking: issue #340. Exact task: `logs/2026-10-06-qm-02b-decision-router.md`.
+Tracking: issue #342. Exact task: `logs/2026-10-06-qm-02c-production-admission.md`.
 
-- [x] Branch from merged QM-02A main `164824ceb178febccf26f675ca14884c4d1d825f`.
-- [x] Keep the router read-only; no production mutation.
-- [x] Require exactly one matching durable HumanSelection.
-- [x] Map all six durable decisions to explicit production routes.
-- [x] CREATE has zero targets.
-- [x] UPDATE / REFRESH / LINK_ONLY require exactly one target.
-- [x] MERGE requires at least two targets and routes to reconciliation.
-- [x] DO_NOT_WRITE routes to STOP.
-- [x] Revalidate target project + primary Need + locale lineage.
-- [x] Supporting-Need-only content cannot become a production target.
-- [x] Preserve existing Journal CREATE guard; do not weaken operator semantics.
-- [x] Add deterministic read-only route snapshot and endpoint.
-- [x] Add focused six-decision + fail-closed tests.
+- [x] Branch from merged QM-02B main `d3dfe864df69ef723f9b98dde057a8ff15b4525a`.
+- [x] Keep admission read-only; no production/workflow mutation.
+- [x] Require exact expected QM-02B route snapshot hash.
+- [x] Recompute the current route and fail closed on route/selection/opportunity/target drift.
+- [x] CREATE blocks if its opportunity already materialized.
+- [x] UPDATE / REFRESH block on active target production lineage.
+- [x] LINK_ONLY / DO_NOT_WRITE return NO_PRODUCTION.
+- [x] MERGE returns RECONCILIATION_REQUIRED.
+- [x] Add deterministic admission snapshot hash + read-only endpoint.
+- [x] No Evidence/Originality gate in this slice.
+- [x] No model/provider/tool/UI/migration/publication.
+- [x] Add focused admission authority tests.
 - [ ] MG exact diff self-review.
 - [ ] Agent Local exact-SHA focused/full backend verification.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] GitHub minimum CI confirmation if available.
 - [ ] Founder merge.
+
+## QM-02B — Production Decision Router — DONE / PR #341 MERGED
+
+Tracking: issue #340. Exact task: `logs/2026-10-06-qm-02b-decision-router.md`.
+
+- [x] Read-only six-decision production router with exact HumanSelection binding.
+- [x] Target project + primary Need + locale lineage guards.
+- [x] Existing Journal CREATE-only guard preserved.
+- [x] Deterministic route snapshot + endpoint.
+- [x] Focused QM chain 74 PASS; adjacent regressions 54 PASS; full backend 1468 PASS.
+- [x] OCR zero findings; GitHub CI #2271 SUCCESS.
+- [x] Founder merged PR #341 as main `d3dfe864df69ef723f9b98dde057a8ff15b4525a`.
 
 ## QM-02A — Selected Planner Handoff — DONE / PR #339 MERGED
 
