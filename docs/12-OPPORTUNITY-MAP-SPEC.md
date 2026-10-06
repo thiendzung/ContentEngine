@@ -371,9 +371,14 @@ và D1 recompute lại các guard trong cùng transaction.
 không có duplicate/reuse/collision blocker và decision không phải `DO_NOT_WRITE`.
 `REJECTED` luôn block; `INSUFFICIENT_EVIDENCE` luôn research-required.
 
-QM-02D1 khóa cả selected opportunity và canonical Need trong cùng transaction. D1 chỉ
-materialize khi current Need thuộc `PROPOSED | TESTING | SUPPORTED`; nếu Need đã thành
-`REJECTED` hoặc `INSUFFICIENT_EVIDENCE` thì fail closed. Exact route/admission,
+QM-02D1 khóa cả selected opportunity và canonical Need trong cùng transaction. Trước
+khi nới truth-status gate, D1 bắt buộc opportunity giữ exact QM-02A planner-selection lineage
+(`qm02a_exact_planner_selection`, selection contract, planner snapshot/policy/cluster và
+Question Coverage snapshot). Vì vậy Founder/manual opportunity ngoài Question Map không thể
+dùng endpoint này để bypass planner.
+
+D1 chỉ materialize khi current Need thuộc `PROPOSED | TESTING | SUPPORTED`; nếu Need đã
+thành `REJECTED` hoặc `INSUFFICIENT_EVIDENCE` thì fail closed. Exact route/admission,
 idempotency, replay và downstream Evidence/Originality gates vẫn giữ nguyên.
 
 Output production mới của slice này chỉ gồm:
