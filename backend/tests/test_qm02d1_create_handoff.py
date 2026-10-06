@@ -415,6 +415,55 @@ async def test_exact_replay_returns_same_receipt_without_new_rows() -> None:
 
 
 @pytest.mark.asyncio
+async def test_exact_replay_survives_later_need_rejection() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id, status="PROPOSED")
+        opportunity = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="CREATE",
+            target_ids=[],
+        )
+        route_hash, admission_hash = await _snapshots(
+            session,
+            project=project,
+            opportunity=opportunity,
+        )
+        key = f"qm02d1:{uuid4()}"
+        first = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=key,
+        )
+        before_replay = await _counts(session)
+
+        need.status = "REJECTED"
+        need.version += 1
+        await session.flush()
+
+        replay = await materialize_create_handoff(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route_hash,
+            expected_admission_snapshot_hash=admission_hash,
+            idempotency_key=key,
+        )
+        after_replay = await _counts(session)
+
+        assert replay.replayed is True
+        assert replay.command_id == first.command_id
+        assert replay.content_case_id == first.content_case_id
+        assert replay.source_locale_variant_id == first.source_locale_variant_id
+        assert after_replay == before_replay
+
+
+@pytest.mark.asyncio
 async def test_same_idempotency_key_with_different_request_fails_closed() -> None:
     async with isolated_session() as session:
         project = await _project(session)
