@@ -34,6 +34,10 @@ def _recommendation(
         "existing_plan_refs": [],
         "reason_codes": [],
         "dimensions": {
+            "content_gap": {
+                "status": "MISSING",
+                "reason_codes": [],
+            },
             "search_evidence": {
                 "status": "REPEATED",
                 "signal_count": 2,
