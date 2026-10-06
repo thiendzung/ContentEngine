@@ -300,10 +300,6 @@ class OpportunityPlannerHandoff(TimestampMixin, Base):
             "cluster_key",
             name="uq_opportunity_planner_handoff_snapshot_cluster",
         ),
-        UniqueConstraint(
-            "human_selection_id",
-            name="uq_opportunity_planner_handoff_human_selection",
-        ),
         CheckConstraint(
             "planner_snapshot_hash ~ '^[0-9a-f]{64}    __tablename__ = "content_experiments"
 
