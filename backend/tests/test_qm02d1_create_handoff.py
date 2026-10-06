@@ -241,6 +241,9 @@ async def _snapshots(
 
 async def _counts(session: AsyncSession) -> dict[str, int]:
     models = {
+        "need": NeedHypothesis,
+        "opportunity": ContentOpportunity,
+        "selection": HumanSelection,
         "case": ContentCase,
         "variant": LocaleVariant,
         "item": ContentItem,
@@ -297,7 +300,17 @@ async def test_create_handoff_materializes_only_case_variant_and_receipt() -> No
         assert after["case"] == before["case"] + 1
         assert after["variant"] == before["variant"] + 1
         assert after["command"] == before["command"] + 1
-        for key in ("item", "version", "experiment", "run", "step", "job"):
+        for key in (
+            "need",
+            "opportunity",
+            "selection",
+            "item",
+            "version",
+            "experiment",
+            "run",
+            "step",
+            "job",
+        ):
             assert after[key] == before[key]
 
 
