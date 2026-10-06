@@ -468,7 +468,6 @@ class ResearchRouter:
                 "country": request.country,
                 "limit": request.limit,
                 "parent_url": request.parent_url,
-                "force_external_discovery": request.force_external_discovery,
                 "reason": reason,
             },
         )
