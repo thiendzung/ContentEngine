@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.modules.content_engine.models import Project
+from app.modules.research.keyword_plan.content_architecture import (
+    ContentArchitectureError,
+    build_content_architecture,
+)
 from app.modules.research.keyword_plan.create_handoff import (
     CreateProductionHandoffError,
     CreateProductionHandoffResult,
@@ -59,6 +63,7 @@ def _question_map_http_error(
     exc: (
         QuestionMapError
         | QuestionCoverageError
+        | ContentArchitectureError
         | OpportunityPlannerError
         | OpportunitySelectionError
         | CreateProductionHandoffError
@@ -154,6 +159,33 @@ async def get_question_coverage(
             locale=locale,
         )
     except (QuestionMapError, QuestionCoverageError) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.get("/architecture", response_model=dict[str, object])
+async def get_content_architecture(
+    need_id: UUID,
+    locale: str = Query(min_length=1, max_length=32),
+    project_slug: str = Query(default="motgu", min_length=1, max_length=100),
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict[str, object]:
+    try:
+        project_id = await _project_id_from_slug(
+            session,
+            project_slug=project_slug,
+        )
+        return await build_content_architecture(
+            session,
+            project_id=project_id,
+            need_id=need_id,
+            locale=locale,
+        )
+    except (
+        QuestionMapError,
+        QuestionCoverageError,
+        ContentArchitectureError,
+        OpportunityPlannerError,
+    ) as exc:
         raise _question_map_http_error(exc) from exc
 
 
