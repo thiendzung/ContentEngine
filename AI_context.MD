@@ -1,50 +1,52 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02F1R2 Pillar / Cluster Map
+## Current WIP — QM-02F1R3 bounded real Search Discovery
 
-Founder merged PR #364 / #354. Main baseline for F1R2 is
-`b8a24a003cd5e421af903442491876f2ba0189fd`.
+Founder merged PR #365 / #355. Current main baseline is
+`ddb2380073119742d7aaf8c814ef0b1f50893c3d`.
 
-F1R2 turns the existing Question Map + Planner + Coverage chain into a deterministic,
-locale-specific Content Architecture:
+F1R3 closes the remaining gap between the existing provider stack and the canonical
+Question Map. The authority flow is:
 
 ```text
-Canonical Need + locale
+existing canonical Need
         +
-usable SEARCH Question clusters
-(intent + audience stage + answer job)
-        +
-Content Coverage / selected-plan collision state
+bounded seed queries
         ↓
-Content Architecture
-        ├─ exact Cluster candidates
-        └─ optional Pillar candidate when breadth is real
-                ↓
-Founder selects exactly one Pillar or Cluster
-                ↓
-one ContentOpportunity + one HumanSelection
-                ↓
-existing Route / Admission / D1
+explicit external Search Discovery
+        ↓
+Serper PAA / Related / Autocomplete / Organic
+        │
+        └─ Tavily / Exa bounded fallback only when existing router needs it
+        ↓
+immutable bounded capture
+        ↓
+normalize / dedupe / provenance aggregation
+        ↓
+canonical SEARCH Signals linked to the existing Need
+        ↓
+Question Map → Coverage → Content Architecture
 ```
 
 Rules:
-- cluster identity now includes audience stage; same intent/answer job across different stages
-  is not silently collapsed;
-- no Pillar is forced when fewer than three genuinely distinct ready answer jobs/questions
-  remain;
-- DO_NOT_WRITE/unready clusters do not inflate Pillar breadth;
-- EN/VI architecture is separate; translated demand is not assumed equivalent;
-- same-Need same-locale existing/selected Pillar blocks another Pillar CREATE;
-- Founder role comes from the exact architecture candidate, not client input;
-- Pillar lineage freezes architecture snapshot, member cluster keys and union SEARCH refs;
-- Pillar selection persists one opportunity + one selection only; no child ContentCases or
-  parent/child relation is invented;
-- D1 can materialize the selected Pillar as exactly one Pillar ContentCase/LocaleVariant;
-  it still creates no Run/Step/Job and does not auto-start Writer/Publish.
+- an explicit search-language run cannot be short-circuited by internal-knowledge sufficiency;
+- pure F1R3 does not use Jina because it is not factual page-reading work;
+- PAA/Related/Autocomplete are question-eligible;
+- Organic/Source Discovery is preserved as context but explicitly excluded from Question Map
+  question derivation;
+- same normalized query across provider/query variants is one canonical planning observation,
+  with provider/method/query/hop/source provenance aggregated rather than fake demand count;
+- every F1R3 SEARCH Signal is marked `customer_truth_eligible=false` and
+  `factual_evidence_eligible=false`;
+- Need status/version/review state must not change;
+- no ContentOpportunity, HumanSelection or ContentCase is created by Search Discovery;
+- no Writer/Publish;
+- live Internet output may vary; determinism is required for the transformation of one
+  captured input, plus repeated read-model builds over the persisted state.
 
-Branch `feat/qm-02f1r2-content-architecture` contains the implementation and tests.
-Exact-SHA Agent Local + OCR + GitHub CI are still required before Founder merge.
-#356 / real Search does not start until #355 is merged.
+Branch `feat/qm-02f1r3-search-discovery` contains the implementation and regression tests.
+The operational real-provider pilot must run only after exact-SHA code verification and must
+reuse one existing canonical Need; it must not create/promote a Need to force a result.
 
 ## Read first and verify the actual ref
 
@@ -65,7 +67,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current Question Map track: `b8a24a003cd5e421af903442491876f2ba0189fd` (merge PR #364 / QM-02F1R1). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main for the current Question Map track: `ddb2380073119742d7aaf8c814ef0b1f50893c3d` (merge PR #365 / QM-02F1R2). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -96,27 +98,41 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Close #355 / F1R2 on one exact candidate SHA.
+Close #356 / QM-02F1R3 in two gates.
 
-Required verification:
-- stage-aware clustering remains deterministic and locale-specific;
-- Content Architecture is a read-only projection, no new truth store/schema;
-- canonical multi-cluster Need forms one Pillar only when breadth threshold is met;
-- insufficient breadth yields Cluster-only architecture;
-- DO_NOT_WRITE/unready clusters do not create fake Pillar breadth;
-- existing/selected Pillar collision blocks another Pillar CREATE;
-- every member cluster exposes intent, stage, answer job, primary question, coverage and
-  decision;
-- Founder can select exact Pillar or Cluster from an exact architecture snapshot;
-- role cannot be supplied independently by the client;
-- Pillar receipt binds exact member cluster keys + union SEARCH Signal refs;
-- exact replay is safe after Coverage changes;
-- old cluster-only selection path remains covered;
-- D1 materializes one selected Pillar case only, with zero child cases / Run / Step / Job /
-  Writer / Publish;
-- Ruff + mypy + focused chain + full backend + OCR Delegation + Agent Local exact-SHA proof.
+### Gate A — code exact-SHA
 
-Do not start #356 until #355 is merged.
+Prove:
+- explicit external Search Discovery forces Serper even when internal knowledge is sufficient;
+- provider stack remains `Serper -> bounded Tavily/Exa fallback`; no SerpAPI addition;
+- pure search-language discovery does not invoke Jina;
+- query expansion is bounded by hop, per-hop expansion and total-query limits;
+- same normalized phrase across PAA/Related/Autocomplete/provider/query paths persists as one
+  canonical F1R3 SEARCH Signal with aggregated exact provenance;
+- no fake independence: `independence_group` is normalized query fingerprint;
+- Organic/source context is stored but does not become a Question Map question;
+- off-scope/malformed/truncated observations keep provenance but cannot create usable clusters;
+- Need truth state is unchanged;
+- zero ContentOpportunity/HumanSelection/ContentCase/Run/Step/Job/Writer/Publish side effects;
+- repeated identical captured inputs produce the same Question Map and Content Architecture
+  snapshots;
+- locale identity remains separate;
+- Ruff + mypy + focused chain + full backend + OCR Delegation + GitHub CI pass.
+
+### Gate B — bounded real-provider operational pilot
+
+Only after Gate A passes:
+- inspect the operational DB read-only and choose one existing first-time-art-buyer Need;
+- derive a small seed set from that canonical Need + existing approved/deep-research context;
+- run one locale at a time, max one hop initially and a small total-query budget;
+- allow only SEARCH Signal + NeedHypothesisSignal planning writes and JSON artifact capture;
+- verify exact Need status/version is unchanged and no selection/materialization rows appear;
+- report PAA/Related/Autocomplete/Organic counts, provider/fallback decisions, dedupe provenance,
+  Question Map breadth and Pillar/Cluster map;
+- rebuild Question Map and Content Architecture twice and require equal hashes;
+- do not treat a second live Internet run as a deterministic fixture.
+
+Do not begin #346 rerun until #356 is merged and its real-provider pilot is accepted.
 
 ## Pilot operating priority — 2026-10-03
 
