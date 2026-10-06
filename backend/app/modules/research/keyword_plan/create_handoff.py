@@ -25,6 +25,7 @@ from app.modules.content_engine.models import (
     ContentCase,
     ContentOpportunity,
     LocaleVariant,
+    NeedHypothesis,
 )
 from app.modules.research.keyword_plan.production_admission import (
     ProductionAdmissionError,
@@ -35,7 +36,8 @@ from app.modules.research.keyword_plan.production_decision_router import (
     build_production_decision_route,
 )
 
-CREATE_HANDOFF_POLICY_VERSION = "qm-create-handoff-v1"
+CREATE_HANDOFF_POLICY_VERSION = "qm-create-handoff-v1.1"
+_MATERIALIZABLE_NEED_STATUSES = frozenset({"PROPOSED", "TESTING", "SUPPORTED"})
 
 
 class CreateProductionHandoffError(ValueError):
@@ -216,6 +218,31 @@ async def materialize_create_handoff(
             "create_handoff_opportunity_not_found"
         )
 
+    locked_need = await session.scalar(
+        select(NeedHypothesis)
+        .where(
+            NeedHypothesis.id == locked_opportunity.need_hypothesis_id,
+            NeedHypothesis.project_id == project_id,
+        )
+        .with_for_update()
+    )
+    if locked_need is None:
+        raise CreateProductionHandoffError(
+            "create_handoff_need_not_found"
+        )
+    if locked_need.status == "REJECTED":
+        raise CreateProductionHandoffError(
+            "create_handoff_need_rejected"
+        )
+    if locked_need.status == "INSUFFICIENT_EVIDENCE":
+        raise CreateProductionHandoffError(
+            "create_handoff_need_insufficient_evidence"
+        )
+    if locked_need.status not in _MATERIALIZABLE_NEED_STATUSES:
+        raise CreateProductionHandoffError(
+            "create_handoff_need_status_unsupported"
+        )
+
     try:
         route = await build_production_decision_route(
             session,
@@ -262,8 +289,8 @@ async def materialize_create_handoff(
             session,
             content_opportunity_id=opportunity_id,
             expected_opportunity_version=route.opportunity_version,
-            required_need_status="SUPPORTED",
-            need_status_error_code="create_handoff_requires_supported_need",
+            required_need_status=locked_need.status,
+            need_status_error_code="create_handoff_need_status_changed",
         )
     except OperatorControlError as exc:
         raise CreateProductionHandoffError(exc.code) from exc
