@@ -285,6 +285,97 @@ async def test_all_decisions_map_to_exact_production_route(
         assert result.reconciliation_required is reconcile
         assert result.production_forbidden is forbidden
         assert len(result.snapshot_hash) == 64
+        assert [
+            row.content_item_id for row in result.target_snapshots
+        ] == sorted([row.id for row in targets], key=str)
+        if decision in {"UPDATE", "REFRESH", "MERGE"}:
+            assert all(
+                row.current_content_version_id is not None
+                and row.current_content_version_no == 1
+                for row in result.target_snapshots
+            )
+
+
+@pytest.mark.asyncio
+async def test_revision_route_hash_changes_when_target_version_changes() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id)
+        target = await _target_item(
+            session,
+            project=project,
+            need=need,
+            suffix="version-drift",
+        )
+        opportunity, _ = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="UPDATE",
+            target_ids=[target.id],
+        )
+
+        before = await build_production_decision_route(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+        )
+        session.add(
+            ContentVersion(
+                content_item_id=target.id,
+                version_no=2,
+                change_reason="Target changed.",
+                status="draft",
+                content_json={"fixture": "changed"},
+            )
+        )
+        await session.flush()
+        after = await build_production_decision_route(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+        )
+
+        assert before.snapshot_hash != after.snapshot_hash
+        assert before.target_snapshots[0].current_content_version_no == 1
+        assert after.target_snapshots[0].current_content_version_no == 2
+
+
+@pytest.mark.asyncio
+async def test_revision_route_hash_changes_when_target_status_changes() -> None:
+    async with isolated_session() as session:
+        project = await _project(session)
+        need = await _need(session, project_id=project.id)
+        target = await _target_item(
+            session,
+            project=project,
+            need=need,
+            suffix="status-drift",
+        )
+        opportunity, _ = await _selected_opportunity(
+            session,
+            project=project,
+            need=need,
+            decision="REFRESH",
+            target_ids=[target.id],
+        )
+
+        before = await build_production_decision_route(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+        )
+        target.status = "published"
+        await session.flush()
+        after = await build_production_decision_route(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+        )
+
+        assert before.snapshot_hash != after.snapshot_hash
+        assert before.target_snapshots[0].item_status == "draft"
+        assert after.target_snapshots[0].item_status == "published"
 
 
 @pytest.mark.asyncio
