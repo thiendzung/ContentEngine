@@ -48,6 +48,8 @@ async def ensure_selected_content_case(
     project_id: UUID,
     content_opportunity_id: UUID,
     need_hypothesis_id: UUID,
+    required_need_status: str = "PROPOSED",
+    need_status_error_code: str = "pr_e_does_not_auto_promote_need_hypothesis",
 ) -> tuple[ContentCase, ContentOpportunity, NeedHypothesis]:
     opportunity = (
         await session.execute(
@@ -72,8 +74,8 @@ async def ensure_selected_content_case(
         raise ValueError("selected_need_hypothesis_not_found")
     if hypothesis.project_id != project_id:
         raise ValueError("selected_need_hypothesis_project_mismatch")
-    if hypothesis.status != "PROPOSED":
-        raise ValueError("pr_e_does_not_auto_promote_need_hypothesis")
+    if hypothesis.status != required_need_status:
+        raise ValueError(need_status_error_code)
 
     existing = tuple(
         (

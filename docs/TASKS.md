@@ -7,27 +7,40 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-02C — Production Admission Gate — IMPLEMENTATION WIP
+## QM-02D1 — CREATE Production Handoff — IMPLEMENTATION WIP
 
-Tracking: issue #342. Exact task: `logs/2026-10-06-qm-02c-production-admission.md`.
+Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.
 
-- [x] Branch from merged QM-02B main `d3dfe864df69ef723f9b98dde057a8ff15b4525a`.
-- [x] Keep admission read-only; no production/workflow mutation.
-- [x] Require exact expected QM-02B route snapshot hash.
-- [x] Recompute the current route and fail closed on route/selection/opportunity/target drift.
-- [x] CREATE blocks if its opportunity already materialized.
-- [x] UPDATE / REFRESH block on unresolved target production lineage.
-- [x] LINK_ONLY / DO_NOT_WRITE return NO_PRODUCTION.
-- [x] MERGE returns RECONCILIATION_REQUIRED.
-- [x] Add deterministic admission snapshot hash + read-only endpoint.
-- [x] No Evidence/Originality gate in this slice.
-- [x] No model/provider/tool/UI/migration/publication.
-- [x] Add focused admission authority tests.
+- [x] Branch from merged QM-02C main `a0e4bc3180aa3c7f401fe32f8416a2eb4152962b`.
+- [x] CREATE-only mutation boundary; UPDATE/REFRESH/MERGE remain out of scope.
+- [x] Bind caller to exact QM-02B route snapshot + QM-02C admission snapshot.
+- [x] Lock the selected opportunity before final route/admission recheck.
+- [x] Recompute route + admission in the same transaction before materialization.
+- [x] Require canonical Need still `SUPPORTED`; preserve the legacy `PROPOSED` default everywhere else.
+- [x] Reuse existing `create_or_reuse_journal_case` for exactly one Journal ContentCase + source-locale LocaleVariant.
+- [x] Add durable idempotency/audit receipt using existing OperatorCommand infrastructure.
+- [x] Exact replay returns the same receipt; conflicting replay fails closed.
+- [x] No ContentRun/StepRun/Job, no auto-Start, no Evidence/Originality/model/provider/publish.
+- [x] Add focused CREATE handoff tests.
 - [ ] MG exact diff self-review.
-- [ ] Agent Local exact-SHA focused/full backend verification.
+- [ ] Agent Local exact-SHA focused/full backend + concurrency verification.
 - [ ] Exact-ref OpenCodeReview.
 - [ ] GitHub minimum CI confirmation if available.
 - [ ] Founder merge.
+- [ ] QM-02F1 early real CREATE pilot after merge.
+
+## QM-02C — Production Admission Gate — DONE / PR #343 MERGED
+
+Tracking: issue #342. Exact task: `logs/2026-10-06-qm-02c-production-admission.md`.
+
+- [x] Read-only admission over exact QM-02B route snapshot.
+- [x] Route/selection/opportunity/target drift fail closed.
+- [x] CREATE duplicate materialization and unresolved UPDATE/REFRESH production conflicts blocked.
+- [x] LINK_ONLY/DO_NOT_WRITE -> NO_PRODUCTION; MERGE -> RECONCILIATION_REQUIRED.
+- [x] Deterministic admission snapshot + read-only endpoint.
+- [x] Focused Question Map chain 90 PASS; adjacent regressions 21 PASS; full backend 1484 PASS.
+- [x] OCR zero findings; GitHub CI #2279 SUCCESS.
+- [x] Founder merged PR #343 as main `a0e4bc3180aa3c7f401fe32f8416a2eb4152962b`.
 
 ## QM-02B — Production Decision Router — DONE / PR #341 MERGED
 
