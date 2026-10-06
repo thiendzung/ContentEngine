@@ -13,6 +13,7 @@ from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
     ContentOpportunity,
+    ContentVersion,
     HumanSelection,
     LocaleVariant,
     NeedHypothesis,
@@ -162,6 +163,16 @@ async def _target_item(
         canonical_key=f"journal:qm02c-{suffix}-{uuid4().hex}:en",
     )
     session.add(item)
+    await session.flush()
+    session.add(
+        ContentVersion(
+            content_item_id=item.id,
+            version_no=1,
+            change_reason="Existing target fixture.",
+            status="draft",
+            content_json={"fixture": True},
+        )
+    )
     await session.flush()
     return item
 
