@@ -569,6 +569,7 @@ def _assert_existing_replay(
             "opportunity_selection_replay_conflict"
         )
 
+
 async def _validate_existing_signal_lineage(
     session: AsyncSession,
     *,
