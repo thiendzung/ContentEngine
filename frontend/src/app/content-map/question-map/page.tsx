@@ -211,36 +211,32 @@ function CandidateCard({
         </span>
       </div>
 
-      {candidate.reason_codes.length > 0 ||
-      candidate.existing_content_refs.length > 0 ||
-      candidate.existing_plan_refs.length > 0 ? (
-        <details className={ui.candidateDetails}>
-          <summary>Chi tiết phương án</summary>
+      <details className={ui.candidateDetails}>
+        <summary>Chi tiết phương án</summary>
+        <div className={ui.refList}>
+          <span>Intent · {candidate.intent}</span>
+          <span>Stage · {candidate.audience_stage}</span>
+          <span>Answer job · {candidate.answer_job}</span>
+        </div>
+        {candidate.reason_codes.length > 0 ? (
+          <ul className={ui.reasonList}>
+            {candidate.reason_codes.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        ) : null}
+        {candidate.existing_content_refs.length > 0 ||
+        candidate.existing_plan_refs.length > 0 ? (
           <div className={ui.refList}>
-            <span>Intent · {candidate.intent}</span>
-            <span>Stage · {candidate.audience_stage}</span>
-            <span>Answer job · {candidate.answer_job}</span>
+            {candidate.existing_content_refs.map((ref) => (
+              <span key={`content:${ref}`}>ContentItem · {ref}</span>
+            ))}
+            {candidate.existing_plan_refs.map((ref) => (
+              <span key={`plan:${ref}`}>Plan · {ref}</span>
+            ))}
           </div>
-          {candidate.reason_codes.length > 0 ? (
-            <ul className={ui.reasonList}>
-              {candidate.reason_codes.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          ) : null}
-          {candidate.existing_content_refs.length > 0 ||
-          candidate.existing_plan_refs.length > 0 ? (
-            <div className={ui.refList}>
-              {candidate.existing_content_refs.map((ref) => (
-                <span key={`content:${ref}`}>ContentItem · {ref}</span>
-              ))}
-              {candidate.existing_plan_refs.map((ref) => (
-                <span key={`plan:${ref}`}>Plan · {ref}</span>
-              ))}
-            </div>
-          ) : null}
-        </details>
-      ) : null}
+        ) : null}
+      </details>
 
       {candidate.role === "cluster" && questions.length > 0 ? (
         <details className={ui.questions}>
@@ -794,7 +790,9 @@ export default function QuestionMapFounderPage() {
                 <small>
                   {selectedCandidate
                     ? selectedCandidate.primary_question
-                    : "Chưa chọn phương án"}
+                    : selectedOpportunities.length > 0
+                      ? "Đã có lựa chọn được lưu"
+                      : "Chưa chọn phương án"}
                 </small>
               </div>
             </div>
@@ -814,7 +812,7 @@ export default function QuestionMapFounderPage() {
                 <small>
                   {handoffResult
                     ? "Đã tạo bàn giao"
-                    : activeOpportunityId
+                    : activeOpportunityId || selectedOpportunities.length > 0
                       ? "Đang chờ xác nhận"
                       : "Sau khi lưu lựa chọn"}
                 </small>
