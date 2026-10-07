@@ -91,6 +91,55 @@ const ADMISSION_VI: Record<string, string> = {
   BLOCKED_PRODUCTION_CONFLICT: "Có xung đột sản xuất",
 };
 
+const PRODUCTION_REASON_VI: Record<string, string> = {
+  selected_create_requires_new_content: "Lựa chọn này cần tạo một nội dung mới.",
+  selected_update_requires_existing_revision: "Lựa chọn này cần tạo bản cập nhật cho nội dung hiện có.",
+  selected_refresh_requires_existing_revision: "Lựa chọn này cần làm mới nội dung hiện có.",
+  selected_merge_requires_reconciliation: "Lựa chọn này cần đối soát và hợp nhất các nội dung xung đột.",
+  selected_link_only_requires_no_new_production: "Lựa chọn này chỉ cần liên kết, không tạo sản xuất mới.",
+  selected_do_not_write_stops_production: "Lựa chọn hiện tại yêu cầu dừng sản xuất nội dung.",
+  production_admission_create_ready: "Đủ điều kiện tạo nội dung mới.",
+  production_admission_revision_ready: "Đủ điều kiện tạo bản cập nhật hoặc làm mới.",
+  production_admission_requires_reconciliation: "Cần xác nhận hợp nhất trước khi tạo bàn giao.",
+  production_admission_create_already_materialized: "Bàn giao tạo mới đã tồn tại.",
+  production_admission_revision_already_materialized: "Bàn giao cập nhật hoặc làm mới đã tồn tại.",
+  production_admission_merge_already_materialized: "Bàn giao hợp nhất đã tồn tại.",
+  production_admission_target_has_unresolved_run: "Nội dung đích đang có lượt sản xuất chưa hoàn tất.",
+  production_admission_target_missing: "Nội dung đích không còn khớp dữ liệu hiện tại.",
+  production_admission_route_snapshot_mismatch: "Hướng xử lý đã thay đổi từ lần kiểm tra trước.",
+  production_admission_route_forbids_production: "Hướng xử lý hiện tại không cho phép sản xuất.",
+  production_admission_route_not_admissible: "Hướng xử lý hiện tại chưa đủ điều kiện để tạo bàn giao.",
+  production_admission_case_binding_conflict: "Đã có liên kết sản xuất khác xung đột.",
+  production_admission_revision_case_binding_conflict: "Bản cập nhật đang xung đột với liên kết sản xuất hiện có.",
+  production_admission_merge_case_binding_conflict: "Kế hoạch hợp nhất đang xung đột với liên kết sản xuất hiện có.",
+  production_admission_revision_target_count_invalid: "Số nội dung đích của bản cập nhật không còn hợp lệ.",
+  production_admission_revision_target_version_missing: "Nội dung đích thiếu phiên bản hiện hành.",
+  production_admission_merge_target_count_invalid: "Nhóm nội dung cần hợp nhất không còn đủ thành viên hợp lệ.",
+  production_admission_merge_target_version_missing: "Một nội dung trong nhóm hợp nhất thiếu phiên bản hiện hành.",
+  production_admission_route_unsupported: "Hướng xử lý hiện tại chưa được hỗ trợ để tạo bàn giao.",
+  production_route_selection_count_invalid: "Số lựa chọn đã lưu không còn hợp lệ.",
+  production_route_selection_mismatch: "Lựa chọn đã lưu không còn khớp dữ liệu hiện tại.",
+  production_route_target_not_found: "Không còn tìm thấy nội dung đích.",
+  production_route_target_project_mismatch: "Nội dung đích không thuộc đúng dự án.",
+  production_route_target_not_primary_need: "Nội dung đích không còn gắn đúng nhu cầu chính.",
+  production_route_target_variant_case_mismatch: "Biến thể nội dung đích không còn khớp bài nguồn.",
+  production_route_target_locale_mismatch: "Ngôn ngữ của nội dung đích không còn khớp.",
+  production_route_target_version_missing: "Nội dung đích thiếu phiên bản hiện hành.",
+  production_route_create_target_conflict: "Tạo mới không được kèm nội dung đích hiện có.",
+  production_route_update_target_count_invalid: "Cập nhật cần đúng một nội dung đích.",
+  production_route_refresh_target_count_invalid: "Làm mới cần đúng một nội dung đích.",
+  production_route_merge_target_count_invalid: "Hợp nhất cần ít nhất hai nội dung đích.",
+  production_route_link_only_target_count_invalid: "Chỉ liên kết cần đúng một nội dung đích.",
+  production_route_do_not_write_target_conflict: "Dừng viết không được kèm nội dung đích.",
+  production_route_opportunity_not_found: "Cơ hội nội dung không còn tồn tại.",
+  production_route_opportunity_version_invalid: "Phiên bản cơ hội nội dung không còn hợp lệ.",
+  production_route_content_type_unsupported: "Loại nội dung hiện tại chưa được hỗ trợ.",
+  production_route_locale_invalid: "Ngôn ngữ lựa chọn không còn hợp lệ.",
+  production_route_target_refs_invalid: "Danh sách nội dung đích không hợp lệ.",
+  production_route_target_refs_duplicate: "Danh sách nội dung đích có mục trùng.",
+  production_route_decision_invalid: "Quyết định nội dung không còn hợp lệ.",
+};
+
 const COVERAGE_REASON_VI: Record<string, string> = {
   no_content_or_selected_write_plan: "Chưa có nội dung hoặc kế hoạch viết được chọn.",
   selected_content_opportunity_exists: "Đã có cơ hội nội dung được chọn.",
@@ -175,6 +224,10 @@ export function planningAdmissionLabel(value: string): string {
 
 export function planningCoverageReasonLabel(value: string): string {
   return COVERAGE_REASON_VI[value] ?? value;
+}
+
+export function planningProductionReasonLabel(value: string): string {
+  return PRODUCTION_REASON_VI[value] ?? "Có điều kiện kỹ thuật cần kiểm tra trước khi tiếp tục.";
 }
 
 export function planningReasonLabel(value: string): string {
