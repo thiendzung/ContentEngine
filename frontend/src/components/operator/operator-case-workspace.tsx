@@ -548,7 +548,7 @@ function ProgressStrip({
   const currentIndex = steps.findIndex((step) => !step.done);
 
   return (
-    <ol className="operator-progress-strip" aria-label="Tiến độ Journal">
+    <ol className="operator-progress-strip" aria-label="Tiến độ bài chuyên sâu">
       {steps.map((step, index) => (
         <li
           className={step.done ? "done" : index === currentIndex ? "current" : ""}
@@ -839,13 +839,13 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   if (loading && !view) {
-    return <main className="operator-page"><p className="loading">Đang tải bài Journal…</p></main>;
+    return <main className="operator-page"><p className="loading">Đang tải bài chuyên sâu…</p></main>;
   }
 
   if (!view) {
     return (
       <main className="operator-page">
-        <p className="error">{error || "Không tìm thấy bài Journal."}</p>
+        <p className="error">{error || "Không tìm thấy bài chuyên sâu."}</p>
         <Link className="operator-link" href="/operator">Quay lại điều hành</Link>
       </main>
     );
@@ -881,7 +881,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     <main className="operator-page">
       <header className="operator-case-header">
         <div>
-          <p className="eyebrow">Journal · {localeLabel(view.intake.source_locale)}</p>
+          <p className="eyebrow">Bài chuyên sâu · {localeLabel(view.intake.source_locale)}</p>
           <h1>{view.question}</h1>
           <div className="angle-meta-row">
             <span>
