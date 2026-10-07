@@ -43,7 +43,7 @@ Founder workflow page, Pillar/Cluster tree, selection form, route/admission prev
 materialize controls. Verification still requires frontend lint/typecheck/build, backend/API
 contract regression, one read-only operational browser smoke, stale/error/replay UX proof, OCR,
 Agent Local exact-SHA verification and minimal GitHub CI.
-HTTP selection transaction ownership is now explicit at the router boundary; the service remains flush-only, matching the established write-route pattern. A cross-request ASGI regression requires a successful selection to remain visible to the immediately following Route request and a fresh DB session.
+HTTP selection transaction ownership is explicit but ownership-aware: a fresh HTTP request session opens/commits its own transaction, while a direct caller with an already-active transaction is reused rather than nested. The service remains flush-only. Cross-request ASGI regression proves durability; the existing QM-02A direct-route regression proves compatibility with caller-owned autobegin.
 
 Tracking: #360. Founder remains the only PR merge authority.
 
