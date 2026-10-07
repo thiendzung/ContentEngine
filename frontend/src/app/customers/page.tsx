@@ -611,7 +611,7 @@ export default function CustomersPage() {
       if (requestId !== requestVersion.current) return;
       if (isSnapshotDrift(nextError)) {
         setStaleMessage(
-          "Bản đồ khách hàng đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một snapshot nhất quán.",
+          "Bản đồ khách hàng đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một bản chụp dữ liệu nhất quán.",
         );
       } else {
         setError(errorMessage(nextError, "Không thể tải nhóm khách hàng."));
@@ -649,7 +649,7 @@ export default function CustomersPage() {
       if (requestId !== requestVersion.current) return;
       if (isSnapshotDrift(nextError)) {
         setStaleMessage(
-          "Bản đồ khách hàng đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một snapshot nhất quán.",
+          "Bản đồ khách hàng đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một bản chụp dữ liệu nhất quán.",
         );
       } else {
         setError(errorMessage(nextError, "Không thể tải nhu cầu."));
@@ -686,7 +686,7 @@ export default function CustomersPage() {
         setStaleMessage(
           "Lần làm mới thất bại (" +
             message +
-            "). Dữ liệu đang hiển thị là snapshot thành công gần nhất.",
+            "). Dữ liệu đang hiển thị là bản chụp dữ liệu thành công gần nhất.",
         );
       } else {
         setError(message);
@@ -955,7 +955,7 @@ export default function CustomersPage() {
                   <div className={styles.sectionHeader}>
                     <div>
                       <p className="eyebrow">Thay đổi gần đây</p>
-                      <h2>Thay đổi so với snapshot trước</h2>
+                      <h2>Thay đổi so với bản chụp dữ liệu trước</h2>
                     </div>
                     <div className={styles.badges}>
                       <span className={styles.badge}>
@@ -984,11 +984,11 @@ export default function CustomersPage() {
 
                   {view.changes.baseline ? (
                     <p>
-                      Chưa có snapshot trước; đây là mốc cơ sở đầu tiên, không
+                      Chưa có bản chụp dữ liệu trước; đây là mốc cơ sở đầu tiên, không
                       được diễn giải như thay đổi hành vi khách hàng.
                     </p>
                   ) : view.changes.events.length === 0 ? (
-                    <p>Không có thay đổi giữa hai snapshot được so sánh.</p>
+                    <p>Không có thay đổi giữa hai bản chụp dữ liệu được so sánh.</p>
                   ) : (
                     <div className={styles.changeList}>
                       {view.changes.events.slice(0, 20).map((event, index) => (
