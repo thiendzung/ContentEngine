@@ -446,7 +446,7 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
       ) : null}
 
       <div className={styles.evidenceBlock}>
-        <strong>Insight liên quan</strong>
+        <strong>Hiểu biết liên quan</strong>
         {detail.insights.length === 0 ? (
           <p>Chưa có hiểu biết khách hàng được liên kết với nhu cầu này.</p>
         ) : (
@@ -974,11 +974,11 @@ export default function CustomersPage() {
                   </div>
 
                   <dl className={styles.definition}>
-                    <dt>Snapshot trước</dt>
+                    <dt>Ảnh chụp dữ liệu trước</dt>
                     <dd>
                       {view.changes.previous_snapshot_hash ?? "Không có"}
                     </dd>
-                    <dt>Snapshot hiện tại</dt>
+                    <dt>Ảnh chụp dữ liệu hiện tại</dt>
                     <dd>{view.changes.current_snapshot_hash}</dd>
                   </dl>
 
