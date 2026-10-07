@@ -31,6 +31,16 @@ import {
   uiIntentLabel,
   uiPriorityLabel,
 } from "../../../lib/ui/vi/content";
+import {
+  planningAdmissionLabel,
+  planningAnswerJobLabel,
+  planningAudienceStageLabel,
+  planningContentRoleLabel,
+  planningCoverageLabel,
+  planningQuestionTypeLabel,
+  planningReadinessLabel,
+  planningReasonLabel,
+} from "../../../lib/ui/vi/planning";
 import { uiStatusLabel } from "../../../lib/ui/vi/status";
 import styles from "../../intelligence.module.css";
 import ui from "./question-map.module.css";
@@ -45,60 +55,6 @@ function localeLabel(value: string) {
   if (value === "en") return "Tiếng Anh";
   if (value === "vi-vn" || value === "vi-VN") return "Tiếng Việt";
   return value;
-}
-
-function truthLabel(value: string) {
-  const labels: Record<string, string> = {
-    PROPOSED: "Đề xuất",
-    TESTING: "Đang kiểm chứng",
-    SUPPORTED: "Đã có hỗ trợ",
-    REJECTED: "Đã bác bỏ",
-    INSUFFICIENT_EVIDENCE: "Chưa đủ bằng chứng",
-  };
-  return labels[value] ?? value;
-}
-
-function readinessLabel(value: string) {
-  const labels: Record<string, string> = {
-    READY_FOR_HUMAN_SELECTION: "Sẵn sàng để Người sáng lập chọn",
-    RESEARCH_REQUIRED: "Cần nghiên cứu thêm",
-    BLOCKED: "Đang bị chặn",
-  };
-  return labels[value] ?? value;
-}
-
-function coverageLabel(value: string) {
-  const labels: Record<string, string> = {
-    ANSWERED: "Đã trả lời",
-    PARTIAL: "Đã có một phần",
-    MISSING: "Đang thiếu",
-    STALE: "Cần làm mới",
-    COLLISION: "Có xung đột",
-    INSUFFICIENT_DATA: "Chưa đủ dữ liệu",
-    MIXED: "Hỗn hợp",
-  };
-  return labels[value] ?? value;
-}
-
-function candidateRoleLabel(value: ArchitectureCandidate["role"]) {
-  return value === "pillar" ? "Nội dung trụ cột" : "Cụm nội dung";
-}
-
-function productionActionLabel(value: string) {
-  const labels: Record<string, string> = {
-    CREATE_NEW_CONTENT: "Tạo nội dung mới",
-    REVISE_EXISTING_CONTENT: "Tạo bản cập nhật",
-    REFRESH_EXISTING_CONTENT: "Làm mới nội dung hiện có",
-    RECONCILE_CONTENT: "Hợp nhất nội dung xung đột",
-  };
-  return labels[value] ?? value;
-}
-
-function admissionLabel(value: ProductionAdmission["status"]) {
-  if (value === "ADMITTED") return "Có thể tiếp tục";
-  if (value === "RECONCILIATION_REQUIRED") return "Cần xác nhận hợp nhất";
-  if (isAdmissionStale(value)) return "Dữ liệu đã thay đổi";
-  return "Đang bị chặn";
 }
 
 function badgeClass(value: string) {
@@ -186,7 +142,7 @@ function CandidateCard({
       <div className={ui.candidateHeader}>
         <div>
           <p className="eyebrow">
-            {candidateRoleLabel(candidate.role)} · {candidate.question_count} câu hỏi
+            {planningContentRoleLabel(candidate.role)} · {candidate.question_count} câu hỏi
           </p>
           <h3>{candidate.primary_question}</h3>
         </div>
@@ -207,10 +163,10 @@ function CandidateCard({
 
       <div className={ui.candidateMeta}>
         <span className={badgeClass(candidate.coverage_status)}>
-          Độ phủ · {coverageLabel(candidate.coverage_status)}
+          Độ phủ · {planningCoverageLabel(candidate.coverage_status)}
         </span>
         <span className={badgeClass(candidate.selection_readiness)}>
-          {readinessLabel(candidate.selection_readiness)}
+          {planningReadinessLabel(candidate.selection_readiness)}
         </span>
         <span className={styles.badgeWarn}>
           {uiDecisionLabel(candidate.decision)} · {uiPriorityLabel(candidate.priority)}
@@ -221,13 +177,13 @@ function CandidateCard({
         <summary>Chi tiết phương án</summary>
         <div className={ui.refList}>
           <span>Ý định · {uiIntentLabel(candidate.intent)}</span>
-          <span>Giai đoạn · {candidate.audience_stage}</span>
-          <span>Vai trò trả lời · {candidate.answer_job}</span>
+          <span>Giai đoạn · {planningAudienceStageLabel(candidate.audience_stage)}</span>
+          <span>Vai trò trả lời · {planningAnswerJobLabel(candidate.answer_job)}</span>
         </div>
         {candidate.reason_codes.length > 0 ? (
           <ul className={ui.reasonList}>
             {candidate.reason_codes.map((reason) => (
-              <li key={reason}>{reason}</li>
+              <li key={reason}>{planningReasonLabel(reason)}</li>
             ))}
           </ul>
         ) : null}
@@ -253,7 +209,7 @@ function CandidateCard({
                 {question.text}
                 <span className={ui.muted}>
                   {" "}
-                  · {question.classification.question_type} ·{" "}
+                  · {planningQuestionTypeLabel(question.classification.question_type)} ·{" "}
                   {question.independent_source_count} nguồn độc lập
                 </span>
               </li>
@@ -555,7 +511,7 @@ export default function QuestionMapFounderPage() {
       const message = apiErrorMessage(nextError);
       setError(message);
       setStaleMessage(
-        "Lựa chọn bị backend từ chối. Không tiếp tục bằng dữ liệu cũ; hãy làm mới Bản đồ câu hỏi.",
+        "Lựa chọn bị hệ thống từ chối. Không tiếp tục bằng dữ liệu cũ; hãy làm mới Bản đồ câu hỏi.",
       );
     } finally {
       setSelectionBusy(false);
@@ -654,7 +610,7 @@ export default function QuestionMapFounderPage() {
       setHandoffResult(result);
       setSuccessMessage(
         result.replayed
-          ? "Yêu cầu này đã được xử lý trước đó; backend dùng lại kết quả an toàn."
+          ? "Yêu cầu này đã được xử lý trước đó; hệ thống dùng lại kết quả an toàn."
           : "Đã tạo bàn giao sản xuất. Không có bước viết hoặc xuất bản nào được tự chạy.",
       );
       await refreshCoverage();
@@ -664,7 +620,7 @@ export default function QuestionMapFounderPage() {
       setError(apiErrorMessage(nextError));
       setPreviewValid(false);
       setStaleMessage(
-        "Backend từ chối bàn giao. Kết quả kiểm tra hiện tại không còn hợp lệ; hãy kiểm tra lại trước khi thử lại.",
+        "Hệ thống từ chối bàn giao. Kết quả kiểm tra hiện tại không còn hợp lệ; hãy kiểm tra lại trước khi thử lại.",
       );
     } finally {
       setHandoffBusy(false);
@@ -726,7 +682,7 @@ export default function QuestionMapFounderPage() {
           <h1>Chọn nội dung để đưa vào sản xuất</h1>
           <p className="intro">
             Chọn đúng vấn đề, chọn phương án nội dung, rồi xác nhận bước sản xuất.
-            Backend vẫn là nơi quyết định trạng thái và điều kiện an toàn.
+            Hệ thống vẫn là nơi quyết định trạng thái và điều kiện an toàn.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -792,7 +748,7 @@ export default function QuestionMapFounderPage() {
               >
                 {coverage.needs.map((lane) => (
                   <option key={lane.need.id} value={lane.need.id}>
-                    {lane.need.statement} · {truthLabel(lane.need.status)}
+                    {lane.need.statement} · {uiStatusLabel(lane.need.status)}
                   </option>
                 ))}
               </select>
@@ -904,7 +860,7 @@ export default function QuestionMapFounderPage() {
                   <div className={styles.badges}>
                     <span className={styles.badge}>{localeLabel(locale)}</span>
                     <span className={badgeClass(architecture.need.status)}>
-                      {truthLabel(architecture.need.status)}
+                      {uiStatusLabel(architecture.need.status)}
                     </span>
                   </div>
                 </div>
@@ -1008,7 +964,7 @@ export default function QuestionMapFounderPage() {
                 <p className="eyebrow">Quyết định</p>
                 <h2>3 bước để tiếp tục</h2>
                 <p>
-                  Chỉ các hành động được backend cho phép mới có thể hoàn tất.
+                  Chỉ các hành động được hệ thống cho phép mới có thể hoàn tất.
                 </p>
               </div>
 
@@ -1031,7 +987,7 @@ export default function QuestionMapFounderPage() {
                     >
                       {coverage.needs.map((lane) => (
                         <option key={lane.need.id} value={lane.need.id}>
-                          {lane.need.statement} · {truthLabel(lane.need.status)}
+                          {lane.need.statement} · {uiStatusLabel(lane.need.status)}
                         </option>
                       ))}
                     </select>
@@ -1056,7 +1012,7 @@ export default function QuestionMapFounderPage() {
 
                   <div className={ui.truthSummary}>
                     <span>Độ chắc hiểu biết khách hàng</span>
-                    <strong>{truthLabel(planner.customer_truth.status)}</strong>
+                    <strong>{uiStatusLabel(planner.customer_truth.status)}</strong>
                     <small>
                       Nhu cầu v{planner.customer_truth.need_version}. Trạng thái này
                       không tự cấp quyền viết bài.
@@ -1090,14 +1046,14 @@ export default function QuestionMapFounderPage() {
                   {selectedCandidate ? (
                     <>
                       <div className={ui.selectedCandidateSummary}>
-                        <span>{candidateRoleLabel(selectedCandidate.role)}</span>
+                        <span>{planningContentRoleLabel(selectedCandidate.role)}</span>
                         <strong>{selectedCandidate.primary_question}</strong>
                         <div className={ui.inlineBadges}>
                           <span className={badgeClass(selectedCandidate.selection_readiness)}>
-                            {readinessLabel(selectedCandidate.selection_readiness)}
+                            {planningReadinessLabel(selectedCandidate.selection_readiness)}
                           </span>
                           <span className={styles.badgeWarn}>
-                            {selectedCandidate.decision} · {selectedCandidate.priority}
+                            {uiDecisionLabel(selectedCandidate.decision)} · {uiPriorityLabel(selectedCandidate.priority)}
                           </span>
                         </div>
                       </div>
@@ -1132,7 +1088,7 @@ export default function QuestionMapFounderPage() {
                         />
                       </label>
                       <p className={ui.muted}>
-                        {requirements.length}/12 yêu cầu. Backend sẽ xác nhận lại
+                        {requirements.length}/12 yêu cầu. Hệ thống sẽ xác nhận lại
                         ảnh chụp trước khi lưu lựa chọn.
                       </p>
                       <button
@@ -1145,7 +1101,7 @@ export default function QuestionMapFounderPage() {
                       </button>
                       {!selectedCandidate.selectable ? (
                         <span className={styles.badgeNegative}>
-                          Backend đánh dấu phương án này không thể chọn
+                          Hệ thống đánh dấu phương án này không thể chọn
                         </span>
                       ) : null}
                     </>
@@ -1193,11 +1149,11 @@ export default function QuestionMapFounderPage() {
                     <>
                       <div className={ui.productionStatus}>
                         <span className={badgeClass(admission.status)}>
-                          {admissionLabel(admission.status)}
+                          {planningAdmissionLabel(admission.status)}
                         </span>
-                        <h3>{productionActionLabel(route.route)}</h3>
+                        <h3>{uiDecisionLabel(route.route)}</h3>
                         <p>
-                          Backend đã đọc lại lựa chọn và xác định hướng xử lý hiện
+                          Hệ thống đã đọc lại lựa chọn và xác định hướng xử lý hiện
                           tại. Nếu dữ liệu thay đổi, thao tác sẽ bị khóa.
                         </p>
                       </div>
@@ -1250,7 +1206,7 @@ export default function QuestionMapFounderPage() {
                             />
                             <span>
                               Tôi xác nhận đúng nhóm nội dung xung đột và bản giữ
-                              lại. Backend chỉ tạo phạm vi đối soát.
+                              lại. Hệ thống chỉ tạo phạm vi đối soát.
                             </span>
                           </label>
                         </div>
@@ -1258,7 +1214,7 @@ export default function QuestionMapFounderPage() {
 
                       {isAdmissionStale(admission.status) ? (
                         <div className={ui.warning}>
-                          Dữ liệu đã thay đổi. Không thể tiếp tục bằng preview cũ;
+                          Dữ liệu đã thay đổi. Không thể tiếp tục bằng kết quả kiểm tra cũ;
                           hãy kiểm tra lại trạng thái.
                         </div>
                       ) : null}
@@ -1332,8 +1288,9 @@ export default function QuestionMapFounderPage() {
                                   <strong>{target.canonical_key}</strong>
                                 </p>
                                 <p>
-                                  {target.content_role} · {target.primary_intent} ·{" "}
-                                  {target.item_status}
+                                  {planningContentRoleLabel(target.content_role)} ·{" "}
+                                  {uiIntentLabel(target.primary_intent)} ·{" "}
+                                  {uiStatusLabel(target.item_status)}
                                 </p>
                                 <p className={ui.muted}>
                                   Phiên bản:{" "}
@@ -1355,7 +1312,7 @@ export default function QuestionMapFounderPage() {
                       <strong>Đã tạo bàn giao sản xuất</strong>
                       <span>
                         {handoffResult.replayed
-                          ? "Backend dùng lại biên nhận hợp lệ."
+                          ? "Hệ thống dùng lại biên nhận hợp lệ."
                           : "Đã tạo biên nhận mới."}
                       </span>
                       <details className={ui.technicalDetails}>
@@ -1367,7 +1324,7 @@ export default function QuestionMapFounderPage() {
 
                   <p className={ui.safetyNote}>
                     Màn hình này không có thao tác bắt đầu, viết hoặc xuất bản. Bước này chỉ
-                    tạo bàn giao mà backend cho phép.
+                    tạo bàn giao mà hệ thống cho phép.
                   </p>
                 </div>
               </section>
