@@ -41,6 +41,7 @@ import {
   planningQuestionTypeLabel,
   planningReadinessLabel,
   planningReasonLabel,
+  planningProductionReasonLabel,
 } from "../../../lib/ui/vi/planning";
 import { uiStatusLabel } from "../../../lib/ui/vi/status";
 import styles from "../../intelligence.module.css";
@@ -1165,10 +1166,18 @@ export default function QuestionMapFounderPage() {
                         reason={
                           <>
                             <strong>{uiDecisionLabel(route.route)}</strong>
-                            <p>
-                              Hệ thống đã đọc lại lựa chọn và xác định hướng xử lý hiện
-                              tại. Nếu dữ liệu thay đổi, thao tác sẽ bị khóa.
-                            </p>
+                            <ul className={ui.reasonList}>
+                              {route.reason_codes.map((reason) => (
+                                <li key={`business-route:${reason}`}>
+                                  {planningProductionReasonLabel(reason)}
+                                </li>
+                              ))}
+                              {admission.reason_codes.map((reason) => (
+                                <li key={`business-admission:${reason}`}>
+                                  {planningProductionReasonLabel(reason)}
+                                </li>
+                              ))}
+                            </ul>
                             {isAdmissionStale(admission.status) ? (
                               <div className={ui.warning}>
                                 Dữ liệu đã thay đổi. Không thể tiếp tục bằng kết quả kiểm tra cũ;
