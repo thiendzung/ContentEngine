@@ -17,12 +17,12 @@ Tracking:
 #389
 
 Child slices:
-- P4-00 / #390 — IMPLEMENTED: shared decision-summary presentation primitive; verification pending;
-- P4-01 / #391 — IMPLEMENTED: Overview + Needs Me business-first hierarchy; verification pending;
-- P4-02 / #392 — NEXT: Content planning / Question Map;
-- P4-03 / #393 — Learning + System;
-- P4-04 / #394 — Journal Operator / review workspace;
-- P4-05 / #395 — audit + final verification.
+- P4-00 / #390 — IMPLEMENTED: shared decision-summary presentation primitive;
+- P4-01 / #391 — IMPLEMENTED: Overview + Needs Me;
+- P4-02 / #392 — IMPLEMENTED: Content Map + Question Map;
+- P4-03 / #393 — IMPLEMENTED: Learning + System;
+- P4-04 / #394 — IMPLEMENTED: Journal Operator + final review;
+- P4-05 / #395 — ACTIVE: legacy/read-only audit complete; final exact-SHA verification pending.
 
 P4 product contract:
 - normal decision surfaces present **Trạng thái → Vì sao → Việc nên làm** first;
@@ -97,14 +97,16 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #389 / UI-P4 sequentially without moving workflow authority into the browser.
+Complete #389 / UI-P4 on one exact candidate SHA.
 
 Current gate:
-1. verify P4-00 + P4-01 exact-head lint/typecheck;
-2. only then continue #392 / P4-02;
-3. preserve exact technical values and fail-closed behavior throughout.
+1. freeze one exact P4 candidate;
+2. run frontend lint/typecheck/build and browser/keyboard/narrow verification;
+3. verify technical disclosures preserve exact IDs/hashes/enums/bindings and all fail-closed controls;
+4. run exact-ref OpenCodeReview Delegation Mode + Agent Local verification;
+5. MG evidence review before Founder merge.
 
-Do not expand P4 into P5 Production Board density or P6 visual-system redesign.
+Do not expand into P5 Production Board density or P6 global visual-system work.
 
 ## Pilot operating priority — 2026-10-03
 
