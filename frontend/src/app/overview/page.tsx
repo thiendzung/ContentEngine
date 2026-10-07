@@ -98,16 +98,16 @@ function issuePresentation(code: string): {
   }
   if (code.includes("operator_")) {
     return {
-      title: "Journal Operator đang bị chặn hoặc binding không nhất quán.",
+      title: "Luồng điều hành bài viết đang bị chặn hoặc liên kết dữ liệu không nhất quán.",
       recovery:
-        "Mở Production Board hoặc Journal Operator để kiểm tra case gốc; Overview không tự sửa Operator state.",
+        "Mở Bảng sản xuất hoặc màn hình điều hành bài viết để kiểm tra hồ sơ gốc; Tổng quan không tự sửa trạng thái vận hành.",
     };
   }
   if (code.includes("canonical_gate_missing")) {
     return {
-      title: "Production state đang chờ người nhưng thiếu binding duyệt canonical.",
+      title: "Trạng thái sản xuất đang chờ người nhưng thiếu liên kết duyệt chuẩn.",
       recovery:
-        "Giữ fail-closed và kiểm tra durable approval/checkpoint trước khi tiếp tục.",
+        "Giữ trạng thái đóng an toàn và kiểm tra bản ghi duyệt/checkpoint bền vững trước khi tiếp tục.",
     };
   }
   if (
@@ -116,15 +116,15 @@ function issuePresentation(code: string): {
     code.includes("validation_")
   ) {
     return {
-      title: "Learning state chưa đủ nhất quán để mở human action.",
+      title: "Trạng thái học từ dữ liệu chưa đủ nhất quán để mở hành động người dùng.",
       recovery:
-        "Không promote/rollback từ Overview. Giữ fail-closed cho tới khi canonical Learning state được xử lý.",
+        "Không nâng cấp/hoàn tác từ Tổng quan. Giữ trạng thái đóng an toàn cho tới khi trạng thái học từ dữ liệu chuẩn được xử lý.",
     };
   }
   return {
-    title: "Canonical state đang bị chặn hoặc không nhất quán.",
+    title: "Trạng thái chuẩn đang bị chặn hoặc không nhất quán.",
     recovery:
-      "Không suy diễn cách sửa từ Overview. Kiểm tra entity và backend code trong chi tiết kỹ thuật trước khi hành động.",
+      "Không suy diễn cách sửa từ Tổng quan. Kiểm tra đối tượng và mã backend trong chi tiết kỹ thuật trước khi hành động.",
   };
 }
 
@@ -164,7 +164,7 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
       </div>
 
       <p className={styles.meta}>
-        Cập nhật {formatDate(item.updated_at)} · entity{" "}
+        Cập nhật {formatDate(item.updated_at)} · đối tượng{" "}
         {item.destination.entity_id}
       </p>
 
@@ -185,7 +185,7 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
       <details className={styles.disclosure}>
         <summary>Vì sao việc này xuất hiện?</summary>
         <p className={styles.meta}>
-          Action ref: {item.destination.action_ref}
+          Tham chiếu hành động: {item.destination.action_ref}
         </p>
         <div className={styles.refs}>
           {item.why_refs.length > 0 ? (
