@@ -221,7 +221,7 @@ export default function DailyDigestPage() {
 
             <aside className={styles.coveragePanel}>
               <article className={styles.systemCard}>
-                <p className="eyebrow">Snapshot hiện tại — không phải lịch sử thay đổi</p>
+                <p className="eyebrow">Trạng thái dữ liệu hiện tại — không phải lịch sử thay đổi</p>
                 <h2>Độ phủ nội dung hiện tại</h2>
                 <p>
                   Các số dưới đây được tính tại lúc đọc digest. Không được diễn giải là
