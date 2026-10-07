@@ -44,8 +44,8 @@ P3 task slices:
 - [x] **P3-04 / #384 — Learning** — DONE: đề xuất/bằng chứng/duyệt/áp dụng/kiểm chứng/xử lý kết quả; CI #2427 frontend lint/typecheck PASS.
 - [x] **P3-05 / #385 — System** — DONE: Hệ thống + Nhật ký thay đổi; CI #2431 frontend lint/typecheck PASS.
 - [x] **P3-06 / #386 — Journal Operator** — DONE: tiếp nhận/kiểm tra sẵn sàng/góc tiếp cận/dàn ý/viết/chất lượng/duyệt cuối; CI #2437 frontend lint/typecheck PASS.
-- [ ] **P3-07 / #387 — Legacy + terminology audit** — ACTIVE: legacy review root, empty/error states and remaining mixed-English normal-path UI.
-- [ ] **P3-08 / #388 — Final verification**: exact-SHA static/build/browser/OCR/Agent Local/CI/MG closeout.
+- [x] **P3-07 / #387 — Legacy + terminology audit** — DONE: legacy/root audit + remaining normal-path mixed term cleanup; CI #2439 frontend lint/typecheck PASS.
+- [ ] **P3-08 / #388 — Final verification** — ACTIVE: exact-SHA static/build/browser/OCR/Agent Local/CI/MG closeout.
 
 ## UI-P2 — Question Map decision cockpit — DONE / #374 / PR #375 MERGED
 
