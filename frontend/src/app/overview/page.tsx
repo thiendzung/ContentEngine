@@ -228,7 +228,7 @@ export default function OverviewPage() {
           setError(
             nextError instanceof Error
               ? nextError.message
-              : "Không thể tải Control Center.",
+              : "Không thể tải Trung tâm điều hành.",
           );
         }
       } finally {
@@ -243,7 +243,7 @@ export default function OverviewPage() {
           setDigestError(
             nextError instanceof Error
               ? nextError.message
-              : "Không thể tải Daily Digest.",
+              : "Không thể tải Tóm tắt trong ngày.",
           );
         }
       }
@@ -270,7 +270,7 @@ export default function OverviewPage() {
       const message =
         nextError instanceof Error
           ? nextError.message
-          : "Không thể làm mới Control Center.";
+          : "Không thể làm mới Trung tâm điều hành.";
       if (state) {
         setStale(
           `Lần làm mới thất bại (${message}). Đang giữ snapshot hiển thị thành công gần nhất.`,
@@ -288,7 +288,7 @@ export default function OverviewPage() {
       const message =
         nextError instanceof Error
           ? nextError.message
-          : "Không thể làm mới Daily Digest.";
+          : "Không thể làm mới Tóm tắt trong ngày.";
       if (digest) {
         setDigestStale(
           `Daily Digest làm mới thất bại (${message}). Đang giữ digest gần nhất.`,
@@ -305,26 +305,26 @@ export default function OverviewPage() {
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div className={styles.headerCopy}>
-          <p className="eyebrow">ContentEngine · Control Center</p>
+          <p className="eyebrow">ContentEngine · Trung tâm điều hành</p>
           <h1>Tổng quan</h1>
           <p className="intro">
             Làm việc theo exception: ưu tiên những việc hệ thống thực sự cần
-            Founder xử lý, sau đó mới xem telemetry vận hành.
+            Người sáng lập xử lý, sau đó mới xem số liệu vận hành.
           </p>
         </div>
 
-        <aside className={styles.commandPanel} aria-label="Control Center status">
+        <aside className={styles.commandPanel} aria-label="Trạng thái Trung tâm điều hành">
           <div className={styles.commandMeta}>
             <div>
-              <span>Read model</span>
+              <span>Dữ liệu đọc</span>
               <strong>{state ? "Đã tải" : loading ? "Đang tải" : "Chưa có"}</strong>
             </div>
             <div>
-              <span>Timezone</span>
+              <span>Múi giờ</span>
               <strong>{state?.summary.timezone ?? "đang xác định"}</strong>
             </div>
             <div>
-              <span>Controlled Autopilot</span>
+              <span>Tự động hóa có kiểm soát</span>
               <strong>Chưa có canonical on/off</strong>
             </div>
           </div>
