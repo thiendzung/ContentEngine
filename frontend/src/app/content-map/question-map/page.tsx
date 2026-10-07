@@ -1025,7 +1025,7 @@ export default function QuestionMapFounderPage() {
               </section>
 
               <details className={ui.planningDetails}>
-                <summary>Số liệu và snapshot lập kế hoạch</summary>
+                <summary>Số liệu và bản chụp kế hoạch</summary>
                 <div className={ui.planningDetailsGrid}>
                   <div>
                     <span>Tín hiệu tìm kiếm</span>
@@ -1344,11 +1344,11 @@ export default function QuestionMapFounderPage() {
                             <strong>{admission.status}</strong>
                           </div>
                           <div className={ui.routeCell}>
-                            <span>Snapshot hướng xử lý</span>
+                            <span>Bản chụp hướng xử lý</span>
                             <strong className={ui.hash}>{route.snapshot_hash}</strong>
                           </div>
                           <div className={ui.routeCell}>
-                            <span>Snapshot điều kiện tiếp tục</span>
+                            <span>Bản chụp điều kiện tiếp tục</span>
                             <strong className={ui.hash}>{admission.snapshot_hash}</strong>
                           </div>
                         </div>
