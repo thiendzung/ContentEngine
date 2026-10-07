@@ -996,7 +996,8 @@ export default function QuestionMapFounderPage() {
               </details>
             </div>
 
-            <aside className={ui.decisionPanel} aria-label="Bảng quyết định nội dung">
+            <div className={ui.decisionRail}>
+              <aside className={ui.decisionPanel} aria-label="Bảng quyết định nội dung">
               <div className={ui.decisionPanelHeader}>
                 <p className="eyebrow">Quyết định</p>
                 <h2>3 bước để tiếp tục</h2>
@@ -1364,7 +1365,8 @@ export default function QuestionMapFounderPage() {
                   </p>
                 </div>
               </section>
-            </aside>
+              </aside>
+            </div>
           </div>
         </>
       ) : null}
