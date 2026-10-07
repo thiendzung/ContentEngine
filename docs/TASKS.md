@@ -7,31 +7,68 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P2 — Question Map decision cockpit — ACTIVE / #374
+## UI-P3 — Vietnamese Founder-facing terminology — ACTIVE / #378
 
 Base main:
-`c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+`f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
 
-- [x] Founder authorized bounded UI-P2 after #361 Golden E2E and UI-P1 completion.
-- [x] Create dedicated branch from exact post-#373 main.
-- [x] Desktop two-column cockpit: candidates left, decision panel right.
-- [x] Visible 3-step flow: problem -> content -> production handoff.
-- [x] Keep problem/locale recovery selector available when planning data cannot load.
-- [x] Demote raw route/admission/snapshot/hash/ref details into technical disclosure.
-- [x] Preserve exact backend authority, stale locks, MERGE confirmation and no Start/Writer/Publish.
+- [x] Founder authorized bounded UI-P3 after UI-P2 completion.
+- [x] Create dedicated branch from exact post-#375 main.
+- [x] Add shared render-layer Vietnamese mappings for common statuses/decisions/priorities/intents/domains.
+- [x] Localize Overview + Needs Me.
+- [x] Localize Customers + Content Map + Question Map.
+- [x] Localize Learning + System + Daily Digest.
+- [x] Localize Production wording + Journal Operator / Preflight / intake / workspace.
+- [x] Preserve technical API/model/enum/database values; translate presentation only.
 - [ ] Frontend lint PASS.
 - [ ] Frontend typecheck PASS.
 - [ ] Frontend production build PASS.
-- [ ] Browser smoke at 1366/1440/1920 + narrow sanity PASS.
-- [ ] CREATE/UPDATE/REFRESH/MERGE UI contract smoke PASS.
+- [ ] Browser smoke of all primary Founder routes PASS.
+- [ ] Journal Operator/intake/workspace smoke PASS.
+- [ ] Terminology audit: normal-path UI Vietnamese, technical identity values preserved.
+- [ ] Keyboard/narrow sanity PASS.
 - [ ] Exact-ref OCR Delegation Mode PASS.
 - [ ] Agent Local exact-SHA verification PASS.
 - [ ] Minimal GitHub CI PASS or disclosed unavailable.
 - [ ] MG final review.
 - [ ] Founder merge.
 
-Non-goals: P3 full terminology localization, P4 system-wide business/technical-layer refactor,
-P5 Production Board redesign, P6 global visual/design-system polish, backend/API/schema/DB changes.
+Non-goals: P4 business/technical information hierarchy, P5 Production Board density redesign,
+P6 global visual/design-system polish, backend/API/schema/DB/provider/model changes.
+
+P3 task slices:
+- [x] **P3-00 / #380 — Language foundation** — DONE: direct-import Vietnamese render modules; CI #2405 frontend lint/typecheck PASS.
+- [x] **P3-01 / #381 — Core operations** — DONE: Overview + Needs Me + Production; CI #2412 frontend lint/typecheck PASS.
+- [x] **P3-02 / #382 — Customer map** — DONE: nhóm khách hàng/nhu cầu/nhận định/hành trình/ảnh chụp; CI #2415 frontend lint/typecheck PASS.
+- [x] **P3-03 / #383 — Content planning** — DONE: Content Map + Question Map presentation; CI #2423 frontend lint/typecheck PASS.
+- [x] **P3-04 / #384 — Learning** — DONE: đề xuất/bằng chứng/duyệt/áp dụng/kiểm chứng/xử lý kết quả; CI #2427 frontend lint/typecheck PASS.
+- [x] **P3-05 / #385 — System** — DONE: Hệ thống + Nhật ký thay đổi; CI #2431 frontend lint/typecheck PASS.
+- [x] **P3-06 / #386 — Journal Operator** — DONE: tiếp nhận/kiểm tra sẵn sàng/góc tiếp cận/dàn ý/viết/chất lượng/duyệt cuối; CI #2437 frontend lint/typecheck PASS.
+- [x] **P3-07 / #387 — Legacy + terminology audit** — DONE: legacy/root audit + remaining normal-path mixed term cleanup; CI #2439 frontend lint/typecheck PASS.
+- [ ] **P3-08 / #388 — Final verification** — ACTIVE: exact-SHA static/build/browser/OCR/Agent Local/CI/MG closeout.
+
+## UI-P2 — Question Map decision cockpit — DONE / #374 / PR #375 MERGED
+
+Base:
+`c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+Verified candidate:
+`90a2d3d38372dec347c0e626d0ce30db20cf0033`.
+Merged main:
+`f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
+
+- [x] Desktop two-column cockpit: candidates left, sticky decision panel right.
+- [x] Visible 3-step flow: problem -> content -> production handoff.
+- [x] Planning-error recovery selector remains available without stale projection leakage.
+- [x] Raw route/admission/snapshot/hash/ref details demoted into technical disclosure.
+- [x] CREATE/UPDATE/REFRESH/MERGE backend authority and MERGE guardrails preserved.
+- [x] Frontend lint/typecheck/build PASS on the verified P2 lineage.
+- [x] Fixture-backed recovery and production-contract smoke PASS.
+- [x] Final sticky R3 acceptance PASS at 1366/1440/1920 through document bottom.
+- [x] Narrow 390px + keyboard/internal-scroll sanity PASS.
+- [x] OpenCodeReview Delegation Mode 6/6 reviewable, 0 skipped, 0 Critical/High/Medium.
+- [x] CI #2392 SUCCESS.
+- [x] MG READY TO MERGE.
+- [x] Founder merged PR #375; #374 closed.
 
 ## UI-P1 — Desktop sidebar + Vietnamese primary navigation — DONE / #372 / PR #373 MERGED
 

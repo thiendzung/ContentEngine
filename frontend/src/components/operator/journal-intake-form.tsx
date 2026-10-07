@@ -93,12 +93,12 @@ export function JournalIntakeForm({ preflightReady }: Props) {
     event.preventDefault();
     if (!preflightReady || submitting) return;
     if (!form.source_locale) {
-      setError("Cần chọn ngôn ngữ nguồn trước khi tạo Journal.");
+      setError("Cần chọn ngôn ngữ nguồn trước khi tạo bài nội dung.");
       return;
     }
     const contentRole = form.content_role;
     if (!contentRole) {
-      setError("Cần chọn rõ Journal này là Pillar hay Cluster.");
+      setError("Cần chọn rõ bài nội dung này là nội dung trụ cột hay cụm nội dung.");
       return;
     }
     if (!requiredLocales.includes(form.source_locale)) {
@@ -114,7 +114,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       return;
     }
     if (coverageRequirements.length > 12) {
-      setError("Tối đa 12 cam kết phạm vi cho một Journal.");
+      setError("Tối đa 12 cam kết phạm vi cho một bài nội dung.");
       return;
     }
     setSubmitting(true);
@@ -145,7 +145,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể tạo Journal từ thông tin hiện tại.",
+          : "Không thể tạo bài nội dung từ thông tin hiện tại.",
       );
     } finally {
       setSubmitting(false);
@@ -156,8 +156,8 @@ export function JournalIntakeForm({ preflightReady }: Props) {
     <form className="operator-panel intake-form" onSubmit={(event) => void submit(event)}>
       <div className="operator-panel-heading">
         <div>
-          <p className="eyebrow">Founder intake</p>
-          <h2>Tạo Journal mới</h2>
+          <p className="eyebrow">Người sáng lập nhập yêu cầu</p>
+          <h2>Tạo bài nội dung mới</h2>
         </div>
         <span className="operator-note">Thông tin biên tập, không phải bằng chứng thị trường.</span>
       </div>
@@ -184,12 +184,12 @@ export function JournalIntakeForm({ preflightReady }: Props) {
               required
               value={form.content_role}
             >
-              <option disabled value="">Chọn Pillar hoặc Cluster</option>
-              <option value="pillar">Pillar — bức tranh lớn</option>
-              <option value="cluster">Cluster — vấn đề hẹp, đi sâu</option>
+              <option disabled value="">Chọn nội dung trụ cột hoặc cụm nội dung</option>
+              <option value="pillar">Nội dung trụ cột — bức tranh lớn</option>
+              <option value="cluster">Cụm nội dung — vấn đề hẹp, đi sâu</option>
             </select>
             <small>
-              Pillar tổng hợp và dẫn sang bài sâu; Cluster giải quyết một vấn đề hẹp hơn.
+              Nội dung trụ cột tổng hợp và dẫn sang bài sâu; cụm nội dung giải quyết một vấn đề hẹp hơn.
             </small>
           </label>
           <label>
@@ -210,7 +210,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
                 onChange={(event) => update("required_vi", event.target.checked)}
                 type="checkbox"
               />
-              VI
+              Tiếng Việt
             </label>
             <label>
               <input
@@ -219,7 +219,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
                 onChange={(event) => update("required_en", event.target.checked)}
                 type="checkbox"
               />
-              EN
+              Tiếng Anh
             </label>
           </div>
         </div>
@@ -274,7 +274,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
               value={form.coverage_requirements}
             />
             <small>
-              Angle phải nói rõ mục nào được giữ hoặc thu hẹp; Outline không được tự làm rơi
+              Góc tiếp cận phải nói rõ mục nào được giữ hoặc thu hẹp; dàn ý không được tự làm rơi
               mục đã giữ.
             </small>
           </label>
@@ -299,7 +299,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             />
           </label>
           <label>
-            <span>Lý do chọn làm Journal</span>
+            <span>Lý do chọn làm bài nội dung</span>
             <input
               onChange={(event) => update("selection_reason", event.target.value)}
               required
@@ -331,7 +331,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             />
           </label>
           <label>
-            <span>Giới hạn / guardrails</span>
+            <span>Giới hạn / rào chắn</span>
             <textarea
               onChange={(event) => update("originality_guardrails", event.target.value)}
               required
@@ -345,7 +345,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       {error && <p className="error">{error}</p>}
       {!preflightReady && (
         <p className="operator-block-note">
-          Chưa thể tạo Journal mới vì preflight chưa READY.
+          Chưa thể tạo bài nội dung mới vì kiểm tra sẵn sàng chưa đạt.
         </p>
       )}
       <div className="form-actions">
@@ -354,7 +354,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
           disabled={!preflightReady || submitting}
           type="submit"
         >
-          {submitting ? "Đang tạo…" : "Tạo Journal"}
+          {submitting ? "Đang tạo…" : "Tạo bài nội dung"}
         </button>
       </div>
     </form>

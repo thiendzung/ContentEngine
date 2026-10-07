@@ -26,6 +26,22 @@ import {
   materializeRevision,
   selectOpportunity,
 } from "../../../lib/api/question-map";
+import {
+  uiDecisionLabel,
+  uiIntentLabel,
+  uiPriorityLabel,
+} from "../../../lib/ui/vi/content";
+import {
+  planningAdmissionLabel,
+  planningAnswerJobLabel,
+  planningAudienceStageLabel,
+  planningContentRoleLabel,
+  planningCoverageLabel,
+  planningQuestionTypeLabel,
+  planningReadinessLabel,
+  planningReasonLabel,
+} from "../../../lib/ui/vi/planning";
+import { uiStatusLabel } from "../../../lib/ui/vi/status";
 import styles from "../../intelligence.module.css";
 import ui from "./question-map.module.css";
 
@@ -39,60 +55,6 @@ function localeLabel(value: string) {
   if (value === "en") return "Tiếng Anh";
   if (value === "vi-vn" || value === "vi-VN") return "Tiếng Việt";
   return value;
-}
-
-function truthLabel(value: string) {
-  const labels: Record<string, string> = {
-    PROPOSED: "Đề xuất",
-    TESTING: "Đang kiểm chứng",
-    SUPPORTED: "Đã có hỗ trợ",
-    REJECTED: "Đã bác bỏ",
-    INSUFFICIENT_EVIDENCE: "Chưa đủ bằng chứng",
-  };
-  return labels[value] ?? value;
-}
-
-function readinessLabel(value: string) {
-  const labels: Record<string, string> = {
-    READY_FOR_HUMAN_SELECTION: "Sẵn sàng để Founder chọn",
-    RESEARCH_REQUIRED: "Cần research thêm",
-    BLOCKED: "Đang bị chặn",
-  };
-  return labels[value] ?? value;
-}
-
-function coverageLabel(value: string) {
-  const labels: Record<string, string> = {
-    ANSWERED: "Đã trả lời",
-    PARTIAL: "Đã có một phần",
-    MISSING: "Đang thiếu",
-    STALE: "Cần refresh",
-    COLLISION: "Có xung đột",
-    INSUFFICIENT_DATA: "Chưa đủ dữ liệu",
-    MIXED: "Hỗn hợp",
-  };
-  return labels[value] ?? value;
-}
-
-function candidateRoleLabel(value: ArchitectureCandidate["role"]) {
-  return value === "pillar" ? "Nội dung trụ cột" : "Cụm nội dung";
-}
-
-function productionActionLabel(value: string) {
-  const labels: Record<string, string> = {
-    CREATE_NEW_CONTENT: "Tạo nội dung mới",
-    REVISE_EXISTING_CONTENT: "Tạo bản cập nhật",
-    REFRESH_EXISTING_CONTENT: "Làm mới nội dung hiện có",
-    RECONCILE_CONTENT: "Hợp nhất nội dung xung đột",
-  };
-  return labels[value] ?? value;
-}
-
-function admissionLabel(value: ProductionAdmission["status"]) {
-  if (value === "ADMITTED") return "Có thể tiếp tục";
-  if (value === "RECONCILIATION_REQUIRED") return "Cần xác nhận hợp nhất";
-  if (isAdmissionStale(value)) return "Dữ liệu đã thay đổi";
-  return "Đang bị chặn";
 }
 
 function badgeClass(value: string) {
@@ -118,10 +80,10 @@ function badgeClass(value: string) {
 function apiErrorMessage(error: unknown) {
   if (error instanceof QuestionMapApiError) {
     return error.code
-      ? `${error.code} (HTTP ${error.status})`
-      : `${error.message} (HTTP ${error.status})`;
+      ? `Yêu cầu bị từ chối (HTTP ${error.status}; mã: ${error.code})`
+      : `Yêu cầu bị từ chối (HTTP ${error.status}): ${error.message}`;
   }
-  return error instanceof Error ? error.message : "unknown_error";
+  return error instanceof Error ? error.message : "Lỗi không xác định";
 }
 
 function normalizedLocale(value: string) {
@@ -180,7 +142,7 @@ function CandidateCard({
       <div className={ui.candidateHeader}>
         <div>
           <p className="eyebrow">
-            {candidateRoleLabel(candidate.role)} · {candidate.question_count} câu hỏi
+            {planningContentRoleLabel(candidate.role)} · {candidate.question_count} câu hỏi
           </p>
           <h3>{candidate.primary_question}</h3>
         </div>
@@ -201,27 +163,27 @@ function CandidateCard({
 
       <div className={ui.candidateMeta}>
         <span className={badgeClass(candidate.coverage_status)}>
-          Coverage · {coverageLabel(candidate.coverage_status)}
+          Độ phủ · {planningCoverageLabel(candidate.coverage_status)}
         </span>
         <span className={badgeClass(candidate.selection_readiness)}>
-          {readinessLabel(candidate.selection_readiness)}
+          {planningReadinessLabel(candidate.selection_readiness)}
         </span>
         <span className={styles.badgeWarn}>
-          {candidate.decision} · {candidate.priority}
+          {uiDecisionLabel(candidate.decision)} · {uiPriorityLabel(candidate.priority)}
         </span>
       </div>
 
       <details className={ui.candidateDetails}>
         <summary>Chi tiết phương án</summary>
         <div className={ui.refList}>
-          <span>Intent · {candidate.intent}</span>
-          <span>Stage · {candidate.audience_stage}</span>
-          <span>Answer job · {candidate.answer_job}</span>
+          <span>Ý định · {uiIntentLabel(candidate.intent)}</span>
+          <span>Giai đoạn · {planningAudienceStageLabel(candidate.audience_stage)}</span>
+          <span>Vai trò trả lời · {planningAnswerJobLabel(candidate.answer_job)}</span>
         </div>
         {candidate.reason_codes.length > 0 ? (
           <ul className={ui.reasonList}>
             {candidate.reason_codes.map((reason) => (
-              <li key={reason}>{reason}</li>
+              <li key={reason}>{planningReasonLabel(reason)}</li>
             ))}
           </ul>
         ) : null}
@@ -229,10 +191,10 @@ function CandidateCard({
         candidate.existing_plan_refs.length > 0 ? (
           <div className={ui.refList}>
             {candidate.existing_content_refs.map((ref) => (
-              <span key={`content:${ref}`}>ContentItem · {ref}</span>
+              <span key={`content:${ref}`}>Nội dung · {ref}</span>
             ))}
             {candidate.existing_plan_refs.map((ref) => (
-              <span key={`plan:${ref}`}>Plan · {ref}</span>
+              <span key={`plan:${ref}`}>Kế hoạch · {ref}</span>
             ))}
           </div>
         ) : null}
@@ -240,14 +202,14 @@ function CandidateCard({
 
       {candidate.role === "cluster" && questions.length > 0 ? (
         <details className={ui.questions}>
-          <summary>Các câu hỏi trong cluster ({questions.length})</summary>
+          <summary>Các câu hỏi trong cụm nội dung ({questions.length})</summary>
           <ul>
             {questions.map((question) => (
               <li key={question.question_key}>
                 {question.text}
                 <span className={ui.muted}>
                   {" "}
-                  · {question.classification.question_type} ·{" "}
+                  · {planningQuestionTypeLabel(question.classification.question_type)} ·{" "}
                   {question.independent_source_count} nguồn độc lập
                 </span>
               </li>
@@ -549,7 +511,7 @@ export default function QuestionMapFounderPage() {
       const message = apiErrorMessage(nextError);
       setError(message);
       setStaleMessage(
-        "Lựa chọn bị backend từ chối. Không tiếp tục bằng dữ liệu cũ; hãy làm mới Bản đồ câu hỏi.",
+        "Lựa chọn bị hệ thống từ chối. Không tiếp tục bằng dữ liệu cũ; hãy làm mới Bản đồ câu hỏi.",
       );
     } finally {
       setSelectionBusy(false);
@@ -648,8 +610,8 @@ export default function QuestionMapFounderPage() {
       setHandoffResult(result);
       setSuccessMessage(
         result.replayed
-          ? "Yêu cầu này đã được xử lý trước đó; backend dùng lại kết quả an toàn."
-          : "Đã tạo bàn giao sản xuất. Không có Writer/Publish nào được tự chạy.",
+          ? "Yêu cầu này đã được xử lý trước đó; hệ thống dùng lại kết quả an toàn."
+          : "Đã tạo bàn giao sản xuất. Không có bước viết hoặc xuất bản nào được tự chạy.",
       );
       await refreshCoverage();
       await refreshPlanning();
@@ -658,7 +620,7 @@ export default function QuestionMapFounderPage() {
       setError(apiErrorMessage(nextError));
       setPreviewValid(false);
       setStaleMessage(
-        "Backend từ chối bàn giao. Kết quả kiểm tra hiện tại không còn hợp lệ; hãy kiểm tra lại trước khi thử lại.",
+        "Hệ thống từ chối bàn giao. Kết quả kiểm tra hiện tại không còn hợp lệ; hãy kiểm tra lại trước khi thử lại.",
       );
     } finally {
       setHandoffBusy(false);
@@ -689,7 +651,7 @@ export default function QuestionMapFounderPage() {
         <p className="eyebrow">Nội dung đã chọn</p>
         <p className={ui.opportunityQuestion}>{opportunity.question}</p>
         <p className={ui.muted}>
-          {opportunity.decision} · {opportunity.priority} · {localeLabel(opportunity.locale)}
+          {uiDecisionLabel(opportunity.decision)} · {uiPriorityLabel(opportunity.priority)} · {localeLabel(opportunity.locale)}
         </p>
         {opportunity.existing_content_refs.length > 0 ? (
           <p className={ui.muted}>
@@ -716,11 +678,11 @@ export default function QuestionMapFounderPage() {
     <main className={styles.page} aria-busy={loading || planningLoading}>
       <header className={styles.header}>
         <div>
-          <p className="eyebrow">Bản đồ câu hỏi · Buồng quyết định</p>
+          <p className="eyebrow">Bản đồ câu hỏi · Bảng quyết định</p>
           <h1>Chọn nội dung để đưa vào sản xuất</h1>
           <p className="intro">
             Chọn đúng vấn đề, chọn phương án nội dung, rồi xác nhận bước sản xuất.
-            Backend vẫn là nơi quyết định trạng thái và điều kiện an toàn.
+            Hệ thống vẫn là nơi quyết định trạng thái và điều kiện an toàn.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -740,7 +702,7 @@ export default function QuestionMapFounderPage() {
 
       <div className={styles.notice}>
         <strong>Ranh giới bằng chứng:</strong> dữ liệu tìm kiếm và Bản đồ câu hỏi
-        chỉ hỗ trợ quyết định hệ nội dung. Chúng không thay thế bằng chứng factual
+        chỉ hỗ trợ quyết định hệ nội dung. Chúng không thay thế bằng chứng thực tế
         dùng để viết bài.
       </div>
 
@@ -786,7 +748,7 @@ export default function QuestionMapFounderPage() {
               >
                 {coverage.needs.map((lane) => (
                   <option key={lane.need.id} value={lane.need.id}>
-                    {lane.need.statement} · {truthLabel(lane.need.status)}
+                    {lane.need.statement} · {uiStatusLabel(lane.need.status)}
                   </option>
                 ))}
               </select>
@@ -869,7 +831,7 @@ export default function QuestionMapFounderPage() {
             <div className={ui.candidateColumn}>
               {!planningCoherent ? (
                 <div className={ui.warning}>
-                  Dữ liệu kiến trúc và kế hoạch không còn cùng snapshot. Lựa chọn
+                  Dữ liệu kiến trúc và kế hoạch không còn cùng ảnh chụp. Lựa chọn
                   bị khóa cho tới khi làm mới.
                 </div>
               ) : null}
@@ -898,7 +860,7 @@ export default function QuestionMapFounderPage() {
                   <div className={styles.badges}>
                     <span className={styles.badge}>{localeLabel(locale)}</span>
                     <span className={badgeClass(architecture.need.status)}>
-                      {truthLabel(architecture.need.status)}
+                      {uiStatusLabel(architecture.need.status)}
                     </span>
                   </div>
                 </div>
@@ -979,20 +941,20 @@ export default function QuestionMapFounderPage() {
               </section>
 
               <details className={ui.planningDetails}>
-                <summary>Số liệu và snapshot lập kế hoạch</summary>
+                <summary>Số liệu và ảnh chụp lập kế hoạch</summary>
                 <div className={ui.planningDetailsGrid}>
                   <div>
-                    <span>Search signals</span>
+                    <span>Tín hiệu tìm kiếm</span>
                     <strong>{questionMap.counts.search_signals}</strong>
                   </div>
                   <div>
-                    <span>Pillar candidates</span>
+                    <span>Ứng viên nội dung trụ cột</span>
                     <strong>{architecture.counts.pillar_candidates}</strong>
                   </div>
                 </div>
-                <p className={ui.hash}>Question Map · {questionMap.snapshot_hash}</p>
-                <p className={ui.hash}>Architecture · {architecture.snapshot_hash}</p>
-                <p className={ui.hash}>Planner · {planner.snapshot_hash}</p>
+                <p className={ui.hash}>Bản đồ câu hỏi · {questionMap.snapshot_hash}</p>
+                <p className={ui.hash}>Kiến trúc nội dung · {architecture.snapshot_hash}</p>
+                <p className={ui.hash}>Kế hoạch · {planner.snapshot_hash}</p>
               </details>
             </div>
 
@@ -1002,7 +964,7 @@ export default function QuestionMapFounderPage() {
                 <p className="eyebrow">Quyết định</p>
                 <h2>3 bước để tiếp tục</h2>
                 <p>
-                  Chỉ các hành động được backend cho phép mới có thể hoàn tất.
+                  Chỉ các hành động được hệ thống cho phép mới có thể hoàn tất.
                 </p>
               </div>
 
@@ -1025,7 +987,7 @@ export default function QuestionMapFounderPage() {
                     >
                       {coverage.needs.map((lane) => (
                         <option key={lane.need.id} value={lane.need.id}>
-                          {lane.need.statement} · {truthLabel(lane.need.status)}
+                          {lane.need.statement} · {uiStatusLabel(lane.need.status)}
                         </option>
                       ))}
                     </select>
@@ -1050,9 +1012,9 @@ export default function QuestionMapFounderPage() {
 
                   <div className={ui.truthSummary}>
                     <span>Độ chắc hiểu biết khách hàng</span>
-                    <strong>{truthLabel(planner.customer_truth.status)}</strong>
+                    <strong>{uiStatusLabel(planner.customer_truth.status)}</strong>
                     <small>
-                      Need v{planner.customer_truth.need_version}. Trạng thái này
+                      Nhu cầu v{planner.customer_truth.need_version}. Trạng thái này
                       không tự cấp quyền viết bài.
                     </small>
                   </div>
@@ -1084,14 +1046,14 @@ export default function QuestionMapFounderPage() {
                   {selectedCandidate ? (
                     <>
                       <div className={ui.selectedCandidateSummary}>
-                        <span>{candidateRoleLabel(selectedCandidate.role)}</span>
+                        <span>{planningContentRoleLabel(selectedCandidate.role)}</span>
                         <strong>{selectedCandidate.primary_question}</strong>
                         <div className={ui.inlineBadges}>
                           <span className={badgeClass(selectedCandidate.selection_readiness)}>
-                            {readinessLabel(selectedCandidate.selection_readiness)}
+                            {planningReadinessLabel(selectedCandidate.selection_readiness)}
                           </span>
                           <span className={styles.badgeWarn}>
-                            {selectedCandidate.decision} · {selectedCandidate.priority}
+                            {uiDecisionLabel(selectedCandidate.decision)} · {uiPriorityLabel(selectedCandidate.priority)}
                           </span>
                         </div>
                       </div>
@@ -1126,8 +1088,8 @@ export default function QuestionMapFounderPage() {
                         />
                       </label>
                       <p className={ui.muted}>
-                        {requirements.length}/12 yêu cầu. Backend sẽ xác nhận lại
-                        snapshot trước khi lưu lựa chọn.
+                        {requirements.length}/12 yêu cầu. Hệ thống sẽ xác nhận lại
+                        ảnh chụp trước khi lưu lựa chọn.
                       </p>
                       <button
                         type="button"
@@ -1139,7 +1101,7 @@ export default function QuestionMapFounderPage() {
                       </button>
                       {!selectedCandidate.selectable ? (
                         <span className={styles.badgeNegative}>
-                          Backend đánh dấu phương án này không thể chọn
+                          Hệ thống đánh dấu phương án này không thể chọn
                         </span>
                       ) : null}
                     </>
@@ -1187,11 +1149,11 @@ export default function QuestionMapFounderPage() {
                     <>
                       <div className={ui.productionStatus}>
                         <span className={badgeClass(admission.status)}>
-                          {admissionLabel(admission.status)}
+                          {planningAdmissionLabel(admission.status)}
                         </span>
-                        <h3>{productionActionLabel(route.route)}</h3>
+                        <h3>{uiDecisionLabel(route.route)}</h3>
                         <p>
-                          Backend đã đọc lại lựa chọn và xác định hướng xử lý hiện
+                          Hệ thống đã đọc lại lựa chọn và xác định hướng xử lý hiện
                           tại. Nếu dữ liệu thay đổi, thao tác sẽ bị khóa.
                         </p>
                       </div>
@@ -1201,8 +1163,8 @@ export default function QuestionMapFounderPage() {
                         <div className={ui.mergeConfirm}>
                           <strong>Cần xác nhận hợp nhất riêng</strong>
                           <p>
-                            Chỉ tạo kế hoạch/receipt hợp nhất. Không xóa bài,
-                            redirect hoặc publish.
+                            Chỉ tạo kế hoạch/biên nhận hợp nhất. Không xóa bài,
+                            chuyển hướng hoặc xuất bản.
                           </p>
                           <label className={ui.field}>
                             <span>Nội dung giữ làm bản chính</span>
@@ -1244,7 +1206,7 @@ export default function QuestionMapFounderPage() {
                             />
                             <span>
                               Tôi xác nhận đúng nhóm nội dung xung đột và bản giữ
-                              lại. Backend chỉ tạo phạm vi reconciliation.
+                              lại. Hệ thống chỉ tạo phạm vi đối soát.
                             </span>
                           </label>
                         </div>
@@ -1252,7 +1214,7 @@ export default function QuestionMapFounderPage() {
 
                       {isAdmissionStale(admission.status) ? (
                         <div className={ui.warning}>
-                          Dữ liệu đã thay đổi. Không thể tiếp tục bằng preview cũ;
+                          Dữ liệu đã thay đổi. Không thể tiếp tục bằng kết quả kiểm tra cũ;
                           hãy kiểm tra lại trạng thái.
                         </div>
                       ) : null}
@@ -1288,32 +1250,32 @@ export default function QuestionMapFounderPage() {
                         <summary>Chi tiết kỹ thuật</summary>
                         <div className={ui.routeGrid}>
                           <div className={ui.routeCell}>
-                            <span>Decision / route</span>
+                            <span>Quyết định / hướng xử lý</span>
                             <strong>
-                              {route.decision} → {route.route}
+                              {uiDecisionLabel(route.decision)} → {uiDecisionLabel(route.route)}
                             </strong>
                           </div>
                           <div className={ui.routeCell}>
-                            <span>Admission</span>
-                            <strong>{admission.status}</strong>
+                            <span>Điều kiện vào sản xuất</span>
+                            <strong>{uiStatusLabel(admission.status)}</strong>
                           </div>
                           <div className={ui.routeCell}>
-                            <span>Route snapshot</span>
+                            <span>Ảnh chụp hướng xử lý</span>
                             <strong className={ui.hash}>{route.snapshot_hash}</strong>
                           </div>
                           <div className={ui.routeCell}>
-                            <span>Admission snapshot</span>
+                            <span>Ảnh chụp điều kiện vào sản xuất</span>
                             <strong className={ui.hash}>{admission.snapshot_hash}</strong>
                           </div>
                         </div>
 
                         <div className={ui.refList}>
                           {route.reason_codes.map((reason) => (
-                            <span key={`route:${reason}`}>Route · {reason}</span>
+                            <span key={`route:${reason}`}>Hướng xử lý · {reason}</span>
                           ))}
                           {admission.reason_codes.map((reason) => (
                             <span key={`admission:${reason}`}>
-                              Admission · {reason}
+                              Điều kiện · {reason}
                             </span>
                           ))}
                         </div>
@@ -1326,14 +1288,15 @@ export default function QuestionMapFounderPage() {
                                   <strong>{target.canonical_key}</strong>
                                 </p>
                                 <p>
-                                  {target.content_role} · {target.primary_intent} ·{" "}
-                                  {target.item_status}
+                                  {planningContentRoleLabel(target.content_role)} ·{" "}
+                                  {uiIntentLabel(target.primary_intent)} ·{" "}
+                                  {uiStatusLabel(target.item_status)}
                                 </p>
                                 <p className={ui.muted}>
-                                  Version:{" "}
+                                  Phiên bản:{" "}
                                   {target.current_content_version_no === null
-                                    ? "missing"
-                                    : `v${target.current_content_version_no} · ${target.current_content_version_status}`}
+                                    ? "thiếu"
+                                    : `v${target.current_content_version_no} · ${uiStatusLabel(target.current_content_version_status ?? "")}`}
                                 </p>
                                 <p className={ui.hash}>{target.content_item_id}</p>
                               </article>
@@ -1349,19 +1312,19 @@ export default function QuestionMapFounderPage() {
                       <strong>Đã tạo bàn giao sản xuất</strong>
                       <span>
                         {handoffResult.replayed
-                          ? "Backend dùng lại receipt hợp lệ."
-                          : "Đã tạo receipt mới."}
+                          ? "Hệ thống dùng lại biên nhận hợp lệ."
+                          : "Đã tạo biên nhận mới."}
                       </span>
                       <details className={ui.technicalDetails}>
-                        <summary>Receipt kỹ thuật</summary>
-                        <p className={ui.hash}>Command · {handoffResult.command_id}</p>
+                        <summary>Biên nhận kỹ thuật</summary>
+                        <p className={ui.hash}>Lệnh · {handoffResult.command_id}</p>
                       </details>
                     </div>
                   ) : null}
 
                   <p className={ui.safetyNote}>
-                    Màn hình này không có Start, Writer hoặc Publish. Bước này chỉ
-                    tạo bàn giao mà backend cho phép.
+                    Màn hình này không có thao tác bắt đầu, viết hoặc xuất bản. Bước này chỉ
+                    tạo bàn giao mà hệ thống cho phép.
                   </p>
                 </div>
               </section>

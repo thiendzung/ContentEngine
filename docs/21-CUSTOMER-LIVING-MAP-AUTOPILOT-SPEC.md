@@ -402,6 +402,13 @@ năng sử dụng, chưa phải mục tiêu tối ưu chính.
 Tên route, API, model và enum kỹ thuật không đổi chỉ vì Việt hóa lớp hiển thị. UI Founder ưu tiên
 tiếng Việt; thuật ngữ kỹ thuật chỉ hiển thị khi cần để kiểm tra/audit.
 
+Quy ước Việt hóa UI Founder:
+- dịch ở lớp render/presentation; không đổi giá trị transport/persistence;
+- tiêu đề trang, section, action, badge, trạng thái, lỗi và recovery copy bình thường phải dùng tiếng Việt;
+- status/decision/intent enum từ backend được map khi hiển thị và giữ nguyên giá trị gốc trong code/API;
+- ID/hash/provider/model/backend code được giữ nguyên khi cần audit; nhãn bao quanh ưu tiên tiếng Việt;
+- không dùng Việt hóa như lý do để frontend suy ra workflow truth hoặc đổi contract backend.
+
 Question Map Founder UI dùng decision-cockpit contract:
 - desktop: planning/candidate context ở trái, decision panel sticky ở phải;
 - flow hiển thị theo ba bước: chọn vấn đề -> chọn nội dung -> xác nhận đưa vào sản xuất;

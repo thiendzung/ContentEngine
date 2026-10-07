@@ -13,11 +13,11 @@ export default function OperatorHomePage() {
     <main className="operator-page">
       <header className="operator-hero">
         <div>
-          <p className="eyebrow">ContentEngine · Điều hành Journal</p>
-          <h1>Journal Operator</h1>
+          <p className="eyebrow">ContentEngine · Điều hành bài nội dung</p>
+          <h1>Điều hành bài nội dung</h1>
           <p className="intro">
-            Tạo bài và vận hành một Journal liên tục từ Start tới duyệt nội dung cuối.
-            Backend giữ quyền quyết định stage, provider và model; giao diện chỉ gửi ý định an toàn.
+            Tạo bài và vận hành một bài nội dung liên tục từ lúc bắt đầu tới duyệt nội dung cuối.
+            Hệ thống giữ quyền quyết định giai đoạn, nhà cung cấp và mô hình; giao diện chỉ gửi ý định an toàn.
           </p>
         </div>
         <Link
@@ -25,7 +25,7 @@ export default function OperatorHomePage() {
           className={ready ? "operator-button primary link-button" : "operator-button primary link-button disabled"}
           href={ready ? "/operator/journal/new" : "/operator"}
         >
-          Tạo Journal mới
+          Tạo bài nội dung mới
         </Link>
       </header>
 
@@ -34,20 +34,20 @@ export default function OperatorHomePage() {
       <section className="operator-home-grid">
         <article className="operator-panel home-card">
           <p className="eyebrow">Luồng vận hành</p>
-          <h2>Từ brief tới ContentVersion</h2>
+          <h2>Từ yêu cầu biên tập tới phiên bản nội dung</h2>
           <ol className="operator-steps">
-            <li><span>1</span><div><strong>Founder intake</strong><small>Ghi nhu cầu, câu hỏi và tư liệu MOTGU.</small></div></li>
-            <li><span>2</span><div><strong>Angle & Outline</strong><small>Duyệt đúng immutable snapshot ở từng cổng người dùng.</small></div></li>
-            <li><span>3</span><div><strong>VI / EN & Quality</strong><small>Theo dõi Writer độc lập, Audit và Source-copy từ trạng thái bền vững.</small></div></li>
-            <li><span>4</span><div><strong>Final review</strong><small>Duyệt exact final theo từng locale; tạo ContentVersion nhưng không publish.</small></div></li>
+            <li><span>1</span><div><strong>Người sáng lập nhập yêu cầu</strong><small>Ghi nhu cầu, câu hỏi và tư liệu MOTGU.</small></div></li>
+            <li><span>2</span><div><strong>Góc tiếp cận & dàn ý</strong><small>Duyệt đúng ảnh chụp bất biến ở từng cổng người dùng.</small></div></li>
+            <li><span>3</span><div><strong>Tiếng Việt / Anh & chất lượng</strong><small>Theo dõi luồng viết độc lập, kiểm tra khẳng định và trùng nguồn từ trạng thái bền vững.</small></div></li>
+            <li><span>4</span><div><strong>Duyệt cuối</strong><small>Duyệt đúng bản cuối theo từng ngôn ngữ; tạo phiên bản nội dung nhưng không xuất bản.</small></div></li>
           </ol>
         </article>
 
         <article className="operator-panel home-card">
           <p className="eyebrow">Giới hạn F6-MINI</p>
-          <h2>Hoàn tất nhưng không publish</h2>
+          <h2>Hoàn tất nhưng chưa xuất bản</h2>
           <p>
-            Normal path dừng ở COMPLETE / Approved / Not published. Yêu cầu sửa nhiều vòng và quyền publish là các gate riêng.
+            Luồng bình thường dừng ở Hoàn thành / Đã duyệt / Chưa xuất bản. Yêu cầu sửa nhiều vòng và quyền xuất bản là các cổng riêng.
           </p>
           <Link className="operator-link" href="/production">Mở bảng sản xuất</Link>
         </article>

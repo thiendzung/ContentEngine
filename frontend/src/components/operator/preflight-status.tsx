@@ -27,7 +27,7 @@ export function PreflightStatus({ onReadyChange }: Props) {
     } catch (requestError) {
       setPreflight(null);
       setError(
-        requestError instanceof Error ? requestError.message : "Không tải được preflight.",
+        requestError instanceof Error ? requestError.message : "Không tải được kiểm tra sẵn sàng.",
       );
       onReadyChange?.(false);
     } finally {
@@ -49,7 +49,7 @@ export function PreflightStatus({ onReadyChange }: Props) {
         if (cancelled) return;
         setPreflight(null);
         setError(
-          requestError instanceof Error ? requestError.message : "Không tải được preflight.",
+          requestError instanceof Error ? requestError.message : "Không tải được kiểm tra sẵn sàng.",
         );
         setLoading(false);
         onReadyChange?.(false);
@@ -63,7 +63,7 @@ export function PreflightStatus({ onReadyChange }: Props) {
     <section className="operator-panel operator-preflight" aria-live="polite">
       <div className="operator-panel-heading">
         <div>
-          <p className="eyebrow">Preflight</p>
+          <p className="eyebrow">Kiểm tra sẵn sàng</p>
           <h2>Trạng thái hệ thống</h2>
         </div>
         <button className="operator-button secondary" onClick={() => void refresh()} type="button">
@@ -77,7 +77,7 @@ export function PreflightStatus({ onReadyChange }: Props) {
       {preflight && (
         <>
           <div className={`operator-readiness ${preflight.status.toLowerCase()}`}>
-            <strong>{preflight.status === "READY" ? "READY" : "BLOCKED"}</strong>
+            <strong>{preflight.status === "READY" ? "Sẵn sàng" : "Bị chặn"}</strong>
             <span>
               {preflight.status === "READY"
                 ? "Hệ thống sẵn sàng nhận tác vụ mới."

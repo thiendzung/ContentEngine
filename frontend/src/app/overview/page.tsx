@@ -13,6 +13,8 @@ import {
   type DailyDigest,
   loadDailyDigest,
 } from "../../lib/api/ux-closeout";
+import { needsMeTypeLabel } from "../../lib/ui/vi/core";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "./control-center.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -42,17 +44,6 @@ function todayForZone(timezone: string): string {
   const month = parts.find((part) => part.type === "month")?.value ?? "01";
   const day = parts.find((part) => part.type === "day")?.value ?? "01";
   return `${year}-${month}-${day}`;
-}
-
-function typeLabel(type: NeedsMeItem["type"]): string {
-  const labels: Record<NeedsMeItem["type"], string> = {
-    content_approval: "Duyệt nội dung",
-    publish_authorization: "Cho phép xuất bản",
-    policy_gate: "Cổng chính sách",
-    learning_candidate_review: "Duyệt learning candidate",
-    learning_resolution: "Xử lý learning validation",
-  };
-  return labels[type];
 }
 
 function statusClass(status: string): string {
@@ -90,23 +81,23 @@ function issuePresentation(code: string): {
 } {
   if (code.includes("pending_approval")) {
     return {
-      title: "Cổng duyệt không còn khớp trạng thái canonical hiện tại.",
+      title: "Cổng duyệt không còn khớp trạng thái chuẩn hiện tại.",
       recovery:
-        "Không ghi quyết định từ Overview. Kiểm tra run/case gốc và chỉ xử lý qua màn hình canonical khi có destination hợp lệ.",
+        "Không ghi quyết định từ Tổng quan. Kiểm tra lượt chạy/hồ sơ gốc và chỉ xử lý qua màn hình chuẩn khi có đích hợp lệ.",
     };
   }
   if (code.includes("operator_")) {
     return {
-      title: "Journal Operator đang bị chặn hoặc binding không nhất quán.",
+      title: "Điều hành bài nội dung đang bị chặn hoặc liên kết dữ liệu không nhất quán.",
       recovery:
-        "Mở Production Board hoặc Journal Operator để kiểm tra case gốc; Overview không tự sửa Operator state.",
+        "Mở Bảng sản xuất hoặc Điều hành bài nội dung để kiểm tra hồ sơ gốc; Tổng quan không tự sửa trạng thái điều hành.",
     };
   }
   if (code.includes("canonical_gate_missing")) {
     return {
-      title: "Production state đang chờ người nhưng thiếu binding duyệt canonical.",
+      title: "Trạng thái sản xuất đang chờ người nhưng thiếu liên kết duyệt chuẩn.",
       recovery:
-        "Giữ fail-closed và kiểm tra durable approval/checkpoint trước khi tiếp tục.",
+        "Giữ trạng thái chặn an toàn và kiểm tra phê duyệt/điểm kiểm tra đã lưu bền vững trước khi tiếp tục.",
     };
   }
   if (
@@ -115,15 +106,15 @@ function issuePresentation(code: string): {
     code.includes("validation_")
   ) {
     return {
-      title: "Learning state chưa đủ nhất quán để mở human action.",
+      title: "Trạng thái học từ dữ liệu chưa đủ nhất quán để mở hành động của người dùng.",
       recovery:
-        "Không promote/rollback từ Overview. Giữ fail-closed cho tới khi canonical Learning state được xử lý.",
+        "Không đưa vào áp dụng/hoàn tác từ Tổng quan. Giữ chặn an toàn cho tới khi trạng thái học từ dữ liệu chuẩn được xử lý.",
     };
   }
   return {
-    title: "Canonical state đang bị chặn hoặc không nhất quán.",
+    title: "Trạng thái chuẩn đang bị chặn hoặc không nhất quán.",
     recovery:
-      "Không suy diễn cách sửa từ Overview. Kiểm tra entity và backend code trong chi tiết kỹ thuật trước khi hành động.",
+      "Không suy diễn cách sửa từ Tổng quan. Kiểm tra đối tượng và mã hệ thống trong chi tiết kỹ thuật trước khi hành động.",
   };
 }
 
@@ -154,16 +145,16 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
     <article className={styles.card}>
       <div className={styles.cardTop}>
         <div>
-          <p className="eyebrow">{typeLabel(item.type)}</p>
+          <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
           <h3>{item.reason}</h3>
         </div>
         <span className={statusClass(item.canonical_status)}>
-          {item.canonical_status}
+          {uiStatusLabel(item.canonical_status)}
         </span>
       </div>
 
       <p className={styles.meta}>
-        Cập nhật {formatDate(item.updated_at)} · entity{" "}
+        Cập nhật {formatDate(item.updated_at)} · đối tượng{" "}
         {item.destination.entity_id}
       </p>
 
@@ -171,33 +162,33 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
         <Link className={styles.needsLink} href={item.destination.href}>
           {item.type === "learning_candidate_review" ||
           item.type === "learning_resolution"
-            ? "Mở Learning để xem bằng chứng"
+            ? "Mở Học từ dữ liệu để xem bằng chứng"
             : "Mở đúng màn hình xử lý"}
         </Link>
       ) : (
         <p className={styles.noDestination}>
-          Chưa có màn hình hành động riêng trong contract hiện tại. Không tạo
-          deep-link giả.
+          Chưa có màn hình hành động riêng trong quy ước hiện tại. Không tạo
+          liên kết giả.
         </p>
       )}
 
       <details className={styles.disclosure}>
         <summary>Vì sao việc này xuất hiện?</summary>
         <p className={styles.meta}>
-          Action ref: {item.destination.action_ref}
+          Tham chiếu hành động: {item.destination.action_ref}
         </p>
         <div className={styles.refs}>
           {item.why_refs.length > 0 ? (
-            item.why_refs.map((ref) => <span key={ref}>Why · {ref}</span>)
+            item.why_refs.map((ref) => <span key={ref}>Lý do · {ref}</span>)
           ) : (
-            <span>Không có why ref.</span>
+            <span>Không có tham chiếu lý do.</span>
           )}
           {item.evidence_refs.length > 0 ? (
             item.evidence_refs.map((ref) => (
-              <span key={ref}>Evidence · {ref}</span>
+              <span key={ref}>Bằng chứng · {ref}</span>
             ))
           ) : (
-            <span>Không có evidence ref.</span>
+            <span>Không có tham chiếu bằng chứng.</span>
           )}
         </div>
       </details>
@@ -227,7 +218,7 @@ export default function OverviewPage() {
           setError(
             nextError instanceof Error
               ? nextError.message
-              : "Không thể tải Control Center.",
+              : "Không thể tải Trung tâm điều hành.",
           );
         }
       } finally {
@@ -242,7 +233,7 @@ export default function OverviewPage() {
           setDigestError(
             nextError instanceof Error
               ? nextError.message
-              : "Không thể tải Daily Digest.",
+              : "Không thể tải Nhật ký thay đổi.",
           );
         }
       }
@@ -269,10 +260,10 @@ export default function OverviewPage() {
       const message =
         nextError instanceof Error
           ? nextError.message
-          : "Không thể làm mới Control Center.";
+          : "Không thể làm mới Trung tâm điều hành.";
       if (state) {
         setStale(
-          `Lần làm mới thất bại (${message}). Đang giữ snapshot hiển thị thành công gần nhất.`,
+          `Lần làm mới thất bại (${message}). Đang giữ ảnh chụp hiển thị thành công gần nhất.`,
         );
       } else {
         setError(message);
@@ -287,10 +278,10 @@ export default function OverviewPage() {
       const message =
         nextError instanceof Error
           ? nextError.message
-          : "Không thể làm mới Daily Digest.";
+          : "Không thể làm mới Nhật ký thay đổi.";
       if (digest) {
         setDigestStale(
-          `Daily Digest làm mới thất bại (${message}). Đang giữ digest gần nhất.`,
+          `Nhật ký thay đổi làm mới thất bại (${message}). Đang giữ nhật ký gần nhất.`,
         );
       } else {
         setDigestError(message);
@@ -304,31 +295,31 @@ export default function OverviewPage() {
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div className={styles.headerCopy}>
-          <p className="eyebrow">ContentEngine · Control Center</p>
+          <p className="eyebrow">ContentEngine · Trung tâm điều hành</p>
           <h1>Tổng quan</h1>
           <p className="intro">
-            Làm việc theo exception: ưu tiên những việc hệ thống thực sự cần
-            Founder xử lý, sau đó mới xem telemetry vận hành.
+            Ưu tiên các ngoại lệ thực sự cần Người sáng lập xử lý, sau đó mới xem
+            dữ liệu vận hành.
           </p>
         </div>
 
-        <aside className={styles.commandPanel} aria-label="Control Center status">
+        <aside className={styles.commandPanel} aria-label="Trạng thái Trung tâm điều hành">
           <div className={styles.commandMeta}>
             <div>
-              <span>Read model</span>
+              <span>Dữ liệu đọc</span>
               <strong>{state ? "Đã tải" : loading ? "Đang tải" : "Chưa có"}</strong>
             </div>
             <div>
-              <span>Timezone</span>
+              <span>Múi giờ</span>
               <strong>{state?.summary.timezone ?? "đang xác định"}</strong>
             </div>
             <div>
-              <span>Controlled Autopilot</span>
-              <strong>Chưa có canonical on/off</strong>
+              <span>Tự động hóa có kiểm soát</span>
+              <strong>Chưa có trạng thái bật/tắt chuẩn</strong>
             </div>
           </div>
           <p className={styles.commandNote}>
-            Overview không tự suy diễn trạng thái Autopilot bật/tắt.
+            Tổng quan không tự suy diễn trạng thái tự động hóa bật/tắt.
           </p>
           <div className={styles.headerActions}>
             <button
@@ -340,7 +331,7 @@ export default function OverviewPage() {
               {loading ? "Đang tải…" : "Làm mới"}
             </button>
             <Link className={styles.linkButton} href="/production">
-              Production nâng cao
+              Sản xuất nâng cao
             </Link>
           </div>
         </aside>
@@ -348,13 +339,13 @@ export default function OverviewPage() {
 
       {loading && !state ? (
         <div className={styles.notice} role="status" aria-live="polite">
-          Đang tải Control Center…
+          Đang tải Trung tâm điều hành…
         </div>
       ) : null}
 
       {error ? (
         <div className={styles.error} role="alert">
-          Không thể đọc Control Center: {error}
+          Không thể đọc Trung tâm điều hành: {error}
         </div>
       ) : null}
 
@@ -369,10 +360,10 @@ export default function OverviewPage() {
           <section className={`${styles.section} ${styles.prioritySection}`}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Needs Me</p>
+                <p className="eyebrow">Việc cần tôi xử lý</p>
                 <h2>Cần tôi xử lý</h2>
                 <p>
-                  Chỉ các human gate/action do canonical Control Center trả về
+                  Chỉ các cổng duyệt và hành động do Trung tâm điều hành chuẩn trả về
                   mới xuất hiện ở đây.
                 </p>
               </div>
@@ -383,7 +374,7 @@ export default function OverviewPage() {
 
             {state.needsMe.length === 0 ? (
               <div className={styles.empty} role="status">
-                Hiện không có human gate/action nào cần Founder xử lý.
+                Hiện không có cổng duyệt hoặc hành động nào cần Người sáng lập xử lý.
               </div>
             ) : (
               <div className={styles.needsList}>
@@ -397,11 +388,11 @@ export default function OverviewPage() {
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Daily Digest</p>
+                <p className="eyebrow">Nhật ký thay đổi trong ngày</p>
                 <h2>Hôm nay có gì thay đổi?</h2>
                 <p>
-                  Các số dưới đây là durable events trong ngày theo timezone hiện tại.
-                  Coverage không được suy thành lịch sử thay đổi nếu backend không có event tương ứng.
+                  Các số dưới đây là sự kiện đã lưu bền vững trong ngày theo múi giờ hiện tại.
+                  Độ phủ nội dung không được suy thành lịch sử thay đổi nếu backend không có sự kiện tương ứng.
                 </p>
               </div>
               <Link className={styles.linkButton} href="/daily-digest">
@@ -411,7 +402,7 @@ export default function OverviewPage() {
 
             {digestError ? (
               <div className={styles.error} role="alert">
-                Daily Digest chưa khả dụng: {digestError}. Control Center vẫn giữ nguyên.
+                Nhật ký thay đổi chưa khả dụng: {digestError}. Trung tâm điều hành vẫn giữ nguyên.
               </div>
             ) : null}
             {digestStale ? (
@@ -429,7 +420,7 @@ export default function OverviewPage() {
                     ["Sản xuất", digest.event_counts.production ?? 0],
                     ["Xuất bản", digest.event_counts.publication ?? 0],
                     ["Đo lường", digest.event_counts.measurement ?? 0],
-                    ["Learning", digest.event_counts.learning ?? 0],
+                    ["Học từ dữ liệu", digest.event_counts.learning ?? 0],
                   ].map(([label, value]) => (
                     <div className={styles.countCard} key={String(label)}>
                       <span>{label}</span>
@@ -438,13 +429,13 @@ export default function OverviewPage() {
                   ))}
                 </div>
                 <p className={styles.meta}>
-                  Window {formatDate(digest.window_start)} →{" "}
-                  {formatDate(digest.window_end)} · measurement không phải causal proof.
+                  Khoảng thời gian {formatDate(digest.window_start)} →{" "}
+                  {formatDate(digest.window_end)} · đo lường không phải bằng chứng nhân quả.
                 </p>
               </>
             ) : digestError ? null : (
               <div className={styles.notice} role="status" aria-live="polite">
-                Đang tải Daily Digest…
+                Đang tải Nhật ký thay đổi…
               </div>
             )}
           </section>
@@ -452,11 +443,11 @@ export default function OverviewPage() {
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Operational telemetry</p>
-                <h2>Trạng thái vận hành canonical</h2>
+                <p className="eyebrow">Dữ liệu vận hành</p>
+                <h2>Trạng thái vận hành chuẩn</h2>
               </div>
               <span className={styles.meta}>
-                As of {formatDate(state.summary.as_of)}
+                Tại thời điểm {formatDate(state.summary.as_of)}
               </span>
             </div>
 
@@ -487,7 +478,7 @@ export default function OverviewPage() {
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Fail-closed issues</p>
+                <p className="eyebrow">Các điểm chặn an toàn</p>
                 <h2>Điểm đang bị chặn hoặc không nhất quán</h2>
               </div>
               <span
@@ -503,7 +494,7 @@ export default function OverviewPage() {
 
             {state.summary.issues.length === 0 ? (
               <div className={styles.empty}>
-                Control Center không báo issue fail-closed tại thời điểm đọc.
+                Trung tâm điều hành không báo điểm chặn an toàn tại thời điểm đọc.
               </div>
             ) : (
               <div className={styles.issueList}>
@@ -519,10 +510,10 @@ export default function OverviewPage() {
                       <details className={styles.disclosure}>
                         <summary>Chi tiết kỹ thuật</summary>
                         <div className={styles.refs}>
-                          <span>Backend message · {issue.message}</span>
-                          <span>Code · {issue.code}</span>
-                          <span>Entity type · {issue.entity_type}</span>
-                          <span>Entity id · {issue.entity_id}</span>
+                          <span>Thông báo hệ thống · {issue.message}</span>
+                          <span>Mã · {issue.code}</span>
+                          <span>Loại đối tượng · {issue.entity_type}</span>
+                          <span>Mã đối tượng · {issue.entity_id}</span>
                         </div>
                       </details>
                     </article>

@@ -7,6 +7,8 @@ import {
   loadNeedsMe,
   type NeedsMeItem,
 } from "../../lib/api/control-center";
+import { needsMeTypeLabel } from "../../lib/ui/vi/core";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -18,17 +20,6 @@ function browserTimezone(): string {
   } catch {
     return FALLBACK_TIMEZONE;
   }
-}
-
-function typeLabel(type: NeedsMeItem["type"]): string {
-  const labels: Record<NeedsMeItem["type"], string> = {
-    content_approval: "Duyệt nội dung",
-    publish_authorization: "Cho phép xuất bản",
-    policy_gate: "Cổng chính sách",
-    learning_candidate_review: "Duyệt Learning Candidate",
-    learning_resolution: "Xử lý Learning Validation",
-  };
-  return labels[type];
 }
 
 function formatDate(value: string): string {
@@ -58,7 +49,7 @@ export default function NeedsMePage() {
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(nextError instanceof Error ? nextError.message : "Không thể tải Needs Me.");
+          setError(nextError instanceof Error ? nextError.message : "Không thể tải danh sách việc cần xử lý.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -94,11 +85,11 @@ export default function NeedsMePage() {
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div>
-          <p className="eyebrow">ContentEngine · Needs Me</p>
+          <p className="eyebrow">ContentEngine · Việc cần tôi xử lý</p>
           <h1>Cần tôi xử lý</h1>
           <p className="intro">
-            Hàng đợi human gate/action do canonical Control Center trả về. Trang này không tự
-            suy diễn thêm việc và không thực hiện mutation.
+            Hàng đợi cổng duyệt và hành động do Trung tâm điều hành chuẩn trả về. Trang này
+            không tự suy diễn thêm việc và không tự thay đổi trạng thái.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -109,13 +100,13 @@ export default function NeedsMePage() {
       </header>
 
       <div className={styles.semanticStrip}>
-        <span className={styles.badge}>Source: /control-center/needs-me</span>
-        <span className={styles.badge}>Timezone: {timezone}</span>
-        <span className={styles.badge}>Không tạo synthetic action</span>
+        <span className={styles.badge}>Nguồn dữ liệu: /control-center/needs-me</span>
+        <span className={styles.badge}>Múi giờ: {timezone}</span>
+        <span className={styles.badge}>Không tự tạo hành động giả</span>
       </div>
 
       {loading && items === null ? (
-        <div className={styles.notice} role="status" aria-live="polite">Đang tải human queue…</div>
+        <div className={styles.notice} role="status" aria-live="polite">Đang tải hàng đợi xử lý…</div>
       ) : null}
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
       {stale ? <div className={styles.stale} role="status" aria-live="polite">{stale}</div> : null}
@@ -123,7 +114,7 @@ export default function NeedsMePage() {
       {items ? (
         items.length === 0 ? (
           <div className={styles.empty} role="status">
-            Hiện không có canonical human gate/action cần Founder xử lý.
+            Hiện không có cổng duyệt hoặc hành động chuẩn nào cần Người sáng lập xử lý.
           </div>
         ) : (
           <div className={styles.queue}>
@@ -131,16 +122,16 @@ export default function NeedsMePage() {
               <article className={styles.queueCard} key={item.id}>
                 <div className={styles.queueCardTop}>
                   <div>
-                    <p className="eyebrow">{typeLabel(item.type)}</p>
+                    <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
                     <h2>{item.reason}</h2>
                   </div>
-                  <span className={styles.badgeWarn}>{item.canonical_status}</span>
+                  <span className={styles.badgeWarn}>{uiStatusLabel(item.canonical_status)}</span>
                 </div>
 
                 <div className={styles.refList}>
-                  <span>Updated · {formatDate(item.updated_at)}</span>
-                  <span>Entity · {item.destination.entity_id}</span>
-                  <span>Action ref · {item.destination.action_ref}</span>
+                  <span>Cập nhật · {formatDate(item.updated_at)}</span>
+                  <span>Đối tượng · {item.destination.entity_id}</span>
+                  <span>Tham chiếu hành động · {item.destination.action_ref}</span>
                 </div>
 
                 {item.destination.href ? (
@@ -148,29 +139,29 @@ export default function NeedsMePage() {
                     <Link className={styles.linkButton} href={item.destination.href}>
                       {item.type === "learning_candidate_review" ||
                       item.type === "learning_resolution"
-                        ? "Mở Learning để xem bằng chứng"
-                        : "Mở canonical action surface"}
+                        ? "Mở Học từ dữ liệu để xem bằng chứng"
+                        : "Mở đúng màn hình xử lý"}
                     </Link>
                   </div>
                 ) : (
                   <div className={styles.notice}>
-                    Backend không cung cấp destination.href. Không tạo deep-link giả.
+                    Hệ thống không cung cấp đích điều hướng. Không tạo liên kết giả.
                   </div>
                 )}
 
                 <details className={styles.disclosure}>
-                  <summary>Why / evidence</summary>
+                  <summary>Lý do / bằng chứng</summary>
                   <div className={styles.refList}>
                     {item.why_refs.length === 0 ? (
-                      <span>Không có why ref.</span>
+                      <span>Không có tham chiếu lý do.</span>
                     ) : (
-                      item.why_refs.map((ref) => <span key={"why:" + ref}>Why · {ref}</span>)
+                      item.why_refs.map((ref) => <span key={"why:" + ref}>Lý do · {ref}</span>)
                     )}
                     {item.evidence_refs.length === 0 ? (
-                      <span>Không có evidence ref.</span>
+                      <span>Không có tham chiếu bằng chứng.</span>
                     ) : (
                       item.evidence_refs.map((ref) => (
-                        <span key={"evidence:" + ref}>Evidence · {ref}</span>
+                        <span key={"evidence:" + ref}>Bằng chứng · {ref}</span>
                       ))
                     )}
                   </div>

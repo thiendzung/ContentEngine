@@ -1,38 +1,49 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P2 Question Map decision cockpit
+## Current WIP — UI-P3 Vietnamese Founder-facing terminology
 
 Live GitHub state before this slice:
 - #361 Golden E2E is CLOSED with `PASS_QM02_GOLDEN_CLOSEOUT`;
 - UI-P1 / #372 / PR #373 is merged;
-- current base main is `c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+- UI-P2 / #374 / PR #375 is merged;
+- current base main is `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
 
-Founder explicitly authorized UI-P2 as the next bounded UX slice.
+Founder explicitly authorized UI-P3 as the next bounded UX slice.
 
 Active branch:
-`feat/ui-p2-question-map-cockpit`
+`feat/ui-p3-vietnamese-founder-ui`
 
 Tracking:
-#374
+#378
 
-UI-P2 scope:
-- keep Question Map backend/API/business contracts unchanged;
-- turn the Founder surface into a desktop decision cockpit;
-- left column = planning context + Pillar/Cluster candidates;
-- sticky right panel = 1) choose problem, 2) choose content, 3) confirm production handoff;
-- demote raw route/admission/snapshot/hash/ref details into technical disclosure;
-- preserve stale/fail-closed behavior, exact snapshot checks, MERGE confirmation and idempotency;
-- no Start/Writer/Publish;
-- no P3 full terminology pass, P4 system-wide technical-layer refactor, P5 Production Board redesign or P6 global visual-system work.
+Current child slice:
+- P3-00 / #380 — DONE; exact head `38ae4720641b534965353d0206932a4f5b0dc3a9`, CI #2405 frontend lint/typecheck PASS;
+- P3-01 / #381 — DONE; exact head `f49ebf5aaca9ec88bb9eb0889f36a9bf355bcacd`, CI #2412 frontend lint/typecheck PASS;
+- P3-02 / #382 — DONE; exact head `016894dbe8f9d651c263fa71235ad2d4f04fa1a5`, CI #2415 frontend lint/typecheck PASS;
+- P3-03 / #383 — DONE; exact head `d70a25f4e019fbf89fe46e425f41e82977a73870`, CI #2423 frontend lint/typecheck PASS;
+- P3-04 / #384 — DONE; exact head `96f6fdc614a296975dd524cd2a360a93d0ee7286`, CI #2427 frontend lint/typecheck PASS;
+- P3-05 / #385 — DONE; exact head `f2a81510b42b29fbc9db76041dc5ac91dd203600`, CI #2431 frontend lint/typecheck PASS;
+- P3-06 / #386 — DONE; exact head `ae871526ef1da20bae0efd94fc095186a511a72e`, CI #2437 frontend lint/typecheck PASS;
+- P3-07 / #387 — DONE; exact head `1c53340eef0d5d3daa6e254fa89fa0b16753252f`, CI #2439 frontend lint/typecheck PASS;
+- P3-08 / #388 — ACTIVE: final exact-SHA verification and P3 closeout.
 
-Desktop targets remain 1440px primary with 1366px and 1920px sanity; narrow layout must remain usable.
+UI-P3 scope:
+- make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
+- translate presentation terminology on Overview, Needs Me, Customers, Content Map, Question Map, Learning, Production, System/Daily Digest and Journal Operator surfaces;
+- preserve API paths, TypeScript/domain types, backend enums, persisted status/route/decision values, hashes and exact identity bindings;
+- map backend values only at render/presentation boundaries;
+- keep raw technical IDs/enums when they are needed for audit, preferably inside existing technical disclosures;
+- no P4 information-hierarchy redesign, P5 Production Board density redesign or P6 global visual-system work;
+- no backend/API/schema/DB/provider/model change.
+
+Desktop remains the primary verification target: 1440px, with 1366px/1920px sanity and narrow usability.
 
 Required proof before merge:
 - exact Base -> Candidate diff hygiene;
 - frontend lint + typecheck + production build;
-- browser smoke at 1366/1440/1920 and narrow sanity;
-- decision-flow state, stale/error path and recovery-selector checks;
-- CREATE/UPDATE/REFRESH/MERGE UI contract smoke without operational mutation;
+- route/browser smoke across primary Founder surfaces and Journal Operator;
+- terminology audit confirms core normal-path UI is Vietnamese while technical transport values remain unchanged;
+- keyboard/narrow sanity on affected interactive surfaces;
 - exact-ref OpenCodeReview Delegation Mode;
 - Agent Local exact-SHA verification;
 - minimum GitHub CI;
@@ -59,7 +70,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main before UI-P2: `c2bfcf53d58e47517102ce67d8a082ef27ad2dd4` (merge PR #373 / UI-P1). QM-02 Golden E2E (#361) and UI-P1 are complete; UI-P2 / #374 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main before UI-P3: `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f` (merge PR #375 / UI-P2). QM-02 Golden E2E (#361), UI-P1 and UI-P2 are complete; UI-P3 / #378 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -90,19 +101,17 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #374 / UI-P2 on one exact candidate SHA.
+Complete #378 / UI-P3 on one exact candidate SHA.
 
 Required product behavior:
-- desktop two-column Question Map cockpit;
-- Step 1 always exposes exact Need + locale and remains usable after a planning-load error;
-- Step 2 makes the selected content candidate and required human inputs obvious;
-- Step 3 shows business-facing production readiness while raw route/admission/hash/ref details stay behind technical disclosure;
-- stale snapshots disable mutation and require a fresh read;
-- MERGE retains explicit survivor + reason + confirmation;
-- no Start/Writer/Publish and no frontend business-logic invention.
+- normal Founder-facing titles, buttons, section names, badges, state labels and recovery messages are Vietnamese;
+- common backend statuses/decisions/intents are mapped at render time, not renamed in transport or persistence;
+- technical IDs, hashes, provider/model names and backend codes remain exact where needed for audit;
+- no frontend workflow/business truth is invented;
+- no API/model/enum/database contract is renamed.
 
-Do not expand this slice into full UI-wide Vietnamese terminology cleanup, a generic technical-details
-framework, Production Board redesign or global typography polish. Those belong to P3-P6.
+Do not expand this slice into P4 information hierarchy, P5 Production Board density or P6 global
+visual-system redesign.
 
 ## Pilot operating priority — 2026-10-03
 
