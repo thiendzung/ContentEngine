@@ -200,13 +200,6 @@ function CandidateCard({
       </div>
 
       <div className={ui.candidateMeta}>
-        <span className={styles.badge}>Intent · {candidate.intent}</span>
-        <span className={styles.badge}>
-          Stage · {candidate.audience_stage}
-        </span>
-        <span className={styles.badge}>
-          Answer job · {candidate.answer_job}
-        </span>
         <span className={badgeClass(candidate.coverage_status)}>
           Coverage · {coverageLabel(candidate.coverage_status)}
         </span>
@@ -222,7 +215,12 @@ function CandidateCard({
       candidate.existing_content_refs.length > 0 ||
       candidate.existing_plan_refs.length > 0 ? (
         <details className={ui.candidateDetails}>
-          <summary>Vì sao hệ thống đề xuất?</summary>
+          <summary>Chi tiết phương án</summary>
+          <div className={ui.refList}>
+            <span>Intent · {candidate.intent}</span>
+            <span>Stage · {candidate.audience_stage}</span>
+            <span>Answer job · {candidate.answer_job}</span>
+          </div>
           {candidate.reason_codes.length > 0 ? (
             <ul className={ui.reasonList}>
               {candidate.reason_codes.map((reason) => (
@@ -358,7 +356,7 @@ export default function QuestionMapFounderPage() {
         setPlanner(nextPlanner);
         if (nextArchitecture.planner_snapshot_hash !== nextPlanner.snapshot_hash) {
           setStaleMessage(
-            "Planner đã thay đổi trong lúc tải. Founder phải làm mới trước khi chọn candidate.",
+            "Dữ liệu lập kế hoạch đã thay đổi trong lúc tải. Hãy làm mới trước khi chọn nội dung.",
           );
         }
       } catch (nextError) {
@@ -466,7 +464,7 @@ export default function QuestionMapFounderPage() {
       setPlanner(nextPlanner);
       if (nextArchitecture.planner_snapshot_hash !== nextPlanner.snapshot_hash) {
         setStaleMessage(
-          "Planner thay đổi giữa các lần đọc. Hãy làm mới lại trước khi thao tác.",
+          "Dữ liệu lập kế hoạch thay đổi giữa các lần đọc. Hãy làm mới lại trước khi thao tác.",
         );
       }
     } catch (nextError) {
@@ -505,9 +503,7 @@ export default function QuestionMapFounderPage() {
         promise: promise.trim(),
         coverage_requirements: requirements,
       });
-      setSuccessMessage(
-        `Đã lưu Founder Selection · ${result.decision} · ${result.role}.`,
-      );
+      setSuccessMessage("Đã lưu lựa chọn nội dung.");
       setActiveOpportunityId(result.content_opportunity_id);
       await refreshCoverage();
       await previewOpportunity(result.content_opportunity_id);
@@ -516,7 +512,7 @@ export default function QuestionMapFounderPage() {
       const message = apiErrorMessage(nextError);
       setError(message);
       setStaleMessage(
-        "Selection bị backend từ chối. Không tiếp tục bằng dữ liệu cũ; hãy làm mới Question Map.",
+        "Lựa chọn bị backend từ chối. Không tiếp tục bằng dữ liệu cũ; hãy làm mới Bản đồ câu hỏi.",
       );
     } finally {
       setSelectionBusy(false);
@@ -554,7 +550,7 @@ export default function QuestionMapFounderPage() {
       setPreviewValid(!stale);
       if (stale) {
         setStaleMessage(
-          "Route/admission đã stale. Founder phải làm mới trước khi materialize.",
+          "Trạng thái sản xuất đã thay đổi. Hãy kiểm tra lại trước khi tiếp tục.",
         );
       }
     } catch (nextError) {
@@ -562,7 +558,7 @@ export default function QuestionMapFounderPage() {
       setAdmission(null);
       setError(apiErrorMessage(nextError));
       setStaleMessage(
-        "Không thể xác nhận route/admission hiện tại. Không có mutation nào được phép.",
+        "Không thể xác nhận trạng thái sản xuất hiện tại. Không có thay đổi nào được thực hiện.",
       );
     } finally {
       setPreviewBusy(false);
@@ -611,8 +607,8 @@ export default function QuestionMapFounderPage() {
       setHandoffResult(result);
       setSuccessMessage(
         result.replayed
-          ? "Backend trả về receipt cũ đúng idempotency key."
-          : "Materialization hoàn tất. Không có Writer/Publish nào được tự chạy.",
+          ? "Yêu cầu này đã được xử lý trước đó; backend dùng lại kết quả an toàn."
+          : "Đã tạo bàn giao sản xuất. Không có Writer/Publish nào được tự chạy.",
       );
       await refreshCoverage();
       await refreshPlanning();
@@ -621,7 +617,7 @@ export default function QuestionMapFounderPage() {
       setError(apiErrorMessage(nextError));
       setPreviewValid(false);
       setStaleMessage(
-        "Backend từ chối materialization. Preview hiện tại bị vô hiệu; hãy đọc lại route/admission trước khi thử lại.",
+        "Backend từ chối bàn giao. Kết quả kiểm tra hiện tại không còn hợp lệ; hãy kiểm tra lại trước khi thử lại.",
       );
     } finally {
       setHandoffBusy(false);
@@ -785,10 +781,10 @@ export default function QuestionMapFounderPage() {
             <div
               className={ui.flowItem}
               data-state={
-                activeOpportunityId
-                  ? "complete"
-                  : selectedCandidate
-                    ? "current"
+                selectedCandidate && !activeOpportunityId
+                  ? "current"
+                  : activeOpportunityId || selectedOpportunities.length > 0
+                    ? "complete"
                     : "upcoming"
               }
             >
@@ -807,7 +803,7 @@ export default function QuestionMapFounderPage() {
               data-state={
                 handoffResult
                   ? "complete"
-                  : activeOpportunityId
+                  : activeOpportunityId || selectedOpportunities.length > 0
                     ? "current"
                     : "upcoming"
               }
@@ -1031,10 +1027,10 @@ export default function QuestionMapFounderPage() {
               <section
                 className={ui.decisionStep}
                 data-state={
-                  activeOpportunityId
-                    ? "complete"
-                    : selectedCandidate
-                      ? "current"
+                  selectedCandidate && !activeOpportunityId
+                    ? "current"
+                    : activeOpportunityId || selectedOpportunities.length > 0
+                      ? "complete"
                       : "upcoming"
                 }
               >
@@ -1123,7 +1119,7 @@ export default function QuestionMapFounderPage() {
                 data-state={
                   handoffResult
                     ? "complete"
-                    : activeOpportunityId
+                    : activeOpportunityId || selectedOpportunities.length > 0
                       ? "current"
                       : "upcoming"
                 }
