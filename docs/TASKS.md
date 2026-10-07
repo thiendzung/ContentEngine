@@ -36,6 +36,17 @@ Base main:
 Non-goals: P4 business/technical information hierarchy, P5 Production Board density redesign,
 P6 global visual/design-system polish, backend/API/schema/DB/provider/model changes.
 
+P3 task slices:
+- [ ] **P3-00 / #380 — Language foundation** — ACTIVE: split shared Vietnamese render labels into direct-import domain modules; no visible behavior change.
+- [ ] **P3-01 / #381 — Core operations**: Overview + Needs Me + Production.
+- [ ] **P3-02 / #382 — Customer map**: Audience/Need/Insight/Journey presentation.
+- [ ] **P3-03 / #383 — Content planning**: Content Map + Question Map presentation.
+- [ ] **P3-04 / #384 — Learning**: candidate/evidence/review/application/validation/resolution presentation.
+- [ ] **P3-05 / #385 — System**: System + Daily Digest presentation.
+- [ ] **P3-06 / #386 — Journal Operator**: intake/preflight/workspace/quality/final-review presentation.
+- [ ] **P3-07 / #387 — Legacy + terminology audit**: remaining mixed-English normal-path UI.
+- [ ] **P3-08 / #388 — Final verification**: exact-SHA static/build/browser/OCR/Agent Local/CI/MG closeout.
+
 ## UI-P2 — Question Map decision cockpit — DONE / #374 / PR #375 MERGED
 
 Base:
