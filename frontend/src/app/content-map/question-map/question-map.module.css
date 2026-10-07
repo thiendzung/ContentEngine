@@ -427,11 +427,18 @@
   font-size: .9rem;
 }
 
-.decisionPanel {
+.decisionRail {
   position: sticky;
   top: 18px;
+  align-self: start;
+  min-width: 0;
+  height: fit-content;
+}
+
+.decisionPanel {
   max-height: calc(100vh - 36px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
   border: 1px solid #aaa196;
   background: #f7f1e7;
@@ -637,8 +644,12 @@
     grid-template-columns: 1fr;
   }
 
-  .decisionPanel {
+  .decisionRail {
     position: static;
+    height: auto;
+  }
+
+  .decisionPanel {
     max-height: none;
     overflow: visible;
   }
