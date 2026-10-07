@@ -490,3 +490,72 @@ async def test_merge_handoff_rejects_incompatible_target_intent() -> None:
                 expected_admission_snapshot_hash=admission.snapshot_hash,
                 idempotency_key=f"qm02d3:intent:{uuid4()}",
             )
+
+@pytest.mark.asyncio
+async def test_merge_handoff_target_status_drift_fails_closed() -> None:
+    async with isolated_session() as session:
+        (
+            project,
+            _need_row,
+            opportunity,
+            first,
+            second,
+            route,
+            admission,
+        ) = await _merge_fixture(session)
+        second.status = "published"
+        await session.flush()
+        before = await _counts(session)
+
+        with pytest.raises(
+            MergeProductionHandoffError,
+            match="merge_handoff_route_stale",
+        ):
+            await materialize_merge_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                survivor_content_item_id=first.id,
+                founder_reason="Keep first item.",
+                expected_route_snapshot_hash=route.snapshot_hash,
+                expected_admission_snapshot_hash=admission.snapshot_hash,
+                idempotency_key=f"qm02d3:status-drift:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
+
+@pytest.mark.asyncio
+async def test_rejected_need_blocks_new_merge_handoff() -> None:
+    async with isolated_session() as session:
+        (
+            project,
+            need,
+            opportunity,
+            first,
+            _second,
+            route,
+            admission,
+        ) = await _merge_fixture(session)
+        need.status = "REJECTED"
+        need.version += 1
+        await session.flush()
+        before = await _counts(session)
+
+        with pytest.raises(
+            MergeProductionHandoffError,
+            match="merge_handoff_need_rejected",
+        ):
+            await materialize_merge_handoff(
+                session,
+                project_id=project.id,
+                opportunity_id=opportunity.id,
+                survivor_content_item_id=first.id,
+                founder_reason="Keep first item.",
+                expected_route_snapshot_hash=route.snapshot_hash,
+                expected_admission_snapshot_hash=admission.snapshot_hash,
+                idempotency_key=f"qm02d3:rejected:{uuid4()}",
+            )
+
+        assert await _counts(session) == before
+
