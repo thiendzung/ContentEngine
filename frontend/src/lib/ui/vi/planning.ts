@@ -58,6 +58,22 @@ const ANSWER_JOB_VI: Record<string, string> = {
   understand_artist_process: "Hiểu quy trình của họa sĩ",
 };
 
+const QUESTION_TYPE_VI: Record<string, string> = {
+  what: "Là gì",
+  why: "Vì sao",
+  how: "Cách làm",
+  where: "Ở đâu",
+  compare: "So sánh",
+  trust: "Xác thực / niềm tin",
+  price: "Giá",
+  logistics: "Vận chuyển",
+  fit: "Mức độ phù hợp",
+  visit: "Ghé xem",
+  care: "Bảo quản",
+  culture: "Văn hóa",
+  other: "Khác",
+};
+
 const READINESS_VI: Record<string, string> = {
   READY_FOR_HUMAN_SELECTION: "Sẵn sàng để Người sáng lập chọn",
   RESEARCH_REQUIRED: "Cần nghiên cứu thêm",
@@ -141,6 +157,10 @@ export function planningAudienceStageLabel(value: string): string {
 
 export function planningAnswerJobLabel(value: string): string {
   return ANSWER_JOB_VI[value.toLowerCase()] ?? value;
+}
+
+export function planningQuestionTypeLabel(value: string): string {
+  return QUESTION_TYPE_VI[value.toLowerCase()] ?? value;
 }
 
 export function planningReadinessLabel(value: string): string {
