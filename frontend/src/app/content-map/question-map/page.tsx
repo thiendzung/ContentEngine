@@ -465,6 +465,19 @@ export default function QuestionMapFounderPage() {
     setPlanningLoading(true);
     setError("");
     setStaleMessage("");
+    setCandidateKey("");
+    setSelectionReason("");
+    setPromise("");
+    setRequirementsText("");
+    setActiveOpportunityId("");
+    setRoute(null);
+    setAdmission(null);
+    setPreviewValid(false);
+    setIdempotencyKey("");
+    setHandoffResult(null);
+    setMergeSurvivorId("");
+    setMergeReason("");
+    setMergeConfirmed(false);
     try {
       const [nextMap, nextArchitecture, nextPlanner] = await Promise.all([
         loadQuestionMap(needId, locale, PROJECT_SLUG),
@@ -530,8 +543,8 @@ export default function QuestionMapFounderPage() {
       setSuccessMessage("Đã lưu lựa chọn nội dung.");
       setActiveOpportunityId(result.content_opportunity_id);
       await refreshCoverage();
-      await previewOpportunity(result.content_opportunity_id);
       await refreshPlanning();
+      await previewOpportunity(result.content_opportunity_id);
     } catch (nextError) {
       const message = apiErrorMessage(nextError);
       setError(message);
