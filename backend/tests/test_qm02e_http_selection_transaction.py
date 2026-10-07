@@ -85,7 +85,6 @@ async def _seed_create_candidate() -> tuple[str, UUID, list[UUID]]:
                 )
             )
 
-        project_id = project.id
         need_id = need.id
         await session.commit()
 
