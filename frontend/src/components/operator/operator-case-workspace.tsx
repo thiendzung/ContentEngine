@@ -816,7 +816,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       state.state_version,
       `approve-final:${panel.locale_variant_id}`,
     );
-    if (!window.confirm(`Duyệt exact final ${localeLabel(panel.locale)}?`)) return;
+    if (!window.confirm(`Duyệt nội dung cuối ${localeLabel(panel.locale)}?`)) return;
     setSubmitting(true);
     setError("");
     setNotice("");
