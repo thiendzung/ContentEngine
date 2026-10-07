@@ -146,16 +146,17 @@ materialize endpoints and Journal operator writes:
 
 ```text
 HTTP POST selection
-  -> async with session.begin()
+  -> fresh request session: open session.begin()
+  -> caller-owned/direct-test transaction: reuse existing transaction
   -> lookup project
   -> persist_selected_opportunity() [flush-only service]
-  -> transaction exits successfully
-  -> COMMIT
+  -> fresh HTTP transaction exits successfully and COMMITs
 ```
 
-Do not move implicit auto-commit into `get_db()`: existing write routes already own explicit
-`session.begin()` blocks, and a global transaction policy would broaden the change and conflict
-with those established boundaries.
+Do not move implicit auto-commit into `get_db()`: existing write routes already use explicit
+transaction ownership, while direct service/router tests may intentionally supply a Session that
+already has an autobegun/caller-owned transaction. The selection route therefore starts a
+transaction only when none exists; otherwise it participates in the caller-owned transaction.
 
 Regression:
 `backend/tests/test_qm02e_http_selection_transaction.py` seeds a unique canonical CREATE planning
