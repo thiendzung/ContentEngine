@@ -13,11 +13,11 @@ export default function OperatorHomePage() {
     <main className="operator-page">
       <header className="operator-hero">
         <div>
-          <p className="eyebrow">ContentEngine · Điều hành Journal</p>
-          <h1>Điều hành Journal</h1>
+          <p className="eyebrow">ContentEngine · Điều hành bài nội dung</p>
+          <h1>Điều hành bài nội dung</h1>
           <p className="intro">
-            Tạo bài và vận hành một Journal liên tục từ lúc bắt đầu tới duyệt nội dung cuối.
-            Backend giữ quyền quyết định giai đoạn, nhà cung cấp và mô hình; giao diện chỉ gửi ý định an toàn.
+            Tạo bài và vận hành một bài nội dung liên tục từ lúc bắt đầu tới duyệt nội dung cuối.
+            Hệ thống giữ quyền quyết định giai đoạn, nhà cung cấp và mô hình; giao diện chỉ gửi ý định an toàn.
           </p>
         </div>
         <Link
@@ -25,7 +25,7 @@ export default function OperatorHomePage() {
           className={ready ? "operator-button primary link-button" : "operator-button primary link-button disabled"}
           href={ready ? "/operator/journal/new" : "/operator"}
         >
-          Tạo Journal mới
+          Tạo bài nội dung mới
         </Link>
       </header>
 
