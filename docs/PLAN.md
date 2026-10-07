@@ -71,6 +71,10 @@ This track extends the proven Journal foundation. It does not erase M1-M4, autho
 | 10 | UX-01 | Control Center + Living Map UI | Overview/Customers/Content Map/Production/Needs Me/Learning/System |
 | 11 | E2E-01 | Real closed-loop pilot | One real case completes the full loop without case-specific bypass |
 
+Founder priority override — 2026-10-07:
+- complete bounded `UI-P1 / #372` (desktop sidebar + Vietnamese primary navigation) before E2E-01/#361;
+- this is not authorization for broad dashboard redesign; later UI polish remains evidence-led.
+
 Execution rules:
 - ARCH-21 is docs/contracts only.
 - CT-01 is the first code slice after Founder merges ARCH-21.

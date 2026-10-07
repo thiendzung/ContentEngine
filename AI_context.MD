@@ -1,34 +1,42 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — #368 QA test-environment cleanup
+## Current WIP — UI-P1 desktop navigation + Vietnamese primary UI
 
-QM-02E Founder UI is complete. Founder merged PR #370 from verified head
-`d6212af0320682216e19cfdda1079473b72fa2b4`; current GitHub main is
-`99385a36cd0ef4e414fd1404c3e8aee4117b4d1f`. Issue #360 is closed and #361 Golden E2E is
-unblocked.
+PR #371 / #368 is complete and Founder merged it as main
+`487bd25db1b7437bd96b32bb05f351a441293a89`. The clean backend baseline is restored:
+1553 PASS / 0 FAIL on the verified candidate before merge.
 
-Before Golden E2E, #368 removes the remaining ambient test-environment coupling so the final
-full-suite proof has a clean baseline.
+Founder explicitly reprioritized one bounded UX slice before #361 Golden E2E.
 
 Active branch:
-`fix/qa-test-environment-isolation`
+`feat/ui-p1-desktop-nav-vi`
 
-Active PR:
-#371
+Tracking:
+#372
 
-Bounded QA scope:
-- use the runtime-resolved dedicated test DB target instead of a stale test-only fallback;
-- direct Settings tests explicitly control app_env / DB inputs relevant to the assertion;
-- positive provider tests explicitly provide synthetic keys;
-- negative provider tests explicitly set provider keys to absent;
-- affected tests must pass both with and without ambient developer provider secrets;
-- production behavior, schema, migrations, provider routing and publication behavior stay unchanged;
-- operational checkout/database remain untouched.
+UI-P1 scope:
+- desktop-first primary navigation for Founder operation;
+- replace the horizontal desktop nav with a persistent left sidebar;
+- show current section with visible active state + `aria-current="page"`;
+- Vietnamese labels for all seven primary sections;
+- map technical subroutes back to their primary section;
+- retain narrow-screen usability without treating mobile as the design target;
+- no backend/API/schema/runtime/business-logic change;
+- no broad page redesign, Question Map two-column work or Production density work in P1.
 
-Latest pre-remediation full-backend evidence on PR #370 was `1550 passed / 2 failed`; both remaining
-failures are already tracked in #368 and are ambient Serper-fixture tests.
+Desktop targets: 1440px first, sanity at 1366px and 1920px. Narrow screens only need to remain
+usable in this slice.
 
-Tracking: #368 / PR #371. Founder remains the only PR merge authority.
+Required proof before merge:
+- frontend lint + typecheck + production build;
+- browser smoke across all seven primary routes and active-state mapping;
+- keyboard-focus / narrow-layout sanity;
+- exact-ref OpenCodeReview + Agent Local exact-SHA verification;
+- minimal GitHub CI;
+- MG final review.
+
+Founder remains the only PR merge authority. Do not start #361 Golden E2E until this explicitly
+reprioritized UI-P1 slice is merged or Founder changes the order again.
 
 ## Read first and verify the actual ref
 
@@ -49,7 +57,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current Question Map track: `99385a36cd0ef4e414fd1404c3e8aee4117b4d1f` (merge PR #370 / QM-02E Founder UI). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main: `487bd25db1b7437bd96b32bb05f351a441293a89` (merge PR #371 / QA #368 cleanup). QM-02E remains complete on the prior PR #370 lineage. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -80,21 +88,25 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Close #368 / PR #371 on one exact candidate SHA, then clean merged #370 local/remote residue.
+Complete #372 / UI-P1 on one exact candidate SHA.
 
 Required proof:
-- exact Base -> Candidate diff hygiene;
-- Ruff + mypy PASS;
-- all five original #368 tests PASS;
-- affected tests pass with ambient provider secrets absent and with synthetic provider secrets present;
-- full backend passes from a freshly reset `contentengine_test`;
-- no operational DB/schema mutation;
-- exact-ref OCR + minimal GitHub CI + Agent Local exact-SHA verification + MG final review;
-- after verification, remove only stale #370 disposable worktrees/feature refs;
-- retain the fresh O1.1 backup pair for #361;
-- do not move the operational checkout from its verified pinned HEAD.
+- Base / merge-base remains exact post-#371 main `487bd25db1b7437bd96b32bb05f351a441293a89`;
+- desktop sidebar replaces the horizontal primary nav at 1366/1440/1920 widths;
+- all seven primary navigation labels are Vietnamese;
+- current section is visually distinct and exposes `aria-current="page"`;
+- root + `/operator/*` map to Sản xuất; `/daily-digest` maps to Hệ thống;
+- keyboard focus remains visible and narrow layout remains usable;
+- frontend lint + typecheck + production build PASS;
+- browser smoke covers all primary routes without backend/business-state invention;
+- exact-ref OCR + Agent Local exact-SHA verification + minimum GitHub CI;
+- no backend/API/schema/runtime mutation.
 
-Do not begin #361 Golden E2E until #368 is clean and PR #371 is merged.
+Do not expand P1 into the Question Map two-column redesign, full UI-wide terminology cleanup or
+Production Board density redesign. Those are later slices.
+
+Founder explicitly placed this bounded UI-P1 before #361 Golden E2E. Founder remains the only merge
+authority.
 
 ## Pilot operating priority — 2026-10-03
 
@@ -108,7 +120,7 @@ Critical path:
 5. Run the frozen P01 + C02 pair as the first editorial pilot on one stable release. Record Founder edits, usefulness, overlap and final VI/EN evidence.
 6. Run 2-3 additional real articles on the same release. Improve only recurring or blocking defects demonstrated by these runs.
 
-Deprioritized until evidence shows a need: broad dashboard/UI polish, WordPress/Rank Math activation, auto-publish, new framework/provider work and wider automation. PR #282 Antigravity is not part of the critical path unless the current account/model route remains unusable after an explicit capability decision.
+Deprioritized until evidence shows a need: broad dashboard/UI polish beyond the explicitly approved #372 P1 slice, WordPress/Rank Math activation, auto-publish, new framework/provider work and wider automation. PR #282 Antigravity is not part of the critical path unless the current account/model route remains unusable after an explicit capability decision.
 
 ## Current working log
 
