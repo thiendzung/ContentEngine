@@ -14,6 +14,16 @@ import {
   loadCustomerMapSummary,
   loadCustomerNeed,
 } from "../../lib/api/customer-intelligence";
+import {
+  customerChangeKindLabel,
+  customerEntityTypeLabel,
+  customerInsightTypeLabel,
+  customerJourneyStageLabel,
+  customerNeedTypeLabel,
+  customerOriginLabel,
+  customerRelationLabel,
+} from "../../lib/ui/vi/customer";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../intelligence.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -49,19 +59,6 @@ function isSnapshotDrift(error: unknown): boolean {
   );
 }
 
-function statusLabel(value: string): string {
-  const labels: Record<string, string> = {
-    PROPOSED: "Đề xuất",
-    CANDIDATE: "Ứng viên",
-    TESTING: "Đang kiểm chứng",
-    SUPPORTED: "Đã có hỗ trợ",
-    REJECTED: "Đã bác bỏ",
-    INSUFFICIENT_EVIDENCE: "Chưa đủ bằng chứng",
-    ACTIVE: "Đang hoạt động",
-  };
-  return labels[value] ?? value;
-}
-
 function statusClass(value: string): string {
   if (value === "SUPPORTED" || value === "ACTIVE") {
     return styles.badgePositive;
@@ -76,56 +73,6 @@ function statusClass(value: string): string {
     return styles.badgeWarn;
   }
   return styles.badge;
-}
-
-function originLabel(value: string): string {
-  const labels: Record<string, string> = {
-    founder_manual: "Người sáng lập nhập thủ công",
-    research: "Nghiên cứu",
-    learning: "Vòng học từ dữ liệu",
-  };
-  return labels[value] ?? value;
-}
-
-function relationLabel(value: string): string {
-  const labels: Record<string, string> = {
-    supports: "Ủng hộ",
-    contradicts: "Mâu thuẫn",
-    context: "Bối cảnh",
-  };
-  return labels[value] ?? value;
-}
-
-function needTypeLabel(value: string): string {
-  const labels: Record<string, string> = {
-    question: "Câu hỏi",
-    problem: "Vấn đề",
-    goal: "Mục tiêu",
-    job: "Việc cần làm",
-  };
-  return labels[value.toLowerCase()] ?? value;
-}
-
-function changeKindLabel(value: string): string {
-  const labels: Record<string, string> = {
-    NEW: "MỚI",
-    SUPPORT: "ỦNG HỘ",
-    CONTRADICT: "MÂU THUẪN",
-    DUPLICATE: "TRÙNG",
-  };
-  return labels[value] ?? value;
-}
-
-function entityTypeLabel(value: string): string {
-  const labels: Record<string, string> = {
-    audience: "Nhóm khách hàng",
-    audience_hypothesis: "Giả thuyết nhóm khách hàng",
-    need: "Nhu cầu",
-    need_hypothesis: "Giả thuyết nhu cầu",
-    insight: "Nhận định khách hàng",
-    customer_insight: "Nhận định khách hàng",
-  };
-  return labels[value.toLowerCase()] ?? value;
 }
 
 function EvidenceSummary({
@@ -187,7 +134,7 @@ function SignalRefs({
       ) : (
         refs.map((ref) => (
           <span key={ref.relation + ":" + ref.id}>
-            {relationLabel(ref.relation)} · {ref.id}
+            {customerRelationLabel(ref.relation)} · {ref.id}
           </span>
         ))
       )}
@@ -218,7 +165,7 @@ function NeedCard({
     >
       <strong>{need.statement}</strong>
       <small>
-        {statusLabel(need.status)} · {needTypeLabel(need.type)} · v{need.version}
+        {uiStatusLabel(need.status)} · {customerNeedTypeLabel(need.type)} · v{need.version}
       </small>
     </button>
   );
@@ -229,11 +176,13 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
     <article className={styles.card}>
       <div className={styles.sectionHeader}>
         <div>
-          <p className="eyebrow">Nhận định khách hàng · {insight.insight_type}</p>
+          <p className="eyebrow">
+            Nhận định khách hàng · {customerInsightTypeLabel(insight.insight_type)}
+          </p>
           <h3>{insight.statement}</h3>
         </div>
         <span className={statusClass(insight.status)}>
-          {statusLabel(insight.status)}
+          {uiStatusLabel(insight.status)}
         </span>
       </div>
 
@@ -252,13 +201,13 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
         <dt>Phiên bản</dt>
         <dd>v{insight.version}</dd>
         <dt>Trạng thái duyệt</dt>
-        <dd>{statusLabel(insight.status)}</dd>
+        <dd>{uiStatusLabel(insight.status)}</dd>
         <dt>Người duyệt</dt>
         <dd>{insight.reviewed_by ?? "Chưa có"}</dd>
         <dt>Lý do duyệt</dt>
         <dd>{insight.review_reason ?? "Chưa có"}</dd>
         <dt>Quan sát / suy luận</dt>
-        <dd>Không có trường dữ liệu chuẩn trong quy ước hiện tại.</dd>
+        <dd>Chưa có trường dữ liệu riêng trong quy ước hiện tại.</dd>
       </dl>
 
       <div className={styles.evidenceBlock}>
@@ -280,7 +229,7 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
                   link.linked_by
                 }
               >
-                {relationLabel(link.relation)} · {link.reason}
+                {customerRelationLabel(link.relation)} · {link.reason}
                 <span className={styles.meta}>
                   {" "}
                   ({link.need_hypothesis_id})
@@ -323,17 +272,17 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
     <section className={styles.panel}>
       <div className={styles.sectionHeader}>
         <div>
-          <p className="eyebrow">Nhu cầu · {needTypeLabel(need.type)}</p>
+          <p className="eyebrow">Nhu cầu · {customerNeedTypeLabel(need.type)}</p>
           <h2>{need.statement}</h2>
         </div>
         <span className={statusClass(need.status)}>
-          {statusLabel(need.status)}
+          {uiStatusLabel(need.status)}
         </span>
       </div>
 
       <dl className={styles.definition}>
         <dt>Nguồn hình thành</dt>
-        <dd>{originLabel(need.origin)}</dd>
+        <dd>{customerOriginLabel(need.origin)}</dd>
         <dt>Phạm vi nhóm khách hàng</dt>
         <dd>{need.audience_scope ?? "Không có giá trị riêng"}</dd>
         <dt>Tình huống</dt>
@@ -341,7 +290,7 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
         <dt>Phiên bản</dt>
         <dd>v{need.version}</dd>
         <dt>Trạng thái duyệt</dt>
-        <dd>{statusLabel(need.status)}</dd>
+        <dd>{uiStatusLabel(need.status)}</dd>
         <dt>Người duyệt</dt>
         <dd>{need.reviewed_by ?? "Chưa có"}</dd>
         <dt>Lý do duyệt</dt>
@@ -384,7 +333,7 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
                   link.linked_by
                 }
               >
-                {relationLabel(link.relation)} · {link.reason}
+                {customerRelationLabel(link.relation)} · {link.reason}
                 <span className={styles.meta}>
                   {" "}
                   ({link.customer_insight_id})
@@ -680,8 +629,8 @@ export default function CustomersPage() {
           <p className="eyebrow">ContentEngine · Bản đồ khách hàng</p>
           <h1>Khách hàng</h1>
           <p className="intro">
-            Xem nhóm khách hàng, nhu cầu, nhận định và bằng chứng đúng như backend
-            chuẩn đang lưu. Màn hình này chỉ đọc dữ liệu.
+            Xem nhóm khách hàng, nhu cầu, nhận định và bằng chứng đúng như hệ thống
+            đang lưu. Màn hình này chỉ đọc dữ liệu.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -697,9 +646,9 @@ export default function CustomersPage() {
       </header>
 
       <div className={styles.notice}>
-        API hiện không cung cấp cờ <strong>quan sát/suy luận</strong> riêng cho
+        Dữ liệu hiện tại chưa có cờ <strong>quan sát/suy luận</strong> riêng cho
         nhận định khách hàng. Giao diện không tự suy diễn; nó hiển thị riêng trạng thái
-        duyệt, nguồn hình thành nhu cầu, người duyệt và bằng chứng mà backend thực sự cung cấp.
+        duyệt, nguồn hình thành nhu cầu, người duyệt và bằng chứng mà hệ thống thực sự cung cấp.
       </div>
 
       {loading && !view ? (
@@ -779,13 +728,13 @@ export default function CustomersPage() {
             <div className={styles.journeyChips}>
               {view.summary.journey.stages.map((stage) => (
                 <span className={styles.badge} key={stage.key}>
-                  {stage.label}
+                  {customerJourneyStageLabel(stage.key, stage.label)}
                 </span>
               ))}
             </div>
             <p className={styles.meta}>
-              Hành trình là mô hình cấu hình/được suy ra. Bản đồ khách hàng hiện không
-              lưu bền vững quan hệ Nhu cầu→Hành trình; giao diện không tự gán nhu cầu vào giai đoạn.
+              Hành trình là mô hình cấu hình hoặc được suy ra. Bản đồ khách hàng hiện không
+              lưu bền vững quan hệ Nhu cầu → Hành trình; giao diện không tự gán nhu cầu vào giai đoạn.
             </p>
           </section>
 
@@ -815,7 +764,7 @@ export default function CustomersPage() {
                     >
                       <strong>{item.name}</strong>
                       <small>
-                        {statusLabel(item.status)} · {item.need_count} nhu cầu ·{" "}
+                        {uiStatusLabel(item.status)} · {item.need_count} nhu cầu ·{" "}
                         {item.insight_count} nhận định
                       </small>
                     </button>
@@ -845,16 +794,16 @@ export default function CustomersPage() {
                       <span
                         className={statusClass(view.audience.audience.status)}
                       >
-                        {statusLabel(view.audience.audience.status)}
+                        {uiStatusLabel(view.audience.audience.status)}
                       </span>
                     </div>
                     <p>
                       {view.audience.audience.description ??
-                        "Backend chưa lưu mô tả riêng cho nhóm khách hàng này."}
+                        "Hệ thống chưa lưu mô tả riêng cho nhóm khách hàng này."}
                     </p>
                     <dl className={styles.definition}>
                       <dt>Trạng thái</dt>
-                      <dd>{statusLabel(view.audience.audience.status)}</dd>
+                      <dd>{uiStatusLabel(view.audience.audience.status)}</dd>
                       <dt>Độ tin cậy</dt>
                       <dd>
                         {view.audience.audience.confidence === null
@@ -977,7 +926,7 @@ export default function CustomersPage() {
                           }
                         >
                           <strong>
-                            {changeKindLabel(event.kind)} · {entityTypeLabel(event.entity_type)}
+                            {customerChangeKindLabel(event.kind)} · {customerEntityTypeLabel(event.entity_type)}
                           </strong>
                           <p>{event.detail}</p>
                           <small className={styles.meta}>
