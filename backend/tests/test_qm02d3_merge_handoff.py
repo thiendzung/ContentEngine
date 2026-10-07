@@ -5,7 +5,6 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.models import (
     ContentCase,
