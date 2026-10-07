@@ -13,6 +13,17 @@ import {
   uiIntentLabel,
   uiPriorityLabel,
 } from "../../lib/ui/vi/content";
+import {
+  customerJourneyStageLabel,
+  customerNeedTypeLabel,
+} from "../../lib/ui/vi/customer";
+import {
+  planningActorLabel,
+  planningContentRoleLabel,
+  planningCoverageLabel,
+  planningCoverageReasonLabel,
+  planningNeedRoleLabel,
+} from "../../lib/ui/vi/planning";
 import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../intelligence.module.css";
 
@@ -48,19 +59,6 @@ function assertCoverageContract(coverage: ContentCoverage) {
   }
 }
 
-function coverageLabel(value: CoverageStatus): string {
-  const labels: Record<CoverageStatus, string> = {
-    MISSING: "Thiếu nội dung",
-    PLANNED: "Đã lên kế hoạch",
-    IN_PROGRESS: "Đang sản xuất",
-    PUBLISHED: "Đã xuất bản",
-    NEEDS_UPDATE: "Cần cập nhật",
-    WEAK: "Nội dung yếu",
-    INSUFFICIENT_DATA: "Chưa đủ dữ liệu",
-  };
-  return labels[value];
-}
-
 function coverageClass(value: CoverageStatus): string {
   if (value === "PUBLISHED") return styles.badgePositive;
   if (value === "WEAK" || value === "INSUFFICIENT_DATA") {
@@ -75,42 +73,6 @@ function coverageClass(value: CoverageStatus): string {
     return styles.badgeWarn;
   }
   return styles.badge;
-}
-
-function needStatusLabel(value: string): string {
-  const labels: Record<string, string> = {
-    PROPOSED: "Đề xuất",
-    TESTING: "Đang kiểm chứng",
-    SUPPORTED: "Đã có hỗ trợ",
-    REJECTED: "Đã bác bỏ",
-    INSUFFICIENT_EVIDENCE: "Chưa đủ bằng chứng",
-  };
-  return labels[value] ?? value;
-}
-
-function reasonLabel(value: string): string {
-  const labels: Record<string, string> = {
-    no_content_or_selected_write_plan: "Chưa có nội dung hoặc kế hoạch viết được chọn.",
-    selected_content_opportunity_exists: "Đã có cơ hội nội dung được chọn.",
-    content_work_exists_without_current_published_completion:
-      "Đã có công việc nội dung nhưng chưa có bản xuất bản hiện hành.",
-    published_content_exists: "Đã có nội dung đang được xuất bản.",
-    selected_update_or_refresh_targets_published_content:
-      "Có kế hoạch cập nhật/làm mới nhắm tới nội dung đã xuất bản.",
-    newer_unpublished_revision_exists:
-      "Có bản sửa đổi mới hơn nhưng chưa được xuất bản.",
-    unresolved_quality_failure_or_final_review_revision:
-      "Còn lỗi chất lượng hoặc quyết định duyệt yêu cầu chỉnh sửa.",
-    selected_update_target_ref_invalid:
-      "Tham chiếu đích cập nhật không hợp lệ hoặc không còn khớp.",
-    additional_weak_content_does_not_erase_published_coverage:
-      "Có nội dung yếu bổ sung nhưng không xóa trạng thái độ phủ đã xuất bản.",
-    weak_or_failed_revision_exists:
-      "Tồn tại bản sửa đổi yếu hoặc chưa qua chất lượng.",
-    duplicate_candidate_detected:
-      "Phát hiện ứng viên nội dung trùng theo cùng nhu cầu/ngôn ngữ/ý định/câu hỏi.",
-  };
-  return labels[value] ?? value;
 }
 
 function formatLocale(value: string): string {
@@ -131,7 +93,7 @@ function ContentItemCard({
       <div className={styles.sectionHeader}>
         <div>
           <p className="eyebrow">
-            {formatLocale(item.locale)} · {item.need_role}
+            {formatLocale(item.locale)} · {planningNeedRoleLabel(item.need_role)}
           </p>
           <h3>{item.primary_question}</h3>
         </div>
@@ -141,7 +103,7 @@ function ContentItemCard({
         <strong>Ý định:</strong> {uiIntentLabel(item.primary_intent)}
       </p>
       <p>
-        <strong>Vai trò nội dung:</strong> {item.content_role}
+        <strong>Vai trò nội dung:</strong> {planningContentRoleLabel(item.content_role)}
       </p>
       <p className={styles.meta}>Khóa chuẩn: {item.canonical_key}</p>
       <div className={styles.journeyChips}>
@@ -154,9 +116,12 @@ function ContentItemCard({
               key={stage.stage_key}
               title={stage.reason}
             >
-              {stageLabels.get(stage.stage_key) ?? stage.stage_key}
+              {customerJourneyStageLabel(
+                stage.stage_key,
+                stageLabels.get(stage.stage_key) ?? stage.stage_key,
+              )}
               {" · "}
-              {stage.linked_by}
+              {planningActorLabel(stage.linked_by)}
             </span>
           ))
         )}
@@ -252,7 +217,7 @@ export default function ContentMapPage() {
       new Map(
         (coverage?.journey.stages ?? []).map((stage) => [
           stage.key,
-          stage.label,
+          customerJourneyStageLabel(stage.key, stage.label),
         ]),
       ),
     [coverage],
@@ -323,7 +288,7 @@ export default function ContentMapPage() {
 
       <div className={styles.notice}>
         <strong>Giới hạn quy ước:</strong> huy hiệu độ phủ là trạng thái ở cấp
-        nhu cầu trong phạm vi API hiện tại. Ngôn ngữ và hành trình bên dưới chỉ là liên kết
+        nhu cầu trong phạm vi dữ liệu hiện tại. Ngôn ngữ và hành trình bên dưới chỉ là liên kết
         chuẩn của từng nội dung; giao diện không tạo trạng thái ô
         Nhu cầu × Hành trình × ngôn ngữ. “Đã xuất bản” cũng không có nghĩa vấn đề khách hàng
         đã được giải quyết; trạng thái đang hoạt động vẫn cần đo lường riêng, và cùng nhu cầu
@@ -364,7 +329,7 @@ export default function ContentMapPage() {
           >
             {STATUS_ORDER.map((status) => (
               <div className={styles.coverageCount} key={status}>
-                <span>{coverageLabel(status)}</span>
+                <span>{planningCoverageLabel(status)}</span>
                 <strong>{coverage.counts[status] ?? 0}</strong>
               </div>
             ))}
@@ -399,7 +364,7 @@ export default function ContentMapPage() {
                 onClick={() => setFilter(status)}
                 aria-pressed={filter === status}
               >
-                {coverageLabel(status)}
+                {planningCoverageLabel(status)}
               </button>
             ))}
           </div>
@@ -415,19 +380,19 @@ export default function ContentMapPage() {
                   <div className={styles.coverageLaneHeader}>
                     <div>
                       <p className="eyebrow">
-                        Độ phủ theo nhu cầu · {lane.need.type} ·{" "}
-                        {needStatusLabel(lane.need.status)}
+                        Độ phủ theo nhu cầu · {customerNeedTypeLabel(lane.need.type)} ·{" "}
+                        {uiStatusLabel(lane.need.status)}
                       </p>
                       <h2>{lane.need.statement}</h2>
                     </div>
                     <span className={coverageClass(lane.coverage_status)}>
-                      {coverageLabel(lane.coverage_status)}
+                      {planningCoverageLabel(lane.coverage_status)}
                     </span>
                   </div>
 
                   <ul className={styles.reasonList}>
                     {lane.reason_codes.map((reason) => (
-                      <li key={reason}>{reasonLabel(reason)}</li>
+                      <li key={reason}>{planningCoverageReasonLabel(reason)}</li>
                     ))}
                   </ul>
 
@@ -460,7 +425,7 @@ export default function ContentMapPage() {
                                 <ul>
                                   {opportunity.selection_refs.map((selection) => (
                                     <li key={selection.id}>
-                                      {selection.selected_by} · {selection.reason}
+                                      {planningActorLabel(selection.selected_by)} · {selection.reason}
                                       <span className={styles.meta}>
                                         {" "}
                                         ({selection.selected_at})
@@ -523,7 +488,7 @@ export default function ContentMapPage() {
                               </p>
                               <div className={styles.signalList}>
                                 {duplicate.content_item_ids.map((id) => (
-                                  <span key={id}>ContentItem · {id}</span>
+                                  <span key={id}>Nội dung · {id}</span>
                                 ))}
                               </div>
                               <small className={styles.meta}>
