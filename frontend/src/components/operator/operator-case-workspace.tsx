@@ -26,8 +26,15 @@ import {
 import {
   blockerAction,
   humanGateLabel,
+  operatorLocaleRoleLabel,
+  operatorNextActionLabel,
   operatorPhaseLabel,
+  operatorQualityAuthorityLabel,
+  operatorQualityResultLabel,
+  operatorQualityStageLabel,
+  operatorReviewStateLabel,
   operatorStatusLabel,
+  operatorWriterLaneStatusLabel,
 } from "../../lib/operator/operator-labels";
 
 const POLL_MS = 2500;
@@ -51,37 +58,6 @@ function technicalError(error: unknown): string {
     return "Trạng thái đã thay đổi. Cần đối soát lại dữ liệu chuẩn trước khi thao tác tiếp.";
   }
   return error instanceof Error ? error.message : "Không thể hoàn tất thao tác.";
-}
-
-function writerLaneStatusLabel(status: string): string {
-  if (status === "pending") return "Chờ xếp hàng";
-  if (status === "queued") return "Đang chờ tác nhân";
-  if (status === "running") return "Đang viết";
-  if (status === "completed") return "Đã có bản nháp";
-  return "Lỗi — chỉ luồng này được thử lại";
-}
-
-function qualityStageLabel(status: string): string {
-  const normalized = status.toLowerCase();
-  if (normalized === "final_gate_ready") return "Sẵn sàng duyệt cuối";
-  if (normalized.includes("review")) return "Rà soát & chỉnh sửa";
-  if (normalized.includes("audit")) return "Kiểm tra khẳng định";
-  if (normalized.includes("source_copy")) return "Kiểm tra trùng nguồn";
-  if (normalized.includes("reader_value")) return "Kiểm tra giá trị cho người đọc";
-  if (normalized.includes("search_ai")) return "Kiểm tra SEO / AI";
-  if (normalized.includes("failed")) return "Bị chặn";
-  if (normalized.includes("queued")) return "Đang chờ tác nhân";
-  if (normalized.includes("running")) return "Đang kiểm tra";
-  return status;
-}
-
-function qualityResultLabel(value: string | null): string {
-  if (!value) return "Đang chờ";
-  const normalized = value.toLowerCase();
-  if (normalized === "pass") return "Đạt";
-  if (normalized === "warn") return "Cảnh báo";
-  if (normalized === "fail") return "Không đạt";
-  return value;
 }
 
 type ReadinessFindingView = {
@@ -124,37 +100,6 @@ function exactFinalBindingMatches(
     && operatorFinal.version === reviewFinal.version
     && operatorFinal.content_hash === reviewFinal.content_hash,
   );
-}
-
-function reviewStateLabel(value: string): string {
-  const labels: Record<string, string> = {
-    PASS: "Đạt",
-    WARN: "Cảnh báo",
-    FAIL: "Không đạt",
-    PENDING: "Đang chờ",
-    CONSISTENT: "Nhất quán",
-    INCONSISTENT: "Không nhất quán",
-    NOT_PUBLISHED: "Chưa xuất bản",
-    PUBLISHED: "Đã xuất bản",
-    APPROVED_NOT_PUBLISHED: "Đã duyệt · chưa xuất bản",
-    AWAITING_FOUNDER_APPROVAL: "Chờ duyệt cuối",
-  };
-  return labels[value] ?? value;
-}
-
-function nextActionLabel(value: string): string {
-  const labels: Record<string, string> = {
-    "Approved; publishing not authorized": "Đã duyệt; chưa cho phép xuất bản",
-    "Awaiting Founder final approval": "Đang chờ Người sáng lập duyệt nội dung cuối",
-    "Review current content": "Cần xem và duyệt nội dung hiện tại",
-    "Current bytes are blocked by quality gates": "Nội dung hiện tại chưa qua kiểm tra chất lượng",
-    "Resolve conflicting persisted bindings": "Cần xử lý dữ liệu liên kết không nhất quán",
-    "Content is not ready for review": "Nội dung chưa sẵn sàng để duyệt",
-    "Founder đã yêu cầu sửa": "Người sáng lập đã yêu cầu sửa",
-    "Founder đã từ chối": "Người sáng lập đã từ chối",
-    Published: "Đã xuất bản",
-  };
-  return labels[value] ?? value;
 }
 
 function outlineString(outline: Record<string, unknown>, key: string): string | null {
@@ -270,34 +215,34 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
     <article className="quality-lane-card">
       <header>
         <strong>{localeLabel(lane.locale)}</strong>
-        <span>{qualityStageLabel(lane.status)}</span>
+        <span>{operatorQualityStageLabel(lane.status)}</span>
       </header>
       <div className="quality-lane-checks">
         <div>
           <span>Kiểm tra khẳng định</span>
-          <strong>{qualityResultLabel(lane.assertion_audit_result)}</strong>
+          <strong>{operatorQualityResultLabel(lane.assertion_audit_result)}</strong>
           <small>
             nghiêm trọng thiếu nguồn {lane.critical_unsupported_count} · mâu thuẫn {lane.critical_contradicted_count}
           </small>
         </div>
         <div>
           <span>Kiểm tra trùng nguồn</span>
-          <strong>{qualityResultLabel(lane.source_copy_result)}</strong>
+          <strong>{operatorQualityResultLabel(lane.source_copy_result)}</strong>
           <small>lỗi {lane.fail_count} · cảnh báo {lane.warn_count}</small>
         </div>
         <div>
           <span>Giá trị cho người đọc</span>
-          <strong>{qualityResultLabel(lane.reader_value_result)}</strong>
+          <strong>{operatorQualityResultLabel(lane.reader_value_result)}</strong>
           <small>{lane.reader_value_findings.length} tiêu chí được kiểm tra</small>
         </div>
         <div>
           <span>Mức sẵn sàng SEO / AI</span>
-          <strong>{qualityResultLabel(lane.search_ai_result)}</strong>
+          <strong>{operatorQualityResultLabel(lane.search_ai_result)}</strong>
           <small>{lane.search_ai_findings.length} tiêu chí được kiểm tra</small>
         </div>
         <div>
           <span>Chất lượng chuyên sâu</span>
-          <strong>{qualityResultLabel(lane.deep_quality?.result ?? null)}</strong>
+          <strong>{operatorQualityResultLabel(lane.deep_quality?.result ?? null)}</strong>
           <small>
             {lane.deep_quality
               ? `12 chiều · lỗi ${lane.deep_quality.fail_count} · cảnh báo ${lane.deep_quality.warn_count}`
@@ -365,7 +310,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
             {lane.deep_quality.dimensions.map((dimension) => (
               <div key={dimension.key}>
                 <p>
-                  <strong>{dimension.key}</strong> · {qualityResultLabel(dimension.result)} · {dimension.authority}
+                  <strong>{dimension.key}</strong> · {operatorQualityResultLabel(dimension.result)} · {operatorQualityAuthorityLabel(dimension.authority)}
                 </p>
                 <p>{dimension.finding}</p>
                 {dimension.remediation && <p>Sửa: {dimension.remediation}</p>}
@@ -380,7 +325,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <p className="label">Điểm cần sửa cho người đọc</p>
           {readerIssues.map((issue, index) => (
             <p key={`${lane.locale}-reader-value-${index}`}>
-              <strong>{qualityResultLabel(issue.result)}:</strong> {issue.finding}
+              <strong>{operatorQualityResultLabel(issue.result)}:</strong> {issue.finding}
               {issue.repairSuggestion ? ` — ${issue.repairSuggestion}` : ""}
             </p>
           ))}
@@ -391,7 +336,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <p className="label">Điểm cần sửa cho SEO / AI</p>
           {searchIssues.map((issue, index) => (
             <p key={`${lane.locale}-search-ai-${index}`}>
-              <strong>{qualityResultLabel(issue.result)}:</strong> {issue.finding}
+              <strong>{operatorQualityResultLabel(issue.result)}:</strong> {issue.finding}
               {issue.repairSuggestion ? ` — ${issue.repairSuggestion}` : ""}
             </p>
           ))}
@@ -440,10 +385,10 @@ function FinalLocaleCard({
         </div>
         <div className="header-badges">
           <span className={`badge badge-${panel.quality_state.toLowerCase()}`}>
-            {reviewStateLabel(panel.quality_state)}
+            {operatorReviewStateLabel(panel.quality_state)}
           </span>
           <span className={`badge badge-${panel.publication_state.toLowerCase().replaceAll("_", "-")}`}>
-            {reviewStateLabel(panel.publication_state)}
+            {operatorReviewStateLabel(panel.publication_state)}
           </span>
         </div>
       </header>
@@ -467,14 +412,14 @@ function FinalLocaleCard({
       <div className="quality-grid">
         <div className="quality-card">
           <p className="label">Kiểm tra khẳng định</p>
-          <strong>{qualityResultLabel(panel.assertion_audit.result)}</strong>
+          <strong>{operatorQualityResultLabel(panel.assertion_audit.result)}</strong>
           <small>
             nghiêm trọng thiếu nguồn {panel.assertion_audit.critical_unsupported_count} · mâu thuẫn {panel.assertion_audit.critical_contradicted_count}
           </small>
         </div>
         <div className="quality-card">
           <p className="label">Kiểm tra trùng nguồn</p>
-          <strong>{qualityResultLabel(panel.source_copy.result)}</strong>
+          <strong>{operatorQualityResultLabel(panel.source_copy.result)}</strong>
           <small>lỗi {panel.source_copy.fail_count} · cảnh báo {panel.source_copy.warn_count}</small>
         </div>
       </div>
@@ -493,8 +438,8 @@ function FinalLocaleCard({
       )}
 
       <div className="next-action-inline">
-        <strong>{reviewStateLabel(panel.next_action)}</strong>
-        <span>{nextActionLabel(panel.next_action_label)}</span>
+        <strong>{operatorReviewStateLabel(panel.next_action)}</strong>
+        <span>{operatorNextActionLabel(panel.next_action_label)}</span>
       </div>
 
       {canApprove && (
@@ -563,7 +508,7 @@ function ProgressStrip({
   const currentIndex = steps.findIndex((step) => !step.done);
 
   return (
-    <ol className="operator-progress-strip" aria-label="Tiến độ Journal">
+    <ol className="operator-progress-strip" aria-label="Tiến độ bài nội dung">
       {steps.map((step, index) => (
         <li
           className={step.done ? "done" : index === currentIndex ? "current" : ""}
@@ -854,13 +799,13 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   if (loading && !view) {
-    return <main className="operator-page"><p className="loading">Đang tải Journal…</p></main>;
+    return <main className="operator-page"><p className="loading">Đang tải bài nội dung…</p></main>;
   }
 
   if (!view) {
     return (
       <main className="operator-page">
-        <p className="error">{error || "Không tìm thấy Journal."}</p>
+        <p className="error">{error || "Không tìm thấy bài nội dung."}</p>
         <Link className="operator-link" href="/operator">Quay lại điều hành</Link>
       </main>
     );
@@ -896,7 +841,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     <main className="operator-page">
       <header className="operator-case-header">
         <div>
-          <p className="eyebrow">Journal · {localeLabel(view.intake.source_locale)}</p>
+          <p className="eyebrow">Bài nội dung · {localeLabel(view.intake.source_locale)}</p>
           <h1>{view.question}</h1>
           <div className="angle-meta-row">
             <span>
@@ -937,7 +882,11 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         <div><span>Nhu cầu</span><p>{view.need}</p></div>
         <div>
           <span>Ngôn ngữ yêu cầu</span>
-          <p>{view.intake.required_locales.map((item) => `${localeLabel(item.locale)} · ${item.role}`).join(" / ")}</p>
+          <p>
+            {view.intake.required_locales
+              .map((item) => `${localeLabel(item.locale)} · ${operatorLocaleRoleLabel(item.role)}`)
+              .join(" / ")}
+          </p>
         </div>
       </section>
 
@@ -993,7 +942,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             <div>
               <strong>{canStart ? "Bắt đầu sản xuất" : "Tiếp tục bước an toàn tiếp theo"}</strong>
               <p>
-                Backend tự quyết giai đoạn/nhà cung cấp/mô hình từ trạng thái bền vững; giao diện chỉ gửi ý định {canStart ? "Bắt đầu" : "Tiếp tục"}.
+                Hệ thống tự quyết giai đoạn/nhà cung cấp/mô hình từ trạng thái bền vững; giao diện chỉ gửi ý định {canStart ? "Bắt đầu" : "Tiếp tục"}.
               </p>
             </div>
             <button
@@ -1040,7 +989,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div className="operator-complete-state">
             <strong>Quy trình đã hoàn tất</strong>
             <p>
-              {reviewStateLabel(review.next_action)} · {reviewStateLabel(review.publication_state)}.
+              {operatorReviewStateLabel(review.next_action)} · {operatorReviewStateLabel(review.publication_state)}.
               Không có quyền xuất bản trong F6-MINI.
             </p>
           </div>
@@ -1062,7 +1011,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <p className="eyebrow">Cổng duyệt 1/3</p>
               <h2>Chọn góc tiếp cận</h2>
             </div>
-            <span className="operator-note">Chọn một ứng viên đã được backend khóa mã băm.</span>
+            <span className="operator-note">Chọn một ứng viên đã được hệ thống khóa mã băm.</span>
           </div>
           <div className="angle-grid">
             {angleGate.candidates.map((candidate) => (
@@ -1196,7 +1145,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <article className="writer-lane-card" key={lane.required_locale}>
                 <div className="writer-lane-heading">
                   <strong>{localeLabel(lane.required_locale)}</strong>
-                  <span className={`writer-lane-status ${lane.status}`}>{writerLaneStatusLabel(lane.status)}</span>
+                  <span className={`writer-lane-status ${lane.status}`}>{operatorWriterLaneStatusLabel(lane.status)}</span>
                 </div>
                 <p>Lượt chạy: {lane.attempt ?? "—"}</p>
                 {lane.draft_artifact_id && <p>Bản nháp: {shortId(lane.draft_artifact_id)} · v{lane.draft_version}</p>}
@@ -1294,7 +1243,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <div key={panel.locale_variant_id}>
                 <strong>{localeLabel(panel.locale)}</strong>
                 <span>Phiên bản nội dung v{panel.content_version_no ?? "—"}</span>
-                <span>{reviewStateLabel(panel.publication_state)}</span>
+                <span>{operatorReviewStateLabel(panel.publication_state)}</span>
               </div>
             ))}
           </div>
