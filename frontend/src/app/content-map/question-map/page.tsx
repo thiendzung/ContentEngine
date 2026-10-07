@@ -535,6 +535,10 @@ export default function QuestionMapFounderPage() {
     setPreviewBusy(true);
     setError("");
     setStaleMessage("");
+    setCandidateKey("");
+    setSelectionReason("");
+    setPromise("");
+    setRequirementsText("");
     if (activeOpportunityId && activeOpportunityId !== opportunityId) {
       setHandoffResult(null);
     }
@@ -1113,6 +1117,14 @@ export default function QuestionMapFounderPage() {
                         </span>
                       ) : null}
                     </>
+                  ) : selectedOpportunities.length > 0 ? (
+                    <div className={ui.savedSelectionNote}>
+                      <strong>Đã có lựa chọn được lưu</strong>
+                      <span>
+                        Tiếp tục ở bước 3 để kiểm tra trạng thái sản xuất, hoặc
+                        chọn một phương án khác ở cột bên trái để tạo quyết định mới.
+                      </span>
+                    </div>
                   ) : (
                     <p className={ui.stepPrompt}>
                       Chọn một phương án ở cột bên trái. Bảng này sẽ hiển thị các
