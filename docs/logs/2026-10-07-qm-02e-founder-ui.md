@@ -1,8 +1,8 @@
 # QM-02E — Founder Question Map UI
 
-Date: 2026-10-07  
-Tracking: #360  
-Base: `b72b7beeef5b3464ebf87fde5034ccdf99991c07`  
+Date: 2026-10-07
+Tracking: #360
+Base: `b72b7beeef5b3464ebf87fde5034ccdf99991c07`
 Branch: `feat/qm-02e-founder-ui`
 
 ## Goal
