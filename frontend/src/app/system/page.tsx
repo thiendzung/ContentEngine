@@ -166,7 +166,7 @@ export default function SystemPage() {
           </div>
 
           <div className={styles.semanticStrip}>
-            <span className={styles.badge}>Chính sách cấu hình ≠ trạng thái Autopilot khi chạy</span>
+            <span className={styles.badge}>Chính sách cấu hình ≠ trạng thái tự động hóa khi chạy</span>
             <span className={styles.badge}>Lịch sử sử dụng ≠ sức khỏe nhà cung cấp</span>
             <span className={styles.badge}>Lịch sử ủy quyền ≠ sức khỏe tác nhân</span>
             <span className={styles.badge}>Kiểm tra khả dụng = bằng chứng năng lực trực tiếp riêng</span>
@@ -234,7 +234,7 @@ export default function SystemPage() {
                       </dd>
                     </dl>
                     <div className={styles.notice}>
-                      Giá trị “đã cấu hình bật” là cấu hình chính sách, không phải trạng thái Autopilot khi chạy.
+                      Giá trị “đã cấu hình bật” là cấu hình chính sách, không phải trạng thái tự động hóa khi chạy.
                     </div>
                     {source.workers.map((worker) => (
                       <details className={styles.disclosure} key={worker.worker_key}>
@@ -262,7 +262,7 @@ export default function SystemPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Provider / model</th>
+                      <th>Nhà cung cấp / mô hình</th>
                       <th>Trạng thái</th>
                       <th>Số lần gọi</th>
                       <th>Token đầu vào</th>
@@ -346,7 +346,7 @@ export default function SystemPage() {
                     <tr>
                       <th>Tác vụ</th>
                       <th>Năng lực</th>
-                      <th>Provider / model</th>
+                      <th>Nhà cung cấp / mô hình</th>
                       <th>Chính sách</th>
                       <th>Ứng viên</th>
                       <th>Chuyển cấp</th>
