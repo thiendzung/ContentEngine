@@ -111,6 +111,8 @@ const COVERAGE_REASON_VI: Record<string, string> = {
     "Tồn tại bản sửa đổi yếu hoặc chưa qua chất lượng.",
   duplicate_candidate_detected:
     "Phát hiện ứng viên nội dung trùng theo cùng nhu cầu/ngôn ngữ/ý định/câu hỏi.",
+  same_primary_need_locale_intent_question:
+    "Trùng nhu cầu chính, ngôn ngữ, ý định và câu hỏi chính.",
 };
 
 const PLANNING_REASON_VI: Record<string, string> = {
