@@ -41,8 +41,8 @@ P3 task slices:
 - [x] **P3-01 / #381 — Core operations** — DONE: Overview + Needs Me + Production; CI #2412 frontend lint/typecheck PASS.
 - [x] **P3-02 / #382 — Customer map** — DONE: nhóm khách hàng/nhu cầu/nhận định/hành trình/ảnh chụp; CI #2415 frontend lint/typecheck PASS.
 - [x] **P3-03 / #383 — Content planning** — DONE: Content Map + Question Map presentation; CI #2423 frontend lint/typecheck PASS.
-- [ ] **P3-04 / #384 — Learning** — ACTIVE: đề xuất/bằng chứng/duyệt/áp dụng/kiểm chứng/xử lý kết quả.
-- [ ] **P3-05 / #385 — System**: System + Daily Digest presentation.
+- [x] **P3-04 / #384 — Learning** — DONE: đề xuất/bằng chứng/duyệt/áp dụng/kiểm chứng/xử lý kết quả; CI #2427 frontend lint/typecheck PASS.
+- [ ] **P3-05 / #385 — System** — ACTIVE: Hệ thống + Nhật ký thay đổi.
 - [ ] **P3-06 / #386 — Journal Operator**: intake/preflight/workspace/quality/final-review presentation.
 - [ ] **P3-07 / #387 — Legacy + terminology audit**: remaining mixed-English normal-path UI.
 - [ ] **P3-08 / #388 — Final verification**: exact-SHA static/build/browser/OCR/Agent Local/CI/MG closeout.
