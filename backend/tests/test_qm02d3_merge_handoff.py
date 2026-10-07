@@ -5,6 +5,15 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from test_qm02c_production_admission import (
+    _need,
+    _project,
+    _run,
+    _selected_opportunity,
+    _target_item,
+    isolated_session,
+)
+
 from app.modules.content_engine.journal.models import OperatorCommand
 from app.modules.content_engine.models import (
     ContentCase,
@@ -27,14 +36,6 @@ from app.modules.research.keyword_plan.production_decision_router import (
 from app.modules.research.keyword_plan.reconciliation_handoff import (
     MergeProductionHandoffError,
     materialize_merge_handoff,
-)
-from test_qm02c_production_admission import (
-    _need,
-    _project,
-    _run,
-    _selected_opportunity,
-    _target_item,
-    isolated_session,
 )
 
 
