@@ -5,11 +5,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from test_qm02c_production_admission import (
+from test_qm02d2_revision_handoff import (
     _need,
     _project,
     _run,
-    _selected_opportunity,
+    _search_signal,
     _target_item,
     isolated_session,
 )
@@ -27,6 +27,13 @@ from app.modules.content_engine.persistence import (
     create_next_content_version,
 )
 from app.modules.harness.models import ContentRun, Job, StepRun
+from app.modules.research.keyword_plan.content_architecture import (
+    build_content_architecture,
+)
+from app.modules.research.keyword_plan.opportunity_selection_v2 import (
+    OpportunitySelectionRequest,
+    persist_selected_opportunity,
+)
 from app.modules.research.keyword_plan.production_admission import (
     build_production_admission,
 )
@@ -42,25 +49,85 @@ from app.modules.research.keyword_plan.reconciliation_handoff import (
 async def _merge_fixture(session: AsyncSession):
     project = await _project(session)
     need = await _need(session, project_id=project.id)
+    await _search_signal(
+        session,
+        project=project,
+        need=need,
+        text="How much should I spend on my first painting?",
+    )
+    await _search_signal(
+        session,
+        project=project,
+        need=need,
+        text="What budget should I set for my first painting?",
+    )
     first = await _target_item(
         session,
         project=project,
         need=need,
-        suffix="merge-a",
+        refresh=False,
     )
     second = await _target_item(
         session,
         project=project,
         need=need,
-        suffix="merge-b",
+        refresh=False,
     )
-    opportunity, _ = await _selected_opportunity(
+
+    architecture = await build_content_architecture(
         session,
-        project=project,
-        need=need,
-        decision="MERGE",
-        target_ids=[first.id, second.id],
+        project_id=project.id,
+        need_id=need.id,
+        locale="en",
     )
+    candidates = architecture["candidates"]
+    assert isinstance(candidates, list)
+    matches = [
+        row
+        for row in candidates
+        if isinstance(row, dict)
+        and row.get("role") == "cluster"
+        and row.get("decision") == "MERGE"
+    ]
+    assert len(matches) == 1
+    candidate = matches[0]
+    assert candidate["selection_readiness"] == "READY_FOR_HUMAN_SELECTION"
+    assert set(candidate["existing_content_refs"]) == {
+        str(first.id),
+        str(second.id),
+    }
+
+    selected = await persist_selected_opportunity(
+        session,
+        project_id=project.id,
+        request=OpportunitySelectionRequest(
+            project_slug=project.slug,
+            need_id=need.id,
+            locale="en",
+            architecture_candidate_key=str(candidate["candidate_key"]),
+            expected_architecture_snapshot_hash=str(
+                architecture["snapshot_hash"]
+            ),
+            expected_planner_snapshot_hash=str(
+                architecture["planner_snapshot_hash"]
+            ),
+            selected_by="founder",
+            selection_reason="Founder selected the exact MERGE candidate.",
+            promise="Reconcile duplicate budget guidance into one canonical answer.",
+            coverage_requirements=[
+                "Preserve exact source identities during reconciliation.",
+                "Keep one explicit canonical survivor chosen by Founder.",
+            ],
+        ),
+    )
+    opportunity = await session.get(
+        ContentOpportunity,
+        selected.content_opportunity_id,
+    )
+    assert opportunity is not None
+    assert opportunity.decision == "MERGE"
+    assert "qm02a_exact_planner_selection" in opportunity.reasons_json
+
     route = await build_production_decision_route(
         session,
         project_id=project.id,
@@ -558,4 +625,3 @@ async def test_rejected_need_blocks_new_merge_handoff() -> None:
             )
 
         assert await _counts(session) == before
-
