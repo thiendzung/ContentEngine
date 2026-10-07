@@ -88,9 +88,9 @@ function issuePresentation(code: string): {
   }
   if (code.includes("operator_")) {
     return {
-      title: "Điều hành Journal đang bị chặn hoặc liên kết dữ liệu không nhất quán.",
+      title: "Điều hành bài nội dung đang bị chặn hoặc liên kết dữ liệu không nhất quán.",
       recovery:
-        "Mở Bảng sản xuất hoặc Điều hành Journal để kiểm tra hồ sơ gốc; Tổng quan không tự sửa trạng thái điều hành.",
+        "Mở Bảng sản xuất hoặc Điều hành bài nội dung để kiểm tra hồ sơ gốc; Tổng quan không tự sửa trạng thái điều hành.",
     };
   }
   if (code.includes("canonical_gate_missing")) {
