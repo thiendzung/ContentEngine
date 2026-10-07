@@ -22,7 +22,8 @@ Current child slice:
 - P3-02 / #382 — DONE; exact head `016894dbe8f9d651c263fa71235ad2d4f04fa1a5`, CI #2415 frontend lint/typecheck PASS;
 - P3-03 / #383 — DONE; exact head `d70a25f4e019fbf89fe46e425f41e82977a73870`, CI #2423 frontend lint/typecheck PASS;
 - P3-04 / #384 — DONE; exact head `96f6fdc614a296975dd524cd2a360a93d0ee7286`, CI #2427 frontend lint/typecheck PASS;
-- P3-05 / #385 — ACTIVE: System + Daily Digest presentation.
+- P3-05 / #385 — DONE; exact head `f2a81510b42b29fbc9db76041dc5ac91dd203600`, CI #2431 frontend lint/typecheck PASS;
+- P3-06 / #386 — ACTIVE: Journal Operator presentation.
 
 UI-P3 scope:
 - make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
