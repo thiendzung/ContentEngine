@@ -7,31 +7,55 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P2 — Question Map decision cockpit — ACTIVE / #374
+## UI-P3 — Vietnamese Founder-facing terminology — ACTIVE / #377
 
 Base main:
-`c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+`f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
 
-- [x] Founder authorized bounded UI-P2 after #361 Golden E2E and UI-P1 completion.
-- [x] Create dedicated branch from exact post-#373 main.
-- [x] Desktop two-column cockpit: candidates left, decision panel right.
-- [x] Visible 3-step flow: problem -> content -> production handoff.
-- [x] Keep problem/locale recovery selector available when planning data cannot load.
-- [x] Demote raw route/admission/snapshot/hash/ref details into technical disclosure.
-- [x] Preserve exact backend authority, stale locks, MERGE confirmation and no Start/Writer/Publish.
+- [x] Founder authorized UI-P3 after UI-P2 merge.
+- [x] Create dedicated branch from exact post-#375 main.
+- [x] Add bounded shared render-label helpers; no i18n dependency.
+- [x] Localize Overview / Needs Me / Daily Digest / System primary terminology.
+- [x] Localize Customers / Content Map / Question Map primary terminology.
+- [x] Localize Learning lifecycle terminology.
+- [x] Localize Journal Operator / intake / workspace primary terminology.
+- [x] Preserve API/route/enum/schema/DB/provider/model technical contracts.
+- [ ] Audit remaining avoidable English on Founder-facing primary text.
 - [ ] Frontend lint PASS.
 - [ ] Frontend typecheck PASS.
 - [ ] Frontend production build PASS.
-- [ ] Browser smoke at 1366/1440/1920 + narrow sanity PASS.
-- [ ] CREATE/UPDATE/REFRESH/MERGE UI contract smoke PASS.
+- [ ] Desktop browser smoke across seven primary sections + operator/review PASS.
+- [ ] Narrow/keyboard sanity PASS.
 - [ ] Exact-ref OCR Delegation Mode PASS.
 - [ ] Agent Local exact-SHA verification PASS.
 - [ ] Minimal GitHub CI PASS or disclosed unavailable.
 - [ ] MG final review.
 - [ ] Founder merge.
 
-Non-goals: P3 full terminology localization, P4 system-wide business/technical-layer refactor,
-P5 Production Board redesign, P6 global visual/design-system polish, backend/API/schema/DB changes.
+Non-goals: P4 technical-layer hierarchy redesign, P5 Production Board density/layout redesign,
+P6 global visual/design-system polish, backend/API/schema/DB behavior changes.
+
+## UI-P2 — Question Map decision cockpit — DONE / #374 / PR #375 MERGED
+
+Base:
+`c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+Merged main:
+`f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
+
+- [x] Desktop two-column cockpit with sticky decision rail.
+- [x] Visible 3-step flow: problem -> content -> production handoff.
+- [x] Recovery selector remains usable after planning-load failure.
+- [x] Raw route/admission/snapshot/hash/ref details demoted to technical disclosure.
+- [x] CREATE/UPDATE/REFRESH/MERGE backend authority and fail-closed behavior preserved.
+- [x] MERGE explicit survivor + reason + confirmation preserved.
+- [x] Frontend lint/typecheck/build PASS on verified P2 lineage.
+- [x] Fixture-backed recovery + CREATE/REFRESH/MERGE and UPDATE fail-closed acceptance PASS.
+- [x] Sticky R3 PASS at 1366/1440/1920 through document bottom.
+- [x] Narrow 390px + keyboard + inner-panel scrolling PASS.
+- [x] OpenCodeReview exact-ref: 6/6 reviewable, 0 Critical/High/Medium.
+- [x] CI #2392 SUCCESS on final candidate.
+- [x] MG READY TO MERGE.
+- [x] Founder merged PR #375; #374 closed.
 
 ## UI-P1 — Desktop sidebar + Vietnamese primary navigation — DONE / #372 / PR #373 MERGED
 
