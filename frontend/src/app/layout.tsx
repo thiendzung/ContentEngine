@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import { AppNavigation } from "../components/app-navigation";
 import "./globals.css";
 import "./navigation.css";
 import "./review-ux.css";
@@ -14,16 +14,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="vi">
       <body>
-        <nav className="global-nav" aria-label="Điều hướng ContentEngine">
-          <Link href="/overview">Tổng quan</Link>
-          <Link href="/customers">Khách hàng</Link>
-          <Link href="/content-map">Bản đồ nội dung</Link>
-          <Link href="/production">Sản xuất</Link>
-          <Link href="/needs-me">Cần tôi xử lý</Link>
-          <Link href="/learning">Learning</Link>
-          <Link href="/system">System</Link>
-        </nav>
-        {children}
+        <div className="app-shell">
+          <AppNavigation />
+          <div className="app-content">{children}</div>
+        </div>
       </body>
     </html>
   );
