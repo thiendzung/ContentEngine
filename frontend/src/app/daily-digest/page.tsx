@@ -7,7 +7,8 @@ import {
   type DailyDigest,
   type DigestEvent,
 } from "../../lib/api/ux-closeout";
-import { uiDomainLabel, uiStatusLabel } from "../../lib/ui/presentation-labels";
+import { uiDomainLabel } from "../../lib/ui/vi/domain";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
