@@ -329,7 +329,7 @@ export default function OverviewPage() {
             </div>
           </div>
           <p className={styles.commandNote}>
-            Overview không tự suy diễn trạng thái Autopilot bật/tắt.
+            Tổng quan không tự suy diễn trạng thái tự động hóa bật/tắt.
           </p>
           <div className={styles.headerActions}>
             <button
@@ -341,7 +341,7 @@ export default function OverviewPage() {
               {loading ? "Đang tải…" : "Làm mới"}
             </button>
             <Link className={styles.linkButton} href="/production">
-              Production nâng cao
+              Mở sản xuất
             </Link>
           </div>
         </aside>
@@ -349,13 +349,13 @@ export default function OverviewPage() {
 
       {loading && !state ? (
         <div className={styles.notice} role="status" aria-live="polite">
-          Đang tải Control Center…
+          Đang tải Trung tâm điều hành…
         </div>
       ) : null}
 
       {error ? (
         <div className={styles.error} role="alert">
-          Không thể đọc Control Center: {error}
+          Không thể đọc Trung tâm điều hành: {error}
         </div>
       ) : null}
 
@@ -370,10 +370,10 @@ export default function OverviewPage() {
           <section className={`${styles.section} ${styles.prioritySection}`}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Needs Me</p>
+                <p className="eyebrow">Cần tôi xử lý</p>
                 <h2>Cần tôi xử lý</h2>
                 <p>
-                  Chỉ các human gate/action do canonical Control Center trả về
+                  Chỉ các cổng duyệt/hành động người dùng do Trung tâm điều hành chuẩn trả về
                   mới xuất hiện ở đây.
                 </p>
               </div>
@@ -384,7 +384,7 @@ export default function OverviewPage() {
 
             {state.needsMe.length === 0 ? (
               <div className={styles.empty} role="status">
-                Hiện không có human gate/action nào cần Founder xử lý.
+                Hiện không có cổng duyệt/hành động nào cần Người sáng lập xử lý.
               </div>
             ) : (
               <div className={styles.needsList}>
@@ -398,11 +398,11 @@ export default function OverviewPage() {
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Daily Digest</p>
+                <p className="eyebrow">Tóm tắt trong ngày</p>
                 <h2>Hôm nay có gì thay đổi?</h2>
                 <p>
-                  Các số dưới đây là durable events trong ngày theo timezone hiện tại.
-                  Coverage không được suy thành lịch sử thay đổi nếu backend không có event tương ứng.
+                  Các số dưới đây là sự kiện bền vững trong ngày theo múi giờ hiện tại.
+                  Độ phủ không được suy thành lịch sử thay đổi nếu backend không có sự kiện tương ứng.
                 </p>
               </div>
               <Link className={styles.linkButton} href="/daily-digest">
