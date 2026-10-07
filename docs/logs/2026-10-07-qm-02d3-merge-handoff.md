@@ -1,8 +1,8 @@
 # QM-02D3 — MERGE Production Handoff
 
-Date: 2026-10-07  
-Tracking: #359  
-Base: `9ddf70663516629a02e12d77e774a28478e5f6a9`  
+Date: 2026-10-07
+Tracking: #359
+Base: `9ddf70663516629a02e12d77e774a28478e5f6a9`
 Branch: `feat/qm-02d3-merge-handoff`
 
 ## Goal
