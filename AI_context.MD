@@ -17,8 +17,8 @@ Tracking:
 #378
 
 Current child slice:
-- P3-00 / #380 — Vietnamese language foundation;
-- implementation may advance to P3-01 only after exact-head frontend lint + typecheck for P3-00 pass.
+- P3-00 / #380 — DONE; exact head `38ae4720641b534965353d0206932a4f5b0dc3a9`, CI #2405 frontend lint/typecheck PASS;
+- P3-01 / #381 — ACTIVE: Overview + Needs Me + Production.
 
 UI-P3 scope:
 - make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
