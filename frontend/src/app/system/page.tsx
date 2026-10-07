@@ -298,7 +298,7 @@ export default function SystemPage() {
                   ) : (
                     summary.tool_usage.map((row) => (
                       <span key={row.key + ":" + row.status}>
-                        {row.key + " · " + row.status + " · " + row.count}
+                        {row.key + " · " + uiStatusLabel(row.status) + " · " + row.count}
                       </span>
                     ))
                   )}
@@ -315,7 +315,7 @@ export default function SystemPage() {
                   ) : (
                     summary.delegation_usage.map((row) => (
                       <span key={row.key + ":" + row.status}>
-                        {row.key + " · " + row.status + " · " + row.count}
+                        {row.key + " · " + uiStatusLabel(row.status) + " · " + row.count}
                       </span>
                     ))
                   )}
