@@ -13,10 +13,10 @@ export default function OperatorHomePage() {
     <main className="operator-page">
       <header className="operator-hero">
         <div>
-          <p className="eyebrow">ContentEngine · Điều hành Journal</p>
-          <h1>Điều hành Journal</h1>
+          <p className="eyebrow">ContentEngine · Điều hành bài chuyên sâu</p>
+          <h1>Điều hành bài chuyên sâu</h1>
           <p className="intro">
-            Tạo bài và vận hành một Journal liên tục từ lúc bắt đầu tới duyệt nội dung cuối.
+            Tạo và vận hành một bài chuyên sâu liên tục từ lúc bắt đầu tới duyệt nội dung cuối.
             Backend giữ quyền quyết định giai đoạn, nhà cung cấp và mô hình; giao diện chỉ gửi ý định an toàn.
           </p>
         </div>
