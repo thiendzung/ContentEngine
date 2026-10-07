@@ -221,7 +221,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
           <h2>Bảng sản xuất nội dung</h2>
         </div>
         <p>
-          Mỗi hàng là một bài nội dung. Trạng thái, giai đoạn và việc tiếp theo là thông tin chính; dữ liệu worker chỉ phản ánh telemetry đã lưu.
+          Mỗi hàng là một bài nội dung. Trạng thái, giai đoạn và việc tiếp theo là thông tin chính; dữ liệu tác nhân chỉ phản ánh số liệu thực thi đã lưu.
         </p>
       </div>
 
