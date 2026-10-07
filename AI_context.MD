@@ -1,53 +1,49 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P3 Vietnamese Founder-facing terminology
+## Current WIP — UI-P4 business-first information hierarchy
 
-Live GitHub state before this slice:
-- #361 Golden E2E is CLOSED with `PASS_QM02_GOLDEN_CLOSEOUT`;
-- UI-P1 / #372 / PR #373 is merged;
-- UI-P2 / #374 / PR #375 is merged;
-- current base main is `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
+Live GitHub state:
+- UI-P1 / PR #373 merged;
+- UI-P2 / PR #375 merged;
+- UI-P3 / PR #379 merged;
+- current base main is `3f961ea97bbb6aa42ac718d20fd05ec37f775083`.
 
-Founder explicitly authorized UI-P3 as the next bounded UX slice.
+Founder authorized UI-P4 as the next bounded UX slice.
 
 Active branch:
-`feat/ui-p3-vietnamese-founder-ui`
+`feat/ui-p4-business-first-hierarchy`
 
 Tracking:
-#378
+#389
 
-Current child slice:
-- P3-00 / #380 — DONE; exact head `38ae4720641b534965353d0206932a4f5b0dc3a9`, CI #2405 frontend lint/typecheck PASS;
-- P3-01 / #381 — DONE; exact head `f49ebf5aaca9ec88bb9eb0889f36a9bf355bcacd`, CI #2412 frontend lint/typecheck PASS;
-- P3-02 / #382 — DONE; exact head `016894dbe8f9d651c263fa71235ad2d4f04fa1a5`, CI #2415 frontend lint/typecheck PASS;
-- P3-03 / #383 — DONE; exact head `d70a25f4e019fbf89fe46e425f41e82977a73870`, CI #2423 frontend lint/typecheck PASS;
-- P3-04 / #384 — DONE; exact head `96f6fdc614a296975dd524cd2a360a93d0ee7286`, CI #2427 frontend lint/typecheck PASS;
-- P3-05 / #385 — DONE; exact head `f2a81510b42b29fbc9db76041dc5ac91dd203600`, CI #2431 frontend lint/typecheck PASS;
-- P3-06 / #386 — DONE; exact head `ae871526ef1da20bae0efd94fc095186a511a72e`, CI #2437 frontend lint/typecheck PASS;
-- P3-07 / #387 — DONE; exact head `1c53340eef0d5d3daa6e254fa89fa0b16753252f`, CI #2439 frontend lint/typecheck PASS;
-- P3-08 / #388 — ACTIVE: final exact-SHA verification and P3 closeout.
+Child slices:
+- P4-00 / #390 — IMPLEMENTED: shared decision-summary presentation primitive; verification pending;
+- P4-01 / #391 — IMPLEMENTED: Overview + Needs Me business-first hierarchy; verification pending;
+- P4-02 / #392 — NEXT: Content planning / Question Map;
+- P4-03 / #393 — Learning + System;
+- P4-04 / #394 — Journal Operator / review workspace;
+- P4-05 / #395 — audit + final verification.
 
-UI-P3 scope:
-- make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
-- translate presentation terminology on Overview, Needs Me, Customers, Content Map, Question Map, Learning, Production, System/Daily Digest and Journal Operator surfaces;
-- preserve API paths, TypeScript/domain types, backend enums, persisted status/route/decision values, hashes and exact identity bindings;
-- map backend values only at render/presentation boundaries;
-- keep raw technical IDs/enums when they are needed for audit, preferably inside existing technical disclosures;
-- no P4 information-hierarchy redesign, P5 Production Board density redesign or P6 global visual-system work;
-- no backend/API/schema/DB/provider/model change.
-
-Desktop remains the primary verification target: 1440px, with 1366px/1920px sanity and narrow usability.
+P4 product contract:
+- normal decision surfaces present **Trạng thái → Vì sao → Việc nên làm** first;
+- IDs, hashes, raw enums, backend codes, snapshots and bindings move behind technical disclosure where practical;
+- frontend must not infer missing status/reason/action;
+- actions remain exactly those already exposed/allowed by backend/read models;
+- read-only surfaces may omit an action when none exists;
+- no backend/API/schema/DB/provider/model/publication behavior change;
+- no P5 Production Board density redesign;
+- no P6 global visual-system work.
 
 Required proof before merge:
-- exact Base -> Candidate diff hygiene;
+- exact Base → Candidate hygiene;
 - frontend lint + typecheck + production build;
-- route/browser smoke across primary Founder surfaces and Journal Operator;
-- terminology audit confirms core normal-path UI is Vietnamese while technical transport values remain unchanged;
-- keyboard/narrow sanity on affected interactive surfaces;
+- desktop/narrow browser smoke on changed surfaces;
+- technical disclosure preserves exact identity values;
+- keyboard/focus sanity;
 - exact-ref OpenCodeReview Delegation Mode;
 - Agent Local exact-SHA verification;
 - minimum GitHub CI;
-- MG final review.
+- MG final evidence review.
 
 Founder remains the only merge authority.
 
@@ -70,7 +66,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main before UI-P3: `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f` (merge PR #375 / UI-P2). QM-02 Golden E2E (#361), UI-P1 and UI-P2 are complete; UI-P3 / #378 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main before UI-P4: `3f961ea97bbb6aa42ac718d20fd05ec37f775083` (merge PR #379 / UI-P3). QM-02 Golden E2E (#361), UI-P1, UI-P2 and UI-P3 are complete; UI-P4 / #389 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -101,17 +97,14 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #378 / UI-P3 on one exact candidate SHA.
+Complete #389 / UI-P4 sequentially without moving workflow authority into the browser.
 
-Required product behavior:
-- normal Founder-facing titles, buttons, section names, badges, state labels and recovery messages are Vietnamese;
-- common backend statuses/decisions/intents are mapped at render time, not renamed in transport or persistence;
-- technical IDs, hashes, provider/model names and backend codes remain exact where needed for audit;
-- no frontend workflow/business truth is invented;
-- no API/model/enum/database contract is renamed.
+Current gate:
+1. verify P4-00 + P4-01 exact-head lint/typecheck;
+2. only then continue #392 / P4-02;
+3. preserve exact technical values and fail-closed behavior throughout.
 
-Do not expand this slice into P4 information hierarchy, P5 Production Board density or P6 global
-visual-system redesign.
+Do not expand P4 into P5 Production Board density or P6 visual-system redesign.
 
 ## Pilot operating priority — 2026-10-03
 
