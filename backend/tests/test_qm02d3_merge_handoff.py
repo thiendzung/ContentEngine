@@ -5,10 +5,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from test_qm02c_production_admission import _run
 from test_qm02d2_revision_handoff import (
     _need,
     _project,
-    _run,
     _search_signal,
     _target_item,
     isolated_session,
