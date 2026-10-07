@@ -13,6 +13,7 @@ import {
   type DailyDigest,
   loadDailyDigest,
 } from "../../lib/api/ux-closeout";
+import { needsMeTypeLabel } from "../../lib/ui/vi/core";
 import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "./control-center.module.css";
 
@@ -43,17 +44,6 @@ function todayForZone(timezone: string): string {
   const month = parts.find((part) => part.type === "month")?.value ?? "01";
   const day = parts.find((part) => part.type === "day")?.value ?? "01";
   return `${year}-${month}-${day}`;
-}
-
-function typeLabel(type: NeedsMeItem["type"]): string {
-  const labels: Record<NeedsMeItem["type"], string> = {
-    content_approval: "Duyệt nội dung",
-    publish_authorization: "Cho phép xuất bản",
-    policy_gate: "Cổng chính sách",
-    learning_candidate_review: "Duyệt đề xuất học từ dữ liệu",
-    learning_resolution: "Xử lý kết quả kiểm chứng học từ dữ liệu",
-  };
-  return labels[type];
 }
 
 function statusClass(status: string): string {
@@ -93,14 +83,14 @@ function issuePresentation(code: string): {
     return {
       title: "Cổng duyệt không còn khớp trạng thái chuẩn hiện tại.",
       recovery:
-        "Không ghi quyết định từ Tổng quan. Kiểm tra lượt chạy/case gốc và chỉ xử lý qua màn hình chuẩn khi có đích hợp lệ.",
+        "Không ghi quyết định từ Tổng quan. Kiểm tra lượt chạy/hồ sơ gốc và chỉ xử lý qua màn hình chuẩn khi có đích hợp lệ.",
     };
   }
   if (code.includes("operator_")) {
     return {
       title: "Điều hành Journal đang bị chặn hoặc liên kết dữ liệu không nhất quán.",
       recovery:
-        "Mở Bảng sản xuất hoặc Điều hành Journal để kiểm tra case gốc; Tổng quan không tự sửa trạng thái điều hành.",
+        "Mở Bảng sản xuất hoặc Điều hành Journal để kiểm tra hồ sơ gốc; Tổng quan không tự sửa trạng thái điều hành.",
     };
   }
   if (code.includes("canonical_gate_missing")) {
@@ -124,7 +114,7 @@ function issuePresentation(code: string): {
   return {
     title: "Trạng thái chuẩn đang bị chặn hoặc không nhất quán.",
     recovery:
-      "Không suy diễn cách sửa từ Tổng quan. Kiểm tra đối tượng và mã backend trong chi tiết kỹ thuật trước khi hành động.",
+      "Không suy diễn cách sửa từ Tổng quan. Kiểm tra đối tượng và mã hệ thống trong chi tiết kỹ thuật trước khi hành động.",
   };
 }
 
@@ -155,7 +145,7 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
     <article className={styles.card}>
       <div className={styles.cardTop}>
         <div>
-          <p className="eyebrow">{typeLabel(item.type)}</p>
+          <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
           <h3>{item.reason}</h3>
         </div>
         <span className={statusClass(item.canonical_status)}>
@@ -273,7 +263,7 @@ export default function OverviewPage() {
           : "Không thể làm mới Trung tâm điều hành.";
       if (state) {
         setStale(
-          `Lần làm mới thất bại (${message}). Đang giữ snapshot hiển thị thành công gần nhất.`,
+          `Lần làm mới thất bại (${message}). Đang giữ ảnh chụp hiển thị thành công gần nhất.`,
         );
       } else {
         setError(message);
@@ -291,7 +281,7 @@ export default function OverviewPage() {
           : "Không thể làm mới Nhật ký thay đổi.";
       if (digest) {
         setDigestStale(
-          `Nhật ký thay đổi làm mới thất bại (${message}). Đang giữ digest gần nhất.`,
+          `Nhật ký thay đổi làm mới thất bại (${message}). Đang giữ nhật ký gần nhất.`,
         );
       } else {
         setDigestError(message);
