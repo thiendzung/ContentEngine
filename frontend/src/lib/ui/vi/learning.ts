@@ -5,6 +5,8 @@ const LEARNING_STATUS_VI: Record<string, string> = {
   EARLY_SIGNAL: "Tín hiệu ban đầu",
   REPEATED_PATTERN: "Mẫu lặp lại",
   READY_FOR_REVIEW: "Sẵn sàng để duyệt",
+  INSUFFICIENT_DATA: "Chưa đủ dữ liệu",
+  LEARNING_CANDIDATE_READY: "Sẵn sàng tạo đề xuất học",
   CONTESTED: "Có tranh luận",
   OPEN: "Đang mở",
   SUPERSEDED: "Đã được thay thế",
