@@ -214,6 +214,11 @@ def test_rank_math_gateway_config_repr_does_not_expose_secret() -> None:
 async def test_rank_math_gateway_from_settings_uses_secretstr() -> None:
     settings = Settings(
         _env_file=None,
+        app_env="development",
+        database_url=(
+            "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
+        ),
+        test_database_url=None,
         rank_math_bridge_base_url="https://motgu.example",
         rank_math_bridge_secret=SecretStr("b" * 64),
         rank_math_bridge_request_timeout_seconds=7.0,
