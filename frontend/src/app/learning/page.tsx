@@ -212,7 +212,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                 <div className={styles.refList}>
                   <span>{"Người duyệt · " + candidate.review.reviewed_by}</span>
                   <span>{"Thời điểm · " + formatDate(candidate.review.reviewed_at)}</span>
-                  <span>{"Snapshot đề xuất · " + candidate.review.candidate_snapshot_hash}</span>
+                  <span>{"Bản chụp dữ liệu đề xuất · " + candidate.review.candidate_snapshot_hash}</span>
                 </div>
               </>
             ) : (
@@ -239,7 +239,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                   <span>{"Thời điểm · " + formatDate(candidate.application.applied_at)}</span>
                   <span>{"Đối tượng kết quả · " + (candidate.application.resulting_target_id ?? "không có")}</span>
                   <span>
-                    {"Tài liệu snapshot bản đồ khách hàng · " +
+                    {"Tài liệu bản chụp dữ liệu khách hàng · " +
                       (candidate.application.customer_map_snapshot_artifact_id ?? "không có")}
                   </span>
                 </div>
@@ -252,7 +252,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
           {candidate.validations.length === 0 ? (
             <article className={styles.timelineCard} data-state="validation">
               <strong>Kiểm chứng sau đó</strong>
-              <p>Chưa có snapshot kiểm chứng bền vững.</p>
+              <p>Chưa có bản chụp dữ liệu kiểm chứng bền vững.</p>
             </article>
           ) : (
             candidate.validations.map((validation) => (
