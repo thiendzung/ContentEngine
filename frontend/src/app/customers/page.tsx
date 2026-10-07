@@ -927,7 +927,7 @@ export default function CustomersPage() {
                   <div className={styles.sectionHeader}>
                     <div>
                       <p className="eyebrow">Thay đổi gần đây</p>
-                      <h2>Thay đổi so với snapshot trước</h2>
+                      <h2>Thay đổi so với ảnh chụp trước</h2>
                     </div>
                     <div className={styles.badges}>
                       <span className={styles.badge}>
