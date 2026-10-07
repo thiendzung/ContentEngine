@@ -44,7 +44,7 @@ export default function OperatorHomePage() {
         </article>
 
         <article className="operator-panel home-card">
-          <p className="eyebrow">Giới hạn F6-MINI</p>
+          <p className="eyebrow">Giới hạn hiện tại</p>
           <h2>Hoàn tất nhưng không xuất bản</h2>
           <p>
             Luồng bình thường dừng ở Hoàn thành / Đã duyệt / Chưa xuất bản. Yêu cầu sửa nhiều vòng và quyền xuất bản là các cổng riêng.
