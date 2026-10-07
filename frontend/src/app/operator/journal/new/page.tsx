@@ -14,10 +14,10 @@ export default function NewJournalPage() {
     <main className="operator-page">
       <header className="operator-subpage-header">
         <div>
-          <p className="eyebrow">Journal Operator</p>
+          <p className="eyebrow">Điều hành Journal</p>
           <h1>Tạo Journal mới</h1>
           <p className="intro">
-            Brief này là chỉ đạo biên tập của Founder. Bằng chứng bên ngoài sẽ được nghiên cứu ở worker sau khi bấm Start.
+            Yêu cầu này là chỉ đạo biên tập của Người sáng lập. Bằng chứng bên ngoài sẽ được nghiên cứu ở tác nhân sau khi bấm Bắt đầu.
           </p>
         </div>
         <Link className="operator-link" href="/operator">Quay lại điều hành</Link>
