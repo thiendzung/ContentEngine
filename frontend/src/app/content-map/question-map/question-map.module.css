@@ -524,6 +524,25 @@
   line-height: 1.5;
 }
 
+.savedSelectionNote {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #9dac93;
+  border-left: 3px solid #72806b;
+  background: #edf2e9;
+  color: #34412f;
+  padding: 11px 12px;
+}
+
+.savedSelectionNote strong {
+  font: 800 .78rem Arial, sans-serif;
+}
+
+.savedSelectionNote span {
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
 .productionStatus h3 {
   margin: 2px 0 0;
   font-size: 1.05rem;
