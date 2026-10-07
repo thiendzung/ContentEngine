@@ -14,8 +14,8 @@ export default function NewJournalPage() {
     <main className="operator-page">
       <header className="operator-subpage-header">
         <div>
-          <p className="eyebrow">Điều hành Journal</p>
-          <h1>Tạo Journal mới</h1>
+          <p className="eyebrow">Điều hành bài chuyên sâu</p>
+          <h1>Tạo bài chuyên sâu mới</h1>
           <p className="intro">
             Yêu cầu này là chỉ đạo biên tập của Người sáng lập. Bằng chứng bên ngoài sẽ được nghiên cứu ở tác nhân sau khi bấm Bắt đầu.
           </p>
