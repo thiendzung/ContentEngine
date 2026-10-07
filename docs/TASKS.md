@@ -27,28 +27,62 @@ Architecture remediation: #353 → #354 → #355 → #356.
 - [x] D2/D3 unlocked only after #357 PASS.
 
 Search language remains planning evidence, not factual article evidence.
-## QM-02D2 — UPDATE / REFRESH Production Handoff — ACTIVE / #358
+## QM-02D2 — UPDATE / REFRESH Production Handoff — DONE / PR #367 MERGED
+
+Tracking: issue #358. Merge/main:
+`9ddf70663516629a02e12d77e774a28478e5f6a9`.
 
 - [x] Start only after #357 checkpoint PASS.
-- [x] Extend QM-02B route to bind exact target ContentItem/Case/Variant/current ContentVersion state.
-- [x] Require current ContentVersion for UPDATE / REFRESH / MERGE target routes.
-- [x] Extend QM-02C admission snapshot with exact target snapshot hashes.
-- [x] Preserve active-run conflict blocking and add exact revision-materialization conflict detection.
-- [x] Serialize canonical ContentVersion append by locking ContentItem before next-version allocation.
-- [x] Add transaction-bound D2 materialization for UPDATE / REFRESH only.
-- [x] D2 creates one revision ContentCase + one source LocaleVariant + one OperatorCommand receipt.
-- [x] Preserve canonical target ContentItem; do not create a competing ContentItem or premature ContentVersion.
-- [x] Bind receipt to exact current target ContentVersion through `result_ref_id`.
-- [x] Exact replay returns the same revision receipt; different-key duplicate materialization fails closed.
-- [x] Add target-version/status drift regressions and real QM-02A UPDATE/REFRESH handoff tests.
-- [ ] Ruff + mypy + focused QM/D2 regression.
-- [ ] Full backend.
+- [x] Exact target ContentItem/Case/Variant/current ContentVersion binding.
+- [x] Current ContentVersion required for UPDATE / REFRESH / MERGE target routes.
+- [x] Admission snapshot binds exact target snapshot hashes.
+- [x] Active-run conflict blocking + exact revision-materialization conflict detection.
+- [x] Canonical ContentVersion append serialized through ContentItem row lock.
+- [x] Transaction-bound UPDATE / REFRESH handoff.
+- [x] One revision ContentCase + source LocaleVariant + OperatorCommand receipt only.
+- [x] No competing ContentItem or premature ContentVersion.
+- [x] Receipt binds exact target ContentVersion through `result_ref_id`.
+- [x] Exact replay safe; different-key duplicate fails closed.
+- [x] Target-version/status drift + real QM-02A UPDATE/REFRESH regressions PASS.
+- [x] Ruff + mypy PASS.
+- [x] Focused QM/D2: 85/85 PASS.
+- [x] True two-session PostgreSQL allocation proof: v1 -> v2 -> v3, no duplicate.
+- [x] OCR Delegation Mode: 12/12 reviewable, 0 Critical/High/Medium.
+- [x] Exact-SHA CI #2344 SUCCESS for minimum lint/types/frontend confirmation.
+- [x] Full candidate suite baseline exception isolated: 1532 PASS / 5 known environment-fixture FAIL; exact Base reproduced the same failures; cleanup tracked in #368.
+- [x] Founder merged PR #367 and issue #358 closed.
+
+Shared D2 target/version snapshot contract is the required identity basis for D3.
+
+## QM-02D3 — MERGE Production Handoff — ACTIVE / #359
+
+Base: merged D2 main
+`9ddf70663516629a02e12d77e774a28478e5f6a9`.
+
+Branch:
+`feat/qm-02d3-merge-handoff`.
+
+- [x] Reuse D2 exact ContentItem/Case/Variant/current ContentVersion target snapshots.
+- [x] Require at least two explicit conflicting ContentItem refs.
+- [x] Require same project / primary Need / locale through QM-02B target validation.
+- [x] Require compatible primary intent + editorial role across the exact conflict set.
+- [x] Require explicit Founder survivor ContentItem within the conflict set + bounded reason.
+- [x] Lock exact conflict ContentItems/Cases/Variants/current ContentVersions before final route/admission recheck.
+- [x] Harden QM-02C MERGE admission: stale target, unresolved target run, prior reconciliation binding fail closed.
+- [x] Materialize one reconciliation ContentCase + source LocaleVariant + durable OperatorCommand receipt.
+- [x] Freeze exact conflict-set item/version snapshots + survivor + route/admission hashes + deterministic conflict-set hash.
+- [x] Exact same-key replay returns frozen receipt; changed request conflicts fail closed.
+- [x] Different-key duplicate materialization becomes blocked by current admission state.
+- [x] No ContentItem/ContentVersion mutation, delete, redirect, auto-Start, Run/Job, Writer or Publish.
+- [x] Add focused D3 tests for materialization, replay, survivor choice, drift, active run and compatibility.
+- [ ] Ruff + mypy + focused QM/D3 regression.
+- [ ] Full backend with #368 baseline failures classified separately.
 - [ ] OpenCodeReview Delegation Mode exact-ref review.
 - [ ] Agent Local exact-SHA heavy verification.
 - [ ] Minimal GitHub CI.
+- [ ] MG final review.
 - [ ] Founder merge.
 
-Shared D2 target/version snapshot contract is the required basis for #359 D3 MERGE.
 ## QM-02D1 — CREATE Production Handoff — DONE / PR #345 MERGED
 
 Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.

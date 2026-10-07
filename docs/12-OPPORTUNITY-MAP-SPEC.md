@@ -491,6 +491,91 @@ Endpoint:
 Shared target snapshot contract của D2 cũng là nền bắt buộc cho D3 MERGE; D3 không được tự
 định nghĩa một kiểu target/version identity khác.
 
+### MERGE Reconciliation Handoff — QM-02D3
+
+D3 chỉ mở sau khi D2 shared target/version contract đã exact-SHA verify và merge.
+
+MERGE không phải lệnh tự động gộp nội dung. Nó là một **bounded reconciliation plan** cần
+Founder xác nhận exact conflict set và canonical survivor trước khi downstream work có thể bắt đầu.
+
+```text
+selected MERGE opportunity
++ >=2 explicit conflicting ContentItems
++ exact current immutable ContentVersions
++ exact QM-02B route hash
++ exact QM-02C reconciliation admission hash
++ explicit Founder survivor + reason
+        ↓
+one reconciliation ContentCase
++ one source LocaleVariant
++ frozen conflict-set reconciliation snapshot
++ one durable OperatorCommand receipt
+        ↓
+no destructive effect
+```
+
+D3 reuse hoàn toàn target identity của D2; không tạo một merge identity/truth store mới.
+QM-02B vẫn là authority cho project / primary Need / locale và exact target
+ContentItem/ContentCase/LocaleVariant/current ContentVersion snapshot.
+
+D3 siết thêm compatibility trước materialization:
+
+- conflict set phải có ít nhất hai distinct target ContentItems;
+- mọi target phải có exact current ContentVersion;
+- primary intent của mọi target phải khớp selected MERGE opportunity;
+- editorial role của mọi target phải khớp exact selected role;
+- survivor phải là một target trong exact conflict set;
+- Founder phải cung cấp reason không rỗng;
+- bất kỳ unresolved `pending/running/waiting_approval/failed` ContentRun trên target nào đều block.
+
+QM-02C MERGE admission được harden trước mutation:
+
+- stale/missing target/version → `BLOCKED_TARGET_STALE`;
+- unresolved run trên bất kỳ conflict target → `BLOCKED_PRODUCTION_CONFLICT`;
+- reconciliation đã materialize → `BLOCKED_ALREADY_MATERIALIZED`;
+- clean exact conflict set → `RECONCILIATION_REQUIRED`.
+
+D3 khóa opportunity + canonical Need + toàn bộ conflict target ContentItem/ContentCase/
+LocaleVariant/current ContentVersion theo thứ tự ổn định, sau đó recompute route + admission
+trong cùng transaction. Route/admission hash đổi thì fail closed.
+
+D3 persist một bounded reconciliation snapshot trong source LocaleVariant của reconciliation
+ContentCase. Snapshot chỉ là audit/handoff metadata và gồm:
+
+- exact project/opportunity;
+- exact selected survivor ContentItem;
+- Founder reason;
+- exact route/admission hashes;
+- exact ordered TargetContentSnapshot list;
+- deterministic conflict-set hash.
+
+Nó không phải canonical content truth và không thay Content Coverage/Question Map authority.
+
+Receipt dùng existing OperatorCommand:
+
+- `intent=create` chỉ là ledger create intent;
+- `resolved_action_key=materialize_question_map_merge`;
+- `result_ref_id` bind exact current ContentVersion của Founder-selected survivor;
+- no Run/StepRun/Job.
+
+Exact same-key + exact request replay trả durable frozen receipt trước mutable-state revalidation.
+Same key nhưng đổi survivor/reason/hash fail closed. Different-key request sau first
+materialization bị current admission block để không tạo reconciliation scope thứ hai.
+
+D3 tuyệt đối không:
+
+- delete hoặc rewrite source ContentItem;
+- tự set source item `superseded`;
+- tạo redirect;
+- tạo ContentVersion mới;
+- tạo ContentRun/StepRun/Job;
+- tự chạy Evidence/Originality/model/provider/tool/Writer;
+- publish.
+
+Endpoint:
+
+`POST /question-map/opportunities/{opportunity_id}/materialize-merge`
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.

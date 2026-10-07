@@ -46,6 +46,11 @@ from app.modules.research.keyword_plan.question_map import (
     QuestionMapError,
     build_question_map,
 )
+from app.modules.research.keyword_plan.reconciliation_handoff import (
+    MergeProductionHandoffError,
+    MergeProductionHandoffResult,
+    materialize_merge_handoff,
+)
 from app.modules.research.keyword_plan.revision_handoff import (
     RevisionProductionHandoffError,
     RevisionProductionHandoffResult,
@@ -73,6 +78,17 @@ class RevisionProductionHandoffRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
+class MergeProductionHandoffRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_slug: str = Field(default="motgu", min_length=1, max_length=100)
+    survivor_content_item_id: UUID
+    founder_reason: str = Field(min_length=1, max_length=2000)
+    expected_route_snapshot_hash: str = Field(min_length=64, max_length=64)
+    expected_admission_snapshot_hash: str = Field(min_length=64, max_length=64)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
 def _question_map_http_error(
     exc: (
         QuestionMapError
@@ -82,6 +98,7 @@ def _question_map_http_error(
         | OpportunitySelectionError
         | CreateProductionHandoffError
         | RevisionProductionHandoffError
+        | MergeProductionHandoffError
         | ProductionAdmissionError
         | ProductionDecisionRouterError
     ),
@@ -97,6 +114,7 @@ def _question_map_http_error(
         "production_route_opportunity_not_found",
         "create_handoff_opportunity_not_found",
         "revision_handoff_opportunity_not_found",
+        "merge_handoff_opportunity_not_found",
     }
     invalid = {
         "create_handoff_route_hash_invalid",
@@ -105,6 +123,10 @@ def _question_map_http_error(
         "revision_handoff_route_hash_invalid",
         "revision_handoff_admission_hash_invalid",
         "revision_handoff_idempotency_key_invalid",
+        "merge_handoff_route_hash_invalid",
+        "merge_handoff_admission_hash_invalid",
+        "merge_handoff_idempotency_key_invalid",
+        "merge_handoff_founder_reason_invalid",
     }
     if exc.code in not_found:
         status_code = 404
@@ -311,6 +333,45 @@ async def get_production_admission(
     except (
         QuestionMapError,
         ProductionAdmissionError,
+    ) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/materialize-merge",
+    response_model=MergeProductionHandoffResult,
+)
+async def create_merge_handoff(
+    opportunity_id: UUID,
+    request: MergeProductionHandoffRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> MergeProductionHandoffResult:
+    try:
+        async with session.begin():
+            project_id = await _project_id_from_slug(
+                session,
+                project_slug=request.project_slug,
+            )
+            return await materialize_merge_handoff(
+                session,
+                project_id=project_id,
+                opportunity_id=opportunity_id,
+                survivor_content_item_id=(
+                    request.survivor_content_item_id
+                ),
+                founder_reason=request.founder_reason,
+                expected_route_snapshot_hash=(
+                    request.expected_route_snapshot_hash
+                ),
+                expected_admission_snapshot_hash=(
+                    request.expected_admission_snapshot_hash
+                ),
+                idempotency_key=request.idempotency_key,
+                actor_id="founder",
+            )
+    except (
+        QuestionMapError,
+        MergeProductionHandoffError,
     ) as exc:
         raise _question_map_http_error(exc) from exc
 

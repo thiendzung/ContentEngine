@@ -122,18 +122,6 @@ async def _status_for_current_route(
             ["production_admission_route_forbids_production"],
         )
 
-    if route.reconciliation_required:
-        return (
-            "RECONCILIATION_REQUIRED",
-            ["production_admission_requires_reconciliation"],
-        )
-
-    if not route.admission_candidate:
-        return (
-            "BLOCKED_PRODUCTION_CONFLICT",
-            ["production_admission_route_not_admissible"],
-        )
-
     bound_cases = list(
         (
             await session.scalars(
@@ -145,6 +133,83 @@ async def _status_for_current_route(
             )
         ).all()
     )
+
+    if route.reconciliation_required:
+        if (
+            route.route != "RECONCILE_CONTENT"
+            or len(route.target_content_item_ids) < 2
+            or len(route.target_snapshots)
+            != len(route.target_content_item_ids)
+        ):
+            return (
+                "BLOCKED_TARGET_STALE",
+                ["production_admission_merge_target_count_invalid"],
+            )
+
+        for target in route.target_snapshots:
+            if target.current_content_version_id is None:
+                return (
+                    "BLOCKED_TARGET_STALE",
+                    ["production_admission_merge_target_version_missing"],
+                )
+            item = await session.get(ContentItem, target.content_item_id)
+            if item is None or item.content_case_id != target.content_case_id:
+                return (
+                    "BLOCKED_TARGET_STALE",
+                    ["production_admission_target_missing"],
+                )
+            if await _blocking_run_count(
+                session,
+                content_case_id=item.content_case_id,
+            ):
+                return (
+                    "BLOCKED_PRODUCTION_CONFLICT",
+                    ["production_admission_target_has_unresolved_run"],
+                )
+
+        if bound_cases:
+            if len(bound_cases) == 1:
+                reconciliation_case = bound_cases[0]
+                matching_receipts = list(
+                    (
+                        await session.scalars(
+                            select(OperatorCommand)
+                            .where(
+                                OperatorCommand.content_case_id
+                                == reconciliation_case.id,
+                                OperatorCommand.resolved_action_key
+                                == "materialize_question_map_merge",
+                                OperatorCommand.status.in_(
+                                    ("accepted", "queued", "completed")
+                                ),
+                            )
+                            .order_by(OperatorCommand.id)
+                        )
+                    ).all()
+                )
+                if len(matching_receipts) == 1:
+                    return (
+                        "BLOCKED_ALREADY_MATERIALIZED",
+                        [
+                            "production_admission_merge_"
+                            "already_materialized"
+                        ],
+                    )
+            return (
+                "BLOCKED_PRODUCTION_CONFLICT",
+                ["production_admission_merge_case_binding_conflict"],
+            )
+
+        return (
+            "RECONCILIATION_REQUIRED",
+            ["production_admission_requires_reconciliation"],
+        )
+
+    if not route.admission_candidate:
+        return (
+            "BLOCKED_PRODUCTION_CONFLICT",
+            ["production_admission_route_not_admissible"],
+        )
 
     if route.route == "CREATE_NEW_CONTENT":
         if len(bound_cases) == 1:
