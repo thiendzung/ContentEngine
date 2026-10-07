@@ -497,7 +497,9 @@ export default function QuestionMapFounderPage() {
     setPreviewBusy(true);
     setError("");
     setStaleMessage("");
-    setHandoffResult(null);
+    if (activeOpportunityId && activeOpportunityId !== opportunityId) {
+      setHandoffResult(null);
+    }
     setPreviewValid(false);
     setMergeSurvivorId("");
     setMergeReason("");
