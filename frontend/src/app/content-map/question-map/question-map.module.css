@@ -413,14 +413,6 @@
   grid-template-columns: minmax(0, 1fr) minmax(360px, 410px);
   gap: 20px;
   align-items: start;
-  /*
-   * Borrow the page's existing desktop bottom gutter into the sticky containing
-   * block. Without this, the rail reaches the cockpit boundary about one page
-   * gutter before the document ends and is pushed upward instead of remaining
-   * at top: 18px.
-   */
-  padding-bottom: 88px;
-  margin-bottom: -88px;
 }
 
 .candidateColumn {
@@ -444,7 +436,12 @@
 }
 
 .decisionPanel {
-  max-height: calc(100vh - 36px);
+  /*
+   * The Question Map page reserves 88px of bottom padding. Keep the rail short
+   * enough to fit between top: 18px and that containing-block boundary even at
+   * document bottom; otherwise CSS sticky is required to push the rail upward.
+   */
+  max-height: calc(100vh - 106px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -650,11 +647,6 @@
   .problemSetup,
   .cockpit {
     grid-template-columns: 1fr;
-  }
-
-  .cockpit {
-    padding-bottom: 0;
-    margin-bottom: 0;
   }
 
   .decisionRail {
