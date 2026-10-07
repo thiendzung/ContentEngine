@@ -411,6 +411,86 @@ cho các idempotency key khác nhau cùng nhắm một selected opportunity.
 
 Sau khi QM-02D1 merge phải chạy QM-02F1 early real CREATE pilot trước khi mở D2/D3.
 
+### UPDATE / REFRESH Production Handoff — QM-02D2
+
+D2 chỉ mở sau khi F1 real CREATE pilot + architecture checkpoint PASS.
+
+Shared route/admission contract được siết trước khi materialize revision:
+
+- QM-02B route snapshot bind không chỉ target ContentItem ID mà còn exact target state:
+  canonical key, ContentCase, LocaleVariant, locale/role/intent/status và current immutable
+  ContentVersion ID/version/status;
+- UPDATE / REFRESH / MERGE fail closed nếu target chưa có current ContentVersion;
+- QM-02C admission snapshot bind exact target snapshot hash;
+- active/pending/waiting_approval/failed production trên target case vẫn block;
+- một revision handoff đã materialize cho cùng selected opportunity/current target version
+  làm request mới bị `BLOCKED_ALREADY_MATERIALIZED`.
+
+D2 mutation boundary nhận duy nhất `UPDATE` hoặc `REFRESH`:
+
+```text
+selected UPDATE / REFRESH opportunity
++ durable QM-02A Founder-selection receipt
++ exact target ContentItem
++ exact current immutable ContentVersion
++ exact QM-02B route hash
++ exact QM-02C admission hash
+        ↓
+one revision ContentCase
++ one source LocaleVariant
++ one durable OperatorCommand receipt
+        ↓
+same canonical target ContentItem / ContentVersion lineage
+```
+
+Revision ContentCase là **execution/audit scope**, không phải article mới. D2 tuyệt đối không tạo
+ContentItem cạnh tranh và không tạo ContentVersion rỗng trước khi downstream thực sự sản xuất
+revision. Canonical article identity vẫn là exact target ContentItem.
+
+Receipt dùng existing OperatorCommand infrastructure:
+
+- `intent=create` chỉ có nghĩa là tạo durable handoff ledger entry;
+- business action nằm ở `resolved_action_key`:
+  - `materialize_question_map_update`;
+  - `materialize_question_map_refresh`;
+- `result_ref_id` bind exact target ContentVersion mà Founder decision dựa trên;
+- revision ContentCase bind trực tiếp exact selected UPDATE/REFRESH opportunity, nên audit
+  lineage không bị mất.
+
+D2 khóa selected opportunity + Need + target ContentItem/ContentCase/LocaleVariant/current
+ContentVersion trong cùng transaction rồi recompute route + admission. ContentVersion append
+path cũng khóa canonical ContentItem trước khi lấy `max(version_no)+1`, nên normal revision
+append phải serialize với D2 target lock.
+
+Current Need gate giữ đúng F1R1:
+`PROPOSED | TESTING | SUPPORTED` có thể đi tiếp khi exact selected/readiness lineage hợp lệ;
+`REJECTED` và `INSUFFICIENT_EVIDENCE` fail closed.
+
+D2 output mới chỉ gồm:
+
+- một revision ContentCase;
+- một source LocaleVariant;
+- một OperatorCommand receipt.
+
+Không tạo:
+
+- ContentItem mới;
+- ContentVersion mới;
+- ContentRun / StepRun / Job;
+- Evidence/Originality execution;
+- model/provider/tool call;
+- Writer/Publish.
+
+Exact replay cùng idempotency/request trả receipt cũ trước mutable-state revalidation.
+Request khác sau first materialization phải fail closed thay vì tạo revision scope thứ hai.
+
+Endpoint:
+
+`POST /question-map/opportunities/{opportunity_id}/materialize-revision`
+
+Shared target snapshot contract của D2 cũng là nền bắt buộc cho D3 MERGE; D3 không được tự
+định nghĩa một kiểu target/version identity khác.
+
 ## 1. Mục tiêu
 
 Keyword Plan không phải công cụ gom thật nhiều từ khóa.

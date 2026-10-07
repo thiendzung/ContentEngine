@@ -15,12 +15,13 @@ from app.modules.content_engine.models import (
     ContentCase,
     ContentItem,
     ContentOpportunity,
+    ContentVersion,
     HumanSelection,
     LocaleVariant,
 )
 
-PRODUCTION_DECISION_ROUTER_SCHEMA_VERSION = 1
-PRODUCTION_DECISION_ROUTER_POLICY_VERSION = "qm-production-router-v1"
+PRODUCTION_DECISION_ROUTER_SCHEMA_VERSION = 2
+PRODUCTION_DECISION_ROUTER_POLICY_VERSION = "qm-production-router-v2"
 
 ProductionRoute = Literal[
     "CREATE_NEW_CONTENT",
@@ -40,6 +41,23 @@ class ProductionDecisionRouterError(ValueError):
         super().__init__(code)
 
 
+class TargetContentSnapshot(BaseModel):
+    content_item_id: UUID
+    canonical_key: str
+    content_type: str
+    item_status: str
+    content_case_id: UUID
+    locale_variant_id: UUID
+    locale: str
+    content_role: str
+    primary_intent: str
+    variant_status: str
+    current_content_version_id: UUID | None
+    current_content_version_no: int | None
+    current_content_version_status: str | None
+    snapshot_hash: str
+
+
 class ProductionDecisionRoute(BaseModel):
     schema_version: int
     policy_version: str
@@ -53,6 +71,7 @@ class ProductionDecisionRoute(BaseModel):
     decision: str
     route: ProductionRoute
     target_content_item_ids: list[UUID]
+    target_snapshots: list[TargetContentSnapshot]
     admission_candidate: bool
     reconciliation_required: bool
     production_forbidden: bool
@@ -227,9 +246,9 @@ async def _validate_targets(
     *,
     opportunity: ContentOpportunity,
     target_ids: list[UUID],
-) -> None:
+) -> list[TargetContentSnapshot]:
     if not target_ids:
-        return
+        return []
 
     rows = (
         await session.execute(
@@ -251,6 +270,12 @@ async def _validate_targets(
         )
 
     found_ids: set[UUID] = set()
+    snapshots: list[TargetContentSnapshot] = []
+    version_required = opportunity.decision in {
+        "UPDATE",
+        "REFRESH",
+        "MERGE",
+    }
     for item, content_case, variant in rows:
         found_ids.add(item.id)
         if (
@@ -272,10 +297,85 @@ async def _validate_targets(
             raise ProductionDecisionRouterError(
                 "production_route_target_locale_mismatch"
             )
+
+        current_version = await session.scalar(
+            select(ContentVersion)
+            .where(ContentVersion.content_item_id == item.id)
+            .order_by(
+                ContentVersion.version_no.desc(),
+                ContentVersion.created_at.desc(),
+                ContentVersion.id.desc(),
+            )
+            .limit(1)
+        )
+        if version_required and current_version is None:
+            raise ProductionDecisionRouterError(
+                "production_route_target_version_missing"
+            )
+
+        snapshot_payload: dict[str, object] = {
+            "content_item_id": str(item.id),
+            "canonical_key": item.canonical_key,
+            "content_type": item.content_type,
+            "item_status": item.status,
+            "content_case_id": str(content_case.id),
+            "locale_variant_id": str(variant.id),
+            "locale": variant.locale.strip().casefold(),
+            "content_role": variant.content_role,
+            "primary_intent": variant.primary_intent,
+            "variant_status": variant.status,
+            "current_content_version_id": (
+                str(current_version.id)
+                if current_version is not None
+                else None
+            ),
+            "current_content_version_no": (
+                current_version.version_no
+                if current_version is not None
+                else None
+            ),
+            "current_content_version_status": (
+                current_version.status
+                if current_version is not None
+                else None
+            ),
+        }
+        snapshots.append(
+            TargetContentSnapshot(
+                content_item_id=item.id,
+                canonical_key=item.canonical_key,
+                content_type=item.content_type,
+                item_status=item.status,
+                content_case_id=content_case.id,
+                locale_variant_id=variant.id,
+                locale=variant.locale.strip().casefold(),
+                content_role=variant.content_role,
+                primary_intent=variant.primary_intent,
+                variant_status=variant.status,
+                current_content_version_id=(
+                    current_version.id
+                    if current_version is not None
+                    else None
+                ),
+                current_content_version_no=(
+                    current_version.version_no
+                    if current_version is not None
+                    else None
+                ),
+                current_content_version_status=(
+                    current_version.status
+                    if current_version is not None
+                    else None
+                ),
+                snapshot_hash=_stable_hash(snapshot_payload),
+            )
+        )
+
     if found_ids != set(target_ids):
         raise ProductionDecisionRouterError(
             "production_route_target_not_found"
         )
+    return sorted(snapshots, key=lambda row: str(row.content_item_id))
 
 
 async def build_production_decision_route(
@@ -320,7 +420,7 @@ async def build_production_decision_route(
         opportunity.decision,
         len(target_ids),
     )
-    await _validate_targets(
+    target_snapshots = await _validate_targets(
         session,
         opportunity=opportunity,
         target_ids=target_ids,
@@ -339,6 +439,10 @@ async def build_production_decision_route(
         "decision": opportunity.decision,
         "route": route,
         "target_content_item_ids": [str(value) for value in target_ids],
+        "target_snapshots": [
+            row.model_dump(mode="json")
+            for row in target_snapshots
+        ],
         "admission_candidate": admission_candidate,
         "reconciliation_required": reconciliation_required,
         "production_forbidden": production_forbidden,
@@ -357,6 +461,7 @@ async def build_production_decision_route(
         decision=opportunity.decision,
         route=route,
         target_content_item_ids=target_ids,
+        target_snapshots=target_snapshots,
         admission_candidate=admission_candidate,
         reconciliation_required=reconciliation_required,
         production_forbidden=production_forbidden,
@@ -370,6 +475,7 @@ __all__ = [
     "PRODUCTION_DECISION_ROUTER_SCHEMA_VERSION",
     "ProductionDecisionRoute",
     "ProductionDecisionRouterError",
+    "TargetContentSnapshot",
     "ProductionRoute",
     "build_production_decision_route",
 ]

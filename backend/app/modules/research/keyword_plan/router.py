@@ -46,11 +46,25 @@ from app.modules.research.keyword_plan.question_map import (
     QuestionMapError,
     build_question_map,
 )
+from app.modules.research.keyword_plan.revision_handoff import (
+    RevisionProductionHandoffError,
+    RevisionProductionHandoffResult,
+    materialize_revision_handoff,
+)
 
 router = APIRouter(prefix="/question-map", tags=["question-map"])
 
 
 class CreateProductionHandoffRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_slug: str = Field(default="motgu", min_length=1, max_length=100)
+    expected_route_snapshot_hash: str = Field(min_length=64, max_length=64)
+    expected_admission_snapshot_hash: str = Field(min_length=64, max_length=64)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class RevisionProductionHandoffRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     project_slug: str = Field(default="motgu", min_length=1, max_length=100)
@@ -67,6 +81,7 @@ def _question_map_http_error(
         | OpportunityPlannerError
         | OpportunitySelectionError
         | CreateProductionHandoffError
+        | RevisionProductionHandoffError
         | ProductionAdmissionError
         | ProductionDecisionRouterError
     ),
@@ -81,11 +96,15 @@ def _question_map_http_error(
         "opportunity_selection_need_not_found",
         "production_route_opportunity_not_found",
         "create_handoff_opportunity_not_found",
+        "revision_handoff_opportunity_not_found",
     }
     invalid = {
         "create_handoff_route_hash_invalid",
         "create_handoff_admission_hash_invalid",
         "create_handoff_idempotency_key_invalid",
+        "revision_handoff_route_hash_invalid",
+        "revision_handoff_admission_hash_invalid",
+        "revision_handoff_idempotency_key_invalid",
     }
     if exc.code in not_found:
         status_code = 404
@@ -292,6 +311,41 @@ async def get_production_admission(
     except (
         QuestionMapError,
         ProductionAdmissionError,
+    ) as exc:
+        raise _question_map_http_error(exc) from exc
+
+
+@router.post(
+    "/opportunities/{opportunity_id}/materialize-revision",
+    response_model=RevisionProductionHandoffResult,
+)
+async def create_revision_handoff(
+    opportunity_id: UUID,
+    request: RevisionProductionHandoffRequest,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> RevisionProductionHandoffResult:
+    try:
+        async with session.begin():
+            project_id = await _project_id_from_slug(
+                session,
+                project_slug=request.project_slug,
+            )
+            return await materialize_revision_handoff(
+                session,
+                project_id=project_id,
+                opportunity_id=opportunity_id,
+                expected_route_snapshot_hash=(
+                    request.expected_route_snapshot_hash
+                ),
+                expected_admission_snapshot_hash=(
+                    request.expected_admission_snapshot_hash
+                ),
+                idempotency_key=request.idempotency_key,
+                actor_id="founder",
+            )
+    except (
+        QuestionMapError,
+        RevisionProductionHandoffError,
     ) as exc:
         raise _question_map_http_error(exc) from exc
 

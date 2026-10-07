@@ -7,28 +7,48 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## QM-02F1 — Early Real CREATE Pilot — REMEDIATION IN PROGRESS
+## QM-02F1 — Early Real CREATE Pilot — DONE / #346 + #357 CLOSED
 
-Tracking: issue #346. Architecture remediation: #353 → #354 → #355 → #356.
+Architecture remediation: #353 → #354 → #355 → #356.
 
 - [x] QM-02D1 merged before pilot.
-- [x] Run the first F1A read-only discovery and identify the old hard `SUPPORTED` gate.
-- [x] Preserve that first run as diagnostic evidence; do not fake-promote a Need or use raw SQL to force the pilot through.
-- [x] #353 / F1R0: lock Customer Truth confidence and Content Readiness as independent axes.
-- [x] #352 is non-blocking Learning/Customer-Truth work; direct interviews may improve truth confidence but are not a QM prerequisite.
-- [x] #354 / F1R1 merged: planner Content Readiness is derived from Question/Search/Coverage/duplicate gates; `PROPOSED|TESTING|SUPPORTED` may be selectable; `REJECTED` blocks; `INSUFFICIENT_EVIDENCE` is research-required; D1 verifies the durable QM-02A selection receipt and exact selected Signal set.
-- [x] #355 / F1R2 merged in PR #365: stage-aware cluster identity + deterministic locale-specific Content Architecture + exact Pillar/Cluster Founder selection + durable member/Search lineage + one-case Pillar D1 integration.
-- [ ] #356 / F1R3 implementation in progress: bounded external Search Discovery bridge, immutable bounded provider capture, canonical normalized SEARCH Signal persistence, context-only Organic exclusion, deterministic Question Map/Architecture replay. Real provider pilot + exact-SHA verification still required.
-- [ ] Rerun F1A: find one real non-rejected/non-insufficient Need whose Question/Search/Coverage gates yield `CREATE + READY_FOR_HUMAN_SELECTION`.
-- [ ] Founder approves the exact F1A candidate; selection is authorization, not Customer Truth evidence.
-- [ ] F1B persists exact QM-02A selection.
-- [ ] Recompute exact QM-02B route and QM-02C admission.
-- [ ] QM-02D1 materializes exactly one ContentCase + source LocaleVariant + one OperatorCommand receipt.
-- [ ] Prove zero ContentRun/StepRun/Job, no auto-Start, no duplicate lineage, safe exact replay.
-- [ ] Mark QM-02F1 PASS.
+- [x] F1R0 locked Customer Truth confidence and Content Readiness as independent axes.
+- [x] F1R1 removed the false SUPPORTED-only gate while preserving fail-closed truth states.
+- [x] F1R2 added deterministic locale-specific Pillar/Cluster architecture + exact Founder selection.
+- [x] F1R3 added bounded real Search Discovery; Gate A + real-provider Gate B PASS and PR #366 merged.
+- [x] Real F1A rerun on merged R1/R2/R3 returned exact current candidates.
+- [x] Founder selected exact plan_visit candidate `72382dd59b099fdbe943d697`.
+- [x] F1B persisted one exact QM-02A selection and exact Search lineage.
+- [x] QM-02B route + QM-02C admission recomputed from exact snapshots.
+- [x] QM-02D1 materialized exactly one ContentCase + source LocaleVariant + OperatorCommand receipt.
+- [x] Zero ContentRun/StepRun/Job, no auto-Start, no duplicate lineage, exact replay safe.
+- [x] #346 PASS and closed.
+- [x] #357 architecture checkpoint PASS and closed.
+- [x] D2/D3 unlocked only after #357 PASS.
 
-**Gate:** QM-02D2 / QM-02D3 do not start until #357 architecture checkpoint PASS. Search language remains planning evidence, not factual article evidence.
+Search language remains planning evidence, not factual article evidence.
+## QM-02D2 — UPDATE / REFRESH Production Handoff — ACTIVE / #358
 
+- [x] Start only after #357 checkpoint PASS.
+- [x] Extend QM-02B route to bind exact target ContentItem/Case/Variant/current ContentVersion state.
+- [x] Require current ContentVersion for UPDATE / REFRESH / MERGE target routes.
+- [x] Extend QM-02C admission snapshot with exact target snapshot hashes.
+- [x] Preserve active-run conflict blocking and add exact revision-materialization conflict detection.
+- [x] Serialize canonical ContentVersion append by locking ContentItem before next-version allocation.
+- [x] Add transaction-bound D2 materialization for UPDATE / REFRESH only.
+- [x] D2 creates one revision ContentCase + one source LocaleVariant + one OperatorCommand receipt.
+- [x] Preserve canonical target ContentItem; do not create a competing ContentItem or premature ContentVersion.
+- [x] Bind receipt to exact current target ContentVersion through `result_ref_id`.
+- [x] Exact replay returns the same revision receipt; different-key duplicate materialization fails closed.
+- [x] Add target-version/status drift regressions and real QM-02A UPDATE/REFRESH handoff tests.
+- [ ] Ruff + mypy + focused QM/D2 regression.
+- [ ] Full backend.
+- [ ] OpenCodeReview Delegation Mode exact-ref review.
+- [ ] Agent Local exact-SHA heavy verification.
+- [ ] Minimal GitHub CI.
+- [ ] Founder merge.
+
+Shared D2 target/version snapshot contract is the required basis for #359 D3 MERGE.
 ## QM-02D1 — CREATE Production Handoff — DONE / PR #345 MERGED
 
 Tracking: issue #344. Exact task: `logs/2026-10-06-qm-02d1-create-handoff.md`.

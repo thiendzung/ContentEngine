@@ -62,6 +62,14 @@ async def create_next_content_version(
     created_by_run_id: UUID | None = None,
     final_artifact_id: UUID | None = None,
 ) -> ContentVersion:
+    locked_item = await session.scalar(
+        select(ContentItem)
+        .where(ContentItem.id == content_item_id)
+        .with_for_update()
+    )
+    if locked_item is None:
+        raise ValueError("content_item_not_found")
+
     current_max = await session.scalar(
         select(func.max(ContentVersion.version_no)).where(
             ContentVersion.content_item_id == content_item_id
