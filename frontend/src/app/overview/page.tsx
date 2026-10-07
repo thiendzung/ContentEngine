@@ -13,6 +13,7 @@ import {
   type DailyDigest,
   loadDailyDigest,
 } from "../../lib/api/ux-closeout";
+import { DecisionSummary } from "../../components/ui/decision-summary";
 import { needsMeTypeLabel } from "../../lib/ui/vi/core";
 import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "./control-center.module.css";
@@ -141,57 +142,57 @@ async function loadOverviewDigest(timezone: string): Promise<DailyDigest> {
 }
 
 function NeedsMeCard({ item }: { item: NeedsMeItem }) {
+  const actionLabel =
+    item.type === "learning_candidate_review" ||
+    item.type === "learning_resolution"
+      ? "Mở Học từ dữ liệu để xem bằng chứng"
+      : "Mở đúng màn hình xử lý";
+
   return (
     <article className={styles.card}>
-      <div className={styles.cardTop}>
-        <div>
-          <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
-          <h3>{item.reason}</h3>
-        </div>
-        <span className={statusClass(item.canonical_status)}>
-          {uiStatusLabel(item.canonical_status)}
-        </span>
-      </div>
-
-      <p className={styles.meta}>
-        Cập nhật {formatDate(item.updated_at)} · đối tượng{" "}
-        {item.destination.entity_id}
-      </p>
-
-      {item.destination.href ? (
-        <Link className={styles.needsLink} href={item.destination.href}>
-          {item.type === "learning_candidate_review" ||
-          item.type === "learning_resolution"
-            ? "Mở Học từ dữ liệu để xem bằng chứng"
-            : "Mở đúng màn hình xử lý"}
-        </Link>
-      ) : (
-        <p className={styles.noDestination}>
-          Chưa có màn hình hành động riêng trong quy ước hiện tại. Không tạo
-          liên kết giả.
-        </p>
-      )}
-
-      <details className={styles.disclosure}>
-        <summary>Vì sao việc này xuất hiện?</summary>
-        <p className={styles.meta}>
-          Tham chiếu hành động: {item.destination.action_ref}
-        </p>
-        <div className={styles.refs}>
-          {item.why_refs.length > 0 ? (
-            item.why_refs.map((ref) => <span key={ref}>Lý do · {ref}</span>)
+      <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
+      <DecisionSummary
+        status={
+          <span className={statusClass(item.canonical_status)}>
+            {uiStatusLabel(item.canonical_status)}
+          </span>
+        }
+        reason={<strong>{item.reason}</strong>}
+        nextAction={
+          item.destination.href ? (
+            <Link className={styles.needsLink} href={item.destination.href}>
+              {actionLabel}
+            </Link>
           ) : (
-            <span>Không có tham chiếu lý do.</span>
-          )}
-          {item.evidence_refs.length > 0 ? (
-            item.evidence_refs.map((ref) => (
-              <span key={ref}>Bằng chứng · {ref}</span>
-            ))
-          ) : (
-            <span>Không có tham chiếu bằng chứng.</span>
-          )}
-        </div>
-      </details>
+            <span className={styles.noDestination}>
+              Chưa có màn hình hành động riêng trong quy ước hiện tại. Không tạo
+              liên kết giả.
+            </span>
+          )
+        }
+        technicalDetails={
+          <div className={styles.refs}>
+            <span>Cập nhật · {formatDate(item.updated_at)}</span>
+            <span>Mã hàng đợi · {item.id}</span>
+            <span>Đối tượng · {item.destination.entity_id}</span>
+            <span>Loại đích · {item.destination.kind}</span>
+            <span>Tham chiếu hành động · {item.destination.action_ref}</span>
+            <span>Trạng thái gốc · {item.canonical_status}</span>
+            {item.why_refs.length > 0 ? (
+              item.why_refs.map((ref) => <span key={"why:" + ref}>Lý do · {ref}</span>)
+            ) : (
+              <span>Không có tham chiếu lý do.</span>
+            )}
+            {item.evidence_refs.length > 0 ? (
+              item.evidence_refs.map((ref) => (
+                <span key={"evidence:" + ref}>Bằng chứng · {ref}</span>
+              ))
+            ) : (
+              <span>Không có tham chiếu bằng chứng.</span>
+            )}
+          </div>
+        }
+      />
     </article>
   );
 }
@@ -505,17 +506,19 @@ export default function OverviewPage() {
                       className={styles.card}
                       key={`${issue.code}:${issue.entity_type}:${issue.entity_id}`}
                     >
-                      <h3>{presentation.title}</h3>
-                      <p>{presentation.recovery}</p>
-                      <details className={styles.disclosure}>
-                        <summary>Chi tiết kỹ thuật</summary>
-                        <div className={styles.refs}>
-                          <span>Thông báo hệ thống · {issue.message}</span>
-                          <span>Mã · {issue.code}</span>
-                          <span>Loại đối tượng · {issue.entity_type}</span>
-                          <span>Mã đối tượng · {issue.entity_id}</span>
-                        </div>
-                      </details>
+                      <DecisionSummary
+                        status={<span className={styles.badgeDanger}>Bị chặn</span>}
+                        reason={<strong>{presentation.title}</strong>}
+                        nextAction={<span>{presentation.recovery}</span>}
+                        technicalDetails={
+                          <div className={styles.refs}>
+                            <span>Thông báo hệ thống · {issue.message}</span>
+                            <span>Mã · {issue.code}</span>
+                            <span>Loại đối tượng · {issue.entity_type}</span>
+                            <span>Mã đối tượng · {issue.entity_id}</span>
+                          </div>
+                        }
+                      />
                     </article>
                   );
                 })}
