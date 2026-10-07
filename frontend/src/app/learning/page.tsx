@@ -8,7 +8,14 @@ import {
   loadLearningOverview,
   type LearningOverview,
 } from "../../lib/api/ux-closeout";
-import { uiStatusLabel } from "../../lib/ui/vi/status";
+import {
+  learningActionLabel,
+  learningEvidenceKindLabel,
+  learningRelationLabel,
+  learningSourceKindLabel,
+  learningStatusLabel,
+  learningTargetLabel,
+} from "../../lib/ui/vi/learning";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -71,15 +78,6 @@ function statusClass(value: string): string {
   return styles.badge;
 }
 
-function evidenceLabel(item: LearningEvidenceItem): string {
-  const labels: Record<LearningEvidenceItem["kind"], string> = {
-    signal: "Tín hiệu thực tế",
-    measurement_observation: "Quan sát đo lường",
-    assessment_artifact: "Tài liệu đánh giá",
-  };
-  return labels[item.kind];
-}
-
 function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
   return (
     <div className={styles.panel}>
@@ -89,25 +87,25 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
           <h2>{candidate.statement}</h2>
         </div>
         <span className={statusClass(candidate.evidence_status)}>
-          {uiStatusLabel(candidate.evidence_status)}
+          {learningStatusLabel(candidate.evidence_status)}
         </span>
       </div>
 
       <div className={styles.notice}>
-        Đề xuất này là diễn giải cần người duyệt, không phải Sự thật khách hàng. Bằng chứng thực tế
+        Đề xuất này là diễn giải cần người duyệt, chưa phải Sự thật khách hàng. Bằng chứng thực tế
         được tách riêng ngay bên dưới.
       </div>
 
       <dl className={styles.definition}>
         <dt>Đối tượng</dt>
         <dd>
-          {candidate.target_type}
+          {learningTargetLabel(candidate.target_type)}
           {candidate.target_id ? " · " + candidate.target_id : ""}
         </dd>
         <dt>Quan hệ</dt>
-        <dd>{candidate.relation}</dd>
+        <dd>{learningRelationLabel(candidate.relation)}</dd>
         <dt>Phiên bản / trạng thái</dt>
-        <dd>{"v" + candidate.version + " · " + uiStatusLabel(candidate.status)}</dd>
+        <dd>{"v" + candidate.version + " · " + learningStatusLabel(candidate.status)}</dd>
         <dt>Lợi ích kỳ vọng</dt>
         <dd>{candidate.expected_benefit ?? "Chưa ghi nhận"}</dd>
         <dt>Rủi ro thoái lui</dt>
@@ -155,17 +153,21 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
               <article className={styles.card} key={item.kind + ":" + item.id}>
                 <div className={styles.sectionHeader}>
                   <div>
-                    <p className="eyebrow">{evidenceLabel(item)}</p>
+                    <p className="eyebrow">{learningEvidenceKindLabel(item.kind)}</p>
                     <h3>{item.statement ?? item.status ?? "Tham chiếu bằng chứng"}</h3>
                   </div>
-                  {item.relation ? <span className={styles.badge}>{item.relation}</span> : null}
+                  {item.relation ? (
+                    <span className={styles.badge}>
+                      {learningRelationLabel(item.relation)}
+                    </span>
+                  ) : null}
                 </div>
                 <div className={styles.refList}>
-                  <span>{"ID · " + item.id}</span>
-                  {item.source_kind ? <span>{"Nguồn · " + item.source_kind}</span> : null}
-                  {item.status ? <span>{"Trạng thái · " + uiStatusLabel(item.status)}</span> : null}
+                  <span>{"Mã · " + item.id}</span>
+                  {item.source_kind ? <span>{"Nguồn · " + learningSourceKindLabel(item.source_kind)}</span> : null}
+                  {item.status ? <span>{"Trạng thái · " + learningStatusLabel(item.status)}</span> : null}
                   {item.occurred_at ? <span>{"Quan sát lúc · " + formatDate(item.occurred_at)}</span> : null}
-                  {item.content_hash ? <span>{"Hash · " + item.content_hash}</span> : null}
+                  {item.content_hash ? <span>{"Mã băm · " + item.content_hash}</span> : null}
                 </div>
               </article>
             ))}
@@ -182,7 +184,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
               <strong>Người duyệt</strong>
               {candidate.review ? (
                 <span className={statusClass(candidate.review.decision)}>
-                  {uiStatusLabel(candidate.review.decision)}
+                  {learningStatusLabel(candidate.review.decision)}
                 </span>
               ) : (
                 <span className={styles.badge}>Chưa duyệt</span>
@@ -198,7 +200,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                 </div>
               </>
             ) : (
-              <p>Không có biên nhận duyệt của người dùng đã lưu bền vững.</p>
+              <p>Chưa có biên nhận duyệt đã được lưu bền vững.</p>
             )}
           </article>
 
@@ -214,7 +216,9 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
             </div>
             {candidate.application ? (
               <>
-                <p>{candidate.application.applied_action + " · " + candidate.application.target_type}</p>
+                <p>{learningActionLabel(candidate.application.applied_action) +
+                  " · " +
+                  learningTargetLabel(candidate.application.target_type)}</p>
                 <div className={styles.refList}>
                   <span>{"Biên nhận · " + candidate.application.id}</span>
                   <span>{"Người áp dụng · " + candidate.application.applied_by}</span>
@@ -227,7 +231,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                 </div>
               </>
             ) : (
-              <p>Chưa có biên nhận áp dụng bất biến. Không suy diễn Sự thật khách hàng đã thay đổi.</p>
+              <p>Chưa có biên nhận áp dụng bất biến. Không kết luận Sự thật khách hàng đã thay đổi.</p>
             )}
           </article>
 
@@ -245,7 +249,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                     <p className={styles.meta}>{formatDate(validation.evaluated_at)}</p>
                   </div>
                   <span className={statusClass(validation.validation_status)}>
-                    {uiStatusLabel(validation.validation_status)}
+                    {learningStatusLabel(validation.validation_status)}
                   </span>
                 </div>
                 <div className={styles.refList}>
@@ -256,7 +260,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                 </div>
                 {validation.resolution ? (
                   <div className={styles.notice}>
-                    <strong>{"Kết quả xử lý của người duyệt · " + uiStatusLabel(validation.resolution.decision)}</strong>
+                    <strong>{"Kết quả xử lý của người duyệt · " + learningStatusLabel(validation.resolution.decision)}</strong>
                     <p>{validation.resolution.reason}</p>
                     <div className={styles.refList}>
                       <span>{"Người duyệt · " + validation.resolution.reviewed_by}</span>
@@ -265,12 +269,15 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                           (validation.resolution.application_receipt_id ?? "chưa có biên nhận áp dụng")}
                       </span>
                       <span>
-                        {"Hành động đã áp dụng · " + (validation.resolution.applied_action ?? "chưa có")}
+                        {"Hành động đã áp dụng · " +
+                          (validation.resolution.applied_action
+                            ? learningActionLabel(validation.resolution.applied_action)
+                            : "chưa có")}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <p>Kiểm chứng chưa có kết quả xử lý của người duyệt. Không tự động đưa vào áp dụng.</p>
+                  <p>Kiểm chứng chưa có kết quả xử lý của người duyệt. Hệ thống không tự đưa vào áp dụng.</p>
                 )}
               </article>
             ))
@@ -279,7 +286,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
       </section>
 
       <details className={styles.disclosure}>
-        <summary>Đề xuất / phạm vi kỹ thuật</summary>
+        <summary>Chi tiết kỹ thuật của đề xuất</summary>
         <div className={styles.refList}>
           <span>{"Khóa đề xuất · " + candidate.candidate_key}</span>
           <span>{"Đánh giá nguồn · " + candidate.source_assessment_artifact_id}</span>
@@ -460,9 +467,9 @@ export default function LearningPage() {
                         >
                           <strong>{candidate.statement}</strong>
                           <small>
-                            {uiStatusLabel(candidate.evidence_status) +
+                            {learningStatusLabel(candidate.evidence_status) +
                               " · " +
-                              candidate.target_type +
+                              learningTargetLabel(candidate.target_type) +
                               " · v" +
                               candidate.version}
                           </small>
