@@ -1,51 +1,34 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02E Founder UI
+## Current WIP — #368 QA test-environment cleanup
 
-QM-02D2 and D3 are complete. Founder merged PR #369; live main for the Question Map track is
-`b72b7beeef5b3464ebf87fde5034ccdf99991c07`. Issues #358 and #359 are closed. The five
-known backend test-environment failures remain separate QA debt in #368.
+QM-02E Founder UI is complete. Founder merged PR #370 from verified head
+`d6212af0320682216e19cfdda1079473b72fa2b4`; current GitHub main is
+`99385a36cd0ef4e414fd1404c3e8aee4117b4d1f`. Issue #360 is closed and #361 Golden E2E is
+unblocked.
+
+Before Golden E2E, #368 removes the remaining ambient test-environment coupling so the final
+full-suite proof has a clean baseline.
 
 Active branch:
-`feat/qm-02e-founder-ui`
+`fix/qa-test-environment-isolation`
 
-QM-02E exposes the already-verified backend planning flow without reimplementing business logic
-in the browser:
+Active PR:
+#371
 
-```text
-canonical Need + locale
-        ↓
-Question Map + Pillar/Cluster architecture
-        ↓
-Customer Truth status  ||  Content Readiness
-        ↓
-Founder selects exact candidate
-        ↓
-backend route → backend admission
-        ↓
-explicit materialize CREATE / UPDATE / REFRESH / MERGE
-```
+Bounded QA scope:
+- use the runtime-resolved dedicated test DB target instead of a stale test-only fallback;
+- direct Settings tests explicitly control app_env / DB inputs relevant to the assertion;
+- positive provider tests explicitly provide synthetic keys;
+- negative provider tests explicitly set provider keys to absent;
+- affected tests must pass both with and without ambient developer provider secrets;
+- production behavior, schema, migrations, provider routing and publication behavior stay unchanged;
+- operational checkout/database remain untouched.
 
-Locked UI decisions:
-- Question Map lives under Content Map as `/content-map/question-map`; do not create a separate
-  keyword/SEO truth dashboard;
-- backend remains authority for architecture, decision, priority, route, admission and mutation;
-- UI shows Customer Truth and Content Readiness as separate axes;
-- Search/Question Map data is visibly labelled planning evidence, not factual article Evidence;
-- candidate selection binds exact architecture + planner snapshots;
-- stale route/admission disables mutation and requires a fresh backend read;
-- MERGE requires explicit Founder survivor + reason + confirmation;
-- no Start, Evidence, Originality, model/provider/tool, Writer or Publish action is exposed here;
-- existing #368 environment debt must not be folded into UI behavior.
+Latest pre-remediation full-backend evidence on PR #370 was `1550 passed / 2 failed`; both remaining
+failures are already tracked in #368 and are ambient Serper-fixture tests.
 
-Current implementation adds a typed Question Map API client, runtime schema/semantic guards, a
-Founder workflow page, Pillar/Cluster tree, selection form, route/admission preview and bounded
-materialize controls. Verification still requires frontend lint/typecheck/build, backend/API
-contract regression, one read-only operational browser smoke, stale/error/replay UX proof, OCR,
-Agent Local exact-SHA verification and minimal GitHub CI.
-HTTP selection transaction ownership is explicit but ownership-aware: a fresh HTTP request session opens/commits its own transaction, while a direct caller with an already-active transaction is reused rather than nested. The service remains flush-only. Cross-request ASGI regression proves durability; the existing QM-02A direct-route regression proves compatibility with caller-owned autobegin.
-
-Tracking: #360. Founder remains the only PR merge authority.
+Tracking: #368 / PR #371. Founder remains the only PR merge authority.
 
 ## Read first and verify the actual ref
 
@@ -66,7 +49,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main for the current Question Map track: `3bfb98c22e024480b93604b2b26b91f22ed7369f` (merge PR #366 / QM-02F1R3). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; operational DB remains at verified rev `20260915_0034`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main for the current Question Map track: `99385a36cd0ef4e414fd1404c3e8aee4117b4d1f` (merge PR #370 / QM-02E Founder UI). Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -88,7 +71,7 @@ Live GitHub main for the current Question Map track: `3bfb98c22e024480b93604b2b2
 | F7 | LEGACY PAUSED / audit-only lineage | Historical R4 reached `AWAITING_APPROVAL / outline` and later read-only closeout passed. This lineage is not current Content Quality WIP and must not be resumed merely to advance CQ-02. |
 | F8 | PLANNED | Evidence-led polish and CE05 closeout. |
 
-Code migration head is `20260926_0044`; the verified operational database/source remains `20260915_0034`. This intentional code/operational split is not a deployment error and does not authorize migration. O1.3/O1.4 remain historical release/recovery evidence; backend/frontend/worker were stopped after those proofs.
+Code migration head is `20260926_0044`; the latest verified operational database/source is `20260926_0044`. Historical O1.3/O1.4 release/recovery evidence below remains valid for its original rev-0034 checkpoints; later controlled migration/verification advanced the operational source to 0044. Backend/frontend/worker were stopped after the latest proofs.
 
 Separate non-core publication track:
 - #114 Editorial Quality Pass: produce a successor publication-ready revision without mutating accepted V1.
@@ -97,26 +80,21 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Close #360 / QM-02E on one exact candidate SHA.
+Close #368 / PR #371 on one exact candidate SHA, then clean merged #370 local/remote residue.
 
 Required proof:
-- Need + locale selection reads canonical backend state;
-- Question Map overview and Pillar/Cluster tree render backend values only;
-- per candidate intent/stage/answer-job/coverage/decision/priority/reason refs are visible;
-- Customer Truth status and Content Readiness are visibly separate;
-- Founder selection sends exact architecture/planner snapshots plus promise, coverage requirements
-  and reason;
-- selected opportunity route/admission preview is always fetched from backend;
-- stale selection/route/target state visibly disables materialization;
-- CREATE/UPDATE/REFRESH use their verified handoff endpoints;
-- MERGE requires explicit survivor + reason + confirmation and only materializes reconciliation;
-- exact replay/duplicate/backend conflict responses remain visible and fail closed;
-- no auto Start/Evidence/Originality/Writer/Publish control exists;
-- frontend lint + typecheck + build PASS;
-- read-only operational Question Map view is smoke-tested before any mutation;
-- exact-ref OCR + Agent Local verification + minimal GitHub CI + MG final review.
+- exact Base -> Candidate diff hygiene;
+- Ruff + mypy PASS;
+- all five original #368 tests PASS;
+- affected tests pass with ambient provider secrets absent and with synthetic provider secrets present;
+- full backend passes from a freshly reset `contentengine_test`;
+- no operational DB/schema mutation;
+- exact-ref OCR + minimal GitHub CI + Agent Local exact-SHA verification + MG final review;
+- after verification, remove only stale #370 disposable worktrees/feature refs;
+- retain the fresh O1.1 backup pair for #361;
+- do not move the operational checkout from its verified pinned HEAD.
 
-Do not begin #361 Golden E2E until #360 is verified and merged.
+Do not begin #361 Golden E2E until #368 is clean and PR #371 is merged.
 
 ## Pilot operating priority — 2026-10-03
 
