@@ -133,3 +133,32 @@ uses the canonical `create_next_content_version()` path. It is not an operationa
 command.
 
 A non-empty test workflow state is rejected; reset/reseed instead of layering fixtures.
+
+## HTTP selection transaction boundary
+
+Browser Phase G exposed a real persistence bug: `POST /question-map/opportunities/select` returned
+HTTP 200 after `persist_selected_opportunity()` only flushed the session, while the router did not
+own a transaction. When the request-scoped session closed, the uncommitted selection rolled back;
+the next Route request therefore returned `production_route_opportunity_not_found`.
+
+The bounded fix is at the mutating router boundary, consistent with the other Question Map
+materialize endpoints and Journal operator writes:
+
+```text
+HTTP POST selection
+  -> async with session.begin()
+  -> lookup project
+  -> persist_selected_opportunity() [flush-only service]
+  -> transaction exits successfully
+  -> COMMIT
+```
+
+Do not move implicit auto-commit into `get_db()`: existing write routes already own explicit
+`session.begin()` blocks, and a global transaction policy would broaden the change and conflict
+with those established boundaries.
+
+Regression:
+`backend/tests/test_qm02e_http_selection_transaction.py` seeds a unique canonical CREATE planning
+input in the dedicated test DB, calls the real ASGI HTTP architecture + selection endpoints, then
+issues a separate HTTP Route request and verifies the ContentOpportunity/HumanSelection are durable
+from a new SessionLocal session. The test deletes only its own unique fixture rows in cleanup.
