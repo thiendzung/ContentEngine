@@ -7,33 +7,62 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P1 — Desktop sidebar + Vietnamese primary navigation — ACTIVE / #372
+## UI-P2 — Question Map decision cockpit — ACTIVE / #374
 
 Base main:
-`487bd25db1b7437bd96b32bb05f351a441293a89`.
+`c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
 
-Founder reprioritized this bounded desktop-first UX slice before #361 Golden E2E.
-
-- [x] Lock desktop-first target: 1440px primary; sanity at 1366px and 1920px.
-- [x] Create dedicated P1 branch from exact post-#371 main.
-- [x] Replace desktop horizontal primary navigation with persistent left sidebar.
-- [x] Add visible current-section state + `aria-current="page"`.
-- [x] Vietnamese primary labels: Tổng quan / Cần tôi xử lý / Sản xuất / Khách hàng / Bản đồ nội dung / Học từ dữ liệu / Hệ thống.
-- [x] Map root + `/operator/*` to Sản xuất and `/daily-digest` to Hệ thống.
-- [x] Keep narrow-screen navigation usable; mobile polish remains out of scope.
+- [x] Founder authorized bounded UI-P2 after #361 Golden E2E and UI-P1 completion.
+- [x] Create dedicated branch from exact post-#373 main.
+- [x] Desktop two-column cockpit: candidates left, decision panel right.
+- [x] Visible 3-step flow: problem -> content -> production handoff.
+- [x] Keep problem/locale recovery selector available when planning data cannot load.
+- [x] Demote raw route/admission/snapshot/hash/ref details into technical disclosure.
+- [x] Preserve exact backend authority, stale locks, MERGE confirmation and no Start/Writer/Publish.
 - [ ] Frontend lint PASS.
 - [ ] Frontend typecheck PASS.
 - [ ] Frontend production build PASS.
-- [ ] Browser smoke at desktop widths + active-state route mapping PASS.
-- [ ] Keyboard focus / narrow-layout sanity PASS.
-- [ ] Exact-ref OCR PASS.
+- [ ] Browser smoke at 1366/1440/1920 + narrow sanity PASS.
+- [ ] CREATE/UPDATE/REFRESH/MERGE UI contract smoke PASS.
+- [ ] Exact-ref OCR Delegation Mode PASS.
 - [ ] Agent Local exact-SHA verification PASS.
 - [ ] Minimal GitHub CI PASS or disclosed unavailable.
 - [ ] MG final review.
-- [ ] Founder merge; only then continue #361 unless Founder changes priority.
+- [ ] Founder merge.
 
-Non-goals: no backend/API/schema change, no Question Map two-column redesign, no full UI-wide
-terminology pass, no Production Board density redesign, no new UI framework/icon dependency.
+Non-goals: P3 full terminology localization, P4 system-wide business/technical-layer refactor,
+P5 Production Board redesign, P6 global visual/design-system polish, backend/API/schema/DB changes.
+
+## UI-P1 — Desktop sidebar + Vietnamese primary navigation — DONE / #372 / PR #373 MERGED
+
+Base:
+`487bd25db1b7437bd96b32bb05f351a441293a89`.
+Merged main:
+`c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+
+- [x] Desktop sidebar at 1366/1440/1920.
+- [x] Active route + `aria-current="page"` including nested and negative-boundary checks.
+- [x] Seven Vietnamese primary navigation labels.
+- [x] Narrow 390px sanity.
+- [x] Frontend lint/typecheck/build PASS.
+- [x] Agent Local exact-SHA browser/accessibility verification PASS.
+- [x] OpenCodeReview Delegation Mode 7/7 reviewable, 0 skipped, 0 Critical/High/Medium.
+- [x] CI #2380 SUCCESS.
+- [x] MG READY TO MERGE.
+- [x] Founder merged PR #373; #372 closed.
+
+## QM-02 Golden E2E — DONE / #361 CLOSED
+
+- [x] Real bounded Search Discovery -> Question Map -> Pillar/Cluster -> exact Founder selection -> CREATE handoff.
+- [x] Supported fixture UPDATE / REFRESH / MERGE proof.
+- [x] REJECTED / INSUFFICIENT_EVIDENCE / invalid Search / collision-reuse negative gates.
+- [x] Stale planner / architecture / route / admission / target fail-closed.
+- [x] Locale isolation, replay/idempotency conflict and restart/durability proof.
+- [x] Final focused closeout: 34 PASS.
+- [x] No automatic Need promotion, Founder selection, Start, Writer or Publish.
+- [x] Search remained planning evidence, not factual Evidence.
+- [x] Operational DB untouched; final test state clean.
+- [x] MG closeout: `PASS_QM02_GOLDEN_CLOSEOUT`; #361 closed.
 
 ## QM-02F1 — Early Real CREATE Pilot — DONE / #346 + #357 CLOSED
 
