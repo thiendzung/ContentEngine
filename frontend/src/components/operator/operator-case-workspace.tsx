@@ -41,10 +41,6 @@ import {
 
 const POLL_MS = 2500;
 
-function shortId(value: string | null): string {
-  return value ? `${value.slice(0, 8)}…` : "—";
-}
-
 function localeLabel(value: string): string {
   if (value === "vi" || value === "vi-VN") return "VI";
   if (value === "en") return "EN";
