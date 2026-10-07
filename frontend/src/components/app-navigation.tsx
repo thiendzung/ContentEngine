@@ -39,7 +39,7 @@ const navigationItems: NavigationItem[] = [
         <path d="M4 4h6v6H4zM14 4h6v10h-6zM4 14h6v6H4zM14 18h6v2h-6z" />
       </Icon>
     ),
-    isActive: (pathname) => pathname === "/overview",
+    isActive: (pathname) => pathname.startsWith("/overview"),
   },
   {
     href: "/needs-me",
@@ -50,7 +50,7 @@ const navigationItems: NavigationItem[] = [
         <path d="M12 3 3.8 7.1v5.8c0 4.1 3.5 7.2 8.2 8.1 4.7-.9 8.2-4 8.2-8.1V7.1L12 3Zm0 4v6m0 4h.01" />
       </Icon>
     ),
-    isActive: (pathname) => pathname === "/needs-me",
+    isActive: (pathname) => pathname.startsWith("/needs-me"),
   },
   {
     href: "/production",
@@ -63,7 +63,7 @@ const navigationItems: NavigationItem[] = [
     ),
     isActive: (pathname) =>
       pathname === "/" ||
-      pathname === "/production" ||
+      pathname.startsWith("/production") ||
       pathname.startsWith("/operator"),
   },
   {
@@ -75,7 +75,7 @@ const navigationItems: NavigationItem[] = [
         <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-2a3 3 0 1 0 0-6M2 21c.4-4.2 2.7-6.5 7-6.5s6.6 2.3 7 6.5m1.5-7c2.8.5 4.2 2.4 4.5 5" />
       </Icon>
     ),
-    isActive: (pathname) => pathname === "/customers",
+    isActive: (pathname) => pathname.startsWith("/customers"),
   },
   {
     href: "/content-map",
@@ -97,7 +97,7 @@ const navigationItems: NavigationItem[] = [
         <path d="m3 9 9-5 9 5-9 5-9-5Zm4 3v5c2.8 2.1 7.2 2.1 10 0v-5m4-3v6" />
       </Icon>
     ),
-    isActive: (pathname) => pathname === "/learning",
+    isActive: (pathname) => pathname.startsWith("/learning"),
   },
   {
     href: "/system",
@@ -109,7 +109,7 @@ const navigationItems: NavigationItem[] = [
       </Icon>
     ),
     isActive: (pathname) =>
-      pathname === "/system" || pathname === "/daily-digest",
+      pathname.startsWith("/system") || pathname.startsWith("/daily-digest"),
   },
 ];
 
