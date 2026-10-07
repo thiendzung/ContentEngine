@@ -1,54 +1,50 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02D3 MERGE Production Handoff
+## Current WIP — QM-02E Founder UI
 
-QM-02D2 is complete: PR #367 merged as main
-`9ddf70663516629a02e12d77e774a28478e5f6a9`.
-Issue #358 is closed. The five known full-backend environment/fixture failures are tracked
-separately in #368 and are not part of D3 unless a direct regression is proven.
+QM-02D2 and D3 are complete. Founder merged PR #369; live main for the Question Map track is
+`b72b7beeef5b3464ebf87fde5034ccdf99991c07`. Issues #358 and #359 are closed. The five
+known backend test-environment failures remain separate QA debt in #368.
 
 Active branch:
-`feat/qm-02d3-merge-handoff`
+`feat/qm-02e-founder-ui`
 
-D3 extends the exact D2 target/version contract to a bounded, non-destructive MERGE
-reconciliation handoff:
+QM-02E exposes the already-verified backend planning flow without reimplementing business logic
+in the browser:
 
 ```text
-selected MERGE opportunity
-+ >=2 explicit conflicting ContentItems
-+ exact current immutable ContentVersions
-+ exact route/admission snapshots
-+ explicit Founder survivor decision + reason
+canonical Need + locale
         ↓
-one reconciliation ContentCase
-+ one source LocaleVariant carrying a frozen conflict-set snapshot
-+ one durable OperatorCommand receipt
+Question Map + Pillar/Cluster architecture
         ↓
-no ContentItem/ContentVersion mutation
-no delete / redirect / publish / auto-Start
+Customer Truth status  ||  Content Readiness
+        ↓
+Founder selects exact candidate
+        ↓
+backend route → backend admission
+        ↓
+explicit materialize CREATE / UPDATE / REFRESH / MERGE
 ```
 
-Locked D3 decisions:
-- MERGE remains reconciliation, never normal automatic production;
-- all conflict ContentItems must already satisfy the shared project / canonical Need / locale
-  target contract and exact current ContentVersion binding;
-- D3 additionally requires compatible intent + editorial role across the conflict set;
-- the Founder must explicitly choose one survivor ContentItem from the exact conflict set and
-  provide a bounded reason;
-- the frozen conflict-set snapshot records exact item/version identities, survivor, route hash,
-  admission hash and a deterministic conflict-set hash;
-- D3 creates no new canonical content identity and does not mark any source item superseded;
-- no destructive delete, redirect, external publish, ContentRun, StepRun, Job, model/provider/tool
-  or Writer execution is authorized;
-- unresolved production on any conflict target blocks reconciliation;
-- same-key exact replay returns the frozen receipt; changed survivor/reason/snapshot conflicts fail
-  closed; different-key duplicate materialization is blocked by current admission state;
-- current Need gate remains PROPOSED|TESTING|SUPPORTED allowed with exact selected lineage;
-  REJECTED and INSUFFICIENT_EVIDENCE block new handoff;
-- D3 reuses the D2 target/version identity model; no second merge truth store or schema migration.
+Locked UI decisions:
+- Question Map lives under Content Map as `/content-map/question-map`; do not create a separate
+  keyword/SEO truth dashboard;
+- backend remains authority for architecture, decision, priority, route, admission and mutation;
+- UI shows Customer Truth and Content Readiness as separate axes;
+- Search/Question Map data is visibly labelled planning evidence, not factual article Evidence;
+- candidate selection binds exact architecture + planner snapshots;
+- stale route/admission disables mutation and requires a fresh backend read;
+- MERGE requires explicit Founder survivor + reason + confirmation;
+- no Start, Evidence, Originality, model/provider/tool, Writer or Publish action is exposed here;
+- existing #368 environment debt must not be folded into UI behavior.
 
-Tracking: #359. D3 must receive focused/full regression, exact-ref OCR, Agent Local exact-SHA
-verification and MG final review before Founder merge.
+Current implementation adds a typed Question Map API client, runtime schema/semantic guards, a
+Founder workflow page, Pillar/Cluster tree, selection form, route/admission preview and bounded
+materialize controls. Verification still requires frontend lint/typecheck/build, backend/API
+contract regression, one read-only operational browser smoke, stale/error/replay UX proof, OCR,
+Agent Local exact-SHA verification and minimal GitHub CI.
+
+Tracking: #360. Founder remains the only PR merge authority.
 
 ## Read first and verify the actual ref
 
@@ -100,27 +96,27 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Close #358 / QM-02D2 on one exact candidate SHA.
+Close #360 / QM-02E on one exact candidate SHA.
 
 Required proof:
-- UPDATE route binds exactly one canonical target + current immutable ContentVersion;
-- REFRESH route binds exactly one stale canonical target + current immutable ContentVersion;
-- item/version/status drift changes route snapshot and fails closed;
-- admission binds exact target snapshot hashes;
-- active target production blocks;
-- exact selected QM-02A lineage is required;
-- D2 creates exactly one revision ContentCase + source LocaleVariant + receipt;
-- target ContentItem identity is preserved and no new ContentItem/ContentVersion is created;
-- receipt binds exact target ContentVersion;
-- exact replay returns same case/variant/receipt with zero row delta;
-- distinct-key duplicate materialization fails closed;
-- later Need rejection does not invalidate old exact replay but blocks a new handoff;
-- PROPOSED/TESTING/SUPPORTED policy remains aligned with F1R1;
-- zero ContentRun/StepRun/Job and no auto Start/Evidence/Originality/Writer/Publish;
-- Ruff + mypy + focused QM chain + full backend + OCR Delegation + Agent Local exact-SHA proof;
-- minimal GitHub CI confirmation.
+- Need + locale selection reads canonical backend state;
+- Question Map overview and Pillar/Cluster tree render backend values only;
+- per candidate intent/stage/answer-job/coverage/decision/priority/reason refs are visible;
+- Customer Truth status and Content Readiness are visibly separate;
+- Founder selection sends exact architecture/planner snapshots plus promise, coverage requirements
+  and reason;
+- selected opportunity route/admission preview is always fetched from backend;
+- stale selection/route/target state visibly disables materialization;
+- CREATE/UPDATE/REFRESH use their verified handoff endpoints;
+- MERGE requires explicit survivor + reason + confirmation and only materializes reconciliation;
+- exact replay/duplicate/backend conflict responses remain visible and fail closed;
+- no auto Start/Evidence/Originality/Writer/Publish control exists;
+- frontend lint + typecheck + build PASS;
+- read-only operational Question Map view is smoke-tested before any mutation;
+- exact-ref OCR + Agent Local verification + minimal GitHub CI + MG final review.
 
-Do not start D3 implementation until this shared target/version contract is verified.
+Do not begin #361 Golden E2E until #360 is verified and merged.
+
 ## Pilot operating priority — 2026-10-03
 
 Near-term goal: produce a small batch of real content that Founder accepts, then repeat it on one stable release. Engineering work must remove a demonstrated blocker to that outcome.
