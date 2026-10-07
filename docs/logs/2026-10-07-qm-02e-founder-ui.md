@@ -97,3 +97,39 @@ the dedicated next cross-surface regression layer.
 - automatic merge/delete/redirect;
 - publication;
 - resolving #368 environment-fixture debt.
+
+## Supported browser fixture
+
+Phase G browser mutation acceptance uses a dedicated repository-supported test path. It must never
+copy operational data into the test database and must never target the operational database.
+
+Create the canonical four-scenario fixture:
+
+```sh
+make qm02e-browser-fixture
+```
+
+The target resets only the validated dedicated test DB, migrates it to head and seeds four
+Founder-UI scenarios under the `motgu` project:
+
+- CREATE: Search-backed Need with no existing target;
+- UPDATE: one current draft canonical target;
+- REFRESH: one published target with a newer unpublished revision;
+- MERGE: two compatible canonical targets forming one collision set.
+
+The seed script validates that backend Content Architecture actually returns the expected decision
+and `READY_FOR_HUMAN_SELECTION` before it commits. It creates no HumanSelection, ContentRun,
+OperatorCommand, worker execution or publication.
+
+For stale-target browser proof, after the UI has loaded a route/admission snapshot, append one
+canonical test-only target version with:
+
+```sh
+make qm02e-browser-drift QM02E_SCENARIO=update
+```
+
+This command is guarded by `APP_ENV=test`, validates the actual current database identity, and
+uses the canonical `create_next_content_version()` path. It is not an operational maintenance
+command.
+
+A non-empty test workflow state is rejected; reset/reseed instead of layering fixtures.
