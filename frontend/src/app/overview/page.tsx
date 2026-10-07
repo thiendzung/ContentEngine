@@ -189,16 +189,16 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
         </p>
         <div className={styles.refs}>
           {item.why_refs.length > 0 ? (
-            item.why_refs.map((ref) => <span key={ref}>Why · {ref}</span>)
+            item.why_refs.map((ref) => <span key={ref}>Lý do · {ref}</span>)
           ) : (
-            <span>Không có why ref.</span>
+            <span>Không có tham chiếu lý do.</span>
           )}
           {item.evidence_refs.length > 0 ? (
             item.evidence_refs.map((ref) => (
-              <span key={ref}>Evidence · {ref}</span>
+              <span key={ref}>Bằng chứng · {ref}</span>
             ))
           ) : (
-            <span>Không có evidence ref.</span>
+            <span>Không có tham chiếu bằng chứng.</span>
           )}
         </div>
       </details>
@@ -520,10 +520,10 @@ export default function OverviewPage() {
                       <details className={styles.disclosure}>
                         <summary>Chi tiết kỹ thuật</summary>
                         <div className={styles.refs}>
-                          <span>Backend message · {issue.message}</span>
-                          <span>Code · {issue.code}</span>
-                          <span>Entity type · {issue.entity_type}</span>
-                          <span>Entity id · {issue.entity_id}</span>
+                          <span>Thông báo backend · {issue.message}</span>
+                          <span>Mã · {issue.code}</span>
+                          <span>Loại đối tượng · {issue.entity_type}</span>
+                          <span>ID đối tượng · {issue.entity_id}</span>
                         </div>
                       </details>
                     </article>
