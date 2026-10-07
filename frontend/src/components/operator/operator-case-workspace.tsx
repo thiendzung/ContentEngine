@@ -446,7 +446,7 @@ function FinalLocaleCard({
           <p className="closing">{panel.article.closing_markdown}</p>
         </div>
       ) : (
-        <p className="empty-copy">Chưa có exact final_content để duyệt.</p>
+        <p className="empty-copy">Chưa có nội dung cuối chính xác để duyệt.</p>
       )}
 
       <div className="quality-grid">
@@ -1005,7 +1005,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         {state.status === "BLOCKED" && (
           <div className="operator-blocker">
             <div>
-              <strong>{state.blocker_message ?? "Workflow đang bị chặn."}</strong>
+              <strong>{state.blocker_message ?? "Quy trình đang bị chặn."}</strong>
               <p>{blockerAction(state)}</p>
             </div>
             {canRetry && (
@@ -1071,7 +1071,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </label>
             <button
               className="operator-button primary"
-              disabled={!selectedGóc tiếp cận || submitting || reconcileRequired}
+              disabled={!selectedAngle || submitting || reconcileRequired}
               onClick={() => void submitAngleApproval()}
               type="button"
             >
