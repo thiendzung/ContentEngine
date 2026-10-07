@@ -155,7 +155,7 @@ export default function DailyDigestPage() {
           <div className={styles.semanticStrip}>
             <span className={styles.badge}>Khoảng thời gian: {formatDate(digest.window_start)} → {formatDate(digest.window_end)}</span>
             <span className={styles.badge}>Múi giờ: {digest.timezone}</span>
-            <span className={styles.badge}>Độ phủ bên phải = snapshot hiện tại</span>
+            <span className={styles.badge}>Độ phủ bên phải = bản chụp dữ liệu hiện tại</span>
             <span className={styles.badge}>Đo lường ≠ bằng chứng nhân quả</span>
             <span className={styles.badge}>Không chạy nghiên cứu</span>
           </div>
