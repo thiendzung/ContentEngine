@@ -412,7 +412,7 @@ export default function OverviewPage() {
 
             {digestError ? (
               <div className={styles.error} role="alert">
-                Tóm tắt trong ngày chưa khả dụng: {digestError}. Control Center vẫn giữ nguyên.
+                Tóm tắt trong ngày chưa khả dụng: {digestError}. Trung tâm điều hành vẫn giữ nguyên.
               </div>
             ) : null}
             {digestStale ? (
