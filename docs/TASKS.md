@@ -7,6 +7,34 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
+## UI-P1 — Desktop sidebar + Vietnamese primary navigation — ACTIVE / #372
+
+Base main:
+`487bd25db1b7437bd96b32bb05f351a441293a89`.
+
+Founder reprioritized this bounded desktop-first UX slice before #361 Golden E2E.
+
+- [x] Lock desktop-first target: 1440px primary; sanity at 1366px and 1920px.
+- [x] Create dedicated P1 branch from exact post-#371 main.
+- [x] Replace desktop horizontal primary navigation with persistent left sidebar.
+- [x] Add visible current-section state + `aria-current="page"`.
+- [x] Vietnamese primary labels: Tổng quan / Cần tôi xử lý / Sản xuất / Khách hàng / Bản đồ nội dung / Học từ dữ liệu / Hệ thống.
+- [x] Map root + `/operator/*` to Sản xuất and `/daily-digest` to Hệ thống.
+- [x] Keep narrow-screen navigation usable; mobile polish remains out of scope.
+- [ ] Frontend lint PASS.
+- [ ] Frontend typecheck PASS.
+- [ ] Frontend production build PASS.
+- [ ] Browser smoke at desktop widths + active-state route mapping PASS.
+- [ ] Keyboard focus / narrow-layout sanity PASS.
+- [ ] Exact-ref OCR PASS.
+- [ ] Agent Local exact-SHA verification PASS.
+- [ ] Minimal GitHub CI PASS or disclosed unavailable.
+- [ ] MG final review.
+- [ ] Founder merge; only then continue #361 unless Founder changes priority.
+
+Non-goals: no backend/API/schema change, no Question Map two-column redesign, no full UI-wide
+terminology pass, no Production Board density redesign, no new UI framework/icon dependency.
+
 ## QM-02F1 — Early Real CREATE Pilot — DONE / #346 + #357 CLOSED
 
 Architecture remediation: #353 → #354 → #355 → #356.
@@ -107,24 +135,23 @@ Verified PR head:
 - [x] Exact-SHA CI #2372 SUCCESS.
 - [x] Founder merged PR #370; #360 closed.
 
-## QA #368 — Test-environment isolation — ACTIVE / PR #371
+## QA #368 — Test-environment isolation — DONE / PR #371 MERGED
 
-Base:
-`99385a36cd0ef4e414fd1404c3e8aee4117b4d1f`.
+Merge/main:
+`487bd25db1b7437bd96b32bb05f351a441293a89`.
 
 - [x] Remove stale hard-coded fallback test DB identity from isolation tests.
 - [x] Direct Rank Math Settings test controls app_env/DB inputs.
 - [x] Positive Serper fixture uses explicit synthetic key.
 - [x] Negative Serper fixtures explicitly clear Serper.
-- [ ] Original five #368 tests PASS on exact candidate.
-- [ ] Affected modules PASS with ambient provider secrets absent.
-- [ ] Affected modules PASS with synthetic ambient provider secrets present.
-- [ ] Full backend PASS from clean `contentengine_test`.
-- [ ] Exact-ref OCR + CI + Agent Local verification.
-- [ ] Local merged-#370 worktree/branch cleanup.
-- [ ] MG final review.
-- [ ] Founder merge PR #371.
-- [ ] Close #368; then start #361 Golden E2E.
+- [x] Original five #368 tests PASS on exact candidate.
+- [x] Affected modules PASS with ambient provider secrets absent.
+- [x] Affected modules PASS with synthetic ambient provider secrets present.
+- [x] Full backend from clean `contentengine_test`: 1553 PASS / 0 FAIL.
+- [x] Exact-ref OCR + Agent Local verification + CI #2376 PASS.
+- [x] Local merged-#370 worktree/branch cleanup completed in the verified task.
+- [x] MG final review: READY FOR FOUNDER MERGE.
+- [x] Founder merged PR #371; #368 closed.
 
 ## QM-02D1 — CREATE Production Handoff — DONE / PR #345 MERGED
 
