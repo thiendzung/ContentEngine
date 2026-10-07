@@ -2,6 +2,7 @@ const STATUS_VI: Record<string, string> = {
   READY: "Sẵn sàng",
   BLOCKED: "Bị chặn",
   OPTIONAL: "Không bắt buộc",
+  STARTED: "Đã bắt đầu",
   RUNNING: "Đang chạy",
   QUEUED: "Đang chờ",
   COMPLETED: "Hoàn thành",
@@ -57,6 +58,8 @@ const STATUS_VI: Record<string, string> = {
   failed: "Thất bại",
   running: "Đang chạy",
   queued: "Đang chờ",
+  leased: "Đang xử lý",
+  cancelled: "Đã hủy",
 };
 
 export function uiStatusLabel(value: string): string {
