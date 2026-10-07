@@ -9,7 +9,8 @@ import {
   type SystemPreflight,
   type SystemVersion,
 } from "../../lib/api/ux-closeout";
-import { uiBooleanLabel, uiStatusLabel } from "../../lib/ui/presentation-labels";
+import { uiBooleanLabel } from "../../lib/ui/vi/common";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
