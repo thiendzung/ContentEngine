@@ -385,15 +385,36 @@ function FinalLocaleCard({
           <p className="eyebrow">{localeLabel(panel.locale)}</p>
           <h2>{panel.article?.title ?? "Chưa có nội dung cuối"}</h2>
         </div>
-        <div className="header-badges">
-          <span className={`badge badge-${panel.quality_state.toLowerCase()}`}>
-            {operatorReviewStateLabel(panel.quality_state)}
-          </span>
-          <span className={`badge badge-${panel.publication_state.toLowerCase().replaceAll("_", "-")}`}>
-            {operatorReviewStateLabel(panel.publication_state)}
-          </span>
-        </div>
       </header>
+
+      <DecisionSummary
+        status={
+          <span className={`badge badge-${panel.next_action.toLowerCase().replaceAll("_", "-")}`}>
+            {operatorReviewStateLabel(panel.next_action)}
+          </span>
+        }
+        reason={
+          <span>
+            Chất lượng: {operatorReviewStateLabel(panel.quality_state)} · Xuất bản:{" "}
+            {operatorReviewStateLabel(panel.publication_state)}.
+          </span>
+        }
+        nextAction={
+          <span>
+            {canApprove
+              ? "Xem nội dung và dùng cổng quyết định của Người sáng lập ở cuối thẻ."
+              : operatorNextActionLabel(panel.next_action_label)}
+          </span>
+        }
+        technicalDetails={
+          <dl>
+            <div><dt>Hành động gốc</dt><dd>{panel.next_action}</dd></div>
+            <div><dt>Nhãn hành động gốc</dt><dd>{panel.next_action_label}</dd></div>
+            <div><dt>Trạng thái chất lượng gốc</dt><dd>{panel.quality_state}</dd></div>
+            <div><dt>Trạng thái xuất bản gốc</dt><dd>{panel.publication_state}</dd></div>
+          </dl>
+        }
+      />
 
       {panel.article ? (
         <div className="article-copy">
@@ -438,11 +459,6 @@ function FinalLocaleCard({
           ))}
         </section>
       )}
-
-      <div className="next-action-inline">
-        <strong>{operatorReviewStateLabel(panel.next_action)}</strong>
-        <span>{operatorNextActionLabel(panel.next_action_label)}</span>
-      </div>
 
       {canApprove && (
         <section className="review-decision-panel">
