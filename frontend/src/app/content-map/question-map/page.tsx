@@ -26,6 +26,7 @@ import {
   materializeRevision,
   selectOpportunity,
 } from "../../../lib/api/question-map";
+import { DecisionSummary } from "../../../components/ui/decision-summary";
 import {
   uiDecisionLabel,
   uiIntentLabel,
@@ -146,59 +147,67 @@ function CandidateCard({
           </p>
           <h3>{candidate.primary_question}</h3>
         </div>
-        <button
-          type="button"
-          className={selected ? styles.buttonSecondary : styles.button}
-          disabled={!candidate.selectable}
-          onClick={() => onPick(candidate)}
-          aria-pressed={selected}
-        >
-          {!candidate.selectable
-            ? "Không thể chọn"
-            : selected
-              ? "Đã chọn"
-              : "Chọn nội dung"}
-        </button>
       </div>
 
-      <div className={ui.candidateMeta}>
-        <span className={badgeClass(candidate.coverage_status)}>
-          Độ phủ · {planningCoverageLabel(candidate.coverage_status)}
-        </span>
-        <span className={badgeClass(candidate.selection_readiness)}>
-          {planningReadinessLabel(candidate.selection_readiness)}
-        </span>
-        <span className={styles.badgeWarn}>
-          {uiDecisionLabel(candidate.decision)} · {uiPriorityLabel(candidate.priority)}
-        </span>
-      </div>
-
-      <details className={ui.candidateDetails}>
-        <summary>Chi tiết phương án</summary>
-        <div className={ui.refList}>
-          <span>Ý định · {uiIntentLabel(candidate.intent)}</span>
-          <span>Giai đoạn · {planningAudienceStageLabel(candidate.audience_stage)}</span>
-          <span>Vai trò trả lời · {planningAnswerJobLabel(candidate.answer_job)}</span>
-        </div>
-        {candidate.reason_codes.length > 0 ? (
-          <ul className={ui.reasonList}>
-            {candidate.reason_codes.map((reason) => (
-              <li key={reason}>{planningReasonLabel(reason)}</li>
-            ))}
-          </ul>
-        ) : null}
-        {candidate.existing_content_refs.length > 0 ||
-        candidate.existing_plan_refs.length > 0 ? (
-          <div className={ui.refList}>
-            {candidate.existing_content_refs.map((ref) => (
-              <span key={`content:${ref}`}>Nội dung · {ref}</span>
-            ))}
-            {candidate.existing_plan_refs.map((ref) => (
-              <span key={`plan:${ref}`}>Kế hoạch · {ref}</span>
-            ))}
-          </div>
-        ) : null}
-      </details>
+      <DecisionSummary
+        status={
+          <span className={badgeClass(candidate.selection_readiness)}>
+            {planningReadinessLabel(candidate.selection_readiness)}
+          </span>
+        }
+        reason={
+          candidate.reason_codes.length > 0 ? (
+            <ul className={ui.reasonList}>
+              {candidate.reason_codes.map((reason) => (
+                <li key={reason}>{planningReasonLabel(reason)}</li>
+              ))}
+            </ul>
+          ) : (
+            <span>Hệ thống chưa trả về lý do riêng cho phương án này.</span>
+          )
+        }
+        nextAction={
+          <button
+            type="button"
+            className={selected ? styles.buttonSecondary : styles.button}
+            disabled={!candidate.selectable}
+            onClick={() => onPick(candidate)}
+            aria-pressed={selected}
+          >
+            {!candidate.selectable
+              ? "Không thể chọn"
+              : selected
+                ? "Đã chọn"
+                : "Chọn nội dung"}
+          </button>
+        }
+        technicalDetails={
+          <>
+            <div className={ui.candidateMeta}>
+              <span className={badgeClass(candidate.coverage_status)}>
+                Độ phủ · {planningCoverageLabel(candidate.coverage_status)}
+              </span>
+              <span className={styles.badgeWarn}>
+                {uiDecisionLabel(candidate.decision)} · {uiPriorityLabel(candidate.priority)}
+              </span>
+            </div>
+            <div className={ui.refList}>
+              <span>Ý định · {uiIntentLabel(candidate.intent)}</span>
+              <span>Giai đoạn · {planningAudienceStageLabel(candidate.audience_stage)}</span>
+              <span>Vai trò trả lời · {planningAnswerJobLabel(candidate.answer_job)}</span>
+              {candidate.reason_codes.map((reason) => (
+                <span key={`raw-reason:${reason}`}>Mã lý do · {reason}</span>
+              ))}
+              {candidate.existing_content_refs.map((ref) => (
+                <span key={`content:${ref}`}>Nội dung · {ref}</span>
+              ))}
+              {candidate.existing_plan_refs.map((ref) => (
+                <span key={`plan:${ref}`}>Kế hoạch · {ref}</span>
+              ))}
+            </div>
+          </>
+        }
+      />
 
       {candidate.role === "cluster" && questions.length > 0 ? (
         <details className={ui.questions}>
@@ -1147,163 +1156,171 @@ export default function QuestionMapFounderPage() {
 
                   {route && admission ? (
                     <>
-                      <div className={ui.productionStatus}>
-                        <span className={badgeClass(admission.status)}>
-                          {planningAdmissionLabel(admission.status)}
-                        </span>
-                        <h3>{uiDecisionLabel(route.route)}</h3>
-                        <p>
-                          Hệ thống đã đọc lại lựa chọn và xác định hướng xử lý hiện
-                          tại. Nếu dữ liệu thay đổi, thao tác sẽ bị khóa.
-                        </p>
-                      </div>
+                      <DecisionSummary
+                        status={
+                          <span className={badgeClass(admission.status)}>
+                            {planningAdmissionLabel(admission.status)}
+                          </span>
+                        }
+                        reason={
+                          <>
+                            <strong>{uiDecisionLabel(route.route)}</strong>
+                            <p>
+                              Hệ thống đã đọc lại lựa chọn và xác định hướng xử lý hiện
+                              tại. Nếu dữ liệu thay đổi, thao tác sẽ bị khóa.
+                            </p>
+                            {isAdmissionStale(admission.status) ? (
+                              <div className={ui.warning}>
+                                Dữ liệu đã thay đổi. Không thể tiếp tục bằng kết quả kiểm tra cũ;
+                                hãy kiểm tra lại trạng thái.
+                              </div>
+                            ) : null}
+                          </>
+                        }
+                        nextAction={
+                          <>
+                            {route.route === "RECONCILE_CONTENT" &&
+                            admission.status === "RECONCILIATION_REQUIRED" ? (
+                              <div className={ui.mergeConfirm}>
+                                <strong>Cần xác nhận hợp nhất riêng</strong>
+                                <p>
+                                  Chỉ tạo kế hoạch/biên nhận hợp nhất. Không xóa bài,
+                                  chuyển hướng hoặc xuất bản.
+                                </p>
+                                <label className={ui.field}>
+                                  <span>Nội dung giữ làm bản chính</span>
+                                  <select
+                                    className={ui.select}
+                                    value={mergeSurvivorId}
+                                    onChange={(event) =>
+                                      setMergeSurvivorId(event.target.value)
+                                    }
+                                  >
+                                    <option value="">— Chọn rõ nội dung —</option>
+                                    {route.target_snapshots.map((target) => (
+                                      <option
+                                        key={target.content_item_id}
+                                        value={target.content_item_id}
+                                      >
+                                        {target.canonical_key} · v
+                                        {target.current_content_version_no ?? "?"}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className={ui.field}>
+                                  <span>Lý do giữ bản này</span>
+                                  <textarea
+                                    className={ui.textarea}
+                                    value={mergeReason}
+                                    maxLength={2000}
+                                    onChange={(event) => setMergeReason(event.target.value)}
+                                  />
+                                </label>
+                                <label className={ui.confirmLine}>
+                                  <input
+                                    type="checkbox"
+                                    checked={mergeConfirmed}
+                                    onChange={(event) =>
+                                      setMergeConfirmed(event.target.checked)
+                                    }
+                                  />
+                                  <span>
+                                    Tôi xác nhận đúng nhóm nội dung xung đột và bản giữ
+                                    lại. Hệ thống chỉ tạo phạm vi đối soát.
+                                  </span>
+                                </label>
+                              </div>
+                            ) : null}
 
-                      {route.route === "RECONCILE_CONTENT" &&
-                      admission.status === "RECONCILIATION_REQUIRED" ? (
-                        <div className={ui.mergeConfirm}>
-                          <strong>Cần xác nhận hợp nhất riêng</strong>
-                          <p>
-                            Chỉ tạo kế hoạch/biên nhận hợp nhất. Không xóa bài,
-                            chuyển hướng hoặc xuất bản.
-                          </p>
-                          <label className={ui.field}>
-                            <span>Nội dung giữ làm bản chính</span>
-                            <select
-                              className={ui.select}
-                              value={mergeSurvivorId}
-                              onChange={(event) =>
-                                setMergeSurvivorId(event.target.value)
-                              }
-                            >
-                              <option value="">— Chọn rõ nội dung —</option>
-                              {route.target_snapshots.map((target) => (
-                                <option
-                                  key={target.content_item_id}
-                                  value={target.content_item_id}
-                                >
-                                  {target.canonical_key} · v
-                                  {target.current_content_version_no ?? "?"}
-                                </option>
+                            <div className={ui.formActions}>
+                              <button
+                                type="button"
+                                className={styles.buttonSecondary}
+                                disabled={!activeOpportunityId || previewBusy}
+                                onClick={() =>
+                                  activeOpportunityId
+                                    ? void previewOpportunity(activeOpportunityId)
+                                    : undefined
+                                }
+                              >
+                                Kiểm tra lại trạng thái
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.button}
+                                disabled={!actionReady || handoffBusy}
+                                onClick={() => void materialize()}
+                              >
+                                {handoffBusy
+                                  ? "Đang tạo bàn giao…"
+                                  : route.route === "RECONCILE_CONTENT"
+                                    ? "Xác nhận kế hoạch hợp nhất"
+                                    : "Đưa nội dung vào sản xuất"}
+                              </button>
+                            </div>
+                          </>
+                        }
+                        technicalDetails={
+                          <>
+                            <div className={ui.routeGrid}>
+                              <div className={ui.routeCell}>
+                                <span>Quyết định / hướng xử lý</span>
+                                <strong>
+                                  {route.decision} → {route.route}
+                                </strong>
+                              </div>
+                              <div className={ui.routeCell}>
+                                <span>Điều kiện vào sản xuất</span>
+                                <strong>{admission.status}</strong>
+                              </div>
+                              <div className={ui.routeCell}>
+                                <span>Ảnh chụp hướng xử lý</span>
+                                <strong className={ui.hash}>{route.snapshot_hash}</strong>
+                              </div>
+                              <div className={ui.routeCell}>
+                                <span>Ảnh chụp điều kiện vào sản xuất</span>
+                                <strong className={ui.hash}>{admission.snapshot_hash}</strong>
+                              </div>
+                            </div>
+
+                            <div className={ui.refList}>
+                              {route.reason_codes.map((reason) => (
+                                <span key={`route:${reason}`}>Mã hướng xử lý · {reason}</span>
                               ))}
-                            </select>
-                          </label>
-                          <label className={ui.field}>
-                            <span>Lý do giữ bản này</span>
-                            <textarea
-                              className={ui.textarea}
-                              value={mergeReason}
-                              maxLength={2000}
-                              onChange={(event) => setMergeReason(event.target.value)}
-                            />
-                          </label>
-                          <label className={ui.confirmLine}>
-                            <input
-                              type="checkbox"
-                              checked={mergeConfirmed}
-                              onChange={(event) =>
-                                setMergeConfirmed(event.target.checked)
-                              }
-                            />
-                            <span>
-                              Tôi xác nhận đúng nhóm nội dung xung đột và bản giữ
-                              lại. Hệ thống chỉ tạo phạm vi đối soát.
-                            </span>
-                          </label>
-                        </div>
-                      ) : null}
+                              {admission.reason_codes.map((reason) => (
+                                <span key={`admission:${reason}`}>
+                                  Mã điều kiện · {reason}
+                                </span>
+                              ))}
+                            </div>
 
-                      {isAdmissionStale(admission.status) ? (
-                        <div className={ui.warning}>
-                          Dữ liệu đã thay đổi. Không thể tiếp tục bằng kết quả kiểm tra cũ;
-                          hãy kiểm tra lại trạng thái.
-                        </div>
-                      ) : null}
-
-                      <div className={ui.formActions}>
-                        <button
-                          type="button"
-                          className={styles.buttonSecondary}
-                          disabled={!activeOpportunityId || previewBusy}
-                          onClick={() =>
-                            activeOpportunityId
-                              ? void previewOpportunity(activeOpportunityId)
-                              : undefined
-                          }
-                        >
-                          Kiểm tra lại trạng thái
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.button}
-                          disabled={!actionReady || handoffBusy}
-                          onClick={() => void materialize()}
-                        >
-                          {handoffBusy
-                            ? "Đang tạo bàn giao…"
-                            : route.route === "RECONCILE_CONTENT"
-                              ? "Xác nhận kế hoạch hợp nhất"
-                              : "Đưa nội dung vào sản xuất"}
-                        </button>
-                      </div>
-
-                      <details className={ui.technicalDetails}>
-                        <summary>Chi tiết kỹ thuật</summary>
-                        <div className={ui.routeGrid}>
-                          <div className={ui.routeCell}>
-                            <span>Quyết định / hướng xử lý</span>
-                            <strong>
-                              {uiDecisionLabel(route.decision)} → {uiDecisionLabel(route.route)}
-                            </strong>
-                          </div>
-                          <div className={ui.routeCell}>
-                            <span>Điều kiện vào sản xuất</span>
-                            <strong>{uiStatusLabel(admission.status)}</strong>
-                          </div>
-                          <div className={ui.routeCell}>
-                            <span>Ảnh chụp hướng xử lý</span>
-                            <strong className={ui.hash}>{route.snapshot_hash}</strong>
-                          </div>
-                          <div className={ui.routeCell}>
-                            <span>Ảnh chụp điều kiện vào sản xuất</span>
-                            <strong className={ui.hash}>{admission.snapshot_hash}</strong>
-                          </div>
-                        </div>
-
-                        <div className={ui.refList}>
-                          {route.reason_codes.map((reason) => (
-                            <span key={`route:${reason}`}>Hướng xử lý · {reason}</span>
-                          ))}
-                          {admission.reason_codes.map((reason) => (
-                            <span key={`admission:${reason}`}>
-                              Điều kiện · {reason}
-                            </span>
-                          ))}
-                        </div>
-
-                        {route.target_snapshots.length > 0 ? (
-                          <div className={ui.targets}>
-                            {route.target_snapshots.map((target) => (
-                              <article className={ui.target} key={target.content_item_id}>
-                                <p>
-                                  <strong>{target.canonical_key}</strong>
-                                </p>
-                                <p>
-                                  {planningContentRoleLabel(target.content_role)} ·{" "}
-                                  {uiIntentLabel(target.primary_intent)} ·{" "}
-                                  {uiStatusLabel(target.item_status)}
-                                </p>
-                                <p className={ui.muted}>
-                                  Phiên bản:{" "}
-                                  {target.current_content_version_no === null
-                                    ? "thiếu"
-                                    : `v${target.current_content_version_no} · ${uiStatusLabel(target.current_content_version_status ?? "")}`}
-                                </p>
-                                <p className={ui.hash}>{target.content_item_id}</p>
-                              </article>
-                            ))}
-                          </div>
-                        ) : null}
-                      </details>
+                            {route.target_snapshots.length > 0 ? (
+                              <div className={ui.targets}>
+                                {route.target_snapshots.map((target) => (
+                                  <article className={ui.target} key={target.content_item_id}>
+                                    <p>
+                                      <strong>{target.canonical_key}</strong>
+                                    </p>
+                                    <p>
+                                      {planningContentRoleLabel(target.content_role)} ·{" "}
+                                      {uiIntentLabel(target.primary_intent)} ·{" "}
+                                      {uiStatusLabel(target.item_status)}
+                                    </p>
+                                    <p className={ui.muted}>
+                                      Phiên bản:{" "}
+                                      {target.current_content_version_no === null
+                                        ? "thiếu"
+                                        : `v${target.current_content_version_no} · ${uiStatusLabel(target.current_content_version_status ?? "")}`}
+                                    </p>
+                                    <p className={ui.hash}>{target.content_item_id}</p>
+                                  </article>
+                                ))}
+                              </div>
+                            ) : null}
+                          </>
+                        }
+                      />
                     </>
                   ) : null}
 
