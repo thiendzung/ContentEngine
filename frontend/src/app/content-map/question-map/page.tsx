@@ -480,7 +480,19 @@ export default function QuestionMapFounderPage() {
         );
       }
     } catch (nextError) {
+      setQuestionMap(null);
+      setArchitecture(null);
+      setPlanner(null);
+      setCandidateKey("");
+      setRoute(null);
+      setAdmission(null);
+      setPreviewValid(false);
+      setActiveOpportunityId("");
+      setHandoffResult(null);
       setError(apiErrorMessage(nextError));
+      setStaleMessage(
+        "Không thể đọc lại dữ liệu lập kế hoạch. Dữ liệu cũ đã được ẩn; hãy chọn lại vấn đề/ngôn ngữ và thử lại.",
+      );
     } finally {
       setPlanningLoading(false);
     }
