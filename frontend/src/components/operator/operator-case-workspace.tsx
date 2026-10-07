@@ -737,7 +737,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           `Góc “${selectedAngle.working_title}” đang thu hẹp ${reductions.length} cam kết phạm vi:`,
           ...reductions.map((item) => `• ${item.requirement}`),
           "",
-          "Duyệt Angle này đồng nghĩa chấp nhận các phần thu hẹp trên. Tiếp tục?",
+          "Duyệt góc tiếp cận này đồng nghĩa chấp nhận các phần thu hẹp trên. Tiếp tục?",
         ].join("\n")
       : `Duyệt góc “${selectedAngle.working_title}”?`;
     if (!window.confirm(confirmation)) return;
@@ -758,7 +758,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       clearIdempotencyKey(keyScope);
       setSelectedAngleId("");
       setAngleComment("");
-      setNotice("Angle đã được duyệt theo đúng snapshot.");
+      setNotice("Góc tiếp cận đã được duyệt theo đúng snapshot.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -772,7 +772,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     const state = view.state;
     const artifact = outlineGate.artifact;
     const keyScope = mutationKey(caseId, state.state_version, "approve-outline");
-    if (!window.confirm("Duyệt exact Outline hiện tại?")) return;
+    if (!window.confirm("Duyệt đúng dàn ý hiện tại?")) return;
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -787,7 +787,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       });
       clearIdempotencyKey(keyScope);
       setOutlineComment("");
-      setNotice("Outline đã được duyệt theo đúng snapshot.");
+      setNotice("Dàn ý đã được duyệt theo đúng snapshot.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -806,7 +806,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     ) return;
     if (!exactFinalBindingMatches(view, panel)) {
       setError(
-        "Exact final binding giữa Operator và Review projection không khớp. Đã chặn duyệt; hãy tải lại trạng thái.",
+        "Liên kết nội dung cuối giữa Điều hành và dữ liệu duyệt không khớp. Đã chặn duyệt; hãy tải lại trạng thái.",
       );
       return;
     }
@@ -829,7 +829,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       });
       clearIdempotencyKey(keyScope);
       setFinalComments((current) => ({ ...current, [panel.locale_variant_id]: "" }));
-      setNotice(`Đã duyệt exact final ${localeLabel(panel.locale)}. Đang đối soát trạng thái canonical.`);
+      setNotice(`Đã duyệt nội dung cuối ${localeLabel(panel.locale)}. Đang đối soát trạng thái chuẩn.`);
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
