@@ -93,12 +93,12 @@ export function JournalIntakeForm({ preflightReady }: Props) {
     event.preventDefault();
     if (!preflightReady || submitting) return;
     if (!form.source_locale) {
-      setError("Cần chọn ngôn ngữ nguồn trước khi tạo Journal.");
+      setError("Cần chọn ngôn ngữ nguồn trước khi tạo bài nội dung.");
       return;
     }
     const contentRole = form.content_role;
     if (!contentRole) {
-      setError("Cần chọn rõ Journal này là nội dung trụ cột hay cụm nội dung.");
+      setError("Cần chọn rõ bài nội dung này là nội dung trụ cột hay cụm nội dung.");
       return;
     }
     if (!requiredLocales.includes(form.source_locale)) {
@@ -114,7 +114,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       return;
     }
     if (coverageRequirements.length > 12) {
-      setError("Tối đa 12 cam kết phạm vi cho một Journal.");
+      setError("Tối đa 12 cam kết phạm vi cho một bài nội dung.");
       return;
     }
     setSubmitting(true);
@@ -145,7 +145,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể tạo Journal từ thông tin hiện tại.",
+          : "Không thể tạo bài nội dung từ thông tin hiện tại.",
       );
     } finally {
       setSubmitting(false);
@@ -157,7 +157,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       <div className="operator-panel-heading">
         <div>
           <p className="eyebrow">Người sáng lập nhập yêu cầu</p>
-          <h2>Tạo Journal mới</h2>
+          <h2>Tạo bài nội dung mới</h2>
         </div>
         <span className="operator-note">Thông tin biên tập, không phải bằng chứng thị trường.</span>
       </div>
@@ -299,7 +299,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             />
           </label>
           <label>
-            <span>Lý do chọn làm Journal</span>
+            <span>Lý do chọn làm bài nội dung</span>
             <input
               onChange={(event) => update("selection_reason", event.target.value)}
               required
@@ -345,7 +345,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       {error && <p className="error">{error}</p>}
       {!preflightReady && (
         <p className="operator-block-note">
-          Chưa thể tạo Journal mới vì kiểm tra sẵn sàng chưa đạt.
+          Chưa thể tạo bài nội dung mới vì kiểm tra sẵn sàng chưa đạt.
         </p>
       )}
       <div className="form-actions">
@@ -354,7 +354,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
           disabled={!preflightReady || submitting}
           type="submit"
         >
-          {submitting ? "Đang tạo…" : "Tạo Journal"}
+          {submitting ? "Đang tạo…" : "Tạo bài nội dung"}
         </button>
       </div>
     </form>
