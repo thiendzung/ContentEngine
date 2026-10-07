@@ -60,6 +60,15 @@ const EXTERNAL_STATUS_VI: Record<string, string> = {
   private: "Riêng tư",
 };
 
+const RUN_MODE_VI: Record<string, string> = {
+  create: "tạo mới",
+  update: "cập nhật",
+  refresh: "làm mới",
+  localize: "bản địa hóa",
+  eval: "đánh giá",
+  publish: "xuất bản",
+};
+
 const REF_PREFIX_VI: Record<string, string> = {
   selection: "Lựa chọn",
   selected_by: "Người chọn",
@@ -94,6 +103,10 @@ export function digestStatusLabel(kind: string, status: string): string {
     return [uiDecisionLabel(decision), uiPriorityLabel(priority)]
       .filter(Boolean)
       .join(" · ");
+  }
+
+  if (kind === "content_opportunity_selected") {
+    return uiDecisionLabel(status);
   }
 
   if (kind === "publish_event_recorded") {
@@ -139,12 +152,12 @@ export function digestSummaryLabel(kind: string, summary: string): string {
 
   const started = /^Run mode (.+) started\.$/.exec(summary);
   if (kind === "content_run_started" && started) {
-    return `Lượt sản xuất chế độ ${started[1]} đã bắt đầu.`;
+    return `Lượt sản xuất chế độ ${RUN_MODE_VI[started[1]] ?? started[1]} đã bắt đầu.`;
   }
 
   const completed = /^Run mode (.+) reached terminal state\.$/.exec(summary);
   if (kind === "content_run_completed" && completed) {
-    return `Lượt sản xuất chế độ ${completed[1]} đã kết thúc.`;
+    return `Lượt sản xuất chế độ ${RUN_MODE_VI[completed[1]] ?? completed[1]} đã kết thúc.`;
   }
 
   const performanceWindow = /^(.+) window (.+) → (.+)$/.exec(summary);
