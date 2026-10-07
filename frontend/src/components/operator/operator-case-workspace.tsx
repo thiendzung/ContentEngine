@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { DecisionSummary } from "../ui/decision-summary";
+
 import {
   approveAngle,
   approveFinalLocale,
@@ -837,6 +839,61 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         })
     : [];
 
+  const stateReason = reconcileRequired
+    ? "Ảnh chụp đang hiển thị có thể đã cũ; mọi thao tác mới bị khóa cho tới khi đối soát thành công."
+    : state.status === "BLOCKED"
+      ? (state.blocker_message ?? "Quy trình đang bị chặn.")
+      : state.status === "QUEUED"
+        ? "Tác vụ đã được xếp vào hàng đợi và đang chờ tác nhân."
+        : state.status === "RUNNING"
+          ? "Hệ thống đang xử lý bước hiện tại."
+          : state.status === "AWAITING_APPROVAL"
+            ? `Đang chờ ${humanGateLabel(state.human_gate)}.`
+            : state.status === "COMPLETE" && review
+              ? `${operatorReviewStateLabel(review.next_action)} · ${operatorReviewStateLabel(review.publication_state)}.`
+              : `Giai đoạn hiện tại: ${operatorPhaseLabel(state.phase)}.`;
+
+  const stateNextAction = reconcileRequired ? (
+    <button
+      className="operator-button secondary"
+      disabled={loading || submitting}
+      onClick={() => void refresh()}
+      type="button"
+    >
+      {loading ? "Đang đối soát…" : "Đối soát lại"}
+    </button>
+  ) : canStart || canContinue ? (
+    <button
+      className="operator-button primary"
+      disabled={submitting}
+      onClick={() => void submitIntent(canStart ? "start" : "continue")}
+      type="button"
+    >
+      {submitting ? "Đang gửi…" : canStart ? "Bắt đầu" : "Tiếp tục"}
+    </button>
+  ) : state.status === "BLOCKED" ? (
+    canRetry ? (
+      <button
+        className="operator-button secondary"
+        disabled={submitting}
+        onClick={() => void submitIntent("retry")}
+        type="button"
+      >
+        Thử lại
+      </button>
+    ) : (
+      <span>{blockerAction(state)}</span>
+    )
+  ) : ["QUEUED", "RUNNING"].includes(state.status) ? (
+    <span>Chờ trạng thái mới; trang tự cập nhật khi tác vụ đang chạy.</span>
+  ) : state.status === "AWAITING_APPROVAL" ? (
+    <span>Thực hiện cổng duyệt đang hiển thị ngay bên dưới.</span>
+  ) : state.status === "COMPLETE" ? (
+    <span>Không có quyền xuất bản trong F6-MINI; xuất bản là một cổng riêng.</span>
+  ) : (
+    <span>Hệ thống chưa cung cấp hành động trực tiếp cho trạng thái này.</span>
+  );
+
   return (
     <main className="operator-page">
       <header className="operator-case-header">
@@ -915,8 +972,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <section className="operator-panel state-panel">
         <div className="operator-panel-heading">
           <div>
-            <p className="eyebrow">Trạng thái chuẩn</p>
-            <h2>{operatorStatusLabel(state.status)}</h2>
+            <p className="eyebrow">Quyết định vận hành</p>
+            <h2>Trạng thái hiện tại</h2>
           </div>
           <div className="operator-refresh-control">
             <small>Lần tải chuẩn gần nhất: {lastSuccessfulRefreshLabel}</small>
@@ -930,78 +987,28 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </button>
           </div>
         </div>
-        <div className="state-grid">
-          <div><span>Giai đoạn</span><strong>{operatorPhaseLabel(state.phase)}</strong></div>
-          <div><span>Cổng duyệt</span><strong>{humanGateLabel(state.human_gate)}</strong></div>
-          <div><span>Lượt chạy</span><strong>{shortId(state.current_run_id)}</strong></div>
-          <div><span>Bước chạy</span><strong>{shortId(state.current_step_run_id)}</strong></div>
-        </div>
 
-        {(canStart || canContinue) && (
-          <div className="operator-primary-action">
-            <div>
-              <strong>{canStart ? "Bắt đầu sản xuất" : "Tiếp tục bước an toàn tiếp theo"}</strong>
-              <p>
-                Hệ thống tự quyết giai đoạn/nhà cung cấp/mô hình từ trạng thái bền vững; giao diện chỉ gửi ý định {canStart ? "Bắt đầu" : "Tiếp tục"}.
-              </p>
-            </div>
-            <button
-              className="operator-button primary"
-              disabled={submitting}
-              onClick={() => void submitIntent(canStart ? "start" : "continue")}
-              type="button"
-            >
-              {submitting ? "Đang gửi…" : canStart ? "Bắt đầu" : "Tiếp tục"}
-            </button>
-          </div>
-        )}
-
-        {["QUEUED", "RUNNING"].includes(state.status) && (
-          <div className="operator-running-state">
-            <span className="activity-pulse" aria-hidden="true" />
-            <div>
-              <strong>{state.status === "QUEUED" ? "Đang chờ tác nhân" : "Đang xử lý"}</strong>
-              <p>Trang tự cập nhật trạng thái khi đang chạy. Tải lại trình duyệt không tạo lệnh mới.</p>
-            </div>
-          </div>
-        )}
-
-        {state.status === "BLOCKED" && (
-          <div className="operator-blocker">
-            <div>
-              <strong>{state.blocker_message ?? "Quy trình đang bị chặn."}</strong>
-              <p>{blockerAction(state)}</p>
-            </div>
-            {canRetry && (
-              <button
-                className="operator-button secondary"
-                disabled={submitting}
-                onClick={() => void submitIntent("retry")}
-                type="button"
-              >
-                Thử lại
-              </button>
-            )}
-          </div>
-        )}
-
-        {state.status === "COMPLETE" && review && (
-          <div className="operator-complete-state">
-            <strong>Quy trình đã hoàn tất</strong>
-            <p>
-              {operatorReviewStateLabel(review.next_action)} · {operatorReviewStateLabel(review.publication_state)}.
-              Không có quyền xuất bản trong F6-MINI.
-            </p>
-          </div>
-        )}
-
-        <details className="operator-technical-details">
-          <summary>Điểm kiểm tra & phiên bản trạng thái</summary>
-          <dl>
-            <div><dt>Phiên bản trạng thái</dt><dd>{state.state_version}</dd></div>
-            <div><dt>Điểm kiểm tra</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
-          </dl>
-        </details>
+        <DecisionSummary
+          status={
+            <span className={`operator-state-badge ${state.status.toLowerCase()}`}>
+              {operatorStatusLabel(state.status)}
+            </span>
+          }
+          reason={<span>{stateReason}</span>}
+          nextAction={stateNextAction}
+          technicalDetails={
+            <dl>
+              <div><dt>Trạng thái gốc</dt><dd>{state.status}</dd></div>
+              <div><dt>Giai đoạn gốc</dt><dd>{state.phase}</dd></div>
+              <div><dt>Cổng duyệt gốc</dt><dd>{state.human_gate ?? "—"}</dd></div>
+              <div><dt>Lượt chạy</dt><dd>{state.current_run_id ?? "—"}</dd></div>
+              <div><dt>Bước chạy</dt><dd>{state.current_step_run_id ?? "—"}</dd></div>
+              <div><dt>Ý định được phép</dt><dd>{state.allowed_intents.join(", ") || "—"}</dd></div>
+              <div><dt>Phiên bản trạng thái</dt><dd>{state.state_version}</dd></div>
+              <div><dt>Điểm kiểm tra</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
+            </dl>
+          }
+        />
       </section>
 
       {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
