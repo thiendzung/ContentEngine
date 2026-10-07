@@ -510,7 +510,7 @@ export default function OverviewPage() {
                       <details className={styles.disclosure}>
                         <summary>Chi tiết kỹ thuật</summary>
                         <div className={styles.refs}>
-                          <span>Thông báo backend · {issue.message}</span>
+                          <span>Thông báo hệ thống · {issue.message}</span>
                           <span>Mã · {issue.code}</span>
                           <span>Loại đối tượng · {issue.entity_type}</span>
                           <span>Mã đối tượng · {issue.entity_id}</span>
