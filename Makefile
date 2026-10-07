@@ -13,13 +13,14 @@ EXPECTED_SOURCE_FULL_DATA_SHA256 ?=
 RELEASE_PROVENANCE ?= artifacts/release/release-0042-provenance.json
 MODEL ?=
 APPROVED_BY ?=
+QM02E_SCENARIO ?= update
 OCR_BASE ?=
 OCR_HEAD ?=
 OCR_PREVIEW_OUTPUT ?= artifacts/ocr/preview.json
 OCR_OUTPUT ?= artifacts/ocr/review.json
 OCR_BACKGROUND := .opencodereview/background.md
 
-.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min rec02-proof operational-migrate operational-migrate-0042 operational-migrate-0044 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
+.PHONY: setup backend-install frontend-install db-up db-down migrate backend-dev frontend-dev operator-worker operator-worker-loop activate-test-angle-runtime openapi types test-db-prepare test-db-reset qm02e-browser-fixture qm02e-browser-drift ops-inspect ops-preflight release-preflight backup restore-test migration-rehearsal data02-rehearsal run02-min rec02-proof operational-migrate operational-migrate-0042 operational-migrate-0044 release-build-0042 release-lifecycle-0042 release-lifecycle backend-check frontend-check check ocr-validate-refs ocr-preview ocr-review-direct
 
 setup: backend-install frontend-install
 
@@ -70,6 +71,12 @@ test-db-prepare:
 test-db-reset:
 	cd backend && APP_ENV=test .venv/bin/python -m scripts.prepare_test_database --reset
 	cd backend && APP_ENV=test .venv/bin/alembic upgrade head
+
+qm02e-browser-fixture: test-db-reset
+	cd backend && APP_ENV=test .venv/bin/python -m scripts.seed_qm02e_browser_fixture seed
+
+qm02e-browser-drift:
+	cd backend && APP_ENV=test .venv/bin/python -m scripts.seed_qm02e_browser_fixture drift-target --scenario "$(QM02E_SCENARIO)"
 
 ops-inspect:
 	cd backend && .venv/bin/python -m scripts.ops_inspect

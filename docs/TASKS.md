@@ -54,13 +54,10 @@ Tracking: issue #358. Merge/main:
 
 Shared D2 target/version snapshot contract is the required identity basis for D3.
 
-## QM-02D3 — MERGE Production Handoff — ACTIVE / #359
+## QM-02D3 — MERGE Production Handoff — DONE / PR #369 MERGED
 
-Base: merged D2 main
-`9ddf70663516629a02e12d77e774a28478e5f6a9`.
-
-Branch:
-`feat/qm-02d3-merge-handoff`.
+Tracking: issue #359. Merge/main:
+`b72b7beeef5b3464ebf87fde5034ccdf99991c07`.
 
 - [x] Reuse D2 exact ContentItem/Case/Variant/current ContentVersion target snapshots.
 - [x] Require at least two explicit conflicting ContentItem refs.
@@ -68,17 +65,49 @@ Branch:
 - [x] Require compatible primary intent + editorial role across the exact conflict set.
 - [x] Require explicit Founder survivor ContentItem within the conflict set + bounded reason.
 - [x] Lock exact conflict ContentItems/Cases/Variants/current ContentVersions before final route/admission recheck.
-- [x] Harden QM-02C MERGE admission: stale target, unresolved target run, prior reconciliation binding fail closed.
+- [x] Harden QM-02C MERGE admission: stale target, unresolved target run and prior reconciliation binding fail closed.
 - [x] Materialize one reconciliation ContentCase + source LocaleVariant + durable OperatorCommand receipt.
 - [x] Freeze exact conflict-set item/version snapshots + survivor + route/admission hashes + deterministic conflict-set hash.
 - [x] Exact same-key replay returns frozen receipt; changed request conflicts fail closed.
-- [x] Different-key duplicate materialization becomes blocked by current admission state.
+- [x] Different-key duplicate materialization blocked by current admission state.
 - [x] No ContentItem/ContentVersion mutation, delete, redirect, auto-Start, Run/Job, Writer or Publish.
-- [x] Add focused D3 tests for materialization, replay, survivor choice, drift, active run and compatibility.
-- [ ] Ruff + mypy + focused QM/D3 regression.
-- [ ] Full backend with #368 baseline failures classified separately.
-- [ ] OpenCodeReview Delegation Mode exact-ref review.
-- [ ] Agent Local exact-SHA heavy verification.
+- [x] Focused QM chain 71/71 PASS.
+- [x] Two-session D3 lock composition proof PASS.
+- [x] Full backend 1542 PASS / same five #368 Base-reproducible environment failures.
+- [x] OCR v1.12.11: 7/7 reviewable, zero findings.
+- [x] Exact-SHA CI #2351 SUCCESS.
+- [x] Founder merged PR #369 and issue #359 closed.
+
+## QM-02E — Founder Question Map UI — ACTIVE / #360
+
+Base: merged D3 main
+`b72b7beeef5b3464ebf87fde5034ccdf99991c07`.
+
+Branch:
+`feat/qm-02e-founder-ui`.
+
+- [x] Keep Question Map under Content Map; no new keyword/SEO truth store.
+- [x] Add typed frontend client for Question Map / architecture / planner / selection / route / admission / materialize APIs.
+- [x] Add runtime schema/semantic guards so frontend fails visibly if backend contracts drift.
+- [x] Need + locale selector.
+- [x] Question Map overview counts.
+- [x] Pillar / Cluster tree from backend Content Architecture.
+- [x] Show intent / audience stage / answer job / coverage / decision / priority / reason codes.
+- [x] Show Customer Truth separately from Content Readiness.
+- [x] Show existing ContentItem/plan refs.
+- [x] Founder selection form: reason + promise + ordered coverage requirements.
+- [x] Route + admission preview fetched from backend.
+- [x] CREATE / UPDATE / REFRESH bounded materialize controls.
+- [x] MERGE explicit survivor + reason + confirmation.
+- [x] Stale route/selection/target state disables mutation and forces reread.
+- [x] UI exposes no Start / Evidence / Originality / Writer / Publish action.
+- [x] Link existing Content Map to Founder Question Map workflow.
+- [ ] Frontend lint + typecheck + production build.
+- [ ] Backend/API focused contract regression.
+- [ ] One real read-only operational Question Map browser smoke before mutation.
+- [ ] Stale / replay / error-state UX smoke.
+- [ ] Exact-ref OpenCodeReview Delegation Mode.
+- [ ] Agent Local exact-SHA verification.
 - [ ] Minimal GitHub CI.
 - [ ] MG final review.
 - [ ] Founder merge.

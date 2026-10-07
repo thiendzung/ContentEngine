@@ -264,7 +264,7 @@ async def select_opportunity_plan_v2(
     request: OpportunitySelectionRequest,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> OpportunitySelectionResult:
-    try:
+    async def persist() -> OpportunitySelectionResult:
         project_id = await _project_id_from_slug(
             session,
             project_slug=request.project_slug,
@@ -274,6 +274,12 @@ async def select_opportunity_plan_v2(
             project_id=project_id,
             request=request,
         )
+
+    try:
+        if session.in_transaction():
+            return await persist()
+        async with session.begin():
+            return await persist()
     except (
         QuestionMapError,
         QuestionCoverageError,
