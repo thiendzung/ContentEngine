@@ -8,7 +8,7 @@ const SYSTEM_CHECK_VI: Record<string, string> = {
   postgres_tools: "Công cụ PostgreSQL",
   journal_research_serper: "Tìm nguồn bằng Serper",
   journal_angle_settings: "Cấu hình góc tiếp cận",
-  journal_angle_prompt: "Prompt góc tiếp cận",
+  journal_angle_prompt: "Chỉ dẫn góc tiếp cận",
   journal_angle_recipe: "Công thức góc tiếp cận",
 };
 
