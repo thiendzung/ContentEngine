@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from uuid import UUID
 
 import pytest
 from sqlalchemy import func, select
@@ -126,7 +127,7 @@ async def test_drift_target_uses_canonical_content_version_append() -> None:
                     ContentItem,
                     ContentItem.id == ContentVersion.content_item_id,
                 )
-                .where(ContentItem.id == target_id)
+                .where(ContentItem.id == UUID(target_id))
             )
             or 0
         )
