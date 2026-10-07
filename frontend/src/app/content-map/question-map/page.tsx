@@ -438,6 +438,22 @@ export default function QuestionMapFounderPage() {
       (route.route !== "RECONCILE_CONTENT" &&
         admission.status === "ADMITTED"));
 
+  const stepTwoState =
+    selectedCandidate && !activeOpportunityId
+      ? "current"
+      : activeOpportunityId || selectedOpportunities.length > 0
+        ? "complete"
+        : "upcoming";
+
+  const stepThreeState =
+    handoffResult !== null
+      ? "complete"
+      : stepTwoState === "current"
+        ? "upcoming"
+        : activeOpportunityId || selectedOpportunities.length > 0
+          ? "current"
+          : "upcoming";
+
   async function refreshCoverage() {
     const nextCoverage = await loadContentCoverage(PROJECT_SLUG);
     setCoverage(nextCoverage);
@@ -776,13 +792,8 @@ export default function QuestionMapFounderPage() {
             </div>
             <div
               className={ui.flowItem}
-              data-state={
-                selectedCandidate && !activeOpportunityId
-                  ? "current"
-                  : activeOpportunityId || selectedOpportunities.length > 0
-                    ? "complete"
-                    : "upcoming"
-              }
+              data-state={stepTwoState}
+              aria-current={stepTwoState === "current" ? "step" : undefined}
             >
               <span className={ui.flowNumber}>2</span>
               <div>
@@ -798,13 +809,8 @@ export default function QuestionMapFounderPage() {
             </div>
             <div
               className={ui.flowItem}
-              data-state={
-                handoffResult
-                  ? "complete"
-                  : activeOpportunityId || selectedOpportunities.length > 0
-                    ? "current"
-                    : "upcoming"
-              }
+              data-state={stepThreeState}
+              aria-current={stepThreeState === "current" ? "step" : undefined}
             >
               <span className={ui.flowNumber}>3</span>
               <div>
@@ -1024,13 +1030,7 @@ export default function QuestionMapFounderPage() {
 
               <section
                 className={ui.decisionStep}
-                data-state={
-                  selectedCandidate && !activeOpportunityId
-                    ? "current"
-                    : activeOpportunityId || selectedOpportunities.length > 0
-                      ? "complete"
-                      : "upcoming"
-                }
+                data-state={stepTwoState}
               >
                 <div className={ui.stepHeader}>
                   <span className={ui.stepNumber}>2</span>
@@ -1114,13 +1114,7 @@ export default function QuestionMapFounderPage() {
 
               <section
                 className={ui.decisionStep}
-                data-state={
-                  handoffResult
-                    ? "complete"
-                    : activeOpportunityId || selectedOpportunities.length > 0
-                      ? "current"
-                      : "upcoming"
-                }
+                data-state={stepThreeState}
               >
                 <div className={ui.stepHeader}>
                   <span className={ui.stepNumber}>3</span>
