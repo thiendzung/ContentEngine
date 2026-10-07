@@ -217,7 +217,7 @@ function AngleCard({
       </div>
       {candidate.coverage.length > 0 && (
         <div className="angle-risks">
-          <span className="label">Cam kết phạm vi của Angle</span>
+          <span className="label">Cam kết phạm vi của góc tiếp cận</span>
           <ul>
             {candidate.coverage.map((item) => (
               <li key={item.requirement_id}>
@@ -235,10 +235,10 @@ function AngleCard({
         </div>
       )}
       <details className="operator-technical-details">
-        <summary>Nguồn & binding kỹ thuật</summary>
+        <summary>Nguồn & liên kết kỹ thuật</summary>
         <dl>
-          <div><dt>Candidate hash</dt><dd>{candidate.candidate_hash}</dd></div>
-          <div><dt>Evidence</dt><dd>{candidate.evidence_refs.join(", ")}</dd></div>
+          <div><dt>Mã băm ứng viên</dt><dd>{candidate.candidate_hash}</dd></div>
+          <div><dt>Bằng chứng</dt><dd>{candidate.evidence_refs.join(", ")}</dd></div>
           <div><dt>Tư liệu MOTGU</dt><dd>{candidate.originality_refs.join(", ")}</dd></div>
           <div><dt>Không được khẳng định</dt><dd>{candidate.excluded_claims.join(" · ") || "—"}</dd></div>
         </dl>
@@ -259,14 +259,14 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
       </header>
       <div className="quality-lane-checks">
         <div>
-          <span>Assertion Audit</span>
+          <span>Kiểm tra khẳng định</span>
           <strong>{qualityResultLabel(lane.assertion_audit_result)}</strong>
           <small>
             nghiêm trọng thiếu nguồn {lane.critical_unsupported_count} · mâu thuẫn {lane.critical_contradicted_count}
           </small>
         </div>
         <div>
-          <span>Source-copy</span>
+          <span>Kiểm tra trùng nguồn</span>
           <strong>{qualityResultLabel(lane.source_copy_result)}</strong>
           <small>lỗi {lane.fail_count} · cảnh báo {lane.warn_count}</small>
         </div>
@@ -276,12 +276,12 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
           <small>{lane.reader_value_findings.length} tiêu chí được kiểm tra</small>
         </div>
         <div>
-          <span>SEO / AI readiness</span>
+          <span>Mức sẵn sàng SEO / AI</span>
           <strong>{qualityResultLabel(lane.search_ai_result)}</strong>
           <small>{lane.search_ai_findings.length} tiêu chí được kiểm tra</small>
         </div>
         <div>
-          <span>Deep Quality</span>
+          <span>Chất lượng chuyên sâu</span>
           <strong>{qualityResultLabel(lane.deep_quality?.result ?? null)}</strong>
           <small>
             {lane.deep_quality
@@ -295,27 +295,27 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
       )}
       {lane.human_voice && (
         <details className="operator-technical-details">
-          <summary>Human Voice · so sánh trước / sau</summary>
+          <summary>Giọng văn tự nhiên · so sánh trước / sau</summary>
           <p className="operator-note">
-            Chỉ là chẩn đoán style mô tả; không phải AI detector, điểm chất lượng hay phần trăm “giống người”.
+            Chỉ là chẩn đoán phong cách mô tả; không phải bộ phát hiện AI, điểm chất lượng hay phần trăm “giống người”.
           </p>
           <div className="quality-lane-checks">
             <div>
-              <span>Trước rewrite</span>
-              <strong>{lane.human_voice.before.length} marker</strong>
+              <span>Trước chỉnh sửa</span>
+              <strong>{lane.human_voice.before.length} dấu hiệu</strong>
               <small>
                 {lane.human_voice.before.length
                   ? lane.human_voice.before.map((item) => `${item.code} ×${item.count}`).join(" · ")
-                  : "không có marker công thức"}
+                  : "không có dấu hiệu công thức"}
               </small>
             </div>
             <div>
-              <span>Sau rewrite</span>
-              <strong>{lane.human_voice.after.length} marker</strong>
+              <span>Sau chỉnh sửa</span>
+              <strong>{lane.human_voice.after.length} dấu hiệu</strong>
               <small>
                 {lane.human_voice.after.length
                   ? lane.human_voice.after.map((item) => `${item.code} ×${item.count}`).join(" · ")
-                  : "không có marker công thức"}
+                  : "không có dấu hiệu công thức"}
               </small>
             </div>
           {lane.human_voice.changes.length > 0 ? (
@@ -335,7 +335,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
               ))}
             </div>
           ) : (
-            <p className="operator-note">Không có thay đổi prose giữa source draft và revised draft.</p>
+            <p className="operator-note">Không có thay đổi câu chữ giữa bản nháp nguồn và bản nháp đã chỉnh sửa.</p>
           )}
           </div>
         </details>
@@ -385,16 +385,16 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
       <details className="operator-technical-details">
         <summary>Binding chất lượng</summary>
         <dl>
-          <div><dt>Writer run</dt><dd>{lane.writer_run_id ?? "—"}</dd></div>
-          <div><dt>Revised draft</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
-          <div><dt>Human Voice trace</dt><dd>{lane.human_voice?.trace_artifact.id ?? "—"}</dd></div>
-          <div><dt>Audit artifact</dt><dd>{lane.assertion_audit_artifact?.id ?? "—"}</dd></div>
-          <div><dt>Source-copy artifact</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
-          <div><dt>Reader Value</dt><dd>{lane.reader_value_artifact?.id ?? "—"}</dd></div>
-          <div><dt>SEO / AI readiness</dt><dd>{lane.search_ai_artifact?.id ?? "—"}</dd></div>
-          <div><dt>Deep Quality</dt><dd>{lane.deep_quality?.artifact.id ?? "—"}</dd></div>
-          <div><dt>Final content</dt><dd>{lane.final_content?.id ?? "—"}</dd></div>
-          <div><dt>Final hash</dt><dd>{lane.final_content?.content_hash ?? "—"}</dd></div>
+          <div><dt>Lượt viết</dt><dd>{lane.writer_run_id ?? "—"}</dd></div>
+          <div><dt>Bản nháp đã chỉnh sửa</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
+          <div><dt>Dấu vết giọng văn tự nhiên</dt><dd>{lane.human_voice?.trace_artifact.id ?? "—"}</dd></div>
+          <div><dt>Tài liệu kiểm tra khẳng định</dt><dd>{lane.assertion_audit_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Tài liệu kiểm tra trùng nguồn</dt><dd>{lane.source_copy_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Giá trị cho người đọc</dt><dd>{lane.reader_value_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Mức sẵn sàng SEO / AI</dt><dd>{lane.search_ai_artifact?.id ?? "—"}</dd></div>
+          <div><dt>Chất lượng chuyên sâu</dt><dd>{lane.deep_quality?.artifact.id ?? "—"}</dd></div>
+          <div><dt>Nội dung cuối</dt><dd>{lane.final_content?.id ?? "—"}</dd></div>
+          <div><dt>Mã băm bản cuối</dt><dd>{lane.final_content?.content_hash ?? "—"}</dd></div>
         </dl>
       </details>
     </article>
@@ -505,13 +505,13 @@ function FinalLocaleCard({
       <details className="operator-technical-details">
         <summary>Exact final lineage</summary>
         <dl>
-          <div><dt>Locale variant</dt><dd>{panel.locale_variant_id}</dd></div>
-          <div><dt>Final artifact</dt><dd>{panel.final_content?.id ?? "—"}</dd></div>
-          <div><dt>Final version</dt><dd>{panel.final_content?.version ?? "—"}</dd></div>
-          <div><dt>Final hash</dt><dd>{panel.final_content?.content_hash ?? "—"}</dd></div>
-          <div><dt>Founder approval</dt><dd>{panel.final_approval?.id ?? "—"}</dd></div>
-          <div><dt>ContentVersion</dt><dd>{panel.content_version_id ?? "—"}</dd></div>
-          <div><dt>ContentVersion no.</dt><dd>{panel.content_version_no ?? "—"}</dd></div>
+          <div><dt>Biến thể ngôn ngữ</dt><dd>{panel.locale_variant_id}</dd></div>
+          <div><dt>Tài liệu bản cuối</dt><dd>{panel.final_content?.id ?? "—"}</dd></div>
+          <div><dt>Phiên bản cuối</dt><dd>{panel.final_content?.version ?? "—"}</dd></div>
+          <div><dt>Mã băm bản cuối</dt><dd>{panel.final_content?.content_hash ?? "—"}</dd></div>
+          <div><dt>Phê duyệt của Người sáng lập</dt><dd>{panel.final_approval?.id ?? "—"}</dd></div>
+          <div><dt>Phiên bản nội dung</dt><dd>{panel.content_version_id ?? "—"}</dd></div>
+          <div><dt>Số phiên bản nội dung</dt><dd>{panel.content_version_no ?? "—"}</dd></div>
         </dl>
       </details>
     </article>
@@ -654,7 +654,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
   const outlineGate = view?.pending_gate?.type === "outline" ? view.pending_gate : null;
-  const selectedAngle = (
+  const selectedGóc tiếp cận = (
     angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null
   );
 
@@ -723,7 +723,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   async function submitAngleApproval() {
-    if (!view || !angleGate || !selectedAngle || submitting || reconcileRequired) return;
+    if (!view || !angleGate || !selectedGóc tiếp cận || submitting || reconcileRequired) return;
     const state = view.state;
     const artifact = angleGate.artifact;
     const keyScope = mutationKey(
@@ -737,7 +737,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           `Góc “${selectedAngle.working_title}” đang thu hẹp ${reductions.length} cam kết phạm vi:`,
           ...reductions.map((item) => `• ${item.requirement}`),
           "",
-          "Duyệt Angle này đồng nghĩa chấp nhận các phần thu hẹp trên. Tiếp tục?",
+          "Duyệt Góc tiếp cận này đồng nghĩa chấp nhận các phần thu hẹp trên. Tiếp tục?",
         ].join("\n")
       : `Duyệt góc “${selectedAngle.working_title}”?`;
     if (!window.confirm(confirmation)) return;
@@ -758,7 +758,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       clearIdempotencyKey(keyScope);
       setSelectedAngleId("");
       setAngleComment("");
-      setNotice("Angle đã được duyệt theo đúng snapshot.");
+      setNotice("Góc tiếp cận đã được duyệt theo đúng snapshot.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -772,7 +772,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     const state = view.state;
     const artifact = outlineGate.artifact;
     const keyScope = mutationKey(caseId, state.state_version, "approve-outline");
-    if (!window.confirm("Duyệt exact Outline hiện tại?")) return;
+    if (!window.confirm("Duyệt exact Dàn ý hiện tại?")) return;
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -787,7 +787,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       });
       clearIdempotencyKey(keyScope);
       setOutlineComment("");
-      setNotice("Outline đã được duyệt theo đúng snapshot.");
+      setNotice("Dàn ý đã được duyệt theo đúng snapshot.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -978,7 +978,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             <div>
               <strong>{canStart ? "Bắt đầu sản xuất" : "Tiếp tục bước an toàn tiếp theo"}</strong>
               <p>
-                Backend tự quyết stage/provider/model từ trạng thái bền vững; UI chỉ gửi ý định {canStart ? "Start" : "Continue"}.
+                Backend tự quyết giai đoạn/nhà cung cấp/mô hình từ trạng thái bền vững; giao diện chỉ gửi ý định {canStart ? "Bắt đầu" : "Tiếp tục"}.
               </p>
             </div>
             <button
@@ -1071,7 +1071,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </label>
             <button
               className="operator-button primary"
-              disabled={!selectedAngle || submitting || reconcileRequired}
+              disabled={!selectedGóc tiếp cận || submitting || reconcileRequired}
               onClick={() => void submitAngleApproval()}
               type="button"
             >
@@ -1096,7 +1096,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <p className="eyebrow">Cổng duyệt 2/3</p>
               <h2>{outlineString(outlineGate.outline, "title") ?? "Duyệt Outline"}</h2>
             </div>
-            <span className="operator-note">Duyệt exact Outline snapshot; không sửa trực tiếp trong UI.</span>
+            <span className="operator-note">Duyệt exact Dàn ý snapshot; không sửa trực tiếp trong UI.</span>
           </div>
 
           {outlineString(outlineGate.outline, "primary_answer") && (
@@ -1108,7 +1108,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
           <div className="outline-sections">
             {sections.length === 0 ? (
-              <p className="empty-copy">Outline không có section hiển thị được.</p>
+              <p className="empty-copy">Dàn ý không có section hiển thị được.</p>
             ) : sections.map((section, index) => (
               <article key={section.sectionId}>
                 <span>{index + 1}</span>
@@ -1171,10 +1171,10 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         <section className="operator-panel writer-lanes-panel">
           <div className="operator-panel-heading">
             <div>
-              <p className="eyebrow">Writer lanes</p>
+              <p className="eyebrow">Luồng viết lanes</p>
               <h2>Soạn độc lập theo ngôn ngữ</h2>
             </div>
-            <span className="operator-note">Mỗi lane dùng Outline đã duyệt và không đọc bản nháp của lane khác.</span>
+            <span className="operator-note">Mỗi lane dùng Dàn ý đã duyệt và không đọc bản nháp của lane khác.</span>
           </div>
           <div className="writer-lanes-grid">
             {view.writer_lanes.map((lane) => (
@@ -1222,10 +1222,10 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <p className="eyebrow">Cổng duyệt 3/3</p>
               <h2>Duyệt exact final theo từng ngôn ngữ</h2>
             </div>
-            <span className="operator-note">Approve tạo ContentVersion; không publish.</span>
+            <span className="operator-note">Duyệt sẽ tạo phiên bản nội dung; không xuất bản.</span>
           </div>
           {!review ? (
-            <p className="error">Không tải được exact final review projection. Không được duyệt khi thiếu projection.</p>
+            <p className="error">Không tải được dữ liệu duyệt cuối chính xác. Không được duyệt khi thiếu dữ liệu này.</p>
           ) : (
             <>
               {review.consistency_state !== "CONSISTENT" && (
