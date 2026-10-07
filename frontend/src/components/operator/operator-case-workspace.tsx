@@ -55,10 +55,10 @@ function technicalError(error: unknown): string {
 
 function writerLaneStatusLabel(status: string): string {
   if (status === "pending") return "Chờ xếp hàng";
-  if (status === "queued") return "Đang chờ worker";
+  if (status === "queued") return "Đang chờ tác nhân";
   if (status === "running") return "Đang viết";
   if (status === "completed") return "Đã có bản nháp";
-  return "Lỗi — chỉ lane này được retry";
+  return "Lỗi — chỉ luồng này được thử lại";
 }
 
 function qualityStageLabel(status: string): string {
@@ -70,7 +70,7 @@ function qualityStageLabel(status: string): string {
   if (normalized.includes("reader_value")) return "Kiểm tra giá trị cho người đọc";
   if (normalized.includes("search_ai")) return "Kiểm tra SEO / AI";
   if (normalized.includes("failed")) return "Bị chặn";
-  if (normalized.includes("queued")) return "Đang chờ worker";
+  if (normalized.includes("queued")) return "Đang chờ tác nhân";
   if (normalized.includes("running")) return "Đang kiểm tra";
   return status;
 }
@@ -342,7 +342,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
       )}
       {lane.deep_quality && (
         <details className="operator-technical-details">
-          <summary>Deep Quality · 12 chiều</summary>
+          <summary>Chất lượng chuyên sâu · 12 chiều</summary>
           <p className="operator-note">
             Verdict được tổng hợp theo pass / warn / fail; không dùng điểm số, trọng số hoặc phần trăm chất lượng.
           </p>
@@ -451,14 +451,14 @@ function FinalLocaleCard({
 
       <div className="quality-grid">
         <div className="quality-card">
-          <p className="label">Assertion Audit</p>
+          <p className="label">Kiểm tra khẳng định</p>
           <strong>{qualityResultLabel(panel.assertion_audit.result)}</strong>
           <small>
             nghiêm trọng thiếu nguồn {panel.assertion_audit.critical_unsupported_count} · mâu thuẫn {panel.assertion_audit.critical_contradicted_count}
           </small>
         </div>
         <div className="quality-card">
-          <p className="label">Source-copy</p>
+          <p className="label">Kiểm tra trùng nguồn</p>
           <strong>{qualityResultLabel(panel.source_copy.result)}</strong>
           <small>lỗi {panel.source_copy.fail_count} · cảnh báo {panel.source_copy.warn_count}</small>
         </div>
@@ -493,7 +493,7 @@ function FinalLocaleCard({
           />
           <div className="review-decision-actions">
             <button disabled={disabled || !panel.article} onClick={onApprove} type="button">
-              {disabled ? "Đang lưu…" : "Duyệt exact final"}
+              {disabled ? "Đang lưu…" : "Duyệt bản cuối chính xác"}
             </button>
           </div>
           <p className="operator-note">
@@ -503,7 +503,7 @@ function FinalLocaleCard({
       )}
 
       <details className="operator-technical-details">
-        <summary>Exact final lineage</summary>
+        <summary>Dòng nguồn gốc bản cuối chính xác</summary>
         <dl>
           <div><dt>Biến thể ngôn ngữ</dt><dd>{panel.locale_variant_id}</dd></div>
           <div><dt>Tài liệu bản cuối</dt><dd>{panel.final_content?.id ?? "—"}</dd></div>
@@ -538,12 +538,12 @@ function ProgressStrip({
     || view.state.status === "COMPLETE";
   const finalDone = view.state.status === "COMPLETE";
   const steps = [
-    { label: "Intake", done: true },
-    { label: "Angle", done: angleDone },
-    { label: "Outline", done: outlineDone },
+    { label: "Tiếp nhận", done: true },
+    { label: "Góc tiếp cận", done: angleDone },
+    { label: "Dàn ý", done: outlineDone },
     { label: "VI / EN", done: writersDone || qualityDone },
-    { label: "Quality", done: qualityDone },
-    { label: "Final", done: finalDone },
+    { label: "Chất lượng", done: qualityDone },
+    { label: "Duyệt cuối", done: finalDone },
   ];
   const currentIndex = steps.findIndex((step) => !step.done);
 
@@ -654,7 +654,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
   const outlineGate = view?.pending_gate?.type === "outline" ? view.pending_gate : null;
-  const selectedGóc tiếp cận = (
+  const selectedAngle = (
     angleGate?.candidates.find((item) => item.angle_id === selectedAngleId) ?? null
   );
 
@@ -671,7 +671,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       setNotice(
         ambiguousOutcome
           ? "Phản hồi bị gián đoạn. Chưa xác định lệnh đã được ghi hay chưa; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công."
-          : "Snapshot hiện tại đã cũ; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công.",
+          : "Ảnh chụp hiện tại đã cũ; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công.",
       );
     }
 
@@ -723,7 +723,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   }
 
   async function submitAngleApproval() {
-    if (!view || !angleGate || !selectedGóc tiếp cận || submitting || reconcileRequired) return;
+    if (!view || !angleGate || !selectedAngle || submitting || reconcileRequired) return;
     const state = view.state;
     const artifact = angleGate.artifact;
     const keyScope = mutationKey(
@@ -758,7 +758,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       clearIdempotencyKey(keyScope);
       setSelectedAngleId("");
       setAngleComment("");
-      setNotice("Góc tiếp cận đã được duyệt theo đúng snapshot.");
+      setNotice("Góc tiếp cận đã được duyệt theo đúng ảnh chụp.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -772,7 +772,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     const state = view.state;
     const artifact = outlineGate.artifact;
     const keyScope = mutationKey(caseId, state.state_version, "approve-outline");
-    if (!window.confirm("Duyệt exact Dàn ý hiện tại?")) return;
+    if (!window.confirm("Duyệt đúng dàn ý hiện tại?")) return;
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -787,7 +787,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       });
       clearIdempotencyKey(keyScope);
       setOutlineComment("");
-      setNotice("Dàn ý đã được duyệt theo đúng snapshot.");
+      setNotice("Dàn ý đã được duyệt theo đúng ảnh chụp.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -806,7 +806,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
     ) return;
     if (!exactFinalBindingMatches(view, panel)) {
       setError(
-        "Exact final binding giữa Operator và Review projection không khớp. Đã chặn duyệt; hãy tải lại trạng thái.",
+        "Liên kết bản cuối chính xác giữa Điều hành và dữ liệu duyệt không khớp. Đã chặn duyệt; hãy tải lại trạng thái.",
       );
       return;
     }
@@ -816,7 +816,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       state.state_version,
       `approve-final:${panel.locale_variant_id}`,
     );
-    if (!window.confirm(`Duyệt exact final ${localeLabel(panel.locale)}?`)) return;
+    if (!window.confirm(`Duyệt bản cuối chính xác ${localeLabel(panel.locale)}?`)) return;
     setSubmitting(true);
     setError("");
     setNotice("");
@@ -829,7 +829,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       });
       clearIdempotencyKey(keyScope);
       setFinalComments((current) => ({ ...current, [panel.locale_variant_id]: "" }));
-      setNotice(`Đã duyệt exact final ${localeLabel(panel.locale)}. Đang đối soát trạng thái canonical.`);
+      setNotice(`Đã duyệt bản cuối chính xác ${localeLabel(panel.locale)}. Đang đối soát trạng thái chuẩn.`);
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -886,10 +886,10 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div className="angle-meta-row">
             <span>
               {view.content_role === "pillar"
-                ? "Pillar — bức tranh lớn"
+                ? "Nội dung trụ cột — bức tranh lớn"
                 : view.content_role === "cluster"
-                  ? "Cluster — vấn đề hẹp, đi sâu"
-                  : `Vai trò legacy: ${view.content_role ?? "chưa khai báo"}`}
+                  ? "Cụm nội dung — vấn đề hẹp, đi sâu"
+                  : `Vai trò cũ: ${view.content_role ?? "chưa khai báo"}`}
             </span>
           </div>
           <p className="intro">{view.promise}</p>
@@ -933,8 +933,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div>
             <strong>Trạng thái chưa được đối soát</strong>
             <p>
-              Snapshot đang hiển thị có thể đã cũ. Các lệnh Start / Continue / Retry / Approve bị khóa
-              cho tới khi tải lại canonical state thành công.
+              Ảnh chụp đang hiển thị có thể đã cũ. Các lệnh Bắt đầu / Tiếp tục / Thử lại / Duyệt bị khóa
+              cho tới khi tải lại trạng thái chuẩn thành công.
             </p>
           </div>
           <button
@@ -969,8 +969,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         <div className="state-grid">
           <div><span>Giai đoạn</span><strong>{operatorPhaseLabel(state.phase)}</strong></div>
           <div><span>Cổng duyệt</span><strong>{humanGateLabel(state.human_gate)}</strong></div>
-          <div><span>Run</span><strong>{shortId(state.current_run_id)}</strong></div>
-          <div><span>Step</span><strong>{shortId(state.current_step_run_id)}</strong></div>
+          <div><span>Lượt chạy</span><strong>{shortId(state.current_run_id)}</strong></div>
+          <div><span>Bước chạy</span><strong>{shortId(state.current_step_run_id)}</strong></div>
         </div>
 
         {(canStart || canContinue) && (
@@ -996,8 +996,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div className="operator-running-state">
             <span className="activity-pulse" aria-hidden="true" />
             <div>
-              <strong>{state.status === "QUEUED" ? "Đang chờ worker" : "Đang xử lý"}</strong>
-              <p>Trang tự tải lại trạng thái khoảng 2,5 giây/lần. Refresh trình duyệt không tạo lệnh mới.</p>
+              <strong>{state.status === "QUEUED" ? "Đang chờ tác nhân" : "Đang xử lý"}</strong>
+              <p>Trang tự cập nhật trạng thái khi đang chạy. Tải lại trình duyệt không tạo lệnh mới.</p>
             </div>
           </div>
         )}
@@ -1023,19 +1023,19 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
         {state.status === "COMPLETE" && review && (
           <div className="operator-complete-state">
-            <strong>Workflow đã hoàn tất</strong>
+            <strong>Quy trình đã hoàn tất</strong>
             <p>
               {reviewStateLabel(review.next_action)} · {reviewStateLabel(review.publication_state)}.
-              Không có quyền publish trong F6-MINI.
+              Không có quyền xuất bản trong F6-MINI.
             </p>
           </div>
         )}
 
         <details className="operator-technical-details">
-          <summary>Checkpoint & state version</summary>
+          <summary>Điểm kiểm tra & phiên bản trạng thái</summary>
           <dl>
-            <div><dt>State version</dt><dd>{state.state_version}</dd></div>
-            <div><dt>Checkpoint</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
+            <div><dt>Phiên bản trạng thái</dt><dd>{state.state_version}</dd></div>
+            <div><dt>Điểm kiểm tra</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
           </dl>
         </details>
       </section>
@@ -1047,7 +1047,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <p className="eyebrow">Cổng duyệt 1/3</p>
               <h2>Chọn góc tiếp cận</h2>
             </div>
-            <span className="operator-note">Chọn một candidate đã được backend khóa hash.</span>
+            <span className="operator-note">Chọn một ứng viên đã được backend khóa mã băm.</span>
           </div>
           <div className="angle-grid">
             {angleGate.candidates.map((candidate) => (
@@ -1075,15 +1075,15 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               onClick={() => void submitAngleApproval()}
               type="button"
             >
-              {submitting ? "Đang lưu…" : "Duyệt Angle"}
+              {submitting ? "Đang lưu…" : "Duyệt góc tiếp cận"}
             </button>
           </div>
           <details className="operator-technical-details artifact-details">
-            <summary>Snapshot Angle</summary>
+            <summary>Ảnh chụp góc tiếp cận</summary>
             <dl>
-              <div><dt>Artifact</dt><dd>{angleGate.artifact.id}</dd></div>
-              <div><dt>Version</dt><dd>{angleGate.artifact.version}</dd></div>
-              <div><dt>Hash</dt><dd>{angleGate.artifact.content_hash}</dd></div>
+              <div><dt>Tài liệu</dt><dd>{angleGate.artifact.id}</dd></div>
+              <div><dt>Phiên bản</dt><dd>{angleGate.artifact.version}</dd></div>
+              <div><dt>Mã băm</dt><dd>{angleGate.artifact.content_hash}</dd></div>
             </dl>
           </details>
         </section>
@@ -1094,9 +1094,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div className="operator-panel-heading">
             <div>
               <p className="eyebrow">Cổng duyệt 2/3</p>
-              <h2>{outlineString(outlineGate.outline, "title") ?? "Duyệt Outline"}</h2>
+              <h2>{outlineString(outlineGate.outline, "title") ?? "Duyệt dàn ý"}</h2>
             </div>
-            <span className="operator-note">Duyệt exact Dàn ý snapshot; không sửa trực tiếp trong UI.</span>
+            <span className="operator-note">Duyệt đúng ảnh chụp dàn ý; không sửa trực tiếp trong giao diện.</span>
           </div>
 
           {outlineString(outlineGate.outline, "primary_answer") && (
@@ -1108,7 +1108,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
           <div className="outline-sections">
             {sections.length === 0 ? (
-              <p className="empty-copy">Dàn ý không có section hiển thị được.</p>
+              <p className="empty-copy">Dàn ý không có phần nào hiển thị được.</p>
             ) : sections.map((section, index) => (
               <article key={section.sectionId}>
                 <span>{index + 1}</span>
@@ -1117,7 +1117,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   {section.purpose && <p>{section.purpose}</p>}
                   {section.answerDirection && <p><strong>Hướng trả lời:</strong> {section.answerDirection}</p>}
                   {section.claimGuards.length > 0 && (
-                    <p><strong>Guard:</strong> {section.claimGuards.join(" · ")}</p>
+                    <p><strong>Rào chắn:</strong> {section.claimGuards.join(" · ")}</p>
                   )}
                   {section.coverageRequirementIds.length > 0 && (
                     <div>
@@ -1141,7 +1141,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <span>Ghi chú duyệt (không bắt buộc)</span>
               <textarea
                 onChange={(event) => setOutlineComment(event.target.value)}
-                placeholder="Ghi chú cho exact Outline…"
+                placeholder="Ghi chú cho dàn ý chính xác…"
                 rows={3}
                 value={outlineComment}
               />
@@ -1152,16 +1152,16 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               onClick={() => void submitOutlineApproval()}
               type="button"
             >
-              {submitting ? "Đang lưu…" : "Duyệt Outline"}
+              {submitting ? "Đang lưu…" : "Duyệt dàn ý"}
             </button>
           </div>
 
           <details className="operator-technical-details artifact-details">
-            <summary>Snapshot Outline</summary>
+            <summary>Ảnh chụp dàn ý</summary>
             <dl>
-              <div><dt>Artifact</dt><dd>{outlineGate.artifact.id}</dd></div>
-              <div><dt>Version</dt><dd>{outlineGate.artifact.version}</dd></div>
-              <div><dt>Hash</dt><dd>{outlineGate.artifact.content_hash}</dd></div>
+              <div><dt>Tài liệu</dt><dd>{outlineGate.artifact.id}</dd></div>
+              <div><dt>Phiên bản</dt><dd>{outlineGate.artifact.version}</dd></div>
+              <div><dt>Mã băm</dt><dd>{outlineGate.artifact.content_hash}</dd></div>
             </dl>
           </details>
         </section>
@@ -1171,10 +1171,10 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         <section className="operator-panel writer-lanes-panel">
           <div className="operator-panel-heading">
             <div>
-              <p className="eyebrow">Luồng viết lanes</p>
+              <p className="eyebrow">Các luồng viết</p>
               <h2>Soạn độc lập theo ngôn ngữ</h2>
             </div>
-            <span className="operator-note">Mỗi lane dùng Dàn ý đã duyệt và không đọc bản nháp của lane khác.</span>
+            <span className="operator-note">Mỗi luồng dùng dàn ý đã duyệt và không đọc bản nháp của luồng khác.</span>
           </div>
           <div className="writer-lanes-grid">
             {view.writer_lanes.map((lane) => (
@@ -1184,14 +1184,14 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   <span className={`writer-lane-status ${lane.status}`}>{writerLaneStatusLabel(lane.status)}</span>
                 </div>
                 <p>Lượt chạy: {lane.attempt ?? "—"}</p>
-                {lane.draft_artifact_id && <p>Draft: {shortId(lane.draft_artifact_id)} · v{lane.draft_version}</p>}
+                {lane.draft_artifact_id && <p>Bản nháp: {shortId(lane.draft_artifact_id)} · v{lane.draft_version}</p>}
                 <details className="operator-technical-details">
-                  <summary>Binding kỹ thuật</summary>
+                  <summary>Liên kết kỹ thuật</summary>
                   <dl>
-                    <div><dt>Run</dt><dd>{lane.run_id ?? "—"}</dd></div>
-                    <div><dt>Step</dt><dd>{lane.step_run_id ?? "—"}</dd></div>
-                    <div><dt>Job</dt><dd>{lane.job_id ?? "—"}</dd></div>
-                    <div><dt>Draft hash</dt><dd>{lane.draft_hash ?? "—"}</dd></div>
+                    <div><dt>Lượt chạy</dt><dd>{lane.run_id ?? "—"}</dd></div>
+                    <div><dt>Bước chạy</dt><dd>{lane.step_run_id ?? "—"}</dd></div>
+                    <div><dt>Công việc</dt><dd>{lane.job_id ?? "—"}</dd></div>
+                    <div><dt>Mã băm bản nháp</dt><dd>{lane.draft_hash ?? "—"}</dd></div>
                   </dl>
                 </details>
               </article>
@@ -1204,8 +1204,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         <section className="operator-panel quality-lanes-panel">
           <div className="operator-panel-heading">
             <div>
-              <p className="eyebrow">Quality</p>
-              <h2>Kiểm tra từng locale</h2>
+              <p className="eyebrow">Chất lượng</p>
+              <h2>Kiểm tra từng ngôn ngữ</h2>
             </div>
             <span className="operator-note">Cảnh báo được giữ nguyên tới cổng duyệt cuối.</span>
           </div>
@@ -1220,7 +1220,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div className="operator-panel-heading">
             <div>
               <p className="eyebrow">Cổng duyệt 3/3</p>
-              <h2>Duyệt exact final theo từng ngôn ngữ</h2>
+              <h2>Duyệt bản cuối chính xác theo từng ngôn ngữ</h2>
             </div>
             <span className="operator-note">Duyệt sẽ tạo phiên bản nội dung; không xuất bản.</span>
           </div>
@@ -1229,14 +1229,14 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           ) : (
             <>
               {review.consistency_state !== "CONSISTENT" && (
-                <p className="error">Review projection không nhất quán. Dừng và kiểm tra binding trước khi duyệt.</p>
+                <p className="error">Dữ liệu duyệt không nhất quán. Dừng và kiểm tra liên kết trước khi duyệt.</p>
               )}
               {finalPanels.some((panel) => (
                 panel.next_action === "AWAITING_FOUNDER_APPROVAL"
                 && !exactFinalBindingMatches(view, panel)
               )) && (
                 <p className="error">
-                  Exact final binding giữa Operator và Review projection không khớp. Không có quyết định duyệt nào được mở.
+                  Liên kết bản cuối chính xác giữa Điều hành và dữ liệu duyệt không khớp. Không có quyết định duyệt nào được mở.
                 </p>
               )}
               <div className="bilingual-grid">
@@ -1270,21 +1270,21 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <div className="operator-panel-heading">
             <div>
               <p className="eyebrow">Kết quả</p>
-              <h2>Approved · Not published</h2>
+              <h2>Đã duyệt · Chưa xuất bản</h2>
             </div>
-            <span className="operator-state-badge complete">COMPLETE</span>
+            <span className="operator-state-badge complete">Hoàn thành</span>
           </div>
           <div className="completion-locales">
             {finalPanels.map((panel) => (
               <div key={panel.locale_variant_id}>
                 <strong>{localeLabel(panel.locale)}</strong>
-                <span>ContentVersion v{panel.content_version_no ?? "—"}</span>
+                <span>Phiên bản nội dung v{panel.content_version_no ?? "—"}</span>
                 <span>{reviewStateLabel(panel.publication_state)}</span>
               </div>
             ))}
           </div>
           <p className="operator-block-note">
-            Workflow nội dung đã hoàn tất nhưng publication chưa được cấp quyền. Publish Approval Gate là bước riêng.
+            Quy trình nội dung đã hoàn tất nhưng quyền xuất bản chưa được cấp. Cổng cho phép xuất bản là bước riêng.
           </p>
         </section>
       )}
