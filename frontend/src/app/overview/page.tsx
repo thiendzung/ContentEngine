@@ -159,7 +159,7 @@ function NeedsMeCard({ item }: { item: NeedsMeItem }) {
           <h3>{item.reason}</h3>
         </div>
         <span className={statusClass(item.canonical_status)}>
-          {item.canonical_status}
+          {uiStatusLabel(item.canonical_status)}
         </span>
       </div>
 
@@ -412,7 +412,7 @@ export default function OverviewPage() {
 
             {digestError ? (
               <div className={styles.error} role="alert">
-                Daily Digest chưa khả dụng: {digestError}. Control Center vẫn giữ nguyên.
+                Tóm tắt trong ngày chưa khả dụng: {digestError}. Trung tâm điều hành vẫn giữ nguyên.
               </div>
             ) : null}
             {digestStale ? (
@@ -430,7 +430,7 @@ export default function OverviewPage() {
                     ["Sản xuất", digest.event_counts.production ?? 0],
                     ["Xuất bản", digest.event_counts.publication ?? 0],
                     ["Đo lường", digest.event_counts.measurement ?? 0],
-                    ["Learning", digest.event_counts.learning ?? 0],
+                    ["Học từ dữ liệu", digest.event_counts.learning ?? 0],
                   ].map(([label, value]) => (
                     <div className={styles.countCard} key={String(label)}>
                       <span>{label}</span>
@@ -439,13 +439,13 @@ export default function OverviewPage() {
                   ))}
                 </div>
                 <p className={styles.meta}>
-                  Window {formatDate(digest.window_start)} →{" "}
-                  {formatDate(digest.window_end)} · measurement không phải causal proof.
+                  Cửa sổ {formatDate(digest.window_start)} →{" "}
+                  {formatDate(digest.window_end)} · đo lường không phải bằng chứng nhân quả.
                 </p>
               </>
             ) : digestError ? null : (
               <div className={styles.notice} role="status" aria-live="polite">
-                Đang tải Daily Digest…
+                Đang tải Tóm tắt trong ngày…
               </div>
             )}
           </section>
@@ -453,11 +453,11 @@ export default function OverviewPage() {
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Operational telemetry</p>
-                <h2>Trạng thái vận hành canonical</h2>
+                <p className="eyebrow">Số liệu vận hành</p>
+                <h2>Trạng thái vận hành chuẩn</h2>
               </div>
               <span className={styles.meta}>
-                As of {formatDate(state.summary.as_of)}
+                Cập nhật tới {formatDate(state.summary.as_of)}
               </span>
             </div>
 
@@ -488,7 +488,7 @@ export default function OverviewPage() {
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Fail-closed issues</p>
+                <p className="eyebrow">Các điểm đóng an toàn</p>
                 <h2>Điểm đang bị chặn hoặc không nhất quán</h2>
               </div>
               <span
@@ -504,7 +504,7 @@ export default function OverviewPage() {
 
             {state.summary.issues.length === 0 ? (
               <div className={styles.empty}>
-                Control Center không báo issue fail-closed tại thời điểm đọc.
+                Trung tâm điều hành không báo điểm lỗi đóng an toàn tại thời điểm đọc.
               </div>
             ) : (
               <div className={styles.issueList}>
