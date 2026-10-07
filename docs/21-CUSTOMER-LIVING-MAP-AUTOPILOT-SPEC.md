@@ -402,6 +402,13 @@ năng sử dụng, chưa phải mục tiêu tối ưu chính.
 Tên route, API, model và enum kỹ thuật không đổi chỉ vì Việt hóa lớp hiển thị. UI Founder ưu tiên
 tiếng Việt; thuật ngữ kỹ thuật chỉ hiển thị khi cần để kiểm tra/audit.
 
+Question Map Founder UI dùng decision-cockpit contract:
+- desktop: planning/candidate context ở trái, decision panel sticky ở phải;
+- flow hiển thị theo ba bước: chọn vấn đề -> chọn nội dung -> xác nhận đưa vào sản xuất;
+- raw route/admission/snapshot/hash/ref không phải nội dung primary; đặt trong technical disclosure;
+- stale/error state phải giữ đường recovery rõ ràng, không cho mutation bằng preview cũ;
+- backend tiếp tục là workflow authority; UI không suy ra route/admission/readiness mới.
+
 Dashboard business và Trung tâm điều hành là hai lớp khác nhau.
 
 Backend cung cấp read model; frontend không tự suy luận truth.

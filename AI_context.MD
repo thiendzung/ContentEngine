@@ -1,42 +1,44 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P1 desktop navigation + Vietnamese primary UI
+## Current WIP — UI-P2 Question Map decision cockpit
 
-PR #371 / #368 is complete and Founder merged it as main
-`487bd25db1b7437bd96b32bb05f351a441293a89`. The clean backend baseline is restored:
-1553 PASS / 0 FAIL on the verified candidate before merge.
+Live GitHub state before this slice:
+- #361 Golden E2E is CLOSED with `PASS_QM02_GOLDEN_CLOSEOUT`;
+- UI-P1 / #372 / PR #373 is merged;
+- current base main is `c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
 
-Founder explicitly reprioritized one bounded UX slice before #361 Golden E2E.
+Founder explicitly authorized UI-P2 as the next bounded UX slice.
 
 Active branch:
-`feat/ui-p1-desktop-nav-vi`
+`feat/ui-p2-question-map-cockpit`
 
 Tracking:
-#372
+#374
 
-UI-P1 scope:
-- desktop-first primary navigation for Founder operation;
-- replace the horizontal desktop nav with a persistent left sidebar;
-- show current section with visible active state + `aria-current="page"`;
-- Vietnamese labels for all seven primary sections;
-- map technical subroutes back to their primary section;
-- retain narrow-screen usability without treating mobile as the design target;
-- no backend/API/schema/runtime/business-logic change;
-- no broad page redesign, Question Map two-column work or Production density work in P1.
+UI-P2 scope:
+- keep Question Map backend/API/business contracts unchanged;
+- turn the Founder surface into a desktop decision cockpit;
+- left column = planning context + Pillar/Cluster candidates;
+- sticky right panel = 1) choose problem, 2) choose content, 3) confirm production handoff;
+- demote raw route/admission/snapshot/hash/ref details into technical disclosure;
+- preserve stale/fail-closed behavior, exact snapshot checks, MERGE confirmation and idempotency;
+- no Start/Writer/Publish;
+- no P3 full terminology pass, P4 system-wide technical-layer refactor, P5 Production Board redesign or P6 global visual-system work.
 
-Desktop targets: 1440px first, sanity at 1366px and 1920px. Narrow screens only need to remain
-usable in this slice.
+Desktop targets remain 1440px primary with 1366px and 1920px sanity; narrow layout must remain usable.
 
 Required proof before merge:
+- exact Base -> Candidate diff hygiene;
 - frontend lint + typecheck + production build;
-- browser smoke across all seven primary routes and active-state mapping;
-- keyboard-focus / narrow-layout sanity;
-- exact-ref OpenCodeReview + Agent Local exact-SHA verification;
-- minimal GitHub CI;
+- browser smoke at 1366/1440/1920 and narrow sanity;
+- decision-flow state, stale/error path and recovery-selector checks;
+- CREATE/UPDATE/REFRESH/MERGE UI contract smoke without operational mutation;
+- exact-ref OpenCodeReview Delegation Mode;
+- Agent Local exact-SHA verification;
+- minimum GitHub CI;
 - MG final review.
 
-Founder remains the only PR merge authority. Do not start #361 Golden E2E until this explicitly
-reprioritized UI-P1 slice is merged or Founder changes the order again.
+Founder remains the only merge authority.
 
 ## Read first and verify the actual ref
 
@@ -57,7 +59,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main: `487bd25db1b7437bd96b32bb05f351a441293a89` (merge PR #371 / QA #368 cleanup). QM-02E remains complete on the prior PR #370 lineage. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main before UI-P2: `c2bfcf53d58e47517102ce67d8a082ef27ad2dd4` (merge PR #373 / UI-P1). QM-02 Golden E2E (#361) and UI-P1 are complete; UI-P2 / #374 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -88,25 +90,19 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #372 / UI-P1 on one exact candidate SHA.
+Complete #374 / UI-P2 on one exact candidate SHA.
 
-Required proof:
-- Base / merge-base remains exact post-#371 main `487bd25db1b7437bd96b32bb05f351a441293a89`;
-- desktop sidebar replaces the horizontal primary nav at 1366/1440/1920 widths;
-- all seven primary navigation labels are Vietnamese;
-- current section is visually distinct and exposes `aria-current="page"`;
-- root + `/operator/*` map to Sản xuất; `/daily-digest` maps to Hệ thống;
-- keyboard focus remains visible and narrow layout remains usable;
-- frontend lint + typecheck + production build PASS;
-- browser smoke covers all primary routes without backend/business-state invention;
-- exact-ref OCR + Agent Local exact-SHA verification + minimum GitHub CI;
-- no backend/API/schema/runtime mutation.
+Required product behavior:
+- desktop two-column Question Map cockpit;
+- Step 1 always exposes exact Need + locale and remains usable after a planning-load error;
+- Step 2 makes the selected content candidate and required human inputs obvious;
+- Step 3 shows business-facing production readiness while raw route/admission/hash/ref details stay behind technical disclosure;
+- stale snapshots disable mutation and require a fresh read;
+- MERGE retains explicit survivor + reason + confirmation;
+- no Start/Writer/Publish and no frontend business-logic invention.
 
-Do not expand P1 into the Question Map two-column redesign, full UI-wide terminology cleanup or
-Production Board density redesign. Those are later slices.
-
-Founder explicitly placed this bounded UI-P1 before #361 Golden E2E. Founder remains the only merge
-authority.
+Do not expand this slice into full UI-wide Vietnamese terminology cleanup, a generic technical-details
+framework, Production Board redesign or global typography polish. Those belong to P3-P6.
 
 ## Pilot operating priority — 2026-10-03
 

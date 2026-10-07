@@ -50,7 +50,7 @@
 
 .summaryGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 16px 0;
 }
@@ -316,6 +316,350 @@
   color: #756e64;
 }
 
+
+.problemSetup {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
+  gap: 18px;
+  align-items: end;
+  border: 1px solid #c8c0b4;
+  background: rgba(255, 252, 246, .72);
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.problemSetup h2 {
+  margin: 4px 0 8px;
+  font-size: 1.35rem;
+}
+
+.problemSetup p {
+  margin: 0;
+  color: #655f56;
+}
+
+.problemSetupFields {
+  display: grid;
+  gap: 10px;
+}
+
+.flowOverview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.flowItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+  border: 1px solid #c8c0b4;
+  background: rgba(255, 252, 246, .72);
+  padding: 12px;
+}
+
+.flowItem[data-state="current"] {
+  border-color: #6f675d;
+  background: #fffdf8;
+}
+
+.flowNumber,
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #8d8377;
+  background: #f7f1e7;
+  color: #423e38;
+  font: 800 .72rem Arial, sans-serif;
+}
+
+.flowItem[data-state="complete"] .flowNumber,
+.decisionStep[data-state="complete"] .stepNumber {
+  background: #35453a;
+  border-color: #35453a;
+  color: #fffdf8;
+}
+
+.flowItem[data-state="current"] .flowNumber,
+.decisionStep[data-state="current"] .stepNumber {
+  background: #312f2a;
+  border-color: #312f2a;
+  color: #fffdf8;
+}
+
+.flowItem strong,
+.stepHeader strong {
+  display: block;
+  font: 800 .78rem Arial, sans-serif;
+}
+
+.flowItem small,
+.stepHeader small {
+  display: block;
+  margin-top: 4px;
+  color: #716a60;
+  font: .72rem/1.4 Arial, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.cockpit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 410px);
+  gap: 20px;
+  align-items: start;
+}
+
+.candidateColumn {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.candidateHint {
+  margin: 0 0 12px;
+  color: #655f56;
+  font-size: .9rem;
+}
+
+.decisionRail {
+  position: sticky;
+  top: 18px;
+  align-self: start;
+  min-width: 0;
+  height: fit-content;
+}
+
+.decisionPanel {
+  /*
+   * The Question Map page reserves 88px of bottom padding. Keep the rail short
+   * enough to fit between top: 18px and that containing-block boundary even at
+   * document bottom; otherwise CSS sticky is required to push the rail upward.
+   */
+  max-height: calc(100vh - 106px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border: 1px solid #aaa196;
+  background: #f7f1e7;
+  padding: 16px;
+}
+
+.decisionPanelHeader {
+  padding: 2px 2px 14px;
+}
+
+.decisionPanelHeader h2 {
+  margin: 4px 0 6px;
+  font-size: 1.45rem;
+}
+
+.decisionPanelHeader p:last-child {
+  margin: 0;
+  color: #655f56;
+  font-size: .88rem;
+}
+
+.decisionStep {
+  border-top: 1px solid #cfc5b8;
+  padding: 16px 2px;
+}
+
+.stepHeader {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.stepBody {
+  display: grid;
+  gap: 11px;
+  margin: 12px 0 0 38px;
+}
+
+.truthSummary,
+.selectedCandidateSummary,
+.productionStatus {
+  display: grid;
+  gap: 5px;
+  border-left: 3px solid #a89b8b;
+  background: #fffdf8;
+  padding: 10px 12px;
+}
+
+.truthSummary span,
+.selectedCandidateSummary > span {
+  color: #6d665d;
+  font: 700 .65rem Arial, sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.truthSummary strong,
+.selectedCandidateSummary > strong {
+  font-size: .98rem;
+  line-height: 1.35;
+}
+
+.truthSummary small {
+  color: #756e64;
+  line-height: 1.45;
+}
+
+.inlineBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.stepPrompt {
+  margin: 0;
+  border: 1px dashed #b8afa2;
+  background: rgba(255, 253, 248, .65);
+  padding: 12px;
+  color: #6d665d;
+  font-size: .88rem;
+  line-height: 1.5;
+}
+
+.savedSelectionNote {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #9dac93;
+  border-left: 3px solid #72806b;
+  background: #edf2e9;
+  color: #34412f;
+  padding: 11px 12px;
+}
+
+.savedSelectionNote strong {
+  font: 800 .78rem Arial, sans-serif;
+}
+
+.savedSelectionNote span {
+  font-size: .84rem;
+  line-height: 1.45;
+}
+
+.productionStatus h3 {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+}
+
+.productionStatus p {
+  margin: 0;
+  color: #655f56;
+  font-size: .86rem;
+}
+
+.candidateDetails,
+.technicalDetails,
+.planningDetails {
+  border: 1px solid #d0c7ba;
+  background: rgba(255, 253, 248, .72);
+}
+
+.candidateDetails {
+  margin-top: 10px;
+  padding: 9px 10px;
+}
+
+.technicalDetails,
+.planningDetails {
+  padding: 11px 12px;
+}
+
+.candidateDetails summary,
+.technicalDetails summary,
+.planningDetails summary {
+  cursor: pointer;
+  color: #485b65;
+  font: 800 .72rem Arial, sans-serif;
+}
+
+.candidateDetails summary:focus-visible,
+.technicalDetails summary:focus-visible,
+.planningDetails summary:focus-visible {
+  outline: 3px solid #2e5367;
+  outline-offset: 3px;
+}
+
+.planningDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.planningDetailsGrid > div {
+  border: 1px solid #d2cabf;
+  background: #fffdf8;
+  padding: 10px;
+}
+
+.planningDetailsGrid span {
+  display: block;
+  color: #756e64;
+  font: 700 .61rem Arial, sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.planningDetailsGrid strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.opportunityQuestion {
+  margin: 6px 0;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.handoffSuccess {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #7d9274;
+  border-left-width: 3px;
+  background: #eaf1e6;
+  color: #33462e;
+  padding: 12px;
+}
+
+.handoffSuccess span {
+  font-size: .85rem;
+}
+
+.safetyNote {
+  margin: 2px 0 0;
+  color: #756e64;
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1180px) {
+  .problemSetup,
+  .cockpit {
+    grid-template-columns: 1fr;
+  }
+
+  .decisionRail {
+    position: static;
+    height: auto;
+  }
+
+  .decisionPanel {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
 @media (max-width: 1040px) {
   .summaryGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -334,7 +678,9 @@
   .toolbar,
   .summaryGrid,
   .dualStatus,
-  .routeGrid {
+  .routeGrid,
+  .flowOverview,
+  .planningDetailsGrid {
     grid-template-columns: 1fr;
   }
 
@@ -344,6 +690,14 @@
 
   .candidateHeader {
     flex-direction: column;
+  }
+
+  .stepBody {
+    margin-left: 0;
+  }
+
+  .decisionPanel {
+    padding: 14px;
   }
 
   .clusterList {
