@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -297,6 +298,12 @@ export default function ContentMapPage() {
           </p>
         </div>
         <div className={styles.headerActions}>
+          <Link
+            className={styles.buttonSecondary}
+            href="/content-map/question-map"
+          >
+            Question Map
+          </Link>
           <button
             type="button"
             className={styles.buttonSecondary}
