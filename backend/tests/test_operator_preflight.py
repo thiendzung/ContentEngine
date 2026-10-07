@@ -23,7 +23,19 @@ async def _ready_base_preflight() -> dict[str, object]:
 
 
 def _settings_with_serper() -> Settings:
-    return Settings(serper_api_key=SecretStr("synthetic-serper-key"))
+    return Settings(
+        _env_file=None,
+        app_env="development",
+        serper_api_key=SecretStr("synthetic-serper-key"),
+    )
+
+
+def _settings_without_serper() -> Settings:
+    return Settings(
+        _env_file=None,
+        app_env="development",
+        serper_api_key=None,
+    )
 
 
 async def _activate_angle_runtime(
@@ -93,7 +105,7 @@ async def test_journal_preflight_blocks_missing_worker_dependencies(
         "build_operational_preflight",
         _ready_base_preflight,
     )
-    monkeypatch.setattr(operator_preflight, "get_settings", lambda: Settings())
+    monkeypatch.setattr(operator_preflight, "get_settings", _settings_without_serper)
 
     async with isolated_session() as session:
         result = await operator_preflight.build_journal_operator_preflight(session)
