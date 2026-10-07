@@ -386,16 +386,23 @@ Mỗi refresh phải trả “what changed”, không chỉ số record tăng.
 
 ## 13. UI / UX
 
-Navigation mục tiêu:
-1. Overview
-2. Customers
-3. Content Map
-4. Production
-5. Needs Me
-6. Learning
-7. System
+Navigation mục tiêu trên UI Founder:
+1. Tổng quan
+2. Cần tôi xử lý
+3. Sản xuất
+4. Khách hàng
+5. Bản đồ nội dung
+6. Học từ dữ liệu
+7. Hệ thống
 
-Dashboard business và Control Center là hai lớp khác nhau.
+Giai đoạn đầu ưu tiên desktop-first: 1440px là kích thước thiết kế chính, kiểm tra thêm 1366px và
+1920px. Primary navigation dùng sidebar trái cố định trên desktop; màn hình hẹp chỉ cần giữ khả
+năng sử dụng, chưa phải mục tiêu tối ưu chính.
+
+Tên route, API, model và enum kỹ thuật không đổi chỉ vì Việt hóa lớp hiển thị. UI Founder ưu tiên
+tiếng Việt; thuật ngữ kỹ thuật chỉ hiển thị khi cần để kiểm tra/audit.
+
+Dashboard business và Trung tâm điều hành là hai lớp khác nhau.
 
 Backend cung cấp read model; frontend không tự suy luận truth.
 
