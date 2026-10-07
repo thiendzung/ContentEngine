@@ -273,7 +273,7 @@ export default function OverviewPage() {
           : "Không thể làm mới Trung tâm điều hành.";
       if (state) {
         setStale(
-          `Lần làm mới thất bại (${message}). Đang giữ snapshot hiển thị thành công gần nhất.`,
+          `Lần làm mới thất bại (${message}). Đang giữ bản chụp dữ liệu hiển thị thành công gần nhất.`,
         );
       } else {
         setError(message);
