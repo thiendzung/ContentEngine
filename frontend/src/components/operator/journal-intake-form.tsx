@@ -93,7 +93,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
     event.preventDefault();
     if (!preflightReady || submitting) return;
     if (!form.source_locale) {
-      setError("Cần chọn ngôn ngữ nguồn trước khi tạo bài Journal.");
+      setError("Cần chọn ngôn ngữ nguồn trước khi tạo bài chuyên sâu.");
       return;
     }
     const contentRole = form.content_role;
@@ -114,7 +114,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       return;
     }
     if (coverageRequirements.length > 12) {
-      setError("Tối đa 12 cam kết phạm vi cho một bài Journal.");
+      setError("Tối đa 12 cam kết phạm vi cho một bài chuyên sâu.");
       return;
     }
     setSubmitting(true);
@@ -145,7 +145,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể tạo bài Journal từ thông tin hiện tại.",
+          : "Không thể tạo bài chuyên sâu từ thông tin hiện tại.",
       );
     } finally {
       setSubmitting(false);
@@ -157,7 +157,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       <div className="operator-panel-heading">
         <div>
           <p className="eyebrow">Tiếp nhận yêu cầu</p>
-          <h2>Tạo bài Journal mới</h2>
+          <h2>Tạo bài chuyên sâu mới</h2>
         </div>
         <span className="operator-note">Thông tin biên tập, không phải bằng chứng thị trường.</span>
       </div>
@@ -299,7 +299,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
             />
           </label>
           <label>
-            <span>Lý do chọn làm bài Journal</span>
+            <span>Lý do chọn làm bài chuyên sâu</span>
             <input
               onChange={(event) => update("selection_reason", event.target.value)}
               required
@@ -345,7 +345,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
       {error && <p className="error">{error}</p>}
       {!preflightReady && (
         <p className="operator-block-note">
-          Chưa thể tạo bài Journal mới vì kiểm tra khả dụng chưa đạt trạng thái SẴN SÀNG.
+          Chưa thể tạo bài chuyên sâu mới vì kiểm tra khả dụng chưa đạt trạng thái SẴN SÀNG.
         </p>
       )}
       <div className="form-actions">
@@ -354,7 +354,7 @@ export function JournalIntakeForm({ preflightReady }: Props) {
           disabled={!preflightReady || submitting}
           type="submit"
         >
-          {submitting ? "Đang tạo…" : "Tạo bài Journal"}
+          {submitting ? "Đang tạo…" : "Tạo bài chuyên sâu"}
         </button>
       </div>
     </form>
