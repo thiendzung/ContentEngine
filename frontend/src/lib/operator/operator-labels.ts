@@ -48,7 +48,7 @@ export function preflightLabel(key: string): string {
     postgres_tools: "Công cụ sao lưu PostgreSQL",
     journal_research_serper: "Serper · tìm nguồn",
     journal_angle_settings: "Cấu hình mô hình góc tiếp cận",
-    journal_angle_prompt: "Prompt góc tiếp cận",
+    journal_angle_prompt: "Chỉ dẫn góc tiếp cận",
     journal_angle_recipe: "Công thức góc tiếp cận",
   };
   return labels[key] ?? key;
