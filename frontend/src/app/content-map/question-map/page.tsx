@@ -331,6 +331,9 @@ export default function QuestionMapFounderPage() {
 
     async function loadPlanning() {
       setPlanningLoading(true);
+      setQuestionMap(null);
+      setArchitecture(null);
+      setPlanner(null);
       setError("");
       setStaleMessage("");
       setSuccessMessage("");
@@ -426,7 +429,8 @@ export default function QuestionMapFounderPage() {
     selectionReason.trim().length > 0 &&
     promise.trim().length > 0 &&
     requirements.length >= 1 &&
-    requirements.length <= 12;
+    requirements.length <= 12 &&
+    !planningLoading;
 
   const actionReady =
     route !== null &&
@@ -713,6 +717,59 @@ export default function QuestionMapFounderPage() {
         <div className={styles.loading} role="status">
           Đang tải danh sách vấn đề…
         </div>
+      ) : null}
+
+      {coverage && (!questionMap || !architecture || !planner) ? (
+        <section className={ui.problemSetup} aria-label="Chọn vấn đề cần lập kế hoạch">
+          <div>
+            <p className="eyebrow">Bước 1 · Chọn vấn đề</p>
+            <h2>Chọn vấn đề và ngôn ngữ để đọc Bản đồ câu hỏi</h2>
+            <p>
+              Nếu dữ liệu lập kế hoạch không tải được, anh vẫn có thể đổi vấn đề
+              hoặc ngôn ngữ và thử đọc lại.
+            </p>
+          </div>
+          <div className={ui.problemSetupFields}>
+            <label className={ui.field}>
+              <span>Vấn đề</span>
+              <select
+                className={ui.select}
+                value={needId}
+                onChange={(event) => setNeedId(event.target.value)}
+              >
+                {coverage.needs.map((lane) => (
+                  <option key={lane.need.id} value={lane.need.id}>
+                    {lane.need.statement} · {truthLabel(lane.need.status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={ui.field}>
+              <span>Ngôn ngữ</span>
+              <select
+                className={ui.select}
+                value={locale}
+                onChange={(event) =>
+                  setLocale(event.target.value as (typeof LOCALES)[number])
+                }
+              >
+                {LOCALES.map((value) => (
+                  <option key={value} value={value}>
+                    {localeLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => void refreshPlanning()}
+              disabled={!needId || planningLoading}
+            >
+              {planningLoading ? "Đang đọc dữ liệu…" : "Đọc Bản đồ câu hỏi"}
+            </button>
+          </div>
+        </section>
       ) : null}
 
       {questionMap && architecture && planner && coverage ? (
