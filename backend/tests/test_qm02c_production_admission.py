@@ -417,7 +417,13 @@ async def test_target_drift_fails_closed() -> None:
             project=project,
             opportunity=opportunity,
         )
-        await session.delete(target)
+        current_version = await session.scalar(
+            select(ContentVersion).where(
+                ContentVersion.content_item_id == target.id
+            )
+        )
+        assert current_version is not None
+        await session.delete(current_version)
         await session.flush()
 
         result = await build_production_admission(
