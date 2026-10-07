@@ -8,6 +8,14 @@ import {
   type CoverageStatus,
   loadContentCoverage,
 } from "../../lib/api/customer-intelligence";
+import {
+  founderContentRoleLabel,
+  founderDecisionLabel,
+  founderIntentLabel,
+  founderLocaleLabel,
+  founderPriorityLabel,
+  founderStatusLabel,
+} from "../../lib/ui-labels";
 import styles from "../intelligence.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -85,14 +93,14 @@ function needStatusLabel(value: string): string {
 function reasonLabel(value: string): string {
   const labels: Record<string, string> = {
     no_content_or_selected_write_plan: "Chưa có nội dung hoặc kế hoạch viết được chọn.",
-    selected_content_opportunity_exists: "Đã có ContentOpportunity được chọn.",
+    selected_content_opportunity_exists: "Đã có cơ hội nội dung được chọn.",
     content_work_exists_without_current_published_completion:
       "Đã có công việc nội dung nhưng chưa có bản xuất bản hiện hành.",
     published_content_exists: "Đã có nội dung đang được xuất bản.",
     selected_update_or_refresh_targets_published_content:
-      "Có kế hoạch cập nhật/refresh nhắm tới nội dung đã xuất bản.",
+      "Có kế hoạch cập nhật/làm mới nhắm tới nội dung đã xuất bản.",
     newer_unpublished_revision_exists:
-      "Có revision mới hơn nhưng chưa được xuất bản.",
+      "Có bản sửa đổi mới hơn nhưng chưa được xuất bản.",
     unresolved_quality_failure_or_final_review_revision:
       "Còn lỗi chất lượng hoặc quyết định duyệt yêu cầu chỉnh sửa.",
     selected_update_target_ref_invalid:
@@ -100,17 +108,28 @@ function reasonLabel(value: string): string {
     additional_weak_content_does_not_erase_published_coverage:
       "Có nội dung yếu bổ sung nhưng không xóa trạng thái coverage đã xuất bản.",
     weak_or_failed_revision_exists:
-      "Tồn tại revision yếu hoặc chưa qua chất lượng.",
+      "Tồn tại bản sửa đổi yếu hoặc chưa qua kiểm tra chất lượng.",
     duplicate_candidate_detected:
-      "Phát hiện ứng viên nội dung trùng theo cùng Need/locale/intent/question.",
+      "Phát hiện ứng viên nội dung trùng theo cùng nhu cầu/ngôn ngữ/mục đích/câu hỏi.",
   };
   return labels[value] ?? value;
 }
 
 function formatLocale(value: string): string {
-  if (value === "vi-VN") return "Tiếng Việt";
-  if (value === "en") return "Tiếng Anh";
-  return value;
+  return founderLocaleLabel(value);
+}
+
+function needRoleLabel(value: string): string {
+  const labels: Record<string, string> = {
+    primary: "Nhu cầu chính",
+    supporting: "Nhu cầu hỗ trợ",
+    secondary: "Nhu cầu phụ",
+  };
+  return labels[value.toLowerCase()] ?? value;
+}
+
+function actorLabel(value: string): string {
+  return value.toLowerCase() === "founder" ? "Người sáng lập" : value;
 }
 
 function ContentItemCard({
@@ -125,22 +144,22 @@ function ContentItemCard({
       <div className={styles.sectionHeader}>
         <div>
           <p className="eyebrow">
-            {formatLocale(item.locale)} · {item.need_role}
+            {formatLocale(item.locale)} · {needRoleLabel(item.need_role)}
           </p>
           <h3>{item.primary_question}</h3>
         </div>
-        <span className={styles.badge}>{item.item_status}</span>
+        <span className={styles.badge}>{founderStatusLabel(item.item_status)}</span>
       </div>
       <p>
-        <strong>Intent:</strong> {item.primary_intent}
+        <strong>Mục đích:</strong> {founderIntentLabel(item.primary_intent)}
       </p>
       <p>
-        <strong>Content role:</strong> {item.content_role}
+        <strong>Vai trò nội dung:</strong> {founderContentRoleLabel(item.content_role)}
       </p>
-      <p className={styles.meta}>Key: {item.canonical_key}</p>
+      <p className={styles.meta}>Khóa chuẩn: {item.canonical_key}</p>
       <div className={styles.journeyChips}>
         {item.journey_stages.length === 0 ? (
-          <span className={styles.badge}>Chưa gán journey stage</span>
+          <span className={styles.badge}>Chưa gán giai đoạn hành trình</span>
         ) : (
           item.journey_stages.map((stage) => (
             <span
@@ -150,28 +169,28 @@ function ContentItemCard({
             >
               {stageLabels.get(stage.stage_key) ?? stage.stage_key}
               {" · "}
-              {stage.linked_by}
+              {actorLabel(stage.linked_by)}
             </span>
           ))
         )}
       </div>
       <dl className={styles.definition}>
-        <dt>Version mới nhất</dt>
+        <dt>Phiên bản mới nhất</dt>
         <dd>
           {item.latest_version
-            ? "v" + item.latest_version.version_no + " · " + item.latest_version.status
+            ? "v" + item.latest_version.version_no + " · " + founderStatusLabel(item.latest_version.status)
             : "Chưa có"}
         </dd>
-        <dt>Version đã publish</dt>
+        <dt>Phiên bản đã xuất bản</dt>
         <dd>
           {item.latest_published_version
-            ? "v" + item.latest_published_version.version_no + " · " + item.latest_published_version.status
+            ? "v" + item.latest_published_version.version_no + " · " + founderStatusLabel(item.latest_published_version.status)
             : "Chưa có"}
         </dd>
       </dl>
       {item.unresolved_negative_final_decision ? (
         <div className={styles.notice + " " + styles.stale}>
-          Final review: {item.unresolved_negative_final_decision.decision}
+          Duyệt cuối: {founderDecisionLabel(item.unresolved_negative_final_decision.decision)}
           {item.unresolved_negative_final_decision.comment
             ? " — " + item.unresolved_negative_final_decision.comment
             : ""}
@@ -179,12 +198,12 @@ function ContentItemCard({
       ) : null}
       {item.publication ? (
         <div className={styles.evidenceBlock}>
-          <strong>Publication</strong>
+          <strong>Xuất bản</strong>
           <p>
-            {item.publication.target} · {item.publication.external_status}
+            {item.publication.target} · {founderStatusLabel(item.publication.external_status)}
           </p>
           <p className={styles.meta}>
-            ContentVersion: {item.publication.current_content_version_id}
+            Phiên bản nội dung: {item.publication.current_content_version_id}
           </p>
           {item.publication.canonical_url ? (
             <p>
@@ -193,11 +212,11 @@ function ContentItemCard({
                 target="_blank"
                 rel="noreferrer"
               >
-                Mở URL canonical
+                Mở URL chuẩn
               </a>
             </p>
           ) : (
-            <p className={styles.meta}>Canonical URL chưa có.</p>
+            <p className={styles.meta}>Chưa có URL chuẩn.</p>
           )}
         </div>
       ) : null}
@@ -227,7 +246,7 @@ export default function ContentMapPage() {
           setError(
             nextError instanceof Error
               ? nextError.message
-              : "Không thể tải Content Coverage.",
+              : "Không thể tải độ phủ nội dung.",
           );
         }
       } finally {
@@ -270,7 +289,7 @@ export default function ContentMapPage() {
       const message =
         nextError instanceof Error
           ? nextError.message
-          : "Không thể làm mới Content Coverage.";
+          : "Không thể làm mới độ phủ nội dung.";
       if (coverage) {
         setStaleMessage(
           "Lần làm mới thất bại (" +
@@ -289,11 +308,11 @@ export default function ContentMapPage() {
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div>
-          <p className="eyebrow">ContentEngine · Content Coverage</p>
+          <p className="eyebrow">ContentEngine · Độ phủ nội dung</p>
           <h1>Bản đồ nội dung</h1>
           <p className="intro">
-            Xem mức coverage theo Need bằng trạng thái canonical. Không dùng điểm
-            số tự chế và không đồng nhất “đã publish” với “đã giải quyết vấn đề
+            Xem mức độ phủ theo nhu cầu bằng trạng thái chuẩn. Không dùng điểm
+            số tự chế và không đồng nhất “đã xuất bản” với “đã giải quyết vấn đề
             khách hàng”.
           </p>
         </div>
@@ -302,7 +321,7 @@ export default function ContentMapPage() {
             className={styles.buttonSecondary}
             href="/content-map/question-map"
           >
-            Question Map
+            Bản đồ câu hỏi
           </Link>
           <button
             type="button"
@@ -316,12 +335,12 @@ export default function ContentMapPage() {
       </header>
 
       <div className={styles.notice}>
-        <strong>Giới hạn contract:</strong> coverage badge là trạng thái ở cấp
-        Need trong scope API hiện tại. Locale và Journey bên dưới chỉ là link
-        canonical của từng ContentItem; UI không tạo trạng thái ô
-        Need × Journey × locale. PUBLISHED cũng không có nghĩa vấn đề khách hàng
-        đã được giải quyết, “working” vẫn cần measurement riêng, và cùng Need
-        không tự động được coi là duplicate.
+        <strong>Giới hạn dữ liệu:</strong> nhãn độ phủ là trạng thái ở cấp
+        nhu cầu trong phạm vi API hiện tại. Ngôn ngữ và hành trình bên dưới chỉ là liên kết
+        chuẩn của từng mục nội dung; giao diện không tự tạo trạng thái ô
+        nhu cầu × hành trình × ngôn ngữ. “Đã xuất bản” cũng không có nghĩa vấn đề khách hàng
+        đã được giải quyết, trạng thái “đang hiệu quả” vẫn cần đo lường riêng, và cùng nhu cầu
+        không tự động được coi là trùng lặp.
       </div>
 
       {loading && !coverage ? (
@@ -331,12 +350,12 @@ export default function ContentMapPage() {
           aria-live="polite"
           aria-atomic="true"
         >
-          Đang tải Content Coverage…
+          Đang tải độ phủ nội dung…
         </div>
       ) : null}
       {error ? (
         <div className={styles.error} role="alert" aria-atomic="true">
-          Không thể đọc Content Coverage: {error}
+          Không thể đọc độ phủ nội dung: {error}
         </div>
       ) : null}
       {staleMessage ? (
@@ -354,7 +373,7 @@ export default function ContentMapPage() {
         <>
           <section
             className={styles.coverageSummary}
-            aria-label="Tổng quan trạng thái coverage"
+            aria-label="Tổng quan trạng thái độ phủ"
           >
             {STATUS_ORDER.map((status) => (
               <div className={styles.coverageCount} key={status}>
@@ -367,7 +386,7 @@ export default function ContentMapPage() {
           <div
             className={styles.filters}
             role="group"
-            aria-label="Lọc trạng thái coverage"
+            aria-label="Lọc trạng thái độ phủ"
           >
             <button
               type="button"
@@ -400,7 +419,7 @@ export default function ContentMapPage() {
 
           {visibleNeeds.length === 0 ? (
             <div className={styles.empty} role="status">
-              Không có Need nào trong bộ lọc hiện tại.
+              Không có nhu cầu nào trong bộ lọc hiện tại.
             </div>
           ) : (
             <section className={styles.coverageList}>
@@ -409,7 +428,7 @@ export default function ContentMapPage() {
                   <div className={styles.coverageLaneHeader}>
                     <div>
                       <p className="eyebrow">
-                        Need-level coverage · {lane.need.type} ·{" "}
+                        Độ phủ cấp nhu cầu · {lane.need.type} ·{" "}
                         {needStatusLabel(lane.need.status)}
                       </p>
                       <h2>{lane.need.statement}</h2>
@@ -427,34 +446,34 @@ export default function ContentMapPage() {
 
                   {lane.selected_opportunities.length > 0 ? (
                     <div className={styles.evidenceBlock}>
-                      <strong>ContentOpportunity đã chọn</strong>
+                      <strong>Cơ hội nội dung đã chọn</strong>
                       <div className={styles.cards}>
                         {lane.selected_opportunities.map((opportunity) => (
                           <div className={styles.card} key={opportunity.id}>
                             <p>
                               <strong>{formatLocale(opportunity.locale)}</strong>{" "}
-                              · {opportunity.decision} · {opportunity.priority}
+                              · {founderDecisionLabel(opportunity.decision)} · {founderPriorityLabel(opportunity.priority)}
                             </p>
                             <p>{opportunity.question}</p>
                             <p className={styles.meta}>
-                              Intent: {opportunity.intent}
+                              Mục đích: {founderIntentLabel(opportunity.intent)}
                             </p>
                             {opportunity.existing_content_refs.length > 0 ? (
                               <div className={styles.signalList}>
                                 {opportunity.existing_content_refs.map((ref) => (
                                   <span key={ref}>
-                                    Existing target · {ref}
+                                    Nội dung đích hiện có · {ref}
                                   </span>
                                 ))}
                               </div>
                             ) : null}
                             {opportunity.selection_refs.length > 0 ? (
                               <div className={styles.evidenceBlock}>
-                                <strong>Human selection</strong>
+                                <strong>Lựa chọn của người dùng</strong>
                                 <ul>
                                   {opportunity.selection_refs.map((selection) => (
                                     <li key={selection.id}>
-                                      {selection.selected_by} · {selection.reason}
+                                      {actorLabel(selection.selected_by)} · {selection.reason}
                                       <span className={styles.meta}>
                                         {" "}
                                         ({selection.selected_at})
@@ -473,7 +492,7 @@ export default function ContentMapPage() {
                   <div className={styles.evidenceBlock}>
                     <strong>Nội dung hiện có</strong>
                     {lane.content_items.length === 0 ? (
-                      <p role="status">Chưa có ContentItem trong lane này.</p>
+                      <p role="status">Chưa có mục nội dung trong nhóm này.</p>
                     ) : (
                       <div className={styles.contentItems}>
                         {lane.content_items.map((item) => (
@@ -505,23 +524,23 @@ export default function ContentMapPage() {
                               }
                             >
                               <p>
-                                <strong>Duplicate candidate</strong> ·{" "}
+                                <strong>Ứng viên trùng lặp</strong> ·{" "}
                                 {formatLocale(duplicate.locale)}
                               </p>
                               <p>
-                                Intent: {duplicate.primary_intent}
+                                Mục đích: {founderIntentLabel(duplicate.primary_intent)}
                               </p>
                               <p>
-                                Question normalized:{" "}
+                                Câu hỏi đã chuẩn hóa:{" "}
                                 {duplicate.normalized_primary_question}
                               </p>
                               <div className={styles.signalList}>
                                 {duplicate.content_item_ids.map((id) => (
-                                  <span key={id}>ContentItem · {id}</span>
+                                  <span key={id}>Mục nội dung · {id}</span>
                                 ))}
                               </div>
                               <small className={styles.meta}>
-                                Reason: {duplicate.reason}
+                                Lý do: {duplicate.reason}
                               </small>
                             </div>
                           ))}
@@ -531,7 +550,7 @@ export default function ContentMapPage() {
                         <div className={styles.signalList}>
                           {lane.invalid_update_target_refs.map((ref) => (
                             <span key={ref}>
-                              Update target không hợp lệ · {ref}
+                              Nội dung đích cập nhật không hợp lệ · {ref}
                             </span>
                           ))}
                         </div>
