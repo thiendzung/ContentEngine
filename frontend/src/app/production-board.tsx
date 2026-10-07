@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { API_BASE_URL } from "../lib/api/core";
+import {
+  productionActionLabel,
+  productionGroupLabel,
+  productionStageLabel,
+} from "../lib/ui/vi/production";
 
 type ExecutionEvent = {
   kind: string;
@@ -45,84 +50,6 @@ type Props = {
 
 const GROUP_ORDER = ["RUNNING", "QUEUED", "BLOCKED", "AWAITING_APPROVAL", "COMPLETED"];
 
-function groupLabel(value: string): string {
-  const labels: Record<string, string> = {
-    RUNNING: "Đang thực hiện",
-    QUEUED: "Chờ xử lý",
-    BLOCKED: "Bị chặn",
-    AWAITING_APPROVAL: "Chờ duyệt",
-    COMPLETED: "Hoàn thành",
-  };
-  return labels[value] ?? "Khác";
-}
-
-function stageLabel(value: string): string {
-  const normalized = value.toLowerCase();
-  const labels: Record<string, string> = {
-    intake: "Tiếp nhận",
-    start_to_angle: "Nghiên cứu & tạo góc tiếp cận",
-    angle: "Chọn góc tiếp cận",
-    angle_generation: "Tạo góc tiếp cận",
-    outline: "Lập dàn ý",
-    journal_outline: "Lập dàn ý",
-    writer: "Viết nội dung",
-    journal_writer_vi: "Viết tiếng Việt",
-    journal_writer_en: "Viết tiếng Anh",
-    review_revise: "Rà soát & chỉnh sửa",
-    assertion_audit: "Kiểm tra khẳng định",
-    source_copy_check: "Kiểm tra trùng nguồn",
-    source_copy: "Kiểm tra trùng nguồn",
-    quality_gate: "Kiểm tra chất lượng",
-    final_review: "Duyệt nội dung cuối",
-    revision_requested: "Chờ chỉnh sửa",
-    rejected: "Đã từ chối",
-    approved: "Đã duyệt",
-    published: "Đã xuất bản",
-    data_conflict: "Xử lý dữ liệu không nhất quán",
-  };
-  if (labels[normalized]) return labels[normalized];
-
-  if (normalized.includes("angle")) return "Tạo góc tiếp cận";
-  if (normalized.includes("outline")) return "Lập dàn ý";
-  if (normalized.includes("review_revise")) {
-    if (normalized.includes("_vi")) return "Rà soát tiếng Việt";
-    if (normalized.includes("_en")) return "Rà soát tiếng Anh";
-    return "Rà soát & chỉnh sửa";
-  }
-  if (normalized.includes("writer")) {
-    if (normalized.includes("_vi")) return "Viết tiếng Việt";
-    if (normalized.includes("_en")) return "Viết tiếng Anh";
-    return "Viết nội dung";
-  }
-  if (normalized.includes("assertion") || normalized.includes("audit")) {
-    return "Kiểm tra khẳng định";
-  }
-  if (normalized.includes("source_copy") || normalized.includes("source-copy")) {
-    return "Kiểm tra trùng nguồn";
-  }
-  if (normalized.includes("cleanup")) return "Dọn lỗi sau kiểm tra";
-  if (normalized.includes("package")) return "Đóng gói vận hành";
-  if (normalized.includes("approval") || normalized.includes("final_review")) {
-    return "Duyệt nội dung cuối";
-  }
-  return "Tác vụ nội dung";
-}
-
-function actionLabel(value: string): string {
-  const labels: Record<string, string> = {
-    "Approved; publishing not authorized": "Đã duyệt; chưa cho phép xuất bản",
-    "Awaiting Founder final approval": "Đang chờ Người sáng lập duyệt nội dung cuối",
-    "Review current content": "Cần xem và duyệt nội dung hiện tại",
-    "Current bytes are blocked by quality gates": "Nội dung hiện tại chưa qua kiểm tra chất lượng",
-    "Resolve conflicting persisted bindings": "Cần xử lý dữ liệu liên kết không nhất quán",
-    "Content is not ready for review": "Nội dung chưa sẵn sàng để duyệt",
-    "Founder đã yêu cầu sửa": "Người sáng lập đã yêu cầu sửa",
-    "Founder đã từ chối": "Người sáng lập đã từ chối",
-    Published: "Đã xuất bản",
-  };
-  return labels[value] ?? "Theo dõi trạng thái hiện tại";
-}
-
 function localeLabel(value: string): string {
   if (value === "vi-VN") return "VI";
   if (value === "en") return "EN";
@@ -146,7 +73,7 @@ function workerIdentity(worker: ExecutionEvent): string {
 
 function workerLabel(worker: ExecutionEvent | null): string {
   if (!worker) return "Chưa có tác nhân đang chạy";
-  const stage = stageLabel(eventStageKey(worker));
+  const stage = productionStageLabel(eventStageKey(worker));
   if (worker.kind === "delegation") return `${workerIdentity(worker)} · ${stage}`;
   if (worker.kind === "tool") {
     return worker.technical_name?.toLowerCase().includes("antigravity")
@@ -158,7 +85,7 @@ function workerLabel(worker: ExecutionEvent | null): string {
 }
 
 function eventLabel(event: ExecutionEvent): string {
-  const stage = stageLabel(eventStageKey(event));
+  const stage = productionStageLabel(eventStageKey(event));
   if (event.kind === "delegation") return `${workerIdentity(event)} · ${stage}`;
   if (event.kind === "tool") {
     return event.technical_name?.toLowerCase().includes("antigravity")
@@ -248,7 +175,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
           {groups.map(({ group, items: groupItems }) => (
             <section className="production-group" key={group}>
               <header className={`production-group-header production-group-${group.toLowerCase()}`}>
-                <strong>{groupLabel(group)}</strong>
+                <strong>{productionGroupLabel(group)}</strong>
                 <span>{groupItems.length}</span>
               </header>
               {groupItems.length === 0 ? (
@@ -267,14 +194,14 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                     >
                       <span className="production-id">{shortId(item.id)}</span>
                       <span className="production-title">{item.title}</span>
-                      <span>{stageLabel(item.stage_key)}</span>
+                      <span>{productionStageLabel(item.stage_key)}</span>
                       <span className="production-locales">
                         {item.locales.map(localeLabel).join(" · ") || "—"}
                       </span>
                       <span className="production-coordinator">Codex</span>
                       <span>{workerLabel(item.current_worker)}</span>
                       <span>{timeLabel(item.updated_at)}</span>
-                      <span>{actionLabel(item.next_action_label)}</span>
+                      <span>{productionActionLabel(item.next_action_label)}</span>
                     </button>
 
                     <details className="execution-chain">
