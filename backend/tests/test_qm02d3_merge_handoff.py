@@ -190,6 +190,17 @@ async def test_merge_handoff_freezes_conflict_set_without_destructive_effects() 
         assert first_after is not None and first_after.status == first.status
         assert second_after is not None and second_after.status == second.status
 
+        post_admission = await build_production_admission(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route.snapshot_hash,
+        )
+        assert post_admission.status == "BLOCKED_ALREADY_MATERIALIZED"
+        assert post_admission.reason_codes == [
+            "production_admission_merge_already_materialized"
+        ]
+
 
 @pytest.mark.asyncio
 async def test_merge_handoff_exact_replay_returns_frozen_plan() -> None:
@@ -384,6 +395,16 @@ async def test_merge_handoff_active_target_run_fails_closed() -> None:
             item=second,
             status="running",
         )
+        blocked = await build_production_admission(
+            session,
+            project_id=project.id,
+            opportunity_id=opportunity.id,
+            expected_route_snapshot_hash=route.snapshot_hash,
+        )
+        assert blocked.status == "BLOCKED_PRODUCTION_CONFLICT"
+        assert blocked.reason_codes == [
+            "production_admission_target_has_unresolved_run"
+        ]
         before = await _counts(session)
 
         with pytest.raises(
