@@ -118,6 +118,7 @@ async def _target_item(
     project: Project,
     need: NeedHypothesis,
     suffix: str,
+    include_version: bool = True,
 ) -> ContentItem:
     source = await _source_opportunity(
         session,
@@ -164,16 +165,17 @@ async def _target_item(
     )
     session.add(item)
     await session.flush()
-    session.add(
-        ContentVersion(
-            content_item_id=item.id,
-            version_no=1,
-            change_reason="Existing target fixture.",
-            status="draft",
-            content_json={"fixture": True},
+    if include_version:
+        session.add(
+            ContentVersion(
+                content_item_id=item.id,
+                version_no=1,
+                change_reason="Existing target fixture.",
+                status="draft",
+                content_json={"fixture": True},
+            )
         )
-    )
-    await session.flush()
+        await session.flush()
     return item
 
 
@@ -395,7 +397,7 @@ async def test_opportunity_drift_fails_closed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_target_drift_fails_closed() -> None:
+async def test_target_without_current_version_fails_closed() -> None:
     async with isolated_session() as session:
         project = await _project(session)
         need = await _need(session, project_id=project.id)
@@ -403,7 +405,8 @@ async def test_target_drift_fails_closed() -> None:
             session,
             project=project,
             need=need,
-            suffix="stale-target",
+            suffix="missing-version-target",
+            include_version=False,
         )
         opportunity, _ = await _selected_opportunity(
             session,
@@ -412,28 +415,18 @@ async def test_target_drift_fails_closed() -> None:
             decision="UPDATE",
             target_ids=[target.id],
         )
-        route_hash = await _route_hash(
-            session,
-            project=project,
-            opportunity=opportunity,
-        )
-        current_version = await session.scalar(
-            select(ContentVersion).where(
-                ContentVersion.content_item_id == target.id
-            )
-        )
-        assert current_version is not None
-        await session.delete(current_version)
-        await session.flush()
 
         result = await build_production_admission(
             session,
             project_id=project.id,
             opportunity_id=opportunity.id,
-            expected_route_snapshot_hash=route_hash,
+            expected_route_snapshot_hash="0" * 64,
         )
 
         assert result.status == "BLOCKED_TARGET_STALE"
+        assert result.reason_codes == [
+            "production_route_target_version_missing"
+        ]
 
 
 @pytest.mark.asyncio
