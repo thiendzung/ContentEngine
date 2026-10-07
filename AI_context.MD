@@ -1,38 +1,39 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P2 Question Map decision cockpit
+## Current WIP — UI-P3 Vietnamese Founder-facing terminology
 
 Live GitHub state before this slice:
 - #361 Golden E2E is CLOSED with `PASS_QM02_GOLDEN_CLOSEOUT`;
 - UI-P1 / #372 / PR #373 is merged;
-- current base main is `c2bfcf53d58e47517102ce67d8a082ef27ad2dd4`.
+- UI-P2 / #374 / PR #375 is merged;
+- current base main is `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
 
-Founder explicitly authorized UI-P2 as the next bounded UX slice.
+Founder explicitly authorized UI-P3 as the next bounded UX slice.
 
 Active branch:
-`feat/ui-p2-question-map-cockpit`
+`feat/ui-p3-founder-localization`
 
 Tracking:
-#374
+#377
 
-UI-P2 scope:
-- keep Question Map backend/API/business contracts unchanged;
-- turn the Founder surface into a desktop decision cockpit;
-- left column = planning context + Pillar/Cluster candidates;
-- sticky right panel = 1) choose problem, 2) choose content, 3) confirm production handoff;
-- demote raw route/admission/snapshot/hash/ref details into technical disclosure;
-- preserve stale/fail-closed behavior, exact snapshot checks, MERGE confirmation and idempotency;
-- no Start/Writer/Publish;
-- no P3 full terminology pass, P4 system-wide technical-layer refactor, P5 Production Board redesign or P6 global visual-system work.
+UI-P3 scope:
+- make Founder-facing labels, headings, buttons, badges, empty states and known status/error explanations consistently Vietnamese;
+- cover the seven primary sections plus Daily Digest, Journal Operator/intake/workspace and the canonical review surface;
+- translate only at the render layer;
+- keep API fields, routes, backend enums, persisted values, schema/database identifiers, provider/model IDs and technical hashes unchanged;
+- raw technical values may remain exact inside technical/audit disclosures;
+- use small shared render-label helpers where terminology is repeated;
+- no new i18n/runtime dependency;
+- no P4 business-vs-technical redesign, P5 Production Board density redesign or P6 visual-system polish.
 
-Desktop targets remain 1440px primary with 1366px and 1920px sanity; narrow layout must remain usable.
+Desktop remains the primary Founder target; narrow layouts must remain usable.
 
 Required proof before merge:
 - exact Base -> Candidate diff hygiene;
 - frontend lint + typecheck + production build;
-- browser smoke at 1366/1440/1920 and narrow sanity;
-- decision-flow state, stale/error path and recovery-selector checks;
-- CREATE/UPDATE/REFRESH/MERGE UI contract smoke without operational mutation;
+- browser smoke across all seven primary sections plus operator/review surfaces;
+- confirm visible primary text is Vietnamese while raw technical identity remains exact where required;
+- keyboard/narrow sanity;
 - exact-ref OpenCodeReview Delegation Mode;
 - Agent Local exact-SHA verification;
 - minimum GitHub CI;
@@ -59,7 +60,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main before UI-P2: `c2bfcf53d58e47517102ce67d8a082ef27ad2dd4` (merge PR #373 / UI-P1). QM-02 Golden E2E (#361) and UI-P1 are complete; UI-P2 / #374 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main before UI-P3: `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f` (merge PR #375 / UI-P2). QM-02 Golden E2E (#361), UI-P1 and UI-P2 are complete; UI-P3 / #377 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -90,19 +91,18 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #374 / UI-P2 on one exact candidate SHA.
+Complete #377 / UI-P3 on one exact candidate SHA.
 
 Required product behavior:
-- desktop two-column Question Map cockpit;
-- Step 1 always exposes exact Need + locale and remains usable after a planning-load error;
-- Step 2 makes the selected content candidate and required human inputs obvious;
-- Step 3 shows business-facing production readiness while raw route/admission/hash/ref details stay behind technical disclosure;
-- stale snapshots disable mutation and require a fresh read;
-- MERGE retains explicit survivor + reason + confirmation;
-- no Start/Writer/Publish and no frontend business-logic invention.
+- seven primary Founder sections use Vietnamese primary terminology;
+- Daily Digest, Journal Operator/intake/workspace and root review surface do not expose avoidable English primary labels;
+- common statuses/decisions/priorities/domains render consistently through bounded UI helpers;
+- backend enum/API/schema/DB/provider/model values remain unchanged;
+- exact technical IDs/codes/hashes remain available where audit/debug identity matters;
+- no workflow authority or business truth moves into the browser.
 
-Do not expand this slice into full UI-wide Vietnamese terminology cleanup, a generic technical-details
-framework, Production Board redesign or global typography polish. Those belong to P3-P6.
+Do not expand this slice into P4 technical-detail hierarchy redesign, P5 Production Board density changes
+or P6 global typography/spacing polish.
 
 ## Pilot operating priority — 2026-10-03
 
