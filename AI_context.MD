@@ -1,34 +1,42 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — #368 QA test-environment cleanup
+## Current WIP — UI-P1 desktop navigation + Vietnamese primary UI
 
-QM-02E Founder UI is complete. Founder merged PR #370 from verified head
-`d6212af0320682216e19cfdda1079473b72fa2b4`; current GitHub main is
-`99385a36cd0ef4e414fd1404c3e8aee4117b4d1f`. Issue #360 is closed and #361 Golden E2E is
-unblocked.
+PR #371 / #368 is complete and Founder merged it as main
+`487bd25db1b7437bd96b32bb05f351a441293a89`. The clean backend baseline is restored:
+1553 PASS / 0 FAIL on the verified candidate before merge.
 
-Before Golden E2E, #368 removes the remaining ambient test-environment coupling so the final
-full-suite proof has a clean baseline.
+Founder explicitly reprioritized one bounded UX slice before #361 Golden E2E.
 
 Active branch:
-`fix/qa-test-environment-isolation`
+`feat/ui-p1-desktop-nav-vi`
 
-Active PR:
-#371
+Tracking:
+#372
 
-Bounded QA scope:
-- use the runtime-resolved dedicated test DB target instead of a stale test-only fallback;
-- direct Settings tests explicitly control app_env / DB inputs relevant to the assertion;
-- positive provider tests explicitly provide synthetic keys;
-- negative provider tests explicitly set provider keys to absent;
-- affected tests must pass both with and without ambient developer provider secrets;
-- production behavior, schema, migrations, provider routing and publication behavior stay unchanged;
-- operational checkout/database remain untouched.
+UI-P1 scope:
+- desktop-first primary navigation for Founder operation;
+- replace the horizontal desktop nav with a persistent left sidebar;
+- show current section with visible active state + `aria-current="page"`;
+- Vietnamese labels for all seven primary sections;
+- map technical subroutes back to their primary section;
+- retain narrow-screen usability without treating mobile as the design target;
+- no backend/API/schema/runtime/business-logic change;
+- no broad page redesign, Question Map two-column work or Production density work in P1.
 
-Latest pre-remediation full-backend evidence on PR #370 was `1550 passed / 2 failed`; both remaining
-failures are already tracked in #368 and are ambient Serper-fixture tests.
+Desktop targets: 1440px first, sanity at 1366px and 1920px. Narrow screens only need to remain
+usable in this slice.
 
-Tracking: #368 / PR #371. Founder remains the only PR merge authority.
+Required proof before merge:
+- frontend lint + typecheck + production build;
+- browser smoke across all seven primary routes and active-state mapping;
+- keyboard-focus / narrow-layout sanity;
+- exact-ref OpenCodeReview + Agent Local exact-SHA verification;
+- minimal GitHub CI;
+- MG final review.
+
+Founder remains the only PR merge authority. Do not start #361 Golden E2E until this explicitly
+reprioritized UI-P1 slice is merged or Founder changes the order again.
 
 ## Read first and verify the actual ref
 
