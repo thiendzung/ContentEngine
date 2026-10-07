@@ -19,12 +19,12 @@ Product rule:
 - exact API/enum/ID/hash/binding values remain unchanged.
 
 P4 task slices:
-- [ ] **P4-00 / #390 — Decision-summary foundation** — IMPLEMENTED: shared presentational primitive; exact-head lint/typecheck gate pending.
-- [ ] **P4-01 / #391 — Overview + Needs Me** — IMPLEMENTED: business-first cards + technical disclosures; exact-head lint/typecheck gate pending.
-- [ ] **P4-02 / #392 — Content planning** — Question Map + related decision surfaces.
-- [ ] **P4-03 / #393 — Learning + System**.
-- [ ] **P4-04 / #394 — Journal Operator / review workspace**.
-- [ ] **P4-05 / #395 — Legacy/read-only audit + final exact-SHA verification**.
+- [ ] **P4-00 / #390 — Decision-summary foundation** — IMPLEMENTED: shared presentational primitive; final exact-head verification pending.
+- [ ] **P4-01 / #391 — Overview + Needs Me** — IMPLEMENTED: status/reason/action first; raw refs/IDs in technical disclosure.
+- [ ] **P4-02 / #392 — Content planning** — IMPLEMENTED: Content Map + Question Map business-first decisions; route/admission guards unchanged.
+- [ ] **P4-03 / #393 — Learning + System** — IMPLEMENTED: read-only business summaries + technical audit separation.
+- [ ] **P4-04 / #394 — Journal Operator** — IMPLEMENTED: state + final-review decisions business-first; allowed intents/approval bindings unchanged.
+- [ ] **P4-05 / #395 — Legacy/read-only audit + final verification** — ACTIVE: legacy review hierarchy complete; exact-head static/build/browser/OCR/Agent Local/CI pending.
 
 Non-goals:
 - no P5 Production Board density redesign;
