@@ -152,7 +152,7 @@ function ContentItemCard({
         <div className={styles.evidenceBlock}>
           <strong>Xuất bản</strong>
           <p>
-            {item.publication.target} · {item.publication.external_status}
+            {item.publication.target} · {uiStatusLabel(item.publication.external_status)}
           </p>
           <p className={styles.meta}>
             Phiên bản nội dung: {item.publication.current_content_version_id}
@@ -492,7 +492,7 @@ export default function ContentMapPage() {
                                 ))}
                               </div>
                               <small className={styles.meta}>
-                                Lý do: {duplicate.reason}
+                                Lý do: {planningCoverageReasonLabel(duplicate.reason)}
                               </small>
                             </div>
                           ))}
