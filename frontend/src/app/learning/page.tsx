@@ -8,6 +8,7 @@ import {
   loadLearningOverview,
   type LearningOverview,
 } from "../../lib/api/ux-closeout";
+import { uiStatusLabel } from "../../lib/ui/presentation-labels";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -18,8 +19,8 @@ const FILTERS: Array<{ key: LearningFilter; label: string }> = [
   { key: "all", label: "Tất cả" },
   { key: "needs_review", label: "Cần duyệt" },
   { key: "validating", label: "Đang kiểm chứng" },
-  { key: "resolved", label: "Đã có resolution" },
-  { key: "rejected", label: "Bị bác bỏ / rollback" },
+  { key: "resolved", label: "Đã có kết quả xử lý" },
+  { key: "rejected", label: "Bị bác bỏ / hoàn tác" },
 ];
 
 function matchesFilter(candidate: LearningCandidate, filter: LearningFilter): boolean {
@@ -72,9 +73,9 @@ function statusClass(value: string): string {
 
 function evidenceLabel(item: LearningEvidenceItem): string {
   const labels: Record<LearningEvidenceItem["kind"], string> = {
-    signal: "Signal factual",
-    measurement_observation: "Measurement observation",
-    assessment_artifact: "Assessment artifact",
+    signal: "Tín hiệu thực tế",
+    measurement_observation: "Quan sát đo lường",
+    assessment_artifact: "Tài liệu đánh giá",
   };
   return labels[item.kind];
 }
@@ -84,34 +85,34 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
     <div className={styles.panel}>
       <div className={styles.sectionHeader}>
         <div>
-          <p className="eyebrow">Learning Candidate · interpreted layer</p>
+          <p className="eyebrow">Đề xuất học từ dữ liệu · lớp diễn giải</p>
           <h2>{candidate.statement}</h2>
         </div>
         <span className={statusClass(candidate.evidence_status)}>
-          {candidate.evidence_status}
+          {uiStatusLabel(candidate.evidence_status)}
         </span>
       </div>
 
       <div className={styles.notice}>
-        Candidate này là diễn giải cần review, không phải Customer Truth. Evidence factual
+        Đề xuất này là diễn giải cần người duyệt, không phải Sự thật khách hàng. Bằng chứng thực tế
         được tách riêng ngay bên dưới.
       </div>
 
       <dl className={styles.definition}>
-        <dt>Target</dt>
+        <dt>Đối tượng</dt>
         <dd>
           {candidate.target_type}
           {candidate.target_id ? " · " + candidate.target_id : ""}
         </dd>
-        <dt>Relation</dt>
+        <dt>Quan hệ</dt>
         <dd>{candidate.relation}</dd>
-        <dt>Version / status</dt>
-        <dd>{"v" + candidate.version + " · " + candidate.status}</dd>
-        <dt>Expected benefit</dt>
+        <dt>Phiên bản / trạng thái</dt>
+        <dd>{"v" + candidate.version + " · " + uiStatusLabel(candidate.status)}</dd>
+        <dt>Lợi ích kỳ vọng</dt>
         <dd>{candidate.expected_benefit ?? "Chưa ghi nhận"}</dd>
-        <dt>Regression risk</dt>
+        <dt>Rủi ro thoái lui</dt>
         <dd>{candidate.regression_risk ?? "Chưa ghi nhận"}</dd>
-        <dt>Updated</dt>
+        <dt>Cập nhật</dt>
         <dd>{formatDate(candidate.updated_at)}</dd>
       </dl>
 
@@ -140,14 +141,14 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <div>
-            <p className="eyebrow">Factual evidence layer</p>
-            <h3>Evidence đã gắn với candidate</h3>
+            <p className="eyebrow">Lớp bằng chứng thực tế</p>
+            <h3>Bằng chứng đã gắn với đề xuất</h3>
           </div>
           <span className={styles.badge}>{candidate.evidence.length}</span>
         </div>
 
         {candidate.evidence.length === 0 ? (
-          <div className={styles.empty}>Chưa có evidence link trong projection hiện tại.</div>
+          <div className={styles.empty}>Chưa có liên kết bằng chứng trong dữ liệu đọc hiện tại.</div>
         ) : (
           <div className={styles.cardGrid}>
             {candidate.evidence.map((item) => (
@@ -155,15 +156,15 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                 <div className={styles.sectionHeader}>
                   <div>
                     <p className="eyebrow">{evidenceLabel(item)}</p>
-                    <h3>{item.statement ?? item.status ?? "Evidence reference"}</h3>
+                    <h3>{item.statement ?? item.status ?? "Tham chiếu bằng chứng"}</h3>
                   </div>
                   {item.relation ? <span className={styles.badge}>{item.relation}</span> : null}
                 </div>
                 <div className={styles.refList}>
                   <span>{"ID · " + item.id}</span>
-                  {item.source_kind ? <span>{"Source · " + item.source_kind}</span> : null}
-                  {item.status ? <span>{"Status · " + item.status}</span> : null}
-                  {item.occurred_at ? <span>{"Observed · " + formatDate(item.occurred_at)}</span> : null}
+                  {item.source_kind ? <span>{"Nguồn · " + item.source_kind}</span> : null}
+                  {item.status ? <span>{"Trạng thái · " + uiStatusLabel(item.status)}</span> : null}
+                  {item.occurred_at ? <span>{"Quan sát lúc · " + formatDate(item.occurred_at)}</span> : null}
                   {item.content_hash ? <span>{"Hash · " + item.content_hash}</span> : null}
                 </div>
               </article>
@@ -173,31 +174,31 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
       </section>
 
       <section className={styles.section}>
-        <p className="eyebrow">Reviewed transition lifecycle</p>
-        <h3>Review → Application → Validation → Resolution</h3>
+        <p className="eyebrow">Vòng đời chuyển trạng thái có duyệt</p>
+        <h3>Duyệt → Áp dụng → Kiểm chứng → Xử lý kết quả</h3>
         <div className={styles.timeline}>
           <article className={styles.timelineCard} data-state="human-review">
             <div className={styles.sectionHeader}>
-              <strong>Human review</strong>
+              <strong>Người duyệt</strong>
               {candidate.review ? (
                 <span className={statusClass(candidate.review.decision)}>
-                  {candidate.review.decision}
+                  {uiStatusLabel(candidate.review.decision)}
                 </span>
               ) : (
-                <span className={styles.badge}>Chưa review</span>
+                <span className={styles.badge}>Chưa duyệt</span>
               )}
             </div>
             {candidate.review ? (
               <>
                 <p>{candidate.review.reason}</p>
                 <div className={styles.refList}>
-                  <span>{"Reviewer · " + candidate.review.reviewed_by}</span>
-                  <span>{"At · " + formatDate(candidate.review.reviewed_at)}</span>
-                  <span>{"Candidate snapshot · " + candidate.review.candidate_snapshot_hash}</span>
+                  <span>{"Người duyệt · " + candidate.review.reviewed_by}</span>
+                  <span>{"Lúc · " + formatDate(candidate.review.reviewed_at)}</span>
+                  <span>{"Ảnh chụp đề xuất · " + candidate.review.candidate_snapshot_hash}</span>
                 </div>
               </>
             ) : (
-              <p>Không có durable human review receipt.</p>
+              <p>Không có biên nhận duyệt của người dùng đã lưu bền vững.</p>
             )}
           </article>
 
@@ -206,70 +207,70 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
             data-state={candidate.application ? "truth-applied" : undefined}
           >
             <div className={styles.sectionHeader}>
-              <strong>Reviewed application receipt</strong>
+              <strong>Biên nhận áp dụng sau duyệt</strong>
               <span className={candidate.application ? styles.badgePositive : styles.badge}>
-                {candidate.application ? "Có receipt" : "Chưa áp dụng"}
+                {candidate.application ? "Có biên nhận" : "Chưa áp dụng"}
               </span>
             </div>
             {candidate.application ? (
               <>
                 <p>{candidate.application.applied_action + " · " + candidate.application.target_type}</p>
                 <div className={styles.refList}>
-                  <span>{"Receipt · " + candidate.application.id}</span>
-                  <span>{"Applied by · " + candidate.application.applied_by}</span>
-                  <span>{"At · " + formatDate(candidate.application.applied_at)}</span>
-                  <span>{"Resulting target · " + (candidate.application.resulting_target_id ?? "không có")}</span>
+                  <span>{"Biên nhận · " + candidate.application.id}</span>
+                  <span>{"Người áp dụng · " + candidate.application.applied_by}</span>
+                  <span>{"Lúc · " + formatDate(candidate.application.applied_at)}</span>
+                  <span>{"Đối tượng sau áp dụng · " + (candidate.application.resulting_target_id ?? "không có")}</span>
                   <span>
-                    {"Customer Map snapshot artifact · " +
+                    {"Tài liệu ảnh chụp Bản đồ khách hàng · " +
                       (candidate.application.customer_map_snapshot_artifact_id ?? "không có")}
                   </span>
                 </div>
               </>
             ) : (
-              <p>Chưa có immutable application receipt. Không suy diễn Customer Truth đã thay đổi.</p>
+              <p>Chưa có biên nhận áp dụng bất biến. Không suy diễn Sự thật khách hàng đã thay đổi.</p>
             )}
           </article>
 
           {candidate.validations.length === 0 ? (
             <article className={styles.timelineCard} data-state="validation">
-              <strong>Later validation</strong>
-              <p>Chưa có durable validation snapshot.</p>
+              <strong>Kiểm chứng sau áp dụng</strong>
+              <p>Chưa có ảnh chụp kiểm chứng đã lưu bền vững.</p>
             </article>
           ) : (
             candidate.validations.map((validation) => (
               <article className={styles.timelineCard} data-state="validation" key={validation.id}>
                 <div className={styles.sectionHeader}>
                   <div>
-                    <strong>{"Validation v" + validation.version}</strong>
+                    <strong>{"Kiểm chứng v" + validation.version}</strong>
                     <p className={styles.meta}>{formatDate(validation.evaluated_at)}</p>
                   </div>
                   <span className={statusClass(validation.validation_status)}>
-                    {validation.validation_status}
+                    {uiStatusLabel(validation.validation_status)}
                   </span>
                 </div>
                 <div className={styles.refList}>
-                  <span>{"Fingerprint · " + validation.validation_fingerprint}</span>
-                  <span>{"Independent groups · " + validation.independent_evidence_groups.length}</span>
-                  <span>{"Validation refs · " + validation.validation_signal_refs.length}</span>
-                  <span>{"Metric comparisons · " + validation.metric_comparisons.length}</span>
+                  <span>{"Dấu vân tay · " + validation.validation_fingerprint}</span>
+                  <span>{"Nhóm bằng chứng độc lập · " + validation.independent_evidence_groups.length}</span>
+                  <span>{"Tham chiếu kiểm chứng · " + validation.validation_signal_refs.length}</span>
+                  <span>{"So sánh chỉ số · " + validation.metric_comparisons.length}</span>
                 </div>
                 {validation.resolution ? (
                   <div className={styles.notice}>
-                    <strong>{"Human resolution · " + validation.resolution.decision}</strong>
+                    <strong>{"Kết quả xử lý của người duyệt · " + uiStatusLabel(validation.resolution.decision)}</strong>
                     <p>{validation.resolution.reason}</p>
                     <div className={styles.refList}>
-                      <span>{"Reviewed by · " + validation.resolution.reviewed_by}</span>
+                      <span>{"Người duyệt · " + validation.resolution.reviewed_by}</span>
                       <span>
-                        {"Resolution receipt · " +
-                          (validation.resolution.application_receipt_id ?? "chưa có application receipt")}
+                        {"Biên nhận xử lý · " +
+                          (validation.resolution.application_receipt_id ?? "chưa có biên nhận áp dụng")}
                       </span>
                       <span>
-                        {"Applied action · " + (validation.resolution.applied_action ?? "chưa có")}
+                        {"Hành động đã áp dụng · " + (validation.resolution.applied_action ?? "chưa có")}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <p>Validation chưa có human resolution. Không auto-promote.</p>
+                  <p>Kiểm chứng chưa có kết quả xử lý của người duyệt. Không tự động đưa vào áp dụng.</p>
                 )}
               </article>
             ))
@@ -278,13 +279,13 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
       </section>
 
       <details className={styles.disclosure}>
-        <summary>Proposal / scope kỹ thuật</summary>
+        <summary>Đề xuất / phạm vi kỹ thuật</summary>
         <div className={styles.refList}>
-          <span>{"Candidate key · " + candidate.candidate_key}</span>
-          <span>{"Source assessment · " + candidate.source_assessment_artifact_id}</span>
-          <span>{"Supersedes · " + (candidate.supersedes_id ?? "không có")}</span>
-          <span className={styles.codeText}>{"Proposal · " + JSON.stringify(candidate.proposal)}</span>
-          <span className={styles.codeText}>{"Scope · " + JSON.stringify(candidate.scope)}</span>
+          <span>{"Khóa đề xuất · " + candidate.candidate_key}</span>
+          <span>{"Đánh giá nguồn · " + candidate.source_assessment_artifact_id}</span>
+          <span>{"Thay thế · " + (candidate.supersedes_id ?? "không có")}</span>
+          <span className={styles.codeText}>{"Đề xuất · " + JSON.stringify(candidate.proposal)}</span>
+          <span className={styles.codeText}>{"Phạm vi · " + JSON.stringify(candidate.scope)}</span>
         </div>
       </details>
     </div>
@@ -317,7 +318,7 @@ export default function LearningPage() {
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(nextError instanceof Error ? nextError.message : "Không thể tải Learning.");
+          setError(nextError instanceof Error ? nextError.message : "Không thể tải dữ liệu học từ dữ liệu.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -367,11 +368,11 @@ export default function LearningPage() {
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div>
-          <p className="eyebrow">ContentEngine · Learning</p>
-          <h1>Learning loop</h1>
+          <p className="eyebrow">ContentEngine · Học từ dữ liệu</p>
+          <h1>Học từ dữ liệu</h1>
           <p className="intro">
-            Theo dõi evidence, diễn giải, human review và immutable receipts mà không biến
-            correlation thành Customer Truth.
+            Theo dõi bằng chứng, diễn giải, duyệt của người dùng và biên nhận bất biến mà không biến
+            tương quan thành Sự thật khách hàng.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -382,7 +383,7 @@ export default function LearningPage() {
       </header>
 
       {loading && !overview ? (
-        <div className={styles.notice} role="status" aria-live="polite">Đang tải Learning lifecycle…</div>
+        <div className={styles.notice} role="status" aria-live="polite">Đang tải vòng đời học từ dữ liệu…</div>
       ) : null}
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
       {stale ? <div className={styles.stale} role="status" aria-live="polite">{stale}</div> : null}
@@ -391,12 +392,12 @@ export default function LearningPage() {
         <>
           <div className={styles.metricGrid}>
             {[
-              ["Candidates", counts.candidates ?? 0],
-              ["Ready review", counts.ready_for_review ?? 0],
-              ["Reviews", counts.reviews ?? 0],
-              ["Applications", counts.applications ?? 0],
-              ["Validations", counts.validations ?? 0],
-              ["Resolutions", counts.resolutions ?? 0],
+              ["Đề xuất", counts.candidates ?? 0],
+              ["Sẵn sàng duyệt", counts.ready_for_review ?? 0],
+              ["Lượt duyệt", counts.reviews ?? 0],
+              ["Lượt áp dụng", counts.applications ?? 0],
+              ["Lượt kiểm chứng", counts.validations ?? 0],
+              ["Kết quả xử lý", counts.resolutions ?? 0],
             ].map(([label, value]) => (
               <div className={styles.metric} key={String(label)}>
                 <span>{label}</span>
@@ -406,17 +407,17 @@ export default function LearningPage() {
           </div>
 
           <div className={styles.semanticStrip}>
-            <span className={styles.badge}>Candidate ≠ Customer Truth</span>
-            <span className={styles.badge}>Evidence ≠ learning rule</span>
-            <span className={styles.badge}>Truth change cần reviewed receipt</span>
-            <span className={styles.badge}>Validation không auto-promote</span>
+            <span className={styles.badge}>Đề xuất ≠ Sự thật khách hàng</span>
+            <span className={styles.badge}>Bằng chứng ≠ quy tắc học</span>
+            <span className={styles.badge}>Thay đổi sự thật cần biên nhận đã duyệt</span>
+            <span className={styles.badge}>Kiểm chứng không tự động đưa vào áp dụng</span>
           </div>
 
           {overview.candidates.length === 0 ? (
-            <div className={styles.empty} role="status">Chưa có LearningCandidate cho project này.</div>
+            <div className={styles.empty} role="status">Chưa có đề xuất học từ dữ liệu cho dự án này.</div>
           ) : (
             <>
-              <div className={styles.filters} aria-label="Lọc Learning Candidate">
+              <div className={styles.filters} aria-label="Lọc đề xuất học từ dữ liệu">
                 {FILTERS.map((item) => (
                   <button
                     type="button"
@@ -436,12 +437,12 @@ export default function LearningPage() {
 
               {visibleCandidates.length === 0 ? (
                 <div className={styles.empty} role="status">
-                  Không có LearningCandidate phù hợp bộ lọc này.
+                  Không có đề xuất học từ dữ liệu phù hợp bộ lọc này.
                 </div>
               ) : (
                 <div className={styles.masterDetail}>
                   <aside className={styles.sidebar}>
-                    <p className="eyebrow">Candidates · {visibleCandidates.length}</p>
+                    <p className="eyebrow">Đề xuất · {visibleCandidates.length}</p>
                     <div className={styles.list}>
                       {visibleCandidates.map((candidate) => (
                         <button
@@ -459,7 +460,7 @@ export default function LearningPage() {
                         >
                           <strong>{candidate.statement}</strong>
                           <small>
-                            {candidate.evidence_status +
+                            {uiStatusLabel(candidate.evidence_status) +
                               " · " +
                               candidate.target_type +
                               " · v" +
