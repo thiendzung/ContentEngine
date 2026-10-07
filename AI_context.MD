@@ -16,6 +16,10 @@ Active branch:
 Tracking:
 #378
 
+Current child slice:
+- P3-00 / #380 — Vietnamese language foundation;
+- implementation may advance to P3-01 only after exact-head frontend lint + typecheck for P3-00 pass.
+
 UI-P3 scope:
 - make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
 - translate presentation terminology on Overview, Needs Me, Customers, Content Map, Question Map, Learning, Production, System/Daily Digest and Journal Operator surfaces;
