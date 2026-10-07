@@ -1,46 +1,55 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — QM-02D2 UPDATE / REFRESH Production Handoff
+## Current WIP — QM-02D3 MERGE Production Handoff
 
-F1R0/R1/R2/R3, the real CREATE pilot (#346), and architecture checkpoint (#357) are complete.
-Current merged-main baseline for D2 is:
-`3bfb98c22e024480b93604b2b26b91f22ed7369f` (merge PR #366 / QM-02F1R3).
+QM-02D2 is complete: PR #367 merged as main
+`9ddf70663516629a02e12d77e774a28478e5f6a9`.
+Issue #358 is closed. The five known full-backend environment/fixture failures are tracked
+separately in #368 and are not part of D3 unless a direct regression is proven.
 
 Active branch:
-`feat/qm-02d2-update-refresh-handoff`
+`feat/qm-02d3-merge-handoff`
 
-D2 extends the already-proven selection → route → admission → handoff discipline to existing
-canonical content without creating a competing article:
+D3 extends the exact D2 target/version contract to a bounded, non-destructive MERGE
+reconciliation handoff:
 
 ```text
-selected UPDATE / REFRESH opportunity
+selected MERGE opportunity
++ >=2 explicit conflicting ContentItems
++ exact current immutable ContentVersions
++ exact route/admission snapshots
++ explicit Founder survivor decision + reason
         ↓
-exact target ContentItem
-+ exact current immutable ContentVersion
-+ route target-state snapshot
+one reconciliation ContentCase
++ one source LocaleVariant carrying a frozen conflict-set snapshot
++ one durable OperatorCommand receipt
         ↓
-exact admission
-        ↓
-revision ContentCase + source LocaleVariant
-+ durable OperatorCommand receipt
-        ↓
-no ContentItem / ContentVersion / Run / Job yet
+no ContentItem/ContentVersion mutation
+no delete / redirect / publish / auto-Start
 ```
 
-Locked design decisions:
-- revision execution/audit scope gets a ContentCase bound to the exact selected UPDATE/REFRESH opportunity;
-- canonical article identity remains the existing target ContentItem;
-- D2 creates no competing ContentItem and no placeholder ContentVersion;
-- target current ContentVersion is frozen in the route and receipt;
-- ContentVersion append locks the target ContentItem before allocating the next version;
-- D2 locks opportunity + Need + target item/case/variant/current version before final route/admission recheck;
-- Need gate remains PROPOSED|TESTING|SUPPORTED allowed only with exact selected lineage; REJECTED and INSUFFICIENT_EVIDENCE fail closed;
-- no auto Start, Evidence/Originality, model/provider/tool, Writer or Publish;
-- exact replay returns the old receipt before mutable-state revalidation;
-- the shared target/version snapshot contract is reused by D3; D3 must not invent a second identity model.
+Locked D3 decisions:
+- MERGE remains reconciliation, never normal automatic production;
+- all conflict ContentItems must already satisfy the shared project / canonical Need / locale
+  target contract and exact current ContentVersion binding;
+- D3 additionally requires compatible intent + editorial role across the conflict set;
+- the Founder must explicitly choose one survivor ContentItem from the exact conflict set and
+  provide a bounded reason;
+- the frozen conflict-set snapshot records exact item/version identities, survivor, route hash,
+  admission hash and a deterministic conflict-set hash;
+- D3 creates no new canonical content identity and does not mark any source item superseded;
+- no destructive delete, redirect, external publish, ContentRun, StepRun, Job, model/provider/tool
+  or Writer execution is authorized;
+- unresolved production on any conflict target blocks reconciliation;
+- same-key exact replay returns the frozen receipt; changed survivor/reason/snapshot conflicts fail
+  closed; different-key duplicate materialization is blocked by current admission state;
+- current Need gate remains PROPOSED|TESTING|SUPPORTED allowed with exact selected lineage;
+  REJECTED and INSUFFICIENT_EVIDENCE block new handoff;
+- D3 reuses the D2 target/version identity model; no second merge truth store or schema migration.
 
-Implementation is in progress on #358. Do not start #359 implementation in parallel until D2 shared
-contracts are exact-SHA verified and technically merge-ready.
+Tracking: #359. D3 must receive focused/full regression, exact-ref OCR, Agent Local exact-SHA
+verification and MG final review before Founder merge.
+
 ## Read first and verify the actual ref
 
 Read `AGENTS.md`, this file, `docs/TASKS.md`, `docs/CHECKLIST.md`, the canonical plan and the exact assigned task. Inspect local changes before fetching/synchronizing. Never reset, stash, clean, overwrite `.env`, or switch an active runtime to another checkout automatically.
