@@ -671,7 +671,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       setNotice(
         ambiguousOutcome
           ? "Phản hồi bị gián đoạn. Chưa xác định lệnh đã được ghi hay chưa; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công."
-          : "Snapshot hiện tại đã cũ; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công.",
+          : "Bản chụp dữ liệu hiện tại đã cũ; mọi thao tác mới đang bị khóa cho tới khi đối soát thành công.",
       );
     }
 
@@ -758,7 +758,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       clearIdempotencyKey(keyScope);
       setSelectedAngleId("");
       setAngleComment("");
-      setNotice("Góc tiếp cận đã được duyệt theo đúng snapshot.");
+      setNotice("Góc tiếp cận đã được duyệt theo đúng bản chụp dữ liệu.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -787,7 +787,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       });
       clearIdempotencyKey(keyScope);
       setOutlineComment("");
-      setNotice("Dàn ý đã được duyệt theo đúng snapshot.");
+      setNotice("Dàn ý đã được duyệt theo đúng bản chụp dữ liệu.");
       await refresh(true);
     } catch (requestError) {
       await reconcileMutationFailure(requestError, keyScope);
@@ -1079,7 +1079,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </button>
           </div>
           <details className="operator-technical-details artifact-details">
-            <summary>Snapshot góc tiếp cận</summary>
+            <summary>Bản chụp góc tiếp cận</summary>
             <dl>
               <div><dt>Tài liệu</dt><dd>{angleGate.artifact.id}</dd></div>
               <div><dt>Phiên bản</dt><dd>{angleGate.artifact.version}</dd></div>
@@ -1096,7 +1096,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <p className="eyebrow">Cổng duyệt 2/3</p>
               <h2>{outlineString(outlineGate.outline, "title") ?? "Duyệt dàn ý"}</h2>
             </div>
-            <span className="operator-note">Duyệt đúng snapshot dàn ý; không sửa trực tiếp trong giao diện.</span>
+            <span className="operator-note">Duyệt đúng bản chụp dàn ý; không sửa trực tiếp trong giao diện.</span>
           </div>
 
           {outlineString(outlineGate.outline, "primary_answer") && (
@@ -1157,7 +1157,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           </div>
 
           <details className="operator-technical-details artifact-details">
-            <summary>Snapshot dàn ý</summary>
+            <summary>Bản chụp dàn ý</summary>
             <dl>
               <div><dt>Tài liệu</dt><dd>{outlineGate.artifact.id}</dd></div>
               <div><dt>Phiên bản</dt><dd>{outlineGate.artifact.version}</dd></div>
