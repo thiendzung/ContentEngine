@@ -365,10 +365,6 @@
   background: #fffdf8;
 }
 
-.flowItem[data-state="upcoming"] {
-  opacity: .7;
-}
-
 .flowNumber,
 .stepNumber {
   display: inline-flex;
@@ -460,10 +456,6 @@
 .decisionStep {
   border-top: 1px solid #cfc5b8;
   padding: 16px 2px;
-}
-
-.decisionStep[data-state="upcoming"] {
-  opacity: .72;
 }
 
 .stepHeader {
