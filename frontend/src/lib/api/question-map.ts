@@ -393,8 +393,14 @@ function assertSchema(value: number, expected: number, code: string) {
   if (value !== expected) throw new Error(code);
 }
 
+export const QUESTION_MAP_SCHEMA_VERSION = 2;
+
 export function assertQuestionMapContract(value: QuestionMap) {
-  assertSchema(value.schema_version, 1, "question_map_schema_unsupported");
+  assertSchema(
+    value.schema_version,
+    QUESTION_MAP_SCHEMA_VERSION,
+    "question_map_schema_unsupported",
+  );
   if (!value.source_policy.canonical_need || value.source_policy.model_call) {
     throw new Error("question_map_semantics_changed");
   }
