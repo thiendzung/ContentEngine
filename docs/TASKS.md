@@ -78,39 +78,53 @@ Tracking: issue #359. Merge/main:
 - [x] Exact-SHA CI #2351 SUCCESS.
 - [x] Founder merged PR #369 and issue #359 closed.
 
-## QM-02E — Founder Question Map UI — ACTIVE / #360
+## QM-02E — Founder Question Map UI — DONE / PR #370 MERGED
 
-Base: merged D3 main
-`b72b7beeef5b3464ebf87fde5034ccdf99991c07`.
+Tracking: issue #360. Merge/main:
+`99385a36cd0ef4e414fd1404c3e8aee4117b4d1f`.
 
-Branch:
-`feat/qm-02e-founder-ui`.
+Verified PR head:
+`d6212af0320682216e19cfdda1079473b72fa2b4`.
 
-- [x] Keep Question Map under Content Map; no new keyword/SEO truth store.
-- [x] Add typed frontend client for Question Map / architecture / planner / selection / route / admission / materialize APIs.
-- [x] Add runtime schema/semantic guards so frontend fails visibly if backend contracts drift.
-- [x] Need + locale selector.
-- [x] Question Map overview counts.
-- [x] Pillar / Cluster tree from backend Content Architecture.
-- [x] Show intent / audience stage / answer job / coverage / decision / priority / reason codes.
-- [x] Show Customer Truth separately from Content Readiness.
-- [x] Show existing ContentItem/plan refs.
-- [x] Founder selection form: reason + promise + ordered coverage requirements.
-- [x] Route + admission preview fetched from backend.
-- [x] CREATE / UPDATE / REFRESH bounded materialize controls.
-- [x] MERGE explicit survivor + reason + confirmation.
-- [x] Stale route/selection/target state disables mutation and forces reread.
-- [x] UI exposes no Start / Evidence / Originality / Writer / Publish action.
-- [x] Link existing Content Map to Founder Question Map workflow.
-- [ ] Frontend lint + typecheck + production build.
-- [ ] Backend/API focused contract regression.
-- [ ] One real read-only operational Question Map browser smoke before mutation.
-- [ ] Stale / replay / error-state UX smoke.
-- [ ] Exact-ref OpenCodeReview Delegation Mode.
-- [ ] Agent Local exact-SHA verification.
-- [ ] Minimal GitHub CI.
+- [x] Question Map under Content Map; no new keyword/SEO truth store.
+- [x] Typed frontend client + runtime schema/semantic guards.
+- [x] Need + locale selector, overview counts and Pillar/Cluster tree.
+- [x] Intent/stage/answer-job/coverage/decision/priority/reason codes.
+- [x] Customer Truth separated from Content Readiness.
+- [x] Founder selection with exact architecture/planner snapshots.
+- [x] Backend Route + Admission preview.
+- [x] CREATE / UPDATE / REFRESH / MERGE bounded materialize controls.
+- [x] MERGE explicit survivor + reason + confirmation; no destructive auto-merge.
+- [x] Stale/error UX + exact replay/idempotency proof.
+- [x] Supported test-only browser fixture for CREATE/UPDATE/REFRESH/MERGE.
+- [x] HTTP selection transaction durability + caller-owned transaction compatibility.
+- [x] Operational read-only browser smoke.
+- [x] Responsive/accessibility sanity.
+- [x] Frontend lint/typecheck/build + production npm audit PASS.
+- [x] Focused QM 154 PASS.
+- [x] Full backend 1550 PASS / 2 known #368 ambient-environment failures.
+- [x] OCR exact-ref: 0 Critical/High/Medium.
+- [x] Exact-SHA CI #2372 SUCCESS.
+- [x] Founder merged PR #370; #360 closed.
+
+## QA #368 — Test-environment isolation — ACTIVE / PR #371
+
+Base:
+`99385a36cd0ef4e414fd1404c3e8aee4117b4d1f`.
+
+- [x] Remove stale hard-coded fallback test DB identity from isolation tests.
+- [x] Direct Rank Math Settings test controls app_env/DB inputs.
+- [x] Positive Serper fixture uses explicit synthetic key.
+- [x] Negative Serper fixtures explicitly clear Serper.
+- [ ] Original five #368 tests PASS on exact candidate.
+- [ ] Affected modules PASS with ambient provider secrets absent.
+- [ ] Affected modules PASS with synthetic ambient provider secrets present.
+- [ ] Full backend PASS from clean `contentengine_test`.
+- [ ] Exact-ref OCR + CI + Agent Local verification.
+- [ ] Local merged-#370 worktree/branch cleanup.
 - [ ] MG final review.
-- [ ] Founder merge.
+- [ ] Founder merge PR #371.
+- [ ] Close #368; then start #361 Golden E2E.
 
 ## QM-02D1 — CREATE Production Handoff — DONE / PR #345 MERGED
 

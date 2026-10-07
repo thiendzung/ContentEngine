@@ -34,6 +34,14 @@ from app.modules.research.evidence.persistence import (
 from app.modules.research.production import ResearchRouter
 
 
+def _settings_without_serper() -> Settings:
+    return Settings(
+        _env_file=None,
+        app_env="development",
+        serper_api_key=None,
+    )
+
+
 def _checks_by_key(result: dict[str, object]) -> dict[str, dict[str, object]]:
     raw = result["checks"]
     assert isinstance(raw, list)
@@ -53,7 +61,7 @@ async def test_case_preflight_allows_reusable_evidence_without_serper(
         "build_operational_preflight",
         _ready_preflight,
     )
-    monkeypatch.setattr(operator_preflight, "get_settings", lambda: Settings())
+    monkeypatch.setattr(operator_preflight, "get_settings", _settings_without_serper)
 
     async with isolated_session() as session:
         await _activate_angle_runtime(session)
@@ -126,7 +134,7 @@ async def test_case_preflight_still_requires_serper_without_reusable_evidence(
         "build_operational_preflight",
         _ready_preflight,
     )
-    monkeypatch.setattr(operator_preflight, "get_settings", lambda: Settings())
+    monkeypatch.setattr(operator_preflight, "get_settings", _settings_without_serper)
 
     async with isolated_session() as session:
         await _activate_angle_runtime(session)

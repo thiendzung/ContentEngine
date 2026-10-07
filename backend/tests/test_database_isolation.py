@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from urllib.parse import urlsplit
 
 import pytest
@@ -14,12 +13,7 @@ from app.core.database import settings as database_settings
 APPLICATION_DATABASE_URL = (
     "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine"
 )
-DEDICATED_TEST_DATABASE_URL = (
-    os.environ.get(
-        "TEST_DATABASE_URL",
-        "postgresql+asyncpg://contentengine:contentengine@localhost:5432/contentengine_t0434_test",
-    )
-)
+DEDICATED_TEST_DATABASE_URL = database_settings.resolved_database_url
 
 
 def _settings(**overrides: object) -> Settings:
@@ -35,6 +29,11 @@ def _settings(**overrides: object) -> Settings:
 
 def _database_name(url: str) -> str:
     return urlsplit(url).path.lstrip("/")
+
+
+def test_runtime_settings_use_the_explicit_dedicated_test_target() -> None:
+    assert database_settings.app_env.strip().lower() == "test"
+    assert database_settings.test_database_url == DEDICATED_TEST_DATABASE_URL
 
 
 def test_test_database_url_is_required() -> None:
