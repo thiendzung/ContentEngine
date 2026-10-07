@@ -349,8 +349,12 @@ def _conflict_set_payload(
 
 def _parse_conflict_set_payload(
     raw_notes: list[object],
+    *,
+    project_id: UUID,
+    opportunity_id: UUID,
 ) -> tuple[
     UUID,
+    str,
     str,
     str,
     str,
@@ -366,6 +370,8 @@ def _parse_conflict_set_payload(
         or payload.get("schema_version") != 1
         or payload.get("policy_version")
         != MERGE_HANDOFF_POLICY_VERSION
+        or payload.get("project_id") != str(project_id)
+        or payload.get("opportunity_id") != str(opportunity_id)
     ):
         raise MergeProductionHandoffError(
             "merge_handoff_receipt_plan_invalid"
@@ -374,12 +380,14 @@ def _parse_conflict_set_payload(
     founder_reason = payload.get("founder_reason")
     conflict_set_hash = payload.get("conflict_set_hash")
     route_hash = payload.get("route_snapshot_hash")
+    admission_hash = payload.get("admission_snapshot_hash")
     target_rows = payload.get("target_snapshots")
     if (
         not isinstance(survivor_raw, str)
         or not isinstance(founder_reason, str)
         or not isinstance(conflict_set_hash, str)
         or not isinstance(route_hash, str)
+        or not isinstance(admission_hash, str)
         or not isinstance(target_rows, list)
     ):
         raise MergeProductionHandoffError(
@@ -395,15 +403,39 @@ def _parse_conflict_set_payload(
         raise MergeProductionHandoffError(
             "merge_handoff_receipt_plan_invalid"
         ) from exc
-    if len(targets) < 2:
+    target_ids = [row.content_item_id for row in targets]
+    if (
+        len(targets) < 2
+        or len(target_ids) != len(set(target_ids))
+        or survivor_id not in target_ids
+    ):
         raise MergeProductionHandoffError(
             "merge_handoff_receipt_plan_invalid"
+        )
+    expected_conflict_hash = _stable_hash(
+        {
+            "project_id": str(project_id),
+            "opportunity_id": str(opportunity_id),
+            "survivor_content_item_id": str(survivor_id),
+            "targets": [
+                row.model_dump(mode="json")
+                for row in sorted(
+                    targets,
+                    key=lambda value: str(value.content_item_id),
+                )
+            ],
+        }
+    )
+    if expected_conflict_hash != conflict_set_hash:
+        raise MergeProductionHandoffError(
+            "merge_handoff_receipt_plan_hash_mismatch"
         )
     return (
         survivor_id,
         founder_reason,
         conflict_set_hash,
         route_hash,
+        admission_hash,
         targets,
     )
 
@@ -466,19 +498,18 @@ async def _replay_result(
         founder_reason,
         conflict_set_hash,
         stored_route_hash,
+        stored_admission_hash,
         targets,
     ) = _parse_conflict_set_payload(
-        source_variant.keyword_notes_json
+        source_variant.keyword_notes_json,
+        project_id=project_id,
+        opportunity_id=opportunity_id,
     )
     if stored_route_hash != route_snapshot_hash:
         raise MergeProductionHandoffError(
             "merge_handoff_receipt_route_mismatch"
         )
-    payload = cast(
-        dict[str, object],
-        source_variant.keyword_notes_json[0],
-    )
-    if payload.get("admission_snapshot_hash") != admission_snapshot_hash:
+    if stored_admission_hash != admission_snapshot_hash:
         raise MergeProductionHandoffError(
             "merge_handoff_receipt_admission_mismatch"
         )
