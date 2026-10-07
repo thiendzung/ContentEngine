@@ -2,6 +2,9 @@ export function founderStatusLabel(value: string | null | undefined): string {
   if (!value) return "—";
 
   const labels: Record<string, string> = {
+    OK: "Bình thường",
+    SUCCESS: "Thành công",
+    SUCCEEDED: "Thành công",
     READY: "Sẵn sàng",
     READY_FOR_REVIEW: "Sẵn sàng để duyệt",
     READY_FOR_HUMAN_SELECTION: "Sẵn sàng để chọn",
@@ -67,7 +70,7 @@ export function founderStatusLabel(value: string | null | undefined): string {
     ADMITTED: "Được phép tiếp tục",
   };
 
-  return labels[value] ?? value;
+  return labels[value] ?? labels[value.toUpperCase()] ?? value;
 }
 
 export function founderLocaleLabel(value: string): string {
@@ -108,7 +111,7 @@ export function founderDecisionLabel(value: string): string {
     LINK_ONLY: "Chỉ liên kết",
     DO_NOT_WRITE: "Không viết",
   };
-  return labels[value] ?? founderStatusLabel(value);
+  return labels[value] ?? labels[value.toUpperCase()] ?? founderStatusLabel(value);
 }
 
 export function founderPriorityLabel(value: string): string {
@@ -119,7 +122,7 @@ export function founderPriorityLabel(value: string): string {
     MEDIUM: "Trung bình",
     LOW: "Thấp",
   };
-  return labels[value] ?? value;
+  return labels[value] ?? labels[value.toUpperCase()] ?? value;
 }
 
 export function founderIntentLabel(value: string): string {
