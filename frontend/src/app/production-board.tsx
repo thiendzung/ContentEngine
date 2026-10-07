@@ -221,7 +221,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
           <h2>Bảng sản xuất nội dung</h2>
         </div>
         <p>
-          Mỗi hàng là một bài nội dung. Trạng thái, giai đoạn và việc tiếp theo là thông tin chính; dữ liệu worker chỉ phản ánh telemetry đã lưu.
+          Mỗi hàng là một bài nội dung. Trạng thái, giai đoạn và việc tiếp theo là thông tin chính; dữ liệu tác nhân chỉ phản ánh thông tin vận hành đã lưu.
         </p>
       </div>
 
@@ -294,7 +294,7 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
                           </ol>
                         )}
                         <p className="execution-note">
-                          Tác nhân phụ hoặc Antigravity chỉ xuất hiện khi runtime đã ghi nhận; giao diện không suy đoán dữ liệu chưa tồn tại.
+                          Tác nhân phụ hoặc Antigravity chỉ xuất hiện khi hệ thống chạy đã ghi nhận; giao diện không suy đoán dữ liệu chưa tồn tại.
                         </p>
                       </div>
                     </details>
