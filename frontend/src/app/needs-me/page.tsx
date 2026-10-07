@@ -7,6 +7,7 @@ import {
   loadNeedsMe,
   type NeedsMeItem,
 } from "../../lib/api/control-center";
+import { needsMeTypeLabel } from "../../lib/ui/vi/core";
 import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
 
@@ -19,17 +20,6 @@ function browserTimezone(): string {
   } catch {
     return FALLBACK_TIMEZONE;
   }
-}
-
-function typeLabel(type: NeedsMeItem["type"]): string {
-  const labels: Record<NeedsMeItem["type"], string> = {
-    content_approval: "Duyệt nội dung",
-    publish_authorization: "Cho phép xuất bản",
-    policy_gate: "Cổng chính sách",
-    learning_candidate_review: "Duyệt đề xuất học từ dữ liệu",
-    learning_resolution: "Xử lý kết quả kiểm chứng học từ dữ liệu",
-  };
-  return labels[type];
 }
 
 function formatDate(value: string): string {
@@ -132,7 +122,7 @@ export default function NeedsMePage() {
               <article className={styles.queueCard} key={item.id}>
                 <div className={styles.queueCardTop}>
                   <div>
-                    <p className="eyebrow">{typeLabel(item.type)}</p>
+                    <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
                     <h2>{item.reason}</h2>
                   </div>
                   <span className={styles.badgeWarn}>{uiStatusLabel(item.canonical_status)}</span>
@@ -155,7 +145,7 @@ export default function NeedsMePage() {
                   </div>
                 ) : (
                   <div className={styles.notice}>
-                    Backend không cung cấp đích điều hướng. Không tạo liên kết giả.
+                    Hệ thống không cung cấp đích điều hướng. Không tạo liên kết giả.
                   </div>
                 )}
 
