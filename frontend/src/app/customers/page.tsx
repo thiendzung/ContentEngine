@@ -80,9 +80,9 @@ function statusClass(value: string): string {
 
 function originLabel(value: string): string {
   const labels: Record<string, string> = {
-    founder_manual: "Founder nhập thủ công",
+    founder_manual: "Người sáng lập nhập thủ công",
     research: "Nghiên cứu",
-    learning: "Learning loop",
+    learning: "Vòng học từ dữ liệu",
   };
   return labels[value] ?? value;
 }
@@ -94,6 +94,38 @@ function relationLabel(value: string): string {
     context: "Bối cảnh",
   };
   return labels[value] ?? value;
+}
+
+function needTypeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    question: "Câu hỏi",
+    problem: "Vấn đề",
+    goal: "Mục tiêu",
+    job: "Việc cần làm",
+  };
+  return labels[value.toLowerCase()] ?? value;
+}
+
+function changeKindLabel(value: string): string {
+  const labels: Record<string, string> = {
+    NEW: "MỚI",
+    SUPPORT: "ỦNG HỘ",
+    CONTRADICT: "MÂU THUẪN",
+    DUPLICATE: "TRÙNG",
+  };
+  return labels[value] ?? value;
+}
+
+function entityTypeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    audience: "Nhóm khách hàng",
+    audience_hypothesis: "Giả thuyết nhóm khách hàng",
+    need: "Nhu cầu",
+    need_hypothesis: "Giả thuyết nhu cầu",
+    insight: "Nhận định khách hàng",
+    customer_insight: "Nhận định khách hàng",
+  };
+  return labels[value.toLowerCase()] ?? value;
 }
 
 function EvidenceSummary({
@@ -151,7 +183,7 @@ function SignalRefs({
   return (
     <div className={styles.signalList}>
       {refs.length === 0 ? (
-        <span>Chưa có Signal được liên kết.</span>
+        <span>Chưa có tín hiệu được liên kết.</span>
       ) : (
         refs.map((ref) => (
           <span key={ref.relation + ":" + ref.id}>
@@ -186,7 +218,7 @@ function NeedCard({
     >
       <strong>{need.statement}</strong>
       <small>
-        {statusLabel(need.status)} · {need.type} · v{need.version}
+        {statusLabel(need.status)} · {needTypeLabel(need.type)} · v{need.version}
       </small>
     </button>
   );
@@ -197,7 +229,7 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
     <article className={styles.card}>
       <div className={styles.sectionHeader}>
         <div>
-          <p className="eyebrow">Insight · {insight.insight_type}</p>
+          <p className="eyebrow">Nhận định khách hàng · {insight.insight_type}</p>
           <h3>{insight.statement}</h3>
         </div>
         <span className={statusClass(insight.status)}>
@@ -219,24 +251,24 @@ function InsightCard({ insight }: { insight: CustomerInsight }) {
       <dl className={styles.definition}>
         <dt>Phiên bản</dt>
         <dd>v{insight.version}</dd>
-        <dt>Trạng thái review</dt>
+        <dt>Trạng thái duyệt</dt>
         <dd>{statusLabel(insight.status)}</dd>
         <dt>Người duyệt</dt>
         <dd>{insight.reviewed_by ?? "Chưa có"}</dd>
         <dt>Lý do duyệt</dt>
         <dd>{insight.review_reason ?? "Chưa có"}</dd>
-        <dt>Observed / inferred</dt>
-        <dd>Không có field canonical trong contract hiện tại.</dd>
+        <dt>Quan sát / suy luận</dt>
+        <dd>Không có trường dữ liệu chuẩn trong quy ước hiện tại.</dd>
       </dl>
 
       <div className={styles.evidenceBlock}>
-        <strong>Signal refs</strong>
+        <strong>Tham chiếu tín hiệu</strong>
         <SignalRefs insight={insight} />
       </div>
 
       {insight.need_links.length > 0 ? (
         <div className={styles.evidenceBlock}>
-          <strong>Liên kết Need</strong>
+          <strong>Liên kết nhu cầu</strong>
           <ul>
             {insight.need_links.map((link) => (
               <li
@@ -291,7 +323,7 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
     <section className={styles.panel}>
       <div className={styles.sectionHeader}>
         <div>
-          <p className="eyebrow">Need · {need.type}</p>
+          <p className="eyebrow">Nhu cầu · {needTypeLabel(need.type)}</p>
           <h2>{need.statement}</h2>
         </div>
         <span className={statusClass(need.status)}>
@@ -302,13 +334,13 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
       <dl className={styles.definition}>
         <dt>Nguồn hình thành</dt>
         <dd>{originLabel(need.origin)}</dd>
-        <dt>Phạm vi audience</dt>
+        <dt>Phạm vi nhóm khách hàng</dt>
         <dd>{need.audience_scope ?? "Không có giá trị riêng"}</dd>
         <dt>Tình huống</dt>
         <dd>{need.situation ?? "Không có giá trị riêng"}</dd>
         <dt>Phiên bản</dt>
         <dd>v{need.version}</dd>
-        <dt>Trạng thái review</dt>
+        <dt>Trạng thái duyệt</dt>
         <dd>{statusLabel(need.status)}</dd>
         <dt>Người duyệt</dt>
         <dd>{need.reviewed_by ?? "Chưa có"}</dd>
@@ -333,14 +365,14 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
           ))}
           {need.signal_refs.supports.length === 0 &&
           need.signal_refs.contradicts.length === 0 ? (
-            <span>Chưa có Signal được liên kết.</span>
+            <span>Chưa có tín hiệu được liên kết.</span>
           ) : null}
         </div>
       </div>
 
       {need.insight_links.length > 0 ? (
         <div className={styles.evidenceBlock}>
-          <strong>Quan hệ Need ↔ CustomerInsight</strong>
+          <strong>Quan hệ Nhu cầu ↔ Nhận định khách hàng</strong>
           <ul>
             {need.insight_links.map((link) => (
               <li
@@ -386,9 +418,9 @@ function NeedDetail({ detail }: { detail: CustomerNeedDetail }) {
       ) : null}
 
       <div className={styles.evidenceBlock}>
-        <strong>Insight liên quan</strong>
+        <strong>Nhận định liên quan</strong>
         {detail.insights.length === 0 ? (
-          <p>Chưa có CustomerInsight được liên kết với Need này.</p>
+          <p>Chưa có nhận định khách hàng được liên kết với nhu cầu này.</p>
         ) : (
           <div className={styles.cards}>
             {detail.insights.map((insight) => (
@@ -485,7 +517,7 @@ export default function CustomersPage() {
       } catch (nextError) {
         if (cancelled || requestId !== requestVersion.current) return;
         setError(
-          errorMessage(nextError, "Không thể tải Customer Living Map."),
+          errorMessage(nextError, "Không thể tải Bản đồ khách hàng."),
         );
       } finally {
         if (!cancelled && requestId === requestVersion.current) {
@@ -551,10 +583,10 @@ export default function CustomersPage() {
       if (requestId !== requestVersion.current) return;
       if (isSnapshotDrift(nextError)) {
         setStaleMessage(
-          "Customer Map đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một snapshot nhất quán.",
+          "Bản đồ khách hàng đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một ảnh chụp nhất quán.",
         );
       } else {
-        setError(errorMessage(nextError, "Không thể tải audience."));
+        setError(errorMessage(nextError, "Không thể tải nhóm khách hàng."));
       }
     } finally {
       if (requestId === requestVersion.current) {
@@ -589,10 +621,10 @@ export default function CustomersPage() {
       if (requestId !== requestVersion.current) return;
       if (isSnapshotDrift(nextError)) {
         setStaleMessage(
-          "Customer Map đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một snapshot nhất quán.",
+          "Bản đồ khách hàng đã thay đổi trong lúc đọc. Dữ liệu cũ được giữ nguyên; hãy bấm Làm mới để lấy một ảnh chụp nhất quán.",
         );
       } else {
-        setError(errorMessage(nextError, "Không thể tải Need."));
+        setError(errorMessage(nextError, "Không thể tải nhu cầu."));
       }
     } finally {
       if (requestId === requestVersion.current) {
@@ -620,13 +652,13 @@ export default function CustomersPage() {
       if (requestId !== requestVersion.current) return;
       const message = errorMessage(
         nextError,
-        "Không thể làm mới Customer Living Map.",
+        "Không thể làm mới Bản đồ khách hàng.",
       );
       if (view) {
         setStaleMessage(
           "Lần làm mới thất bại (" +
             message +
-            "). Dữ liệu đang hiển thị là snapshot thành công gần nhất.",
+            "). Dữ liệu đang hiển thị là ảnh chụp thành công gần nhất.",
         );
       } else {
         setError(message);
@@ -645,11 +677,11 @@ export default function CustomersPage() {
     >
       <header className={styles.header}>
         <div>
-          <p className="eyebrow">ContentEngine · Customer Living Map</p>
+          <p className="eyebrow">ContentEngine · Bản đồ khách hàng</p>
           <h1>Khách hàng</h1>
           <p className="intro">
-            Xem audience, Need, CustomerInsight và bằng chứng đúng như backend
-            canonical đang lưu. Màn hình này chỉ đọc dữ liệu.
+            Xem nhóm khách hàng, nhu cầu, nhận định và bằng chứng đúng như backend
+            chuẩn đang lưu. Màn hình này chỉ đọc dữ liệu.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -665,9 +697,9 @@ export default function CustomersPage() {
       </header>
 
       <div className={styles.notice}>
-        API hiện không cung cấp cờ <strong>observed/inferred</strong> riêng cho
-        CustomerInsight. UI không tự suy diễn; nó hiển thị riêng trạng thái
-        review, Need.origin, reviewer và bằng chứng mà backend thực sự cung cấp.
+        API hiện không cung cấp cờ <strong>quan sát/suy luận</strong> riêng cho
+        nhận định khách hàng. Giao diện không tự suy diễn; nó hiển thị riêng trạng thái
+        duyệt, nguồn hình thành nhu cầu, người duyệt và bằng chứng mà backend thực sự cung cấp.
       </div>
 
       {loading && !view ? (
@@ -677,13 +709,13 @@ export default function CustomersPage() {
           aria-live="polite"
           aria-atomic="true"
         >
-          Đang tải Customer Living Map…
+          Đang tải Bản đồ khách hàng…
         </div>
       ) : null}
 
       {error ? (
         <div className={styles.error} role="alert" aria-atomic="true">
-          Không thể đọc Customer Living Map: {error}
+          Không thể đọc Bản đồ khách hàng: {error}
         </div>
       ) : null}
 
@@ -702,26 +734,26 @@ export default function CustomersPage() {
         <>
           <section
             className={styles.stats}
-            aria-label="Tổng quan Customer Map"
+            aria-label="Tổng quan Bản đồ khách hàng"
           >
             <div className={styles.stat}>
-              <span>Audience</span>
+              <span>Nhóm khách hàng</span>
               <strong>{view.summary.counts.audiences}</strong>
             </div>
             <div className={styles.stat}>
-              <span>Need</span>
+              <span>Nhu cầu</span>
               <strong>{view.summary.counts.needs}</strong>
             </div>
             <div className={styles.stat}>
-              <span>Insight</span>
+              <span>Nhận định</span>
               <strong>{view.summary.counts.insights}</strong>
             </div>
             <div className={styles.stat}>
-              <span>Need supported</span>
+              <span>Nhu cầu có bằng chứng hỗ trợ</span>
               <strong>{view.summary.counts.supported_needs}</strong>
             </div>
             <div className={styles.stat}>
-              <span>Insight supported</span>
+              <span>Nhận định có bằng chứng hỗ trợ</span>
               <strong>{view.summary.counts.supported_insights}</strong>
             </div>
             <div className={styles.stat}>
@@ -734,14 +766,14 @@ export default function CustomersPage() {
           </section>
 
           <p className={styles.hash}>
-            Snapshot hash: {view.summary.snapshot_hash}
+            Mã ảnh chụp: {view.summary.snapshot_hash}
           </p>
 
           <section className={styles.panel}>
             <div className={styles.sectionHeader}>
               <div>
-                <p className="eyebrow">Customer journey</p>
-                <h2>Journey model đang áp dụng</h2>
+                <p className="eyebrow">Hành trình khách hàng</p>
+                <h2>Mô hình hành trình đang áp dụng</h2>
               </div>
             </div>
             <div className={styles.journeyChips}>
@@ -752,19 +784,19 @@ export default function CustomersPage() {
               ))}
             </div>
             <p className={styles.meta}>
-              Journey là cấu hình/derived model. Customer Living Map hiện không
-              persist quan hệ Need→Journey; UI không tự gán Need vào stage.
+              Hành trình là mô hình cấu hình/được suy ra. Bản đồ khách hàng hiện không
+              lưu bền vững quan hệ Nhu cầu→Hành trình; giao diện không tự gán nhu cầu vào giai đoạn.
             </p>
           </section>
 
           {view.summary.audiences.length === 0 ? (
             <div className={styles.empty} role="status">
-              Chưa có AudienceHypothesis trong Customer Living Map.
+              Chưa có giả thuyết nhóm khách hàng trong Bản đồ khách hàng.
             </div>
           ) : (
             <div className={styles.grid}>
               <aside className={styles.sidebar}>
-                <p className="label">Audience</p>
+                <p className="label">Nhóm khách hàng</p>
                 <div className={styles.list}>
                   {view.summary.audiences.map((item) => (
                     <button
@@ -783,8 +815,8 @@ export default function CustomersPage() {
                     >
                       <strong>{item.name}</strong>
                       <small>
-                        {statusLabel(item.status)} · {item.need_count} Need ·{" "}
-                        {item.insight_count} Insight
+                        {statusLabel(item.status)} · {item.need_count} nhu cầu ·{" "}
+                        {item.insight_count} nhận định
                       </small>
                     </button>
                   ))}
@@ -807,7 +839,7 @@ export default function CustomersPage() {
                   <section className={styles.panel}>
                     <div className={styles.sectionHeader}>
                       <div>
-                        <p className="eyebrow">AudienceHypothesis</p>
+                        <p className="eyebrow">Giả thuyết nhóm khách hàng</p>
                         <h2>{view.audience.audience.name}</h2>
                       </div>
                       <span
@@ -818,25 +850,25 @@ export default function CustomersPage() {
                     </div>
                     <p>
                       {view.audience.audience.description ??
-                        "Backend chưa lưu mô tả riêng cho audience này."}
+                        "Backend chưa lưu mô tả riêng cho nhóm khách hàng này."}
                     </p>
                     <dl className={styles.definition}>
                       <dt>Trạng thái</dt>
                       <dd>{statusLabel(view.audience.audience.status)}</dd>
-                      <dt>Confidence</dt>
+                      <dt>Độ tin cậy</dt>
                       <dd>
                         {view.audience.audience.confidence === null
                           ? "Chưa có"
                           : String(view.audience.audience.confidence)}
                       </dd>
-                      <dt>Evidence summary</dt>
+                      <dt>Tóm tắt bằng chứng</dt>
                       <dd>
                         {view.audience.audience.evidence_summary ??
                           "Chưa có tóm tắt bằng chứng."}
                       </dd>
-                      <dt>Need</dt>
+                      <dt>Nhu cầu</dt>
                       <dd>{view.audience.needs.length}</dd>
-                      <dt>Insight</dt>
+                      <dt>Nhận định</dt>
                       <dd>{view.audience.insights.length}</dd>
                     </dl>
                   </section>
@@ -846,10 +878,10 @@ export default function CustomersPage() {
                   <section className={styles.panel}>
                     <div className={styles.sectionHeader}>
                       <div>
-                        <p className="eyebrow">Need map</p>
+                        <p className="eyebrow">Bản đồ nhu cầu</p>
                         <h2>
-                          Need của{" "}
-                          {selectedAudienceSummary?.name ?? "audience"}
+                          Nhu cầu của{" "}
+                          {selectedAudienceSummary?.name ?? "nhóm khách hàng"}
                         </h2>
                       </div>
                     </div>
@@ -867,7 +899,7 @@ export default function CustomersPage() {
                   </section>
                 ) : view.audience ? (
                   <div className={styles.empty} role="status">
-                    Audience này chưa có NeedHypothesis được gán.
+                    Nhóm khách hàng này chưa có giả thuyết nhu cầu được gán.
                   </div>
                 ) : null}
 
@@ -877,8 +909,8 @@ export default function CustomersPage() {
 
                 {view.audience && view.audience.insights.length > 0 ? (
                   <section className={styles.panel}>
-                    <p className="eyebrow">Audience insights</p>
-                    <h2>Insight được gán trực tiếp</h2>
+                    <p className="eyebrow">Nhận định theo nhóm khách hàng</p>
+                    <h2>Nhận định được gán trực tiếp</h2>
                     <div className={styles.cards}>
                       {view.audience.insights.map((insight) => (
                         <InsightCard key={insight.id} insight={insight} />
@@ -887,48 +919,48 @@ export default function CustomersPage() {
                   </section>
                 ) : view.audience ? (
                   <div className={styles.empty} role="status">
-                    Audience này chưa có CustomerInsight được gán trực tiếp.
+                    Nhóm khách hàng này chưa có nhận định khách hàng được gán trực tiếp.
                   </div>
                 ) : null}
 
                 <section className={styles.panel}>
                   <div className={styles.sectionHeader}>
                     <div>
-                      <p className="eyebrow">Recent map change</p>
+                      <p className="eyebrow">Thay đổi gần đây</p>
                       <h2>Thay đổi so với snapshot trước</h2>
                     </div>
                     <div className={styles.badges}>
                       <span className={styles.badge}>
-                        NEW {view.changes.counts.NEW}
+                        MỚI {view.changes.counts.NEW}
                       </span>
                       <span className={styles.badgePositive}>
-                        SUPPORT {view.changes.counts.SUPPORT}
+                        ỦNG HỘ {view.changes.counts.SUPPORT}
                       </span>
                       <span className={styles.badgeNegative}>
-                        CONTRADICT {view.changes.counts.CONTRADICT}
+                        MÂU THUẪN {view.changes.counts.CONTRADICT}
                       </span>
                       <span className={styles.badge}>
-                        DUPLICATE {view.changes.counts.DUPLICATE}
+                        TRÙNG {view.changes.counts.DUPLICATE}
                       </span>
                     </div>
                   </div>
 
                   <dl className={styles.definition}>
-                    <dt>Snapshot trước</dt>
+                    <dt>Ảnh chụp trước</dt>
                     <dd>
                       {view.changes.previous_snapshot_hash ?? "Không có"}
                     </dd>
-                    <dt>Snapshot hiện tại</dt>
+                    <dt>Ảnh chụp hiện tại</dt>
                     <dd>{view.changes.current_snapshot_hash}</dd>
                   </dl>
 
                   {view.changes.baseline ? (
                     <p>
-                      Chưa có snapshot trước; đây là baseline đầu tiên, không
+                      Chưa có ảnh chụp trước; đây là mốc nền đầu tiên, không
                       được diễn giải như thay đổi hành vi khách hàng.
                     </p>
                   ) : view.changes.events.length === 0 ? (
-                    <p>Không có thay đổi giữa hai snapshot được so sánh.</p>
+                    <p>Không có thay đổi giữa hai ảnh chụp được so sánh.</p>
                   ) : (
                     <div className={styles.changeList}>
                       {view.changes.events.slice(0, 20).map((event, index) => (
@@ -945,7 +977,7 @@ export default function CustomersPage() {
                           }
                         >
                           <strong>
-                            {event.kind} · {event.entity_type}
+                            {changeKindLabel(event.kind)} · {entityTypeLabel(event.entity_type)}
                           </strong>
                           <p>{event.detail}</p>
                           <small className={styles.meta}>
