@@ -75,8 +75,9 @@ Founder UI priority — 2026-10-07:
 - E2E-01/#361 Golden E2E is complete and closed;
 - UI-P1 / #372 / PR #373 is complete and merged;
 - UI-P2 / #374 / PR #375 is complete and merged;
-- active slice is bounded `UI-P3 / #378`: Vietnamese Founder-facing terminology;
-- later UI work remains sequential and bounded: P4 business/technical layer -> P5 Production Board density -> P6 global visual system.
+- UI-P3 / #378 / PR #379 is complete and merged;
+- active slice is bounded `UI-P4 / #389`: business-first information hierarchy;
+- later UI work remains sequential and bounded: P5 Production Board density -> P6 global visual system.
 
 Execution rules:
 - ARCH-21 is docs/contracts only.
