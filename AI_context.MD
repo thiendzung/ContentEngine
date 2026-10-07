@@ -18,7 +18,8 @@ Tracking:
 
 Current child slice:
 - P3-00 / #380 — DONE; exact head `38ae4720641b534965353d0206932a4f5b0dc3a9`, CI #2405 frontend lint/typecheck PASS;
-- P3-01 / #381 — ACTIVE: Overview + Needs Me + Production.
+- P3-01 / #381 — DONE; exact head `f49ebf5aaca9ec88bb9eb0889f36a9bf355bcacd`, CI #2412 frontend lint/typecheck PASS;
+- P3-02 / #382 — ACTIVE: Customer Map presentation.
 
 UI-P3 scope:
 - make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
