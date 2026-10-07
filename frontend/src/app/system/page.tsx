@@ -48,6 +48,20 @@ function costLabel(value: string | number): string {
   return Number.isFinite(parsed) ? parsed.toFixed(6) : String(value);
 }
 
+function preflightReason(key: string, status: string): string {
+  const label = systemCheckLabel(key);
+  if (status === "READY" || status === "ok" || status === "completed") {
+    return `${label} đã sẵn sàng theo kiểm tra hiện tại.`;
+  }
+  if (status === "BLOCKED" || status === "failed") {
+    return `${label} đang chặn vận hành.`;
+  }
+  if (status === "OPTIONAL") {
+    return `${label} không bắt buộc trong cấu hình hiện tại.`;
+  }
+  return `${label}: ${uiStatusLabel(status)}.`;
+}
+
 export default function SystemPage() {
   const [state, setState] = useState<DashboardState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,11 +181,7 @@ export default function SystemPage() {
                         {uiStatusLabel(check.status)}
                       </span>
                     }
-                    reason={
-                      <span>
-                        {check.detail || "Hệ thống không cung cấp lý do riêng cho kiểm tra này."}
-                      </span>
-                    }
+                    reason={<span>{preflightReason(check.key, check.status)}</span>}
                     nextAction={
                       <span>
                         Màn hình này chỉ đọc trạng thái kiểm tra; không có thao tác sửa tự động.
@@ -181,6 +191,7 @@ export default function SystemPage() {
                       <div className={styles.refList}>
                         <span>{"Khóa kiểm tra · " + check.key}</span>
                         <span>{"Trạng thái gốc · " + check.status}</span>
+                        <span className={styles.codeText}>{"Chi tiết gốc · " + check.detail}</span>
                       </div>
                     }
                   />
