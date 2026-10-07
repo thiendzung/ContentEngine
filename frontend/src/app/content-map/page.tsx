@@ -12,8 +12,8 @@ import {
   uiDecisionLabel,
   uiIntentLabel,
   uiPriorityLabel,
-  uiStatusLabel,
-} from "../../lib/ui/presentation-labels";
+} from "../../lib/ui/vi/content";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../intelligence.module.css";
 
 const PROJECT_SLUG = "motgu";
