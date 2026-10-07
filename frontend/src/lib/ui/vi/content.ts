@@ -20,12 +20,18 @@ const PRIORITY_VI: Record<string, string> = {
   HIGH: "Cao",
   MEDIUM: "Trung bình",
   LOW: "Thấp",
+  NO: "Không ưu tiên",
 };
 
 const INTENT_VI: Record<string, string> = {
   learn: "Tìm hiểu",
-  evaluate: "Đánh giá",
+  understand: "Hiểu rõ",
   compare: "So sánh",
+  evaluate: "Đánh giá",
+  trust: "Xây dựng niềm tin",
+  plan_visit: "Lên kế hoạch ghé xem",
+  consider_purchase: "Cân nhắc mua",
+  post_purchase: "Sau khi mua",
   decide: "Ra quyết định",
   buy: "Mua",
   discover: "Khám phá",
