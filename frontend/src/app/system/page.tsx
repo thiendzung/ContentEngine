@@ -10,6 +10,11 @@ import {
   type SystemVersion,
 } from "../../lib/api/ux-closeout";
 import { uiBooleanLabel } from "../../lib/ui/vi/common";
+import {
+  systemCheckLabel,
+  systemEnvironmentLabel,
+  systemScopeLabel,
+} from "../../lib/ui/vi/system";
 import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
 
@@ -39,32 +44,6 @@ function statusClass(value: string): string {
 function costLabel(value: string | number): string {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed.toFixed(6) : String(value);
-}
-
-function checkLabel(value: string): string {
-  const labels: Record<string, string> = {
-    database_binding: "Liên kết cơ sở dữ liệu",
-    database: "Cơ sở dữ liệu",
-    migration: "Phiên bản dữ liệu",
-    test_database: "Cơ sở dữ liệu kiểm thử",
-    codex_cli: "Codex CLI",
-    antigravity_cli: "Antigravity",
-    postgres_tools: "Công cụ PostgreSQL",
-    journal_research_serper: "Tìm nguồn bằng Serper",
-    journal_angle_settings: "Cấu hình góc tiếp cận",
-    journal_angle_prompt: "Prompt góc tiếp cận",
-    journal_angle_recipe: "Công thức góc tiếp cận",
-  };
-  return labels[value] ?? value;
-}
-
-function scopeLabel(value: string): string {
-  const labels: Record<string, string> = {
-    project: "Dự án",
-    system: "Hệ thống",
-    global: "Toàn cục",
-  };
-  return labels[value.toLowerCase()] ?? value;
 }
 
 export default function SystemPage() {
@@ -157,15 +136,15 @@ export default function SystemPage() {
             <div className={styles.healthCard}>
               <span>Phiên bản</span>
               <strong>{state.version.version}</strong>
-              <div className={styles.meta}>{state.version.environment}</div>
+              <div className={styles.meta}>{systemEnvironmentLabel(state.version.environment)}</div>
             </div>
           </div>
 
           <div className={styles.semanticStrip}>
-            <span className={styles.badge}>Chính sách cấu hình ≠ trạng thái tự động hóa đang chạy</span>
-            <span className={styles.badge}>Lịch sử sử dụng ≠ sức khỏe nhà cung cấp</span>
-            <span className={styles.badge}>Lịch sử giao việc ≠ sức khỏe tác nhân</span>
-            <span className={styles.badge}>Kiểm tra sẵn sàng = bằng chứng năng lực trực tiếp riêng</span>
+            <span className={styles.badge}>Cấu hình chính sách ≠ trạng thái tự động hóa đang chạy</span>
+            <span className={styles.badge}>Lịch sử sử dụng ≠ trạng thái hiện tại của nhà cung cấp</span>
+            <span className={styles.badge}>Lịch sử giao việc ≠ trạng thái hiện tại của tác nhân</span>
+            <span className={styles.badge}>Kiểm tra sẵn sàng = bằng chứng năng lực trực tiếp</span>
           </div>
 
           <section className={styles.section}>
@@ -180,7 +159,7 @@ export default function SystemPage() {
               {state.preflight.checks.map((check) => (
                 <article className={styles.systemCard} key={check.key}>
                   <div className={styles.sectionHeader}>
-                    <h3>{checkLabel(check.key)}</h3>
+                    <h3>{systemCheckLabel(check.key)}</h3>
                     <span className={statusClass(check.status)}>{uiStatusLabel(check.status)}</span>
                   </div>
                   <details className={styles.disclosure}>
@@ -201,14 +180,14 @@ export default function SystemPage() {
               <span className={styles.badge}>{summary.automation_policy_sources.length}</span>
             </div>
             {summary.automation_policy_sources.length === 0 ? (
-              <div className={styles.empty}>Không có nguồn chính sách năng lực đang hoạt động cho phạm vi dự án/hệ thống.</div>
+              <div className={styles.empty}>Không có nguồn chính sách năng lực đang hoạt động cho phạm vi dự án hoặc hệ thống.</div>
             ) : (
               <div className={styles.systemGrid}>
                 {summary.automation_policy_sources.map((source) => (
                   <article className={styles.systemCard} key={source.settings_version_id}>
                     <div className={styles.sectionHeader}>
                       <div>
-                        <p className="eyebrow">{scopeLabel(source.scope_type) + " · " + source.scope_key}</p>
+                        <p className="eyebrow">{systemScopeLabel(source.scope_type) + " · " + source.scope_key}</p>
                         <h3>{"Cấu hình v" + source.version}</h3>
                       </div>
                       <span className={source.approval_recorded ? styles.badgePositive : styles.badgeWarn}>
@@ -282,7 +261,7 @@ export default function SystemPage() {
               </div>
             )}
             <div className={styles.notice}>
-              Đây là lịch sử sử dụng đã lưu; không kết luận nhà cung cấp đang trực tuyến/hoạt động tốt từ bảng này.
+              Đây là lịch sử sử dụng đã lưu; không dùng bảng này để kết luận nhà cung cấp đang hoạt động tốt ở thời điểm hiện tại.
             </div>
           </section>
 
@@ -312,7 +291,7 @@ export default function SystemPage() {
                 </div>
                 <div className={styles.refList}>
                   {summary.delegation_usage.length === 0 ? (
-                    <span>Chưa có dữ liệu thực thi giao việc.</span>
+                    <span>Chưa có dữ liệu giao việc cho tác nhân.</span>
                   ) : (
                     summary.delegation_usage.map((row) => (
                       <span key={row.key + ":" + row.status}>
