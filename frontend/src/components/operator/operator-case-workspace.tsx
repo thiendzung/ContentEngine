@@ -162,7 +162,7 @@ function AngleCard({
       >
         <span className="angle-choice" aria-hidden="true">{selected ? "●" : "○"}</span>
         <span>
-          <small>Góc {candidate.angle_id}</small>
+          <small>Phương án góc tiếp cận</small>
           <strong>{candidate.working_title}</strong>
         </span>
       </button>
@@ -199,6 +199,7 @@ function AngleCard({
       <details className="operator-technical-details">
         <summary>Nguồn & liên kết kỹ thuật</summary>
         <dl>
+          <div><dt>Mã góc</dt><dd>{candidate.angle_id}</dd></div>
           <div><dt>Mã băm ứng viên</dt><dd>{candidate.candidate_hash}</dd></div>
           <div><dt>Bằng chứng</dt><dd>{candidate.evidence_refs.join(", ")}</dd></div>
           <div><dt>Tư liệu MOTGU</dt><dd>{candidate.originality_refs.join(", ")}</dd></div>
@@ -931,11 +932,20 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <span className="label">Cam kết phạm vi</span>
               <ul>
                 {view.coverage_requirements.map((item) => (
-                  <li key={item.id}>
-                    <strong>{item.id}</strong>: {item.requirement}
-                  </li>
+                  <li key={item.id}>{item.requirement}</li>
                 ))}
               </ul>
+              <details className="operator-technical-details">
+                <summary>Mã cam kết phạm vi</summary>
+                <dl>
+                  {view.coverage_requirements.map((item) => (
+                    <div key={item.id}>
+                      <dt>{item.id}</dt>
+                      <dd>{item.requirement}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
             </div>
           )}
         </div>
@@ -1171,10 +1181,11 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   <span className={`writer-lane-status ${lane.status}`}>{operatorWriterLaneStatusLabel(lane.status)}</span>
                 </div>
                 <p>Lượt chạy: {lane.attempt ?? "—"}</p>
-                {lane.draft_artifact_id && <p>Bản nháp: {shortId(lane.draft_artifact_id)} · v{lane.draft_version}</p>}
+                {lane.draft_artifact_id && <p>Bản nháp v{lane.draft_version ?? "—"} đã sẵn sàng.</p>}
                 <details className="operator-technical-details">
                   <summary>Liên kết kỹ thuật</summary>
                   <dl>
+                    <div><dt>Tài liệu bản nháp</dt><dd>{lane.draft_artifact_id ?? "—"}</dd></div>
                     <div><dt>Lượt chạy</dt><dd>{lane.run_id ?? "—"}</dd></div>
                     <div><dt>Bước chạy</dt><dd>{lane.step_run_id ?? "—"}</dd></div>
                     <div><dt>Công việc</dt><dd>{lane.job_id ?? "—"}</dd></div>
