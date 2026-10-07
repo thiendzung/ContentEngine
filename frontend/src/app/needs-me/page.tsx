@@ -7,7 +7,7 @@ import {
   loadNeedsMe,
   type NeedsMeItem,
 } from "../../lib/api/control-center";
-import { uiStatusLabel } from "../../lib/ui/presentation-labels";
+import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
