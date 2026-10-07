@@ -37,8 +37,8 @@ Non-goals: P4 business/technical information hierarchy, P5 Production Board dens
 P6 global visual/design-system polish, backend/API/schema/DB/provider/model changes.
 
 P3 task slices:
-- [ ] **P3-00 / #380 — Language foundation** — ACTIVE: split shared Vietnamese render labels into direct-import domain modules; no visible behavior change.
-- [ ] **P3-01 / #381 — Core operations**: Overview + Needs Me + Production.
+- [x] **P3-00 / #380 — Language foundation** — DONE: direct-import Vietnamese render modules; CI #2405 frontend lint/typecheck PASS.
+- [ ] **P3-01 / #381 — Core operations** — ACTIVE: Overview + Needs Me + Production.
 - [ ] **P3-02 / #382 — Customer map**: Audience/Need/Insight/Journey presentation.
 - [ ] **P3-03 / #383 — Content planning**: Content Map + Question Map presentation.
 - [ ] **P3-04 / #384 — Learning**: candidate/evidence/review/application/validation/resolution presentation.
