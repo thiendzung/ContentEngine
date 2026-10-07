@@ -13,6 +13,88 @@ export function operatorStatusLabel(status: OperatorStatus): string {
   return labels[status];
 }
 
+export function operatorWriterLaneStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: "Chờ xếp hàng",
+    queued: "Đang chờ tác nhân",
+    running: "Đang viết",
+    completed: "Đã có bản nháp",
+    failed: "Lỗi — chỉ luồng này được thử lại",
+  };
+  return labels[status] ?? status;
+}
+
+export function operatorQualityStageLabel(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "final_gate_ready") return "Sẵn sàng duyệt cuối";
+  if (normalized.includes("review")) return "Rà soát & chỉnh sửa";
+  if (normalized.includes("audit")) return "Kiểm tra khẳng định";
+  if (normalized.includes("source_copy")) return "Kiểm tra trùng nguồn";
+  if (normalized.includes("reader_value")) return "Kiểm tra giá trị cho người đọc";
+  if (normalized.includes("search_ai")) return "Kiểm tra SEO / AI";
+  if (normalized.includes("failed")) return "Bị chặn";
+  if (normalized.includes("queued")) return "Đang chờ tác nhân";
+  if (normalized.includes("running")) return "Đang kiểm tra";
+  return status;
+}
+
+export function operatorQualityResultLabel(value: string | null): string {
+  if (!value) return "Đang chờ";
+  const normalized = value.toLowerCase();
+  if (normalized === "pass") return "Đạt";
+  if (normalized === "warn") return "Cảnh báo";
+  if (normalized === "fail") return "Không đạt";
+  return value;
+}
+
+export function operatorReviewStateLabel(value: string): string {
+  const labels: Record<string, string> = {
+    PASS: "Đạt",
+    WARN: "Cảnh báo",
+    FAIL: "Không đạt",
+    PENDING: "Đang chờ",
+    CONSISTENT: "Nhất quán",
+    INCONSISTENT: "Không nhất quán",
+    NOT_PUBLISHED: "Chưa xuất bản",
+    PUBLISHED: "Đã xuất bản",
+    APPROVED_NOT_PUBLISHED: "Đã duyệt · chưa xuất bản",
+    AWAITING_FOUNDER_APPROVAL: "Chờ duyệt cuối",
+  };
+  return labels[value] ?? value;
+}
+
+export function operatorNextActionLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "Approved; publishing not authorized": "Đã duyệt; chưa cho phép xuất bản",
+    "Awaiting Founder final approval": "Đang chờ Người sáng lập duyệt nội dung cuối",
+    "Review current content": "Cần xem và duyệt nội dung hiện tại",
+    "Current bytes are blocked by quality gates": "Nội dung hiện tại chưa qua kiểm tra chất lượng",
+    "Resolve conflicting persisted bindings": "Cần xử lý dữ liệu liên kết không nhất quán",
+    "Content is not ready for review": "Nội dung chưa sẵn sàng để duyệt",
+    "Founder đã yêu cầu sửa": "Người sáng lập đã yêu cầu sửa",
+    "Founder đã từ chối": "Người sáng lập đã từ chối",
+    Published: "Đã xuất bản",
+  };
+  return labels[value] ?? value;
+}
+
+export function operatorQualityAuthorityLabel(value: string): string {
+  const labels: Record<string, string> = {
+    deterministic: "Luật cố định",
+    upstream_gate: "Cổng kiểm tra trước",
+    semantic_model: "Mô hình ngữ nghĩa",
+  };
+  return labels[value] ?? value;
+}
+
+export function operatorLocaleRoleLabel(value: string): string {
+  const labels: Record<string, string> = {
+    source: "Ngôn ngữ nguồn",
+    translation: "Bản dịch",
+  };
+  return labels[value] ?? value;
+}
+
 export function operatorPhaseLabel(phase: string): string {
   const normalized = phase.toLowerCase();
   const labels: Record<string, string> = {
@@ -70,8 +152,8 @@ export function preflightDetail(check: PreflightCheck): string {
     journal_angle_model_route_invalid: "Cấu hình định tuyến của mô hình góc tiếp cận không hợp lệ.",
     journal_angle_provider_not_allowed: "Góc tiếp cận hiện không được định tuyến qua Codex CLI.",
     journal_angle_model_unresolved: "Mô hình góc tiếp cận chưa được chọn chính thức.",
-    active_prompt_missing: "Chưa có prompt góc tiếp cận đang hoạt động.",
-    active_prompt_duplicate: "Có nhiều prompt góc tiếp cận hoạt động cùng lúc.",
+    active_prompt_missing: "Chưa có chỉ dẫn góc tiếp cận đang hoạt động.",
+    active_prompt_duplicate: "Có nhiều chỉ dẫn góc tiếp cận hoạt động cùng lúc.",
   };
   if (details[check.detail]) return details[check.detail];
   if (check.detail.includes("active_recipe_missing")) {
