@@ -37,8 +37,8 @@ function shortId(value: string | null): string {
 }
 
 function localeLabel(value: string): string {
-  if (value === "vi" || value === "vi-VN") return "VI";
-  if (value === "en") return "EN";
+  if (value === "vi" || value === "vi-VN") return "Tiếng Việt";
+  if (value === "en") return "Tiếng Anh";
   return value.toUpperCase();
 }
 
@@ -497,7 +497,7 @@ function FinalLocaleCard({
             </button>
           </div>
           <p className="operator-note">
-            F6-MINI chỉ mở đường duyệt luồng bình thường. Yêu cầu sửa sẽ được triển khai cùng F5.2.
+            Giai đoạn hiện tại chỉ mở đường duyệt luồng bình thường. Yêu cầu sửa sẽ được triển khai cùng F5.2.
           </p>
         </section>
       )}
@@ -541,7 +541,7 @@ function ProgressStrip({
     { label: "Tiếp nhận", done: true },
     { label: "Góc tiếp cận", done: angleDone },
     { label: "Dàn ý", done: outlineDone },
-    { label: "VI / EN", done: writersDone || qualityDone },
+    { label: "Việt / Anh", done: writersDone || qualityDone },
     { label: "Chất lượng", done: qualityDone },
     { label: "Duyệt cuối", done: finalDone },
   ];
@@ -1026,7 +1026,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             <strong>Quy trình đã hoàn tất</strong>
             <p>
               {reviewStateLabel(review.next_action)} · {reviewStateLabel(review.publication_state)}.
-              Không có quyền xuất bản trong F6-MINI.
+              Giai đoạn hiện tại chưa có quyền xuất bản.
             </p>
           </div>
         )}
