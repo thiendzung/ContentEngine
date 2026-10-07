@@ -24,7 +24,8 @@ Current child slice:
 - P3-04 / #384 — DONE; exact head `96f6fdc614a296975dd524cd2a360a93d0ee7286`, CI #2427 frontend lint/typecheck PASS;
 - P3-05 / #385 — DONE; exact head `f2a81510b42b29fbc9db76041dc5ac91dd203600`, CI #2431 frontend lint/typecheck PASS;
 - P3-06 / #386 — DONE; exact head `ae871526ef1da20bae0efd94fc095186a511a72e`, CI #2437 frontend lint/typecheck PASS;
-- P3-07 / #387 — ACTIVE: legacy review surface + terminology audit.
+- P3-07 / #387 — DONE; exact head `1c53340eef0d5d3daa6e254fa89fa0b16753252f`, CI #2439 frontend lint/typecheck PASS;
+- P3-08 / #388 — ACTIVE: final exact-SHA verification and P3 closeout.
 
 UI-P3 scope:
 - make normal Founder-facing page titles, section labels, buttons, badges, states, errors and recovery copy consistently Vietnamese;
