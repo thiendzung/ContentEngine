@@ -39,8 +39,8 @@ P6 global visual/design-system polish, backend/API/schema/DB/provider/model chan
 P3 task slices:
 - [x] **P3-00 / #380 — Language foundation** — DONE: direct-import Vietnamese render modules; CI #2405 frontend lint/typecheck PASS.
 - [x] **P3-01 / #381 — Core operations** — DONE: Overview + Needs Me + Production; CI #2412 frontend lint/typecheck PASS.
-- [ ] **P3-02 / #382 — Customer map** — ACTIVE: nhóm khách hàng/nhu cầu/nhận định/hành trình/ảnh chụp.
-- [ ] **P3-03 / #383 — Content planning**: Content Map + Question Map presentation.
+- [x] **P3-02 / #382 — Customer map** — DONE: nhóm khách hàng/nhu cầu/nhận định/hành trình/ảnh chụp; CI #2415 frontend lint/typecheck PASS.
+- [ ] **P3-03 / #383 — Content planning** — ACTIVE: Content Map + Question Map presentation.
 - [ ] **P3-04 / #384 — Learning**: candidate/evidence/review/application/validation/resolution presentation.
 - [ ] **P3-05 / #385 — System**: System + Daily Digest presentation.
 - [ ] **P3-06 / #386 — Journal Operator**: intake/preflight/workspace/quality/final-review presentation.
