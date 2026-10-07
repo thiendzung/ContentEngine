@@ -7,6 +7,7 @@ import {
   type DailyDigest,
   type DigestEvent,
 } from "../../lib/api/ux-closeout";
+import { founderDomainLabel, founderStatusLabel } from "../../lib/ui-labels";
 import styles from "../ux-closeout.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -50,15 +51,7 @@ function formatDate(value: string): string {
 }
 
 function domainLabel(domain: DigestEvent["domain"]): string {
-  const labels: Record<DigestEvent["domain"], string> = {
-    customer: "Customer",
-    content: "Content",
-    production: "Production",
-    publication: "Publication",
-    measurement: "Measurement",
-    learning: "Learning",
-  };
-  return labels[domain];
+  return founderDomainLabel(domain);
 }
 
 export default function DailyDigestPage() {
@@ -85,7 +78,7 @@ export default function DailyDigestPage() {
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(nextError instanceof Error ? nextError.message : "Không thể tải Daily Digest.");
+          setError(nextError instanceof Error ? nextError.message : "Không thể tải tóm tắt trong ngày.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -127,11 +120,11 @@ export default function DailyDigestPage() {
     <main className={styles.page} aria-busy={loading}>
       <header className={styles.header}>
         <div>
-          <p className="eyebrow">ContentEngine · Daily Digest</p>
+          <p className="eyebrow">ContentEngine · Tóm tắt trong ngày</p>
           <h1>Những gì đã thay đổi</h1>
           <p className="intro">
-            Báo cáo deterministic theo cửa sổ ngày địa phương. Chỉ ghi durable facts;
-            không kích hoạt Deep Research và không biến measurement correlation thành nguyên nhân.
+            Báo cáo xác định theo ngày địa phương. Chỉ ghi nhận sự kiện bền vững;
+            không kích hoạt nghiên cứu sâu và không biến tương quan đo lường thành quan hệ nhân quả.
           </p>
         </div>
         <div className={styles.digestToolbar}>
@@ -152,7 +145,7 @@ export default function DailyDigestPage() {
       </header>
 
       {loading && !digest ? (
-        <div className={styles.notice} role="status" aria-live="polite">Đang dựng Daily Digest…</div>
+        <div className={styles.notice} role="status" aria-live="polite">Đang dựng tóm tắt trong ngày…</div>
       ) : null}
       {error ? <div className={styles.error} role="alert">{error}</div> : null}
       {stale ? <div className={styles.stale} role="status" aria-live="polite">{stale}</div> : null}
@@ -160,11 +153,11 @@ export default function DailyDigestPage() {
       {digest ? (
         <>
           <div className={styles.semanticStrip}>
-            <span className={styles.badge}>Window: {formatDate(digest.window_start)} → {formatDate(digest.window_end)}</span>
-            <span className={styles.badge}>Timezone: {digest.timezone}</span>
-            <span className={styles.badge}>Coverage bên phải = current snapshot</span>
-            <span className={styles.badge}>Measurement ≠ causal proof</span>
-            <span className={styles.badge}>Không chạy research</span>
+            <span className={styles.badge}>Khoảng thời gian: {formatDate(digest.window_start)} → {formatDate(digest.window_end)}</span>
+            <span className={styles.badge}>Múi giờ: {digest.timezone}</span>
+            <span className={styles.badge}>Độ phủ bên phải = snapshot hiện tại</span>
+            <span className={styles.badge}>Đo lường ≠ bằng chứng nhân quả</span>
+            <span className={styles.badge}>Không chạy nghiên cứu</span>
           </div>
 
           <div className={styles.metricGrid}>
@@ -176,7 +169,7 @@ export default function DailyDigestPage() {
             ))}
           </div>
 
-          <div className={styles.filters} aria-label="Lọc digest theo domain">
+          <div className={styles.filters} aria-label="Lọc tóm tắt theo nhóm dữ liệu">
             {DOMAINS.map((item) => (
               <button
                 type="button"
@@ -194,14 +187,14 @@ export default function DailyDigestPage() {
             <section className={styles.section}>
               <div className={styles.sectionHeader}>
                 <div>
-                  <p className="eyebrow">Durable event stream</p>
+                  <p className="eyebrow">Dòng sự kiện bền vững</p>
                   <h2>{visibleEvents.length + " sự kiện"}</h2>
                 </div>
               </div>
 
               {visibleEvents.length === 0 ? (
                 <div className={styles.empty} role="status">
-                  Không có durable event trong filter/window này.
+                  Không có sự kiện bền vững trong bộ lọc và khoảng thời gian này.
                 </div>
               ) : (
                 <div className={styles.digestList}>
@@ -215,7 +208,7 @@ export default function DailyDigestPage() {
                         <strong>{event.summary}</strong>
                         <div className={styles.refList}>
                           <span>{event.entity_type + " · " + event.entity_id}</span>
-                          {event.status ? <span>{"Status · " + event.status}</span> : null}
+                          {event.status ? <span>{"Trạng thái · " + founderStatusLabel(event.status)}</span> : null}
                           {event.refs.map((ref, index) => <span key={ref + ":" + index}>{ref}</span>)}
                         </div>
                       </div>
@@ -228,16 +221,16 @@ export default function DailyDigestPage() {
 
             <aside className={styles.coveragePanel}>
               <article className={styles.systemCard}>
-                <p className="eyebrow">Current snapshot — not change history</p>
-                <h2>Content Coverage hiện tại</h2>
+                <p className="eyebrow">Snapshot hiện tại — không phải lịch sử thay đổi</p>
+                <h2>Độ phủ nội dung hiện tại</h2>
                 <p>
                   Các số dưới đây được tính tại lúc đọc digest. Không được diễn giải là
-                  lane đã chuyển trạng thái trong ngày này.
+                  nhóm nội dung đã chuyển trạng thái trong ngày này.
                 </p>
                 <div className={styles.coverageCounts}>
                   {Object.entries(digest.current_coverage_counts).map(([key, value]) => (
                     <div className={styles.coverageRow} key={key}>
-                      <span>{key}</span>
+                      <span>{founderStatusLabel(key)}</span>
                       <strong>{value}</strong>
                     </div>
                   ))}
