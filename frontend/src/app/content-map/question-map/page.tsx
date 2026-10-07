@@ -642,6 +642,16 @@ export default function QuestionMapFounderPage() {
     setPromise("");
     setRequirementsText("");
     setSuccessMessage("");
+    setStaleMessage("");
+    setActiveOpportunityId("");
+    setRoute(null);
+    setAdmission(null);
+    setPreviewValid(false);
+    setIdempotencyKey("");
+    setHandoffResult(null);
+    setMergeSurvivorId("");
+    setMergeReason("");
+    setMergeConfirmed(false);
   }
 
   function renderSelectedOpportunity(opportunity: SelectedOpportunity) {
