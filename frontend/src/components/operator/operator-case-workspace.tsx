@@ -142,6 +142,21 @@ function reviewStateLabel(value: string): string {
   return labels[value] ?? value;
 }
 
+function nextActionLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "Approved; publishing not authorized": "Đã duyệt; chưa cho phép xuất bản",
+    "Awaiting Founder final approval": "Đang chờ Người sáng lập duyệt nội dung cuối",
+    "Review current content": "Cần xem và duyệt nội dung hiện tại",
+    "Current bytes are blocked by quality gates": "Nội dung hiện tại chưa qua kiểm tra chất lượng",
+    "Resolve conflicting persisted bindings": "Cần xử lý dữ liệu liên kết không nhất quán",
+    "Content is not ready for review": "Nội dung chưa sẵn sàng để duyệt",
+    "Founder đã yêu cầu sửa": "Người sáng lập đã yêu cầu sửa",
+    "Founder đã từ chối": "Người sáng lập đã từ chối",
+    Published: "Đã xuất bản",
+  };
+  return labels[value] ?? value;
+}
+
 function outlineString(outline: Record<string, unknown>, key: string): string | null {
   const value = outline[key];
   return typeof value === "string" ? value : null;
@@ -344,7 +359,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
         <details className="operator-technical-details">
           <summary>Chất lượng chuyên sâu · 12 chiều</summary>
           <p className="operator-note">
-            Verdict được tổng hợp theo pass / warn / fail; không dùng điểm số, trọng số hoặc phần trăm chất lượng.
+            Kết luận được tổng hợp theo đạt / cảnh báo / không đạt; không dùng điểm số, trọng số hoặc phần trăm chất lượng.
           </p>
           <div className="warnings">
             {lane.deep_quality.dimensions.map((dimension) => (
@@ -354,7 +369,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
                 </p>
                 <p>{dimension.finding}</p>
                 {dimension.remediation && <p>Sửa: {dimension.remediation}</p>}
-                <small>{dimension.provenance_refs.length} provenance ref</small>
+                <small>{dimension.provenance_refs.length} tham chiếu nguồn gốc</small>
               </div>
             ))}
           </div>
@@ -383,7 +398,7 @@ function QualityLaneCard({ lane }: { lane: QualityLane }) {
         </section>
       )}
       <details className="operator-technical-details">
-        <summary>Binding chất lượng</summary>
+        <summary>Liên kết chất lượng</summary>
         <dl>
           <div><dt>Lượt viết</dt><dd>{lane.writer_run_id ?? "—"}</dd></div>
           <div><dt>Bản nháp đã chỉnh sửa</dt><dd>{lane.revised_draft?.id ?? "—"}</dd></div>
@@ -479,7 +494,7 @@ function FinalLocaleCard({
 
       <div className="next-action-inline">
         <strong>{reviewStateLabel(panel.next_action)}</strong>
-        <span>{panel.next_action_label}</span>
+        <span>{nextActionLabel(panel.next_action_label)}</span>
       </div>
 
       {canApprove && (
@@ -497,7 +512,7 @@ function FinalLocaleCard({
             </button>
           </div>
           <p className="operator-note">
-            F6-MINI chỉ mở đường duyệt normal path. Yêu cầu sửa sẽ được triển khai cùng F5.2.
+            F6-MINI chỉ mở đường duyệt luồng bình thường. Yêu cầu sửa sẽ được triển khai cùng F5.2.
           </p>
         </section>
       )}
