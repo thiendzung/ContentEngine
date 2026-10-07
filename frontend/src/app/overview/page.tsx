@@ -13,6 +13,7 @@ import {
   type DailyDigest,
   loadDailyDigest,
 } from "../../lib/api/ux-closeout";
+import { uiStatusLabel } from "../../lib/ui-labels";
 import styles from "./control-center.module.css";
 
 const PROJECT_SLUG = "motgu";
@@ -49,8 +50,8 @@ function typeLabel(type: NeedsMeItem["type"]): string {
     content_approval: "Duyệt nội dung",
     publish_authorization: "Cho phép xuất bản",
     policy_gate: "Cổng chính sách",
-    learning_candidate_review: "Duyệt learning candidate",
-    learning_resolution: "Xử lý learning validation",
+    learning_candidate_review: "Duyệt đề xuất học từ dữ liệu",
+    learning_resolution: "Xử lý xác minh học từ dữ liệu",
   };
   return labels[type];
 }
