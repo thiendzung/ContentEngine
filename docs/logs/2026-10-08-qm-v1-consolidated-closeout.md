@@ -80,6 +80,12 @@ QM-01A  canonical Question Map read model
 | UI-P5 | #397 / PR #403 | merged |
 | UI-P6 | #404 / PR #410 | merged |
 
+## Scope boundary
+
+QM-02F / #361 is the Question Map Golden E2E: Search/Question Map/Architecture/Founder decision/route/admission/materialization.
+
+It does **not** close the broader ContentEngine E2E-01 / #201 loop. #201 remains separate/open because it covers the full production/publish/measurement/learning closed loop.
+
 ## Canonical invariants retained
 
 1. Question Map is a derived planning projection, not an independent truth store.
