@@ -71,11 +71,44 @@ This track extends the proven Journal foundation. It does not erase M1-M4, autho
 | 10 | UX-01 | Control Center + Living Map UI | Overview/Customers/Content Map/Production/Needs Me/Learning/System |
 | 11 | E2E-01 | Real closed-loop pilot | One real case completes the full loop without case-specific bypass |
 
-Founder UI priority — 2026-10-08:
-- E2E-01/#361 Golden E2E is complete and closed;
-- UI-P1 / PR #373 through UI-P5 / PR #403 are complete and merged;
-- active slice is bounded `UI-P6 / #404`: global visual system + Founder UI polish;
-- P6 is presentation-only: no workflow/data/backend expansion.
+Question Map / Founder UI closeout — 2026-10-08:
+- QM-01A/B/C/D derived planning chain is complete;
+- QM-02A/B/C/D1 plus F1 readiness/search/architecture remediation are complete;
+- QM-02D2 UPDATE/REFRESH and QM-02D3 MERGE handoffs are complete;
+- QM-02E Founder UI is complete;
+- QM-02F / #361 Golden E2E is CLOSED with `PASS_QM02_GOLDEN_CLOSEOUT`;
+- UI-P1 / PR #373 through UI-P6 / PR #410 are complete and merged;
+- Question Map V1 is now maintenance-only: no new QM implementation is implied by this roadmap;
+- reopen QM only for a demonstrated defect, real-data learning, or an explicit Founder product decision.
+
+### Question Map V1 consolidated chain — CLOSED
+
+```text
+QM-01A  canonical Question Map read model
+→ QM-01B locale-aware classification + answer-job clustering
+→ QM-01C Content Coverage join
+→ QM-01D read-only Opportunity Planner
+→ QM-02A explicit Founder selection handoff
+→ QM-02B deterministic production route
+→ QM-02C read-only admission
+→ QM-02D1 CREATE handoff
+→ F1R0/R1/R2/R3 two-axis readiness + architecture + bounded real Search
+→ F1C architecture checkpoint
+→ QM-02D2 UPDATE / REFRESH
+→ QM-02D3 MERGE reconciliation
+→ QM-02E Founder UI
+→ QM-02F Golden E2E
+→ UI-P1..P6 Founder operating polish
+```
+
+Final invariants:
+- Question Map is derived planning, not a second Customer Truth or keyword truth store;
+- Customer Truth confidence and Content Readiness remain separate;
+- Search/PAA/Related/Autocomplete are planning signals, not factual Evidence;
+- Founder selection remains explicit;
+- route/admission/materialization remain backend-authoritative and fail closed;
+- CREATE/UPDATE/REFRESH/MERGE do not auto-Start/Writer/Publish;
+- future QM changes require demonstrated evidence, not roadmap momentum.
 
 Execution rules:
 - ARCH-21 is docs/contracts only.
