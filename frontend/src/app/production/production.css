@@ -406,6 +406,15 @@
     align-items: flex-start;
   }
 
+  .production-page .production-group-header {
+    position: static;
+  }
+
+  .production-filter-empty {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .production-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
