@@ -101,6 +101,10 @@ QM-01A  canonical Question Map read model
 → UI-P1..P6 Founder operating polish
 ```
 
+Boundary note:
+- QM-02F / #361 proves the **Question Map planning-to-materialization Golden E2E**.
+- It does **not** close the broader ContentEngine E2E-01 / #201 loop that includes real production, publish, measurement and learning; #201 remains a separate track.
+
 Final invariants:
 - Question Map is derived planning, not a second Customer Truth or keyword truth store;
 - Customer Truth confidence and Content Readiness remain separate;
@@ -111,7 +115,7 @@ Final invariants:
 - future QM changes require demonstrated evidence, not roadmap momentum.
 
 Execution rules:
-- ARCH-21 is docs/contracts only.
-- CT-01 is the first code slice after Founder merges ARCH-21.
-- Do not interleave new schema/runtime mutation with an active F7 content execution.
+- The ARCH-21 -> CT-01 -> ... sequence above is retained as architecture/history, not a current QM task queue.
+- Question Map V1 is closed; do not restart from historical unchecked boxes.
+- Do not interleave new schema/runtime mutation with an active content execution.
 - WIP stays one implementation plus one related verification.
