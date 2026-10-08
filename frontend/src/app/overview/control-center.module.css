@@ -1,7 +1,7 @@
 .page {
   max-width: 1380px;
   margin: 0 auto;
-  padding: 48px 28px 88px;
+  padding: var(--page-top) var(--page-gutter) var(--page-bottom);
 }
 
 .header {
@@ -17,7 +17,7 @@
 }
 
 .commandPanel {
-  border: 1px solid #c8c0b4;
+  border: 1px solid var(--color-border);
   background: rgba(255, 252, 246, .78);
   padding: 16px;
 }
@@ -42,7 +42,7 @@
 }
 
 .commandMeta span {
-  color: #756e64;
+  color: var(--color-muted);
   font: 700 .62rem Arial, sans-serif;
   letter-spacing: .07em;
   text-transform: uppercase;
@@ -55,7 +55,7 @@
 
 .commandNote {
   margin: 12px 0 0;
-  color: #756e64;
+  color: var(--color-muted);
   font-size: .82rem;
 }
 
@@ -70,9 +70,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #312f2a;
+  border: 1px solid var(--color-ink-strong);
   background: transparent;
-  color: #312f2a;
+  color: var(--color-ink-strong);
   padding: 9px 12px;
   min-height: 40px;
   font: 700 .72rem Arial, sans-serif;
@@ -85,8 +85,8 @@
 .linkButton:focus-visible,
 .needsLink:focus-visible,
 .disclosure summary:focus-visible {
-  outline: 3px solid #2e5367;
-  outline-offset: 3px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .button:disabled {
@@ -98,7 +98,7 @@
 .error,
 .empty,
 .stale {
-  border: 1px solid #c8c0b4;
+  border: 1px solid var(--color-border);
   background: rgba(255, 252, 246, .75);
   padding: 14px 16px;
   margin: 12px 0;
@@ -106,7 +106,7 @@
 
 .notice {
   border-left: 3px solid #7c766d;
-  color: #625d55;
+  color: var(--color-muted-strong);
 }
 
 .error {
@@ -118,7 +118,7 @@
 .stale {
   border-color: #caa977;
   background: #fbf2e3;
-  color: #674b20;
+  color: var(--color-warning-text);
 }
 
 .section {
@@ -139,7 +139,7 @@
 }
 
 .prioritySection {
-  border: 1px solid #aaa196;
+  border: 1px solid var(--color-border-strong);
   background: rgba(255, 252, 246, .9);
   padding: 20px;
 }
@@ -161,14 +161,14 @@
 }
 
 .countCard {
-  border: 1px solid #c8c0b4;
+  border: 1px solid var(--color-border);
   background: rgba(255, 252, 246, .72);
   padding: 15px;
 }
 
 .countCard span {
   display: block;
-  color: #756e64;
+  color: var(--color-muted);
   font: 700 .62rem Arial, sans-serif;
   letter-spacing: .07em;
   text-transform: uppercase;
@@ -189,8 +189,8 @@
 }
 
 .card {
-  border: 1px solid #c8c0b4;
-  background: #fffdf8;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-strong);
   padding: 16px;
 }
 
@@ -205,30 +205,30 @@
 .badgeWarn,
 .badgeDanger {
   display: inline-flex;
-  border: 1px solid #aaa196;
+  border: 1px solid var(--color-border-strong);
   padding: 5px 8px;
   font: 700 .64rem Arial, sans-serif;
   letter-spacing: .05em;
-  background: #ece8e1;
+  background: var(--color-surface-muted);
   color: #5e5a54;
 }
 
 .badgeWarn {
-  border-color: #a88145;
-  background: #f5ead6;
-  color: #674b20;
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .badgeDanger {
-  border-color: #a35e4e;
-  background: #f6e5df;
-  color: #71382d;
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .needsLink {
   display: inline-flex;
   margin-top: 12px;
-  color: #2e5367;
+  color: var(--color-focus);
   font-weight: 700;
 }
 
@@ -239,7 +239,7 @@
 }
 
 .meta {
-  color: #756e64;
+  color: var(--color-muted);
   font: .74rem Arial, sans-serif;
   overflow-wrap: anywhere;
 }
@@ -249,12 +249,12 @@
   gap: 4px;
   margin-top: 8px;
   font: .74rem Arial, sans-serif;
-  color: #655f56;
+  color: var(--color-muted-strong);
   overflow-wrap: anywhere;
 }
 
 .disclosure {
-  border-top: 1px solid #ddd4c8;
+  border-top: 1px solid var(--color-border-soft);
   margin-top: 12px;
   padding-top: 10px;
 }
