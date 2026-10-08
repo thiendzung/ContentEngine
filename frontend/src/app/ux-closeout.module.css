@@ -64,7 +64,7 @@
 .stale,
 .empty {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .74);
+  background: var(--color-surface);
   padding: 14px 16px;
   margin: 12px 0;
 }
@@ -95,7 +95,7 @@
 
 .metric {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 13px 14px;
 }
 
@@ -167,7 +167,7 @@
 .systemCard,
 .digestCard {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .75);
+  background: var(--color-surface);
 }
 
 .sidebar {
@@ -186,14 +186,14 @@
 .listButton {
   width: 100%;
   text-align: left;
-  border-color: #d2cabf;
+  border-color: var(--color-border-soft);
 }
 
 .listButtonActive,
 .listButton:hover:not(:disabled),
 .filterButton:hover:not(:disabled) {
   border-color: var(--color-ink-strong);
-  background: #ece5da;
+  background: var(--color-selected-bg);
 }
 
 .listButton strong,
@@ -344,7 +344,7 @@
 
 .healthCard {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 13px;
 }
 
@@ -364,7 +364,7 @@
 .tableWrap {
   overflow-x: auto;
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
 }
 
 .table {
