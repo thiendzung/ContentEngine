@@ -10,6 +10,10 @@
   --color-surface-strong: #fffdf8;
   --color-surface-soft: #f7f2e9;
   --color-surface-muted: #ece8e1;
+  --color-selected-bg: #ece5da;
+  --color-hover-bg: #f0eae1;
+  --color-panel-warm: #f7f1e7;
+  --color-technical: #485b65;
   --color-ink: #1f201d;
   --color-ink-strong: #312f2a;
   --color-text: #544f49;
