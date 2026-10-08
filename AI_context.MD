@@ -8,6 +8,8 @@ Live GitHub state:
 - bounded real Search + deterministic Pillar/Cluster architecture: DONE;
 - CREATE / UPDATE / REFRESH / MERGE Golden E2E: DONE / #361 CLOSED;
 - Founder UI P1 through P6: DONE / merged;
+- QM-02F / #361 closes Question Map planning-to-materialization only;
+- full ContentEngine E2E-01 / #201 remains a separate open track;
 - current main: `0754306bf4c6d1ec539db5e57e896c20aeba4bad`.
 
 Question Map is now maintenance-only.
