@@ -52,7 +52,7 @@
 }
 
 .production-summary-card:hover {
-  border-color: #847b70;
+  border-color: var(--color-muted);
   background: var(--color-surface-soft);
 }
 
@@ -65,7 +65,7 @@
 .production-summary-card span,
 .production-summary-card small {
   display: block;
-  color: #71695f;
+  color: var(--color-muted);
   font: .66rem/1.25 var(--font-ui);
 }
 
@@ -103,7 +103,7 @@
 }
 
 .production-filter > span {
-  color: #71695f;
+  color: var(--color-muted);
   font: 700 .61rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
@@ -224,7 +224,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 5px 9px;
-  color: #746d64;
+  color: var(--color-muted);
   font: .64rem/1.25 var(--font-ui);
 }
 
@@ -261,7 +261,7 @@
 }
 
 .production-check small {
-  color: #746d64;
+  color: var(--color-muted);
   font: .61rem/1.2 var(--font-ui);
 }
 
@@ -326,7 +326,7 @@
 }
 
 .production-technical-details dt {
-  color: #847b70;
+  color: var(--color-muted);
   font-size: .58rem;
 }
 
