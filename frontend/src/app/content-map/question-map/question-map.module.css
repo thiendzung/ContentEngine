@@ -57,7 +57,7 @@
 
 .summaryCard {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 13px;
 }
 
@@ -166,7 +166,7 @@
 .questions summary {
   cursor: pointer;
   font: 700 .75rem var(--font-ui);
-  color: #485b65;
+  color: var(--color-technical);
 }
 
 .questions ul {
@@ -181,8 +181,8 @@
 
 .selectionBox,
 .previewBox {
-  border: 1px solid #b9afa2;
-  background: rgba(255, 252, 246, .9);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-strong);
   margin-top: 16px;
   padding: 16px;
 }
@@ -228,7 +228,7 @@
 }
 
 .routeCell {
-  border: 1px solid #d2cabf;
+  border: 1px solid var(--color-border-soft);
   padding: 10px;
   background: var(--color-surface-strong);
 }
@@ -323,7 +323,7 @@
   gap: 18px;
   align-items: end;
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 18px;
   margin: 18px 0;
 }
@@ -356,7 +356,7 @@
   align-items: flex-start;
   min-width: 0;
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 12px;
 }
 
@@ -374,7 +374,7 @@
   width: 28px;
   height: 28px;
   border: 1px solid #8d8377;
-  background: #f7f1e7;
+  background: var(--color-panel-warm);
   color: #423e38;
   font: 800 .72rem var(--font-ui);
 }
@@ -446,7 +446,7 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   border: 1px solid var(--color-border-strong);
-  background: #f7f1e7;
+  background: var(--color-panel-warm);
   padding: 16px;
 }
 
@@ -562,7 +562,7 @@
 .technicalDetails,
 .planningDetails {
   border: 1px solid #d0c7ba;
-  background: rgba(255, 253, 248, .72);
+  background: var(--color-surface);
 }
 
 .candidateDetails {
@@ -579,7 +579,7 @@
 .technicalDetails summary,
 .planningDetails summary {
   cursor: pointer;
-  color: #485b65;
+  color: var(--color-technical);
   font: 800 .72rem var(--font-ui);
 }
 
@@ -598,7 +598,7 @@
 }
 
 .planningDetailsGrid > div {
-  border: 1px solid #d2cabf;
+  border: 1px solid var(--color-border-soft);
   background: var(--color-surface-strong);
   padding: 10px;
 }
