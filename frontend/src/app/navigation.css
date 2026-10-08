@@ -89,7 +89,7 @@
 }
 
 .global-nav__link--active {
-  border-color: #b9afa2;
+  border-color: var(--color-border-strong);
   border-left-color: var(--color-ink-strong);
   background: var(--color-surface-strong);
   color: var(--color-ink);
