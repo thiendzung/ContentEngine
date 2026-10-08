@@ -7,34 +7,46 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P6 — Global visual system + Founder UI polish — ACTIVE / #404
+## Question Map V1 + Founder UI chain — DONE
 
-Base main:
+Canonical closeout:
+- [x] QM-01A/B/C/D derived planning chain complete.
+- [x] QM-02A explicit Founder selection handoff complete.
+- [x] QM-02B route + QM-02C admission complete.
+- [x] QM-02D1 CREATE handoff complete.
+- [x] F1R0/R1/R2/R3 two-axis readiness, deterministic architecture and bounded real Search complete.
+- [x] F1C architecture checkpoint PASS.
+- [x] QM-02D2 UPDATE / REFRESH complete.
+- [x] QM-02D3 MERGE reconciliation complete.
+- [x] QM-02E Founder UI complete.
+- [x] QM-02F / #361 Golden E2E CLOSED with `PASS_QM02_GOLDEN_CLOSEOUT`.
+- [x] UI-P1 through UI-P6 merged.
+- [x] Stale duplicate parent #337 identified as superseded by #338 and downstream Golden E2E proof.
+- [x] No active QM implementation remains.
+
+Maintenance rule:
+- Question Map stays derived and deterministic.
+- Customer Truth confidence != Content Readiness.
+- Search language != factual Evidence.
+- Founder selection and production handoff remain explicit/fail-closed.
+- Reopen only for a demonstrated defect, real-data learning or explicit Founder decision.
+
+## UI-P6 — Global visual system + Founder UI polish — DONE / #404 / PR #410 MERGED
+
+Base:
 `87273524e18de8ce556293bfd531a1a7adc7ad06`.
+Verified candidate:
+`2ec5b28f03713c1ef9a25acae4d1d3ab7a3e7013`.
+Merged main:
+`0754306bf4c6d1ec539db5e57e896c20aeba4bad`.
 
-Product rule:
-- presentation-only polish;
-- preserve the existing quiet editorial character;
-- shared CSS tokens own common typography/color/spacing/surface/focus/status semantics;
-- no new component framework or CSS-in-JS dependency;
-- no workflow/data/API/backend change;
-- P1-P5 behavior remains invariant.
-
-P6 task slices:
-- [x] **P6-00 / #405 — Visual tokens + global primitives** — IMPLEMENTED: shared font/color/spacing/surface/status/focus tokens; global heading/page rhythm refined.
-- [x] **P6-01 / #406 — Navigation/controls/shared chrome** — IMPLEMENTED: nav, DecisionSummary, controls/status/focus/disclosures harmonized to shared tokens.
-- [x] **P6-02 / #407 — Founder page/module harmonization** — IMPLEMENTED across Overview/Needs Me, Intelligence pages, Question Map, Production, Operator and legacy shared review styles.
-- [ ] **P6-03 / #408 — Responsive/accessibility/visual audit** — ACTIVE.
-- [ ] **P6-04 / #409 — Final exact-SHA verification** — pending P6-03.
-
-Required proof:
-- representative routes at 1366/1440/1920;
-- 390px responsive sanity;
-- shared type/control/status/focus hierarchy visually coherent;
-- no P1-P5 interaction regression;
-- reduced-motion behavior;
-- lint/typecheck/build;
-- exact-ref OCR + Agent Local + CI + MG review.
+- [x] P6-00 visual tokens + global primitives.
+- [x] P6-01 navigation/controls/shared chrome.
+- [x] P6-02 Founder page/module harmonization.
+- [x] P6-03 responsive/accessibility/visual audit.
+- [x] P6-04 exact-SHA final verification.
+- [x] lint/typecheck/build/CSS-token audit/browser/OCR/CI/MG review PASS.
+- [x] Founder merged PR #410.
 
 ## UI-P5 — Production Board desktop operations + density — DONE / #397 / PR #403 MERGED
 
