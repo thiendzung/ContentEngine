@@ -83,7 +83,7 @@
 
 .global-nav__link:hover {
   border-color: #c5bbad;
-  border-left-color: #8c8173;
+  border-left-color: var(--color-border-strong);
   background: var(--color-surface-soft);
   color: #262722;
 }
