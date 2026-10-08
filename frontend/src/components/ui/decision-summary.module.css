@@ -44,7 +44,7 @@
 
 .technicalDetails summary {
   cursor: pointer;
-  color: #485b65;
+  color: var(--color-technical);
   font: 700 .74rem var(--font-ui);
 }
 
