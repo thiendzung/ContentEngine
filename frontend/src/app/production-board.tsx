@@ -185,7 +185,6 @@ export function ProductionBoard({ selectedCaseId, onSelect, refreshToken }: Prop
   const [localeFilter, setLocaleFilter] = useState("ALL");
 
   useEffect(() => {
-    setLoading(true);
     fetch(`${API_BASE_URL}/journal/production-board`)
       .then(async (response) => {
         if (!response.ok) {
