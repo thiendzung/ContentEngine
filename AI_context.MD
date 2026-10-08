@@ -1,45 +1,47 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P4 business-first information hierarchy
+## Current WIP — UI-P5 Production Board desktop operations + density
 
 Live GitHub state:
 - UI-P1 / PR #373 merged;
 - UI-P2 / PR #375 merged;
 - UI-P3 / PR #379 merged;
-- current base main is `3f961ea97bbb6aa42ac718d20fd05ec37f775083`.
+- UI-P4 / PR #396 merged;
+- current base main is `d80a14d2d7b91ef29c9317ca20735017e0c6f85b`.
 
-Founder authorized UI-P4 as the next bounded UX slice.
+Founder authorized UI-P5 as the next bounded UX slice.
 
 Active branch:
-`feat/ui-p4-business-first-hierarchy`
+`feat/ui-p5-production-board-operations`
 
 Tracking:
-#389
+#397
 
 Child slices:
-- P4-00 / #390 — IMPLEMENTED: shared decision-summary presentation primitive;
-- P4-01 / #391 — IMPLEMENTED: Overview + Needs Me;
-- P4-02 / #392 — IMPLEMENTED: Content Map + Question Map;
-- P4-03 / #393 — IMPLEMENTED: Learning + System;
-- P4-04 / #394 — IMPLEMENTED: Journal Operator + final review;
-- P4-05 / #395 — ACTIVE: legacy/read-only audit complete; final exact-SHA verification pending.
+- P5-00 / #398 — DONE: board projection/data honesty contract locked;
+- P5-01 / #399 — IMPLEMENTED: desktop density + six-column operating hierarchy;
+- P5-02 / #400 — IMPLEMENTED: search/status-attention/locale filters + derived counts;
+- P5-03 / #401 — IMPLEMENTED: secondary execution detail + responsive/keyboard treatment;
+- P5-04 / #402 — ACTIVE: exact-SHA final verification pending.
 
-P4 product contract:
-- normal decision surfaces present **Trạng thái → Vì sao → Việc nên làm** first;
-- IDs, hashes, raw enums, backend codes, snapshots and bindings move behind technical disclosure where practical;
-- frontend must not infer missing status/reason/action;
-- actions remain exactly those already exposed/allowed by backend/read models;
-- read-only surfaces may omit an action when none exists;
-- no backend/API/schema/DB/provider/model/publication behavior change;
-- no P5 Production Board density redesign;
-- no P6 global visual-system work.
+P5 product contract:
+- primary target is `/production` at 1440px;
+- board answers status, stage, persisted current worker, recent update and next action quickly;
+- filters/counts are client-side views over the existing read-only projection;
+- “Cần chú ý” means only `BLOCKED + AWAITING_APPROVAL`, explicitly as a derived filter rather than a new backend state;
+- Owner/ETA/deadline/priority/progress/assignee are forbidden unless a future backend contract actually supplies them;
+- coordinator/IDs/raw status values and execution history remain secondary/technical;
+- row navigation remains canonical;
+- no auto-refresh polling;
+- no P6 global design-system work.
 
 Required proof before merge:
-- exact Base → Candidate hygiene;
+- exact Base -> Candidate diff hygiene;
 - frontend lint + typecheck + production build;
-- desktop/narrow browser smoke on changed surfaces;
-- technical disclosure preserves exact identity values;
-- keyboard/focus sanity;
+- 1366/1440/1920 density/browser smoke;
+- 390px responsive + keyboard/focus smoke;
+- filter/count/search correctness against fixture/API rows;
+- row navigation and technical disclosure fidelity;
 - exact-ref OpenCodeReview Delegation Mode;
 - Agent Local exact-SHA verification;
 - minimum GitHub CI;
@@ -66,7 +68,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main before UI-P4: `3f961ea97bbb6aa42ac718d20fd05ec37f775083` (merge PR #379 / UI-P3). QM-02 Golden E2E (#361), UI-P1, UI-P2 and UI-P3 are complete; UI-P4 / #389 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main before UI-P5: `d80a14d2d7b91ef29c9317ca20735017e0c6f85b` (merge PR #396 / UI-P4). QM-02 Golden E2E (#361), UI-P1, UI-P2, UI-P3 and UI-P4 are complete; UI-P5 / #397 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -97,16 +99,16 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #389 / UI-P4 on one exact candidate SHA.
+Complete #397 / UI-P5 on one exact candidate SHA.
 
 Current gate:
-1. freeze one exact P4 candidate;
-2. run frontend lint/typecheck/build and browser/keyboard/narrow verification;
-3. verify technical disclosures preserve exact IDs/hashes/enums/bindings and all fail-closed controls;
-4. run exact-ref OpenCodeReview Delegation Mode + Agent Local verification;
+1. freeze the Production Board implementation;
+2. run lint/typecheck/build;
+3. prove 1440px density, filters/counts, canonical row navigation, 390px accessibility and telemetry honesty;
+4. run exact-ref OpenCodeReview + Agent Local verification;
 5. MG evidence review before Founder merge.
 
-Do not expand into P5 Production Board density or P6 global visual-system work.
+Do not expand into P6 global visual/design-system work.
 
 ## Pilot operating priority — 2026-10-03
 

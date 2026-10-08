@@ -7,29 +7,58 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P4 — Business-first information hierarchy — ACTIVE / #389
+## UI-P5 — Production Board desktop operations + density — ACTIVE / #397
 
 Base main:
-`3f961ea97bbb6aa42ac718d20fd05ec37f775083`.
+`d80a14d2d7b91ef29c9317ca20735017e0c6f85b`.
 
 Product rule:
-- normal decision surfaces lead with **Trạng thái → Vì sao → Việc nên làm**;
-- technical identity/audit detail moves behind explicit disclosure;
-- frontend must not invent status, reason, action or workflow truth;
-- exact API/enum/ID/hash/binding values remain unchanged.
+- desktop 1440px is the primary operating surface;
+- use only fields from `GET /journal/production-board`;
+- no invented Owner / ETA / deadline / priority / progress / assignee;
+- persisted worker telemetry only;
+- board remains read-only and row navigation continues to canonical case/review surfaces.
 
-P4 task slices:
-- [ ] **P4-00 / #390 — Decision-summary foundation** — IMPLEMENTED: shared presentational primitive; final exact-head verification pending.
-- [ ] **P4-01 / #391 — Overview + Needs Me** — IMPLEMENTED: status/reason/action first; raw refs/IDs in technical disclosure.
-- [ ] **P4-02 / #392 — Content planning** — IMPLEMENTED: Content Map + Question Map business-first decisions; route/admission guards unchanged.
-- [ ] **P4-03 / #393 — Learning + System** — IMPLEMENTED: read-only business summaries + technical audit separation.
-- [ ] **P4-04 / #394 — Journal Operator** — IMPLEMENTED: state + final-review decisions business-first; allowed intents/approval bindings unchanged.
-- [ ] **P4-05 / #395 — Legacy/read-only audit + final verification** — ACTIVE: legacy review hierarchy complete; exact-head static/build/browser/OCR/Agent Local/CI pending.
+P5 task slices:
+- [x] **P5-00 / #398 — Operations contract** — existing projection audited; no backend field required.
+- [x] **P5-01 / #399 — Desktop density** — 8 primary columns reduced to 6 operational columns; ID/locale/coordinator clutter demoted.
+- [x] **P5-02 / #400 — Search/filter/counts** — title/stage/action/worker search, status/attention/locale filters, derived board counts.
+- [x] **P5-03 / #401 — Drill-down/responsive/accessibility** — execution detail remains secondary; responsive card layout + focus treatment implemented.
+- [ ] **P5-04 / #402 — Final verification** — lint/typecheck/build/browser/OCR/Agent Local/CI/MG closeout.
+
+Required verification:
+- 1440px board has no horizontal scroll in normal state;
+- 1366/1920 readable;
+- 390px usable without critical horizontal overflow;
+- blocked and awaiting-approval rows can be isolated;
+- filters/counts use only loaded projection data;
+- row navigation unchanged;
+- execution telemetry remains honest;
+- frontend lint/typecheck/build + exact-ref OCR + Agent Local + CI before merge.
 
 Non-goals:
-- no P5 Production Board density redesign;
-- no P6 global visual-system polish;
-- no backend/API/schema/DB/provider/model/publication behavior change.
+- no backend/API/schema/DB/provider/model/publication change;
+- no task-manager fields;
+- no P6 global design-system redesign.
+
+## UI-P4 — Business-first information hierarchy — DONE / #389 / PR #396 MERGED
+
+Base:
+`3f961ea97bbb6aa42ac718d20fd05ec37f775083`.
+Verified candidate:
+`49b511e83e477c702a20b4c82fb4b21febebc796`.
+Merged main:
+`d80a14d2d7b91ef29c9317ca20735017e0c6f85b`.
+
+- [x] P4-00 DecisionSummary foundation.
+- [x] P4-01 Overview + Needs Me.
+- [x] P4-02 Content Map + Question Map.
+- [x] P4-03 Learning + System.
+- [x] P4-04 Journal Operator.
+- [x] P4-05 legacy/read-only audit + final exact-SHA verification.
+- [x] final Operator supported-workspace browser gate PASS.
+- [x] lint/typecheck/build/OCR/CI/Agent Local/MG review PASS.
+- [x] Founder merged PR #396.
 
 ## UI-P3 — Vietnamese Founder-facing terminology — DONE / #378 / PR #379 MERGED
 

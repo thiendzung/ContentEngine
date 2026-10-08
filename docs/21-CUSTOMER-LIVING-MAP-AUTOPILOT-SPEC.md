@@ -436,6 +436,18 @@ Business-first information hierarchy:
 - refactor presentation không được nới fail-closed gate, tạo synthetic deep-link hoặc sinh workflow truth ở frontend;
 - read-only surface có thể nói rõ “không có thao tác trực tiếp” thay vì bịa next action.
 
+Production Board desktop operations contract:
+- `GET /journal/production-board` remains the only data source for the board in P5;
+- 1440px is the primary operating viewport; normal board state must not require horizontal scrolling;
+- primary row hierarchy is content -> stage -> persisted current worker -> quality/consistency -> updated -> next action;
+- raw UUID, coordinator policy and raw status/action identity stay secondary/technical where practical;
+- client-side search/filter/counts may derive views from loaded rows but must not create a new persisted status;
+- “Cần chú ý” is explicitly the union of `BLOCKED` and `AWAITING_APPROVAL`, not a backend state;
+- no Owner, ETA, deadline, priority, assignee or progress percentage may be shown unless the backend later supplies an authoritative field;
+- execution/subagent/Antigravity identity is shown only from persisted telemetry;
+- the board remains read-only; selecting a row continues to open the canonical Operator or legacy review surface;
+- no periodic polling/auto-refresh loop is added in this slice.
+
 Dashboard business và Trung tâm điều hành là hai lớp khác nhau.
 
 Backend cung cấp read model; frontend không tự suy luận truth.
