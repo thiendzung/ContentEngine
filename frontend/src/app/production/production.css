@@ -37,7 +37,7 @@
   grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 7px;
   padding: 12px 14px;
-  border-bottom: 1px solid #d7cfc3;
+  border-bottom: 1px solid var(--color-divider);
   background: #f4efe7;
 }
 
@@ -66,13 +66,13 @@
 .production-summary-card small {
   display: block;
   color: #71695f;
-  font: .66rem/1.25 Arial, sans-serif;
+  font: .66rem/1.25 var(--font-ui);
 }
 
 .production-summary-card strong {
   display: block;
   margin-top: 4px;
-  font: 700 1.08rem/1 Arial, sans-serif;
+  font: 700 1.08rem/1 var(--font-ui);
 }
 
 .production-summary-card small {
@@ -92,7 +92,7 @@
   gap: 10px;
   align-items: end;
   padding: 12px 14px;
-  border-bottom: 1px solid #d7cfc3;
+  border-bottom: 1px solid var(--color-divider);
   background: rgba(255, 253, 248, .8);
 }
 
@@ -104,7 +104,7 @@
 
 .production-filter > span {
   color: #71695f;
-  font: 700 .61rem Arial, sans-serif;
+  font: 700 .61rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -118,7 +118,7 @@
   background: var(--color-surface-strong);
   color: #252620;
   padding: 8px 10px;
-  font: .78rem Arial, sans-serif;
+  font: .78rem var(--font-ui);
 }
 
 .production-filter-result {
@@ -128,7 +128,7 @@
   justify-content: flex-end;
   gap: 10px;
   color: #696158;
-  font: .74rem Arial, sans-serif;
+  font: .74rem var(--font-ui);
 }
 
 .production-filter-result button,
@@ -139,7 +139,7 @@
   color: var(--color-focus);
   padding: 3px 0;
   cursor: pointer;
-  font: 700 .7rem Arial, sans-serif;
+  font: 700 .7rem var(--font-ui);
 }
 
 .production-filter-empty {
@@ -149,7 +149,7 @@
   gap: 18px;
   padding: 20px 16px;
   color: #6f675e;
-  font: .82rem Arial, sans-serif;
+  font: .82rem var(--font-ui);
 }
 
 .production-page .production-table {
@@ -225,7 +225,7 @@
   flex-wrap: wrap;
   gap: 5px 9px;
   color: #746d64;
-  font: .64rem/1.25 Arial, sans-serif;
+  font: .64rem/1.25 var(--font-ui);
 }
 
 .production-content-meta span + span::before {
@@ -257,12 +257,12 @@
 }
 
 .production-check strong {
-  font: 700 .7rem/1.2 Arial, sans-serif;
+  font: 700 .7rem/1.2 var(--font-ui);
 }
 
 .production-check small {
   color: #746d64;
-  font: .61rem/1.2 Arial, sans-serif;
+  font: .61rem/1.2 var(--font-ui);
 }
 
 .production-check-pass {
@@ -299,11 +299,11 @@
   gap: 6px 18px;
   margin-bottom: 8px;
   color: #5f5951;
-  font: .72rem/1.4 Arial, sans-serif;
+  font: .72rem/1.4 var(--font-ui);
 }
 
 .production-technical-details {
-  border-top: 1px solid #d7cfc3;
+  border-top: 1px solid var(--color-divider);
   margin-top: 10px;
   padding-top: 8px;
 }
@@ -311,7 +311,7 @@
 .production-technical-details summary {
   cursor: pointer;
   color: #675f56;
-  font: 700 .67rem Arial, sans-serif;
+  font: 700 .67rem var(--font-ui);
 }
 
 .production-technical-details dl {
@@ -334,7 +334,7 @@
   margin: 3px 0 0;
   overflow-wrap: anywhere;
   color: #4f4a44;
-  font: .7rem/1.35 Arial, sans-serif;
+  font: .7rem/1.35 var(--font-ui);
 }
 
 @media (max-width: 1180px) {
@@ -373,7 +373,7 @@
   .production-page .production-row-main > span[data-label]::before {
     content: attr(data-label);
     color: #81796f;
-    font: 700 .58rem/1.35 Arial, sans-serif;
+    font: 700 .58rem/1.35 var(--font-ui);
     letter-spacing: .05em;
     text-transform: uppercase;
   }
