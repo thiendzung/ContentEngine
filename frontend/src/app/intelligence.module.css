@@ -23,7 +23,7 @@
   border: 1px solid var(--color-ink-strong);
   padding: 8px 12px;
   cursor: pointer;
-  font: 700 .73rem Arial, sans-serif;
+  font: 700 .73rem var(--font-ui);
   letter-spacing: .04em;
   text-decoration: none;
   display: inline-flex;
@@ -76,7 +76,7 @@
 .stat span {
   display: block;
   color: var(--color-muted);
-  font: 700 .64rem Arial, sans-serif;
+  font: 700 .64rem var(--font-ui);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -104,14 +104,14 @@
 }
 
 .error {
-  border-color: #c48e7e;
-  background: #f8e9e4;
-  color: #7d382a;
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .stale {
-  border-color: #caa977;
-  background: #fbf2e3;
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
   color: var(--color-warning-text);
 }
 
@@ -151,7 +151,7 @@
 
 .meta {
   color: var(--color-muted);
-  font: .74rem Arial, sans-serif;
+  font: .74rem var(--font-ui);
   overflow-wrap: anywhere;
 }
 
@@ -186,7 +186,7 @@
   display: block;
   margin-top: 6px;
   color: var(--color-muted);
-  font: .72rem Arial, sans-serif;
+  font: .72rem var(--font-ui);
 }
 
 .badges,
@@ -206,10 +206,10 @@
   align-items: center;
   border: 1px solid #a69f94;
   padding: 5px 8px;
-  font: 700 .65rem Arial, sans-serif;
+  font: 700 .65rem var(--font-ui);
   letter-spacing: .06em;
   background: var(--color-surface-muted);
-  color: #5e5a54;
+  color: var(--color-neutral-text);
 }
 
 .badgePositive {
@@ -256,7 +256,7 @@
 
 .definition dt {
   color: var(--color-muted);
-  font: 700 .66rem Arial, sans-serif;
+  font: 700 .66rem var(--font-ui);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -282,7 +282,7 @@
   gap: 4px;
   margin-top: 8px;
   color: #6b645b;
-  font: .75rem Arial, sans-serif;
+  font: .75rem var(--font-ui);
   overflow-wrap: anywhere;
 }
 
@@ -318,7 +318,7 @@
 .coverageCount span {
   display: block;
   color: var(--color-muted);
-  font: 700 .59rem Arial, sans-serif;
+  font: 700 .59rem var(--font-ui);
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -386,7 +386,7 @@
   color: var(--color-ink-strong);
   padding: 6px 9px;
   cursor: pointer;
-  font: 700 .66rem Arial, sans-serif;
+  font: 700 .66rem var(--font-ui);
 }
 
 .filterButtonActive {
@@ -396,7 +396,7 @@
 }
 
 .hash {
-  font: .7rem Arial, sans-serif;
+  font: .7rem var(--font-ui);
   color: #7a7268;
   overflow-wrap: anywhere;
 }
@@ -433,13 +433,13 @@
 
   .button,
   .buttonSecondary {
-    min-height: 44px;
+    min-height: var(--control-min-height-touch);
   }
 
   .listButton,
   .filterButton,
   .filterButtonActive {
-    min-height: 44px;
+    min-height: var(--control-min-height-touch);
   }
 
   .stats,
