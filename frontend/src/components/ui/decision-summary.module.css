@@ -16,7 +16,7 @@
 
 .label {
   color: var(--color-muted);
-  font: 700 .62rem Arial, sans-serif;
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
   padding-top: 3px;
@@ -45,7 +45,7 @@
 .technicalDetails summary {
   cursor: pointer;
   color: #485b65;
-  font: 700 .74rem Arial, sans-serif;
+  font: 700 .74rem var(--font-ui);
 }
 
 .technicalDetails summary:focus-visible {
@@ -56,7 +56,7 @@
 .technicalBody {
   margin-top: 10px;
   color: var(--color-muted-strong);
-  font: .76rem/1.5 Arial, sans-serif;
+  font: .76rem/1.5 var(--font-ui);
   overflow-wrap: anywhere;
 }
 
