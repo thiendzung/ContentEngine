@@ -1,54 +1,31 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P6 global visual system + Founder UI polish
+## Current WIP — Question Map V1 closed; no active QM implementation
 
 Live GitHub state:
-- UI-P1 / PR #373 merged;
-- UI-P2 / PR #375 merged;
-- UI-P3 / PR #379 merged;
-- UI-P4 / PR #396 merged;
-- UI-P5 / PR #403 merged;
-- current base main is `87273524e18de8ce556293bfd531a1a7adc7ad06`.
+- QM-01 derived planning chain: DONE;
+- QM-02 selection/routing/admission/materialization chain: DONE;
+- bounded real Search + deterministic Pillar/Cluster architecture: DONE;
+- CREATE / UPDATE / REFRESH / MERGE Golden E2E: DONE / #361 CLOSED;
+- Founder UI P1 through P6: DONE / merged;
+- QM-02F / #361 closes Question Map planning-to-materialization only;
+- full ContentEngine E2E-01 / #201 remains a separate open track;
+- current main: `0754306bf4c6d1ec539db5e57e896c20aeba4bad`.
 
-Founder authorized UI-P6 as the next bounded UX slice.
+Question Map is now maintenance-only.
 
-Active branch:
-`feat/ui-p6-global-visual-system`
+Do not open another QM phase merely because the prior sequence finished. A new QM task requires:
+1. a demonstrated defect;
+2. real search/customer/content behavior that invalidates an existing assumption; or
+3. an explicit Founder product decision.
 
-Tracking:
-#404
-
-Child slices:
-- P6-00 / #405 — IMPLEMENTED: global visual tokens + type/page rhythm;
-- P6-01 / #406 — IMPLEMENTED: navigation, controls, status/focus/disclosure chrome;
-- P6-02 / #407 — IMPLEMENTED: page/module harmonization;
-- P6-03 / #408 — ACTIVE: responsive/accessibility/visual audit;
-- P6-04 / #409 — NEXT: final exact-SHA verification.
-
-P6 visual contract:
-- keep the current quiet editorial operating character;
-- use CSS custom properties for shared visual truth rather than page-specific copied hex/font values;
-- serif remains editorial/content hierarchy; sans-serif remains controls/labels/technical UI;
-- status colors have one semantic family across routes;
-- technical detail remains visually secondary but fully accessible;
-- global page gutter and focus ring are shared;
-- no new component library/dependency;
-- no product/workflow/data-contract change;
-- no hidden cleanup of adjacent logic.
-
-Required proof before merge:
-- exact Base -> Candidate hygiene;
-- frontend lint + typecheck + production build;
-- representative Founder route smoke at 1366/1440/1920;
-- 390px narrow smoke;
-- focus/keyboard + reduced-motion sanity;
-- visual consistency audit for typography/panels/buttons/forms/status/disclosures;
-- exact-ref OpenCodeReview Delegation Mode;
-- Agent Local exact-SHA verification;
-- minimum GitHub CI;
-- MG final evidence review.
-
-Founder remains the only merge authority.
+Preserve:
+- Question Map as derived planning;
+- Customer Truth confidence separate from Content Readiness;
+- Search language separate from factual Evidence;
+- explicit Founder selection;
+- backend route/admission/materialization authority;
+- no automatic Start/Writer/Publish.
 
 ## Read first and verify the actual ref
 
@@ -69,7 +46,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main before UI-P6: `87273524e18de8ce556293bfd531a1a7adc7ad06` (merge PR #403 / UI-P5). QM-02 Golden E2E (#361), UI-P1 through UI-P5 are complete; UI-P6 / #404 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main after UI-P6: `0754306bf4c6d1ec539db5e57e896c20aeba4bad` (merge PR #410). QM-02 Golden E2E (#361) and UI-P1 through UI-P6 are complete. Question Map V1 has no active implementation slice; older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -100,16 +77,14 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #404 / UI-P6 as a presentation-only visual-system pass.
+No new Question Map implementation is authorized.
 
-Current gate:
-1. freeze visual tokens + harmonized CSS;
-2. run responsive/accessibility/visual audit;
-3. run lint/typecheck/build;
-4. run exact-ref OpenCodeReview + Agent Local verification;
-5. MG evidence review before Founder merge.
+For ContentEngine, only open new work when it is:
+- a demonstrated blocker to the real content/pilot path;
+- a correctness/security/data-integrity defect;
+- or an explicit Founder decision.
 
-Do not expand P6 into backend/workflow/data-contract or new framework work.
+Do not restart QM roadmap work from stale issue checklists. Historical QM logs remain evidence, not active tasks.
 
 ## Pilot operating priority — 2026-10-03
 

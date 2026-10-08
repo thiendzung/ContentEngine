@@ -417,24 +417,14 @@ Question Map Founder UI dùng decision-cockpit contract:
 - backend tiếp tục là workflow authority; UI không suy ra route/admission/readiness mới.
 
 Business-first information hierarchy:
-- decision surface bình thường ưu tiên theo thứ tự: **Trạng thái -> Vì sao -> Việc nên làm**;
-- “Trạng thái” chỉ render canonical/read-model state hiện có;
-- “Vì sao” chỉ dùng reason/message/guard đã có hoặc mapping trình bày deterministic đã review;
-- “Việc nên làm” chỉ hiển thị action/destination/intent đã được backend/read model cho phép; thiếu action thì nói rõ là chưa có;
-- raw ID/UUID/hash/fingerprint/enum/backend code/snapshot/binding/provider/model/runtime identity không phải primary content và đặt trong technical disclosure khi còn cần audit;
-- technical disclosure giữ nguyên giá trị kỹ thuật; presentation refactor không đổi transport/persistence;
-- refactor UI không được nới fail-closed gate, tạo synthetic deep-link hoặc sinh workflow truth ở frontend;
-- read-only surface có thể nói rõ “không có thao tác trực tiếp” thay vì tự suy ra next action.
-
-Business-first information hierarchy:
 - mọi decision surface bình thường ưu tiên ba câu hỏi theo thứ tự: **Trạng thái -> Vì sao -> Việc nên làm**;
 - “Trạng thái” chỉ render canonical/read-model state hiện có;
 - “Vì sao” chỉ dùng reason/message/guard đã có hoặc mapping trình bày deterministic đã review;
 - “Việc nên làm” chỉ hiển thị action/destination/intent đã thực sự được backend/read model cho phép; thiếu action thì nói rõ là chưa có;
-- raw ID/UUID/hash/fingerprint/enum/backend code/snapshot/binding/provider/model/runtime identity không phải primary content và phải đặt trong technical disclosure khi còn cần audit;
-- technical disclosure không được biến đổi giá trị trước khi gửi ngược về backend;
+- raw ID/UUID/hash/fingerprint/enum/backend code/snapshot/binding/provider/model/runtime identity không phải primary content và đặt trong technical disclosure khi còn cần audit;
+- technical disclosure giữ nguyên exact technical value, không biến đổi trước khi gửi ngược về backend và không đổi transport/persistence;
 - refactor presentation không được nới fail-closed gate, tạo synthetic deep-link hoặc sinh workflow truth ở frontend;
-- read-only surface có thể nói rõ “không có thao tác trực tiếp” thay vì bịa next action.
+- read-only surface có thể nói rõ “không có thao tác trực tiếp” thay vì tự suy ra hoặc bịa next action.
 
 Founder UI visual-system contract:
 - visual tokens in the frontend own shared fonts, palette, spacing, surfaces, borders, status semantics and focus treatment;
