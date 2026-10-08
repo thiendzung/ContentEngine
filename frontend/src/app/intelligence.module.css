@@ -33,7 +33,7 @@
 
 .button {
   background: var(--color-ink-strong);
-  color: #fffdf7;
+  color: var(--color-surface-strong);
 }
 
 .buttonSecondary {
@@ -99,7 +99,7 @@
 }
 
 .notice {
-  border-left: 3px solid #7c766d;
+  border-left: 3px solid var(--color-border-strong);
   color: var(--color-muted-strong);
 }
 
@@ -293,7 +293,7 @@
 }
 
 .change {
-  border-left: 2px solid #b8afa2;
+  border-left: 2px solid var(--color-border-strong);
   padding-left: 10px;
 }
 
@@ -392,12 +392,12 @@
 .filterButtonActive {
   border-color: var(--color-ink-strong);
   background: var(--color-ink-strong);
-  color: #fffdf7;
+  color: var(--color-surface-strong);
 }
 
 .hash {
   font: .7rem var(--font-ui);
-  color: #7a7268;
+  color: var(--color-muted);
   overflow-wrap: anywhere;
 }
 
