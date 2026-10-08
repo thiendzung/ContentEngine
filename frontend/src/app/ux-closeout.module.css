@@ -70,7 +70,7 @@
 }
 
 .notice {
-  border-left: 3px solid #7c766d;
+  border-left: 3px solid var(--color-border-strong);
   color: var(--color-muted-strong);
 }
 
