@@ -23,6 +23,7 @@ Canonical closeout:
 - [x] UI-P1 through UI-P6 merged.
 - [x] Stale duplicate parent #337 identified as superseded by #338 and downstream Golden E2E proof.
 - [x] No active QM implementation remains.
+- [x] Boundary clarified: QM-02F / #361 is not the full ContentEngine E2E-01 / #201; #201 remains separate/open.
 
 Maintenance rule:
 - Question Map stays derived and deterministic.
