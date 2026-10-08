@@ -1,47 +1,48 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — UI-P5 Production Board desktop operations + density
+## Current WIP — UI-P6 global visual system + Founder UI polish
 
 Live GitHub state:
 - UI-P1 / PR #373 merged;
 - UI-P2 / PR #375 merged;
 - UI-P3 / PR #379 merged;
 - UI-P4 / PR #396 merged;
-- current base main is `d80a14d2d7b91ef29c9317ca20735017e0c6f85b`.
+- UI-P5 / PR #403 merged;
+- current base main is `87273524e18de8ce556293bfd531a1a7adc7ad06`.
 
-Founder authorized UI-P5 as the next bounded UX slice.
+Founder authorized UI-P6 as the next bounded UX slice.
 
 Active branch:
-`feat/ui-p5-production-board-operations`
+`feat/ui-p6-global-visual-system`
 
 Tracking:
-#397
+#404
 
 Child slices:
-- P5-00 / #398 — DONE: board projection/data honesty contract locked;
-- P5-01 / #399 — IMPLEMENTED: desktop density + six-column operating hierarchy;
-- P5-02 / #400 — IMPLEMENTED: search/status-attention/locale filters + derived counts;
-- P5-03 / #401 — IMPLEMENTED: secondary execution detail + responsive/keyboard treatment;
-- P5-04 / #402 — ACTIVE: exact-SHA final verification pending.
+- P6-00 / #405 — IMPLEMENTED: global visual tokens + type/page rhythm;
+- P6-01 / #406 — IMPLEMENTED: navigation, controls, status/focus/disclosure chrome;
+- P6-02 / #407 — IMPLEMENTED: page/module harmonization;
+- P6-03 / #408 — ACTIVE: responsive/accessibility/visual audit;
+- P6-04 / #409 — NEXT: final exact-SHA verification.
 
-P5 product contract:
-- primary target is `/production` at 1440px;
-- board answers status, stage, persisted current worker, recent update and next action quickly;
-- filters/counts are client-side views over the existing read-only projection;
-- “Cần chú ý” means only `BLOCKED + AWAITING_APPROVAL`, explicitly as a derived filter rather than a new backend state;
-- Owner/ETA/deadline/priority/progress/assignee are forbidden unless a future backend contract actually supplies them;
-- coordinator/IDs/raw status values and execution history remain secondary/technical;
-- row navigation remains canonical;
-- no auto-refresh polling;
-- no P6 global design-system work.
+P6 visual contract:
+- keep the current quiet editorial operating character;
+- use CSS custom properties for shared visual truth rather than page-specific copied hex/font values;
+- serif remains editorial/content hierarchy; sans-serif remains controls/labels/technical UI;
+- status colors have one semantic family across routes;
+- technical detail remains visually secondary but fully accessible;
+- global page gutter and focus ring are shared;
+- no new component library/dependency;
+- no product/workflow/data-contract change;
+- no hidden cleanup of adjacent logic.
 
 Required proof before merge:
-- exact Base -> Candidate diff hygiene;
+- exact Base -> Candidate hygiene;
 - frontend lint + typecheck + production build;
-- 1366/1440/1920 density/browser smoke;
-- 390px responsive + keyboard/focus smoke;
-- filter/count/search correctness against fixture/API rows;
-- row navigation and technical disclosure fidelity;
+- representative Founder route smoke at 1366/1440/1920;
+- 390px narrow smoke;
+- focus/keyboard + reduced-motion sanity;
+- visual consistency audit for typography/panels/buttons/forms/status/disclosures;
 - exact-ref OpenCodeReview Delegation Mode;
 - Agent Local exact-SHA verification;
 - minimum GitHub CI;
@@ -68,7 +69,7 @@ A GitHub comment or roadmap does not dispatch a local task. Never claim fresh lo
 
 ## Current delivery state
 
-Live GitHub main before UI-P5: `d80a14d2d7b91ef29c9317ca20735017e0c6f85b` (merge PR #396 / UI-P4). QM-02 Golden E2E (#361), UI-P1, UI-P2, UI-P3 and UI-P4 are complete; UI-P5 / #397 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
+Live GitHub main before UI-P6: `87273524e18de8ce556293bfd531a1a7adc7ad06` (merge PR #403 / UI-P5). QM-02 Golden E2E (#361), UI-P1 through UI-P5 are complete; UI-P6 / #404 is the active bounded UX slice. Older delivery-track SHAs below are historical context, not the current repository ref. CQ-01 through CQ-06 are merged. PR #269 is merged and Coverage Support failure diagnostics survive rollback. CQ-07 Attempt 7 failed safely with `insufficient_evidence`; issue #270 remains the reusable approved EvidenceSet remediation. P1 DATA-02 / PR #274, RUN-02 MIN / PR #276 and REC-02 / PR #279 are complete. LOCAL-E2E-01 / PR #280 then retried once on the preserved disposable lineage after Founder authorization: the worker failed safely before Angle with `insufficient_support`, zero ModelCall/ToolCall, no new case, no second retry and no operational/publication mutation. PR #284 now ports the approved locked EvidenceSet reuse path onto current main; old PR #271 is stale/non-mergeable and is superseded by #284. Code migration head is `20260926_0044`; the latest verified operational DB revision is also `20260926_0044`. No further #280 retry, operational migration, publication or Attempt 8 is authorized.
 
 | Phase | State | Meaning |
 |---|---|---|
@@ -99,16 +100,16 @@ Neither authorizes publication.
 
 ## Immediate task
 
-Complete #397 / UI-P5 on one exact candidate SHA.
+Complete #404 / UI-P6 as a presentation-only visual-system pass.
 
 Current gate:
-1. freeze the Production Board implementation;
-2. run lint/typecheck/build;
-3. prove 1440px density, filters/counts, canonical row navigation, 390px accessibility and telemetry honesty;
+1. freeze visual tokens + harmonized CSS;
+2. run responsive/accessibility/visual audit;
+3. run lint/typecheck/build;
 4. run exact-ref OpenCodeReview + Agent Local verification;
 5. MG evidence review before Founder merge.
 
-Do not expand into P6 global visual/design-system work.
+Do not expand P6 into backend/workflow/data-contract or new framework work.
 
 ## Pilot operating priority — 2026-10-03
 

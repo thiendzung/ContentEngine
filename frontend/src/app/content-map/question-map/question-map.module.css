@@ -13,8 +13,8 @@
 
 .field span,
 .fieldLabel {
-  color: #6d665d;
-  font: 700 .66rem Arial, sans-serif;
+  color: var(--color-muted-strong);
+  font: 700 .66rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -23,16 +23,16 @@
 .input,
 .textarea {
   width: 100%;
-  border: 1px solid #aaa196;
-  background: #fffdf8;
-  color: #312f2a;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-strong);
   padding: 9px 10px;
-  font: .88rem Arial, sans-serif;
+  font: .88rem var(--font-ui);
 }
 
 .select,
 .input {
-  min-height: 40px;
+  min-height: var(--control-min-height);
 }
 
 .textarea {
@@ -44,7 +44,7 @@
 .select:focus-visible,
 .input:focus-visible,
 .textarea:focus-visible {
-  outline: 3px solid #2e5367;
+  outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -56,15 +56,15 @@
 }
 
 .summaryCard {
-  border: 1px solid #c8c0b4;
-  background: rgba(255, 252, 246, .72);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   padding: 13px;
 }
 
 .summaryCard span {
   display: block;
-  color: #756e64;
-  font: 700 .61rem Arial, sans-serif;
+  color: var(--color-muted);
+  font: 700 .61rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -84,8 +84,8 @@
 }
 
 .statusCard {
-  border: 1px solid #c8c0b4;
-  background: #fffdf8;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-strong);
   padding: 14px;
 }
 
@@ -105,7 +105,7 @@
 }
 
 .pillar {
-  border: 2px solid #8c8173;
+  border: 2px solid var(--color-border-strong);
   background: #f6f0e6;
   padding: 16px;
 }
@@ -119,8 +119,8 @@
 }
 
 .cluster {
-  border: 1px solid #cfc5b8;
-  background: #fffdf8;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-strong);
   padding: 14px;
 }
 
@@ -146,7 +146,7 @@
 .reasonList {
   margin: 8px 0 0;
   padding-left: 18px;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .86rem;
 }
 
@@ -154,8 +154,8 @@
   display: grid;
   gap: 4px;
   margin-top: 8px;
-  color: #6d665d;
-  font: .73rem Arial, sans-serif;
+  color: var(--color-muted-strong);
+  font: .73rem var(--font-ui);
   overflow-wrap: anywhere;
 }
 
@@ -165,8 +165,8 @@
 
 .questions summary {
   cursor: pointer;
-  font: 700 .75rem Arial, sans-serif;
-  color: #485b65;
+  font: 700 .75rem var(--font-ui);
+  color: var(--color-technical);
 }
 
 .questions ul {
@@ -181,8 +181,8 @@
 
 .selectionBox,
 .previewBox {
-  border: 1px solid #b9afa2;
-  background: rgba(255, 252, 246, .9);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-strong);
   margin-top: 16px;
   padding: 16px;
 }
@@ -211,8 +211,8 @@
 }
 
 .selectedOpportunity {
-  border: 1px solid #d0c7ba;
-  background: #fffdf8;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-strong);
   padding: 12px;
 }
 
@@ -228,15 +228,15 @@
 }
 
 .routeCell {
-  border: 1px solid #d2cabf;
+  border: 1px solid var(--color-border-soft);
   padding: 10px;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
 }
 
 .routeCell span {
   display: block;
-  color: #756e64;
-  font: 700 .61rem Arial, sans-serif;
+  color: var(--color-muted);
+  font: 700 .61rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -256,7 +256,7 @@
 .target {
   border: 1px solid #d4ccbf;
   padding: 10px;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
 }
 
 .target p {
@@ -282,38 +282,38 @@
 }
 
 .success {
-  border: 1px solid #7d9274;
+  border: 1px solid var(--color-positive-border);
   border-left-width: 3px;
-  background: #eaf1e6;
-  color: #33462e;
+  background: var(--color-positive-bg);
+  color: var(--color-positive-text);
   padding: 12px 14px;
   margin: 12px 0;
 }
 
 .warning {
-  border: 1px solid #caa977;
+  border: 1px solid var(--color-warning-border);
   border-left-width: 3px;
-  background: #fbf2e3;
-  color: #674b20;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
   padding: 12px 14px;
   margin: 12px 0;
 }
 
 .muted {
-  color: #756e64;
+  color: var(--color-muted);
   font-size: .82rem;
 }
 
 .hash {
-  color: #756e64;
-  font: .69rem Arial, sans-serif;
+  color: var(--color-muted);
+  font: .69rem var(--font-ui);
   overflow-wrap: anywhere;
 }
 
 .emptyTree {
-  border: 1px dashed #b8afa2;
+  border: 1px dashed var(--color-border-strong);
   padding: 16px;
-  color: #756e64;
+  color: var(--color-muted);
 }
 
 
@@ -322,8 +322,8 @@
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
   gap: 18px;
   align-items: end;
-  border: 1px solid #c8c0b4;
-  background: rgba(255, 252, 246, .72);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   padding: 18px;
   margin: 18px 0;
 }
@@ -335,7 +335,7 @@
 
 .problemSetup p {
   margin: 0;
-  color: #655f56;
+  color: var(--color-muted-strong);
 }
 
 .problemSetupFields {
@@ -355,14 +355,14 @@
   gap: 10px;
   align-items: flex-start;
   min-width: 0;
-  border: 1px solid #c8c0b4;
-  background: rgba(255, 252, 246, .72);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   padding: 12px;
 }
 
 .flowItem[data-state="current"] {
   border-color: #6f675d;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
 }
 
 .flowNumber,
@@ -374,37 +374,37 @@
   width: 28px;
   height: 28px;
   border: 1px solid #8d8377;
-  background: #f7f1e7;
+  background: var(--color-panel-warm);
   color: #423e38;
-  font: 800 .72rem Arial, sans-serif;
+  font: 800 .72rem var(--font-ui);
 }
 
 .flowItem[data-state="complete"] .flowNumber,
 .decisionStep[data-state="complete"] .stepNumber {
   background: #35453a;
   border-color: #35453a;
-  color: #fffdf8;
+  color: var(--color-surface-strong);
 }
 
 .flowItem[data-state="current"] .flowNumber,
 .decisionStep[data-state="current"] .stepNumber {
-  background: #312f2a;
-  border-color: #312f2a;
-  color: #fffdf8;
+  background: var(--color-ink-strong);
+  border-color: var(--color-ink-strong);
+  color: var(--color-surface-strong);
 }
 
 .flowItem strong,
 .stepHeader strong {
   display: block;
-  font: 800 .78rem Arial, sans-serif;
+  font: 800 .78rem var(--font-ui);
 }
 
 .flowItem small,
 .stepHeader small {
   display: block;
   margin-top: 4px;
-  color: #716a60;
-  font: .72rem/1.4 Arial, sans-serif;
+  color: var(--color-muted);
+  font: .72rem/1.4 var(--font-ui);
   overflow-wrap: anywhere;
 }
 
@@ -423,7 +423,7 @@
 
 .candidateHint {
   margin: 0 0 12px;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .9rem;
 }
 
@@ -445,8 +445,8 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  border: 1px solid #aaa196;
-  background: #f7f1e7;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-panel-warm);
   padding: 16px;
 }
 
@@ -461,12 +461,12 @@
 
 .decisionPanelHeader p:last-child {
   margin: 0;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .88rem;
 }
 
 .decisionStep {
-  border-top: 1px solid #cfc5b8;
+  border-top: 1px solid var(--color-border-soft);
   padding: 16px 2px;
 }
 
@@ -488,14 +488,14 @@
   display: grid;
   gap: 5px;
   border-left: 3px solid #a89b8b;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
   padding: 10px 12px;
 }
 
 .truthSummary span,
 .selectedCandidateSummary > span {
-  color: #6d665d;
-  font: 700 .65rem Arial, sans-serif;
+  color: var(--color-muted-strong);
+  font: 700 .65rem var(--font-ui);
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -507,7 +507,7 @@
 }
 
 .truthSummary small {
-  color: #756e64;
+  color: var(--color-muted);
   line-height: 1.45;
 }
 
@@ -520,10 +520,10 @@
 
 .stepPrompt {
   margin: 0;
-  border: 1px dashed #b8afa2;
+  border: 1px dashed var(--color-border-strong);
   background: rgba(255, 253, 248, .65);
   padding: 12px;
-  color: #6d665d;
+  color: var(--color-muted-strong);
   font-size: .88rem;
   line-height: 1.5;
 }
@@ -532,14 +532,14 @@
   display: grid;
   gap: 5px;
   border: 1px solid #9dac93;
-  border-left: 3px solid #72806b;
-  background: #edf2e9;
-  color: #34412f;
+  border-left: 3px solid var(--color-positive-border);
+  background: var(--color-positive-bg);
+  color: var(--color-positive-text);
   padding: 11px 12px;
 }
 
 .savedSelectionNote strong {
-  font: 800 .78rem Arial, sans-serif;
+  font: 800 .78rem var(--font-ui);
 }
 
 .savedSelectionNote span {
@@ -554,15 +554,15 @@
 
 .productionStatus p {
   margin: 0;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .86rem;
 }
 
 .candidateDetails,
 .technicalDetails,
 .planningDetails {
-  border: 1px solid #d0c7ba;
-  background: rgba(255, 253, 248, .72);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
 }
 
 .candidateDetails {
@@ -579,15 +579,15 @@
 .technicalDetails summary,
 .planningDetails summary {
   cursor: pointer;
-  color: #485b65;
-  font: 800 .72rem Arial, sans-serif;
+  color: var(--color-technical);
+  font: 800 .72rem var(--font-ui);
 }
 
 .candidateDetails summary:focus-visible,
 .technicalDetails summary:focus-visible,
 .planningDetails summary:focus-visible {
-  outline: 3px solid #2e5367;
-  outline-offset: 3px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .planningDetailsGrid {
@@ -598,15 +598,15 @@
 }
 
 .planningDetailsGrid > div {
-  border: 1px solid #d2cabf;
-  background: #fffdf8;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-strong);
   padding: 10px;
 }
 
 .planningDetailsGrid span {
   display: block;
-  color: #756e64;
-  font: 700 .61rem Arial, sans-serif;
+  color: var(--color-muted);
+  font: 700 .61rem var(--font-ui);
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -625,10 +625,10 @@
 .handoffSuccess {
   display: grid;
   gap: 5px;
-  border: 1px solid #7d9274;
+  border: 1px solid var(--color-positive-border);
   border-left-width: 3px;
-  background: #eaf1e6;
-  color: #33462e;
+  background: var(--color-positive-bg);
+  color: var(--color-positive-text);
   padding: 12px;
 }
 
@@ -638,7 +638,7 @@
 
 .safetyNote {
   margin: 2px 0 0;
-  color: #756e64;
+  color: var(--color-muted);
   font-size: .78rem;
   line-height: 1.45;
 }

@@ -7,39 +7,51 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P5 — Production Board desktop operations + density — ACTIVE / #397
+## UI-P6 — Global visual system + Founder UI polish — ACTIVE / #404
 
 Base main:
-`d80a14d2d7b91ef29c9317ca20735017e0c6f85b`.
+`87273524e18de8ce556293bfd531a1a7adc7ad06`.
 
 Product rule:
-- desktop 1440px is the primary operating surface;
-- use only fields from `GET /journal/production-board`;
-- no invented Owner / ETA / deadline / priority / progress / assignee;
-- persisted worker telemetry only;
-- board remains read-only and row navigation continues to canonical case/review surfaces.
+- presentation-only polish;
+- preserve the existing quiet editorial character;
+- shared CSS tokens own common typography/color/spacing/surface/focus/status semantics;
+- no new component framework or CSS-in-JS dependency;
+- no workflow/data/API/backend change;
+- P1-P5 behavior remains invariant.
 
-P5 task slices:
-- [x] **P5-00 / #398 — Operations contract** — existing projection audited; no backend field required.
-- [x] **P5-01 / #399 — Desktop density** — 8 primary columns reduced to 6 operational columns; ID/locale/coordinator clutter demoted.
-- [x] **P5-02 / #400 — Search/filter/counts** — title/stage/action/worker search, status/attention/locale filters, derived board counts.
-- [x] **P5-03 / #401 — Drill-down/responsive/accessibility** — execution detail remains secondary; responsive card layout + focus treatment implemented.
-- [ ] **P5-04 / #402 — Final verification** — lint/typecheck/build/browser/OCR/Agent Local/CI/MG closeout.
+P6 task slices:
+- [x] **P6-00 / #405 — Visual tokens + global primitives** — IMPLEMENTED: shared font/color/spacing/surface/status/focus tokens; global heading/page rhythm refined.
+- [x] **P6-01 / #406 — Navigation/controls/shared chrome** — IMPLEMENTED: nav, DecisionSummary, controls/status/focus/disclosures harmonized to shared tokens.
+- [x] **P6-02 / #407 — Founder page/module harmonization** — IMPLEMENTED across Overview/Needs Me, Intelligence pages, Question Map, Production, Operator and legacy shared review styles.
+- [ ] **P6-03 / #408 — Responsive/accessibility/visual audit** — ACTIVE.
+- [ ] **P6-04 / #409 — Final exact-SHA verification** — pending P6-03.
 
-Required verification:
-- 1440px board has no horizontal scroll in normal state;
-- 1366/1920 readable;
-- 390px usable without critical horizontal overflow;
-- blocked and awaiting-approval rows can be isolated;
-- filters/counts use only loaded projection data;
-- row navigation unchanged;
-- execution telemetry remains honest;
-- frontend lint/typecheck/build + exact-ref OCR + Agent Local + CI before merge.
+Required proof:
+- representative routes at 1366/1440/1920;
+- 390px responsive sanity;
+- shared type/control/status/focus hierarchy visually coherent;
+- no P1-P5 interaction regression;
+- reduced-motion behavior;
+- lint/typecheck/build;
+- exact-ref OCR + Agent Local + CI + MG review.
 
-Non-goals:
-- no backend/API/schema/DB/provider/model/publication change;
-- no task-manager fields;
-- no P6 global design-system redesign.
+## UI-P5 — Production Board desktop operations + density — DONE / #397 / PR #403 MERGED
+
+Base:
+`d80a14d2d7b91ef29c9317ca20735017e0c6f85b`.
+Verified candidate:
+`56a940e4278f0a3bcc9f8e94fadef6089ff95fd2`.
+Merged main:
+`87273524e18de8ce556293bfd531a1a7adc7ad06`.
+
+- [x] P5-00 operations contract.
+- [x] P5-01 desktop density.
+- [x] P5-02 search/filter/counts.
+- [x] P5-03 drill-down/responsive/accessibility.
+- [x] P5-04 exact-SHA final verification.
+- [x] lint/typecheck/build/browser/OCR/CI/MG review PASS.
+- [x] Founder merged PR #403.
 
 ## UI-P4 — Business-first information hierarchy — DONE / #389 / PR #396 MERGED
 

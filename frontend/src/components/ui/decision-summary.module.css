@@ -15,8 +15,8 @@
 }
 
 .label {
-  color: #756e64;
-  font: 700 .62rem Arial, sans-serif;
+  color: var(--color-muted);
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
   padding-top: 3px;
@@ -37,26 +37,26 @@
 }
 
 .technicalDetails {
-  border-top: 1px solid #ddd4c8;
+  border-top: 1px solid var(--color-border-soft);
   margin-top: 12px;
   padding-top: 10px;
 }
 
 .technicalDetails summary {
   cursor: pointer;
-  color: #485b65;
-  font: 700 .74rem Arial, sans-serif;
+  color: var(--color-technical);
+  font: 700 .74rem var(--font-ui);
 }
 
 .technicalDetails summary:focus-visible {
-  outline: 3px solid #2e5367;
-  outline-offset: 3px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .technicalBody {
   margin-top: 10px;
-  color: #655f56;
-  font: .76rem/1.5 Arial, sans-serif;
+  color: var(--color-muted-strong);
+  font: .76rem/1.5 var(--font-ui);
   overflow-wrap: anywhere;
 }
 

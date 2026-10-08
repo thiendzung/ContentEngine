@@ -73,12 +73,9 @@ This track extends the proven Journal foundation. It does not erase M1-M4, autho
 
 Founder UI priority — 2026-10-08:
 - E2E-01/#361 Golden E2E is complete and closed;
-- UI-P1 / PR #373 is complete and merged;
-- UI-P2 / PR #375 is complete and merged;
-- UI-P3 / PR #379 is complete and merged;
-- UI-P4 / PR #396 is complete and merged;
-- active slice is bounded `UI-P5 / #397`: Production Board desktop operations + density;
-- later UI work remains bounded: P6 global visual system.
+- UI-P1 / PR #373 through UI-P5 / PR #403 are complete and merged;
+- active slice is bounded `UI-P6 / #404`: global visual system + Founder UI polish;
+- P6 is presentation-only: no workflow/data/backend expansion.
 
 Execution rules:
 - ARCH-21 is docs/contracts only.

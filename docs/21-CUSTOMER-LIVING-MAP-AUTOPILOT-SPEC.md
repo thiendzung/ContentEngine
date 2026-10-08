@@ -436,6 +436,17 @@ Business-first information hierarchy:
 - refactor presentation không được nới fail-closed gate, tạo synthetic deep-link hoặc sinh workflow truth ở frontend;
 - read-only surface có thể nói rõ “không có thao tác trực tiếp” thay vì bịa next action.
 
+Founder UI visual-system contract:
+- visual tokens in the frontend own shared fonts, palette, spacing, surfaces, borders, status semantics and focus treatment;
+- serif typography carries editorial/content hierarchy; sans-serif carries controls, labels and technical metadata;
+- Founder routes preserve quiet editorial rhythm instead of adopting a generic SaaS component-library look;
+- page/module CSS may specialize layout, but must consume shared visual tokens for repeated visual semantics;
+- status colors mean the same thing across Overview, Planning, Production, Learning, System and Operator;
+- technical disclosure remains lower visual priority but must stay keyboard reachable and readable;
+- mobile/narrow layouts preserve information/action order instead of merely shrinking desktop chrome;
+- reduced-motion preference disables decorative motion without hiding state;
+- P6 must not change API paths, transport values, guards, actions, workflow authority or persistence.
+
 Production Board desktop operations contract:
 - `GET /journal/production-board` remains the only data source for the board in P5;
 - 1440px is the primary operating viewport; normal board state must not require horizontal scrolling;
