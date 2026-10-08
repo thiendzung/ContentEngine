@@ -107,7 +107,8 @@ It does **not** close the broader ContentEngine E2E-01 / #201 loop. #201 remains
 - add explicit QM V1 closeout to Opportunity Map spec;
 - mark Definition of Done V1 as satisfied by Golden E2E;
 - deduplicate the Business-first hierarchy block in spec 21;
-- close stale #337 as superseded by #338 + downstream exact proof.
+- close stale #337 as superseded by #338 + downstream exact proof;
+- close duplicate UI-P3 trackers #376/#377 as superseded by canonical #378 + merged PR #379.
 
 ## Non-goals
 
