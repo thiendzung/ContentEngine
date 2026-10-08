@@ -7,6 +7,7 @@ import {
   loadNeedsMe,
   type NeedsMeItem,
 } from "../../lib/api/control-center";
+import { DecisionSummary } from "../../components/ui/decision-summary";
 import { needsMeTypeLabel } from "../../lib/ui/vi/core";
 import { uiStatusLabel } from "../../lib/ui/vi/status";
 import styles from "../ux-closeout.module.css";
@@ -100,10 +101,16 @@ export default function NeedsMePage() {
       </header>
 
       <div className={styles.semanticStrip}>
-        <span className={styles.badge}>Nguồn dữ liệu: /control-center/needs-me</span>
-        <span className={styles.badge}>Múi giờ: {timezone}</span>
-        <span className={styles.badge}>Không tự tạo hành động giả</span>
+        <span className={styles.badge}>Chỉ hiển thị hành động hệ thống cho phép</span>
       </div>
+
+      <details className={styles.disclosure}>
+        <summary>Thông tin kỹ thuật trang</summary>
+        <div className={styles.refList}>
+          <span>Nguồn dữ liệu · /control-center/needs-me</span>
+          <span>Múi giờ · {timezone}</span>
+        </div>
+      </details>
 
       {loading && items === null ? (
         <div className={styles.notice} role="status" aria-live="polite">Đang tải hàng đợi xử lý…</div>
@@ -120,52 +127,51 @@ export default function NeedsMePage() {
           <div className={styles.queue}>
             {items.map((item) => (
               <article className={styles.queueCard} key={item.id}>
-                <div className={styles.queueCardTop}>
-                  <div>
-                    <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
-                    <h2>{item.reason}</h2>
-                  </div>
-                  <span className={styles.badgeWarn}>{uiStatusLabel(item.canonical_status)}</span>
-                </div>
-
-                <div className={styles.refList}>
-                  <span>Cập nhật · {formatDate(item.updated_at)}</span>
-                  <span>Đối tượng · {item.destination.entity_id}</span>
-                  <span>Tham chiếu hành động · {item.destination.action_ref}</span>
-                </div>
-
-                {item.destination.href ? (
-                  <div className={styles.inlineActions}>
-                    <Link className={styles.linkButton} href={item.destination.href}>
-                      {item.type === "learning_candidate_review" ||
-                      item.type === "learning_resolution"
-                        ? "Mở Học từ dữ liệu để xem bằng chứng"
-                        : "Mở đúng màn hình xử lý"}
-                    </Link>
-                  </div>
-                ) : (
-                  <div className={styles.notice}>
-                    Hệ thống không cung cấp đích điều hướng. Không tạo liên kết giả.
-                  </div>
-                )}
-
-                <details className={styles.disclosure}>
-                  <summary>Lý do / bằng chứng</summary>
-                  <div className={styles.refList}>
-                    {item.why_refs.length === 0 ? (
-                      <span>Không có tham chiếu lý do.</span>
+                <p className="eyebrow">{needsMeTypeLabel(item.type)}</p>
+                <DecisionSummary
+                  status={
+                    <span className={styles.badgeWarn}>
+                      {uiStatusLabel(item.canonical_status)}
+                    </span>
+                  }
+                  reason={<strong>{item.reason}</strong>}
+                  nextAction={
+                    item.destination.href ? (
+                      <Link className={styles.linkButton} href={item.destination.href}>
+                        {item.type === "learning_candidate_review" ||
+                        item.type === "learning_resolution"
+                          ? "Mở Học từ dữ liệu để xem bằng chứng"
+                          : "Mở đúng màn hình xử lý"}
+                      </Link>
                     ) : (
-                      item.why_refs.map((ref) => <span key={"why:" + ref}>Lý do · {ref}</span>)
-                    )}
-                    {item.evidence_refs.length === 0 ? (
-                      <span>Không có tham chiếu bằng chứng.</span>
-                    ) : (
-                      item.evidence_refs.map((ref) => (
-                        <span key={"evidence:" + ref}>Bằng chứng · {ref}</span>
-                      ))
-                    )}
-                  </div>
-                </details>
+                      <span>Hệ thống không cung cấp đích điều hướng. Không tạo liên kết giả.</span>
+                    )
+                  }
+                  technicalDetails={
+                    <div className={styles.refList}>
+                      <span>Cập nhật · {formatDate(item.updated_at)}</span>
+                      <span>Mã hàng đợi · {item.id}</span>
+                      <span>Đối tượng · {item.destination.entity_id}</span>
+                      <span>Loại đích · {item.destination.kind}</span>
+                      <span>Tham chiếu hành động · {item.destination.action_ref}</span>
+                      <span>Trạng thái gốc · {item.canonical_status}</span>
+                      {item.why_refs.length === 0 ? (
+                        <span>Không có tham chiếu lý do.</span>
+                      ) : (
+                        item.why_refs.map((ref) => (
+                          <span key={"why:" + ref}>Lý do · {ref}</span>
+                        ))
+                      )}
+                      {item.evidence_refs.length === 0 ? (
+                        <span>Không có tham chiếu bằng chứng.</span>
+                      ) : (
+                        item.evidence_refs.map((ref) => (
+                          <span key={"evidence:" + ref}>Bằng chứng · {ref}</span>
+                        ))
+                      )}
+                    </div>
+                  }
+                />
               </article>
             ))}
           </div>

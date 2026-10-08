@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { DecisionSummary } from "../ui/decision-summary";
+
 import {
   approveAngle,
   approveFinalLocale,
@@ -38,10 +40,6 @@ import {
 } from "../../lib/operator/operator-labels";
 
 const POLL_MS = 2500;
-
-function shortId(value: string | null): string {
-  return value ? `${value.slice(0, 8)}…` : "—";
-}
 
 function localeLabel(value: string): string {
   if (value === "vi" || value === "vi-VN") return "VI";
@@ -160,7 +158,7 @@ function AngleCard({
       >
         <span className="angle-choice" aria-hidden="true">{selected ? "●" : "○"}</span>
         <span>
-          <small>Góc {candidate.angle_id}</small>
+          <small>Phương án góc tiếp cận</small>
           <strong>{candidate.working_title}</strong>
         </span>
       </button>
@@ -197,6 +195,7 @@ function AngleCard({
       <details className="operator-technical-details">
         <summary>Nguồn & liên kết kỹ thuật</summary>
         <dl>
+          <div><dt>Mã góc</dt><dd>{candidate.angle_id}</dd></div>
           <div><dt>Mã băm ứng viên</dt><dd>{candidate.candidate_hash}</dd></div>
           <div><dt>Bằng chứng</dt><dd>{candidate.evidence_refs.join(", ")}</dd></div>
           <div><dt>Tư liệu MOTGU</dt><dd>{candidate.originality_refs.join(", ")}</dd></div>
@@ -383,15 +382,36 @@ function FinalLocaleCard({
           <p className="eyebrow">{localeLabel(panel.locale)}</p>
           <h2>{panel.article?.title ?? "Chưa có nội dung cuối"}</h2>
         </div>
-        <div className="header-badges">
-          <span className={`badge badge-${panel.quality_state.toLowerCase()}`}>
-            {operatorReviewStateLabel(panel.quality_state)}
-          </span>
-          <span className={`badge badge-${panel.publication_state.toLowerCase().replaceAll("_", "-")}`}>
-            {operatorReviewStateLabel(panel.publication_state)}
-          </span>
-        </div>
       </header>
+
+      <DecisionSummary
+        status={
+          <span className={`badge badge-${panel.next_action.toLowerCase().replaceAll("_", "-")}`}>
+            {operatorReviewStateLabel(panel.next_action)}
+          </span>
+        }
+        reason={
+          <span>
+            Chất lượng: {operatorReviewStateLabel(panel.quality_state)} · Xuất bản:{" "}
+            {operatorReviewStateLabel(panel.publication_state)}.
+          </span>
+        }
+        nextAction={
+          <span>
+            {canApprove
+              ? "Xem nội dung và dùng cổng quyết định của Người sáng lập ở cuối thẻ."
+              : operatorNextActionLabel(panel.next_action_label)}
+          </span>
+        }
+        technicalDetails={
+          <dl>
+            <div><dt>Hành động gốc</dt><dd>{panel.next_action}</dd></div>
+            <div><dt>Nhãn hành động gốc</dt><dd>{panel.next_action_label}</dd></div>
+            <div><dt>Trạng thái chất lượng gốc</dt><dd>{panel.quality_state}</dd></div>
+            <div><dt>Trạng thái xuất bản gốc</dt><dd>{panel.publication_state}</dd></div>
+          </dl>
+        }
+      />
 
       {panel.article ? (
         <div className="article-copy">
@@ -436,11 +456,6 @@ function FinalLocaleCard({
           ))}
         </section>
       )}
-
-      <div className="next-action-inline">
-        <strong>{operatorReviewStateLabel(panel.next_action)}</strong>
-        <span>{operatorNextActionLabel(panel.next_action_label)}</span>
-      </div>
 
       {canApprove && (
         <section className="review-decision-panel">
@@ -837,6 +852,61 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         })
     : [];
 
+  const stateReason = reconcileRequired
+    ? "Ảnh chụp đang hiển thị có thể đã cũ; mọi thao tác mới bị khóa cho tới khi đối soát thành công."
+    : state.status === "BLOCKED"
+      ? (state.blocker_message ?? "Quy trình đang bị chặn.")
+      : state.status === "QUEUED"
+        ? "Tác vụ đã được xếp vào hàng đợi và đang chờ tác nhân."
+        : state.status === "RUNNING"
+          ? "Hệ thống đang xử lý bước hiện tại."
+          : state.status === "AWAITING_APPROVAL"
+            ? `Đang chờ ${humanGateLabel(state.human_gate)}.`
+            : state.status === "COMPLETE" && review
+              ? `${operatorReviewStateLabel(review.next_action)} · ${operatorReviewStateLabel(review.publication_state)}.`
+              : `Giai đoạn hiện tại: ${operatorPhaseLabel(state.phase)}.`;
+
+  const stateNextAction = reconcileRequired ? (
+    <button
+      className="operator-button secondary"
+      disabled={loading || submitting}
+      onClick={() => void refresh()}
+      type="button"
+    >
+      {loading ? "Đang đối soát…" : "Đối soát lại"}
+    </button>
+  ) : canStart || canContinue ? (
+    <button
+      className="operator-button primary"
+      disabled={submitting}
+      onClick={() => void submitIntent(canStart ? "start" : "continue")}
+      type="button"
+    >
+      {submitting ? "Đang gửi…" : canStart ? "Bắt đầu" : "Tiếp tục"}
+    </button>
+  ) : state.status === "BLOCKED" ? (
+    canRetry ? (
+      <button
+        className="operator-button secondary"
+        disabled={submitting}
+        onClick={() => void submitIntent("retry")}
+        type="button"
+      >
+        Thử lại
+      </button>
+    ) : (
+      <span>{blockerAction(state)}</span>
+    )
+  ) : ["QUEUED", "RUNNING"].includes(state.status) ? (
+    <span>Chờ trạng thái mới; trang tự cập nhật khi tác vụ đang chạy.</span>
+  ) : state.status === "AWAITING_APPROVAL" ? (
+    <span>Thực hiện cổng duyệt đang hiển thị ngay bên dưới.</span>
+  ) : state.status === "COMPLETE" ? (
+    <span>Không có quyền xuất bản trong F6-MINI; xuất bản là một cổng riêng.</span>
+  ) : (
+    <span>Hệ thống chưa cung cấp hành động trực tiếp cho trạng thái này.</span>
+  );
+
   return (
     <main className="operator-page">
       <header className="operator-case-header">
@@ -858,11 +928,20 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               <span className="label">Cam kết phạm vi</span>
               <ul>
                 {view.coverage_requirements.map((item) => (
-                  <li key={item.id}>
-                    <strong>{item.id}</strong>: {item.requirement}
-                  </li>
+                  <li key={item.id}>{item.requirement}</li>
                 ))}
               </ul>
+              <details className="operator-technical-details">
+                <summary>Mã cam kết phạm vi</summary>
+                <dl>
+                  {view.coverage_requirements.map((item) => (
+                    <div key={item.id}>
+                      <dt>{item.id}</dt>
+                      <dd>{item.requirement}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
             </div>
           )}
         </div>
@@ -915,8 +994,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <section className="operator-panel state-panel">
         <div className="operator-panel-heading">
           <div>
-            <p className="eyebrow">Trạng thái chuẩn</p>
-            <h2>{operatorStatusLabel(state.status)}</h2>
+            <p className="eyebrow">Quyết định vận hành</p>
+            <h2>Trạng thái hiện tại</h2>
           </div>
           <div className="operator-refresh-control">
             <small>Lần tải chuẩn gần nhất: {lastSuccessfulRefreshLabel}</small>
@@ -930,78 +1009,28 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
             </button>
           </div>
         </div>
-        <div className="state-grid">
-          <div><span>Giai đoạn</span><strong>{operatorPhaseLabel(state.phase)}</strong></div>
-          <div><span>Cổng duyệt</span><strong>{humanGateLabel(state.human_gate)}</strong></div>
-          <div><span>Lượt chạy</span><strong>{shortId(state.current_run_id)}</strong></div>
-          <div><span>Bước chạy</span><strong>{shortId(state.current_step_run_id)}</strong></div>
-        </div>
 
-        {(canStart || canContinue) && (
-          <div className="operator-primary-action">
-            <div>
-              <strong>{canStart ? "Bắt đầu sản xuất" : "Tiếp tục bước an toàn tiếp theo"}</strong>
-              <p>
-                Hệ thống tự quyết giai đoạn/nhà cung cấp/mô hình từ trạng thái bền vững; giao diện chỉ gửi ý định {canStart ? "Bắt đầu" : "Tiếp tục"}.
-              </p>
-            </div>
-            <button
-              className="operator-button primary"
-              disabled={submitting}
-              onClick={() => void submitIntent(canStart ? "start" : "continue")}
-              type="button"
-            >
-              {submitting ? "Đang gửi…" : canStart ? "Bắt đầu" : "Tiếp tục"}
-            </button>
-          </div>
-        )}
-
-        {["QUEUED", "RUNNING"].includes(state.status) && (
-          <div className="operator-running-state">
-            <span className="activity-pulse" aria-hidden="true" />
-            <div>
-              <strong>{state.status === "QUEUED" ? "Đang chờ tác nhân" : "Đang xử lý"}</strong>
-              <p>Trang tự cập nhật trạng thái khi đang chạy. Tải lại trình duyệt không tạo lệnh mới.</p>
-            </div>
-          </div>
-        )}
-
-        {state.status === "BLOCKED" && (
-          <div className="operator-blocker">
-            <div>
-              <strong>{state.blocker_message ?? "Quy trình đang bị chặn."}</strong>
-              <p>{blockerAction(state)}</p>
-            </div>
-            {canRetry && (
-              <button
-                className="operator-button secondary"
-                disabled={submitting}
-                onClick={() => void submitIntent("retry")}
-                type="button"
-              >
-                Thử lại
-              </button>
-            )}
-          </div>
-        )}
-
-        {state.status === "COMPLETE" && review && (
-          <div className="operator-complete-state">
-            <strong>Quy trình đã hoàn tất</strong>
-            <p>
-              {operatorReviewStateLabel(review.next_action)} · {operatorReviewStateLabel(review.publication_state)}.
-              Không có quyền xuất bản trong F6-MINI.
-            </p>
-          </div>
-        )}
-
-        <details className="operator-technical-details">
-          <summary>Điểm kiểm tra & phiên bản trạng thái</summary>
-          <dl>
-            <div><dt>Phiên bản trạng thái</dt><dd>{state.state_version}</dd></div>
-            <div><dt>Điểm kiểm tra</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
-          </dl>
-        </details>
+        <DecisionSummary
+          status={
+            <span className={`operator-state-badge ${state.status.toLowerCase()}`}>
+              {operatorStatusLabel(state.status)}
+            </span>
+          }
+          reason={<span>{stateReason}</span>}
+          nextAction={stateNextAction}
+          technicalDetails={
+            <dl>
+              <div><dt>Trạng thái gốc</dt><dd>{state.status}</dd></div>
+              <div><dt>Giai đoạn gốc</dt><dd>{state.phase}</dd></div>
+              <div><dt>Cổng duyệt gốc</dt><dd>{state.human_gate ?? "—"}</dd></div>
+              <div><dt>Lượt chạy</dt><dd>{state.current_run_id ?? "—"}</dd></div>
+              <div><dt>Bước chạy</dt><dd>{state.current_step_run_id ?? "—"}</dd></div>
+              <div><dt>Ý định được phép</dt><dd>{state.allowed_intents.join(", ") || "—"}</dd></div>
+              <div><dt>Phiên bản trạng thái</dt><dd>{state.state_version}</dd></div>
+              <div><dt>Điểm kiểm tra</dt><dd>{state.last_checkpoint ?? "—"}</dd></div>
+            </dl>
+          }
+        />
       </section>
 
       {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
@@ -1148,10 +1177,11 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
                   <span className={`writer-lane-status ${lane.status}`}>{operatorWriterLaneStatusLabel(lane.status)}</span>
                 </div>
                 <p>Lượt chạy: {lane.attempt ?? "—"}</p>
-                {lane.draft_artifact_id && <p>Bản nháp: {shortId(lane.draft_artifact_id)} · v{lane.draft_version}</p>}
+                {lane.draft_artifact_id && <p>Bản nháp v{lane.draft_version ?? "—"} đã sẵn sàng.</p>}
                 <details className="operator-technical-details">
                   <summary>Liên kết kỹ thuật</summary>
                   <dl>
+                    <div><dt>Tài liệu bản nháp</dt><dd>{lane.draft_artifact_id ?? "—"}</dd></div>
                     <div><dt>Lượt chạy</dt><dd>{lane.run_id ?? "—"}</dd></div>
                     <div><dt>Bước chạy</dt><dd>{lane.step_run_id ?? "—"}</dd></div>
                     <div><dt>Công việc</dt><dd>{lane.job_id ?? "—"}</dd></div>

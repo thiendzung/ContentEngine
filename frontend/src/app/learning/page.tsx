@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import { DecisionSummary } from "../../components/ui/decision-summary";
+
 import {
   type LearningCandidate,
-  type LearningEvidenceItem,
   loadLearningOverview,
   type LearningOverview,
 } from "../../lib/api/ux-closeout";
@@ -79,6 +80,13 @@ function statusClass(value: string): string {
 }
 
 function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
+  const reasonSummary =
+    candidate.missing_evidence.length > 0
+      ? `Còn ${candidate.missing_evidence.length} khoảng trống bằng chứng được ghi nhận.`
+      : candidate.alternative_explanations.length > 0
+        ? `Có ${candidate.alternative_explanations.length} giải thích thay thế cần cân nhắc.`
+        : "Hệ thống chưa ghi nhận khoảng trống bằng chứng hoặc giải thích thay thế riêng.";
+
   return (
     <div className={styles.panel}>
       <div className={styles.sectionHeader}>
@@ -86,10 +94,36 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
           <p className="eyebrow">Đề xuất học từ dữ liệu · lớp diễn giải</p>
           <h2>{candidate.statement}</h2>
         </div>
-        <span className={statusClass(candidate.evidence_status)}>
-          {learningStatusLabel(candidate.evidence_status)}
-        </span>
       </div>
+
+      <DecisionSummary
+        status={
+          <span className={statusClass(candidate.evidence_status)}>
+            {learningStatusLabel(candidate.evidence_status)}
+          </span>
+        }
+        reason={<span>{reasonSummary}</span>}
+        nextAction={
+          <span>
+            Xem bằng chứng và vòng đời duyệt bên dưới. Màn hình này chỉ đọc trạng thái,
+            không tự ghi quyết định.
+          </span>
+        }
+        technicalDetails={
+          <div className={styles.refList}>
+            <span>{"Mã đề xuất · " + candidate.id}</span>
+            <span>{"Khóa đề xuất · " + candidate.candidate_key}</span>
+            <span>{"Loại đối tượng gốc · " + candidate.target_type}</span>
+            <span>{"Mã đối tượng · " + (candidate.target_id ?? "không có")}</span>
+            <span>{"Trạng thái bằng chứng gốc · " + candidate.evidence_status}</span>
+            <span>{"Trạng thái đề xuất gốc · " + candidate.status}</span>
+            <span>{"Đánh giá nguồn · " + candidate.source_assessment_artifact_id}</span>
+            <span>{"Thay thế · " + (candidate.supersedes_id ?? "không có")}</span>
+            <span className={styles.codeText}>{"Đề xuất · " + JSON.stringify(candidate.proposal)}</span>
+            <span className={styles.codeText}>{"Phạm vi · " + JSON.stringify(candidate.scope)}</span>
+          </div>
+        }
+      />
 
       <div className={styles.notice}>
         Đề xuất này là diễn giải cần người duyệt, chưa phải Sự thật khách hàng. Bằng chứng thực tế
@@ -98,10 +132,7 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
 
       <dl className={styles.definition}>
         <dt>Đối tượng</dt>
-        <dd>
-          {learningTargetLabel(candidate.target_type)}
-          {candidate.target_id ? " · " + candidate.target_id : ""}
-        </dd>
+        <dd>{learningTargetLabel(candidate.target_type)}</dd>
         <dt>Quan hệ</dt>
         <dd>{learningRelationLabel(candidate.relation)}</dd>
         <dt>Phiên bản / trạng thái</dt>
@@ -163,12 +194,21 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                   ) : null}
                 </div>
                 <div className={styles.refList}>
-                  <span>{"Mã · " + item.id}</span>
                   {item.source_kind ? <span>{"Nguồn · " + learningSourceKindLabel(item.source_kind)}</span> : null}
                   {item.status ? <span>{"Trạng thái · " + learningStatusLabel(item.status)}</span> : null}
                   {item.occurred_at ? <span>{"Quan sát lúc · " + formatDate(item.occurred_at)}</span> : null}
-                  {item.content_hash ? <span>{"Mã băm · " + item.content_hash}</span> : null}
                 </div>
+                <details className={styles.disclosure}>
+                  <summary>Chi tiết kỹ thuật</summary>
+                  <div className={styles.refList}>
+                    <span>{"Mã · " + item.id}</span>
+                    {item.content_hash ? <span>{"Mã băm · " + item.content_hash}</span> : null}
+                    <span>{"Loại bằng chứng gốc · " + item.kind}</span>
+                    {item.relation ? <span>{"Quan hệ gốc · " + item.relation}</span> : null}
+                    {item.source_kind ? <span>{"Loại nguồn gốc · " + item.source_kind}</span> : null}
+                    {item.status ? <span>{"Trạng thái gốc · " + item.status}</span> : null}
+                  </div>
+                </details>
               </article>
             ))}
           </div>
@@ -196,8 +236,14 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                 <div className={styles.refList}>
                   <span>{"Người duyệt · " + candidate.review.reviewed_by}</span>
                   <span>{"Lúc · " + formatDate(candidate.review.reviewed_at)}</span>
-                  <span>{"Ảnh chụp đề xuất · " + candidate.review.candidate_snapshot_hash}</span>
                 </div>
+                <details className={styles.disclosure}>
+                  <summary>Chi tiết kỹ thuật</summary>
+                  <div className={styles.refList}>
+                    <span>{"Ảnh chụp đề xuất · " + candidate.review.candidate_snapshot_hash}</span>
+                    <span>{"Quyết định gốc · " + candidate.review.decision}</span>
+                  </div>
+                </details>
               </>
             ) : (
               <p>Chưa có biên nhận duyệt đã được lưu bền vững.</p>
@@ -220,15 +266,22 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                   " · " +
                   learningTargetLabel(candidate.application.target_type)}</p>
                 <div className={styles.refList}>
-                  <span>{"Biên nhận · " + candidate.application.id}</span>
                   <span>{"Người áp dụng · " + candidate.application.applied_by}</span>
                   <span>{"Lúc · " + formatDate(candidate.application.applied_at)}</span>
-                  <span>{"Đối tượng sau áp dụng · " + (candidate.application.resulting_target_id ?? "không có")}</span>
-                  <span>
-                    {"Tài liệu ảnh chụp Bản đồ khách hàng · " +
-                      (candidate.application.customer_map_snapshot_artifact_id ?? "không có")}
-                  </span>
                 </div>
+                <details className={styles.disclosure}>
+                  <summary>Chi tiết kỹ thuật</summary>
+                  <div className={styles.refList}>
+                    <span>{"Biên nhận · " + candidate.application.id}</span>
+                    <span>{"Hành động gốc · " + candidate.application.applied_action}</span>
+                    <span>{"Loại đối tượng gốc · " + candidate.application.target_type}</span>
+                    <span>{"Đối tượng sau áp dụng · " + (candidate.application.resulting_target_id ?? "không có")}</span>
+                    <span>
+                      {"Tài liệu ảnh chụp Bản đồ khách hàng · " +
+                        (candidate.application.customer_map_snapshot_artifact_id ?? "không có")}
+                    </span>
+                  </div>
+                </details>
               </>
             ) : (
               <p>Chưa có biên nhận áp dụng bất biến. Không kết luận Sự thật khách hàng đã thay đổi.</p>
@@ -253,11 +306,18 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                   </span>
                 </div>
                 <div className={styles.refList}>
-                  <span>{"Dấu vân tay · " + validation.validation_fingerprint}</span>
                   <span>{"Nhóm bằng chứng độc lập · " + validation.independent_evidence_groups.length}</span>
-                  <span>{"Tham chiếu kiểm chứng · " + validation.validation_signal_refs.length}</span>
                   <span>{"So sánh chỉ số · " + validation.metric_comparisons.length}</span>
                 </div>
+                <details className={styles.disclosure}>
+                  <summary>Chi tiết kỹ thuật</summary>
+                  <div className={styles.refList}>
+                    <span>{"Mã kiểm chứng · " + validation.id}</span>
+                    <span>{"Dấu vân tay · " + validation.validation_fingerprint}</span>
+                    <span>{"Trạng thái gốc · " + validation.validation_status}</span>
+                    <span>{"Tham chiếu kiểm chứng · " + validation.validation_signal_refs.length}</span>
+                  </div>
+                </details>
                 {validation.resolution ? (
                   <div className={styles.notice}>
                     <strong>{"Kết quả xử lý của người duyệt · " + learningStatusLabel(validation.resolution.decision)}</strong>
@@ -265,16 +325,23 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
                     <div className={styles.refList}>
                       <span>{"Người duyệt · " + validation.resolution.reviewed_by}</span>
                       <span>
-                        {"Biên nhận xử lý · " +
-                          (validation.resolution.application_receipt_id ?? "chưa có biên nhận áp dụng")}
-                      </span>
-                      <span>
                         {"Hành động đã áp dụng · " +
                           (validation.resolution.applied_action
                             ? learningActionLabel(validation.resolution.applied_action)
                             : "chưa có")}
                       </span>
                     </div>
+                    <details className={styles.disclosure}>
+                      <summary>Chi tiết kỹ thuật</summary>
+                      <div className={styles.refList}>
+                        <span>{"Quyết định gốc · " + validation.resolution.decision}</span>
+                        <span>
+                          {"Biên nhận xử lý · " +
+                            (validation.resolution.application_receipt_id ?? "chưa có biên nhận áp dụng")}
+                        </span>
+                        <span>{"Hành động gốc · " + (validation.resolution.applied_action ?? "không có")}</span>
+                      </div>
+                    </details>
                   </div>
                 ) : (
                   <p>Kiểm chứng chưa có kết quả xử lý của người duyệt. Hệ thống không tự đưa vào áp dụng.</p>
@@ -285,16 +352,6 @@ function CandidateDetail({ candidate }: { candidate: LearningCandidate }) {
         </div>
       </section>
 
-      <details className={styles.disclosure}>
-        <summary>Chi tiết kỹ thuật của đề xuất</summary>
-        <div className={styles.refList}>
-          <span>{"Khóa đề xuất · " + candidate.candidate_key}</span>
-          <span>{"Đánh giá nguồn · " + candidate.source_assessment_artifact_id}</span>
-          <span>{"Thay thế · " + (candidate.supersedes_id ?? "không có")}</span>
-          <span className={styles.codeText}>{"Đề xuất · " + JSON.stringify(candidate.proposal)}</span>
-          <span className={styles.codeText}>{"Phạm vi · " + JSON.stringify(candidate.scope)}</span>
-        </div>
-      </details>
     </div>
   );
 }

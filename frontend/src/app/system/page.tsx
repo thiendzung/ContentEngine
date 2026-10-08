@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { DecisionSummary } from "../../components/ui/decision-summary";
+
 import {
   loadSystemDashboard,
   type SystemOverview,
@@ -44,6 +46,20 @@ function statusClass(value: string): string {
 function costLabel(value: string | number): string {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed.toFixed(6) : String(value);
+}
+
+function preflightReason(key: string, status: string): string {
+  const label = systemCheckLabel(key);
+  if (status === "READY" || status === "ok" || status === "completed") {
+    return `${label} đã sẵn sàng theo kiểm tra hiện tại.`;
+  }
+  if (status === "BLOCKED" || status === "failed") {
+    return `${label} đang chặn vận hành.`;
+  }
+  if (status === "OPTIONAL") {
+    return `${label} không bắt buộc trong cấu hình hiện tại.`;
+  }
+  return `${label}: ${uiStatusLabel(status)}.`;
 }
 
 export default function SystemPage() {
@@ -158,14 +174,27 @@ export default function SystemPage() {
             <div className={styles.systemGrid}>
               {state.preflight.checks.map((check) => (
                 <article className={styles.systemCard} key={check.key}>
-                  <div className={styles.sectionHeader}>
-                    <h3>{systemCheckLabel(check.key)}</h3>
-                    <span className={statusClass(check.status)}>{uiStatusLabel(check.status)}</span>
-                  </div>
-                  <details className={styles.disclosure}>
-                    <summary>Chi tiết kỹ thuật</summary>
-                    <div className={styles.codeText}>{check.detail}</div>
-                  </details>
+                  <h3>{systemCheckLabel(check.key)}</h3>
+                  <DecisionSummary
+                    status={
+                      <span className={statusClass(check.status)}>
+                        {uiStatusLabel(check.status)}
+                      </span>
+                    }
+                    reason={<span>{preflightReason(check.key, check.status)}</span>}
+                    nextAction={
+                      <span>
+                        Màn hình này chỉ đọc trạng thái kiểm tra; không có thao tác sửa tự động.
+                      </span>
+                    }
+                    technicalDetails={
+                      <div className={styles.refList}>
+                        <span>{"Khóa kiểm tra · " + check.key}</span>
+                        <span>{"Trạng thái gốc · " + check.status}</span>
+                        <span className={styles.codeText}>{"Chi tiết gốc · " + check.detail}</span>
+                      </div>
+                    }
+                  />
                 </article>
               ))}
             </div>
@@ -185,42 +214,49 @@ export default function SystemPage() {
               <div className={styles.systemGrid}>
                 {summary.automation_policy_sources.map((source) => (
                   <article className={styles.systemCard} key={source.settings_version_id}>
-                    <div className={styles.sectionHeader}>
-                      <div>
-                        <p className="eyebrow">{systemScopeLabel(source.scope_type) + " · " + source.scope_key}</p>
-                        <h3>{"Cấu hình v" + source.version}</h3>
-                      </div>
-                      <span className={source.approval_recorded ? styles.badgePositive : styles.badgeWarn}>
-                        {source.approval_recorded ? "Đã ghi nhận phê duyệt" : "Chưa có người phê duyệt"}
-                      </span>
-                    </div>
-                    <dl className={styles.definition}>
-                      <dt>Người phê duyệt</dt>
-                      <dd>{source.approved_by ?? "Chưa ghi nhận"}</dd>
-                      <dt>Phiên bản cấu trúc</dt>
-                      <dd>{source.schema_version ?? "Không xác định"}</dd>
-                      <dt>Đã cấu hình bật</dt>
-                      <dd>
-                        {source.configured_enabled === null
-                          ? "Không có trường dữ liệu"
-                          : source.configured_enabled
-                            ? uiBooleanLabel(true)
-                            : uiBooleanLabel(false)}
-                      </dd>
-                    </dl>
-                    <div className={styles.notice}>
-                      Giá trị bật/tắt ở đây là cấu hình chính sách, không phải trạng thái tự động hóa đang chạy.
-                    </div>
-                    {source.workers.map((worker) => (
-                      <details className={styles.disclosure} key={worker.worker_key}>
-                        <summary>{worker.worker_key}</summary>
+                    <p className="eyebrow">
+                      {systemScopeLabel(source.scope_type) + " · " + source.scope_key}
+                    </p>
+                    <h3>{"Cấu hình v" + source.version}</h3>
+                    <DecisionSummary
+                      status={
+                        <span className={source.approval_recorded ? styles.badgePositive : styles.badgeWarn}>
+                          {source.approval_recorded ? "Đã ghi nhận phê duyệt" : "Chưa có người phê duyệt"}
+                        </span>
+                      }
+                      reason={
+                        <span>
+                          Cấu hình bật:{" "}
+                          {source.configured_enabled === null
+                            ? "không có trường dữ liệu"
+                            : source.configured_enabled
+                              ? uiBooleanLabel(true)
+                              : uiBooleanLabel(false)}
+                          . Đây là cấu hình chính sách, không phải trạng thái tự động hóa đang chạy.
+                        </span>
+                      }
+                      nextAction={
+                        <span>
+                          Màn hình này chỉ đọc chính sách đã lưu; không có thao tác sửa trực tiếp.
+                        </span>
+                      }
+                      technicalDetails={
                         <div className={styles.refList}>
-                          <span>{"Năng lực · " + (worker.capabilities.join(", ") || "không có")}</span>
-                          <span>{"Được phép · " + (worker.allowed_actions.join(", ") || "không có")}</span>
-                          <span>{"Bị cấm · " + (worker.forbidden_actions.join(", ") || "không có")}</span>
+                          <span>{"Mã phiên bản cấu hình · " + source.settings_version_id}</span>
+                          <span>{"Phạm vi gốc · " + source.scope_type + " · " + source.scope_key}</span>
+                          <span>{"Phiên bản cấu trúc · " + (source.schema_version ?? "không xác định")}</span>
+                          <span>{"Người phê duyệt · " + (source.approved_by ?? "chưa ghi nhận")}</span>
+                          {source.workers.map((worker) => (
+                            <span key={worker.worker_key}>
+                              {worker.worker_key +
+                                " · năng lực: " + (worker.capabilities.join(", ") || "không có") +
+                                " · được phép: " + (worker.allowed_actions.join(", ") || "không có") +
+                                " · bị cấm: " + (worker.forbidden_actions.join(", ") || "không có")}
+                            </span>
+                          ))}
                         </div>
-                      </details>
-                    ))}
+                      }
+                    />
                   </article>
                 ))}
               </div>

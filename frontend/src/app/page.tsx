@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { DecisionSummary } from "../components/ui/decision-summary";
 import { API_BASE_URL } from "../lib/api/core";
 
 type ArtifactRef = {
@@ -166,10 +167,6 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 
 function badgeClass(value: string): string {
   return `badge badge-${value.toLowerCase().replaceAll("_", "-")}`;
-}
-
-function shortId(value: string | null): string {
-  return value ? `${value.slice(0, 8)}…` : "—";
 }
 
 function localeLabel(locale: string): string {
@@ -376,11 +373,39 @@ function LocaleArticle({
           <p className="eyebrow">{localeLabel(panel.locale)}</p>
           <h2>{panel.article?.title ?? "Chưa có nội dung cuối"}</h2>
         </div>
-        <div className="header-badges">
-          <span className={badgeClass(panel.quality_state)}>{stateLabel(panel.quality_state)}</span>
-          <span className={badgeClass(panel.publication_state)}>{stateLabel(panel.publication_state)}</span>
-        </div>
       </header>
+
+      <DecisionSummary
+        status={
+          <span className={badgeClass(panel.next_action)}>
+            {stateLabel(panel.next_action)}
+          </span>
+        }
+        reason={
+          <span>
+            Chất lượng: {stateLabel(panel.quality_state)} · Xuất bản:{" "}
+            {stateLabel(panel.publication_state)} · Nhất quán:{" "}
+            {stateLabel(panel.consistency_state)}.
+          </span>
+        }
+        nextAction={
+          <span>
+            {canDecide
+              ? "Xem nội dung và dùng cổng quyết định của Người sáng lập bên dưới."
+              : actionLabel(panel.next_action_label)}
+          </span>
+        }
+        technicalDetails={
+          <dl className="metadata-grid">
+            <div><dt>Hành động gốc</dt><dd>{panel.next_action}</dd></div>
+            <div><dt>Nhãn hành động gốc</dt><dd>{panel.next_action_label}</dd></div>
+            <div><dt>Trạng thái chất lượng gốc</dt><dd>{panel.quality_state}</dd></div>
+            <div><dt>Trạng thái xuất bản gốc</dt><dd>{panel.publication_state}</dd></div>
+            <div><dt>Trạng thái nhất quán gốc</dt><dd>{panel.consistency_state}</dd></div>
+            <div><dt>Biến thể ngôn ngữ</dt><dd>{panel.locale_variant_id}</dd></div>
+          </dl>
+        }
+      />
 
       <div className="version-line">
         <span>
@@ -389,11 +414,6 @@ function LocaleArticle({
         <span>
           Duyệt cuối: {panel.final_approval ? `${decisionLabel(panel.final_approval.decision)} · ${actorLabel(panel.final_approval.actor_id)}` : "chưa có"}
         </span>
-      </div>
-
-      <div className="next-action-inline">
-        <strong>{stateLabel(panel.next_action)}</strong>
-        <span>{actionLabel(panel.next_action_label)}</span>
       </div>
 
       {panel.article ? (
@@ -612,8 +632,17 @@ export default function Home() {
             {selectedSummary && (
               <div className="case-facts">
                 <p><span>Quyết định cơ hội</span>{opportunityDecisionLabel(selectedSummary.opportunity_decision)}</p>
-                <p><span>Mã bài</span>{shortId(selectedSummary.id)}</p>
                 <p><span>Nhất quán</span>{stateLabel(selectedSummary.consistency_state)}</p>
+                <details className="metadata">
+                  <summary>Chi tiết kỹ thuật</summary>
+                  <dl className="metadata-grid">
+                    <div><dt>Mã bài</dt><dd>{selectedSummary.id}</dd></div>
+                    <div><dt>Trạng thái gốc</dt><dd>{selectedSummary.status}</dd></div>
+                    <div><dt>Loại nội dung gốc</dt><dd>{selectedSummary.content_type}</dd></div>
+                    <div><dt>Quyết định cơ hội gốc</dt><dd>{selectedSummary.opportunity_decision}</dd></div>
+                    <div><dt>Hành động gốc</dt><dd>{selectedSummary.next_action}</dd></div>
+                  </dl>
+                </details>
               </div>
             )}
           </aside>
@@ -626,11 +655,37 @@ export default function Home() {
                     <p className="eyebrow">Bài hiện tại</p>
                     <h2>{detail.opportunity_question}</h2>
                   </div>
-                  <div className="next-action-box">
-                    <span>Việc tiếp theo</span>
-                    <strong>{stateLabel(detail.next_action)}</strong>
-                    <p>{actionLabel(detail.next_action_label)}</p>
-                  </div>
+                  <DecisionSummary
+                    status={
+                      <span className={badgeClass(detail.next_action)}>
+                        {stateLabel(detail.next_action)}
+                      </span>
+                    }
+                    reason={
+                      detail.issues.length > 0 ? (
+                        <span>
+                          Có {detail.issues.length} vấn đề nhất quán cần kiểm tra trước khi tiếp tục.
+                        </span>
+                      ) : (
+                        <span>
+                          Chất lượng: {stateLabel(detail.quality_state)} · Xuất bản:{" "}
+                          {stateLabel(detail.publication_state)} · Nhất quán:{" "}
+                          {stateLabel(detail.consistency_state)}.
+                        </span>
+                      )
+                    }
+                    nextAction={<span>{actionLabel(detail.next_action_label)}</span>}
+                    technicalDetails={
+                      <dl className="metadata-grid">
+                        <div><dt>Mã bài</dt><dd>{detail.id}</dd></div>
+                        <div><dt>Trạng thái gốc</dt><dd>{detail.status}</dd></div>
+                        <div><dt>Loại nội dung gốc</dt><dd>{detail.content_type}</dd></div>
+                        <div><dt>Quyết định cơ hội gốc</dt><dd>{detail.opportunity_decision}</dd></div>
+                        <div><dt>Hành động gốc</dt><dd>{detail.next_action}</dd></div>
+                        <div><dt>Nhãn hành động gốc</dt><dd>{detail.next_action_label}</dd></div>
+                      </dl>
+                    }
+                  />
                 </section>
 
                 {detail.issues.length > 0 && (

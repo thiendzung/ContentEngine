@@ -7,45 +7,50 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
 
-## UI-P3 — Vietnamese Founder-facing terminology — ACTIVE / #378
+## UI-P4 — Business-first information hierarchy — ACTIVE / #389
 
 Base main:
+`3f961ea97bbb6aa42ac718d20fd05ec37f775083`.
+
+Product rule:
+- normal decision surfaces lead with **Trạng thái → Vì sao → Việc nên làm**;
+- technical identity/audit detail moves behind explicit disclosure;
+- frontend must not invent status, reason, action or workflow truth;
+- exact API/enum/ID/hash/binding values remain unchanged.
+
+P4 task slices:
+- [ ] **P4-00 / #390 — Decision-summary foundation** — IMPLEMENTED: shared presentational primitive; final exact-head verification pending.
+- [ ] **P4-01 / #391 — Overview + Needs Me** — IMPLEMENTED: status/reason/action first; raw refs/IDs in technical disclosure.
+- [ ] **P4-02 / #392 — Content planning** — IMPLEMENTED: Content Map + Question Map business-first decisions; route/admission guards unchanged.
+- [ ] **P4-03 / #393 — Learning + System** — IMPLEMENTED: read-only business summaries + technical audit separation.
+- [ ] **P4-04 / #394 — Journal Operator** — IMPLEMENTED: state + final-review decisions business-first; allowed intents/approval bindings unchanged.
+- [ ] **P4-05 / #395 — Legacy/read-only audit + final verification** — ACTIVE: legacy review hierarchy complete; exact-head static/build/browser/OCR/Agent Local/CI pending.
+
+Non-goals:
+- no P5 Production Board density redesign;
+- no P6 global visual-system polish;
+- no backend/API/schema/DB/provider/model/publication behavior change.
+
+## UI-P3 — Vietnamese Founder-facing terminology — DONE / #378 / PR #379 MERGED
+
+Base:
 `f82a6a1c2a32b0c2add0ae60cf94c662308bf12f`.
+Verified candidate:
+`aff542cbb4db664cad42060c85894125505c9d96`.
+Merged main:
+`3f961ea97bbb6aa42ac718d20fd05ec37f775083`.
 
-- [x] Founder authorized bounded UI-P3 after UI-P2 completion.
-- [x] Create dedicated branch from exact post-#375 main.
-- [x] Add shared render-layer Vietnamese mappings for common statuses/decisions/priorities/intents/domains.
-- [x] Localize Overview + Needs Me.
-- [x] Localize Customers + Content Map + Question Map.
-- [x] Localize Learning + System + Daily Digest.
-- [x] Localize Production wording + Journal Operator / Preflight / intake / workspace.
-- [x] Preserve technical API/model/enum/database values; translate presentation only.
-- [ ] Frontend lint PASS.
-- [ ] Frontend typecheck PASS.
-- [ ] Frontend production build PASS.
-- [ ] Browser smoke of all primary Founder routes PASS.
-- [ ] Journal Operator/intake/workspace smoke PASS.
-- [ ] Terminology audit: normal-path UI Vietnamese, technical identity values preserved.
-- [ ] Keyboard/narrow sanity PASS.
-- [ ] Exact-ref OCR Delegation Mode PASS.
-- [ ] Agent Local exact-SHA verification PASS.
-- [ ] Minimal GitHub CI PASS or disclosed unavailable.
-- [ ] MG final review.
-- [ ] Founder merge.
-
-Non-goals: P4 business/technical information hierarchy, P5 Production Board density redesign,
-P6 global visual/design-system polish, backend/API/schema/DB/provider/model changes.
-
-P3 task slices:
-- [x] **P3-00 / #380 — Language foundation** — DONE: direct-import Vietnamese render modules; CI #2405 frontend lint/typecheck PASS.
-- [x] **P3-01 / #381 — Core operations** — DONE: Overview + Needs Me + Production; CI #2412 frontend lint/typecheck PASS.
-- [x] **P3-02 / #382 — Customer map** — DONE: nhóm khách hàng/nhu cầu/nhận định/hành trình/ảnh chụp; CI #2415 frontend lint/typecheck PASS.
-- [x] **P3-03 / #383 — Content planning** — DONE: Content Map + Question Map presentation; CI #2423 frontend lint/typecheck PASS.
-- [x] **P3-04 / #384 — Learning** — DONE: đề xuất/bằng chứng/duyệt/áp dụng/kiểm chứng/xử lý kết quả; CI #2427 frontend lint/typecheck PASS.
-- [x] **P3-05 / #385 — System** — DONE: Hệ thống + Nhật ký thay đổi; CI #2431 frontend lint/typecheck PASS.
-- [x] **P3-06 / #386 — Journal Operator** — DONE: tiếp nhận/kiểm tra sẵn sàng/góc tiếp cận/dàn ý/viết/chất lượng/duyệt cuối; CI #2437 frontend lint/typecheck PASS.
-- [x] **P3-07 / #387 — Legacy + terminology audit** — DONE: legacy/root audit + remaining normal-path mixed term cleanup; CI #2439 frontend lint/typecheck PASS.
-- [ ] **P3-08 / #388 — Final verification** — ACTIVE: exact-SHA static/build/browser/OCR/Agent Local/CI/MG closeout.
+- [x] P3-00 language foundation.
+- [x] P3-01 core operations.
+- [x] P3-02 customer map.
+- [x] P3-03 content planning.
+- [x] P3-04 learning.
+- [x] P3-05 system + daily digest.
+- [x] P3-06 Journal Operator.
+- [x] P3-07 legacy + terminology audit.
+- [x] P3-08 final verification.
+- [x] Final lint/typecheck/build/browser/OCR/Agent Local/CI evidence PASS.
+- [x] Founder merged PR #379.
 
 ## UI-P2 — Question Map decision cockpit — DONE / #374 / PR #375 MERGED
 

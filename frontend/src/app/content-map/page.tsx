@@ -105,7 +105,6 @@ function ContentItemCard({
       <p>
         <strong>Vai trò nội dung:</strong> {planningContentRoleLabel(item.content_role)}
       </p>
-      <p className={styles.meta}>Khóa chuẩn: {item.canonical_key}</p>
       <div className={styles.journeyChips}>
         {item.journey_stages.length === 0 ? (
           <span className={styles.badge}>Chưa gán giai đoạn hành trình</span>
@@ -154,9 +153,6 @@ function ContentItemCard({
           <p>
             {item.publication.target} · {uiStatusLabel(item.publication.external_status)}
           </p>
-          <p className={styles.meta}>
-            Phiên bản nội dung: {item.publication.current_content_version_id}
-          </p>
           {item.publication.canonical_url ? (
             <p>
               <a
@@ -172,6 +168,33 @@ function ContentItemCard({
           )}
         </div>
       ) : null}
+
+      <details className={styles.disclosure}>
+        <summary>Chi tiết kỹ thuật</summary>
+        <div className={styles.signalList}>
+          <span>Mã nội dung · {item.id}</span>
+          <span>Khóa chuẩn · {item.canonical_key}</span>
+          <span>Trạng thái gốc · {item.item_status}</span>
+          {item.latest_version ? (
+            <span>
+              Phiên bản mới nhất · {item.latest_version.id} · {item.latest_version.status}
+            </span>
+          ) : null}
+          {item.latest_published_version ? (
+            <span>
+              Phiên bản đã xuất bản · {item.latest_published_version.id} ·{" "}
+              {item.latest_published_version.status}
+            </span>
+          ) : null}
+          {item.publication ? (
+            <>
+              <span>Đích xuất bản · {item.publication.target}</span>
+              <span>Trạng thái xuất bản gốc · {item.publication.external_status}</span>
+              <span>Phiên bản nội dung · {item.publication.current_content_version_id}</span>
+            </>
+          ) : null}
+        </div>
+      </details>
     </article>
   );
 }
@@ -410,15 +433,6 @@ export default function ContentMapPage() {
                             <p className={styles.meta}>
                               Ý định: {uiIntentLabel(opportunity.intent)}
                             </p>
-                            {opportunity.existing_content_refs.length > 0 ? (
-                              <div className={styles.signalList}>
-                                {opportunity.existing_content_refs.map((ref) => (
-                                  <span key={ref}>
-                                    Đích hiện có · {ref}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
                             {opportunity.selection_refs.length > 0 ? (
                               <div className={styles.evidenceBlock}>
                                 <strong>Lựa chọn của người dùng</strong>
@@ -435,6 +449,23 @@ export default function ContentMapPage() {
                                 </ul>
                               </div>
                             ) : null}
+                            <details className={styles.disclosure}>
+                              <summary>Chi tiết kỹ thuật</summary>
+                              <div className={styles.signalList}>
+                                <span>Mã cơ hội · {opportunity.id}</span>
+                                <span>Quyết định gốc · {opportunity.decision}</span>
+                                <span>Ưu tiên gốc · {opportunity.priority}</span>
+                                <span>Ý định gốc · {opportunity.intent}</span>
+                                {opportunity.existing_content_refs.map((ref) => (
+                                  <span key={`existing:${ref}`}>Đích hiện có · {ref}</span>
+                                ))}
+                                {opportunity.selection_refs.map((selection) => (
+                                  <span key={`selection:${selection.id}`}>
+                                    Lựa chọn · {selection.id} · {selection.selected_by}
+                                  </span>
+                                ))}
+                              </div>
+                            </details>
                           </div>
                         ))}
                       </div>
@@ -486,25 +517,35 @@ export default function ContentMapPage() {
                                 Câu hỏi chuẩn hóa:{" "}
                                 {duplicate.normalized_primary_question}
                               </p>
-                              <div className={styles.signalList}>
-                                {duplicate.content_item_ids.map((id) => (
-                                  <span key={id}>Nội dung · {id}</span>
-                                ))}
-                              </div>
                               <small className={styles.meta}>
                                 Lý do: {planningCoverageReasonLabel(duplicate.reason)}
                               </small>
+                              <details className={styles.disclosure}>
+                                <summary>Chi tiết kỹ thuật</summary>
+                                <div className={styles.signalList}>
+                                  {duplicate.content_item_ids.map((id) => (
+                                    <span key={id}>Mã nội dung · {id}</span>
+                                  ))}
+                                  <span>Lý do gốc · {duplicate.reason}</span>
+                                </div>
+                              </details>
                             </div>
                           ))}
                         </div>
                       ) : null}
                       {lane.invalid_update_target_refs.length > 0 ? (
-                        <div className={styles.signalList}>
-                          {lane.invalid_update_target_refs.map((ref) => (
-                            <span key={ref}>
-                              Đích cập nhật không hợp lệ · {ref}
-                            </span>
-                          ))}
+                        <div className={styles.notice}>
+                          Có {lane.invalid_update_target_refs.length} đích cập nhật không còn hợp lệ.
+                          <details className={styles.disclosure}>
+                            <summary>Chi tiết kỹ thuật</summary>
+                            <div className={styles.signalList}>
+                              {lane.invalid_update_target_refs.map((ref) => (
+                                <span key={ref}>
+                                  Đích cập nhật không hợp lệ · {ref}
+                                </span>
+                              ))}
+                            </div>
+                          </details>
                         </div>
                       ) : null}
                     </div>
