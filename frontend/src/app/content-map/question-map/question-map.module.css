@@ -23,9 +23,9 @@
 .input,
 .textarea {
   width: 100%;
-  border: 1px solid #aaa196;
-  background: #fffdf8;
-  color: #312f2a;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-strong);
   padding: 9px 10px;
   font: .88rem Arial, sans-serif;
 }
@@ -44,7 +44,7 @@
 .select:focus-visible,
 .input:focus-visible,
 .textarea:focus-visible {
-  outline: 3px solid #2e5367;
+  outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -56,14 +56,14 @@
 }
 
 .summaryCard {
-  border: 1px solid #c8c0b4;
+  border: 1px solid var(--color-border);
   background: rgba(255, 252, 246, .72);
   padding: 13px;
 }
 
 .summaryCard span {
   display: block;
-  color: #756e64;
+  color: var(--color-muted);
   font: 700 .61rem Arial, sans-serif;
   letter-spacing: .07em;
   text-transform: uppercase;
@@ -84,8 +84,8 @@
 }
 
 .statusCard {
-  border: 1px solid #c8c0b4;
-  background: #fffdf8;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-strong);
   padding: 14px;
 }
 
@@ -120,7 +120,7 @@
 
 .cluster {
   border: 1px solid #cfc5b8;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
   padding: 14px;
 }
 
@@ -146,7 +146,7 @@
 .reasonList {
   margin: 8px 0 0;
   padding-left: 18px;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .86rem;
 }
 
@@ -212,7 +212,7 @@
 
 .selectedOpportunity {
   border: 1px solid #d0c7ba;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
   padding: 12px;
 }
 
@@ -230,12 +230,12 @@
 .routeCell {
   border: 1px solid #d2cabf;
   padding: 10px;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
 }
 
 .routeCell span {
   display: block;
-  color: #756e64;
+  color: var(--color-muted);
   font: 700 .61rem Arial, sans-serif;
   letter-spacing: .07em;
   text-transform: uppercase;
@@ -256,7 +256,7 @@
 .target {
   border: 1px solid #d4ccbf;
   padding: 10px;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
 }
 
 .target p {
@@ -294,18 +294,18 @@
   border: 1px solid #caa977;
   border-left-width: 3px;
   background: #fbf2e3;
-  color: #674b20;
+  color: var(--color-warning-text);
   padding: 12px 14px;
   margin: 12px 0;
 }
 
 .muted {
-  color: #756e64;
+  color: var(--color-muted);
   font-size: .82rem;
 }
 
 .hash {
-  color: #756e64;
+  color: var(--color-muted);
   font: .69rem Arial, sans-serif;
   overflow-wrap: anywhere;
 }
@@ -313,7 +313,7 @@
 .emptyTree {
   border: 1px dashed #b8afa2;
   padding: 16px;
-  color: #756e64;
+  color: var(--color-muted);
 }
 
 
@@ -322,7 +322,7 @@
   grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
   gap: 18px;
   align-items: end;
-  border: 1px solid #c8c0b4;
+  border: 1px solid var(--color-border);
   background: rgba(255, 252, 246, .72);
   padding: 18px;
   margin: 18px 0;
@@ -335,7 +335,7 @@
 
 .problemSetup p {
   margin: 0;
-  color: #655f56;
+  color: var(--color-muted-strong);
 }
 
 .problemSetupFields {
@@ -355,14 +355,14 @@
   gap: 10px;
   align-items: flex-start;
   min-width: 0;
-  border: 1px solid #c8c0b4;
+  border: 1px solid var(--color-border);
   background: rgba(255, 252, 246, .72);
   padding: 12px;
 }
 
 .flowItem[data-state="current"] {
   border-color: #6f675d;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
 }
 
 .flowNumber,
@@ -383,14 +383,14 @@
 .decisionStep[data-state="complete"] .stepNumber {
   background: #35453a;
   border-color: #35453a;
-  color: #fffdf8;
+  color: var(--color-surface-strong);
 }
 
 .flowItem[data-state="current"] .flowNumber,
 .decisionStep[data-state="current"] .stepNumber {
-  background: #312f2a;
-  border-color: #312f2a;
-  color: #fffdf8;
+  background: var(--color-ink-strong);
+  border-color: var(--color-ink-strong);
+  color: var(--color-surface-strong);
 }
 
 .flowItem strong,
@@ -403,7 +403,7 @@
 .stepHeader small {
   display: block;
   margin-top: 4px;
-  color: #716a60;
+  color: var(--color-muted);
   font: .72rem/1.4 Arial, sans-serif;
   overflow-wrap: anywhere;
 }
@@ -423,7 +423,7 @@
 
 .candidateHint {
   margin: 0 0 12px;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .9rem;
 }
 
@@ -445,7 +445,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  border: 1px solid #aaa196;
+  border: 1px solid var(--color-border-strong);
   background: #f7f1e7;
   padding: 16px;
 }
@@ -461,7 +461,7 @@
 
 .decisionPanelHeader p:last-child {
   margin: 0;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .88rem;
 }
 
@@ -488,7 +488,7 @@
   display: grid;
   gap: 5px;
   border-left: 3px solid #a89b8b;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
   padding: 10px 12px;
 }
 
@@ -507,7 +507,7 @@
 }
 
 .truthSummary small {
-  color: #756e64;
+  color: var(--color-muted);
   line-height: 1.45;
 }
 
@@ -532,9 +532,9 @@
   display: grid;
   gap: 5px;
   border: 1px solid #9dac93;
-  border-left: 3px solid #72806b;
+  border-left: 3px solid var(--color-positive-border);
   background: #edf2e9;
-  color: #34412f;
+  color: var(--color-positive-text);
   padding: 11px 12px;
 }
 
@@ -554,7 +554,7 @@
 
 .productionStatus p {
   margin: 0;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font-size: .86rem;
 }
 
@@ -586,8 +586,8 @@
 .candidateDetails summary:focus-visible,
 .technicalDetails summary:focus-visible,
 .planningDetails summary:focus-visible {
-  outline: 3px solid #2e5367;
-  outline-offset: 3px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .planningDetailsGrid {
@@ -599,13 +599,13 @@
 
 .planningDetailsGrid > div {
   border: 1px solid #d2cabf;
-  background: #fffdf8;
+  background: var(--color-surface-strong);
   padding: 10px;
 }
 
 .planningDetailsGrid span {
   display: block;
-  color: #756e64;
+  color: var(--color-muted);
   font: 700 .61rem Arial, sans-serif;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -638,7 +638,7 @@
 
 .safetyNote {
   margin: 2px 0 0;
-  color: #756e64;
+  color: var(--color-muted);
   font-size: .78rem;
   line-height: 1.45;
 }
