@@ -68,6 +68,43 @@ downstream authority sau khi ContentCase được materialize.
 không còn là prerequisite để Question Map planning tiếp tục. Nếu có dữ liệu thật mới,
 nó đi vào canonical Customer Truth theo review riêng; không mở content gate bằng quota phỏng vấn.
 
+### Question Map V1 — consolidated closeout
+
+Question Map V1 is complete as one bounded planning-to-handoff chain:
+
+```text
+QM-01A read model
+→ QM-01B classification / answer-job clustering
+→ QM-01C Content Coverage join
+→ QM-01D Opportunity Planner
+→ QM-02A explicit Founder selection
+→ QM-02B production route
+→ QM-02C admission
+→ QM-02D1 CREATE
+→ F1R0/R1/R2/R3 two-axis readiness + Content Architecture + bounded real Search
+→ F1C architecture checkpoint
+→ QM-02D2 UPDATE / REFRESH
+→ QM-02D3 MERGE reconciliation
+→ QM-02E Founder UI
+→ QM-02F Golden E2E
+```
+
+Closeout evidence:
+- #361 is closed with `PASS_QM02_GOLDEN_CLOSEOUT`;
+- CREATE / UPDATE / REFRESH / MERGE and negative/stale/replay gates were proven before UI polish;
+- UI-P1 through UI-P6 later changed presentation/operability only and did not move workflow authority into the frontend.
+
+Tracker reconciliation:
+- #337 was the original QM-02A parent/design tracker;
+- #338 implemented the final bounded QM-02A contract without introducing the extra lineage table proposed in #337;
+- #337 is therefore superseded by #338 plus downstream route/admission/materialization and Golden E2E proof.
+
+Maintenance rule:
+- do not treat historical unchecked issue boxes as unfinished product work after a later exact closeout passed;
+- do not widen Search autonomy from the bounded F1R3 posture without new evidence;
+- do not add another keyword/search truth store;
+- reopen QM only for a demonstrated defect, real-data learning or an explicit product decision.
+
 ### Hợp đồng biên tập của ContentOpportunity
 
 - reader + audience scope;
@@ -1141,6 +1178,9 @@ Chưa làm:
 - score 0–100 giả chính xác.
 
 ## 21. Definition of done V1
+
+**Status: SATISFIED for Question Map V1.** The final cross-surface proof is #361 / `PASS_QM02_GOLDEN_CLOSEOUT`.
+The list below remains the product definition, not an open implementation checklist.
 
 Mini module đạt khi từ một seed thật có thể:
 
