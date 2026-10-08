@@ -43,7 +43,7 @@
 
 .commandMeta span {
   color: var(--color-muted);
-  font: 700 .62rem Arial, sans-serif;
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -74,8 +74,8 @@
   background: transparent;
   color: var(--color-ink-strong);
   padding: 9px 12px;
-  min-height: 40px;
-  font: 700 .72rem Arial, sans-serif;
+  min-height: var(--control-min-height);
+  font: 700 .72rem var(--font-ui);
   letter-spacing: .04em;
   text-decoration: none;
   cursor: pointer;
@@ -110,14 +110,14 @@
 }
 
 .error {
-  border-color: #c48e7e;
-  background: #f8e9e4;
-  color: #7d382a;
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .stale {
-  border-color: #caa977;
-  background: #fbf2e3;
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
   color: var(--color-warning-text);
 }
 
@@ -169,7 +169,7 @@
 .countCard span {
   display: block;
   color: var(--color-muted);
-  font: 700 .62rem Arial, sans-serif;
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -207,10 +207,10 @@
   display: inline-flex;
   border: 1px solid var(--color-border-strong);
   padding: 5px 8px;
-  font: 700 .64rem Arial, sans-serif;
+  font: 700 .64rem var(--font-ui);
   letter-spacing: .05em;
   background: var(--color-surface-muted);
-  color: #5e5a54;
+  color: var(--color-neutral-text);
 }
 
 .badgeWarn {
@@ -240,7 +240,7 @@
 
 .meta {
   color: var(--color-muted);
-  font: .74rem Arial, sans-serif;
+  font: .74rem var(--font-ui);
   overflow-wrap: anywhere;
 }
 
@@ -248,7 +248,7 @@
   display: grid;
   gap: 4px;
   margin-top: 8px;
-  font: .74rem Arial, sans-serif;
+  font: .74rem var(--font-ui);
   color: var(--color-muted-strong);
   overflow-wrap: anywhere;
 }
@@ -307,7 +307,7 @@
 
   .button,
   .linkButton {
-    min-height: 44px;
+    min-height: var(--control-min-height-touch);
   }
 
   .countGrid,
