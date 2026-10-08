@@ -69,7 +69,7 @@
 
 .stat {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 14px;
 }
 
@@ -93,7 +93,7 @@
 .loading,
 .empty {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 14px 16px;
   margin: 12px 0;
 }
@@ -127,7 +127,7 @@
 .card,
 .coverageLane {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
 }
 
 .sidebar {
@@ -162,7 +162,7 @@
 
 .listButton {
   width: 100%;
-  border: 1px solid #d2cabf;
+  border: 1px solid var(--color-border-soft);
   background: transparent;
   color: inherit;
   padding: 12px;
@@ -173,7 +173,7 @@
 .listButton:hover:not(:disabled),
 .listButtonActive {
   border-color: var(--color-ink-strong);
-  background: #ece5da;
+  background: var(--color-selected-bg);
 }
 
 .listButton strong {
@@ -267,7 +267,7 @@
 }
 
 .evidenceBlock {
-  border-top: 1px solid #d8d0c5;
+  border-top: 1px solid var(--color-border-soft);
   margin-top: 14px;
   padding-top: 14px;
 }
@@ -312,7 +312,7 @@
 .coverageCount {
   border: 1px solid var(--color-border);
   padding: 12px;
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
 }
 
 .coverageCount span {
@@ -359,7 +359,7 @@
 }
 
 .contentItem {
-  border: 1px solid #d6cec2;
+  border: 1px solid var(--color-border-soft);
   padding: 12px;
   background: var(--color-surface-strong);
 }
