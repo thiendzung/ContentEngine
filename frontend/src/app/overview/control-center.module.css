@@ -18,7 +18,7 @@
 
 .commandPanel {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .78);
+  background: var(--color-surface);
   padding: 16px;
 }
 
@@ -99,7 +99,7 @@
 .empty,
 .stale {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .75);
+  background: var(--color-surface);
   padding: 14px 16px;
   margin: 12px 0;
 }
@@ -140,7 +140,7 @@
 
 .prioritySection {
   border: 1px solid var(--color-border-strong);
-  background: rgba(255, 252, 246, .9);
+  background: var(--color-surface-strong);
   padding: 20px;
 }
 
@@ -162,7 +162,7 @@
 
 .countCard {
   border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .72);
+  background: var(--color-surface);
   padding: 15px;
 }
 
