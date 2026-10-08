@@ -15,7 +15,7 @@
 }
 
 .label {
-  color: #756e64;
+  color: var(--color-muted);
   font: 700 .62rem Arial, sans-serif;
   letter-spacing: .07em;
   text-transform: uppercase;
@@ -37,7 +37,7 @@
 }
 
 .technicalDetails {
-  border-top: 1px solid #ddd4c8;
+  border-top: 1px solid var(--color-border-soft);
   margin-top: 12px;
   padding-top: 10px;
 }
@@ -49,13 +49,13 @@
 }
 
 .technicalDetails summary:focus-visible {
-  outline: 3px solid #2e5367;
-  outline-offset: 3px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .technicalBody {
   margin-top: 10px;
-  color: #655f56;
+  color: var(--color-muted-strong);
   font: .76rem/1.5 Arial, sans-serif;
   overflow-wrap: anywhere;
 }
