@@ -53,7 +53,7 @@
   background: transparent;
   text-decoration: none;
   cursor: pointer;
-  font: 700 .73rem Arial, sans-serif;
+  font: 700 .73rem var(--font-ui);
   letter-spacing: .04em;
 }
 
@@ -80,7 +80,7 @@
 .operator-note {
   max-width: 360px;
   color: var(--color-muted);
-  font: .78rem Arial, sans-serif;
+  font: .78rem var(--font-ui);
   line-height: 1.45;
 }
 
@@ -91,7 +91,7 @@
   padding: 13px 14px;
   margin-bottom: 12px;
   border-left: 4px solid var(--color-danger-border);
-  background: #f8e9e4;
+  background: var(--color-danger-bg);
 }
 
 .operator-readiness.ready {
@@ -100,7 +100,7 @@
 }
 
 .operator-readiness strong {
-  font: 800 .76rem Arial, sans-serif;
+  font: 800 .76rem var(--font-ui);
   letter-spacing: .08em;
 }
 
@@ -131,7 +131,7 @@
 }
 
 .preflight-check strong {
-  font: 700 .78rem Arial, sans-serif;
+  font: 700 .78rem var(--font-ui);
 }
 
 .preflight-check small {
@@ -182,7 +182,7 @@
   height: 28px;
   border: 1px solid #6d665d;
   border-radius: 50%;
-  font: 700 .72rem Arial, sans-serif;
+  font: 700 .72rem var(--font-ui);
 }
 
 .operator-steps strong,
@@ -210,7 +210,7 @@
 .form-section legend {
   padding: 0 12px 0 0;
   color: var(--color-muted);
-  font: 700 .72rem Arial, sans-serif;
+  font: 700 .72rem var(--font-ui);
   letter-spacing: .1em;
   text-transform: uppercase;
 }
@@ -235,7 +235,7 @@
 .checkbox-field > span,
 .angle-approval-bar label > span {
   color: var(--color-muted);
-  font: 700 .7rem Arial, sans-serif;
+  font: 700 .7rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -270,7 +270,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: .84rem Arial, sans-serif;
+  font: .84rem var(--font-ui);
 }
 
 .checkbox-field input {
@@ -310,10 +310,10 @@
 }
 
 .operator-state-badge {
-  border: 1px solid #98928a;
+  border: 1px solid var(--color-neutral-border);
   background: var(--color-surface-muted);
   padding: 7px 9px;
-  font: 800 .7rem Arial, sans-serif;
+  font: 800 .7rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -335,14 +335,14 @@
 
 .operator-case-facts > div {
   padding: 14px 16px;
-  border-right: 1px solid #d7cfc3;
+  border-right: 1px solid var(--color-divider);
 }
 
 .operator-case-facts > div:last-child { border-right: 0; }
 .operator-case-facts span,
 .state-grid span {
   color: #746d64;
-  font: 700 .66rem Arial, sans-serif;
+  font: 700 .66rem var(--font-ui);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -376,7 +376,7 @@
 }
 
 .operator-running-state { justify-content: flex-start; border-left-color: var(--color-warning-border); background: #f7edda; }
-.operator-blocker { align-items: flex-start; border-left-color: var(--color-danger-border); background: #f8e9e4; }
+.operator-blocker { align-items: flex-start; border-left-color: var(--color-danger-border); background: var(--color-danger-bg); }
 .operator-primary-action p,
 .operator-running-state p,
 .operator-blocker p { margin: 4px 0 0; color: #665f57; font-size: .88rem; }
@@ -429,7 +429,7 @@
 
 .angle-card-select small,
 .angle-card-select strong { display: block; }
-.angle-card-select small { color: #81786c; font: .68rem Arial, sans-serif; margin-bottom: 5px; }
+.angle-card-select small { color: #81786c; font: .68rem var(--font-ui); margin-bottom: 5px; }
 .angle-card-select strong { font-size: 1.08rem; line-height: 1.2; }
 .angle-choice { font-size: 1rem; }
 
@@ -458,14 +458,14 @@
   justify-content: space-between;
   gap: 8px;
   margin-top: 9px;
-  font: 700 .69rem Arial, sans-serif;
+  font: 700 .69rem var(--font-ui);
   color: #5f5a53;
 }
 
 .angle-risks {
   margin-top: 12px;
   padding: 10px;
-  background: #fbf2e3;
+  background: var(--color-warning-bg);
   border-left: 2px solid var(--color-warning-border);
 }
 
@@ -481,7 +481,7 @@
 .operator-technical-details summary {
   cursor: pointer;
   color: #6d665d;
-  font: 700 .7rem Arial, sans-serif;
+  font: 700 .7rem var(--font-ui);
 }
 
 .operator-technical-details dl { margin: 10px 0 0; }
@@ -530,7 +530,7 @@
 .writer-lane-status {
   border-radius: 999px;
   padding: 4px 8px;
-  font: 700 .68rem Arial, sans-serif;
+  font: 700 .68rem var(--font-ui);
   color: #4d4841;
   background: #ebe6de;
 }
@@ -613,9 +613,9 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-right: 1px solid #d7cfc3;
+  border-right: 1px solid var(--color-divider);
   color: #827a70;
-  font: .72rem Arial, sans-serif;
+  font: .72rem var(--font-ui);
 }
 
 .operator-progress-strip li:last-child { border-right: 0; }
@@ -660,7 +660,7 @@
 
 .outline-primary-answer > span {
   color: #60717a;
-  font: 700 .68rem Arial, sans-serif;
+  font: 700 .68rem var(--font-ui);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -691,7 +691,7 @@
   height: 27px;
   border: 1px solid #8b8378;
   border-radius: 50%;
-  font: 700 .7rem Arial, sans-serif;
+  font: 700 .7rem var(--font-ui);
 }
 
 .outline-sections h3 { margin-top: 2px; }
@@ -720,7 +720,7 @@
 
 .quality-lane-card > header > span {
   color: var(--color-muted-strong);
-  font: 700 .7rem Arial, sans-serif;
+  font: 700 .7rem var(--font-ui);
 }
 
 .quality-lane-checks {
@@ -743,7 +743,7 @@
 
 .quality-lane-checks span {
   color: #7a7268;
-  font: 700 .66rem Arial, sans-serif;
+  font: 700 .66rem var(--font-ui);
   text-transform: uppercase;
   letter-spacing: .06em;
 }
@@ -753,7 +753,7 @@
 
 .quality-warning-note {
   border-left: 2px solid var(--color-warning-border);
-  background: #fbf2e3;
+  background: var(--color-warning-bg);
   padding: 9px 10px;
   margin: 10px 0 0;
   color: var(--color-warning-text);
@@ -811,7 +811,7 @@
   }
 
   .operator-progress-strip li:nth-child(-n+3) {
-    border-bottom: 1px solid #d7cfc3;
+    border-bottom: 1px solid var(--color-divider);
   }
 }
 
@@ -822,7 +822,7 @@
 
   .operator-progress-strip li {
     border-right: 0;
-    border-bottom: 1px solid #d7cfc3;
+    border-bottom: 1px solid var(--color-divider);
   }
 
   .operator-progress-strip li:last-child {
@@ -852,7 +852,7 @@
   margin-bottom: 16px;
   padding: 14px 16px;
   border-left: 4px solid var(--color-danger-border);
-  background: #f8e9e4;
+  background: var(--color-danger-bg);
 }
 
 .operator-reconcile-alert p {
@@ -869,7 +869,7 @@
 
 .operator-refresh-control small {
   color: var(--color-muted);
-  font: .72rem Arial, sans-serif;
+  font: .72rem var(--font-ui);
 }
 
 @media (max-width: 720px) {
