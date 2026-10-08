@@ -29,10 +29,10 @@
   border: 1px solid var(--color-ink-strong);
   background: transparent;
   color: var(--color-ink-strong);
-  min-height: 40px;
+  min-height: var(--control-min-height);
   padding: 9px 12px;
   text-decoration: none;
-  font: 700 .72rem Arial, sans-serif;
+  font: 700 .72rem var(--font-ui);
   letter-spacing: .04em;
 }
 
@@ -75,14 +75,14 @@
 }
 
 .error {
-  border-color: #c48e7e;
-  background: #f8e9e4;
-  color: #7d382a;
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .stale {
-  border-color: #caa977;
-  background: #fbf2e3;
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
   color: var(--color-warning-text);
 }
 
@@ -102,7 +102,7 @@
 .metric span {
   display: block;
   color: var(--color-muted);
-  font: 700 .61rem Arial, sans-serif;
+  font: 700 .61rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -130,8 +130,8 @@
   border: 1px solid var(--color-border-strong);
   padding: 5px 8px;
   background: var(--color-surface-muted);
-  color: #5e5a54;
-  font: 700 .63rem Arial, sans-serif;
+  color: var(--color-neutral-text);
+  font: 700 .63rem var(--font-ui);
   letter-spacing: .05em;
 }
 
@@ -269,7 +269,7 @@
 
 .definition dt {
   color: var(--color-muted);
-  font: 700 .63rem Arial, sans-serif;
+  font: 700 .63rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -283,7 +283,7 @@
 .refList,
 .codeText {
   color: var(--color-muted);
-  font: .74rem Arial, sans-serif;
+  font: .74rem var(--font-ui);
   overflow-wrap: anywhere;
 }
 
@@ -351,7 +351,7 @@
 .healthCard span {
   display: block;
   color: var(--color-muted);
-  font: 700 .61rem Arial, sans-serif;
+  font: 700 .61rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -383,7 +383,7 @@
 
 .table th {
   color: var(--color-muted);
-  font: 700 .62rem Arial, sans-serif;
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -409,18 +409,18 @@
 
 .field label {
   color: var(--color-muted);
-  font: 700 .62rem Arial, sans-serif;
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
 
 .dateInput {
-  min-height: 40px;
+  min-height: var(--control-min-height);
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface-strong);
   color: inherit;
   padding: 7px 9px;
-  font: .82rem Arial, sans-serif;
+  font: .82rem var(--font-ui);
 }
 
 .digestLayout {
@@ -444,7 +444,7 @@
 
 .digestDomain {
   color: var(--color-muted);
-  font: 700 .62rem Arial, sans-serif;
+  font: 700 .62rem var(--font-ui);
   letter-spacing: .07em;
   text-transform: uppercase;
 }
@@ -455,7 +455,7 @@
 
 .digestTime {
   color: var(--color-muted);
-  font: .72rem Arial, sans-serif;
+  font: .72rem var(--font-ui);
   white-space: nowrap;
 }
 
@@ -549,7 +549,7 @@
   .listButton,
   .filterButton,
   .dateInput {
-    min-height: 44px;
+    min-height: var(--control-min-height-touch);
   }
 
   .metricGrid,
