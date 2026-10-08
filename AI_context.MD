@@ -27,9 +27,6 @@ Preserve:
 - backend route/admission/materialization authority;
 - no automatic Start/Writer/Publish.
 
-Current repository cleanup tracker:
-#411 — docs/tracker consolidation only; no runtime/code behavior change.
-
 ## Read first and verify the actual ref
 
 Read `AGENTS.md`, this file, `docs/TASKS.md`, `docs/CHECKLIST.md`, the canonical plan and the exact assigned task. Inspect local changes before fetching/synchronizing. Never reset, stash, clean, overwrite `.env`, or switch an active runtime to another checkout automatically.
