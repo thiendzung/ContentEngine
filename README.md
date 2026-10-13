@@ -1,6 +1,6 @@
 # ContentEngine
 
-ContentEngine là hệ thống sản xuất nội dung có kiểm soát cho MOTGU: từ câu hỏi thật của khách hàng -> bằng chứng -> Angle -> Outline -> Writer -> Human Voice -> kiểm tra chất lượng -> Founder duyệt -> publish/đo lường khi được cho phép.
+ContentEngine là **xưởng sản xuất nội dung** có kiểm soát cho MOTGU: từ câu hỏi thật của khách hàng -> bằng chứng -> Angle -> Outline -> Writer -> Human Voice -> kiểm tra chất lượng -> Founder duyệt -> approved ContentVersion/package. Với MOTGU Website V1.1, package được bàn giao sang **MOTGU OPS Content Release -> Git -> Astro**, không publish trực tiếp từ ContentEngine.
 
 Mục tiêu không phải viết thật nhiều bài. Mục tiêu là tạo Pillar/Cluster và Artwork/Journal **đúng, hữu ích, có giọng MOTGU, có nguồn gốc rõ ràng và không tự bịa thêm sự thật**.
 
@@ -132,7 +132,7 @@ Backup/recovery phải nằm ngoài repository. Mặc định backup được gh
 
 Không commit `.env`, secret, dump, private artifact hoặc recovery evidence lên GitHub.
 
-## Pipeline hiện tại
+## Pipeline hiện tại — V1.1 production-first
 
 ```text
 Customer Truth / Research
@@ -190,7 +190,7 @@ Các gate của Founder không được tự động bỏ qua. Final approval c�
 - DB: PostgreSQL.
 - Migration: Alembic.
 - Runtime chính: local-first.
-- WordPress: publishing target bên ngoài, chỉ dùng khi được cấp quyền.
+- WordPress/Rank Math: integration lịch sử/khác mục tiêu; **không phải publishing path hiện hành của MOTGU Website V1.1**.
 - GitHub: source code, contract, issue/PR và sanitized evidence.
 - DB thật, secret, recovery dump và private artifact: giữ local.
 

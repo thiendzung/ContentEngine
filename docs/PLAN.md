@@ -1,8 +1,85 @@
-# PLAN - ContentEngine finish-first delivery
+# PLAN - ContentEngine production-first delivery for MOTGU V1.1 Growth
 
-Effective after Founder merges the 2026-09-12 local-first contract. Implementation status is in `TASKS.md`; the current working window is `../AI_context.MD`. Requirements: `20-LOCAL-FIRST-DELIVERY-SPEC.md`, foundational specs 00-12 and Journal spec 19.
+Effective 2026-10-14. Current working window is `../AI_context.MD`. This plan keeps the proven ContentEngine architecture but changes the active priority: **produce real approved content that can feed MOTGU's Growth Release**.
 
-## Delivery order
+## Active business role
+
+ContentEngine is the **content factory**, not the public CMS and not the business-operations system.
+
+Its V1.1 job is:
+
+```text
+real customer/search question
+→ evidence/originality
+→ Angle
+→ Outline
+→ independent VI/EN Writer
+→ Human Voice + quality
+→ Founder final approval
+→ approved ContentVersion / deterministic package
+→ handoff to MOTGU OPS Content Release
+```
+
+OPS remains the control tower and `www.motgu.com` remains the public showroom.
+
+No direct ContentEngine write to MOTGU production D1. No direct auto-publish to Astro. WordPress/Rank Math code remains historical/unused for the current MOTGU Astro publishing path unless Founder explicitly reopens it for another target.
+
+## Current critical path
+
+1. Finish the real five-article campaign in Issue #326 on one stable release.
+2. Preserve the true human gates: batch Angle, batch Outline, batch Final.
+3. Produce exact approved ContentVersions/packages with hashes and provenance.
+4. Add only the **smallest deterministic export/handoff adapter** required for MOTGU OPS to accept the package, if the existing package surface cannot already do it.
+5. Prove one Golden handoff into MOTGU OPS → Git → Astro.
+6. Publish the remaining approved batch through the same path.
+7. Use real Search/Inquiry/Sale observations later; do not reopen Question Map or strategy work without evidence.
+
+## Development admission rule
+
+A ContentEngine code change is allowed during this campaign only for:
+
+- a data-integrity/security defect;
+- a canonical workflow blocker;
+- a repeated defect observed in at least two real cases;
+- one severe single-case defect preventing truthful completion;
+- the minimum deterministic MOTGU handoff/export boundary if no existing safe path exists.
+
+Otherwise log the observation and continue production.
+
+Explicitly deferred:
+
+- new provider/framework;
+- Antigravity product dependency;
+- broad dashboard/UI redesign;
+- generic workflow engine;
+- speculative prompt refactor;
+- WordPress/Rank Math activation for MOTGU;
+- auto-publish;
+- new Question Map implementation;
+- strategy automation not driven by real post-publication data.
+
+## Delivery milestones for V1.1
+
+| Milestone | Deliverable | Exit evidence |
+| --- | --- | --- |
+| **CF-1 — Real batch** | P01/C02/C03/C05/P02 complete in VI+EN | exact stable release, approvals, hashes, quality evidence, no case-specific bypass |
+| **CF-2 — Handoff** | approved package can enter MOTGU OPS safely | deterministic/idempotent package, no model call, exact provenance, OPS validation |
+| **CF-3 — Public proof** | one Golden article completes OPS → Git → Astro | verified public URL and release evidence |
+| **CF-4 — Batch release** | remaining approved pilot content published | public URLs, internal links/CTA, no duplicate publish |
+| **CF-5 — Learning input** | real external observations can map back to content identity | observed data only; no automatic causality or truth promotion |
+
+No calendar promises. Gate evidence determines completion.
+
+## Historical roadmap status
+
+CE00–CE09 modules, Customer Living Map, QA, PM/LL, UI and Question Map work remain valid architecture/history. They are **not an active implementation queue merely because open checkboxes remain in historical sections**.
+
+Question Map V1 is closed and maintenance-only.
+
+The older M1–M4 / WordPress-placement wording below is retained only where needed for historical traceability; it does not override the active MOTGU V1.1 Astro handoff described above.
+
+
+## Historical delivery order
 
 | Milestone | Deliverable | Exit evidence | Not a prerequisite |
 |---|---|---|---|
@@ -28,9 +105,9 @@ Prioritize M2 work by the first real bottleneck: existing-script entrypoint, act
 
 Use human review burden, approved output and repeated failures as the first baseline. Record latency/calls and known usage too; do not manufacture monetary estimates for missing CLI telemetry.
 
-In M3 prefer the simplest approved manual placement before building the complete WordPress adapter. Preserve final version/URL identity, media rights, approval and check references. Capture real observations; do not infer demand or success from an AI score.
+For MOTGU V1.1, M3-style placement means the simplest approved **MOTGU OPS Content Release → Git → Astro** handoff. Do not activate the historical WordPress adapter for the MOTGU showroom.
 
-M4 starts with editorial batches and only later audience/strategy changes when evidence is sufficient. A failed article can improve the test set without becoming a global rule.
+M4-style learning starts from real editorial/traffic/lead observations. A failed article or weak market response may improve the test set without becoming a global rule. A failed article can improve the test set without becoming a global rule.
 
 ## Mapping to the existing CE roadmap
 
@@ -40,7 +117,7 @@ M4 starts with editorial batches and only later audience/strategy changes when e
 | CE05 | Journal context/research, Angle/Outline, independent writers, checks/package, review surface, metrics, closeout | M1 first; applicable T05.18-T05.22 in M2 |
 | CE06 | Full quality evaluators, Golden/Weak sets and pairwise regression | Start with small real-case regressions; expand by evidence |
 | CE07 | Artwork canonical facts, media, artist context, independent writers and gates | Not opened by this plan |
-| CE08 | WordPress draft/version mapping, reconciliation and measurement adapters | M3 may take a small manual Journal handoff/identity slice first; full phase remains open |
+| CE08 | Historical publishing adapters and measurement mapping | For MOTGU V1.1 use the bounded OPS/Git/Astro handoff; do not activate WordPress/Rank Math unless explicitly reopened |
 | CE09 | Content memory, overlap, edit delta, learning lifecycle and 1/3/6-month review | Capture records now; automate by measured need |
 | CE10 | Intentional 10-20-hypothesis pilot and roadmap review | After repeatable local delivery; not a volume quota |
 
