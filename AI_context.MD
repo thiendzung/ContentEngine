@@ -1,31 +1,37 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — Question Map V1 closed; no active QM implementation
+## Current WIP — MOTGU V1.1 real-content production
 
-Live GitHub state:
-- QM-01 derived planning chain: DONE;
-- QM-02 selection/routing/admission/materialization chain: DONE;
-- bounded real Search + deterministic Pillar/Cluster architecture: DONE;
-- CREATE / UPDATE / REFRESH / MERGE Golden E2E: DONE / #361 CLOSED;
-- Founder UI P1 through P6: DONE / merged;
-- QM-02F / #361 closes Question Map planning-to-materialization only;
-- full ContentEngine E2E-01 / #201 remains a separate open track;
-- current main: `0754306bf4c6d1ec539db5e57e896c20aeba4bad`.
+**Updated:** 2026-10-14  
+**Snapshot main:** `2d151d84b747e7ec2a03b62e734412fae55984df`
 
-Question Map is now maintenance-only.
+ContentEngine's active business role is **CONTENT FACTORY** for MOTGU Website V1.1 Growth Release.
 
-Do not open another QM phase merely because the prior sequence finished. A new QM task requires:
-1. a demonstrated defect;
-2. real search/customer/content behavior that invalidates an existing assumption; or
-3. an explicit Founder product decision.
+North Star handoff:
 
-Preserve:
-- Question Map as derived planning;
-- Customer Truth confidence separate from Content Readiness;
-- Search language separate from factual Evidence;
-- explicit Founder selection;
-- backend route/admission/materialization authority;
-- no automatic Start/Writer/Publish.
+```text
+Question / customer need
+→ Evidence + Originality
+→ Angle
+→ Outline
+→ VI/EN Writer
+→ Human Voice + Quality
+→ Founder final approval
+→ approved ContentVersion/package
+→ MOTGU OPS Content Release
+→ Git
+→ Astro / www.motgu.com
+```
+
+Current product priority:
+- finish Issue #326 real five-article campaign;
+- no speculative feature work;
+- no new Question Map implementation;
+- no WordPress/Rank Math activation for the MOTGU Astro path;
+- publication remains a separate explicit MOTGU OPS/Git gate;
+- only build a minimum deterministic ContentEngine→MOTGU package adapter if the real handoff proves the current export is insufficient.
+
+Question Map V1 remains CLOSED / maintenance-only. Historical E2E/PM/LL architecture remains valid but is not a reason to delay real content production or reopen broad implementation.
 
 ## Read first and verify the actual ref
 
@@ -77,28 +83,32 @@ Neither authorizes publication.
 
 ## Immediate task
 
-No new Question Map implementation is authorized.
+**Execute the real-content campaign, not another architecture phase.**
 
-For ContentEngine, only open new work when it is:
-- a demonstrated blocker to the real content/pilot path;
-- a correctness/security/data-integrity defect;
-- or an explicit Founder decision.
+Active critical path:
+1. Issue #326: bring P01/C02/C03/C05/P02 through the batched Angle → Outline → Final human gates.
+2. Complete approved VI/EN ContentVersions/packages on one stable release without case-specific bypass.
+3. Reuse existing Operational Package / publish-package machinery where safe.
+4. If required, implement only the smallest deterministic `ContentEngine → MOTGU OPS Content Release` export/handoff contract.
+5. Prove one Golden public handoff through MOTGU OPS → Git → Astro before releasing the rest of the batch.
 
-Do not restart QM roadmap work from stale issue checklists. Historical QM logs remain evidence, not active tasks.
+Do not start a new provider, dashboard, workflow engine, WordPress/Rank Math activation, Question Map phase or speculative prompt refactor.
 
-## Pilot operating priority — 2026-10-03
+A code change is admitted only for a real campaign blocker, security/data-integrity defect, repeated defect, severe truthful-completion blocker, or the minimum MOTGU handoff boundary.
 
-Near-term goal: produce a small batch of real content that Founder accepts, then repeat it on one stable release. Engineering work must remove a demonstrated blocker to that outcome.
+## Pilot operating priority — 2026-10-14
+
+Near-term goal: **finish and release a small batch of real content that can earn search visibility and support real inquiries.**
 
 Critical path:
-1. Complete PR #284, the current-main approved locked EvidenceSet reuse path. The LOCAL-E2E #280 retry proved this is now the concrete blocker.
-2. Prepare a human-reviewed EvidenceSet for the exact preserved #280 ContentCase through the valid evidence/approval/lock workflow; do not direct-edit workflow state.
-3. After #284 is merged and that EvidenceSet exists, Founder may separately decide whether one more #280 retry is justified. Until then, #280 remains BLOCKED.
-4. Only after P1 proof, request the separate Founder authorization for operational migration/pilot storage. Disposable DB remains verification-only.
-5. Run the frozen P01 + C02 pair as the first editorial pilot on one stable release. Record Founder edits, usefulness, overlap and final VI/EN evidence.
-6. Run 2-3 additional real articles on the same release. Improve only recurring or blocking defects demonstrated by these runs.
+1. Preserve stable-release discipline for the five-case #326 campaign.
+2. Batch Founder interactions at the true editorial gates only.
+3. Fix code only when a demonstrated blocker satisfies the development admission rule.
+4. Finalize exact approved ContentVersions/packages with hashes/provenance.
+5. Hand approved output to MOTGU OPS; do not bypass OPS review/publish authority.
+6. After public release, consume real Search/Inquiry/Sale observations as measurement inputs; observations remain observations.
 
-Deprioritized until evidence shows a need: broad dashboard/UI polish beyond the explicitly approved #372 P1 slice, WordPress/Rank Math activation, auto-publish, new framework/provider work and wider automation. PR #282 Antigravity is not part of the critical path unless the current account/model route remains unusable after an explicit capability decision.
+Deprioritized: broad UI/dashboard polish, WordPress/Rank Math activation, auto-publish, new framework/provider work, wider automation, Antigravity dependency, and new Question Map implementation.
 
 ## Current working log
 
