@@ -53,23 +53,32 @@ Before implementation or local execution:
 
 For remote work, inspect equivalent GitHub state and pin the base commit. Never update main directly. Founder merges PRs.
 
-## Delivery principle: finish first, polish later
+## Active execution — MOTGU V1.1 Content Factory
 
-V1 priority is one browser-operated end-to-end Journal, not a broader platform.
+**Verified GitHub snapshot (2026-10-14):** ContentEngine PR #413 MERGED on `main@8aedbb5ed3c538a81ff4e1718f2e92899606558d`; MOTGU PR #229 MERGED on `main@b430ac196275216503614f35010eecd77b0f41e8`. Always re-read exact live refs and the latest work report before executing.
 
-Feature completion order:
+Business objective: **produce five real evidence-grounded bilingual content packages for MOTGU's `traffic → inquiry → quote → sale → learning` Growth Release**.
 
-`UI-01 proof -> unified operator core -> Angle->Outline -> Outline->VI/EN Writers -> quality/final gate -> canonical ContentVersions/COMPLETE -> minimum end-to-end UI -> real M2/M3 pilot -> UX polish`
+- Active ContentEngine tracker: **Issue #326** (P01, C02, C03, C05, P02), with three batched human decisions: Angle → Outline → Final.
+- ContentEngine = **content factory**. OPS = review/control tower. WWW = public showroom.
+- Approved ContentVersion/package → MOTGU OPS Content Release → controlled Git PR → Astro/publication; no auto-publish or direct ContentEngine writes to production D1.
+- Reuse existing deterministic package capability first; code a thin adapter only when actual MOTGU handoff proves a blocker.
+- Defer WordPress/Rank Math for MOTGU, new providers, Question Map expansion, speculative prompt/UI/dashboard polishing, broad architecture refactors and autonomous publication.
+- Historical UI/F0–F7/M1–M4 milestones remain provenance, not active V1.1 priorities.
+- Continue on the authorized local runtime only; GitHub merge does not authorize local execution or editorial approval.
 
-Do not introduce a new workflow engine, Redis/Celery, provider/agent framework, native Codex multi-agent or Antigravity merely to connect capabilities that already exist. Do not redesign the whole UI before the end-to-end backend path is proven. Split large changes so failures remain attributable.
+Read `AI_context.MD`, `docs/PLAN.md`, `docs/TASKS.md` and `docs/CHECKLIST.md` for the exact batch and safety gates.
 
-## State transitions without paperwork loops
+## Context synchronization — material milestones, not paperwork loops
 
-A code PR changing a gate includes its tests, evidence and semantic updates to `AI_context.MD` and `docs/TASKS.md`. Do not make routine follow-up context-sync PRs. Do not mark operational success from implementation readiness.
+GitHub is the shared brain, with `AGENTS.md` providing operating rules, `AI_context.MD` the current working window, and `docs/PLAN.md` / `docs/TASKS.md` the active deliverables.
 
-For runtime-only work, publish one sanitized evidence record at a meaningful gate; MG incorporates the verified next state and next bounded task into the next appropriate PR. No PR for each shell command. Until evidence is reviewed, label it reported/unverified; do not advance dependent work silently.
-
-Live HEAD, PR numbers and CI state do not belong as perpetual facts in current context. Detailed runtime IDs/history belong in linked evidence. The next exact task and stop condition must remain obvious.
+1. Before each bounded task, verify exact live main, PR/issue, current local-runtime evidence and the checked-out files; historical snapshot SHAs and chat memory are not current operational truth.
+2. Record one normalized handoff after every material change: merged implementation, a real content case reaching a human gate, Founder decision, repeatability blocker, approved final package, MOTGU handoff, publication or real measurement.
+3. Include exact ref/case IDs, evidence class, decision/approval state, blocker, next action and what remains NOT_VERIFIED. Do not put PII, raw private sources, tokens or secrets in repo docs.
+4. Update `AI_context.MD` and relevant `docs/TASKS.md`/`docs/CHECKLIST.md` **inside the same related code/closeout PR** when the active state changes. For local/runtime-only progress, return sanitized evidence; MG carries it into the next authorized PR or an intentionally batched checkpoint. Avoid PRs for each shell command/SHA change.
+5. Sync MOTGU context only when the ContentEngine→OPS dependency or public-release evidence materially changes. No auto-publication, auto-merge, unauthorized local runs or background polling.
+6. The next Agent must be able to answer: what exact outcome is active; who approves it; what passed with which evidence; what remains blocked; what is the smallest next safe action?
 
 ## Contract changes
 
