@@ -12,13 +12,16 @@ Use applicable sections; mark N/A with a reason. Never claim a test ran merely b
 - [ ] WIP <= one implementation plus related verification; no concurrent runtime writers.
 - [ ] Task dispatched/authorized; presence in PLAN alone is not permission.
 
-## B. Finish-first scope
+## B. V1.1 growth-factory scope
 
-- [ ] Before M1, work unblocks same real Journal or demonstrated security/data-integrity defect.
-- [ ] No speculative redesign, provider/agent/framework, broad refactor or CI tuning.
-- [ ] Existing modules/harness reused; no second engine.
-- [ ] Contract conflict resolved in affected docs/tests, not bypassed.
-- [ ] Useful bounded outcome assigned; no needless approval per command.
+- [ ] Work directly advances a real content case, approved package/handoff, or fixes demonstrated security/data-integrity risk.
+- [ ] Existing module/export/package path was checked before proposing new code.
+- [ ] No speculative redesign, provider/agent/framework, broad refactor, dashboard polish or CI tuning.
+- [ ] No WordPress/Rank Math activation for the MOTGU Astro publication path.
+- [ ] No new Question Map implementation without real post-publication evidence or explicit Founder product decision.
+- [ ] No direct ContentEngine write to MOTGU production D1.
+- [ ] Founder editorial gates remain real and are batched where the campaign contract allows.
+- [ ] If no proven blocker exists, continue production instead of opening a feature task.
 
 ## C. Local runtime and secrets
 
@@ -297,4 +300,21 @@ Agent Local: READY FOR REVIEW, BLOCKED, NEEDS CHANGES. MG: READY TO MERGE, BLOCK
 - [ ] Two to three more real articles complete on the same release before repeatability is claimed.
 - [ ] New development work maps to a demonstrated blocker from these runs; otherwise defer it.
 - [ ] Publication stays locked until separately authorized.
+
+
+## W. MOTGU V1.1 handoff gate
+
+Use when a ContentEngine output is being prepared for MOTGU public release.
+
+- [ ] Exact approved ContentVersion/final bytes and hashes are frozen.
+- [ ] Both required locales and approval refs are present.
+- [ ] Evidence/Originality/quality provenance needed for review is preserved.
+- [ ] Export is deterministic and can be reproduced without another model/research call.
+- [ ] Export/handoff does not rewrite content.
+- [ ] Package identity is idempotent; duplicate handoff cannot create a second valid logical release.
+- [ ] MOTGU OPS validates/reviews/approves; ContentEngine does not self-authorize publication.
+- [ ] Git/Cloudflare credentials are not placed inside ContentEngine runtime.
+- [ ] No direct write to MOTGU production D1 or public Astro source outside the approved handoff.
+- [ ] One Golden article is proven end-to-end before batch release.
+- [ ] Post-publication Search/Inquiry/Sale values are recorded as observations, not causality claims.
 
