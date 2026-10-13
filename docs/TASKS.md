@@ -1,6 +1,6 @@
 # TASKS - ContentEngine delivery and progress
 
-Current window: `../AI_context.MD`. Canonical plan: `logs/2026-09-16-finish-first-delivery-plan.md`. Dated reconciliation: `logs/2026-09-16-post-f2-status-replan.md`.
+Current window: `../AI_context.MD`. Active plan: `PLAN.md`. Historical finish-first reconciliation remains under `logs/` and does not override the V1.1 production-first queue.
 
 One implementation plus related verification. MG designs/codes/tests/self-reviews and owns OCR triage; Founder dispatches local tasks and merges; Agent Local is the primary heavy-verification machine for the exact candidate SHA. GitHub Actions is a minimum confirmation gate only and may be absent during quota/service outage if that absence is disclosed. A checkbox or plan is not runtime authorization.
 
