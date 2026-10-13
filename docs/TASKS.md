@@ -185,24 +185,25 @@ Tracking: issue #327. Exact task: `logs/2026-10-05-mgctrl-01-menu-bar-v01.md`.
 
 ## Current queue
 
-| ID | State | Next exit |
-|---|---|---|
-| F0 | DONE / acceptance PASS / PR #93 MERGED | Closed; consumed authorization is not reusable. |
-| F1 | DONE / PR #102 MERGED | Reuse canonical facade/resolver. |
-| F2 | DONE / acceptance PASS / PR #103 MERGED | Exact Outline backend path accepted. |
-| F3 | DONE / acceptance PASS / PR #104 MERGED | Independent VI/EN Writers accepted. |
-| F4 | DONE / acceptance PASS / PR #105 MERGED | Exact quality path reaches final_review. |
-| F5 | DONE / PASS_F5_FINALIZATION | #109 + #113 merged; #110 accepted COMPLETE / Approved / Not published. |
-| F5.2 | IMPLEMENTED / bounded review route | Bounded revision continuation after changes_requested is implemented and remains behind the final-review human gate; do not advertise it in F6-MINI. |
-| F6-MINI | DONE / browser acceptance PASS / PR #117 MERGED | Browser workspace is merged and the bounded browser acceptance path passed; #116 is closed. |
-| F6.A1 | DONE / real browser acceptance PASS | Exact browser path reached `COMPLETE / APPROVED_NOT_PUBLISHED / NOT_PUBLISHED`; #118 is closed. |
-| OCR-01 | DONE / PR #121 MERGED / Issue #119 CLOSED | Advisory OpenCodeReview Delegation Mode is on main with exact-ref validation and regression coverage. |
-| P2 / O1 | DONE / O1.0-O1.4 PASS | Controlled operational release complete; exact release lifecycle and fresh rev-0034 recovery restore proof PASS. |
-| O2 | OPTIONAL, separately authorized | New Model Routing activation only when required. |
-| F7 | LEGACY PILOT / #167 CLOSED | Historical R4 remains paused at the Outline gate for audit only. #167 was resolved before the Customer Living Map track; do not resume or mutate this lineage merely to advance E2E-01. |
-| F8 | PLANNED | Evidence-led polish and CE05 closeout. |
-| Editorial #114 | SEPARATE TRACK | New publication-ready revision; never mutate accepted V1. |
-| Publish Gate #115 | SEPARATE TRACK | Exact ContentVersion-bound Founder publish authorization; no publish yet. |
+### V1.1 active queue — business priority
+
+| Order | Work | State / exit |
+| --- | --- | --- |
+| 1 | **PILOT-05→07 / #326 — five real articles** | ACTIVE; complete P01/C02/C03/C05/P02 through batch Angle, Outline and Final gates |
+| 2 | **Approved package / ContentVersion closeout** | NEXT; exact VI/EN bytes, hashes, provenance, no publication |
+| 3 | **ContentEngine → MOTGU OPS handoff** | CONDITIONAL; reuse existing package/export first, code only the minimum deterministic adapter if real handoff blocks |
+| 4 | **Golden public release** | MOTGU-side gate; one article OPS → Git → Astro → verified URL |
+| 5 | **Batch release + measurement** | publish remaining approved pilot and consume real observations |
+
+Development freeze:
+- no new QM implementation;
+- no broad UI/dashboard work;
+- no WordPress/Rank Math activation for MOTGU;
+- no new provider/framework or generic workflow engine;
+- no auto-publish;
+- no speculative prompt/refactor task.
+
+Historical queues below remain evidence/history and do not override this active queue.
 
 ## F3 - OutlineApproval -> independent Writers
 
@@ -817,45 +818,27 @@ CQ-05 boundaries held: no Evidence truth reclassification, sibling-locale input,
 
 CQ-06 boundaries held: no auto-publication, WordPress activation, new workflow engine, weakening Assertion Audit/Source-copy, opaque score or operational migration.
 
-### CQ-07 — Real Pillar + Cluster closed-loop pilot — ACTIVE / P0
+### PILOT-05→07 — five-case real-content campaign — ACTIVE / V1.1 P0
 
-- [x] Founder selected Option B: P01 `Buying Your First Original Vietnamese Artwork: A Calm, Practical Guide` + C02 `Original or Print? How to Know What You Are Buying`.
-- [x] Pair identity/role/question/intent/promise/coverage/EN+VI lanes frozen in `docs/CQ07_PILOT_CONTRACT.md`.
-- [x] Fresh disposable P01-R2 intake exists at Alembic `20260926_0044`; Run `61a75f87-b122-4f2b-b6af-bab332c428a8` preserves Attempts 1-6 as failed Jobs.
-- [x] PR #249 fixed the Coverage Support structured-output transport-schema compatibility defect without weakening canonical validation.
-- [x] PR #252 replaced exact Codex patch-version gating with capability-based compatibility while retaining malformed-identity/auth/no-tool fail-closed behavior.
-- [x] Attempt 4 reached semantic Coverage Support and exposed a real `insufficient_support` gap; no Angle was generated.
-- [x] PR #255 merged coverage-aware single-query research acquisition plus explicit editorial-vs-factual support semantics.
-- [x] PR #257 merged checkout-rooted/CWD-independent Alembic preflight; the blocked pre-#257 submission did not consume Attempt 5.
-- [x] Attempt 5 failed before ModelCall with `insufficient_evidence`; #262/#263 isolated discovery-only source selection and PR #264 fixed the bounded evidence-candidate fallback/filtering path.
-- [x] PR #264 merged as main `9a57b4ed39404081ff4ef8ab8942ba029ce9da35`; post-merge readiness passed.
-- [x] Founder authorized exactly one Attempt 6; it ran once and failed safely at Coverage Support with only `coverage-5` unresolved; no Attempt 7 exists.
-- [x] #267 read-only postmortem proved the Attempt-6 Coverage Support diagnostic is not self-contained after rollback: referenced EvidenceSet/Evidence/SourceDocument rows are gone and full assessment/research input was not durably retained.
-- [x] MG classification for Attempt-6 root cause is `MIXED_OR_UNKNOWN`; `BINDING_EVALUATOR` is not proven from durable evidence.
-- [x] #268 / PR #269 merged: bounded Coverage Support assessment + exact Evidence input + safe research summary survive rollback; provider-controlled diagnostic URLs are stored only as opaque SHA-256 fingerprints; legacy replay and pre-research capacity guards remain fail-closed.
-- [x] Attempt 7 was separately authorized after PR #269 and failed safely with `insufficient_evidence`; no page read/factual Evidence/Coverage Support evaluator call occurred because all discovered candidates remained discovery-only.
-- [ ] #270 / PR #284 ACTIVE: current-main port of reusable human-reviewed + approved + locked EvidenceSet semantics. Old PR #271 is superseded. Reuse approval binds the complete nested Evidence/Claim/SourceDocument/Source factual-provenance snapshot; the exact immutable approval row must be refreshed from DB and locked before its snapshot marker is trusted; post-approval nested mutation fails closed. Production approval is now wired through `scripts.approve_reusable_evidence_set` between curate and lock, with no one-off Python required. Preserve strict automatic research behavior when no valid reusable set exists; complete MG self-review, OpenCodeReview, CI and Agent Local exact-head proof before Founder merge. Do not invoke GitHub Codex review/security review. Attempt 8 remains unauthorized.
-- [ ] Founder selects/approves P01 Angle; continue to Outline and stop at Outline human gate.
-- [ ] Founder approves Outline; run independent EN/VI Writer → Human Voice → quality chain → final-review gate.
-- [ ] Complete P01 final review/content evidence without publication.
-- [ ] Run C02 independently through the same chain.
-- [ ] Compare P01/C02 breadth, depth, overlap, truthful internal-link intent and VI/EN quality.
-- [ ] Record whether existing identity is sufficient or a minimum durable Pillar↔Cluster relation is justified.
-- [ ] Return exact artifact IDs/hashes, approvals, quality results and final visible VI/EN content.
+Canonical issue: **#326**.
 
-**P0 exit:** P01 + C02 both complete the bounded CQ-07 quality path, Founder comparison is recorded, and the Pillar↔Cluster identity decision is explicit.
+- [x] Founder authorized one campaign instead of one-microtask/one-authorization execution.
+- [x] P01/C02/C03/C05/P02 identities, roles and guardrails are frozen by the #326 contract.
+- [ ] Stage A: all five cases reach/retain exact Angle human gates on one stable release; preserve blockers without speculative code changes.
+- [ ] One batch Founder Angle decision.
+- [ ] Stage B: all approved cases reach exact Outline gates.
+- [ ] One batch Founder Outline decision.
+- [ ] Stage C: independent VI/EN writers + bounded quality pipeline reach Final gates.
+- [ ] One batch Founder Final decision.
+- [ ] Stage D: approved ContentVersions/packages finalize without publication.
+- [ ] PILOT06 repeatability PASS on the same merged stable release, including one durable stop/resume proof.
+- [ ] PILOT07 closeout records recurring defects only; one-off preferences do not become features.
+- [ ] No WordPress/Rank Math activation, no auto-publish, no direct SQL bypass, no case-specific code patch on the counted stable release.
+- [ ] Handoff readiness: exact approved package can be consumed by MOTGU OPS, or one minimal deterministic adapter task is opened from a proven blocker.
 
-**P1 — Local Content Production Ready: ACTIVE / Founder priority override 2026-10-02.**
-- [x] Founder explicitly authorized starting P1 before CQ-07/P0 closes; P0 is paused, not declared complete. Historical PR #271 is superseded by active PR #284; Attempt 8 is not authorized.
-- [x] DATA-02 / #273 / PR #274 merged: fresh operational backup + isolated restore + disposable `20260915_0034 → 20260926_0044` rehearsal passed with full-data/core/SourceDocument invariance and zero operational mutation. Historical O1 rehearsal remains pinned and unchanged.
-- [x] RUN-02 MIN / #275 / PR #276 merged: disposable restored+migrated 0044 DB, stdout readiness events, one-shot HTTP verification, idle one-shot worker and graceful child exit all passed. Agent Local had one verification-protocol deviation (manual PID cleanup after a busy port); future proofs must STOP on conflicting local resources unless Founder separately authorizes cleanup.
-- [x] REC-02 / #277 / PR #279 merged as main `c6e616104abedd3432dde84e837567ac8b5ea7d3`: `PASS_P1_REC02` proved process-exit/event-callback crash/restart, stale-worker rejection, exact replay/idempotency and reconcile-before-resend on disposable 0044 state.
-- [ ] LOCAL-E2E-01 / #278 / PR #280 is BLOCKED on evidence sufficiency. Founder authorized exactly one retry and one one-shot worker on the preserved lineage; attempt 2 stopped before Angle on `operator_worker_coverage_support_unresolved / insufficient_support` with zero ModelCall/ToolCall, no new case and no second retry. Preserve the disposable lineage; do not retry again until #284 is merged and an exact approved+locked human-reviewed EvidenceSet is prepared for this ContentCase, followed by a new Founder decision.
-- [ ] Exit only on `PASS_LOCAL_CONTENT_PRODUCTION_READY`, then move to the separately authorized operational pilot and real content batch; later hardening is driven by observed failures.
+**V1.1 P0 exit:** five real bilingual content cases are Founder-approved and package-ready for MOTGU OPS. Publication remains a MOTGU-side gate.
 
-CQ-07/P0 remains paused with no auto-publish, WordPress/Rank Math mutation, operational migration or Attempt 8. Founder explicitly overrode only the previous P1 sequencing gate; P1 does not imply P0 completion or publication permission. Historical PR #238 is evidence/history only and is not the clean execution branch.
-
-### PILOT-00 — Repo truth sync and pilot critical path — THIS PR
+### Historical CQ-07 / P1 pilot detail
 
 - [x] Live main verified as `857b536823d8514c42da714d20e4e9ed1f5845a2` after PR #283; PR #279 remains the REC-02 merge baseline.
 - [x] DATA-02, RUN-02 MIN and REC-02 recorded as DONE.
