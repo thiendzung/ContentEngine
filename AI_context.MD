@@ -3,7 +3,7 @@
 ## Current WIP — MOTGU V1.1 real-content production
 
 **Updated:** 2026-10-14  
-**Snapshot main:** `2d151d84b747e7ec2a03b62e734412fae55984df`
+**Verified GitHub main at reconciliation (2026-10-14):** `8aedbb5ed3c538a81ff4e1718f2e92899606558d`
 
 ContentEngine's active business role is **CONTENT FACTORY** for MOTGU Website V1.1 Growth Release.
 
@@ -30,6 +30,15 @@ Current product priority:
 - no WordPress/Rank Math activation for the MOTGU Astro path;
 - publication remains a separate explicit MOTGU OPS/Git gate;
 - only build a minimum deterministic ContentEngine→MOTGU package adapter if the real handoff proves the current export is insufficient.
+
+**Cross-repo status, verified 2026-10-14:**
+- ContentEngine PR #413 MERGED on main `8aedbb5e`.
+- MOTGU PR #229 MERGED on main `b430ac19`.
+- MOTGU PR #228 remains OPEN; its exact-head CI passed but manual merged-main WWW/OPS HTTP proof is not yet available.
+- #326 is OPEN. The documented P01 Angle state is a dated campaign snapshot; do not claim newer local execution without Agent Local evidence.
+- No real ContentEngine→OPS publication has been verified by this context reconciliation.
+
+**Context synchronization:** For each meaningful editorial gate, merged fix, batch closeout or public-handoff event, update this current working window and `docs/TASKS.md` in the related PR/checkpoint. Evidence must distinguish local proof, CI, preview, production and Founder acceptance. Keep old SHAs explicitly historical and re-check the live ref before acting. No polling and no new PR per trivial command.
 
 Question Map V1 remains CLOSED / maintenance-only. Historical E2E/PM/LL architecture remains valid but is not a reason to delay real content production or reopen broad implementation.
 
