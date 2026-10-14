@@ -31,13 +31,13 @@ Current product priority:
 - publication remains a separate explicit MOTGU OPS/Git gate;
 - only build a minimum deterministic ContentEngine→MOTGU package adapter if the real handoff proves the current export is insufficient.
 
-**EDITOR-01 bounded handoff slice — Founder admitted 2026-10-14:**
+**EDITOR-01A bounded producer slice — Founder admitted 2026-10-14:**
 - MOTGU WCC111-03 desktop-first operator acceptance is complete; MOTGU issue #265 is closed.
-- ContentEngine issue #415 owns one code-only outcome: Founder-authored final Journal JSON → deterministic MOTGU CONTENT02 package + HUMAN provenance sidecar.
+- ContentEngine issue #415 owns one code-only outcome: Founder-authored final Journal JSON → deterministic hash-bound CONTENT02 package carrying `authoring_provenance=HUMAN` + local provenance sidecar.
 - The adapter is pure/local: no model, research, operational DB, network, publish, Cloudflare or MOTGU production mutation.
 - It does not alter Issue #326's pinned operational lineage/stable-release count and does not assert a ContentVersion/final approval that does not exist.
-- The produced package is still only a candidate handoff; MOTGU OPS Import → Validate → Review/Release remains mandatory before any Git/public change.
-- EDITOR-02 UI is separate and not admitted by this slice.
+- The produced package is still only a candidate handoff. EDITOR-01B separately updates MOTGU to accept/validate/surface the provenance field through the existing OPS Import → Validate → Review/Release path.
+- EDITOR-01B consumer integration and EDITOR-02 authoring UI are separate; neither is bundled into this ContentEngine PR.
 
 **Cross-repo status, verified 2026-10-14:**
 - ContentEngine PR #413 MERGED on main `8aedbb5e`.
