@@ -59,7 +59,7 @@ def main() -> int:
                 "package_version": str(handoff.package["package_version"]),
                 "package_hash": handoff.package["package_hash"],
                 "package_bytes": handoff.provenance["package_bytes"],
-                "provenance": "HUMAN",
+                "authoring_provenance": "HUMAN",
             },
             sort_keys=True,
         )
