@@ -222,7 +222,8 @@ def test_manual_handoff_cli_exports_without_body_in_stdout_or_sidecar(tmp_path: 
     completed = subprocess.run(
         [
             sys.executable,
-            "scripts/export_manual_motgu_package.py",
+            "-m",
+            "scripts.export_manual_motgu_package",
             "--input",
             str(input_path),
             "--output",
@@ -247,7 +248,8 @@ def test_manual_handoff_cli_exports_without_body_in_stdout_or_sidecar(tmp_path: 
     blocked = subprocess.run(
         [
             sys.executable,
-            "scripts/export_manual_motgu_package.py",
+            "-m",
+            "scripts.export_manual_motgu_package",
             "--input",
             str(input_path),
             "--output",
