@@ -6,12 +6,12 @@ ContentEngine remains the authoring owner; MOTGU OPS remains the release authori
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
-from pathlib import Path
 import re
-from typing import Any, Mapping
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Mapping, NoReturn
 
 CONTENT02_SCHEMA_VERSION = 1
 CONTENT02_TYPE = "journal"
@@ -84,7 +84,7 @@ class ManualMotguHandoff:
     provenance_json: str
 
 
-def _fail(code: str) -> None:
+def _fail(code: str) -> NoReturn:
     raise ManualMotguHandoffError(code)
 
 
