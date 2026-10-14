@@ -43,7 +43,7 @@ Current product priority:
 - ContentEngine PR #413 MERGED on main `8aedbb5e`.
 - MOTGU PR #229 MERGED on main `b430ac19`.
 - MOTGU PR #228 remains OPEN; its exact-head CI passed but manual merged-main WWW/OPS HTTP proof is not yet available.
-- #326 is OPEN. The documented P01 Angle state is a dated campaign snapshot; do not claim newer local execution without Agent Local evidence.
+- #326 is OPEN. The documented P01 Angle state is a dated campaign snapshot; do not claim newer runtime execution without fresh exact-ref GitHub, ChatGPT sandbox, or Founder/operator evidence.
 - No real ContentEngine→OPS publication has been verified by this context reconciliation.
 
 **Context synchronization:** For each meaningful editorial gate, merged fix, batch closeout or public-handoff event, update this current working window and `docs/TASKS.md` in the related PR/checkpoint. Evidence must distinguish local proof, CI, preview, production and Founder acceptance. Keep old SHAs explicitly historical and re-check the live ref before acting. No polling and no new PR per trivial command.
@@ -54,18 +54,18 @@ Question Map V1 remains CLOSED / maintenance-only. Historical E2E/PM/LL architec
 
 Read `AGENTS.md`, this file, `docs/TASKS.md`, `docs/CHECKLIST.md`, the canonical plan and the exact assigned task. Inspect local changes before fetching/synchronizing. Never reset, stash, clean, overwrite `.env`, or switch an active runtime to another checkout automatically.
 
-Live GitHub refs/PR state/CI decide repository status. Local state requires dated Agent Local evidence; a merge is not deployment. Recheck the live branch before acting on the observations below.
+Live GitHub refs/PR state/CI decide repository status. Local/runtime state requires dated ChatGPT sandbox or Founder/operator evidence; a merge is not deployment. Recheck the live branch before acting on the observations below.
 
 ## Fixed collaboration
 
-- MG / ChatGPT: architecture -> code + regression tests -> self-review -> run/triage OpenCodeReview as the only supplementary semantic reviewer -> fixes -> prepare exact candidate SHA/PR -> review Agent Local evidence -> decide technical merge readiness. Do not invoke GitHub Codex review/security-review automation.
-- Founder: product/editorial decisions, authorization of sensitive real executions, dispatch of local tasks, and PR merge.
-- Agent Local: sync exact SHA -> run heavy verification on the real machine (focused/full tests, disposable DB/migrations, runtime/smoke, frontend build, exact-ref OCR when local execution is required) -> return normalized evidence. Code edits only when Founder/MG dispatches an explicit bounded coding scope.
-- GitHub Actions: minimum confirmation gate only; do not duplicate the full Agent Local suite. If quota/service is unavailable, record CI as unavailable and use the exact-SHA Agent Local proof + MG review path.
-- GitHub: shared code/contracts/plans/tasks/evidence, not a direct communication channel to Agent Local.
+- MG / ChatGPT Web: architecture -> Task Lock -> code + regression tests -> self-review -> exact-ref GitHub CI -> bounded sandbox/runtime verification when CI does not cover the focused behavior -> fixes -> exact candidate SHA/PR -> technical merge verdict. OpenCodeReview remains optional supplementary semantic review when explicitly useful. Do not invoke GitHub Codex review/security-review automation.
+- Founder: product/editorial decisions, authorization of sensitive production/migration actions, and PR merge.
+- ChatGPT sandbox/runtime verification: use exact GitHub source/ref for bounded focused checks that CI does not cover. Keep verification isolated; do not mutate operational DBs/providers unless the Task Lock and Founder explicitly authorize the consequential action.
+- GitHub Actions: shared exact-HEAD confirmation gate. Keep it focused and cached; ChatGPT sandbox may supplement behavior not covered by CI. If Actions is unavailable, disclose that fact and use exact-source sandbox/review evidence only where the Task Lock does not require CI.
+- GitHub: shared code/contracts/plans/tasks/evidence and CI/PR state; it is the canonical collaboration record for ChatGPT Web + Founder.
 - Product naming: on macOS the desktop application is **ChatGPT** (OpenAI renamed the former Codex app surface). Keep technical/runtime identifiers and the packaged CLI executable such as `codex_cli` / `/Applications/ChatGPT.app/Contents/Resources/codex` unchanged unless the actual technical contract changes.
 
-A GitHub comment or roadmap does not dispatch a local task. Never claim fresh local agreement without a returned report. Canonical merge flow is `MG code/tests/self-review -> OpenCodeReview supplementary review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`. Do not create/comment GitHub Codex review or security-review triggers. During Actions quota/service outage, omit only the GitHub CI step and disclose that fact. WIP: one implementation plus related verification.
+Founder clarified on 2026-10-14 that there is **no Agent Local** in the active workflow. Canonical merge flow is `ChatGPT Web Task Lock -> code/tests/self-review -> exact-HEAD GitHub CI -> bounded ChatGPT sandbox/runtime verification when needed -> ChatGPT technical verdict -> Founder merge`. Do not create/comment GitHub Codex review or security-review triggers. Do not invent a local-agent proof. During Actions quota/service outage, disclose the missing gate explicitly. WIP remains one implementation plus its related verification.
 
 ## Current delivery state
 
