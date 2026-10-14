@@ -91,6 +91,8 @@ def test_manual_handoff_builds_exact_content02_hash_and_preserves_unicode() -> N
         ({"slug": "Không-Hợp-Lệ"}, "manual_handoff_slug_invalid"),
         ({"package_version": 0}, "manual_handoff_package_version_invalid"),
         ({"package_version": True}, "manual_handoff_package_version_invalid"),
+        ({"package_version": 9_007_199_254_740_992}, "manual_handoff_package_version_invalid"),
+        ({"body": "\ud800"}, "manual_handoff_json_invalid"),
         ({"body": ""}, "manual_handoff_body_invalid"),
         ({"body": "x" * 200_001}, "manual_handoff_body_invalid"),
         ({"related_artist_ids": ["bad id"]}, "manual_handoff_related_artist_ids_invalid"),
@@ -191,6 +193,20 @@ def test_manual_handoff_rejects_same_package_and_provenance_path(tmp_path: Path)
             handoff,
             package_path=path,
             provenance_path=path,
+        )
+
+
+def test_manual_handoff_rejects_output_path_aliases(tmp_path: Path) -> None:
+    handoff = build_manual_motgu_handoff(_source())
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    package_path = nested / ".." / "same.json"
+    provenance_path = tmp_path / "same.json"
+    with _error("manual_handoff_output_paths_conflict"):
+        write_manual_motgu_handoff(
+            handoff,
+            package_path=package_path,
+            provenance_path=provenance_path,
         )
 
 
