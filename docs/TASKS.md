@@ -838,6 +838,20 @@ Canonical issue: **#326**.
 
 **V1.1 P0 exit:** five real bilingual content cases are Founder-approved and package-ready for MOTGU OPS. Publication remains a MOTGU-side gate.
 
+### EDITOR-01 — Founder manual article → MOTGU CONTENT02 — ACTIVE / Issue #415
+
+- [x] Founder sequencing moved from MOTGU WCC111-03 desktop acceptance to EDITOR-01.
+- [x] Existing MOTGU OPS Import/Validate/Review path and ContentEngine Founder manual-intake capability were inspected before coding.
+- [x] Ownership decision: no OPS/D1 shadow editor; manual final article is packaged by ContentEngine and remains subject to MOTGU OPS release review.
+- [x] Task Lock #415 admitted exact pure-code scope; no migration, runtime DB, model call, provider action or MOTGU schema change.
+- [ ] Deterministic CONTENT02 adapter + CLI + focused regression tests complete on one branch.
+- [ ] Exact changed files remain inside #415 allowlist.
+- [ ] Exact-HEAD CI and MG review pass; Agent Local exact-SHA proof is recorded if required by repository workflow.
+- [ ] Founder merge.
+- [ ] After merge, one real manual article handoff may be exercised separately; no automatic production/publication.
+
+EDITOR-02 UI/UX remains a separate later LEGO and is not included here.
+
 ### Historical CQ-07 / P1 pilot detail
 
 - [x] Live main verified as `857b536823d8514c42da714d20e4e9ed1f5845a2` after PR #283; PR #279 remains the REC-02 merge baseline.
