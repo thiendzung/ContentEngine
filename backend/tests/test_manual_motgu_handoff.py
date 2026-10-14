@@ -100,6 +100,8 @@ def test_manual_handoff_builds_exact_content02_hash_and_preserves_unicode() -> N
         ({"body": "x" * 200_001}, "manual_handoff_body_invalid"),
         ({"related_artist_ids": ["bad id"]}, "manual_handoff_related_artist_ids_invalid"),
         ({"audience_refs": ["same", "same"]}, "manual_handoff_audience_refs_duplicate"),
+        ({"evidence_refs": ["x" * 301]}, "manual_handoff_evidence_refs_invalid"),
+        ({"settings_refs": ["   "]}, "manual_handoff_settings_refs_invalid"),
     ],
 )
 def test_manual_handoff_fails_closed_for_invalid_article_input(
@@ -108,6 +110,22 @@ def test_manual_handoff_fails_closed_for_invalid_article_input(
 ) -> None:
     with _error(code):
         build_manual_motgu_handoff(_source(**overrides))
+
+
+def test_manual_handoff_normalizes_content02_array_strings_before_hashing() -> None:
+    handoff = build_manual_motgu_handoff(
+        _source(
+            audience_refs=["  first-time-art-buyer  "],
+            evidence_refs=["  founder-note:001  "],
+        )
+    )
+    assert handoff.package["audience_refs"] == ["first-time-art-buyer"]
+    assert handoff.package["evidence_refs"] == ["founder-note:001"]
+
+    with _error("manual_handoff_audience_refs_duplicate"):
+        build_manual_motgu_handoff(
+            _source(audience_refs=["same", " same "])
+        )
 
 
 def test_manual_handoff_rejects_unknown_and_missing_fields() -> None:
