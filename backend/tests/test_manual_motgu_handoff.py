@@ -34,10 +34,6 @@ def _source(**overrides: object) -> dict[str, object]:
         "evidence_refs": ["founder-note:001"],
         "must_not_claim": [],
         "settings_refs": [],
-        "fact_check_status": "pending",
-        "translation_status": "independent",
-        "publication_status": "draft",
-        "authoring_provenance": "HUMAN",
     }
     source.update(overrides)
     return source
@@ -83,22 +79,18 @@ def test_manual_handoff_builds_exact_content02_hash_and_preserves_unicode() -> N
     assert first.provenance["provenance"] == "HUMAN"
     assert first.provenance["package_hash"] == declared
     assert "body" not in first.provenance
+    assert first.package["fact_check_status"] == "pending"
+    assert first.package["translation_status"] == "independent"
     assert first.package["publication_status"] == "draft"
 
 
 @pytest.mark.parametrize(
     ("overrides", "code"),
     [
-        ({"authoring_provenance": "AI"}, "manual_handoff_provenance_invalid"),
-        ({"authoring_provenance": "human"}, "manual_handoff_provenance_invalid"),
         ({"locale": "fr"}, "manual_handoff_locale_invalid"),
         ({"slug": "Không-Hợp-Lệ"}, "manual_handoff_slug_invalid"),
         ({"package_version": 0}, "manual_handoff_package_version_invalid"),
         ({"package_version": True}, "manual_handoff_package_version_invalid"),
-        ({"fact_check_status": "approved"}, "manual_handoff_fact_check_status_unsafe"),
-        ({"translation_status": "translated"}, "manual_handoff_translation_status_unsafe"),
-        ({"publication_status": "published"}, "manual_handoff_publication_status_unsafe"),
-        ({"publication_status": "LIVE"}, "manual_handoff_publication_status_unsafe"),
         ({"body": ""}, "manual_handoff_body_invalid"),
         ({"body": "x" * 200_001}, "manual_handoff_body_invalid"),
         ({"related_artist_ids": ["bad id"]}, "manual_handoff_related_artist_ids_invalid"),
@@ -132,10 +124,17 @@ def test_manual_handoff_normalizes_content02_array_strings_before_hashing() -> N
 
 
 def test_manual_handoff_rejects_unknown_and_missing_fields() -> None:
-    unknown = _source()
-    unknown["unexpected"] = "shadow schema"
-    with _error("manual_handoff_unknown_field"):
-        build_manual_motgu_handoff(unknown)
+    for key, value in [
+        ("unexpected", "shadow schema"),
+        ("authoring_provenance", "AI"),
+        ("fact_check_status", "approved"),
+        ("translation_status", "translated"),
+        ("publication_status", "published"),
+    ]:
+        unknown = _source()
+        unknown[key] = value
+        with _error("manual_handoff_unknown_field"):
+            build_manual_motgu_handoff(unknown)
 
     missing = _source()
     del missing["primary_question"]
