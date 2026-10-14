@@ -226,16 +226,16 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
     if package_bytes > CONTENT02_MAX_BYTES:
         _fail("manual_handoff_package_too_large")
 
-    source_hash = hashlib.sha256(_utf8(_stable_json(dict(source)))).hexdigest()
+    source_canonical_hash = hashlib.sha256(_utf8(_stable_json(dict(source)))).hexdigest()
     provenance = {
         "schema_version": 1,
-        "provenance": "HUMAN",
+        "authoring_provenance": "HUMAN",
         "content_id": content_id,
         "package_version": str(version),
         "package_hash": package_hash,
-        "source_sha256": source_hash,
+        "source_canonical_sha256": source_canonical_hash,
         "package_bytes": package_bytes,
-        "generator": "contentengine.editor-01.manual-motgu-handoff.v1",
+        "generator": "contentengine.editor-01a.manual-motgu-handoff.v1",
     }
     provenance_json = _stable_json(provenance) + "\n"
 
