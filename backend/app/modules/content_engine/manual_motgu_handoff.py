@@ -162,11 +162,6 @@ def _validate_entity_refs(package: Mapping[str, object]) -> None:
         _fail("manual_handoff_related_entity_refs_too_many")
 
 
-def _validate_publication_state(value: str) -> None:
-    if value.strip().lower() in {"published", "live"}:
-        _fail("manual_handoff_publication_status_unsafe")
-
-
 def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHandoff:
     """Build a deterministic MOTGU CONTENT02 package from a HUMAN-authored article."""
 
@@ -200,6 +195,7 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
         "type": CONTENT02_TYPE,
         "locale": locale,
         "slug": slug,
+        "authoring_provenance": "HUMAN",
     }
 
     for key, limit in _TEXT_LIMITS.items():
@@ -211,7 +207,12 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
         package[key] = _string_array(source, key)
 
     _validate_entity_refs(package)
-    _validate_publication_state(package["publication_status"])
+    if package["fact_check_status"] != "pending":
+        _fail("manual_handoff_fact_check_status_unsafe")
+    if package["translation_status"] != "independent":
+        _fail("manual_handoff_translation_status_unsafe")
+    if package["publication_status"] != "draft":
+        _fail("manual_handoff_publication_status_unsafe")
 
     canonical_without_hash = _stable_json(package)
     package_hash = hashlib.sha256(canonical_without_hash.encode("utf-8")).hexdigest()
