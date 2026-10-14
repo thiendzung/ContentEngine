@@ -16,6 +16,7 @@ from typing import Any, Mapping, NoReturn
 CONTENT02_SCHEMA_VERSION = 1
 CONTENT02_TYPE = "journal"
 CONTENT02_MAX_BYTES = 512 * 1024
+_JS_MAX_SAFE_INTEGER = 9_007_199_254_740_991
 
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,200}$")
@@ -97,6 +98,13 @@ def _stable_json(value: object) -> str:
         _fail("manual_handoff_json_invalid")
 
 
+def _utf8(value: str) -> bytes:
+    try:
+        return value.encode("utf-8")
+    except UnicodeEncodeError:
+        _fail("manual_handoff_json_invalid")
+
+
 def _required_text(value: object, key: str, limit: int) -> str:
     if not isinstance(value, str) or not value.strip() or len(value) > limit:
         _fail(f"manual_handoff_{key}_invalid")
@@ -128,7 +136,7 @@ def _package_version(value: object) -> str | int:
     if isinstance(value, bool):
         _fail("manual_handoff_package_version_invalid")
     if isinstance(value, int):
-        if value < 1:
+        if value < 1 or value > _JS_MAX_SAFE_INTEGER:
             _fail("manual_handoff_package_version_invalid")
         return value
     if isinstance(value, str) and _VERSION_RE.fullmatch(value):
@@ -210,15 +218,15 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
     _validate_entity_refs(package)
 
     canonical_without_hash = _stable_json(package)
-    package_hash = hashlib.sha256(canonical_without_hash.encode("utf-8")).hexdigest()
+    package_hash = hashlib.sha256(_utf8(canonical_without_hash)).hexdigest()
     package["package_hash"] = package_hash
 
     package_json = _stable_json(package) + "\n"
-    package_bytes = len(package_json.encode("utf-8"))
+    package_bytes = len(_utf8(package_json))
     if package_bytes > CONTENT02_MAX_BYTES:
         _fail("manual_handoff_package_too_large")
 
-    source_hash = hashlib.sha256(_stable_json(dict(source)).encode("utf-8")).hexdigest()
+    source_hash = hashlib.sha256(_utf8(_stable_json(dict(source)))).hexdigest()
     provenance = {
         "schema_version": 1,
         "provenance": "HUMAN",
@@ -250,7 +258,7 @@ def write_manual_motgu_handoff(
 
     package_path = Path(package_path)
     provenance_path = Path(provenance_path)
-    if package_path == provenance_path:
+    if package_path.resolve() == provenance_path.resolve():
         _fail("manual_handoff_output_paths_conflict")
     if not overwrite and (package_path.exists() or provenance_path.exists()):
         _fail("manual_handoff_output_exists")
