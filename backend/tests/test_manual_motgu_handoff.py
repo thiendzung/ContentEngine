@@ -76,9 +76,11 @@ def test_manual_handoff_builds_exact_content02_hash_and_preserves_unicode() -> N
     assert declared == expected
     assert first.package_json == _stable_json(first.package) + "\n"
 
-    assert first.provenance["provenance"] == "HUMAN"
+    assert first.provenance["authoring_provenance"] == "HUMAN"
     assert first.provenance["package_hash"] == declared
     assert "body" not in first.provenance
+    assert "source_sha256" not in first.provenance
+    assert len(first.provenance["source_canonical_sha256"]) == 64
     assert first.package["fact_check_status"] == "pending"
     assert first.package["translation_status"] == "independent"
     assert first.package["publication_status"] == "draft"
@@ -237,7 +239,7 @@ def test_manual_handoff_cli_exports_without_body_in_stdout_or_sidecar(tmp_path: 
     assert completed.returncode == 0, completed.stderr
     report = json.loads(completed.stdout)
     assert report["ok"] is True
-    assert report["provenance"] == "HUMAN"
+    assert report["authoring_provenance"] == "HUMAN"
     assert _source()["body"] not in completed.stdout
     sidecar = json.loads(provenance_path.read_text(encoding="utf-8"))
     assert "body" not in sidecar
