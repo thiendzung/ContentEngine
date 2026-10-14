@@ -68,6 +68,7 @@ def test_manual_handoff_builds_exact_content02_hash_and_preserves_unicode() -> N
     assert first.package["schema_version"] == 1
     assert first.package["type"] == "journal"
     assert first.package["locale"] == "vi"
+    assert first.package["authoring_provenance"] == "HUMAN"
     assert first.package["body"] == (
         "Một bài viết hoàn toàn do Founder soạn. Tiếng Việt phải được giữ nguyên."
     )
@@ -94,6 +95,8 @@ def test_manual_handoff_builds_exact_content02_hash_and_preserves_unicode() -> N
         ({"slug": "Không-Hợp-Lệ"}, "manual_handoff_slug_invalid"),
         ({"package_version": 0}, "manual_handoff_package_version_invalid"),
         ({"package_version": True}, "manual_handoff_package_version_invalid"),
+        ({"fact_check_status": "approved"}, "manual_handoff_fact_check_status_unsafe"),
+        ({"translation_status": "translated"}, "manual_handoff_translation_status_unsafe"),
         ({"publication_status": "published"}, "manual_handoff_publication_status_unsafe"),
         ({"publication_status": "LIVE"}, "manual_handoff_publication_status_unsafe"),
         ({"body": ""}, "manual_handoff_body_invalid"),
