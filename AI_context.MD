@@ -3,7 +3,7 @@
 ## Current WIP — MOTGU V1.1 real-content production
 
 **Updated:** 2026-10-14  
-**Verified GitHub main at reconciliation (2026-10-14):** `8aedbb5ed3c538a81ff4e1718f2e92899606558d`
+**Verified GitHub main at EDITOR-01 admission (2026-10-14):** `0c986ae22734e57f0e6c1a552a3900929798379a`
 
 ContentEngine's active business role is **CONTENT FACTORY** for MOTGU Website V1.1 Growth Release.
 
@@ -30,6 +30,14 @@ Current product priority:
 - no WordPress/Rank Math activation for the MOTGU Astro path;
 - publication remains a separate explicit MOTGU OPS/Git gate;
 - only build a minimum deterministic ContentEngine→MOTGU package adapter if the real handoff proves the current export is insufficient.
+
+**EDITOR-01A bounded producer slice — Founder admitted 2026-10-14:**
+- MOTGU WCC111-03 desktop-first operator acceptance is complete; MOTGU issue #265 is closed.
+- ContentEngine issue #415 owns one code-only outcome: Founder-authored final Journal JSON → deterministic hash-bound CONTENT02 package carrying `authoring_provenance=HUMAN` + local provenance sidecar.
+- The adapter is pure/local: no model, research, operational DB, network, publish, Cloudflare or MOTGU production mutation.
+- It does not alter Issue #326's pinned operational lineage/stable-release count and does not assert a ContentVersion/final approval that does not exist.
+- The produced package is still only a candidate handoff. EDITOR-01B separately updates MOTGU to accept/validate/surface the provenance field through the existing OPS Import → Validate → Review/Release path.
+- EDITOR-01B consumer integration and EDITOR-02 authoring UI are separate; neither is bundled into this ContentEngine PR.
 
 **Cross-repo status, verified 2026-10-14:**
 - ContentEngine PR #413 MERGED on main `8aedbb5e`.
