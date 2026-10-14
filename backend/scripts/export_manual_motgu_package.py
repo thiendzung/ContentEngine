@@ -43,7 +43,11 @@ def main() -> int:
             overwrite=args.force,
         )
     except (OSError, json.JSONDecodeError, ManualMotguHandoffError) as exc:
-        code = exc.code if isinstance(exc, ManualMotguHandoffError) else "manual_handoff_input_invalid"
+        code = (
+            exc.code
+            if isinstance(exc, ManualMotguHandoffError)
+            else "manual_handoff_input_invalid"
+        )
         print(json.dumps({"ok": False, "error": code}, sort_keys=True))
         return 2
 
