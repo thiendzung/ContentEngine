@@ -60,10 +60,6 @@ _PACKAGE_INPUT_FIELDS = frozenset(
         "body",
         "primary_question",
         *list(_ARRAY_LIMITS),
-        "fact_check_status",
-        "translation_status",
-        "publication_status",
-        "authoring_provenance",
     }
 )
 
@@ -175,9 +171,6 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
         _fail("manual_handoff_unknown_field")
     if missing:
         _fail("manual_handoff_required_field_missing")
-    if source.get("authoring_provenance") != "HUMAN":
-        _fail("manual_handoff_provenance_invalid")
-
     content_id = _required_text(source.get("content_id"), "content_id", _TEXT_LIMITS["content_id"])
     if _ID_RE.fullmatch(content_id) is None:
         _fail("manual_handoff_content_id_invalid")
@@ -196,10 +189,18 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
         "locale": locale,
         "slug": slug,
         "authoring_provenance": "HUMAN",
+        "fact_check_status": "pending",
+        "translation_status": "independent",
+        "publication_status": "draft",
     }
 
     for key, limit in _TEXT_LIMITS.items():
-        if key == "content_id":
+        if key in {
+            "content_id",
+            "fact_check_status",
+            "translation_status",
+            "publication_status",
+        }:
             continue
         package[key] = _required_text(source.get(key), key, limit)
 
@@ -207,12 +208,6 @@ def build_manual_motgu_handoff(source: Mapping[str, object]) -> ManualMotguHando
         package[key] = _string_array(source, key)
 
     _validate_entity_refs(package)
-    if package["fact_check_status"] != "pending":
-        _fail("manual_handoff_fact_check_status_unsafe")
-    if package["translation_status"] != "independent":
-        _fail("manual_handoff_translation_status_unsafe")
-    if package["publication_status"] != "draft":
-        _fail("manual_handoff_publication_status_unsafe")
 
     canonical_without_hash = _stable_json(package)
     package_hash = hashlib.sha256(canonical_without_hash.encode("utf-8")).hexdigest()
