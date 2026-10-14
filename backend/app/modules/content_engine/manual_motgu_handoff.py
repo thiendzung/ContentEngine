@@ -116,12 +116,15 @@ def _string_array(source: Mapping[str, object], key: str) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
     for item in value:
-        if not isinstance(item, str) or not item or len(item) > 500:
+        if not isinstance(item, str):
             _fail(f"manual_handoff_{key}_invalid")
-        if item in seen:
+        cleaned = item.strip()
+        if not cleaned or len(cleaned) > 300:
+            _fail(f"manual_handoff_{key}_invalid")
+        if cleaned in seen:
             _fail(f"manual_handoff_{key}_duplicate")
-        seen.add(item)
-        normalized.append(item)
+        seen.add(cleaned)
+        normalized.append(cleaned)
     return normalized
 
 
