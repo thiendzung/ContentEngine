@@ -84,7 +84,9 @@ for (const forbidden of [
   "request_fingerprint",
 ]) {
   if (historyProjection.includes(forbidden)) {
-    throw new Error(`UX static check failed: sanitized history references forbidden field ${forbidden}`);
+    throw new Error(
+      `UX static check failed: sanitized history references forbidden field ${forbidden}`,
+    );
   }
 }
 
