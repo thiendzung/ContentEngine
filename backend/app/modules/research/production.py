@@ -282,6 +282,11 @@ class ResearchRouter:
             "evidence_candidate_fallbacks_exhausted",
         }:
             result.stop_reason = search_stop_reason
+        elif (
+            result.request.required_intended_use
+            is IntendedUse.EVIDENCE_CANDIDATE
+        ):
+            result.stop_reason = "evidence_candidate_fallbacks_exhausted"
         else:
             result.stop_reason = "bounded_search_exhausted"
         return result
