@@ -40,7 +40,7 @@ HistoryKind = Literal[
 ]
 
 
-class OperatorHistoryEvent(BaseModel):
+class _history_event(BaseModel):
     id: str
     at: datetime
     kind: HistoryKind
@@ -110,6 +110,12 @@ def _event_sort_key(event: OperatorHistoryEvent) -> tuple[datetime, str, str]:
     if at.tzinfo is None:
         at = at.replace(tzinfo=UTC)
     return at, event.kind, event.id
+
+
+def _history_event(**payload: object) -> OperatorHistoryEvent:
+    """Validate the ORM-to-API boundary without leaking SQLAlchemy descriptor types."""
+
+    return OperatorHistoryEvent.model_validate(payload)
 
 
 async def get_operator_case_history(
@@ -246,7 +252,7 @@ async def get_operator_case_history(
 
     for run in runs:
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"run:{run.id}",
                 at=run.started_at,
                 kind="run",
@@ -262,7 +268,7 @@ async def get_operator_case_history(
     for step in steps:
         run = run_by_id.get(step.run_id)
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"step:{step.id}",
                 at=step.started_at or step.created_at,
                 kind="step",
@@ -279,7 +285,7 @@ async def get_operator_case_history(
 
     for command in commands:
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"command:{command.id}",
                 at=command.created_at,
                 kind="command",
@@ -294,7 +300,7 @@ async def get_operator_case_history(
 
     for approval in angle_approvals:
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"angle-approval:{approval.id}",
                 at=approval.approved_at,
                 kind="approval",
@@ -310,7 +316,7 @@ async def get_operator_case_history(
 
     for approval in outline_approvals:
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"outline-approval:{approval.id}",
                 at=approval.approved_at,
                 kind="approval",
@@ -327,7 +333,7 @@ async def get_operator_case_history(
     for approval in approvals:
         run = run_by_id.get(approval.run_id)
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"approval:{approval.id}",
                 at=approval.created_at,
                 kind="approval",
@@ -343,7 +349,7 @@ async def get_operator_case_history(
     for row in quality_rows:
         run = run_by_id.get(row.run_id)
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"quality:{row.id}",
                 at=row.created_at,
                 kind="quality",
@@ -360,7 +366,7 @@ async def get_operator_case_history(
     for row in model_calls:
         run = run_by_id.get(row.run_id)
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"model:{row.id}",
                 at=row.started_at or row.created_at,
                 kind="model",
@@ -383,7 +389,7 @@ async def get_operator_case_history(
     for row in tool_calls:
         run = run_by_id.get(row.run_id)
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"tool:{row.id}",
                 at=row.started_at or row.created_at,
                 kind="tool",
@@ -401,7 +407,7 @@ async def get_operator_case_history(
     for row in artifacts:
         run = run_by_id.get(row.run_id)
         events.append(
-            OperatorHistoryEvent(
+            _history_event(
                 id=f"artifact:{row.id}",
                 at=row.created_at,
                 kind="artifact",
