@@ -250,36 +250,42 @@ async def get_operator_case_history(
 
     events: list[OperatorHistoryEvent] = []
 
-    for run in runs:
+    for content_run in runs:
         events.append(
             _history_event(
-                id=f"run:{run.id}",
-                at=run.started_at,
+                id=f"run:{content_run.id}",
+                at=content_run.started_at,
                 kind="run",
-                stage=run.current_step or run.run_mode,
-                status=run.status,
-                locale=run_locale(run),
-                run_id=run.id,
-                error_code=run.failure_code,
-                latency_ms=_duration_ms(run.started_at, run.completed_at),
+                stage=content_run.current_step or content_run.run_mode,
+                status=content_run.status,
+                locale=run_locale(content_run),
+                run_id=content_run.id,
+                error_code=content_run.failure_code,
+                latency_ms=_duration_ms(
+                    content_run.started_at,
+                    content_run.completed_at,
+                ),
             )
         )
 
-    for step in steps:
-        run = run_by_id.get(step.run_id)
+    for step_run in steps:
+        related_run = run_by_id.get(step_run.run_id)
         events.append(
             _history_event(
-                id=f"step:{step.id}",
-                at=step.started_at or step.created_at,
+                id=f"step:{step_run.id}",
+                at=step_run.started_at or step_run.created_at,
                 kind="step",
-                stage=step.step_key,
-                status=step.status,
-                locale=run_locale(run),
-                attempt=step.attempt,
-                run_id=step.run_id,
-                step_run_id=step.id,
-                error_code=_safe_step_error_code(step),
-                latency_ms=_duration_ms(step.started_at, step.completed_at),
+                stage=step_run.step_key,
+                status=step_run.status,
+                locale=run_locale(related_run),
+                attempt=step_run.attempt,
+                run_id=step_run.run_id,
+                step_run_id=step_run.id,
+                error_code=_safe_step_error_code(step_run),
+                latency_ms=_duration_ms(
+                    step_run.started_at,
+                    step_run.completed_at,
+                ),
             )
         )
 
@@ -298,128 +304,128 @@ async def get_operator_case_history(
             )
         )
 
-    for approval in angle_approvals:
+    for angle_approval in angle_approvals:
         events.append(
             _history_event(
-                id=f"angle-approval:{approval.id}",
-                at=approval.approved_at,
+                id=f"angle-approval:{angle_approval.id}",
+                at=angle_approval.approved_at,
                 kind="approval",
                 stage="angle",
                 status="approved",
-                run_id=approval.run_id,
-                artifact_id=approval.angle_artifact_id,
-                artifact_version=approval.angle_artifact_version,
-                artifact_hash=approval.angle_artifact_hash,
+                run_id=angle_approval.run_id,
+                artifact_id=angle_approval.angle_artifact_id,
+                artifact_version=angle_approval.angle_artifact_version,
+                artifact_hash=angle_approval.angle_artifact_hash,
                 decision="approved",
             )
         )
 
-    for approval in outline_approvals:
+    for outline_approval in outline_approvals:
         events.append(
             _history_event(
-                id=f"outline-approval:{approval.id}",
-                at=approval.approved_at,
+                id=f"outline-approval:{outline_approval.id}",
+                at=outline_approval.approved_at,
                 kind="approval",
                 stage="outline",
                 status="approved",
-                run_id=approval.run_id,
-                artifact_id=approval.outline_artifact_id,
-                artifact_version=approval.outline_artifact_version,
-                artifact_hash=approval.outline_artifact_hash,
+                run_id=outline_approval.run_id,
+                artifact_id=outline_approval.outline_artifact_id,
+                artifact_version=outline_approval.outline_artifact_version,
+                artifact_hash=outline_approval.outline_artifact_hash,
                 decision="approved",
             )
         )
 
-    for approval in approvals:
-        run = run_by_id.get(approval.run_id)
+    for final_approval in approvals:
+        approval_run = run_by_id.get(final_approval.run_id)
         events.append(
             _history_event(
-                id=f"approval:{approval.id}",
-                at=approval.created_at,
+                id=f"approval:{final_approval.id}",
+                at=final_approval.created_at,
                 kind="approval",
-                stage=approval.step_key,
-                status=approval.decision,
-                locale=run_locale(run),
-                run_id=approval.run_id,
-                artifact_id=approval.artifact_id,
-                decision=approval.decision,
+                stage=final_approval.step_key,
+                status=final_approval.decision,
+                locale=run_locale(approval_run),
+                run_id=final_approval.run_id,
+                artifact_id=final_approval.artifact_id,
+                decision=final_approval.decision,
             )
         )
 
-    for row in quality_rows:
-        run = run_by_id.get(row.run_id)
+    for quality_eval in quality_rows:
+        quality_run = run_by_id.get(quality_eval.run_id)
         events.append(
             _history_event(
-                id=f"quality:{row.id}",
-                at=row.created_at,
+                id=f"quality:{quality_eval.id}",
+                at=quality_eval.created_at,
                 kind="quality",
-                stage=row.evaluator_key,
-                status=row.result,
-                locale=run_locale(run),
-                run_id=row.run_id,
-                artifact_id=row.artifact_id,
-                result=row.result,
-                evaluator_key=row.evaluator_key,
+                stage=quality_eval.evaluator_key,
+                status=quality_eval.result,
+                locale=run_locale(quality_run),
+                run_id=quality_eval.run_id,
+                artifact_id=quality_eval.artifact_id,
+                result=quality_eval.result,
+                evaluator_key=quality_eval.evaluator_key,
             )
         )
 
-    for row in model_calls:
-        run = run_by_id.get(row.run_id)
+    for model_call in model_calls:
+        model_run = run_by_id.get(model_call.run_id)
         events.append(
             _history_event(
-                id=f"model:{row.id}",
-                at=row.started_at or row.created_at,
+                id=f"model:{model_call.id}",
+                at=model_call.started_at or model_call.created_at,
                 kind="model",
-                stage=row.purpose,
-                status=row.status,
-                locale=run_locale(run),
-                run_id=row.run_id,
-                step_run_id=row.step_run_id,
-                artifact_id=row.result_artifact_id,
-                error_code=row.error_class,
-                provider=row.provider,
-                model=row.model,
-                input_tokens=row.input_tokens,
-                output_tokens=row.output_tokens,
-                cost=str(row.cost) if row.cost is not None else None,
-                latency_ms=row.latency_ms,
+                stage=model_call.purpose,
+                status=model_call.status,
+                locale=run_locale(model_run),
+                run_id=model_call.run_id,
+                step_run_id=model_call.step_run_id,
+                artifact_id=model_call.result_artifact_id,
+                error_code=model_call.error_class,
+                provider=model_call.provider,
+                model=model_call.model,
+                input_tokens=model_call.input_tokens,
+                output_tokens=model_call.output_tokens,
+                cost=str(model_call.cost) if model_call.cost is not None else None,
+                latency_ms=model_call.latency_ms,
             )
         )
 
-    for row in tool_calls:
-        run = run_by_id.get(row.run_id)
+    for tool_call in tool_calls:
+        tool_run = run_by_id.get(tool_call.run_id)
         events.append(
             _history_event(
-                id=f"tool:{row.id}",
-                at=row.started_at or row.created_at,
+                id=f"tool:{tool_call.id}",
+                at=tool_call.started_at or tool_call.created_at,
                 kind="tool",
-                stage=row.tool_key,
-                status=row.status,
-                locale=run_locale(run),
-                run_id=row.run_id,
-                step_run_id=row.step_run_id,
-                error_code=row.error_class,
-                latency_ms=row.latency_ms,
-                retry_count=row.retry_count,
+                stage=tool_call.tool_key,
+                status=tool_call.status,
+                locale=run_locale(tool_run),
+                run_id=tool_call.run_id,
+                step_run_id=tool_call.step_run_id,
+                error_code=tool_call.error_class,
+                latency_ms=tool_call.latency_ms,
+                retry_count=tool_call.retry_count,
             )
         )
 
-    for row in artifacts:
-        run = run_by_id.get(row.run_id)
+    for artifact in artifacts:
+        artifact_run = run_by_id.get(artifact.run_id)
         events.append(
             _history_event(
-                id=f"artifact:{row.id}",
-                at=row.created_at,
+                id=f"artifact:{artifact.id}",
+                at=artifact.created_at,
                 kind="artifact",
-                stage=row.artifact_type,
+                stage=artifact.artifact_type,
                 status="created",
-                locale=row.locale or run_locale(run),
-                run_id=row.run_id,
-                step_run_id=row.step_run_id,
-                artifact_id=row.id,
-                artifact_type=row.artifact_type,
-                artifact_version=row.version,
-                artifact_hash=row.content_hash,
+                locale=artifact.locale or run_locale(artifact_run),
+                run_id=artifact.run_id,
+                step_run_id=artifact.step_run_id,
+                artifact_id=artifact.id,
+                artifact_type=artifact.artifact_type,
+                artifact_version=artifact.version,
+                artifact_hash=artifact.content_hash,
             )
         )
 
