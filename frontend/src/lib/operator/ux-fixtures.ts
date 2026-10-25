@@ -344,7 +344,7 @@ export function getOperatorUxHistoryFixture(
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -374,7 +374,7 @@ export function getOperatorUxHistoryFixture(
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -404,7 +404,7 @@ export function getOperatorUxHistoryFixture(
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -434,7 +434,7 @@ export function getOperatorUxHistoryFixture(
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -651,6 +651,34 @@ export function getOperatorUxFixture(caseId: string): OperatorCaseView | null {
       last_checkpoint: "research_running",
     };
   } else if (state === "blocked") {
+    view.question = "What does a certificate of authenticity actually prove?";
+    view.reader = "Người lần đầu mua tranh gốc";
+    view.situation = "Đang kiểm tra giấy tờ đi kèm tác phẩm trước khi mua";
+    view.need = "Hiểu COA chứng minh được gì, không chứng minh được gì và cần kiểm tra thêm tài liệu nào";
+    view.intent = "learn";
+    view.promise = "Giải thích giới hạn của COA và đưa checklist kiểm tra thực tế, không hứa quá mức về tính xác thực hay pháp lý.";
+    view.coverage_requirements = [
+      {
+        id: "coverage-1",
+        requirement: "Ai cấp chứng nhận, và vì sao danh tính / thẩm quyền của bên cấp quan trọng?",
+      },
+      {
+        id: "coverage-2",
+        requirement: "Chứng nhận khác provenance và hóa đơn như thế nào?",
+      },
+      {
+        id: "coverage-3",
+        requirement: "QR code hoặc registry entry có tự nó chứng minh tác phẩm là thật không?",
+      },
+      {
+        id: "coverage-4",
+        requirement: "Người mua lần đầu nên hỏi gì trước khi dựa vào các giấy tờ?",
+      },
+      {
+        id: "coverage-5",
+        requirement: "COA không tự động chứng minh điều gì về hải quan, thuế, quyền sở hữu, giá trị, bản quyền hoặc tính xác thực?",
+      },
+    ];
     view.state = {
       ...view.state,
       status: "BLOCKED",
