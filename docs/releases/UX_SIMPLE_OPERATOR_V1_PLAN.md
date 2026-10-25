@@ -42,7 +42,7 @@ Không phát triển provider, research/SEO engine, auto-publishing hoặc CMS m
 - Tên kỹ thuật CREATE/UPDATE/REFRESH/MERGE được giải thích bằng tiếng Việt; API mutation không đổi.
 - Chỉ hiển thị thông tin còn thiếu mà backend xác định được; dữ liệu thiếu phải dừng an toàn, không tự điền giả.
 - Form manual 14 trường giữ ở Nâng cao dành cho biên tập viên.
-- Pass khi một ứng viên hợp lệ có thể vào tuyến handoff chuẩn, còn ứng viên bị chặn không thể bypass selection/admission.
+- Pass UX khi người dùng phân biệt rõ ứng viên có thể tiếp tục / bị chặn, hiểu lý do và hành động tiếp theo; UI không cho thực hiện hành động bị khóa. Canonical handoff/backend integration được nghiệm thu ở gate riêng.
 
 ### UX-01C — Bàn làm việc một bài, một hành động
 
@@ -50,7 +50,9 @@ Không phát triển provider, research/SEO engine, auto-publishing hoặc CMS m
 - Hướng dẫn rõ ở Angle / Outline / Final; giữ exact artifact/version/hash, stale-state protection, idempotency và xác nhận của Founder.
 - Đưa đầu vào, cảnh báo phụ, quality chi tiết và mã kỹ thuật vào các mục mở rộng.
 - Loại interval kiểm tra trạng thái mỗi 2.5 giây. Cập nhật sau mutation, khi tab/window lấy lại focus, và nút Tải lại; chỉ thêm SSE/WebSocket khi có cơ chế đáng tin cậy, không hứa live update.
-- Pass khi queued/running/blocked/waiting approval/completed đều có lời giải thích dễ hiểu và hành động đúng.
+- Browser proof dùng deterministic UI fixture / mocked API để kiểm tra state matrix tối thiểu: READY, QUEUED, RUNNING, BLOCKED, AWAITING_APPROVAL, COMPLETE, ERROR, STALE và EMPTY.
+- Với mỗi state phải thấy rõ: trạng thái hiện tại, lý do, một primary action (nếu có), secondary details không lấn át, manual refresh, focus/visibility refresh và keyboard focus.
+- Pass UX khi các state trên có lời giải thích dễ hiểu và hành động đúng theo contract hiển thị; không yêu cầu backend thật tạo được mọi state để đóng UX gate.
 
 ### UX-01D — Nhật ký một bài & xuất báo cáo
 
@@ -65,16 +67,19 @@ Không phát triển provider, research/SEO engine, auto-publishing hoặc CMS m
 ### UX-01E — Kiểm thử trước khi Founder chạy thật
 
 - Exact SHA + worktree sạch; frontend lint/typecheck/build + test liên quan.
-- Browser ở 1440/1024/390 px, bàn phím/focus, luồng thông thường và lỗi.
-- Dùng fixture/test environment chứng minh Start → Angle approval → Outline → Writer/Quality → Final, không gọi model hoặc ghi DB vận hành chỉ để kiểm thử UI.
-- Kiểm tra số click/hành động cần cho trường hợp có dữ liệu chuẩn, tình huống thiếu dữ liệu và lỗi stale/reconcile.
+- Browser ở 1440/1024/390/320 px, bàn phím/focus, luồng thông thường và lỗi; 320 px dùng để kiểm reflow, không mất thông tin/chức năng.
+- Dùng deterministic UI fixtures / mocked API để render và thao tác toàn bộ state matrix; không gọi model, không ghi operational DB và không yêu cầu canonical handoff thật chỉ để kiểm thử UI.
+- Mock phải bám đúng API/view contract hiện tại; test UI không được tự chế thêm trạng thái authority mà backend không định nghĩa.
+- Kiểm tra số click/hành động cần cho trường hợp có dữ liệu chuẩn, tình huống thiếu dữ liệu, lỗi stale/reconcile, focus/visibility refresh và manual refresh.
+- Backend integration smoke được nghiệm thu riêng sau UX gate; một lỗi API/receipt/fixture backend không làm UX FAIL nếu state UI tương ứng đã được mock đúng contract và browser proof đạt.
 - Agent Local trả kết quả, MG review + bổ sung test; Founder là người merge.
 - Gate này là PASS_UX_SIMPLE_V1, chưa đồng nghĩa CONTENT_PRODUCTION_READY.
 
-## Hai mốc nghiệm thu tách biệt
+## Các gate nghiệm thu tách biệt
 
-1. UX READY: UI dễ hiểu và browser smoke thật đạt trên exact SHA; lúc này có thể merge/trình bày giao diện. Chưa yêu cầu một bài thật đến Angle.
-2. CONTENT RUNTIME: Sau khi UX sẵn sàng, Founder vận hành một case thật (ưu tiên Q07). Chỉ ghi PASS_CONTENT_PRODUCTION_V1_RC1 khi case đạt đúng phạm vi/đủ bằng chứng; nếu dừng ở evidence thì ghi BLOCKED và giữ nguyên bằng chứng.
+1. UX_UI_READY: UI dễ hiểu, mocked-state browser proof đạt trên exact SHA, responsive/keyboard/focus đạt. Có thể merge/trình bày giao diện mà chưa yêu cầu backend thật materialize case hoặc một bài thật đến Angle.
+2. BACKEND_INTEGRATION_READY: API/DB/handoff canonical hoạt động với fixture/test data được ủy quyền. Blocker như HTTP 409, receipt thiếu hoặc fixture backend được ghi riêng ở gate này, không làm UX_UI_READY fail.
+3. CONTENT RUNTIME: Sau khi UX và integration đủ sẵn sàng, Founder vận hành một case thật (ưu tiên Q07). Chỉ ghi PASS_CONTENT_PRODUCTION_V1_RC1 khi case đạt đúng phạm vi/đủ bằng chứng; nếu dừng ở evidence thì ghi BLOCKED và giữ nguyên bằng chứng.
 
 Merge code không tự cho phép model call, migration, publication hay override approval.
 
@@ -85,6 +90,13 @@ Founder chạy 1 bài → Xuất báo cáo đã lọc → MG chia thành bug / c
 Metric dùng được: thao tác thủ công, thời gian đến gate, blocker theo stage, retry, duration, QA failures, số lần Founder cần sửa, cost/tokens chỉ khi được đo thực. Không đặt KPI token/click ảo.
 
 Ưu tiên sửa: bảo mật/toàn vẹn dữ liệu > thông tin sai > workflow lỗi > cản trở người dùng > UX khó hiểu > thẩm mỹ.
+
+## Phân loại blocker
+
+- UX_BLOCKER: layout/reflow, nhãn khó hiểu, hierarchy sai, keyboard/focus, state rendering, primary action, refresh UX hoặc thao tác quản lý.
+- INTEGRATION_BLOCKER: API 4xx/5xx, receipt/fixture thiếu, canonical handoff, database/pipeline/test-data contract.
+- CONTENT_RUNTIME_BLOCKER: evidence/model/provider/quality/publishing trên case thật.
+- Không sửa backend chỉ để làm cho browser UX proof đi qua; dùng mocked API bám đúng contract cho gate UX.
 
 ## Giới hạn
 
