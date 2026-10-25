@@ -614,7 +614,7 @@ export function OperatorCaseWorkspace({
         setView(operatorView);
         setReview(reviewView);
         setError("");
-        setReconcileRequired(false);
+        setReconcileRequired(uxInitialReconcileRequired);
         setLastSuccessfulRefreshAt(new Date().toISOString());
         setLoading(false);
       })
