@@ -427,6 +427,12 @@ class ResearchRouter:
             f"{search_request.query} authoritative official institutional guidance "
             "primary source research"
         )
+        if request.trusted_evidence_hosts:
+            site_clause = " OR ".join(
+                f"site:{host}"
+                for host in request.trusted_evidence_hosts[:8]
+            )
+            recovery_query = f"{recovery_query} ({site_clause})"
         return replace(search_request, query=recovery_query)
 
     def _fallback_for(
