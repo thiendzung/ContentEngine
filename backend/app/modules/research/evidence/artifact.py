@@ -106,6 +106,7 @@ def _safe_diagnostic_url(value: str | None) -> str | None:
     digest = hashlib.sha256(raw.encode("utf-8", errors="surrogatepass")).hexdigest()
     return f"url-sha256:{digest}"
 
+
 def _diagnostic_source_payload(source: SourceCandidate) -> dict[str, object]:
     return {
         "provider": _bounded_text(source.provider, limit=100) or "",
