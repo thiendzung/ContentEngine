@@ -144,6 +144,11 @@ async def get_operator_case_history(
     run_ids = [row.id for row in runs]
     run_by_id = {row.id: row for row in runs}
 
+    def run_locale(run: ContentRun | None) -> str | None:
+        if run is None or run.locale_variant_id is None:
+            return None
+        return locale_by_variant.get(run.locale_variant_id)
+
     commands = list(
         (
             await session.scalars(
@@ -247,7 +252,7 @@ async def get_operator_case_history(
                 kind="run",
                 stage=run.current_step or run.run_mode,
                 status=run.status,
-                locale=locale_by_variant.get(run.locale_variant_id),
+                locale=run_locale(run),
                 run_id=run.id,
                 error_code=run.failure_code,
                 latency_ms=_duration_ms(run.started_at, run.completed_at),
@@ -263,7 +268,7 @@ async def get_operator_case_history(
                 kind="step",
                 stage=step.step_key,
                 status=step.status,
-                locale=locale_by_variant.get(run.locale_variant_id) if run else None,
+                locale=run_locale(run),
                 attempt=step.attempt,
                 run_id=step.run_id,
                 step_run_id=step.id,
@@ -328,7 +333,7 @@ async def get_operator_case_history(
                 kind="approval",
                 stage=approval.step_key,
                 status=approval.decision,
-                locale=locale_by_variant.get(run.locale_variant_id) if run else None,
+                locale=run_locale(run),
                 run_id=approval.run_id,
                 artifact_id=approval.artifact_id,
                 decision=approval.decision,
@@ -344,7 +349,7 @@ async def get_operator_case_history(
                 kind="quality",
                 stage=row.evaluator_key,
                 status=row.result,
-                locale=locale_by_variant.get(run.locale_variant_id) if run else None,
+                locale=run_locale(run),
                 run_id=row.run_id,
                 artifact_id=row.artifact_id,
                 result=row.result,
@@ -361,7 +366,7 @@ async def get_operator_case_history(
                 kind="model",
                 stage=row.purpose,
                 status=row.status,
-                locale=locale_by_variant.get(run.locale_variant_id) if run else None,
+                locale=run_locale(run),
                 run_id=row.run_id,
                 step_run_id=row.step_run_id,
                 artifact_id=row.result_artifact_id,
@@ -384,7 +389,7 @@ async def get_operator_case_history(
                 kind="tool",
                 stage=row.tool_key,
                 status=row.status,
-                locale=locale_by_variant.get(run.locale_variant_id) if run else None,
+                locale=run_locale(run),
                 run_id=row.run_id,
                 step_run_id=row.step_run_id,
                 error_code=row.error_class,
@@ -402,9 +407,7 @@ async def get_operator_case_history(
                 kind="artifact",
                 stage=row.artifact_type,
                 status="created",
-                locale=row.locale or (
-                    locale_by_variant.get(run.locale_variant_id) if run else None
-                ),
+                locale=row.locale or run_locale(run),
                 run_id=row.run_id,
                 step_run_id=row.step_run_id,
                 artifact_id=row.id,
