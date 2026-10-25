@@ -1,73 +1,168 @@
-# UX-SIMPLE-01 — Agent Local exact-SHA verification task
+# UX-SIMPLE-01 — Agent Local final UI verification
 
-**Status:** PREPARED, NOT DISPATCHED; chỉ chạy sau khi MG hoàn tất các lát cắt UX-01A/B/C/D và Founder giao task này.
-**Repo:** thiendzung/ContentEngine
-**Branch:** release/content-production-v1-rc1
-**SHA:** Founder/MG sẽ cung cấp exact candidate SHA ngay trước khi chạy; không dùng SHA trong tài liệu cũ.
+**Purpose:** final exact-SHA verification of UX-01A/B/C/D before Founder decides whether to merge the UX candidate.
 
-## Mục tiêu
+This is a **UI/management gate**, not backend integration proof and not content-production runtime proof.
 
-Xác minh người không chuyên có thể chọn nội dung đã chuẩn bị, theo dõi, duyệt đúng ba cổng biên tập và xem/xuất nhật ký an toàn. Không yêu cầu chạy content production thật hoặc model/research call cho gate UX.
+## Exact SHA authority
 
-## Quyền và giới hạn
+Use the exact full SHA from the **latest Lead dispatch comment on PR #418**.
+Do not infer a moving branch ref and do not reuse an older SHA from historical task text.
 
-- Chỉ đọc mã và chạy tests/smoke trên checkout exact SHA và database test an toàn.
-- Không cho phép operational migration, reset DB vận hành, tác vụ model/research tốn phí, sửa code chưa được giao, auto-publish hoặc merge.
-- Không dùng sleep/ps/pgrep hay vòng polling liên tục để kiểm tra trạng thái; dùng sự kiện, process exit và kiểm tra một lần khi cần.
-- Không log hay commit credentials, raw prompt, user/customer/source sensitive content, dumps.
+## Scope
 
-## Điều kiện đầu vào
+Verify:
 
-1. Git remote đúng thiendzung/ContentEngine; worktree sạch; HEAD đúng SHA được chỉ định.
-2. Đọc AGENTS.md, AI_context.MD, docs/PLAN.md, docs/TASKS.md, docs/CHECKLIST.md và docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md.
-3. Mọi code UX-01A-D phải có trên candidate. Nếu còn TODO quan trọng, trả INCOMPLETE_SCOPE thay vì PASS.
+- UX-01A — 3 primary navigation tasks + advanced disclosure;
+- UX-01B — understandable Question Map selection + explicit confirmation;
+- UX-01C — one-case workspace + bounded refresh, no interval polling;
+- UX-01D — readable per-case timeline + sanitized support export.
 
-## Các gate
+The UX fixture matrix is the browser authority for state rendering. Backend focused tests only prove the new history projection is read-only/sanitized; they do not need a real model/research case.
 
-### A — Static / contract
+## Safety
 
-- 3 tác vụ bình thường có thể thấy ngay: Viết bài, Bài đang làm, Cần tôi duyệt.
-- Nhóm Nâng cao chứa các công cụ chuyên môn; link/URL cũ không bị phá.
-- Manual 14-field intake vẫn giữ schema và preflight; không có tác vụ tự điền fake evidence/customer truth.
-- Frontend không tự cấp quyền/cho phép action ngoài backend allowed_intents, route/admission hoặc human gate.
-- Không thay đổi ContentCase, EvidenceSet, Approval, Quality, publish permissions, canonical API mutation hay idempotency.
+- Detached exact SHA and clean worktree.
+- Test/fixture environment only.
+- No operational DB mutation.
+- No model/research/provider calls.
+- No WordPress/publication mutation.
+- No source repair under this task.
+- No `sleep`, `ps`, `pgrep`, busy-wait or repeated polling script.
+- Do not merge.
 
-### B — Static tests
+## A — Backend focused proof for UX-01D
 
-- Frontend lint, typecheck, production build PASS.
-- Focused UI/component tests hoặc regression tương đương cho navigation, chọn bài, approve và stale/reconcile PASS.
-- Backend tests chỉ nếu có read-only log endpoint mới; tách DB test an toàn.
+From `backend/`:
 
-### C — Browser acceptance
+1. Run Ruff on:
+   - `app/modules/content_engine/journal/operator_history.py`
+   - `app/modules/content_engine/journal/router.py`
+   - `tests/test_operator_history.py`
+2. Run the repository's normal type check for the new module if available without broad environment mutation.
+3. Run:
+   - `pytest -q tests/test_operator_history.py`
 
-Viewport 1440px, 1024px và 390px; bàn phím/tab/focus; kiểm tra:
+Required proof:
 
-- Mở UX entry -> thấy ba lựa chọn chính.
-- Chọn một candidate hợp lệ qua Question Map; không phải nhập lại manual brief.
-- Candidate thiếu eligibility -> hiển thị nguyên nhân và dừng; không tạo case/trạng thái giả.
-- Bài queued/running/blocked/waiting Angle/Outline/final/complete đều có giải thích tiếng Việt và duy nhất hành động chính hợp lệ.
-- Approve cho đúng bản đã review, không bỏ qua confirmation; VI/EN final approval độc lập nếu backend yêu cầu.
-- Stale-state/ambiguous network error vẫn khóa hành động tới khi reconcile.
-- Xem timeline của một bài; kiểm tra export support report được lược dữ liệu nhạy cảm.
-- Không có auto-publish. Không có interval polling 2.5s trong UX mới.
+- history endpoint is GET/read-only;
+- no new DB table/migration;
+- projection is case-scoped;
+- test proves raw run/step messages, artifact content, model runtime metadata, tool result refs, approval actor/comment and other injected `SECRET` payloads do not appear;
+- only safe error classes/codes and allowlisted metadata appear.
 
-### D — Evidence báo cáo
+If an unrelated existing backend integration fixture is broken, record it as `INTEGRATION_NOTE`; do not fail the UI gate unless it breaks this read-only history contract.
 
-Trả:
+## B — Frontend static/build
+
+From `frontend/`, with `NEXT_PUBLIC_UX_FIXTURES=1` where relevant:
+
+- `npm run ux:static`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
+
+Required:
+
+- no `setInterval(` in operator case workspace;
+- fixture routes are disabled unless `NEXT_PUBLIC_UX_FIXTURES=1`;
+- fixture-mode operator/history requests do not call real backend Journal APIs;
+- no publish action;
+- no raw sensitive fields added to the support report.
+
+## C — Browser UX
+
+Start the frontend in fixture mode and use:
+
+`/operator/ux-fixtures`
+
+States:
+
+- ready
+- queued
+- running
+- blocked
+- approval
+- complete
+- error
+- stale
+- empty
+
+Viewports:
+
+- 1440
+- 1024
+- 390
+- 320
+
+Verify A/B/C behavior already accepted remains intact:
+
+- only 3 primary normal tasks;
+- advanced menu remains reachable;
+- Question Map compact selection is understandable;
+- forbidden/stale actions stay disabled;
+- queued/running has explicit refresh and focus/visibility refresh without periodic 2.5s traffic;
+- state/reason/next action hierarchy is clear;
+- keyboard focus visible and controls usable.
+
+## D — History UX
+
+On at least queued, blocked, approval and complete fixture states:
+
+- `Nhật ký bài viết` is visible after the current-state panel;
+- five most recent events are easy to scan;
+- older events are secondary under disclosure;
+- status/reason/time/locale are understandable without opening technical details;
+- raw IDs/hash/model/token/cost remain secondary;
+- blocked fixture shows a safe diagnostic code, not a raw private message;
+- history refresh is explicit, not polled.
+
+Export:
+
+- click `Tải JSON`;
+- click `Tải Markdown`;
+- inspect both outputs;
+- confirm they contain only the sanitized projection;
+- confirm no raw prompt, raw content/source/provider payload, request body, cookie, secret/token, PII, raw error message, approval comment/actor or tool result URL/ref;
+- report `truncated=true` honestly if the endpoint ever caps history.
+
+Responsive:
+
+- timeline remains readable at 390 and 320 px;
+- no essential action or export control is lost;
+- technical disclosure does not force destructive horizontal scroll.
+
+## E — Classification
+
+Backend/API/receipt/model/evidence problems outside the new read-only history endpoint are not UX failures.
+
+Return:
 
 GOAL
 EXACT_SHA
 WORKTREE
-STATIC_TESTS
-BROWSER_DESKTOP
-BROWSER_MOBILE
-KEYBOARD
-CANONICAL_GATES
-LOG_EXPORT_SECURITY
-NO_PUBLICATION
+BACKEND_RUFF
+BACKEND_TYPECHECK
+BACKEND_HISTORY_TEST
+FRONTEND_STATIC
+LINT
+TYPECHECK
+BUILD
+NAV_AND_SELECTION
+STATE_MATRIX
+HISTORY_TIMELINE
+EXPORT_JSON
+EXPORT_MARKDOWN
+RESPONSIVE_1440_1024_390_320
+KEYBOARD_FOCUS
+NETWORK_NO_POLLING
+FIXTURE_NO_BACKEND_CALLS
+INTEGRATION_NOTES
 CHECKS_NOT_RUN
-ISSUES
+UX_SECURITY_BLOCKERS
 STATUS: PASS_UX_SIMPLE_V1 / BLOCKED_UX_SIMPLE_V1
 NEXT
 
-Giữ PR Draft cho đến khi MG review evidence; Founder là người merge. **Không chấm CONTENT_PRODUCTION_READY từ UX verification.**
+A `PASS_UX_SIMPLE_V1` means the management UI is ready for Founder merge/real-use evaluation. It does **not** mean BACKEND_INTEGRATION_READY, CONTENT_PRODUCTION_READY or published.
+
+Stop after the report.
