@@ -6,6 +6,23 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
+## UX-SIMPLE-01 — FIRST / Issue #417 / PR #418 DRAFT
+
+Plan: `docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md`.
+
+- [x] Founder chooses UX-first sequencing: simple UI → UX browser gate → one real content case → sanitized logs → targeted improvements.
+- [x] Basic `/operator` entry and manual intake advanced disclosure are **coded in draft PR**, not verified.
+- [ ] UX-01A: simplify main navigation to 3 normal choices + advanced menu.
+- [ ] UX-01B: simplify planned-topic selection while preserving canonical Question Map selection and admission.
+- [ ] UX-01C: simplify one-case workspace, exact human gate, no interval status polling.
+- [ ] UX-01D: per-case read-only timeline and safely redacted support report; no new log database.
+- [ ] UX-01E: Agent Local exact-SHA lint/typecheck/build/browser/contract/keyboard/mobile proof.
+- [ ] MG reviews local evidence and classifies `PASS_UX_SIMPLE_V1` or precise blocker.
+- [ ] Founder alone decides merge.
+- [ ] Only after UX verification/merge: Founder performs one real Q07 run; content runtime gate remains separate.
+
+**No claim:** UI PASS, production PASS, WordPress published, or actual operational DB state.
+
 ## Content Production v1 RC1 — ACTIVE / Issue #417
 
 - [x] Review current `main@b1a94059917d9848ebc061b8f85826c0d343bd61` and QA/QC Prepublish Pack 2026 v1.
@@ -15,8 +32,8 @@ Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verificatio
 - [x] Add novice-friendly `/operator` entry with only three primary paths; move manual brief and preflight details to secondary disclosure.
 - [x] Simplify the existing Journal workspace's visible wording and collapse nonessential static brief details; preserve existing approval/state APIs.
 - [ ] Agent Local frontend lint/typecheck/build and real browser smoke are required; UX changes are NOT VERIFIED yet.
-- [ ] Agent Local exact-SHA verification on RC1 candidate.
-- [ ] Prove one bounded RC1 item reaches the first human gate without case-specific code or publication side effect.
+- [ ] Agent Local exact-SHA content-runtime verification **after the UX gate**, with separate Founder authorization.
+- [ ] Founder-authorized real run of one bounded RC1 item reaches the first human gate (or reports exact evidence blocker), with no publication side effect.
 - [ ] MG reviews returned evidence and records `PASS_CONTENT_PRODUCTION_V1_RC1` or exact blocker.
 - [ ] Founder merges RC1 only after reviewed proof.
 - [ ] After merge, run the five-item production batch through Angle → Outline → Final; manual WordPress publication remains Founder-controlled.
