@@ -3,6 +3,7 @@ import {
   getOperatorUxCommandResult,
   getOperatorUxDecisionResult,
   getOperatorUxFixture,
+  getOperatorUxHistoryFixture,
   getReviewUxFixture,
   isOperatorUxFixtureCase,
   noteOperatorUxFixtureRequest,
@@ -232,6 +233,63 @@ export type OperatorCaseView = {
   pending_gate: AngleGate | OutlineGate | null;
   writer_lanes: WriterLane[];
   quality_lanes: QualityLane[];
+};
+
+export type OperatorHistoryKind =
+  | "run"
+  | "step"
+  | "command"
+  | "approval"
+  | "quality"
+  | "model"
+  | "tool"
+  | "artifact";
+
+export type OperatorHistoryEvent = {
+  id: string;
+  at: string;
+  kind: OperatorHistoryKind;
+  stage: string;
+  status: string;
+  locale: string | null;
+  attempt: number | null;
+  run_id: string | null;
+  step_run_id: string | null;
+  artifact_id: string | null;
+  artifact_type: string | null;
+  artifact_version: number | null;
+  artifact_hash: string | null;
+  error_code: string | null;
+  decision: string | null;
+  result: string | null;
+  evaluator_key: string | null;
+  provider: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost: string | null;
+  latency_ms: number | null;
+  retry_count: number | null;
+  resolved_action_key: string | null;
+};
+
+export type OperatorHistorySummary = {
+  event_count: number;
+  run_count: number;
+  step_count: number;
+  approval_count: number;
+  quality_count: number;
+  failed_count: number;
+  warning_count: number;
+};
+
+export type OperatorCaseHistory = {
+  schema_version: number;
+  content_case_id: string;
+  generated_at: string;
+  truncated: boolean;
+  summary: OperatorHistorySummary;
+  events: OperatorHistoryEvent[];
 };
 
 export type ReviewArtifactRef = {
@@ -473,6 +531,16 @@ export function loadOperatorCaseView(caseId: string): Promise<OperatorCaseView> 
   }
   return requestJson<OperatorCaseView>(
     `/journal/operator/cases/${encodeURIComponent(caseId)}/view`,
+  );
+}
+
+export function loadOperatorCaseHistory(caseId: string): Promise<OperatorCaseHistory> {
+  if (isOperatorUxFixtureCase(caseId)) {
+    const fixture = getOperatorUxHistoryFixture(caseId);
+    if (fixture) return Promise.resolve(fixture);
+  }
+  return requestJson<OperatorCaseHistory>(
+    `/journal/operator/cases/${encodeURIComponent(caseId)}/history`,
   );
 }
 
