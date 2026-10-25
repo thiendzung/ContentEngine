@@ -1850,3 +1850,81 @@ async def test_failed_attempt_remains_explicitly_retryable(
         assert retry_job.attempt == 2 and retry_job.step_run_id == step.id
         assert first_receipt is not None and first_receipt.status == "failed"
         assert first_receipt.error_code == "insufficient_evidence"
+
+@pytest.mark.asyncio
+async def test_fresh_evidence_checkpoint_is_reusable_without_repeat_research(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A committed phase-A shape must be reusable without a second research call."""
+
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="durable-evidence-checkpoint-reuse"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="durable-evidence-checkpoint-reuse-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-durable-evidence-checkpoint",
+            lease_seconds=900,
+        )
+        assert leased is not None
+
+        workflow = ControlledEvidenceWorkflow()
+        runner = ControlledCodexRunner()
+        registry = AgentRunnerRegistry()
+        registry.register("codex_cli", runner)
+
+        checkpoint = await execute_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-durable-evidence-checkpoint",
+            evidence_workflow=workflow,
+            runner_registry=registry,
+            stop_after_evidence_checkpoint=True,
+        )
+
+        assert workflow.calls == 1
+        assert runner.calls == 0
+        evidence_set = await session.get(EvidenceSet, checkpoint.evidence_set_id)
+        assert evidence_set is not None
+        assert evidence_set.status == "locked"
+        assert evidence_set.content_hash == checkpoint.evidence_set_hash
+        approval = await session.scalar(
+            select(EvidenceSetApproval).where(
+                EvidenceSetApproval.evidence_set_id == evidence_set.id,
+                EvidenceSetApproval.evidence_set_version == evidence_set.version,
+                EvidenceSetApproval.evidence_set_content_hash == evidence_set.content_hash,
+            )
+        )
+        assert approval is not None
+        assert "contentengine-reuse-snapshot-v1-sha256:" in approval.approval_reason
+
+        result = await execute_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-durable-evidence-checkpoint",
+            evidence_workflow=ExplodingEvidenceWorkflow(),  # type: ignore[arg-type]
+            runner_registry=registry,
+        )
+
+        assert result.angle_artifact_id is not None
+        assert workflow.calls == 1
+        assert runner.calls == 2
