@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "gen:types": "openapi-typescript ../backend/openapi.json -o src/lib/api/generated/openapi.ts"
+    "gen:types": "openapi-typescript ../backend/openapi.json -o src/lib/api/generated/openapi.ts",
+    "ux:static": "node scripts/verify-ux-fixtures.mjs"
   },
   "dependencies": {
     "next": "16.4.0",
