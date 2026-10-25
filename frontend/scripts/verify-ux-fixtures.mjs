@@ -73,6 +73,18 @@ requireText(historyPanel, "Nhật ký bài viết", "readable history panel");
 requireText(historyPanel, "Tải JSON", "safe JSON export");
 requireText(historyPanel, "Tải Markdown", "safe Markdown export");
 requireText(workspace, "<OperatorCaseHistoryPanel", "history mounted in workspace");
+requireText(workspace, "BlockedCaseExplainability", "blocked case explainability");
+requireText(workspace, "Bằng chứng đã có nhưng chưa đủ độ sâu", "insufficient support copy");
+requireText(workspace, "Thử lại sau khi đã xử lý", "guarded retry label");
+requireText(workspace, "Dừng tại:", "blocked stage explanation");
+requireText(
+  workspace,
+  "Chỉ thử lại khi bạn đã xử lý nguyên nhân chặn",
+  "retry confirmation guard",
+);
+requireText(fixtures, 'blocker_code: "insufficient_support"', "real blocked evidence fixture");
+requireText(css, ".operator-blocked-explainability", "blocked explainability styling");
+requireText(css, ".operator-coverage-review", "coverage review styling");
 
 for (const forbidden of [
   "failure_message",

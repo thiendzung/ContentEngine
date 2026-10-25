@@ -338,13 +338,13 @@ export function getOperatorUxHistoryFixture(
         at: "2026-10-25T06:01:58Z",
         kind: "research",
         stage: "research_summary",
-        status: "failed",
+        status: "completed",
         locale: "vi-VN",
         attempt: null,
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -359,9 +359,9 @@ export function getOperatorUxHistoryFixture(
         latency_ms: null,
         retry_count: null,
         resolved_action_key: null,
-        reason_code: "evidence_candidate_fallbacks_exhausted",
-        provider_call_count: 3,
-        pages_read: 0,
+        reason_code: "exa_sufficient",
+        provider_call_count: 5,
+        pages_read: 3,
       },
       {
         id: "research-decision:fixture-serper",
@@ -374,7 +374,7 @@ export function getOperatorUxHistoryFixture(
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -404,7 +404,7 @@ export function getOperatorUxHistoryFixture(
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -428,13 +428,13 @@ export function getOperatorUxHistoryFixture(
         at: "2026-10-25T06:01:58Z",
         kind: "research",
         stage: "provider_decision",
-        status: "called",
+        status: "skipped",
         locale: "vi-VN",
         attempt: null,
         run_id: "77777777-7777-4777-8777-777777777777",
         step_run_id: "88888888-8888-4888-8888-888888888888",
         artifact_id: "14141414-1414-4414-8414-141414141414",
-        artifact_type: "research_failure_diagnostic",
+        artifact_type: "research_trace",
         artifact_version: 1,
         artifact_hash: "e".repeat(64),
         error_code: null,
@@ -449,7 +449,7 @@ export function getOperatorUxHistoryFixture(
         latency_ms: null,
         retry_count: null,
         resolved_action_key: null,
-        reason_code: "evidence_candidate_exa_insufficient_use_tavily_once",
+        reason_code: "exa_sufficient",
         provider_call_count: null,
         pages_read: null,
       },
@@ -457,7 +457,7 @@ export function getOperatorUxHistoryFixture(
       id: "step:fixture-blocked",
       at: "2026-10-25T06:02:00Z",
       kind: "step",
-      stage: "research",
+      stage: "coverage_support_depth",
       status: "failed",
       locale: "vi-VN",
       attempt: 1,
@@ -467,7 +467,7 @@ export function getOperatorUxHistoryFixture(
       artifact_type: null,
       artifact_version: null,
       artifact_hash: null,
-      error_code: "fixture_evidence_missing",
+      error_code: "insufficient_support",
       decision: null,
       result: null,
       evaluator_key: null,
@@ -651,15 +651,46 @@ export function getOperatorUxFixture(caseId: string): OperatorCaseView | null {
       last_checkpoint: "research_running",
     };
   } else if (state === "blocked") {
+    view.question = "What does a certificate of authenticity actually prove?";
+    view.reader = "Người lần đầu mua tranh gốc";
+    view.situation = "Đang kiểm tra giấy tờ đi kèm tác phẩm trước khi mua";
+    view.need = "Hiểu COA chứng minh được gì, không chứng minh được gì và cần kiểm tra thêm tài liệu nào";
+    view.intent = "learn";
+    view.promise = "Giải thích giới hạn của COA và đưa checklist kiểm tra thực tế, không hứa quá mức về tính xác thực hay pháp lý.";
+    view.coverage_requirements = [
+      {
+        id: "coverage-1",
+        requirement: "Ai cấp chứng nhận, và vì sao danh tính / thẩm quyền của bên cấp quan trọng?",
+      },
+      {
+        id: "coverage-2",
+        requirement: "Chứng nhận khác provenance và hóa đơn như thế nào?",
+      },
+      {
+        id: "coverage-3",
+        requirement: "QR code hoặc registry entry có tự nó chứng minh tác phẩm là thật không?",
+      },
+      {
+        id: "coverage-4",
+        requirement: "Người mua lần đầu nên hỏi gì trước khi dựa vào các giấy tờ?",
+      },
+      {
+        id: "coverage-5",
+        requirement: "COA không tự động chứng minh điều gì về hải quan, thuế, quyền sở hữu, giá trị, bản quyền hoặc tính xác thực?",
+      },
+    ];
     view.state = {
       ...view.state,
       status: "BLOCKED",
       phase: "start_to_angle",
       primary_intent: "retry",
       allowed_intents: ["retry"],
-      blocker_code: "fixture_evidence_missing",
-      blocker_message: "Thiếu bằng chứng đủ tin cậy cho một khẳng định quan trọng.",
-      last_checkpoint: "evidence_blocked",
+      blocker_code: "insufficient_support",
+      blocker_message: (
+        "Chưa đủ độ sâu bằng chứng để tiếp tục tới Góc tiếp cận. "
+        + "Thiếu nguồn xác định bên cấp chứng nhận và phân biệt hóa đơn với chứng nhận / provenance."
+      ),
+      last_checkpoint: "coverage_support_blocked",
     };
   } else if (state === "complete") {
     view.state = {

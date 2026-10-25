@@ -7,7 +7,7 @@ export function operatorStatusLabel(status: OperatorStatus): string {
     QUEUED: "Đang chờ xử lý",
     RUNNING: "Đang thực hiện",
     AWAITING_APPROVAL: "Chờ Người sáng lập duyệt",
-    BLOCKED: "Bị chặn",
+    BLOCKED: "Cần xử lý",
     COMPLETE: "Hoàn thành",
   };
   return labels[status];
@@ -169,9 +169,17 @@ export function preflightDetail(check: PreflightCheck): string {
 }
 
 export function blockerAction(state: OperatorState): string {
-  if (state.allowed_intents.includes("retry")) return "Có thể thử lại từ trạng thái hiện tại.";
+  if (state.blocker_code === "insufficient_support") {
+    return "Xem phần còn thiếu, bổ sung hoặc điều chỉnh nguồn / phạm vi rồi mới thử lại.";
+  }
+  if (state.blocker_code === "insufficient_evidence") {
+    return "Kiểm tra nguồn hoặc bằng chứng cần bổ sung trước khi thử lại.";
+  }
   if (state.blocker_code === "operator_preflight_blocked") {
     return "Khắc phục kiểm tra sẵn sàng rồi tải lại trạng thái trước khi tiếp tục.";
+  }
+  if (state.allowed_intents.includes("retry")) {
+    return "Xử lý nguyên nhân chặn trước, sau đó mới thử lại từ trạng thái hiện tại.";
   }
   return "Không tiếp tục tự động. Kiểm tra nguyên nhân rồi tải lại trạng thái.";
 }
