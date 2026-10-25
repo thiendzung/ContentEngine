@@ -1,5 +1,7 @@
 # AGENT LOCAL TASK — CONTENT_PRODUCTION_V1_RC1_VERIFY
 
+> **NOT THE UX GATE.** Founder decided UX-first on 2026-10-25. This real-content production task must not be dispatched as a pre-merge blocker for UI. First complete UX-SIMPLE-01 and the separate `UX_SIMPLE_V1_AGENT_LOCAL_VERIFY.md` task; Founder then authorizes this operational/model run after the UX candidate is ready/merged. A blocked real case is not evidence that a UX build failed.
+
 ## Goal
 
 Verify the exact Content Production v1 RC1 candidate is safe and usable as a **content-production release**, without publishing anything.
