@@ -42,6 +42,7 @@ from app.modules.content_engine.models import (
     NeedHypothesisSignal,
     PromptDefinition,
     RecipeDefinition,
+    SettingsVersion,
     Signal,
 )
 from app.modules.harness.agent_runner import (
