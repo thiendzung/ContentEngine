@@ -641,6 +641,7 @@ async def execute_start_to_angle_job(
             ),
             content_opportunity_id=opportunity.id,
             need_hypothesis_id=content_case.need_hypothesis_id,
+            originality_pack_id=originality.id,
             max_claims=DEFAULT_EVIDENCE_MAX_CLAIMS,
         )
         try:
