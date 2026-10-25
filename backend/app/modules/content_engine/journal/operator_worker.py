@@ -40,6 +40,7 @@ from app.modules.content_engine.journal.operator_angle_bundle import (
 )
 from app.modules.content_engine.journal.operator_evidence_reuse import (
     ReusableEvidenceSetError,
+    approve_reusable_evidence_set,
     load_latest_reusable_evidence_set,
 )
 from app.modules.content_engine.journal.operator_runtime import (
@@ -74,7 +75,6 @@ from app.modules.knowledge.brief_binding import (
     KnowledgeBriefBindingError,
     load_run_knowledge_brief_binding,
 )
-from app.modules.knowledge.evidence_set_approval import approve_evidence_set
 from app.modules.knowledge.models import (
     Evidence,
     EvidenceSet,
@@ -224,6 +224,16 @@ def _safe_failure_metadata(value: dict[str, object] | None) -> dict[str, object]
     if value.get("task") == "coverage_support_depth":
         result["task"] = "coverage_support_depth"
     return result
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceCheckpointResult:
+    job_id: UUID
+    run_id: UUID
+    step_run_id: UUID
+    evidence_set_id: UUID
+    evidence_set_version: int
+    evidence_set_hash: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -472,7 +482,7 @@ async def _policy_lock_evidence_set(
         ):
             raise OperatorWorkerError("operator_worker_evidence_policy_rejected")
 
-    approval = await approve_evidence_set(
+    approval = await approve_reusable_evidence_set(
         session,
         evidence_set_id=evidence_set.id,
         expected_version=evidence_set.version,
@@ -498,7 +508,8 @@ async def execute_start_to_angle_job(
     worker_id: str,
     evidence_workflow: EvidenceResearchWorkflow,
     runner_registry: AgentRunnerRegistry,
-) -> WorkerExecutionResult:
+    stop_after_evidence_checkpoint: bool = False,
+) -> WorkerExecutionResult | EvidenceCheckpointResult:
     """Execute the exact leased Start-to-Angle job and stop at the Angle gate."""
 
     job = await session.get(Job, job_id)
@@ -559,23 +570,6 @@ async def execute_start_to_angle_job(
 
     if run.status == "pending":
         await transition_run(session, run_id=run.id, status="running")
-
-    try:
-        brief_binding = await load_run_knowledge_brief_binding(session, run_id=run.id)
-    except KnowledgeBriefBindingError as exc:
-        raise OperatorWorkerError(exc.code) from exc
-    context = await build_journal_context(
-        session,
-        content_case_id=content_case.id,
-        locale_variant_id=variant.id,
-        knowledge_brief_id=(brief_binding.brief_id if brief_binding is not None else None),
-    )
-    persisted_context = await persist_journal_context(
-        session,
-        run_id=run.id,
-        step_run_id=step.id,
-        context=context,
-    )
 
     handoff = JournalResearchHandoff()
     try:
@@ -694,6 +688,34 @@ async def execute_start_to_angle_job(
             "sufficient": research_result.research.sufficient,
             "evidence_count": len(research_result.evidence_ids),
         }
+
+    if stop_after_evidence_checkpoint:
+        await session.flush()
+        return EvidenceCheckpointResult(
+            job_id=job.id,
+            run_id=run.id,
+            step_run_id=step.id,
+            evidence_set_id=evidence_handoff.evidence_set_id,
+            evidence_set_version=evidence_handoff.version,
+            evidence_set_hash=evidence_handoff.content_hash,
+        )
+
+    try:
+        brief_binding = await load_run_knowledge_brief_binding(session, run_id=run.id)
+    except KnowledgeBriefBindingError as exc:
+        raise OperatorWorkerError(exc.code) from exc
+    context = await build_journal_context(
+        session,
+        content_case_id=content_case.id,
+        locale_variant_id=variant.id,
+        knowledge_brief_id=(brief_binding.brief_id if brief_binding is not None else None),
+    )
+    persisted_context = await persist_journal_context(
+        session,
+        run_id=run.id,
+        step_run_id=step.id,
+        context=context,
+    )
 
     originality_handoff = await handoff.handoff_originality_pack(
         session,
@@ -878,6 +900,7 @@ async def execute_start_to_angle_job(
 
 
 __all__ = [
+    "EvidenceCheckpointResult",
     "OperatorWorkerError",
     "WorkerExecutionResult",
     "claim_next_operator_job",
