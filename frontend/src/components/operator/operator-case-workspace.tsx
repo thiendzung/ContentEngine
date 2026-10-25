@@ -542,6 +542,19 @@ function blockedCaseGuide(state: OperatorCaseView["state"]): BlockedCaseGuide {
   };
 }
 
+function blockedCaseStageLabel(state: OperatorCaseView["state"]): string {
+  if (state.blocker_code === "insufficient_support") {
+    return "Kiểm tra độ sâu bằng chứng · trước Góc tiếp cận";
+  }
+  if (state.blocker_code === "insufficient_evidence") {
+    return "Nghiên cứu & tạo bằng chứng · trước Góc tiếp cận";
+  }
+  if (state.blocker_code === "operator_preflight_blocked") {
+    return "Kiểm tra điều kiện sẵn sàng";
+  }
+  return operatorPhaseLabel(state.phase);
+}
+
 function BlockedCaseExplainability({
   view,
   canRetry,
@@ -562,6 +575,9 @@ function BlockedCaseExplainability({
         <span className="operator-attention-label">Cần xử lý</span>
         <div>
           <h3 id="blocked-case-title">{guide.title}</h3>
+          <p className="operator-blocked-stage">
+            <strong>Dừng tại:</strong> {blockedCaseStageLabel(view.state)}
+          </p>
           <p>{guide.explanation}</p>
           {view.state.blocker_message && view.state.blocker_message !== guide.explanation && (
             <p className="operator-blocked-message">
@@ -607,7 +623,13 @@ function BlockedCaseExplainability({
           <button
             className="operator-button secondary"
             disabled={submitting}
-            onClick={onRetry}
+            onClick={() => {
+              if (window.confirm(
+                "Chỉ thử lại khi bạn đã xử lý nguyên nhân chặn hoặc đã có bằng chứng / phạm vi mới. Tiếp tục?",
+              )) {
+                onRetry();
+              }
+            }}
             type="button"
           >
             {submitting ? "Đang gửi…" : "Thử lại sau khi đã xử lý"}
