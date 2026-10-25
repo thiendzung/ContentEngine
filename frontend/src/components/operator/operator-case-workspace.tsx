@@ -536,7 +536,13 @@ function ProgressStrip({
   );
 }
 
-export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
+export function OperatorCaseWorkspace({
+  caseId,
+  uxInitialReconcileRequired = false,
+}: {
+  caseId: string;
+  uxInitialReconcileRequired?: boolean;
+}) {
   const [view, setView] = useState<OperatorCaseView | null>(null);
   const [review, setReview] = useState<ReviewCaseDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -547,7 +553,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   const [outlineComment, setOutlineComment] = useState("");
   const [finalComments, setFinalComments] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
-  const [reconcileRequired, setReconcileRequired] = useState(false);
+  const [reconcileRequired, setReconcileRequired] = useState(
+    uxInitialReconcileRequired,
+  );
   const [lastSuccessfulRefreshAt, setLastSuccessfulRefreshAt] = useState<string | null>(null);
 
   const loadSnapshot = useCallback(async () => {
