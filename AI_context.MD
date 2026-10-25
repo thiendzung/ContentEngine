@@ -25,7 +25,9 @@ Question / customer need
 Current product priority:
 - **UX FIRST (Founder decision 2026-10-25):** simplify operator UX using UX-SIMPLE-01; pass exact-SHA browser gate before one real content pilot;
 - canonical plan: docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md; verification: docs/tasks/UX_SIMPLE_V1_AGENT_LOCAL_VERIFY.md;
-- current PR #418 is Draft and not yet UI PASS;
+- UX-01A/B/C UI-only verification returned `PASS_UX_SIMPLE_ABC_UI`;
+- UX-01D sanitized per-case timeline/support-export code is now in the Draft candidate and awaits exact-SHA proof;
+- current PR #418 remains Draft; full `PASS_UX_SIMPLE_V1` still requires UX-01E exact-SHA verification;
 - after UX is verified and Founder merges, run one real case (prefer Q07), then classify BLOCKED or CONTENT_PRODUCTION_READY from actual local evidence;
 - produce the remaining MAP-v3 batch only after real proof;
 - produce MAP-v3 batch G01/G02/Q05/Q07/Q06 using the existing pipeline;
