@@ -416,6 +416,15 @@
   margin: 6px 0 0;
   color: var(--color-muted-strong);
   line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.operator-blocked-stage {
+  font: .78rem var(--font-ui);
+}
+
+.operator-blocked-stage strong {
+  color: var(--color-ink-strong);
 }
 
 .operator-blocked-message {
@@ -510,6 +519,13 @@
   max-width: 760px;
   color: var(--color-muted);
   line-height: 1.4;
+}
+
+.operator-blocked-next .operator-button {
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
 }
 
 .operator-blocked-technical {
@@ -737,6 +753,14 @@
   .operator-coverage-review-heading,
   .operator-coverage-review li {
     grid-template-columns: 1fr;
+  }
+
+  .operator-blocked-next .operator-button {
+    width: 100%;
+  }
+
+  .operator-coverage-review-status {
+    justify-self: start;
   }
 }
 
