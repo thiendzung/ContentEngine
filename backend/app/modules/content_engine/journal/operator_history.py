@@ -26,6 +26,9 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
 )
+from app.modules.research.evidence.artifact import (
+    RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+)
 
 _HISTORY_LIMIT = 500
 HistoryKind = Literal[
@@ -37,6 +40,7 @@ HistoryKind = Literal[
     "model",
     "tool",
     "artifact",
+    "research",
 ]
 
 
@@ -66,6 +70,9 @@ class OperatorHistoryEvent(BaseModel):
     latency_ms: int | None = None
     retry_count: int | None = None
     resolved_action_key: str | None = None
+    reason_code: str | None = None
+    provider_call_count: int | None = None
+    pages_read: int | None = None
 
 
 class OperatorHistorySummary(BaseModel):
@@ -116,6 +123,107 @@ def _history_event(**payload: object) -> OperatorHistoryEvent:
     """Validate the ORM-to-API boundary without leaking SQLAlchemy descriptor types."""
 
     return OperatorHistoryEvent.model_validate(payload)
+
+
+def _safe_diagnostic_code(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip().split(":", 1)[0][:120]
+    if not candidate:
+        return None
+    if any(
+        not (char.isalnum() or char in {"_", "-", "."})
+        for char in candidate
+    ):
+        return None
+    return candidate
+
+
+def _research_diagnostic_events(
+    artifact: Artifact,
+    *,
+    locale: str | None,
+) -> list[OperatorHistoryEvent]:
+    if (
+        artifact.artifact_type != RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE
+        or not isinstance(artifact.content_json, dict)
+    ):
+        return []
+
+    research = artifact.content_json.get("research")
+    if not isinstance(research, dict):
+        return []
+    decisions = research.get("decisions")
+    if not isinstance(decisions, list):
+        decisions = []
+
+    events: list[OperatorHistoryEvent] = []
+    summary_status = "failed"
+    stop_reason = _safe_diagnostic_code(research.get("stop_reason"))
+    provider_calls = research.get("external_provider_calls")
+    pages_read = research.get("pages_read")
+    events.append(
+        _history_event(
+            id=f"research-summary:{artifact.id}",
+            at=artifact.created_at,
+            kind="research",
+            stage="research_summary",
+            status=summary_status,
+            locale=locale,
+            run_id=artifact.run_id,
+            step_run_id=artifact.step_run_id,
+            artifact_id=artifact.id,
+            artifact_type=artifact.artifact_type,
+            artifact_version=artifact.version,
+            artifact_hash=artifact.content_hash,
+            reason_code=stop_reason,
+            provider_call_count=(
+                provider_calls
+                if isinstance(provider_calls, int) and not isinstance(provider_calls, bool)
+                else None
+            ),
+            pages_read=(
+                pages_read
+                if isinstance(pages_read, int) and not isinstance(pages_read, bool)
+                else None
+            ),
+        )
+    )
+
+    for index, raw in enumerate(decisions):
+        if not isinstance(raw, dict):
+            continue
+        provider = raw.get("provider")
+        status = raw.get("status")
+        if not isinstance(provider, str) or not provider.strip():
+            continue
+        if not isinstance(status, str) or status not in {
+            "called",
+            "failed",
+            "skipped",
+            "stopped",
+        }:
+            continue
+        events.append(
+            _history_event(
+                id=f"research-decision:{artifact.id}:{index}",
+                at=artifact.created_at,
+                kind="research",
+                stage="provider_decision",
+                status=status,
+                locale=locale,
+                run_id=artifact.run_id,
+                step_run_id=artifact.step_run_id,
+                artifact_id=artifact.id,
+                artifact_type=artifact.artifact_type,
+                artifact_version=artifact.version,
+                artifact_hash=artifact.content_hash,
+                provider=provider.strip()[:100],
+                error_code=_safe_diagnostic_code(raw.get("failure_class")),
+                reason_code=_safe_diagnostic_code(raw.get("reason")),
+            )
+        )
+    return events
 
 
 async def get_operator_case_history(
@@ -412,6 +520,7 @@ async def get_operator_case_history(
 
     for artifact in artifacts:
         artifact_run = run_by_id.get(artifact.run_id)
+        artifact_locale = artifact.locale or run_locale(artifact_run)
         events.append(
             _history_event(
                 id=f"artifact:{artifact.id}",
@@ -419,13 +528,19 @@ async def get_operator_case_history(
                 kind="artifact",
                 stage=artifact.artifact_type,
                 status="created",
-                locale=artifact.locale or run_locale(artifact_run),
+                locale=artifact_locale,
                 run_id=artifact.run_id,
                 step_run_id=artifact.step_run_id,
                 artifact_id=artifact.id,
                 artifact_type=artifact.artifact_type,
                 artifact_version=artifact.version,
                 artifact_hash=artifact.content_hash,
+            )
+        )
+        events.extend(
+            _research_diagnostic_events(
+                artifact,
+                locale=artifact_locale,
             )
         )
 
