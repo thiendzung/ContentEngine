@@ -243,7 +243,8 @@ export type OperatorHistoryKind =
   | "quality"
   | "model"
   | "tool"
-  | "artifact";
+  | "artifact"
+  | "research";
 
 export type OperatorHistoryEvent = {
   id: string;
@@ -271,6 +272,9 @@ export type OperatorHistoryEvent = {
   latency_ms: number | null;
   retry_count: number | null;
   resolved_action_key: string | null;
+  reason_code?: string | null;
+  provider_call_count?: number | null;
+  pages_read?: number | null;
 };
 
 export type OperatorHistorySummary = {

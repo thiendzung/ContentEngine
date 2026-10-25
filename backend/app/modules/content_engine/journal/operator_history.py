@@ -26,6 +26,7 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
 )
+from app.modules.research.evidence.artifact import project_research_failure_history
 
 _HISTORY_LIMIT = 500
 HistoryKind = Literal[
@@ -37,6 +38,7 @@ HistoryKind = Literal[
     "model",
     "tool",
     "artifact",
+    "research",
 ]
 
 
@@ -66,6 +68,9 @@ class OperatorHistoryEvent(BaseModel):
     latency_ms: int | None = None
     retry_count: int | None = None
     resolved_action_key: str | None = None
+    reason_code: str | None = None
+    provider_call_count: int | None = None
+    pages_read: int | None = None
 
 
 class OperatorHistorySummary(BaseModel):
@@ -116,6 +121,60 @@ def _history_event(**payload: object) -> OperatorHistoryEvent:
     """Validate the ORM-to-API boundary without leaking SQLAlchemy descriptor types."""
 
     return OperatorHistoryEvent.model_validate(payload)
+
+
+def _research_diagnostic_events(
+    artifact: Artifact,
+    *,
+    locale: str | None,
+) -> list[OperatorHistoryEvent]:
+    try:
+        projection = project_research_failure_history(artifact)
+    except ValueError as exc:
+        raise OperatorControlError("operator_research_diagnostic_invalid") from exc
+    if projection is None:
+        return []
+
+    events: list[OperatorHistoryEvent] = [
+        _history_event(
+            id=f"research-summary:{artifact.id}",
+            at=artifact.created_at,
+            kind="research",
+            stage="research_summary",
+            status="failed",
+            locale=locale,
+            run_id=artifact.run_id,
+            step_run_id=artifact.step_run_id,
+            artifact_id=artifact.id,
+            artifact_type=artifact.artifact_type,
+            artifact_version=artifact.version,
+            artifact_hash=artifact.content_hash,
+            reason_code=projection.stop_reason,
+            provider_call_count=projection.external_provider_calls,
+            pages_read=projection.pages_read,
+        )
+    ]
+    for index, decision in enumerate(projection.decisions):
+        events.append(
+            _history_event(
+                id=f"research-decision:{artifact.id}:{index}",
+                at=artifact.created_at,
+                kind="research",
+                stage="provider_decision",
+                status=decision.status,
+                locale=locale,
+                run_id=artifact.run_id,
+                step_run_id=artifact.step_run_id,
+                artifact_id=artifact.id,
+                artifact_type=artifact.artifact_type,
+                artifact_version=artifact.version,
+                artifact_hash=artifact.content_hash,
+                provider=decision.provider,
+                error_code=decision.failure_class,
+                reason_code=decision.reason_code,
+            )
+        )
+    return events
 
 
 async def get_operator_case_history(
@@ -412,6 +471,7 @@ async def get_operator_case_history(
 
     for artifact in artifacts:
         artifact_run = run_by_id.get(artifact.run_id)
+        artifact_locale = artifact.locale or run_locale(artifact_run)
         events.append(
             _history_event(
                 id=f"artifact:{artifact.id}",
@@ -419,13 +479,19 @@ async def get_operator_case_history(
                 kind="artifact",
                 stage=artifact.artifact_type,
                 status="created",
-                locale=artifact.locale or run_locale(artifact_run),
+                locale=artifact_locale,
                 run_id=artifact.run_id,
                 step_run_id=artifact.step_run_id,
                 artifact_id=artifact.id,
                 artifact_type=artifact.artifact_type,
                 artifact_version=artifact.version,
                 artifact_hash=artifact.content_hash,
+            )
+        )
+        events.extend(
+            _research_diagnostic_events(
+                artifact,
+                locale=artifact_locale,
             )
         )
 

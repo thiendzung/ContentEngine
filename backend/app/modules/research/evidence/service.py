@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.knowledge.ingest import canonicalize_markdown
+from app.modules.knowledge.models import OriginalityPack
 from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
@@ -209,11 +210,23 @@ class EvidenceResearchWorkflow:
                     approval_id=request.evidence_set_approval_id,
                 )
 
-        originality = await build_originality_pack(
-            session,
-            content_case_id=content_case.id,
-            motgu_material_refs=list(opportunity.motgu_material_refs_json),
-        )
+        if request.originality_pack_id is not None:
+            originality = await session.get(
+                OriginalityPack,
+                request.originality_pack_id,
+            )
+            if originality is None:
+                raise ValueError("evidence_originality_pack_not_found")
+            if originality.content_case_id != content_case.id:
+                raise ValueError("evidence_originality_pack_content_case_mismatch")
+            if originality.status != "approved":
+                raise ValueError("evidence_originality_pack_approval_required")
+        else:
+            originality = await build_originality_pack(
+                session,
+                content_case_id=content_case.id,
+                motgu_material_refs=list(opportunity.motgu_material_refs_json),
+            )
         usable_originality_item_count = count_usable_originality_items(
             originality.item_refs_json
         )

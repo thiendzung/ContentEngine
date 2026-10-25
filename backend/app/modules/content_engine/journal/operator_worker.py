@@ -92,6 +92,7 @@ from app.modules.research.evidence.artifact import (
 )
 from app.modules.research.evidence.contracts import DEFAULT_EVIDENCE_MAX_CLAIMS
 from app.modules.research.evidence.persistence import lock_evidence_set
+from app.modules.research.utils import normalize_trusted_evidence_hosts
 from app.modules.system.settings_service import active_prompt_definition, active_recipe_definition
 
 
@@ -146,6 +147,29 @@ def _preflight_coverage_support_base_input(
                 "operator_worker_coverage_support_failed"
             ) from exc
         raise
+
+
+def _trusted_evidence_hosts_from_snapshot(
+    snapshot: SettingsSnapshot,
+) -> tuple[str, ...]:
+    research = snapshot.resolved_settings_json.get("research")
+    if research is None:
+        return ()
+    if not isinstance(research, dict):
+        raise OperatorWorkerError("operator_worker_research_settings_invalid")
+    raw_hosts = research.get("trusted_evidence_hosts")
+    if raw_hosts is None:
+        return ()
+    if not isinstance(raw_hosts, list) or any(
+        not isinstance(value, str) for value in raw_hosts
+    ):
+        raise OperatorWorkerError("operator_worker_research_authority_hosts_invalid")
+    try:
+        return normalize_trusted_evidence_hosts(raw_hosts)
+    except ValueError as exc:
+        raise OperatorWorkerError(
+            "operator_worker_research_authority_hosts_invalid"
+        ) from exc
 
 
 def _coverage_aware_research_query(opportunity: ContentOpportunity) -> str:
@@ -508,6 +532,11 @@ async def execute_start_to_angle_job(
     if variant.locale != spec.source_locale or opportunity.locale != spec.source_locale:
         raise OperatorWorkerError("operator_worker_source_locale_mismatch")
 
+    settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
+    if settings_snapshot is None:
+        raise OperatorWorkerError("operator_worker_settings_missing")
+    trusted_evidence_hosts = _trusted_evidence_hosts_from_snapshot(settings_snapshot)
+
     originality = await session.scalar(
         select(OriginalityPack)
         .where(
@@ -608,9 +637,11 @@ async def execute_start_to_angle_job(
                 depth=ResearchDepth.STANDARD,
                 max_pages_to_read=settings.research_max_pages_read,
                 required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+                trusted_evidence_hosts=trusted_evidence_hosts,
             ),
             content_opportunity_id=opportunity.id,
             need_hypothesis_id=content_case.need_hypothesis_id,
+            originality_pack_id=originality.id,
             max_claims=DEFAULT_EVIDENCE_MAX_CLAIMS,
         )
         try:
@@ -671,9 +702,6 @@ async def execute_start_to_angle_job(
         expected_snapshot_hash=originality.snapshot_hash,
     )
 
-    settings_snapshot = await session.get(SettingsSnapshot, run.settings_snapshot_id)
-    if settings_snapshot is None:
-        raise OperatorWorkerError("operator_worker_settings_missing")
     route = SettingsModelRouter().resolve(
         task_key=ANGLE_TASK_KEY,
         settings_snapshot=settings_snapshot,

@@ -81,6 +81,9 @@ from app.modules.research.contracts import (
     SourceCandidate,
 )
 from app.modules.research.evidence.contracts import EvidenceResearchResult
+from app.modules.system.research_authority import (
+    configure_research_authority_hosts,
+)
 
 
 async def _ready_preflight(
@@ -856,6 +859,20 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
     )
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
+        configured = await configure_research_authority_hosts(
+            session,
+            project_slug="motgu",
+            trusted_evidence_hosts=[
+                "smithsonianprovenance.si.edu",
+                "www.getty.edu",
+            ],
+            approved_by="founder-test",
+            change_reason="Bind explicit evidence authority for Start-to-Angle test.",
+        )
+        assert configured.trusted_evidence_hosts == (
+            "smithsonianprovenance.si.edu",
+            "www.getty.edu",
+        )
         created = await create_founder_journal_intake(
             session, **_intake_kwargs(key="pr45-e2e")
         )
@@ -898,8 +915,16 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
         )
         assert workflow.calls == 1 and runner.calls == 2
         assert workflow.last_request is not None
+        assert (
+            workflow.last_request.originality_pack_id  # type: ignore[attr-defined]
+            == created.originality_pack_id
+        )
         research_request = workflow.last_request.research  # type: ignore[attr-defined]
         assert research_request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE
+        assert research_request.trusted_evidence_hosts == (
+            "smithsonianprovenance.si.edu",
+            "www.getty.edu",
+        )
         job = await session.get(Job, leased.id)
         step = await session.get(StepRun, leased.step_run_id)
         run = await session.get(ContentRun, created.bootstrap_run_id)
@@ -1808,6 +1833,10 @@ async def test_failed_attempt_remains_explicitly_retryable(
             session, content_case_id=created.content_case_id
         )
         assert retry_state.allowed_intents == ["retry"]
+        assert retry_state.blocker_code == "insufficient_evidence"
+        assert "Controlled insufficient evidence." not in (
+            retry_state.blocker_message or ""
+        )
         retry = await submit_operator_command_v45(
             session,
             content_case_id=created.content_case_id,

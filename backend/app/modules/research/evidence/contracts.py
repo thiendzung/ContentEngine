@@ -97,6 +97,7 @@ class EvidenceResearchRequest:
     content_opportunity_id: UUID
     need_hypothesis_id: UUID
     max_claims: int = DEFAULT_EVIDENCE_MAX_CLAIMS
+    originality_pack_id: UUID | None = None
     explicit_candidates: tuple[ClaimCandidate, ...] = ()
     lock_evidence_set: bool = False
     locked_by: str | None = None

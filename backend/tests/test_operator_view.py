@@ -44,6 +44,11 @@ from app.modules.harness.persistence import (
     transition_run,
     transition_step_run,
 )
+from app.modules.research.contracts import (
+    IntendedUse,
+    ProductionResearchRequest,
+)
+from app.modules.research.evidence.artifact import research_exception_diagnostic_payload
 
 
 @pytest.mark.asyncio
@@ -261,6 +266,68 @@ async def test_operator_view_surfaces_exact_cq03_unresolved_support(
                 session,
                 content_case_id=created.content_case_id,
             )
+
+
+@pytest.mark.asyncio
+async def test_operator_view_does_not_parse_research_failure_as_coverage_support(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        vertical_slice,
+        "build_journal_operator_preflight",
+        _ready_preflight,
+    )
+    async with isolated_session() as session:
+        await _activate_seeded_angle_runtime(session)
+        created = await create_founder_journal_intake(
+            session,
+            **_intake_kwargs(key="q07-research-diagnostic-view"),
+        )
+        state = await get_operator_state_v45(
+            session,
+            content_case_id=created.content_case_id,
+        )
+        queued = await submit_operator_command_v45(
+            session,
+            content_case_id=created.content_case_id,
+            intent="start",
+            expected_state_version=state.state_version,
+            idempotency_key="q07-research-diagnostic-view-start",
+        )
+        assert queued.job_id is not None
+        leased = await claim_next_operator_job(
+            session,
+            worker_id="worker-q07-research-diagnostic-view",
+        )
+        assert leased is not None
+        run = await session.get(ContentRun, leased.run_id)
+        assert run is not None
+
+        await fail_start_to_angle_job(
+            session,
+            job_id=leased.id,
+            worker_id="worker-q07-research-diagnostic-view",
+            failure_class="insufficient_evidence",
+            message="operator_worker_insufficient_evidence",
+            diagnostic_snapshot=research_exception_diagnostic_payload(
+                ProductionResearchRequest(
+                    project_id=run.project_id,
+                    query="what does a certificate of authenticity prove",
+                    required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+                    max_pages_to_read=2,
+                ),
+                error_class="evidence_candidate_fallbacks_exhausted",
+            ),
+        )
+
+        view = await get_operator_case_view(
+            session,
+            content_case_id=created.content_case_id,
+        )
+
+        assert view.state.status == "BLOCKED"
+        assert view.state.blocker_code == "insufficient_evidence"
+        assert view.coverage_support is None
 
 
 @pytest.mark.asyncio

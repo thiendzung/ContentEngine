@@ -49,6 +49,9 @@ from app.modules.content_engine.journal.outline import (
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.harness.persistence import get_latest_checkpoint
+from app.modules.research.evidence.artifact import (
+    RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+)
 
 LocaleRole = Literal["source", "translation"]
 
@@ -631,11 +634,14 @@ async def _coverage_support_diagnostic(
         artifact is None
         or artifact.run_id != state.current_run_id
         or artifact.step_run_id != state.current_step_run_id
-        or artifact.artifact_type != COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE
         or not isinstance(artifact.content_json, dict)
         or _canonical_hash(artifact.content_json) != artifact.content_hash
         or step.error_json.get("diagnostic_content_hash") != artifact.content_hash
     ):
+        raise OperatorControlError("operator_coverage_support_projection_invalid")
+    if artifact.artifact_type == RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE:
+        return None
+    if artifact.artifact_type != COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE:
         raise OperatorControlError("operator_coverage_support_projection_invalid")
 
     payload = artifact.content_json

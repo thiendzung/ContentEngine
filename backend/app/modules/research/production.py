@@ -36,7 +36,12 @@ from app.modules.research.contracts import (
     SourceRelation,
 )
 from app.modules.research.providers.base import PageReader, ResearchProviderError, SearchProvider
-from app.modules.research.utils import choose_sources, dedupe_sources
+from app.modules.research.utils import (
+    choose_sources,
+    dedupe_sources,
+    normalize_trusted_evidence_hosts,
+    trusted_evidence_host_match,
+)
 
 
 @dataclass(frozen=True)
@@ -90,6 +95,11 @@ class ProductionSufficiencyPolicy:
                 and source.parent_url == parent_url
                 for source in dedupe_sources(result.source_candidates)
             )
+        if result.request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE:
+            return any(
+                source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+                for source in dedupe_sources(result.source_candidates)
+            )
         return self.external_is_sufficient(result)
 
 
@@ -134,7 +144,14 @@ class ResearchRouter:
         if request.max_pages_to_read < 0:
             raise ValueError("max_pages_to_read_must_be_non_negative")
 
-        normalized_request = replace(request, query=query)
+        trusted_hosts = normalize_trusted_evidence_hosts(
+            request.trusted_evidence_hosts
+        )
+        normalized_request = replace(
+            request,
+            query=query,
+            trusted_evidence_hosts=trusted_hosts,
+        )
         result = ProductionResearchResult(request=normalized_request)
         transient_usage = _TransientUsage()
 
@@ -265,6 +282,11 @@ class ResearchRouter:
             "evidence_candidate_fallbacks_exhausted",
         }:
             result.stop_reason = search_stop_reason
+        elif (
+            result.request.required_intended_use
+            is IntendedUse.EVIDENCE_CANDIDATE
+        ):
+            result.stop_reason = "evidence_candidate_fallbacks_exhausted"
         else:
             result.stop_reason = "bounded_search_exhausted"
         return result
@@ -410,6 +432,12 @@ class ResearchRouter:
             f"{search_request.query} authoritative official institutional guidance "
             "primary source research"
         )
+        if request.trusted_evidence_hosts:
+            site_clause = " OR ".join(
+                f"site:{host}"
+                for host in request.trusted_evidence_hosts[:8]
+            )
+            recovery_query = f"{recovery_query} ({site_clause})"
         return replace(search_request, query=recovery_query)
 
     def _fallback_for(
@@ -667,7 +695,28 @@ class ResearchRouter:
         reason: str,
     ) -> None:
         result.signals.extend(response.signals)
-        result.source_candidates.extend(response.sources)
+        for source in response.sources:
+            matched_host = trusted_evidence_host_match(
+                source.url,
+                result.request.trusted_evidence_hosts,
+            )
+            if (
+                matched_host is not None
+                and source.intended_use is not IntendedUse.EVIDENCE_CANDIDATE
+                and source.intended_use is not IntendedUse.CONTEXT_ONLY
+                and source.commercial_bias is not CommercialBias.HIGH
+                and source.source_type != "community_or_review"
+            ):
+                source = replace(
+                    source,
+                    intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+                    why_selected=(
+                        f"{source.why_selected} "
+                        f"Explicit project authority host matched: {matched_host}. "
+                        "Claim-level support still requires a readable exact excerpt."
+                    ).strip(),
+                )
+            result.source_candidates.append(source)
         result.calls.extend(replace(call, reason=reason) for call in response.calls)
 
     def _selected_source_limit(self, request: ProductionResearchRequest) -> int:
@@ -682,6 +731,13 @@ class ResearchRouter:
         parent_url = result.request.parent_url
         if parent_url is None:
             candidates = result.source_candidates
+            if required_use is IntendedUse.EVIDENCE_CANDIDATE:
+                evidence_candidates = [
+                    source
+                    for source in candidates
+                    if source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+                ]
+                return choose_sources(evidence_candidates, limit)
             if required_use is not None:
                 candidates = [
                     source

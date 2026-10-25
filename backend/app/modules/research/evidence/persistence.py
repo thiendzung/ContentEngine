@@ -548,15 +548,8 @@ def _is_external_evidence_reference(value: str) -> bool:
     if candidate.startswith(_EXTERNAL_REFERENCE_PREFIXES):
         return True
 
-    host = urlsplit(candidate).hostname
-    if host is None:
-        return "irs.gov" in candidate or "si.edu" in candidate
-    return (
-        host == "irs.gov"
-        or host.endswith(".irs.gov")
-        or host == "si.edu"
-        or host.endswith(".si.edu")
-    )
+    parsed = urlsplit(candidate)
+    return parsed.scheme in {"http", "https"} and parsed.hostname is not None
 
 
 def _reference_only_item(value: object) -> dict[str, object] | None:

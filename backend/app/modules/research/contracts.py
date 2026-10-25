@@ -176,6 +176,7 @@ class ProductionResearchRequest:
     required_intended_use: IntendedUse | None = None
     parent_url: str | None = None
     force_external_discovery: bool = False
+    trusted_evidence_hosts: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)

@@ -58,6 +58,25 @@ _JOURNAL_LOCALE_ALIASES = {
 }
 CompletionBindingState = Literal["complete", "missing", "invalid"]
 _COMPLETION_BINDING_BLOCKER = "operator_completion_binding_invalid"
+_SEMANTIC_START_BLOCKERS = {
+    "insufficient_evidence": (
+        "Chưa có đủ bằng chứng để tiếp tục tới Angle; có thể thử lại sau khi bổ sung nguồn."
+    ),
+    "insufficient_support": (
+        "Bằng chứng hiện có chưa đủ độ sâu hỗ trợ để tiếp tục tới Angle."
+    ),
+}
+
+
+def _start_failure_blocker(run: ContentRun) -> tuple[str, str]:
+    code = run.failure_code or ""
+    message = _SEMANTIC_START_BLOCKERS.get(code)
+    if message is not None:
+        return code, message
+    return (
+        "operator_job_failed",
+        "Tác vụ nền thất bại; có thể thử lại nếu trạng thái còn hợp lệ.",
+    )
 
 
 def normalize_journal_locale(value: str) -> str:
@@ -638,6 +657,7 @@ async def get_operator_state_v45(
         "pending",
         "running",
     }:
+        blocker_code, blocker_message = _start_failure_blocker(run)
         return base.model_copy(
             update={
                 "status": "BLOCKED",
@@ -646,10 +666,8 @@ async def get_operator_state_v45(
                 "allowed_intents": ["retry"],
                 "current_run_id": run.id,
                 "current_step_run_id": step.id,
-                "blocker_code": "operator_job_failed",
-                "blocker_message": (
-                    "Tác vụ nền thất bại; có thể thử lại nếu trạng thái còn hợp lệ."
-                ),
+                "blocker_code": blocker_code,
+                "blocker_message": blocker_message,
             }
         )
     if step.status in {"pending", "running"} and job is None:
