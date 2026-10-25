@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { DecisionSummary } from "../ui/decision-summary";
+import { OperatorCaseHistoryPanel } from "./operator-case-history";
 
 import {
   approveAngle,
@@ -1069,6 +1070,8 @@ export function OperatorCaseWorkspace({
           }
         />
       </section>
+
+      <OperatorCaseHistoryPanel caseId={caseId} />
 
       {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
         <section className="operator-panel angle-review-panel">
