@@ -23,6 +23,10 @@ from app.modules.knowledge.models import (
     Source,
     SourceDocument,
 )
+from app.modules.knowledge.originality_pack import (
+    approve_originality_pack,
+    originality_pack_snapshot_hash,
+)
 from app.modules.research.contracts import (
     CommercialBias,
     IntendedUse,
@@ -38,8 +42,12 @@ from app.modules.research.evidence import (
     EvidenceRelation,
     EvidenceResearchRequest,
     EvidenceResearchWorkflow,
+    ORIGINALITY_MATERIAL_TYPE,
 )
-from app.modules.research.evidence.persistence import lock_evidence_set
+from app.modules.research.evidence.persistence import (
+    ensure_selected_content_case,
+    lock_evidence_set,
+)
 
 
 @asynccontextmanager
@@ -466,6 +474,72 @@ async def test_evidence_workflow_is_idempotent_and_preserves_contradiction() -> 
         pack = await session.get(OriginalityPack, first.originality_pack_id)
         assert pack is not None
         assert pack.item_refs_json == []
+
+
+@pytest.mark.asyncio
+async def test_evidence_workflow_reuses_exact_approved_originality_pack() -> None:
+    async with isolated_session() as session:
+        project, need, opportunity = await selected_o4_like_plan(session)
+        content_case, _opportunity, _need = await ensure_selected_content_case(
+            session,
+            project_id=project.id,
+            content_opportunity_id=opportunity.id,
+            need_hypothesis_id=need.id,
+        )
+        pack = OriginalityPack(
+            content_case_id=content_case.id,
+            item_refs_json=[
+                {
+                    "type": ORIGINALITY_MATERIAL_TYPE,
+                    "source_ref": "founder:test:originality",
+                    "material": "MOTGU-owned practical observation.",
+                    "writer_use": "Use only as first-party editorial perspective.",
+                    "guardrails": "Do not present this as external market evidence.",
+                    "approval_ref": "founder:test:approved",
+                }
+            ],
+            summary="Founder-authored originality fixture.",
+            status="draft",
+        )
+        session.add(pack)
+        await session.flush()
+        pack = await approve_originality_pack(
+            session,
+            originality_pack_id=pack.id,
+            expected_snapshot_hash=originality_pack_snapshot_hash(pack),
+            approved_by="founder-test",
+            approval_reason="Exact fixture approved for evidence workflow reuse.",
+        )
+
+        base_request = evidence_request(
+            project_id=project.id,
+            need_id=need.id,
+            opportunity_id=opportunity.id,
+        )
+        request = EvidenceResearchRequest(
+            research=base_request.research,
+            content_opportunity_id=base_request.content_opportunity_id,
+            need_hypothesis_id=base_request.need_hypothesis_id,
+            max_claims=base_request.max_claims,
+            originality_pack_id=pack.id,
+        )
+        result = await EvidenceResearchWorkflow(
+            router=FakeEvidenceRouter(),
+        ).run(session, request=request)
+
+        assert result.originality_pack_id == pack.id
+        assert result.originality_item_count == 1
+        assert not any("Originality gap" in gap for gap in result.research_gaps)
+        packs = list(
+            (
+                await session.scalars(
+                    select(OriginalityPack).where(
+                        OriginalityPack.content_case_id == content_case.id
+                    )
+                )
+            ).all()
+        )
+        assert [row.id for row in packs] == [pack.id]
 
 
 @pytest.mark.asyncio
