@@ -12,9 +12,9 @@ Plan: `docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md`.
 
 - [x] Founder chooses UX-first sequencing: simple UI → UX browser gate → one real content case → sanitized logs → targeted improvements.
 - [x] Basic `/operator` entry and manual intake advanced disclosure are **coded in draft PR**, not verified.
-- [ ] UX-01A: simplify main navigation to 3 normal choices + advanced menu.
-- [ ] UX-01B: simplify planned-topic selection while preserving canonical Question Map selection and admission.
-- [ ] UX-01C: simplify one-case workspace, exact human gate, no interval status polling.
+- [x] UX-01A CODED: main navigation now exposes 3 normal choices + advanced menu. Local/browser proof pending.
+- [x] UX-01B CODED: planned-topic selection now derives compact editorial suggestions from canonical Question Map data; explicit Founder confirmation and selection/admission guards remain. Local/browser proof pending.
+- [x] UX-01C CODED: one-case workspace removes interval polling and uses post-action/focus/visibility/manual refresh while preserving exact human gates. Local/browser proof pending.
 - [ ] UX-01D: per-case read-only timeline and safely redacted support report; no new log database.
 - [ ] UX-01E: Agent Local exact-SHA lint/typecheck/build/browser/contract/keyboard/mobile proof.
 - [ ] MG reviews local evidence and classifies `PASS_UX_SIMPLE_V1` or precise blocker.
