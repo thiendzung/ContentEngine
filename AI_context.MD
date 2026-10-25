@@ -1,6 +1,6 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — Content Production v1 RC1
+## Current WIP — UX-SIMPLE-01 first → Content Production v1 RC1
 
 **Updated:** 2026-10-25  
 **Verified GitHub main at EDITOR-01 admission (2026-10-14):** `0c986ae22734e57f0e6c1a552a3900929798379a`
@@ -23,7 +23,11 @@ Question / customer need
 ```
 
 Current product priority:
-- verify and release Issue #417 RC1 first;
+- **UX FIRST (Founder decision 2026-10-25):** simplify operator UX using UX-SIMPLE-01; pass exact-SHA browser gate before one real content pilot;
+- canonical plan: docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md; verification: docs/tasks/UX_SIMPLE_V1_AGENT_LOCAL_VERIFY.md;
+- current PR #418 is Draft and not yet UI PASS;
+- after UX is verified and Founder merges, run one real case (prefer Q07), then classify BLOCKED or CONTENT_PRODUCTION_READY from actual local evidence;
+- produce the remaining MAP-v3 batch only after real proof;
 - produce MAP-v3 batch G01/G02/Q05/Q07/Q06 using the existing pipeline;
 - no speculative feature work and no new Question Map implementation;
 - ContentEngine stops at deterministic package; Founder handles WordPress Draft/publish manually;
