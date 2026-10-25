@@ -350,10 +350,10 @@ export function OperatorCaseHistoryPanel({ caseId }: { caseId: string }) {
     <section className="operator-panel operator-history-panel" aria-busy={loading}>
       <div className="operator-panel-heading">
         <div>
-          <p className="eyebrow">Nhật ký bài viết</p>
+          <p className="eyebrow">Nhật ký vận hành · tham khảo</p>
           <h2>Hệ thống đã làm gì?</h2>
           <p className="operator-note">
-            Chỉ hiển thị metadata vận hành đã lọc. Nội dung nguồn, prompt, dữ liệu riêng
+            Phần này chỉ phục vụ đối soát khi cần. Nội dung nguồn, prompt, dữ liệu riêng
             và thông tin xác thực không xuất hiện trong nhật ký này.
           </p>
         </div>
