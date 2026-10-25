@@ -12,6 +12,9 @@ Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verificatio
 - [x] Freeze RC1 MAP-v3 batch: G01 / G02 / Q05 / Q07 / Q06.
 - [x] Define manual WordPress publication boundary; no OPS/Git/Astro requirement and no auto-publish.
 - [x] Add deterministic RC1 manifest + release contract.
+- [x] Add novice-friendly `/operator` entry with only three primary paths; move manual brief and preflight details to secondary disclosure.
+- [x] Simplify the existing Journal workspace's visible wording and collapse nonessential static brief details; preserve existing approval/state APIs.
+- [ ] Agent Local frontend lint/typecheck/build and real browser smoke are required; UX changes are NOT VERIFIED yet.
 - [ ] Agent Local exact-SHA verification on RC1 candidate.
 - [ ] Prove one bounded RC1 item reaches the first human gate without case-specific code or publication side effect.
 - [ ] MG reviews returned evidence and records `PASS_CONTENT_PRODUCTION_V1_RC1` or exact blocker.
