@@ -23,6 +23,10 @@ from app.modules.content_engine.journal.operator_decisions import (
     OperatorDecisionResult,
     submit_operator_decision,
 )
+from app.modules.content_engine.journal.operator_history import (
+    OperatorCaseHistory,
+    get_operator_case_history,
+)
 from app.modules.content_engine.journal.operator_manual_intake import (
     FounderJournalIntakeResult,
     create_founder_journal_intake,
@@ -325,6 +329,20 @@ async def get_journal_operator_case_view(
 ) -> OperatorCaseView:
     try:
         return await get_operator_case_view(session, content_case_id=content_case_id)
+    except OperatorControlError as exc:
+        raise _operator_http_error(exc) from exc
+
+
+@router.get(
+    "/operator/cases/{content_case_id}/history",
+    response_model=OperatorCaseHistory,
+)
+async def get_journal_operator_case_history(
+    content_case_id: UUID,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> OperatorCaseHistory:
+    try:
+        return await get_operator_case_history(session, content_case_id=content_case_id)
     except OperatorControlError as exc:
         raise _operator_http_error(exc) from exc
 

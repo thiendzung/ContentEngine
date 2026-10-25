@@ -1,6 +1,17 @@
-# PLAN - ContentEngine production-first delivery for MOTGU V1.1 Growth
+# PLAN - Content Production v1 RC1 for MOTGU
 
-Effective 2026-10-14. Current working window is `../AI_context.MD`. This plan keeps the proven ContentEngine architecture but changes the active priority: **produce real approved content that can feed MOTGU's Growth Release**.
+Effective 2026-10-25 for Issue #417. Current working window is `../AI_context.MD`. This plan keeps the proven ContentEngine architecture and narrows the active priority to **produce reviewable approved content packages for Founder manual WordPress publication**.
+
+## UX-first decision (2026-10-25)
+
+Founder chọn **đơn giản hóa UX trước, chạy content thật sau**. Kế hoạch cụ thể: [UX_SIMPLE_OPERATOR_V1_PLAN.md](releases/UX_SIMPLE_OPERATOR_V1_PLAN.md).
+
+1. Hoàn thành UX-01A → UX-01D theo từng phần nhỏ trong cùng cửa sổ làm việc.
+2. Chạy **UX-01E exact-SHA frontend/browser verification**; chỉ sau đó MG có thể báo `PASS_UX_SIMPLE_V1` và Founder quyết định merge.
+3. Founder vận hành **một bài thật ưu tiên Q07** trên bản đã merge/được cho phép; chỉ lúc đó mới đánh giá `PASS_CONTENT_PRODUCTION_V1_RC1` hoặc một blocker chính xác.
+4. Đọc log đã lọc và chọn một sửa đổi nhỏ dựa trên nguyên nhân quan sát được; không mở feature mới theo giả định.
+
+**Phân biệt:** UX READY != Content Production READY != WordPress Published. UI code không được nới lỏng human gates, evidence, QA, guardrails hay production permissions.
 
 ## Active business role
 
@@ -16,23 +27,22 @@ real customer/search question
 → independent VI/EN Writer
 → Human Voice + quality
 → Founder final approval
-→ approved ContentVersion / deterministic package
-→ handoff to MOTGU OPS Content Release
+→ approved ContentVersion / deterministic review package
+→ Founder manual WordPress Draft / publish
 ```
 
-OPS remains the control tower and `www.motgu.com` remains the public showroom.
+For RC1, ContentEngine stops at the deterministic review package. Founder manually transfers the approved content into WordPress Draft, performs pre-publish QA/QC and publishes.
 
-No direct ContentEngine write to MOTGU production D1. No direct auto-publish to Astro. WordPress/Rank Math code remains historical/unused for the current MOTGU Astro publishing path unless Founder explicitly reopens it for another target.
+No direct ContentEngine write to WordPress, WooCommerce, MOTGU production data, Git or Astro. Publication automation is out of scope.
 
 ## Current critical path
 
-1. Finish the real five-article campaign in Issue #326 on one stable release.
-2. Preserve the true human gates: batch Angle, batch Outline, batch Final.
-3. Produce exact approved ContentVersions/packages with hashes and provenance.
-4. Add only the **smallest deterministic export/handoff adapter** required for MOTGU OPS to accept the package, if the existing package surface cannot already do it.
-5. Prove one Golden handoff into MOTGU OPS → Git → Astro.
-6. Publish the remaining approved batch through the same path.
-7. Use real Search/Inquiry/Sale observations later; do not reopen Question Map or strategy work without evidence.
+1. Finish UX-SIMPLE-01 and verify the UI on one exact candidate SHA; no real model/research call is needed for UX acceptance.
+2. Produce the MAP-v3 batch **G01/G02/Q05/Q07/Q06** through the existing human gates.
+3. Produce exact approved ContentVersions/review packages with hashes, provenance, intent owner, `must_not_claim`, metadata and internal-link plan.
+4. Stop at deterministic package; Founder manually creates/reviews the WordPress Draft.
+5. Apply the 14-point pre-publish check and content-type QA gates before manual publication.
+6. Use real Search Console/Bing/inquiry observations after publication; do not reopen architecture or strategy work without evidence.
 
 ## Development admission rule
 
@@ -50,7 +60,7 @@ Explicitly deferred:
 
 - new provider/framework;
 - Antigravity product dependency;
-- broad dashboard/UI redesign;
+- broad dashboard/UI redesign **outside the narrowly admitted UX-SIMPLE-01 operator simplification**;
 - generic workflow engine;
 - speculative prompt refactor;
 - WordPress/Rank Math activation for MOTGU;

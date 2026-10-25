@@ -99,6 +99,39 @@ function requirementsFromText(value: string) {
     .filter(Boolean);
 }
 
+function suggestedSelectionFields(
+  candidate: ArchitectureCandidate,
+  questionMap: QuestionMap,
+) {
+  const clusterKeys = new Set(candidate.member_cluster_keys);
+  const questionKeys = new Set(
+    questionMap.clusters
+      .filter((cluster) => clusterKeys.has(cluster.cluster_key))
+      .flatMap((cluster) => cluster.question_keys),
+  );
+  const questions = questionMap.questions
+    .filter((question) => questionKeys.has(question.question_key))
+    .map((question) => question.text.trim())
+    .filter(Boolean);
+
+  const requirements = Array.from(
+    new Set([candidate.primary_question.trim(), ...questions]),
+  ).slice(0, 12);
+
+  const reasons = candidate.reason_codes
+    .map((reason) => planningReasonLabel(reason))
+    .filter(Boolean);
+
+  return {
+    selectionReason:
+      reasons.length > 0
+        ? reasons.join(" ")
+        : "Phương án này được chọn từ Bản đồ câu hỏi hiện tại.",
+    promise: `Giúp người đọc trả lời rõ câu hỏi: ${candidate.primary_question}`,
+    requirementsText: requirements.join("\n"),
+  };
+}
+
 function makeIdempotencyKey(opportunityId: string, routeHash: string) {
   return [
     "qm02e",
@@ -638,10 +671,13 @@ export default function QuestionMapFounderPage() {
   }
 
   function pickCandidate(candidate: ArchitectureCandidate) {
+    const suggestions = questionMap
+      ? suggestedSelectionFields(candidate, questionMap)
+      : null;
     setCandidateKey(candidate.candidate_key);
-    setSelectionReason("");
-    setPromise("");
-    setRequirementsText("");
+    setSelectionReason(suggestions?.selectionReason ?? "");
+    setPromise(suggestions?.promise ?? "");
+    setRequirementsText(suggestions?.requirementsText ?? "");
     setSuccessMessage("");
     setStaleMessage("");
     setActiveOpportunityId("");
@@ -1068,46 +1104,61 @@ export default function QuestionMapFounderPage() {
                         </div>
                       </div>
 
-                      <label className={ui.field}>
-                        <span>Lý do chọn</span>
-                        <textarea
-                          className={ui.textarea}
-                          value={selectionReason}
-                          maxLength={2000}
-                          onChange={(event) => setSelectionReason(event.target.value)}
-                          placeholder="Vì sao phương án này đáng được đưa vào kế hoạch sản xuất?"
-                        />
-                      </label>
-                      <label className={ui.field}>
-                        <span>Lời hứa với người đọc</span>
-                        <textarea
-                          className={ui.textarea}
-                          value={promise}
-                          maxLength={2000}
-                          onChange={(event) => setPromise(event.target.value)}
-                          placeholder="Nội dung này sẽ giúp người đọc làm được gì?"
-                        />
-                      </label>
-                      <label className={ui.field}>
-                        <span>Yêu cầu phải bao phủ · mỗi dòng một yêu cầu</span>
-                        <textarea
-                          className={ui.textarea}
-                          value={requirementsText}
-                          onChange={(event) => setRequirementsText(event.target.value)}
-                          placeholder={"Giải quyết câu hỏi chính…\nNêu rõ giới hạn bằng chứng…"}
-                        />
-                      </label>
-                      <p className={ui.muted}>
-                        {requirements.length}/12 yêu cầu. Hệ thống sẽ xác nhận lại
-                        ảnh chụp trước khi lưu lựa chọn.
-                      </p>
+                      <div className={ui.selectionSummary}>
+                        <span>Mục tiêu bài viết</span>
+                        <strong>{promise}</strong>
+                        <small>
+                          Gợi ý này được tạo từ Bản đồ câu hỏi hiện tại, không phải
+                          bằng chứng để viết bài.
+                        </small>
+                      </div>
+
+                      <details className={ui.selectionDetails}>
+                        <summary>Kiểm tra hoặc chỉnh mục tiêu bài viết</summary>
+                        <div className={ui.selectionDetailsBody}>
+                          <label className={ui.field}>
+                            <span>Lý do chọn</span>
+                            <textarea
+                              className={ui.textarea}
+                              value={selectionReason}
+                              maxLength={2000}
+                              onChange={(event) => setSelectionReason(event.target.value)}
+                              placeholder="Vì sao phương án này đáng được đưa vào kế hoạch sản xuất?"
+                            />
+                          </label>
+                          <label className={ui.field}>
+                            <span>Lời hứa với người đọc</span>
+                            <textarea
+                              className={ui.textarea}
+                              value={promise}
+                              maxLength={2000}
+                              onChange={(event) => setPromise(event.target.value)}
+                              placeholder="Nội dung này sẽ giúp người đọc làm được gì?"
+                            />
+                          </label>
+                          <label className={ui.field}>
+                            <span>Những câu hỏi bài phải trả lời · mỗi dòng một câu</span>
+                            <textarea
+                              className={ui.textarea}
+                              value={requirementsText}
+                              onChange={(event) => setRequirementsText(event.target.value)}
+                              placeholder={"Giải quyết câu hỏi chính…\nNêu rõ giới hạn bằng chứng…"}
+                            />
+                          </label>
+                          <p className={ui.muted}>
+                            {requirements.length}/12 yêu cầu. Bạn có thể sửa, nhưng
+                            hệ thống vẫn xác nhận lại snapshot trước khi lưu.
+                          </p>
+                        </div>
+                      </details>
+
                       <button
                         type="button"
                         className={styles.button}
                         onClick={() => void submitSelection()}
                         disabled={!selectionReady || selectionBusy}
                       >
-                        {selectionBusy ? "Đang lưu…" : "Lưu lựa chọn nội dung"}
+                        {selectionBusy ? "Đang lưu…" : "Xác nhận chọn bài"}
                       </button>
                       {!selectedCandidate.selectable ? (
                         <span className={styles.badgeNegative}>

@@ -1,11 +1,11 @@
 # AI_context.MD - ContentEngine shared working window
 
-## Current WIP — MOTGU V1.1 real-content production
+## Current WIP — UX-SIMPLE-01 first → Content Production v1 RC1
 
-**Updated:** 2026-10-14  
+**Updated:** 2026-10-25  
 **Verified GitHub main at EDITOR-01 admission (2026-10-14):** `0c986ae22734e57f0e6c1a552a3900929798379a`
 
-ContentEngine's active business role is **CONTENT FACTORY** for MOTGU Website V1.1 Growth Release.
+ContentEngine's active business role is **CONTENT FACTORY** for **Issue #417 / Content Production v1 RC1**.
 
 North Star handoff:
 
@@ -17,19 +17,23 @@ Question / customer need
 → VI/EN Writer
 → Human Voice + Quality
 → Founder final approval
-→ approved ContentVersion/package
-→ MOTGU OPS Content Release
-→ Git
-→ Astro / www.motgu.com
+→ approved ContentVersion/deterministic review package
+→ Founder manual WordPress Draft review
+→ Founder manual publish
 ```
 
 Current product priority:
-- finish Issue #326 real five-article campaign;
-- no speculative feature work;
-- no new Question Map implementation;
-- no WordPress/Rank Math activation for the MOTGU Astro path;
-- publication remains a separate explicit MOTGU OPS/Git gate;
-- only build a minimum deterministic ContentEngine→MOTGU package adapter if the real handoff proves the current export is insufficient.
+- **UX FIRST (Founder decision 2026-10-25):** simplify operator UX using UX-SIMPLE-01; pass exact-SHA browser gate before one real content pilot;
+- canonical plan: docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md; verification: docs/tasks/UX_SIMPLE_V1_AGENT_LOCAL_VERIFY.md;
+- UX-01A/B/C UI-only verification returned `PASS_UX_SIMPLE_ABC_UI`;
+- UX-01D sanitized per-case timeline/support-export code is now in the Draft candidate and awaits exact-SHA proof;
+- current PR #418 remains Draft; full `PASS_UX_SIMPLE_V1` still requires UX-01E exact-SHA verification;
+- after UX is verified and Founder merges, run one real case (prefer Q07), then classify BLOCKED or CONTENT_PRODUCTION_READY from actual local evidence;
+- produce the remaining MAP-v3 batch only after real proof;
+- produce MAP-v3 batch G01/G02/Q05/Q07/Q06 using the existing pipeline;
+- no speculative feature work and no new Question Map implementation;
+- ContentEngine stops at deterministic package; Founder handles WordPress Draft/publish manually;
+- no publication automation, no required OPS/Git/Astro handoff, and no new adapter unless a demonstrated package blocker exists.
 
 **EDITOR-01A bounded producer slice — Founder admitted 2026-10-14:**
 - MOTGU WCC111-03 desktop-first operator acceptance is complete; MOTGU issue #265 is closed.

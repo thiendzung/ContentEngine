@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "release_id": "CONTENT_PRODUCTION_V1_RC1",
+  "issue": 417,
+  "base_sha": "b1a94059917d9848ebc061b8f85826c0d343bd61",
+  "publication_mode": "founder_manual_wordpress",
+  "publication_side_effects": false,
+  "qa_pack": {
+    "zip_sha256": "90251cc14edda5f57398137a23a08334a8bf445b055df71b76cf800d40868eaa",
+    "map_v3_sha256": "e22a86548784bed9438f992053dae8c114dd41d544e8f30cec6f2b0b691e7782",
+    "gates_sha256": "c7267117591aabe72baa12ca420aabe8b50027b26697deb8af86f2b89d977dd4",
+    "prepublish_14_sha256": "2583a4b8684bd3a67ab93c5553656ac14e6bd9cf9221955c8847d94ab9b7a8d6"
+  },
+  "batch": [
+    {
+      "id": "G01",
+      "type": "pillar",
+      "intent": "where to buy original art in Hanoi",
+      "owner_url": "/guides/buy-original-art-hanoi/"
+    },
+    {
+      "id": "G02",
+      "type": "pillar",
+      "intent": "how to bring a painting home from Vietnam",
+      "owner_url": "/guides/take-painting-home-from-vietnam/"
+    },
+    {
+      "id": "Q05",
+      "type": "cluster",
+      "intent": "original painting vs hand painted reproduction",
+      "owner_url": "/guides/original-vs-hand-painted-copy/"
+    },
+    {
+      "id": "Q07",
+      "type": "cluster",
+      "intent": "what does a certificate of authenticity prove",
+      "owner_url": "/guides/what-does-art-certificate-prove/"
+    },
+    {
+      "id": "Q06",
+      "type": "cluster",
+      "intent": "artwork condition report before buying online",
+      "owner_url": "/guides/artwork-condition-report-online/"
+    }
+  ],
+  "required_human_gates": [
+    "angle",
+    "outline",
+    "final_review"
+  ],
+  "output": "deterministic_review_package",
+  "status": "RC1_REQUIRES_EXACT_SHA_LOCAL_VERIFICATION"
+}

@@ -6,6 +6,42 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
+## UX-SIMPLE-01 — FIRST / Issue #417 / PR #418 DRAFT
+
+Plan: `docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md`.
+
+- [x] Founder chooses UX-first sequencing: simple UI → UX browser gate → one real content case → sanitized logs → targeted improvements.
+- [x] Basic `/operator` entry and manual intake advanced disclosure are **coded in draft PR**, not verified.
+- [x] UX-01A CODED: main navigation now exposes 3 normal choices + advanced menu. Local/browser proof pending.
+- [x] UX-01B CODED: planned-topic selection now derives compact editorial suggestions from canonical Question Map data; explicit Founder confirmation and selection/admission guards remain. Local/browser proof pending.
+- [x] UX-01C CODED: one-case workspace removes interval polling and uses post-action/focus/visibility/manual refresh while preserving exact human gates. Local/browser proof pending.
+- [x] First A/B/C local pass: static/lint/typecheck/build + responsive navigation/selection PASS; real test case hit `operator_manual_intake_receipt_missing`.
+- [x] Reclassified that 409 as `INTEGRATION_BLOCKER`, not `UX_BLOCKER`; deterministic fixture routes now own UI state-matrix acceptance.
+- [x] Agent Local A/B/C fixture-mode UI gate: `PASS_UX_SIMPLE_ABC_UI`.
+- [x] UX-01D CODED: per-case read-only timeline reuses existing Harness/approval/quality records and exports allowlisted JSON/Markdown; no new log database. Local proof pending.
+- [ ] UX-01E FINAL UI GATE: Agent Local exact-SHA backend focused test + frontend static/lint/typecheck/build + browser 1440/1024/390/320 + keyboard/focus + timeline/export proof.
+- [ ] MG reviews A-D exact-SHA evidence and classifies `PASS_UX_SIMPLE_V1` or a concrete UX/security blocker.
+- [ ] Founder alone decides merge.
+- [ ] Only after UX verification/merge: Founder performs one real Q07 run; content runtime gate remains separate.
+
+**No claim:** UI PASS, production PASS, WordPress published, or actual operational DB state.
+
+## Content Production v1 RC1 — ACTIVE / Issue #417
+
+- [x] Review current `main@b1a94059917d9848ebc061b8f85826c0d343bd61` and QA/QC Prepublish Pack 2026 v1.
+- [x] Freeze RC1 MAP-v3 batch: G01 / G02 / Q05 / Q07 / Q06.
+- [x] Define manual WordPress publication boundary; no OPS/Git/Astro requirement and no auto-publish.
+- [x] Add deterministic RC1 manifest + release contract.
+- [x] Add novice-friendly `/operator` entry with only three primary paths; move manual brief and preflight details to secondary disclosure.
+- [x] Simplify the existing Journal workspace's visible wording and collapse nonessential static brief details; preserve existing approval/state APIs.
+- [ ] Agent Local frontend lint/typecheck/build and real browser smoke are required; UX changes are NOT VERIFIED yet.
+- [ ] Agent Local exact-SHA content-runtime verification **after the UX gate**, with separate Founder authorization.
+- [ ] Founder-authorized real run of one bounded RC1 item reaches the first human gate (or reports exact evidence blocker), with no publication side effect.
+- [ ] MG reviews returned evidence and records `PASS_CONTENT_PRODUCTION_V1_RC1` or exact blocker.
+- [ ] Founder merges RC1 only after reviewed proof.
+- [ ] After merge, run the five-item production batch through Angle → Outline → Final; manual WordPress publication remains Founder-controlled.
+
+
 
 ## Question Map V1 + Founder UI chain — DONE
 

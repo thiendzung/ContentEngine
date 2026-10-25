@@ -1,4 +1,14 @@
 import { API_BASE_URL } from "../api/core";
+import {
+  getOperatorUxCommandResult,
+  getOperatorUxDecisionResult,
+  getOperatorUxFixture,
+  getOperatorUxHistoryFixture,
+  getReviewUxFixture,
+  isOperatorUxFixtureCase,
+  noteOperatorUxFixtureRequest,
+  operatorUxFixtureState,
+} from "./ux-fixtures";
 
 export type OperatorStatus =
   | "NOT_READY"
@@ -225,6 +235,63 @@ export type OperatorCaseView = {
   quality_lanes: QualityLane[];
 };
 
+export type OperatorHistoryKind =
+  | "run"
+  | "step"
+  | "command"
+  | "approval"
+  | "quality"
+  | "model"
+  | "tool"
+  | "artifact";
+
+export type OperatorHistoryEvent = {
+  id: string;
+  at: string;
+  kind: OperatorHistoryKind;
+  stage: string;
+  status: string;
+  locale: string | null;
+  attempt: number | null;
+  run_id: string | null;
+  step_run_id: string | null;
+  artifact_id: string | null;
+  artifact_type: string | null;
+  artifact_version: number | null;
+  artifact_hash: string | null;
+  error_code: string | null;
+  decision: string | null;
+  result: string | null;
+  evaluator_key: string | null;
+  provider: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost: string | null;
+  latency_ms: number | null;
+  retry_count: number | null;
+  resolved_action_key: string | null;
+};
+
+export type OperatorHistorySummary = {
+  event_count: number;
+  run_count: number;
+  step_count: number;
+  approval_count: number;
+  quality_count: number;
+  failed_count: number;
+  warning_count: number;
+};
+
+export type OperatorCaseHistory = {
+  schema_version: number;
+  content_case_id: string;
+  generated_at: string;
+  truncated: boolean;
+  summary: OperatorHistorySummary;
+  events: OperatorHistoryEvent[];
+};
+
 export type ReviewArtifactRef = {
   id: string;
   artifact_type: string;
@@ -448,12 +515,48 @@ export function createFounderJournalIntake(
 }
 
 export function loadOperatorCaseView(caseId: string): Promise<OperatorCaseView> {
+  if (isOperatorUxFixtureCase(caseId)) {
+    noteOperatorUxFixtureRequest(caseId);
+    if (operatorUxFixtureState(caseId) === "error") {
+      return Promise.reject(
+        new OperatorApiError(
+          503,
+          "ux_fixture_error",
+          "Không tải được trạng thái bài nội dung. Hãy thử lại.",
+        ),
+      );
+    }
+    const fixture = getOperatorUxFixture(caseId);
+    if (fixture) return Promise.resolve(fixture);
+  }
   return requestJson<OperatorCaseView>(
     `/journal/operator/cases/${encodeURIComponent(caseId)}/view`,
   );
 }
 
+export function loadOperatorCaseHistory(caseId: string): Promise<OperatorCaseHistory> {
+  if (isOperatorUxFixtureCase(caseId)) {
+    const fixture = getOperatorUxHistoryFixture(caseId);
+    if (fixture) return Promise.resolve(fixture);
+  }
+  return requestJson<OperatorCaseHistory>(
+    `/journal/operator/cases/${encodeURIComponent(caseId)}/history`,
+  );
+}
+
 export function loadReviewCase(caseId: string): Promise<ReviewCaseDetail> {
+  if (isOperatorUxFixtureCase(caseId)) {
+    const fixture = getReviewUxFixture(caseId);
+    return fixture
+      ? Promise.resolve(fixture)
+      : Promise.reject(
+          new OperatorApiError(
+            404,
+            "ux_fixture_review_not_ready",
+            "Chưa có bản duyệt cuối trong fixture này.",
+          ),
+        );
+  }
   return requestJson<ReviewCaseDetail>(
     `/journal/review-cases/${encodeURIComponent(caseId)}`,
   );
@@ -467,6 +570,8 @@ export function submitOperatorIntent(
     idempotency_key: string;
   },
 ): Promise<OperatorCommandResult> {
+  const fixture = getOperatorUxCommandResult(caseId, payload.intent);
+  if (fixture) return Promise.resolve(fixture);
   return requestJson<OperatorCommandResult>(
     `/journal/operator/cases/${encodeURIComponent(caseId)}/commands`,
     { method: "POST", body: JSON.stringify(payload) },
@@ -486,6 +591,8 @@ export function approveAngle(
     comment: string | null;
   },
 ): Promise<OperatorDecisionResult> {
+  const fixture = getOperatorUxDecisionResult(caseId, "angle");
+  if (fixture) return Promise.resolve(fixture);
   return requestJson<OperatorDecisionResult>(
     `/journal/operator/cases/${encodeURIComponent(caseId)}/decisions`,
     {
@@ -510,6 +617,8 @@ export function approveOutline(
     comment: string | null;
   },
 ): Promise<OperatorDecisionResult> {
+  const fixture = getOperatorUxDecisionResult(caseId, "outline");
+  if (fixture) return Promise.resolve(fixture);
   return requestJson<OperatorDecisionResult>(
     `/journal/operator/cases/${encodeURIComponent(caseId)}/decisions`,
     {
@@ -532,6 +641,8 @@ export function approveFinalLocale(
     comment: string | null;
   },
 ): Promise<OperatorDecisionResult> {
+  const fixture = getOperatorUxDecisionResult(caseId, "final");
+  if (fixture) return Promise.resolve(fixture);
   return requestJson<OperatorDecisionResult>(
     `/journal/operator/cases/${encodeURIComponent(caseId)}/decisions`,
     {

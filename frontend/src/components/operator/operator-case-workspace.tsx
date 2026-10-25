@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { DecisionSummary } from "../ui/decision-summary";
+import { OperatorCaseHistoryPanel } from "./operator-case-history";
 
 import {
   approveAngle,
@@ -39,7 +40,6 @@ import {
   operatorWriterLaneStatusLabel,
 } from "../../lib/operator/operator-labels";
 
-const POLL_MS = 2500;
 
 function localeLabel(value: string): string {
   if (value === "vi" || value === "vi-VN") return "VI";
@@ -537,7 +537,13 @@ function ProgressStrip({
   );
 }
 
-export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
+export function OperatorCaseWorkspace({
+  caseId,
+  uxInitialReconcileRequired = false,
+}: {
+  caseId: string;
+  uxInitialReconcileRequired?: boolean;
+}) {
   const [view, setView] = useState<OperatorCaseView | null>(null);
   const [review, setReview] = useState<ReviewCaseDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -548,7 +554,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   const [outlineComment, setOutlineComment] = useState("");
   const [finalComments, setFinalComments] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
-  const [reconcileRequired, setReconcileRequired] = useState(false);
+  const [reconcileRequired, setReconcileRequired] = useState(
+    uxInitialReconcileRequired,
+  );
   const [lastSuccessfulRefreshAt, setLastSuccessfulRefreshAt] = useState<string | null>(null);
 
   const loadSnapshot = useCallback(async () => {
@@ -607,7 +615,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
         setView(operatorView);
         setReview(reviewView);
         setError("");
-        setReconcileRequired(false);
+        setReconcileRequired(uxInitialReconcileRequired);
         setLastSuccessfulRefreshAt(new Date().toISOString());
         setLoading(false);
       })
@@ -623,8 +631,22 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   useEffect(() => {
     if (!view || !["QUEUED", "RUNNING"].includes(view.state.status)) return;
-    const timer = window.setInterval(() => void refresh(true), POLL_MS);
-    return () => window.clearInterval(timer);
+
+    const refreshOnFocus = () => {
+      void refresh(true);
+    };
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh(true);
+      }
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshOnVisible);
+    };
   }, [refresh, view]);
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
@@ -898,11 +920,24 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <span>{blockerAction(state)}</span>
     )
   ) : ["QUEUED", "RUNNING"].includes(state.status) ? (
-    <span>Chờ trạng thái mới; trang tự cập nhật khi tác vụ đang chạy.</span>
+    <div className="operator-inline-actions">
+      <span>
+        Hệ thống đang xử lý. Trang kiểm tra lại khi bạn quay lại cửa sổ này;
+        bạn cũng có thể tải trạng thái mới ngay.
+      </span>
+      <button
+        className="operator-button secondary"
+        disabled={loading || submitting}
+        onClick={() => void refresh()}
+        type="button"
+      >
+        {loading ? "Đang tải…" : "Tải trạng thái mới"}
+      </button>
+    </div>
   ) : state.status === "AWAITING_APPROVAL" ? (
-    <span>Thực hiện cổng duyệt đang hiển thị ngay bên dưới.</span>
+    <span>Đọc kết quả và duyệt ở phần ngay bên dưới.</span>
   ) : state.status === "COMPLETE" ? (
-    <span>Không có quyền xuất bản trong F6-MINI; xuất bản là một cổng riêng.</span>
+    <span>Bài đã được duyệt. Bạn có thể chuẩn bị đăng thủ công sau khi hoàn tất kiểm tra trước đăng.</span>
   ) : (
     <span>Hệ thống chưa cung cấp hành động trực tiếp cho trạng thái này.</span>
   );
@@ -925,7 +960,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <p className="intro">{view.promise}</p>
           {view.coverage_requirements.length > 0 && (
             <div className="angle-risks">
-              <span className="label">Cam kết phạm vi</span>
+              <span className="label">Những nội dung bài phải giải đáp</span>
               <ul>
                 {view.coverage_requirements.map((item) => (
                   <li key={item.id}>{item.requirement}</li>
@@ -955,7 +990,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
       <ProgressStrip review={review} view={view} />
 
-      <section className="operator-case-facts">
+      <details className="operator-panel operator-extra-path">
+        <summary>Thông tin người đọc và yêu cầu bài viết</summary>
+        <section className="operator-case-facts">
         <div><span>Độc giả</span><p>{view.reader}</p></div>
         <div><span>Tình huống</span><p>{view.situation}</p></div>
         <div><span>Nhu cầu</span><p>{view.need}</p></div>
@@ -967,7 +1004,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               .join(" / ")}
           </p>
         </div>
-      </section>
+        </section>
+      </details>
 
       {notice && <p className="operator-success">{notice}</p>}
       {error && <p className="error">{error}</p>}
@@ -994,8 +1032,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <section className="operator-panel state-panel">
         <div className="operator-panel-heading">
           <div>
-            <p className="eyebrow">Quyết định vận hành</p>
-            <h2>Trạng thái hiện tại</h2>
+            <p className="eyebrow">Việc cần làm tiếp theo</p>
+            <h2>Bài viết đang ở bước nào?</h2>
           </div>
           <div className="operator-refresh-control">
             <small>Lần tải chuẩn gần nhất: {lastSuccessfulRefreshLabel}</small>
@@ -1032,6 +1070,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           }
         />
       </section>
+
+      <OperatorCaseHistoryPanel caseId={caseId} />
 
       {state.status === "AWAITING_APPROVAL" && state.human_gate === "angle" && angleGate && (
         <section className="operator-panel angle-review-panel">
