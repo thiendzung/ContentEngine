@@ -467,6 +467,56 @@ async def test_explicit_trusted_educational_host_is_read_as_evidence_candidate(
 
 
 @pytest.mark.asyncio
+async def test_authority_recovery_query_targets_explicit_trusted_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider(
+        "serper",
+        ProviderResponse(
+            (),
+            (_source("serper", 0, url="https://example.com/context"),),
+            (),
+        ),
+    )
+    getty = annotate_source(
+        provider="exa",
+        query="certificate authenticity provenance",
+        url="https://www.getty.edu/publications/provenance-guide/",
+        title="Getty provenance guidance",
+        snippet="",
+        found_via="exa_search",
+    )
+    assert getty.intended_use is IntendedUse.DISCOVERY
+    exa = FakeProvider("exa", ProviderResponse((), (getty,), ()))
+    reader = FakeReader()
+    router = ResearchRouter(
+        serper=serper,
+        exa=exa,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=4, max_research_sources=2),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="what does a certificate of authenticity prove",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            trusted_evidence_hosts=("www.getty.edu",),
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert exa.call_count == 1
+    assert "site:www.getty.edu" in exa.requests[0].query
+    assert result.sufficient is True
+    assert result.selected_sources[0].url == getty.url
+    assert result.selected_sources[0].intended_use is IntendedUse.EVIDENCE_CANDIDATE
+    assert reader.urls == [getty.url]
+
+
+@pytest.mark.asyncio
 async def test_generic_educational_source_can_be_read_without_becoming_support(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
