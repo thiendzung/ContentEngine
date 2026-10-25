@@ -493,6 +493,141 @@ function FinalLocaleCard({
   );
 }
 
+type BlockedCaseGuide = {
+  title: string;
+  explanation: string;
+  nextStep: string;
+  showCoverageReview: boolean;
+};
+
+function blockedCaseGuide(state: OperatorCaseView["state"]): BlockedCaseGuide {
+  if (state.blocker_code === "insufficient_support") {
+    return {
+      title: "Bằng chứng đã có nhưng chưa đủ độ sâu",
+      explanation: (
+        "Hệ thống đã nghiên cứu được nguồn, nhưng ít nhất một nội dung bài phải giải đáp "
+        + "chưa được bảo vệ đủ chắc để tạo Góc tiếp cận."
+      ),
+      nextStep: (
+        "Xem phần còn thiếu, bổ sung hoặc điều chỉnh nguồn / phạm vi rồi mới thử lại."
+      ),
+      showCoverageReview: true,
+    };
+  }
+  if (state.blocker_code === "insufficient_evidence") {
+    return {
+      title: "Chưa có đủ bằng chứng để tiếp tục",
+      explanation: (
+        "Nghiên cứu chưa tạo được bộ bằng chứng đủ tin cậy cho phạm vi bài viết hiện tại."
+      ),
+      nextStep: (
+        "Kiểm tra nguồn, cấu hình nghiên cứu hoặc phần bằng chứng cần bổ sung trước khi thử lại."
+      ),
+      showCoverageReview: true,
+    };
+  }
+  if (state.blocker_code === "operator_preflight_blocked") {
+    return {
+      title: "Điều kiện chạy chưa sẵn sàng",
+      explanation: "Một điều kiện vận hành bắt buộc chưa đạt nên hệ thống chưa cho chạy tiếp.",
+      nextStep: "Khắc phục kiểm tra sẵn sàng rồi tải lại trạng thái.",
+      showCoverageReview: false,
+    };
+  }
+  return {
+    title: "Bài đang cần xử lý trước khi tiếp tục",
+    explanation: state.blocker_message ?? "Quy trình đã dừng an toàn ở bước hiện tại.",
+    nextStep: blockerAction(state),
+    showCoverageReview: false,
+  };
+}
+
+function BlockedCaseExplainability({
+  view,
+  canRetry,
+  submitting,
+  onRetry,
+}: {
+  view: OperatorCaseView;
+  canRetry: boolean;
+  submitting: boolean;
+  onRetry: () => void;
+}) {
+  const guide = blockedCaseGuide(view.state);
+  const coverage = view.coverage_requirements;
+
+  return (
+    <section className="operator-blocked-explainability" aria-labelledby="blocked-case-title">
+      <div className="operator-blocked-summary">
+        <span className="operator-attention-label">Cần xử lý</span>
+        <div>
+          <h3 id="blocked-case-title">{guide.title}</h3>
+          <p>{guide.explanation}</p>
+          {view.state.blocker_message && view.state.blocker_message !== guide.explanation && (
+            <p className="operator-blocked-message">
+              <strong>Hệ thống ghi nhận:</strong> {view.state.blocker_message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {guide.showCoverageReview && coverage.length > 0 && (
+        <div className="operator-coverage-review">
+          <div className="operator-coverage-review-heading">
+            <div>
+              <span className="label">Phạm vi cần đối chiếu</span>
+              <strong>{coverage.length} nội dung bài phải bảo vệ bằng bằng chứng / tư liệu phù hợp</strong>
+            </div>
+            <small>
+              Màn hình này chưa nhận trạng thái riêng của từng mục; “Cần đối chiếu” không có nghĩa mọi mục đều đang thiếu.
+            </small>
+          </div>
+          <ol>
+            {coverage.map((item) => (
+              <li key={item.id}>
+                <span className="operator-coverage-review-status">Cần đối chiếu</span>
+                <p>{item.requirement}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      <div className="operator-blocked-next">
+        <div>
+          <span className="label">Việc nên làm</span>
+          <strong>{guide.nextStep}</strong>
+          {canRetry && (
+            <small>
+              “Thử lại” dùng cùng quyền backend hiện có; chỉ dùng sau khi nguyên nhân chặn đã được xử lý.
+            </small>
+          )}
+        </div>
+        {canRetry && (
+          <button
+            className="operator-button secondary"
+            disabled={submitting}
+            onClick={onRetry}
+            type="button"
+          >
+            {submitting ? "Đang gửi…" : "Thử lại sau khi đã xử lý"}
+          </button>
+        )}
+      </div>
+
+      <details className="operator-technical-details operator-blocked-technical">
+        <summary>Chi tiết hệ thống</summary>
+        <dl>
+          <div><dt>Mã blocker</dt><dd>{view.state.blocker_code ?? "—"}</dd></div>
+          <div><dt>Điểm kiểm tra</dt><dd>{view.state.last_checkpoint ?? "—"}</dd></div>
+          <div><dt>Lượt chạy</dt><dd>{view.state.current_run_id ?? "—"}</dd></div>
+          <div><dt>Bước chạy</dt><dd>{view.state.current_step_run_id ?? "—"}</dd></div>
+        </dl>
+      </details>
+    </section>
+  );
+}
+
 function ProgressStrip({
   view,
   review,
@@ -907,18 +1042,7 @@ export function OperatorCaseWorkspace({
       {submitting ? "Đang gửi…" : canStart ? "Bắt đầu" : "Tiếp tục"}
     </button>
   ) : state.status === "BLOCKED" ? (
-    canRetry ? (
-      <button
-        className="operator-button secondary"
-        disabled={submitting}
-        onClick={() => void submitIntent("retry")}
-        type="button"
-      >
-        Thử lại
-      </button>
-    ) : (
-      <span>{blockerAction(state)}</span>
-    )
+    <span>{blockedCaseGuide(state).nextStep}</span>
   ) : ["QUEUED", "RUNNING"].includes(state.status) ? (
     <div className="operator-inline-actions">
       <span>
@@ -1060,6 +1184,7 @@ export function OperatorCaseWorkspace({
             <dl>
               <div><dt>Trạng thái gốc</dt><dd>{state.status}</dd></div>
               <div><dt>Giai đoạn gốc</dt><dd>{state.phase}</dd></div>
+              <div><dt>Mã blocker</dt><dd>{state.blocker_code ?? "—"}</dd></div>
               <div><dt>Cổng duyệt gốc</dt><dd>{state.human_gate ?? "—"}</dd></div>
               <div><dt>Lượt chạy</dt><dd>{state.current_run_id ?? "—"}</dd></div>
               <div><dt>Bước chạy</dt><dd>{state.current_step_run_id ?? "—"}</dd></div>
@@ -1069,6 +1194,14 @@ export function OperatorCaseWorkspace({
             </dl>
           }
         />
+        {state.status === "BLOCKED" && (
+          <BlockedCaseExplainability
+            canRetry={canRetry}
+            onRetry={() => void submitIntent("retry")}
+            submitting={submitting}
+            view={view}
+          />
+        )}
       </section>
 
       <OperatorCaseHistoryPanel caseId={caseId} />
