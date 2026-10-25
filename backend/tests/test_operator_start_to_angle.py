@@ -916,6 +916,10 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
         )
         assert workflow.calls == 1 and runner.calls == 2
         assert workflow.last_request is not None
+        assert (
+            workflow.last_request.originality_pack_id  # type: ignore[attr-defined]
+            == created.originality_pack_id
+        )
         research_request = workflow.last_request.research  # type: ignore[attr-defined]
         assert research_request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE
         assert research_request.trusted_evidence_hosts == (
