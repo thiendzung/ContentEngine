@@ -54,7 +54,7 @@ Không phát triển provider, research/SEO engine, auto-publishing hoặc CMS m
 - Với mỗi state phải thấy rõ: trạng thái hiện tại, lý do, một primary action (nếu có), secondary details không lấn át, manual refresh, focus/visibility refresh và keyboard focus.
 - Pass UX khi các state trên có lời giải thích dễ hiểu và hành động đúng theo contract hiển thị; không yêu cầu backend thật tạo được mọi state để đóng UX gate.
 
-### UX-01D — Nhật ký một bài & xuất báo cáo
+### UX-01D — Nhật ký một bài & xuất báo cáo — CODED / awaiting exact-SHA proof
 
 - Reuse ContentRun, StepRun, Job, ModelCall, ToolCall, QualityEvaluation, Approval, Artifact đang lưu.
 - Daily Digest là nhật ký thay đổi toàn hệ thống, không phải toàn bộ trace của một bài.
@@ -64,7 +64,7 @@ Không phát triển provider, research/SEO engine, auto-publishing hoặc CMS m
 - Không đưa vào bản xuất: raw prompt, source/private content, token/API key, .env, cookies, PII, chain-of-thought hay DB dumps. Nếu redaction chưa chứng minh, chặn xuất.
 - Người dùng chủ động chia sẻ báo cáo; không auto-upload lên GitHub hay gửi cho MG.
 
-### UX-01E — Kiểm thử trước khi Founder chạy thật
+### UX-01E — Kiểm thử trước khi Founder chạy thật — NEXT
 
 - Exact SHA + worktree sạch; frontend lint/typecheck/build + test liên quan.
 - Browser ở 1440/1024/390/320 px, bàn phím/focus, luồng thông thường và lỗi; 320 px dùng để kiểm reflow, không mất thông tin/chức năng.
