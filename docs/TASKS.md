@@ -6,6 +6,19 @@ One implementation plus related verification. MG designs/codes/tests/self-review
 
 Canonical merge flow: `MG code/review -> Agent Local exact-SHA heavy verification -> MG evidence review -> minimal GitHub CI when available -> Founder merge`.
 
+## Content Production v1 RC1 — ACTIVE / Issue #417
+
+- [x] Review current `main@b1a94059917d9848ebc061b8f85826c0d343bd61` and QA/QC Prepublish Pack 2026 v1.
+- [x] Freeze RC1 MAP-v3 batch: G01 / G02 / Q05 / Q07 / Q06.
+- [x] Define manual WordPress publication boundary; no OPS/Git/Astro requirement and no auto-publish.
+- [x] Add deterministic RC1 manifest + release contract.
+- [ ] Agent Local exact-SHA verification on RC1 candidate.
+- [ ] Prove one bounded RC1 item reaches the first human gate without case-specific code or publication side effect.
+- [ ] MG reviews returned evidence and records `PASS_CONTENT_PRODUCTION_V1_RC1` or exact blocker.
+- [ ] Founder merges RC1 only after reviewed proof.
+- [ ] After merge, run the five-item production batch through Angle → Outline → Final; manual WordPress publication remains Founder-controlled.
+
+
 
 ## Question Map V1 + Founder UI chain — DONE
 
