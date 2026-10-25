@@ -26,10 +26,6 @@ from app.modules.content_engine.journal.angle import (
 from app.modules.content_engine.journal.coverage_support_depth_eval import (
     COVERAGE_SUPPORT_DEPTH_FAILURE_ARTIFACT_TYPE,
 )
-
-from app.modules.research.evidence.artifact import (
-    RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
-)
 from app.modules.content_engine.journal.deep_quality import (
     DeepQualityError,
     validate_deep_quality_output,
@@ -53,6 +49,9 @@ from app.modules.content_engine.journal.outline import (
 from app.modules.content_engine.models import ContentCase, ContentOpportunity
 from app.modules.harness.models import Artifact, ContentRun, StepRun
 from app.modules.harness.persistence import get_latest_checkpoint
+from app.modules.research.evidence.artifact import (
+    RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+)
 
 LocaleRole = Literal["source", "translation"]
 
