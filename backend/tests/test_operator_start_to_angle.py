@@ -42,7 +42,6 @@ from app.modules.content_engine.models import (
     NeedHypothesisSignal,
     PromptDefinition,
     RecipeDefinition,
-    SettingsVersion,
     Signal,
 )
 from app.modules.harness.agent_runner import (
@@ -81,6 +80,9 @@ from app.modules.research.contracts import (
     SourceCandidate,
 )
 from app.modules.research.evidence.contracts import EvidenceResearchResult
+from app.modules.system.research_authority import (
+    configure_research_authority_hosts,
+)
 
 
 async def _ready_preflight(
@@ -856,24 +858,17 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
     )
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
-        settings = await session.scalar(
-            select(SettingsVersion).where(
-                SettingsVersion.scope_type == "content_type",
-                SettingsVersion.scope_key == "journal",
-                SettingsVersion.status == "active",
-            )
+        configured = await configure_research_authority_hosts(
+            session,
+            project_slug="motgu",
+            trusted_evidence_hosts=[
+                "smithsonianprovenance.si.edu",
+                "www.getty.edu",
+            ],
+            approved_by="founder-test",
+            change_reason="Bind explicit evidence authority for Start-to-Angle test.",
         )
-        assert settings is not None
-        settings.settings_json = {
-            **settings.settings_json,
-            "research": {
-                "trusted_evidence_hosts": [
-                    "smithsonianprovenance.si.edu",
-                    "www.getty.edu",
-                ]
-            },
-        }
-        await session.flush()
+        assert configured.replayed is False
         created = await create_founder_journal_intake(
             session, **_intake_kwargs(key="pr45-e2e")
         )
