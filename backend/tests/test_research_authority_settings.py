@@ -74,15 +74,20 @@ async def test_research_authority_settings_versions_and_replays() -> None:
         assert active is not None
         assert active.id == result.settings_version_id
         assert active.approved_by == "founder-test"
-        assert active.settings_json["research"] == {
-            "trusted_evidence_hosts": [
-                "smithsonianprovenance.si.edu",
-                "www.getty.edu",
-            ]
-        }
+        research_settings = active.settings_json["research"]
+        assert isinstance(research_settings, dict)
+        assert research_settings["trusted_evidence_hosts"] == [
+            "smithsonianprovenance.si.edu",
+            "www.getty.edu",
+        ]
         for key, value in before_json.items():
             if key != "research":
                 assert active.settings_json[key] == value
+        before_research = before_json.get("research")
+        if isinstance(before_research, dict):
+            for key, value in before_research.items():
+                if key != "trusted_evidence_hosts":
+                    assert research_settings[key] == value
         if before is not None:
             await session.refresh(before)
             assert before.status == "retired"
