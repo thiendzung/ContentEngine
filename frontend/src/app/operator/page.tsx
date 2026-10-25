@@ -27,13 +27,13 @@ export default function OperatorHomePage() {
         <h2 id="operator-start-title">Bạn muốn làm gì?</h2>
         <div className="operator-home-actions">
           <Link className="operator-button primary" href="/content-map/question-map">
-            1. Chọn bài từ kế hoạch
+            Chọn bài cần viết
           </Link>
           <Link className="operator-button secondary" href="/production">
-            2. Xem bài đang sản xuất
+            Xem bài đang làm
           </Link>
           <Link className="operator-button secondary" href="/needs-me">
-            3. Duyệt việc cần tôi
+            Việc chờ bạn duyệt
           </Link>
         </div>
         <p className="operator-quickstart-hint">
