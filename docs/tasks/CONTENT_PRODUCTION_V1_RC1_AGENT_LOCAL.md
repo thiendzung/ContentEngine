@@ -74,6 +74,15 @@ Minimum:
 - repository documentation/format checks that apply;
 - existing focused package/manual-handoff tests if present;
 - existing operator intake/start-to-angle focused tests if they can run in the authorized disposable/test environment;
+- **frontend lint, typecheck and production build** on the exact candidate SHA;
+- **browser smoke** of the new beginner `/operator` home, advanced `/operator/journal/new`, and one existing `/operator/journal/{caseId}` case:
+  - beginner sees three routes: planned content, production board, Needs Me;
+  - planned content opens the existing Question Map, without bypassing Founder selection;
+  - system preflight still blocks manual intake when not READY;
+  - advanced brief preserves all required backend fields;
+  - live state, approval and error/reconcile controls are unchanged;
+  - case briefing details can expand/collapse;
+  - mobile and keyboard navigation remain usable;
 - full `make check` only if it is the normal exact-SHA gate and safe for the configured test DB.
 
 Record commands and actual results. Never claim CI or local PASS that was not run.
@@ -99,6 +108,7 @@ Return `PASS_CONTENT_PRODUCTION_V1_RC1` only when:
 
 - exact candidate SHA verified;
 - static release contract is coherent;
+- beginner/advanced UI smoke checks pass without changing backend authority;
 - required safe checks pass;
 - one RC1 item reaches the first human gate through the canonical path;
 - no case-specific bypass/direct SQL;
