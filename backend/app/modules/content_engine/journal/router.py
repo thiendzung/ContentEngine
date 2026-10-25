@@ -23,13 +23,13 @@ from app.modules.content_engine.journal.operator_decisions import (
     OperatorDecisionResult,
     submit_operator_decision,
 )
-from app.modules.content_engine.journal.operator_manual_intake import (
-    FounderJournalIntakeResult,
-    create_founder_journal_intake,
-)
 from app.modules.content_engine.journal.operator_history import (
     OperatorCaseHistory,
     get_operator_case_history,
+)
+from app.modules.content_engine.journal.operator_manual_intake import (
+    FounderJournalIntakeResult,
+    create_founder_journal_intake,
 )
 from app.modules.content_engine.journal.operator_preflight import (
     build_journal_operator_preflight,
