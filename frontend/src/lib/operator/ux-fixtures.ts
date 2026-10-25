@@ -1,6 +1,7 @@
 import type {
   OperatorCaseView,
   OperatorCommandResult,
+  OperatorDecisionResult,
   ReviewCaseDetail,
 } from "./journal-api";
 
@@ -341,6 +342,24 @@ export function getOperatorUxCommandResult(
     state_before: "ux-fixture-v1",
     state_after: "ux-fixture-v2",
     job_id: null,
+    replayed: false,
+  };
+}
+
+
+export function getOperatorUxDecisionResult(
+  caseId: string,
+  scope: OperatorDecisionResult["scope"],
+): OperatorDecisionResult | null {
+  if (!isOperatorUxFixtureCase(caseId)) return null;
+  return {
+    command_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    content_case_id: CASE_ID,
+    scope,
+    decision: "approved",
+    approval_id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    state_before: "ux-fixture-v1",
+    state_after: "ux-fixture-v2",
     replayed: false,
   };
 }
