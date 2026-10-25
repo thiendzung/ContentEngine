@@ -900,9 +900,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
   ) : ["QUEUED", "RUNNING"].includes(state.status) ? (
     <span>Chờ trạng thái mới; trang tự cập nhật khi tác vụ đang chạy.</span>
   ) : state.status === "AWAITING_APPROVAL" ? (
-    <span>Thực hiện cổng duyệt đang hiển thị ngay bên dưới.</span>
+    <span>Đọc kết quả và duyệt ở phần ngay bên dưới.</span>
   ) : state.status === "COMPLETE" ? (
-    <span>Không có quyền xuất bản trong F6-MINI; xuất bản là một cổng riêng.</span>
+    <span>Bài đã được duyệt. Bạn có thể chuẩn bị đăng thủ công sau khi hoàn tất kiểm tra trước đăng.</span>
   ) : (
     <span>Hệ thống chưa cung cấp hành động trực tiếp cho trạng thái này.</span>
   );
@@ -925,7 +925,7 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
           <p className="intro">{view.promise}</p>
           {view.coverage_requirements.length > 0 && (
             <div className="angle-risks">
-              <span className="label">Cam kết phạm vi</span>
+              <span className="label">Những nội dung bài phải giải đáp</span>
               <ul>
                 {view.coverage_requirements.map((item) => (
                   <li key={item.id}>{item.requirement}</li>
@@ -955,7 +955,9 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
       <ProgressStrip review={review} view={view} />
 
-      <section className="operator-case-facts">
+      <details className="operator-panel operator-extra-path">
+        <summary>Thông tin người đọc và yêu cầu bài viết</summary>
+        <section className="operator-case-facts">
         <div><span>Độc giả</span><p>{view.reader}</p></div>
         <div><span>Tình huống</span><p>{view.situation}</p></div>
         <div><span>Nhu cầu</span><p>{view.need}</p></div>
@@ -967,7 +969,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
               .join(" / ")}
           </p>
         </div>
-      </section>
+        </section>
+      </details>
 
       {notice && <p className="operator-success">{notice}</p>}
       {error && <p className="error">{error}</p>}
@@ -994,8 +997,8 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <section className="operator-panel state-panel">
         <div className="operator-panel-heading">
           <div>
-            <p className="eyebrow">Quyết định vận hành</p>
-            <h2>Trạng thái hiện tại</h2>
+            <p className="eyebrow">Việc cần làm tiếp theo</p>
+            <h2>Bài viết đang ở bước nào?</h2>
           </div>
           <div className="operator-refresh-control">
             <small>Lần tải chuẩn gần nhất: {lastSuccessfulRefreshLabel}</small>
