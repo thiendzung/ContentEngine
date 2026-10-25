@@ -42,6 +42,46 @@ _INSTITUTIONAL_CCTLD_RE = re.compile(r"(?:^|\.)gov\.[a-z]{2}$")
 _EDUCATIONAL_CCTLD_RE = re.compile(r"(?:^|\.)(?:edu|ac)\.[a-z]{2}$")
 
 
+def normalize_trusted_evidence_hosts(values: Iterable[str]) -> tuple[str, ...]:
+    """Validate explicit project authority hosts; never infer trust from search rank."""
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw in values:
+        host = raw.strip().lower().rstrip(".")
+        if (
+            not host
+            or "://" in host
+            or "/" in host
+            or "*" in host
+            or any(char.isspace() for char in host)
+            or "." not in host
+        ):
+            raise ValueError("trusted_evidence_host_invalid")
+        labels = host.split(".")
+        if any(
+            not label
+            or label.startswith("-")
+            or label.endswith("-")
+            or not re.fullmatch(r"[a-z0-9-]+", label)
+            for label in labels
+        ):
+            raise ValueError("trusted_evidence_host_invalid")
+        if host in seen:
+            continue
+        seen.add(host)
+        normalized.append(host)
+    return tuple(normalized)
+
+
+def trusted_evidence_host_match(url: str, trusted_hosts: Iterable[str]) -> str | None:
+    hostname = (urlparse(url).hostname or "").lower().rstrip(".")
+    for trusted in trusted_hosts:
+        if hostname == trusted or hostname.endswith(f".{trusted}"):
+            return trusted
+    return None
+
+
 def as_dict(value: object) -> dict[str, object] | None:
     if not isinstance(value, dict):
         return None
