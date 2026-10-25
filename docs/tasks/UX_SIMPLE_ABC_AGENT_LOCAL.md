@@ -1,93 +1,136 @@
-# UX-SIMPLE-ABC — Agent Local verification
+# UX-SIMPLE-ABC — Agent Local UI-only verification
 
-**Purpose:** verify the first three UX slices only. This is NOT final UX release proof and NOT content-runtime proof.
+**Purpose:** verify the management UI/UX for UX-01A/B/C. This task does **not** prove backend runtime, operational intake, model/research execution or content production.
 
-## Exact state
+## Authority
 
 - Repository: `thiendzung/ContentEngine`
 - Branch: `release/content-production-v1-rc1`
-- Exact candidate SHA: `c74ec8b54ec15bbf6cd7c433ec49556978a62865`
-- Base main SHA: `b1a94059917d9848ebc061b8f85826c0d343bd61`
-- PR: #418 Draft
-- Allowed scope: read/build/test/browser only. Do not modify code unless Founder/Lead sends a new bounded repair task.
+- Exact candidate SHA: use the **latest Lead dispatch comment on PR #418**. Do not reuse an older SHA embedded in history.
+- Base main: refresh only to confirm ancestry; do not rebase or rewrite the candidate.
+- Allowed scope: read/build/test/browser only. Do not modify code unless a new bounded repair task is issued.
 
-## What changed
+## Acceptance model
 
-### UX-01A — navigation
-- Primary navigation: `Viết bài`, `Bài đang làm`, `Cần tôi duyệt`.
-- Existing advanced surfaces remain reachable under `Công cụ nâng cao`.
-- Old URLs must continue to work.
+Separate failures into:
 
-### UX-01B — Question Map selection
-- Selecting a candidate pre-fills editorial selection fields only from the current Question Map/candidate.
-- The suggestion is explicitly not factual evidence.
-- User still confirms `Xác nhận chọn bài`.
-- Canonical snapshots, selection, route, admission, stale and handoff guards remain unchanged.
-- Manual Journal intake remains available as advanced path.
+- `UX_BLOCKER`: layout, wording, information hierarchy, keyboard/focus, responsive reflow, state rendering, primary action, refresh UX, or a UI action contradicting the advertised view contract.
+- `INTEGRATION_BLOCKER`: backend/API/DB/test-data/receipt/handoff problem. Record it, but **do not fail this UI gate** when the same UI state can be rendered with the deterministic fixture that matches the current frontend contract.
+- `CONTENT_RUNTIME_BLOCKER`: model/evidence/provider/quality/publication problem. Out of scope here.
 
-### UX-01C — one-case workspace
-- Removed the 2.5-second `setInterval` status polling.
-- For QUEUED/RUNNING, refresh occurs after existing mutations, on window focus / visible-tab return, or explicit `Tải trạng thái mới`.
-- Backend `allowed_intents`, human gates, exact approval binding, idempotency and reconcile guards remain authority.
+An HTTP 409 such as `operator_manual_intake_receipt_missing` is an `INTEGRATION_BLOCKER`, not a UX failure.
 
-## Required checks
+## Deterministic UI fixture
 
-1. Verify exact SHA and clean worktree.
-2. Read AGENTS.md, AI_context.MD, docs/PLAN.md, docs/TASKS.md, docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md.
-3. Static:
-   - no `setInterval` remains in `operator-case-workspace.tsx`;
-   - primary nav has exactly the 3 intended normal tasks;
-   - advanced links remain accessible;
-   - no backend mutation/state authority moved into UI;
-   - Question Map derived suggestions come only from current candidate/question-map data.
-4. Frontend:
-   - install/use existing project dependencies only;
-   - lint;
-   - typecheck;
-   - production build;
-   - focused tests if repository already has relevant UI tests.
-5. Browser smoke with safe fixture/test data only:
-   - desktop 1440px, laptop 1024px, mobile 390px;
-   - keyboard Tab/Enter/Space and visible focus for nav/details/buttons;
-   - /operator shows 3 clear routes;
-   - advanced nav opens/closes and old links work;
-   - choose a selectable Question Map candidate: compact goal shown, detail fields expandable, confirmation remains explicit;
-   - non-selectable/stale candidate cannot bypass existing guard;
-   - queued/running workspace does not request continuously while idle; focus/visibility/manual refresh works;
-   - Angle/Outline/Final actions still appear only when canonical backend view permits them;
-   - no publish action.
-6. Network sanity:
-   - observe browser/network long enough to prove there is no 2.5s repeated case-view request while the tab stays idle;
-   - do not use sleep/ps/pgrep polling scripts. Browser devtools/request evidence is sufficient.
+Run frontend with:
 
-## STOP
+`NEXT_PUBLIC_UX_FIXTURES=1`
 
-- No operational DB writes for this UX proof.
-- No model/research/provider calls.
-- No WordPress publish.
-- No source repair in this task.
-- If build/browser cannot run because environment/dependencies are missing, report the exact blocker. Do not improvise installation/system mutations beyond normal existing project setup.
+Fixture index:
 
-## Report format
+`/operator/ux-fixtures`
 
-GOAL
-EXACT_SHA
-WORKTREE
-STATIC_A
-STATIC_B
-STATIC_C
-LINT
-TYPECHECK
-BUILD
-BROWSER_1440
-BROWSER_1024
-BROWSER_390
-KEYBOARD
-NETWORK_NO_INTERVAL_POLL
-CANONICAL_GATES
-CHECKS_NOT_RUN
-BLOCKERS
-STATUS: PASS_UX_SIMPLE_ABC / BLOCKED_UX_SIMPLE_ABC
+Required states:
+
+- `ready`
+- `queued`
+- `running`
+- `blocked`
+- `approval`
+- `complete`
+- `error`
+- `stale`
+- `empty`
+
+Fixture mode must not call real Journal backend APIs. It exists only for deterministic UI/browser acceptance and is hidden unless the environment flag is enabled.
+
+## Checks
+
+### A — Static / build
+
+- exact SHA, detached/clean worktree;
+- `npm run ux:static`;
+- `npm run lint`;
+- `npm run typecheck`;
+- `npm run build`;
+- no `setInterval(` in `operator-case-workspace.tsx`;
+- fixture routes remain environment-gated;
+- no publish action or backend authority is added in fixture code.
+
+### B — UX-01A navigation
+
+At 1440 / 1024 / 390 / 320 px:
+
+- normal navigation exposes only `Viết bài`, `Bài đang làm`, `Cần tôi duyệt`;
+- `Công cụ nâng cao` can open/close and keeps old destinations reachable;
+- active state is understandable;
+- keyboard Tab/Enter/Space and visible focus work;
+- no horizontal loss of essential actions at narrow width.
+
+### C — UX-01B choose content
+
+Using the existing Question Map UI and safe mocked/test planning data when needed:
+
+- candidate question/value/status is understandable without reading raw hashes;
+- choosing a candidate shows the compact proposed goal;
+- editorial fields are behind disclosure and remain editable;
+- `Xác nhận chọn bài` remains explicit;
+- non-selectable/stale state cannot expose an enabled forbidden action;
+- the UI text clearly says planning suggestions are not factual evidence.
+
+Do not require a real canonical handoff mutation to pass this UI gate.
+
+### D — UX-01C one-case workspace
+
+Use the deterministic fixture routes, not a backend-generated operational case.
+
+For each state verify:
+
+- current state is understandable;
+- reason/blocker is understandable;
+- there is at most one visually dominant primary action when an action exists;
+- technical details are secondary;
+- no publish action;
+- keyboard/focus usable;
+- layout/reflow works at 1440 / 1024 / 390 / 320.
+
+For `queued` and `running`:
+
+- no repeated 2.5-second request while tab remains idle;
+- explicit `Tải trạng thái mới` is visible and works;
+- focus and visibility-return trigger one refresh each;
+- request counters exposed by fixture mode may be used to prove bounded refresh behavior;
+- no `sleep`, `ps`, `pgrep`, busy wait or scripted polling.
+
+### E — Backend note
+
+If the old real/test case still returns `operator_manual_intake_receipt_missing`, record:
+
+`INTEGRATION_BLOCKER: operator_manual_intake_receipt_missing`
+
+Do not repair it in this task and do not convert it to `UX_BLOCKER`.
+
+## Report
+
+GOAL  
+EXACT_SHA  
+WORKTREE  
+UX_STATIC  
+LINT  
+TYPECHECK  
+BUILD  
+NAV_1440_1024_390_320  
+QUESTION_MAP_UI  
+STATE_MATRIX  
+KEYBOARD_FOCUS  
+REFRESH_NO_POLLING  
+FIXTURE_NO_BACKEND_CALLS  
+INTEGRATION_NOTES  
+CHECKS_NOT_RUN  
+UX_BLOCKERS  
+STATUS: `PASS_UX_SIMPLE_ABC_UI` / `BLOCKED_UX_SIMPLE_ABC_UI`  
 NEXT
+
+A PASS here means **UI A/B/C is ready for the next UX slice**. It does not mean BACKEND_INTEGRATION_READY, CONTENT_PRODUCTION_READY or published.
 
 Stop after the report. Do not merge.
