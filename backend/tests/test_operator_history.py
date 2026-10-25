@@ -152,7 +152,16 @@ async def test_operator_history_is_case_scoped_and_sanitized(
         assert "safe_tool_failure" in payload
 
         kinds = {event.kind for event in history.events}
-        assert {"run", "step", "command", "approval", "quality", "model", "tool", "artifact"} <= kinds
+        assert {
+            "run",
+            "step",
+            "command",
+            "approval",
+            "quality",
+            "model",
+            "tool",
+            "artifact",
+        } <= kinds
         assert history.summary.failed_count >= 3
         assert history.summary.warning_count >= 1
         assert history.content_case_id == created.content_case_id
