@@ -21,6 +21,10 @@ from app.modules.harness.models import (
     StepRun,
     ToolCall,
 )
+from app.modules.research.evidence.artifact import (
+    RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+    persist_research_failure_diagnostic,
+)
 
 
 @pytest.mark.asyncio
@@ -75,6 +79,55 @@ async def test_operator_history_is_case_scoped_and_sanitized(
         )
         session.add(artifact)
         await session.flush()
+
+        await persist_research_failure_diagnostic(
+            session,
+            run_id=run.id,
+            step_run_id=step.id,
+            payload={
+                "schema_version": 1,
+                "artifact_type": RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+                "evidence_eligible": False,
+                "diagnostic_complete": True,
+                "research": {
+                    "query": "SECRET raw research query",
+                    "locale": "en",
+                    "country": "vn",
+                    "required_intended_use": "evidence_candidate",
+                    "stop_reason": "evidence_candidate_fallbacks_exhausted",
+                    "sufficient": False,
+                    "external_provider_calls": 3,
+                    "pages_read": 0,
+                    "decisions": [
+                        {
+                            "provider": "serper",
+                            "status": "called",
+                            "reason": "default_google_discovery:SECRET detail",
+                            "failure_class": None,
+                        },
+                        {
+                            "provider": "exa",
+                            "status": "called",
+                            "reason": "evidence_candidate_authority_recovery",
+                            "failure_class": None,
+                        },
+                        {
+                            "provider": "tavily",
+                            "status": "failed",
+                            "reason": "evidence_candidate_exa_insufficient_use_tavily_once:SECRET",
+                            "failure_class": "tool_invalid_response",
+                        },
+                    ],
+                    "source_candidates": [
+                        {"title": "SECRET source title", "url": "url-sha256:deadbeef"}
+                    ],
+                    "selected_sources": [],
+                    "read_documents": [],
+                },
+                "relation_counts": {"supports": 0, "context_only": 0},
+                "research_gaps": ["SECRET research gap"],
+            },
+        )
 
         session.add_all(
             [
@@ -150,6 +203,27 @@ async def test_operator_history_is_case_scoped_and_sanitized(
         assert "safe_step_failure" in payload
         assert "safe_model_failure" in payload
         assert "safe_tool_failure" in payload
+        research_events = [
+            event for event in history.events if event.kind == "research"
+        ]
+        assert len(research_events) == 4
+        summary = next(
+            event for event in research_events
+            if event.stage == "research_summary"
+        )
+        assert summary.reason_code == "evidence_candidate_fallbacks_exhausted"
+        assert summary.provider_call_count == 3
+        assert summary.pages_read == 0
+        tavily = next(
+            event for event in research_events
+            if event.provider == "tavily"
+        )
+        assert tavily.status == "failed"
+        assert tavily.error_code == "tool_invalid_response"
+        assert (
+            tavily.reason_code
+            == "evidence_candidate_exa_insufficient_use_tavily_once"
+        )
 
         kinds = {event.kind for event in history.events}
         assert {
@@ -161,6 +235,7 @@ async def test_operator_history_is_case_scoped_and_sanitized(
             "model",
             "tool",
             "artifact",
+            "research",
         } <= kinds
         assert history.summary.failed_count >= 3
         assert history.summary.warning_count >= 1
