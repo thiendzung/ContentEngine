@@ -13,45 +13,65 @@ export default function OperatorHomePage() {
     <main className="operator-page">
       <header className="operator-hero">
         <div>
-          <p className="eyebrow">ContentEngine · Điều hành bài nội dung</p>
-          <h1>Điều hành bài nội dung</h1>
+          <p className="eyebrow">MOTGU · Xưởng nội dung</p>
+          <h1>Sản xuất bài viết</h1>
           <p className="intro">
-            Tạo bài và vận hành một bài nội dung liên tục từ lúc bắt đầu tới duyệt nội dung cuối.
-            Hệ thống giữ quyền quyết định giai đoạn, nhà cung cấp và mô hình; giao diện chỉ gửi ý định an toàn.
+            Chọn một câu hỏi của khách hàng. Hệ thống hỗ trợ nghiên cứu, viết và kiểm tra;
+            bạn duyệt góc viết, dàn ý và bài hoàn chỉnh trước khi đăng thủ công.
           </p>
         </div>
-        <Link
-          aria-disabled={!ready}
-          className={ready ? "operator-button primary link-button" : "operator-button primary link-button disabled"}
-          href={ready ? "/operator/journal/new" : "/operator"}
-        >
-          Tạo bài nội dung mới
-        </Link>
       </header>
 
-      <PreflightStatus onReadyChange={setReady} />
-
-      <section className="operator-home-grid">
-        <article className="operator-panel home-card">
-          <p className="eyebrow">Luồng vận hành</p>
-          <h2>Từ yêu cầu biên tập tới phiên bản nội dung</h2>
-          <ol className="operator-steps">
-            <li><span>1</span><div><strong>Người sáng lập nhập yêu cầu</strong><small>Ghi nhu cầu, câu hỏi và tư liệu MOTGU.</small></div></li>
-            <li><span>2</span><div><strong>Góc tiếp cận & dàn ý</strong><small>Duyệt đúng ảnh chụp bất biến ở từng cổng người dùng.</small></div></li>
-            <li><span>3</span><div><strong>Tiếng Việt / Anh & chất lượng</strong><small>Theo dõi luồng viết độc lập, kiểm tra khẳng định và trùng nguồn từ trạng thái bền vững.</small></div></li>
-            <li><span>4</span><div><strong>Duyệt cuối</strong><small>Duyệt đúng bản cuối theo từng ngôn ngữ; tạo phiên bản nội dung nhưng không xuất bản.</small></div></li>
-          </ol>
-        </article>
-
-        <article className="operator-panel home-card">
-          <p className="eyebrow">Giới hạn F6-MINI</p>
-          <h2>Hoàn tất nhưng chưa xuất bản</h2>
-          <p>
-            Luồng bình thường dừng ở Hoàn thành / Đã duyệt / Chưa xuất bản. Yêu cầu sửa nhiều vòng và quyền xuất bản là các cổng riêng.
-          </p>
-          <Link className="operator-link" href="/production">Mở bảng sản xuất</Link>
-        </article>
+      <section className="operator-panel operator-quickstart" aria-labelledby="operator-start-title">
+        <p className="eyebrow">Bắt đầu tại đây</p>
+        <h2 id="operator-start-title">Bạn muốn làm gì?</h2>
+        <div className="operator-home-actions">
+          <Link className="operator-button primary" href="/content-map/question-map">
+            1. Chọn bài từ kế hoạch
+          </Link>
+          <Link className="operator-button secondary" href="/production">
+            2. Xem bài đang sản xuất
+          </Link>
+          <Link className="operator-button secondary" href="/needs-me">
+            3. Duyệt việc cần tôi
+          </Link>
+        </div>
+        <p className="operator-quickstart-hint">
+          Chưa biết viết bài gì? Hãy chọn bài đã được chuẩn bị trong Bản đồ câu hỏi.
+          Sau khi chọn, hệ thống sẽ kiểm tra xem có thể bàn giao sang sản xuất hay còn thiếu dữ liệu.
+        </p>
       </section>
+
+      <details className="operator-panel operator-extra-path">
+        <summary>Tôi muốn tạo một bài theo yêu cầu riêng</summary>
+        <p>
+          Dành cho người đã có đề bài và tư liệu gốc của MOTGU.
+          Bạn sẽ điền bản yêu cầu chi tiết để hệ thống không tự đoán thông tin.
+        </p>
+        {!ready && (
+          <p className="operator-block-note">
+            Hệ thống chưa xác nhận sẵn sàng. Mở mục Kiểm tra hệ thống bên dưới để xem nguyên nhân.
+          </p>
+        )}
+        <Link
+          aria-disabled={!ready}
+          className={
+            ready
+              ? "operator-button secondary link-button"
+              : "operator-button secondary link-button disabled"
+          }
+          href={ready ? "/operator/journal/new" : "/operator"}
+        >
+          Tạo bài từ yêu cầu riêng
+        </Link>
+      </details>
+
+      <details className="operator-panel operator-extra-path">
+        <summary>Kiểm tra hệ thống và thông tin kỹ thuật</summary>
+        <p>Chỉ cần mở khi không thể bắt đầu hoặc khi người vận hành cần kiểm tra lỗi.</p>
+        <PreflightStatus onReadyChange={setReady} />
+        <Link className="operator-link" href="/daily-digest">Xem nhật ký thay đổi toàn hệ thống</Link>
+      </details>
     </main>
   );
 }
