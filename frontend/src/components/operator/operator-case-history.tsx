@@ -223,25 +223,47 @@ export function OperatorCaseHistoryPanel({ caseId }: { caseId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const applyHistory = useCallback(
+    (nextHistory: OperatorCaseHistory) => {
+      setHistory(nextHistory);
+      setError("");
+      setLoading(false);
+    },
+    [],
+  );
+
+  const applyHistoryError = useCallback((requestError: unknown) => {
+    setError(
+      requestError instanceof Error
+        ? requestError.message
+        : "Không tải được nhật ký bài viết.",
+    );
+    setLoading(false);
+  }, []);
+
+  const refreshHistory = useCallback(async () => {
     setLoading(true);
     try {
-      setHistory(await loadOperatorCaseHistory(caseId));
-      setError("");
+      applyHistory(await loadOperatorCaseHistory(caseId));
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Không tải được nhật ký bài viết.",
-      );
-    } finally {
-      setLoading(false);
+      applyHistoryError(requestError);
     }
-  }, [caseId]);
+  }, [applyHistory, applyHistoryError, caseId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    void loadOperatorCaseHistory(caseId).then(
+      (nextHistory) => {
+        if (active) applyHistory(nextHistory);
+      },
+      (requestError: unknown) => {
+        if (active) applyHistoryError(requestError);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [applyHistory, applyHistoryError, caseId]);
 
   const recent = useMemo(
     () => [...(history?.events ?? [])].slice(-RECENT_COUNT).reverse(),
@@ -266,7 +288,7 @@ export function OperatorCaseHistoryPanel({ caseId }: { caseId: string }) {
         <button
           className="operator-button secondary"
           disabled={loading}
-          onClick={() => void load()}
+          onClick={() => void refreshHistory()}
           type="button"
         >
           {loading ? "Đang tải…" : "Làm mới nhật ký"}
