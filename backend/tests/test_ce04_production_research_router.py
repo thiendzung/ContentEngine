@@ -517,7 +517,7 @@ async def test_authority_recovery_query_targets_explicit_trusted_host(
 
 
 @pytest.mark.asyncio
-async def test_generic_educational_source_can_be_read_without_becoming_support(
+async def test_generic_educational_source_is_not_read_for_evidence_required_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
@@ -551,10 +551,10 @@ async def test_generic_educational_source_can_be_read_without_becoming_support(
     )
 
     assert result.sufficient is False
-    assert result.selected_sources == [source]
-    assert result.selected_sources[0].intended_use is IntendedUse.DISCOVERY
-    assert reader.urls == [source.url]
-    assert len(result.documents) == 1
+    assert result.selected_sources == []
+    assert reader.urls == []
+    assert result.documents == []
+    assert result.stop_reason == "evidence_candidate_fallbacks_exhausted"
 
 
 @pytest.mark.asyncio
