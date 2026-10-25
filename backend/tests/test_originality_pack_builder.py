@@ -198,8 +198,11 @@ def test_external_evidence_is_excluded_from_originality_items() -> None:
             valid,
             {"type": "evidence", "id": "irs-evidence-id", "source_ref": "irs:claim"},
             {"kind": "evidence", "id": "mci-evidence-id", "source_ref": "mci:claim"},
-            "https://www.irs.gov/charities-non-profits/appraisals",
-            {"type": "motgu_owned_material", "source_ref": "https://mci.si.edu/artifact-appraisals"},
+            "https://authority.example.org/external-evidence",
+            {
+                "type": "motgu_owned_material",
+                "source_ref": "https://museum.example.net/external-evidence",
+            },
         ]
     )
 
