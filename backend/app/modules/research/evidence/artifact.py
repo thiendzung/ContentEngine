@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
@@ -15,6 +16,22 @@ from app.modules.research.evidence.contracts import EvidenceResearchResult
 EVIDENCE_ARTIFACT_SCHEMA_VERSION = 1
 RESEARCH_FAILURE_DIAGNOSTIC_SCHEMA_VERSION = 1
 RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE = "research_failure_diagnostic"
+
+
+@dataclass(frozen=True, slots=True)
+class ResearchFailureDecisionProjection:
+    provider: str
+    status: str
+    reason_code: str | None
+    failure_class: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ResearchFailureHistoryProjection:
+    stop_reason: str | None
+    external_provider_calls: int | None
+    pages_read: int | None
+    decisions: tuple[ResearchFailureDecisionProjection, ...]
 
 
 def evidence_workflow_payload(result: EvidenceResearchResult) -> dict[str, object]:
@@ -221,6 +238,73 @@ def _payload_hash(payload: dict[str, object]) -> str:
         separators=(",", ":"),
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _safe_diagnostic_code(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip().split(":", 1)[0][:120]
+    if not candidate:
+        return None
+    if any(
+        not (char.isalnum() or char in {"_", "-", "."})
+        for char in candidate
+    ):
+        return None
+    return candidate
+
+
+def project_research_failure_history(
+    artifact: Artifact,
+) -> ResearchFailureHistoryProjection | None:
+    """Expose only allowlisted failed-research metadata to operator history."""
+
+    if artifact.artifact_type != RESEARCH_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE:
+        return None
+    payload = artifact.content_json
+    if not isinstance(payload, dict) or _payload_hash(payload) != artifact.content_hash:
+        raise ValueError("research_failure_diagnostic_invalid")
+    research = payload.get("research")
+    if not isinstance(research, dict):
+        raise ValueError("research_failure_diagnostic_invalid")
+
+    raw_calls = research.get("external_provider_calls")
+    raw_pages = research.get("pages_read")
+    raw_decisions = research.get("decisions")
+    if not isinstance(raw_decisions, list):
+        raise ValueError("research_failure_diagnostic_invalid")
+
+    decisions: list[ResearchFailureDecisionProjection] = []
+    for raw in raw_decisions:
+        if not isinstance(raw, dict):
+            continue
+        provider = _safe_diagnostic_code(raw.get("provider"))
+        status = _safe_diagnostic_code(raw.get("status"))
+        if provider is None or status not in {"called", "failed", "skipped", "stopped"}:
+            continue
+        decisions.append(
+            ResearchFailureDecisionProjection(
+                provider=provider,
+                status=status,
+                reason_code=_safe_diagnostic_code(raw.get("reason")),
+                failure_class=_safe_diagnostic_code(raw.get("failure_class")),
+            )
+        )
+
+    return ResearchFailureHistoryProjection(
+        stop_reason=_safe_diagnostic_code(research.get("stop_reason")),
+        external_provider_calls=(
+            raw_calls
+            if isinstance(raw_calls, int) and not isinstance(raw_calls, bool)
+            else None
+        ),
+        pages_read=(
+            raw_pages
+            if isinstance(raw_pages, int) and not isinstance(raw_pages, bool)
+            else None
+        ),
+        decisions=tuple(decisions),
+    )
 
 
 async def persist_evidence_artifact(
