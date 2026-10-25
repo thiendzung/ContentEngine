@@ -856,6 +856,24 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
     )
     async with isolated_session() as session:
         await _activate_seeded_angle_runtime(session)
+        settings = await session.scalar(
+            select(SettingsVersion).where(
+                SettingsVersion.scope_type == "content_type",
+                SettingsVersion.scope_key == "journal",
+                SettingsVersion.status == "active",
+            )
+        )
+        assert settings is not None
+        settings.settings_json = {
+            **settings.settings_json,
+            "research": {
+                "trusted_evidence_hosts": [
+                    "smithsonianprovenance.si.edu",
+                    "www.getty.edu",
+                ]
+            },
+        }
+        await session.flush()
         created = await create_founder_journal_intake(
             session, **_intake_kwargs(key="pr45-e2e")
         )
@@ -900,6 +918,10 @@ async def test_start_to_angle_worker_e2e_stops_at_angle_gate(
         assert workflow.last_request is not None
         research_request = workflow.last_request.research  # type: ignore[attr-defined]
         assert research_request.required_intended_use is IntendedUse.EVIDENCE_CANDIDATE
+        assert research_request.trusted_evidence_hosts == (
+            "smithsonianprovenance.si.edu",
+            "www.getty.edu",
+        )
         job = await session.get(Job, leased.id)
         step = await session.get(StepRun, leased.step_run_id)
         run = await session.get(ContentRun, created.bootstrap_run_id)
