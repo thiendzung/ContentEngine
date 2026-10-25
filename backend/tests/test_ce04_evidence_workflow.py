@@ -42,8 +42,8 @@ from app.modules.research.evidence import (
     EvidenceRelation,
     EvidenceResearchRequest,
     EvidenceResearchWorkflow,
-    ORIGINALITY_MATERIAL_TYPE,
 )
+from app.modules.research.evidence.contracts import ORIGINALITY_MATERIAL_TYPE
 from app.modules.research.evidence.persistence import (
     ensure_selected_content_case,
     lock_evidence_set,
