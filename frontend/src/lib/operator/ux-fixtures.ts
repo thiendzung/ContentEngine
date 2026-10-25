@@ -338,7 +338,7 @@ export function getOperatorUxHistoryFixture(
         at: "2026-10-25T06:01:58Z",
         kind: "research",
         stage: "research_summary",
-        status: "failed",
+        status: "completed",
         locale: "vi-VN",
         attempt: null,
         run_id: "77777777-7777-4777-8777-777777777777",
@@ -359,9 +359,9 @@ export function getOperatorUxHistoryFixture(
         latency_ms: null,
         retry_count: null,
         resolved_action_key: null,
-        reason_code: "evidence_candidate_fallbacks_exhausted",
-        provider_call_count: 3,
-        pages_read: 0,
+        reason_code: "exa_sufficient",
+        provider_call_count: 5,
+        pages_read: 3,
       },
       {
         id: "research-decision:fixture-serper",
@@ -428,7 +428,7 @@ export function getOperatorUxHistoryFixture(
         at: "2026-10-25T06:01:58Z",
         kind: "research",
         stage: "provider_decision",
-        status: "called",
+        status: "skipped",
         locale: "vi-VN",
         attempt: null,
         run_id: "77777777-7777-4777-8777-777777777777",
@@ -449,7 +449,7 @@ export function getOperatorUxHistoryFixture(
         latency_ms: null,
         retry_count: null,
         resolved_action_key: null,
-        reason_code: "evidence_candidate_exa_insufficient_use_tavily_once",
+        reason_code: "exa_sufficient",
         provider_call_count: null,
         pages_read: null,
       },
@@ -457,7 +457,7 @@ export function getOperatorUxHistoryFixture(
       id: "step:fixture-blocked",
       at: "2026-10-25T06:02:00Z",
       kind: "step",
-      stage: "research",
+      stage: "coverage_support_depth",
       status: "failed",
       locale: "vi-VN",
       attempt: 1,
@@ -467,7 +467,7 @@ export function getOperatorUxHistoryFixture(
       artifact_type: null,
       artifact_version: null,
       artifact_hash: null,
-      error_code: "fixture_evidence_missing",
+      error_code: "insufficient_support",
       decision: null,
       result: null,
       evaluator_key: null,
@@ -657,9 +657,12 @@ export function getOperatorUxFixture(caseId: string): OperatorCaseView | null {
       phase: "start_to_angle",
       primary_intent: "retry",
       allowed_intents: ["retry"],
-      blocker_code: "fixture_evidence_missing",
-      blocker_message: "Thiếu bằng chứng đủ tin cậy cho một khẳng định quan trọng.",
-      last_checkpoint: "evidence_blocked",
+      blocker_code: "insufficient_support",
+      blocker_message: (
+        "Chưa đủ độ sâu bằng chứng để tiếp tục tới Góc tiếp cận. "
+        + "Thiếu nguồn xác định bên cấp chứng nhận và phân biệt hóa đơn với chứng nhận / provenance."
+      ),
+      last_checkpoint: "coverage_support_blocked",
     };
   } else if (state === "complete") {
     view.state = {
