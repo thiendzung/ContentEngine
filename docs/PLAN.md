@@ -2,6 +2,17 @@
 
 Effective 2026-10-25 for Issue #417. Current working window is `../AI_context.MD`. This plan keeps the proven ContentEngine architecture and narrows the active priority to **produce reviewable approved content packages for Founder manual WordPress publication**.
 
+## UX-first decision (2026-10-25)
+
+Founder chọn **đơn giản hóa UX trước, chạy content thật sau**. Kế hoạch cụ thể: [UX_SIMPLE_OPERATOR_V1_PLAN.md](releases/UX_SIMPLE_OPERATOR_V1_PLAN.md).
+
+1. Hoàn thành UX-01A → UX-01D theo từng phần nhỏ trong cùng cửa sổ làm việc.
+2. Chạy **UX-01E exact-SHA frontend/browser verification**; chỉ sau đó MG có thể báo `PASS_UX_SIMPLE_V1` và Founder quyết định merge.
+3. Founder vận hành **một bài thật ưu tiên Q07** trên bản đã merge/được cho phép; chỉ lúc đó mới đánh giá `PASS_CONTENT_PRODUCTION_V1_RC1` hoặc một blocker chính xác.
+4. Đọc log đã lọc và chọn một sửa đổi nhỏ dựa trên nguyên nhân quan sát được; không mở feature mới theo giả định.
+
+**Phân biệt:** UX READY != Content Production READY != WordPress Published. UI code không được nới lỏng human gates, evidence, QA, guardrails hay production permissions.
+
 ## Active business role
 
 ContentEngine is the **content factory**, not the public CMS and not the business-operations system.
@@ -26,7 +37,7 @@ No direct ContentEngine write to WordPress, WooCommerce, MOTGU production data, 
 
 ## Current critical path
 
-1. Verify Content Production v1 RC1 on one exact candidate SHA.
+1. Finish UX-SIMPLE-01 and verify the UI on one exact candidate SHA; no real model/research call is needed for UX acceptance.
 2. Produce the MAP-v3 batch **G01/G02/Q05/Q07/Q06** through the existing human gates.
 3. Produce exact approved ContentVersions/review packages with hashes, provenance, intent owner, `must_not_claim`, metadata and internal-link plan.
 4. Stop at deterministic package; Founder manually creates/reviews the WordPress Draft.
@@ -49,7 +60,7 @@ Explicitly deferred:
 
 - new provider/framework;
 - Antigravity product dependency;
-- broad dashboard/UI redesign;
+- broad dashboard/UI redesign **outside the narrowly admitted UX-SIMPLE-01 operator simplification**;
 - generic workflow engine;
 - speculative prompt refactor;
 - WordPress/Rank Math activation for MOTGU;
