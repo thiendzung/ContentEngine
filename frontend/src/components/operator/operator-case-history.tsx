@@ -78,7 +78,9 @@ function approvalLabel(stage: string, decision: string | null) {
 function eventTitle(event: OperatorHistoryEvent) {
   if (event.kind === "command") return intentLabel(event.stage);
   if (event.kind === "approval") return approvalLabel(event.stage, event.decision);
-  if (event.kind === "quality") return operatorQualityStageLabel(event.evaluator_key ?? event.stage);
+  if (event.kind === "quality") {
+    return operatorQualityStageLabel(event.evaluator_key ?? event.stage);
+  }
   if (event.kind === "model") return "AI xử lý · " + operatorPhaseLabel(event.stage);
   if (event.kind === "tool") return "Công cụ · " + event.stage;
   if (event.kind === "artifact") return "Tạo đầu ra · " + event.stage;
@@ -105,7 +107,9 @@ function eventSummary(event: OperatorHistoryEvent) {
       ? `Hoàn tất trong khoảng ${Math.max(1, Math.round(event.latency_ms / 1000))} giây.`
       : "Thông tin kỹ thuật được lưu trong nhật ký.";
   }
-  if (event.status === "waiting_approval") return "Hệ thống dừng để chờ quyết định của người duyệt.";
+  if (event.status === "waiting_approval") {
+    return "Hệ thống dừng để chờ quyết định của người duyệt.";
+  }
   if (event.status === "running") return "Hệ thống đang xử lý bước này.";
   if (event.status === "queued" || event.status === "pending") return "Bước đang chờ được xử lý.";
   if (event.status === "completed" || event.status === "created") return "Bước đã hoàn thành.";
@@ -161,7 +165,8 @@ function supportMarkdown(history: OperatorCaseHistory) {
   lines.push(
     "",
     "Safety: this report is generated from the sanitized history projection. "
-      + "It excludes raw prompts, raw source/provider payloads, request bodies, cookies, secrets, PII and raw error messages.",
+      + "It excludes raw prompts, raw source/provider payloads, request bodies, "
+      + "cookies, secrets, PII and raw error messages.",
   );
   return lines.join("\n");
 }
@@ -194,14 +199,18 @@ function HistoryRow({ event }: { event: OperatorHistoryEvent }) {
             {event.step_run_id ? <div><dt>Step</dt><dd>{event.step_run_id}</dd></div> : null}
             {event.artifact_id ? <div><dt>Artifact</dt><dd>{event.artifact_id}</dd></div> : null}
             {event.artifact_hash ? <div><dt>Hash</dt><dd>{event.artifact_hash}</dd></div> : null}
-            {event.model ? <div><dt>Model</dt><dd>{event.provider} / {event.model}</dd></div> : null}
+            {event.model ? (
+              <div><dt>Model</dt><dd>{event.provider} / {event.model}</dd></div>
+            ) : null}
             {event.input_tokens !== null || event.output_tokens !== null ? (
               <div>
                 <dt>Token đã ghi nhận</dt>
                 <dd>{event.input_tokens ?? "—"} vào · {event.output_tokens ?? "—"} ra</dd>
               </div>
             ) : null}
-            {event.cost !== null ? <div><dt>Chi phí đã ghi nhận</dt><dd>{event.cost}</dd></div> : null}
+            {event.cost !== null ? (
+              <div><dt>Chi phí đã ghi nhận</dt><dd>{event.cost}</dd></div>
+            ) : null}
           </dl>
         </details>
       </div>
