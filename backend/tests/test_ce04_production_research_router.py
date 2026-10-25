@@ -421,6 +421,116 @@ async def test_evidence_oriented_route_uses_authority_recovery_exa(
 
 
 @pytest.mark.asyncio
+async def test_explicit_trusted_educational_host_is_read_as_evidence_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    source = annotate_source(
+        provider="serper",
+        query="certificate authenticity provenance",
+        url="https://smithsonianprovenance.si.edu/research/example",
+        title="Smithsonian provenance guidance",
+        snippet="",
+        found_via="google_organic",
+    )
+    assert source.source_type == "educational"
+    assert source.intended_use is IntendedUse.DISCOVERY
+
+    serper = FakeProvider("serper", ProviderResponse((), (source,), ()))
+    reader = FakeReader()
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=3, max_research_sources=2),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="what does a certificate of authenticity prove",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            trusted_evidence_hosts=("smithsonianprovenance.si.edu",),
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert result.sufficient is True
+    assert result.stop_reason == "serper_sufficient"
+    assert len(result.selected_sources) == 1
+    selected = result.selected_sources[0]
+    assert selected.url == source.url
+    assert selected.source_type == "educational"
+    assert selected.intended_use is IntendedUse.EVIDENCE_CANDIDATE
+    assert "Explicit project authority host matched" in selected.why_selected
+    assert reader.urls == [source.url]
+
+
+@pytest.mark.asyncio
+async def test_generic_educational_source_can_be_read_without_becoming_support(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    source = annotate_source(
+        provider="serper",
+        query="certificate authenticity provenance",
+        url="https://example.edu/art/authentication",
+        title="Educational authentication page",
+        snippet="",
+        found_via="google_organic",
+    )
+    assert source.commercial_bias is CommercialBias.LOW
+    assert source.intended_use is IntendedUse.DISCOVERY
+
+    serper = FakeProvider("serper", ProviderResponse((), (source,), ()))
+    reader = FakeReader()
+    router = ResearchRouter(
+        serper=serper,
+        reader=reader,
+        budget_limits=BudgetLimits(max_tool_calls=3, max_research_sources=2),
+    )
+
+    result = await router.run(
+        _session(),
+        request=ProductionResearchRequest(
+            project_id=uuid4(),
+            query="what does a certificate of authenticity prove",
+            required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+            max_pages_to_read=1,
+        ),
+    )
+
+    assert result.sufficient is False
+    assert result.selected_sources == [source]
+    assert result.selected_sources[0].intended_use is IntendedUse.DISCOVERY
+    assert reader.urls == [source.url]
+    assert len(result.documents) == 1
+
+
+@pytest.mark.asyncio
+async def test_invalid_trusted_evidence_host_fails_before_provider_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(production_module, "retrieve_chunks", _empty_retrieval)
+    serper = FakeProvider("serper")
+    router = ResearchRouter(serper=serper)
+
+    with pytest.raises(ValueError, match="trusted_evidence_host_invalid"):
+        await router.run(
+            _session(),
+            request=ProductionResearchRequest(
+                project_id=uuid4(),
+                query="certificate authenticity provenance",
+                required_intended_use=IntendedUse.EVIDENCE_CANDIDATE,
+                trusted_evidence_hosts=("https://example.edu/path",),
+                max_pages_to_read=1,
+            ),
+        )
+
+    assert serper.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_evidence_oriented_route_uses_tavily_when_exa_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
