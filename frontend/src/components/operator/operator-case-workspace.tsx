@@ -39,7 +39,6 @@ import {
   operatorWriterLaneStatusLabel,
 } from "../../lib/operator/operator-labels";
 
-const POLL_MS = 2500;
 
 function localeLabel(value: string): string {
   if (value === "vi" || value === "vi-VN") return "VI";
@@ -623,8 +622,22 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
 
   useEffect(() => {
     if (!view || !["QUEUED", "RUNNING"].includes(view.state.status)) return;
-    const timer = window.setInterval(() => void refresh(true), POLL_MS);
-    return () => window.clearInterval(timer);
+
+    const refreshOnFocus = () => {
+      void refresh(true);
+    };
+    const refreshOnVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh(true);
+      }
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshOnVisible);
+    };
   }, [refresh, view]);
 
   const angleGate = view?.pending_gate?.type === "angle" ? view.pending_gate : null;
@@ -898,7 +911,20 @@ export function OperatorCaseWorkspace({ caseId }: { caseId: string }) {
       <span>{blockerAction(state)}</span>
     )
   ) : ["QUEUED", "RUNNING"].includes(state.status) ? (
-    <span>Chờ trạng thái mới; trang tự cập nhật khi tác vụ đang chạy.</span>
+    <div className="operator-inline-actions">
+      <span>
+        Hệ thống đang xử lý. Trang kiểm tra lại khi bạn quay lại cửa sổ này;
+        bạn cũng có thể tải trạng thái mới ngay.
+      </span>
+      <button
+        className="operator-button secondary"
+        disabled={loading || submitting}
+        onClick={() => void refresh()}
+        type="button"
+      >
+        {loading ? "Đang tải…" : "Tải trạng thái mới"}
+      </button>
+    </div>
   ) : state.status === "AWAITING_APPROVAL" ? (
     <span>Đọc kết quả và duyệt ở phần ngay bên dưới.</span>
   ) : state.status === "COMPLETE" ? (
