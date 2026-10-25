@@ -256,6 +256,16 @@ async def _run_after_maintenance_gate(*, emit_idle: bool = True) -> None:
                 )
                 async with SessionLocal() as session:
                     async with session.begin():
+                        await execute_start_to_angle_job(
+                            session,
+                            job_id=job_id,
+                            worker_id=worker_id,
+                            evidence_workflow=workflow,
+                            runner_registry=registry,
+                            stop_after_evidence_checkpoint=True,
+                        )
+                async with SessionLocal() as session:
+                    async with session.begin():
                         result = await execute_start_to_angle_job(
                             session,
                             job_id=job_id,
