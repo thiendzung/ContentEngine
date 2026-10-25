@@ -147,53 +147,47 @@ Before Founder publishes a WordPress page:
 
 Passing ContentEngine quality is not itself WordPress Production GO.
 
-## 8. Beginner operator UX (minimal, frontend only)
+## 8. UX trước, sản xuất thật sau
 
-Founder requested a simpler experience for operators who do not know SEO, AI or technical workflow terms.
+Founder thay đổi thứ tự triển khai ngày 2026-10-25: **đơn giản hóa giao diện trước; Founder vận hành thật sau**.
 
-Default `/operator` entry now prioritizes:
+Kế hoạch chính: [UX_SIMPLE_OPERATOR_V1_PLAN.md](UX_SIMPLE_OPERATOR_V1_PLAN.md).
 
-1. **Chọn bài từ kế hoạch** → existing Question Map selection and safe production handoff.
-2. **Xem bài đang sản xuất** → existing Production Board.
-3. **Duyệt việc cần tôi** → existing Needs Me list.
+- UX-01A: Menu và màn hình bắt đầu dễ hiểu.
+- UX-01B: Chọn bài từ Question Map theo đường chuẩn, không bắt nhập lại manual brief.
+- UX-01C: Một bài có trạng thái/việc tiếp theo rõ, duyệt theo backend; phần kỹ thuật ẩn mặc định.
+- UX-01D: Nhật ký theo bài và báo cáo an toàn để MG phân tích.
+- UX-01E: Agent Local kiểm thử exact-SHA frontend/browser, security và từng cổng duyệt.
 
-Manual 14-field Journal intake is explicitly labeled the **advanced** path. Detailed system preflight and cross-project change digest remain available on demand rather than dominating the primary entry.
+**PASS_UX_SIMPLE_V1** là mốc đủ điều kiện để Founder xét merge UX. Mốc này không chứng minh ContentEngine đã chạy thành công một bài thật.
 
-The single-case workspace keeps canonical actions and all approval gates; less frequently needed static reader/brief details are collapsed by default and the status panel uses task-oriented Vietnamese.
+## 9. Nghiệm thu riêng biệt
 
-This is **a presentation slice, not a new one-click generation backend**. The existing Question Map and manual intake may still require multiple steps. Do not claim that an untrained person can finish all five articles until a real first-time-user browser task has passed.
+### A. Trước Founder vận hành thật — UX gate
 
-The existing backend persists StepRun, ModelCall, ToolCall, quality and approval history. `/daily-digest` shows **cross-project change events**, but is not a complete per-article execution timeline. A read-only per-article step timeline is a follow-up only if user testing shows the current status explanations insufficient.
+- Đúng candidate SHA, worktree sạch và bản build kiểm thử.
+- Lint/typecheck/frontend build và browser desktop/mobile/keyboard PASS.
+- Chọn bài, trạng thái, thiếu dữ liệu, Angle/Outline/Final approvals và lỗi stale/reconcile được kiểm thử bằng nguồn dữ liệu an toàn.
+- Bảo toàn backend state/action authority, exact-binding, QA/evidence, không có publish side effect.
+- Báo cáo log đã lược dữ liệu nhạy cảm; nếu không thể xác nhận an toàn thì không export.
+- Agent Local trả `PASS_UX_SIMPLE_V1` hoặc lý do `BLOCKED_UX_SIMPLE_V1`, MG review, Founder merge.
 
-No model policy, backend workflow authority, approval gate, database or publishing behavior changes.
+Không yêu cầu model/research call hoặc một case thật tới Angle chỉ để nghiệm thu UX.
 
-## 9. Exact local verification required
+### B. Sau khi UX đã sẵn sàng — content runtime gate
 
-Agent Local must verify the candidate SHA without polling loops.
+- Founder chọn **một case thật, ưu tiên Q07** và cấp quyền thực thi cụ thể.
+- Kiểm tra operational preflight, evidence/Originality lock, one-shot worker, checkpoints, actual quality/human gates.
+- Giữ đúng provenance/approval và không tự publish WordPress.
+- Nếu thiếu evidence/provider/config, báo nguyên nhân chính xác và dừng, không bypass.
+- Chỉ coi thực sự đạt `PASS_CONTENT_PRODUCTION_V1_RC1` khi có bằng chứng local trên đúng runtime và outcome được chốt; một UX merge không đủ.
 
-Minimum RC1 proof:
+Báo cáo lỗi thực tế được dùng để xác định **một cải tiến nhỏ** theo vòng log → chẩn đoán → test → Founder merge.
 
-- clean exact checkout;
-- release manifest and active docs agree;
-- operational preflight is READY in the authorized environment;
-- no unexpected migration is required;
-- one-shot worker path is available;
-- one bounded RC1 item can be created from the locked brief and reach the first human gate without case-specific code;
-- no publication side effect;
-- no direct WordPress, Astro, Git publication or MOTGU production mutation;
-- frontend lint, typecheck, production build and browser smoke of `/operator`, `/operator/journal/new` and one supported Journal workspace pass;
-- verify the beginner entry links, state safety, collapsed details, mobile layout and keyboard navigation;
-- targeted/full checks required by the changed scope pass;
-- returned evidence includes exact SHA and blocker/state.
+## 10. Trạng thái release
 
-If the runtime blocks on evidence, provider, configuration or a true defect, report the first exact blocker. Do not weaken gates to make the release look green.
+- UX: PLANNED / IN IMPLEMENTATION / NOT VERIFIED.
+- Content production: NOT VERIFIED on the new release.
+- WordPress publication: MANUAL ONLY, no automation.
 
-## 10. Release exit
-
-RC1 becomes usable for batch content production only after:
-
-`PASS_CONTENT_PRODUCTION_V1_RC1`
-
-That status requires reviewed exact-SHA Agent Local evidence. It does **not** mean any article has been published.
-
-Founder alone authorizes merge and manual publication.
+Founder là người quyết định merge và xuất bản. Không gán nhãn v1.0.0 production-ready trước khi các gate thực sự được chứng minh.
