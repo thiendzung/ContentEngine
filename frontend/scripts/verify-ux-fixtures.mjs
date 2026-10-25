@@ -16,6 +16,9 @@ function requireText(source, needle, label) {
 const fixtures = read("src/lib/operator/ux-fixtures.ts");
 const fixturePage = read("src/app/operator/ux-fixtures/[state]/page.tsx");
 const workspace = read("src/components/operator/operator-case-workspace.tsx");
+const historyPanel = read("src/components/operator/operator-case-history.tsx");
+const journalApi = read("src/lib/operator/journal-api.ts");
+const historyProjection = read("../backend/app/modules/content_engine/journal/operator_history.py");
 const css = read("src/app/operator/operator.css");
 const plan = read("../docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md");
 
@@ -64,5 +67,25 @@ requireText(css, "grid-template-columns: 1fr;", "single-column reflow");
 requireText(plan, "UX_UI_READY", "separate UX gate");
 requireText(plan, "BACKEND_INTEGRATION_READY", "separate integration gate");
 requireText(plan, "1440/1024/390/320 px", "320px reflow proof");
+requireText(fixtures, "getOperatorUxHistoryFixture", "history fixture");
+requireText(journalApi, "loadOperatorCaseHistory", "history API client");
+requireText(historyPanel, "Nhật ký bài viết", "readable history panel");
+requireText(historyPanel, "Tải JSON", "safe JSON export");
+requireText(historyPanel, "Tải Markdown", "safe Markdown export");
+requireText(workspace, "<OperatorCaseHistoryPanel", "history mounted in workspace");
+
+for (const forbidden of [
+  "failure_message",
+  "runtime_metadata_json",
+  "result_ref",
+  ".content_json",
+  "approval.comment",
+  "actor_id",
+  "request_fingerprint",
+]) {
+  if (historyProjection.includes(forbidden)) {
+    throw new Error(`UX static check failed: sanitized history references forbidden field ${forbidden}`);
+  }
+}
 
 console.log("PASS_UX_SIMPLE_STATIC_FIXTURE_GATE");
