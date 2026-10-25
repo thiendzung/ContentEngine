@@ -72,7 +72,7 @@ requireText(plan, "BACKEND_INTEGRATION_READY", "separate integration gate");
 requireText(plan, "1440/1024/390/320 px", "320px reflow proof");
 requireText(fixtures, "getOperatorUxHistoryFixture", "history fixture");
 requireText(journalApi, "loadOperatorCaseHistory", "history API client");
-requireText(historyPanel, "Nhật ký bài viết", "readable history panel");
+requireText(historyPanel, "Nhật ký vận hành · tham khảo", "readable history panel");
 requireText(historyPanel, "Tải JSON", "safe JSON export");
 requireText(historyPanel, "Tải Markdown", "safe Markdown export");
 requireText(workspace, "<OperatorCaseHistoryPanel", "history mounted in workspace");
