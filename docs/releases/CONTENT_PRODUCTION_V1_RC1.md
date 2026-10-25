@@ -147,7 +147,27 @@ Before Founder publishes a WordPress page:
 
 Passing ContentEngine quality is not itself WordPress Production GO.
 
-## 8. Exact local verification required
+## 8. Beginner operator UX (minimal, frontend only)
+
+Founder requested a simpler experience for operators who do not know SEO, AI or technical workflow terms.
+
+Default `/operator` entry now prioritizes:
+
+1. **Chọn bài từ kế hoạch** → existing Question Map selection and safe production handoff.
+2. **Xem bài đang sản xuất** → existing Production Board.
+3. **Duyệt việc cần tôi** → existing Needs Me list.
+
+Manual 14-field Journal intake is explicitly labeled the **advanced** path. Detailed system preflight and cross-project change digest remain available on demand rather than dominating the primary entry.
+
+The single-case workspace keeps canonical actions and all approval gates; less frequently needed static reader/brief details are collapsed by default and the status panel uses task-oriented Vietnamese.
+
+This is **a presentation slice, not a new one-click generation backend**. The existing Question Map and manual intake may still require multiple steps. Do not claim that an untrained person can finish all five articles until a real first-time-user browser task has passed.
+
+The existing backend persists StepRun, ModelCall, ToolCall, quality and approval history. `/daily-digest` shows **cross-project change events**, but is not a complete per-article execution timeline. A read-only per-article step timeline is a follow-up only if user testing shows the current status explanations insufficient.
+
+No model policy, backend workflow authority, approval gate, database or publishing behavior changes.
+
+## 9. Exact local verification required
 
 Agent Local must verify the candidate SHA without polling loops.
 
@@ -161,12 +181,14 @@ Minimum RC1 proof:
 - one bounded RC1 item can be created from the locked brief and reach the first human gate without case-specific code;
 - no publication side effect;
 - no direct WordPress, Astro, Git publication or MOTGU production mutation;
+- frontend lint, typecheck, production build and browser smoke of `/operator`, `/operator/journal/new` and one supported Journal workspace pass;
+- verify the beginner entry links, state safety, collapsed details, mobile layout and keyboard navigation;
 - targeted/full checks required by the changed scope pass;
 - returned evidence includes exact SHA and blocker/state.
 
 If the runtime blocks on evidence, provider, configuration or a true defect, report the first exact blocker. Do not weaken gates to make the release look green.
 
-## 9. Release exit
+## 10. Release exit
 
 RC1 becomes usable for batch content production only after:
 
