@@ -29,6 +29,9 @@ def evidence_workflow_payload(result: EvidenceResearchResult) -> dict[str, objec
             "stop_reason": result.research.stop_reason,
             "sufficient": result.research.sufficient,
             "external_provider_calls": result.research.external_provider_calls,
+            "trusted_evidence_hosts": list(
+                result.research.request.trusted_evidence_hosts
+            ),
             "decisions": [
                 {
                     "provider": decision.provider,
@@ -121,6 +124,7 @@ def research_exception_diagnostic_payload(
             "required_intended_use": (
                 required_use.value if required_use is not None else None
             ),
+            "trusted_evidence_hosts": list(request.trusted_evidence_hosts),
             "stop_reason": "research_exception",
             "sufficient": False,
             "external_provider_calls": None,
@@ -154,6 +158,7 @@ def research_failure_diagnostic_payload(
             "required_intended_use": (
                 required_use.value if required_use is not None else None
             ),
+            "trusted_evidence_hosts": list(research.request.trusted_evidence_hosts),
             "stop_reason": _bounded_text(research.stop_reason, limit=200) or "",
             "sufficient": research.sufficient,
             "external_provider_calls": research.external_provider_calls,
