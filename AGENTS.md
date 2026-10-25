@@ -53,17 +53,18 @@ Before implementation or local execution:
 
 For remote work, inspect equivalent GitHub state and pin the base commit. Never update main directly. Founder merges PRs.
 
-## Active execution — MOTGU V1.1 Content Factory
+## Active execution — Content Production v1 RC1
 
 **Verified GitHub snapshot (2026-10-14):** ContentEngine PR #413 MERGED on `main@8aedbb5ed3c538a81ff4e1718f2e92899606558d`; MOTGU PR #229 MERGED on `main@b430ac196275216503614f35010eecd77b0f41e8`. Always re-read exact live refs and the latest work report before executing.
 
-Business objective: **produce five real evidence-grounded bilingual content packages for MOTGU's `traffic → inquiry → quote → sale → learning` Growth Release**.
+Business objective: **produce the five MAP-v3 RC1 bilingual packages in Issue #417, optimized for truthful SEO/Search-AI usefulness, then stop for Founder manual WordPress publication**.
 
-- Active ContentEngine tracker: **Issue #326** (P01, C02, C03, C05, P02), with three batched human decisions: Angle → Outline → Final.
-- ContentEngine = **content factory**. OPS = review/control tower. WWW = public showroom.
-- Approved ContentVersion/package → MOTGU OPS Content Release → controlled Git PR → Astro/publication; no auto-publish or direct ContentEngine writes to production D1.
-- Reuse existing deterministic package capability first; code a thin adapter only when actual MOTGU handoff proves a blocker.
-- Defer WordPress/Rank Math for MOTGU, new providers, Question Map expansion, speculative prompt/UI/dashboard polishing, broad architecture refactors and autonomous publication.
+- Active release contract: `docs/releases/CONTENT_PRODUCTION_V1_RC1.md` and manifest `docs/releases/content-production-v1-rc1.json`.
+- RC1 batch: **G01, G02, Q05, Q07, Q06**, with the existing three human decisions: Angle → Outline → Final.
+- ContentEngine = **content factory**. WordPress is the manual publication surface for this release; Founder owns Draft review and publish.
+- Approved ContentVersion/package → deterministic review package → STOP. No ContentEngine auto-publish, no direct WordPress write and no required MOTGU OPS/Git/Astro handoff in RC1.
+- Reuse existing production and deterministic package capabilities; code only for a demonstrated blocker.
+- Defer new providers, Question Map expansion, speculative prompt/UI/dashboard polishing, broad architecture refactors and autonomous publication.
 - Historical UI/F0–F7/M1–M4 milestones remain provenance, not active V1.1 priorities.
 - Continue on the authorized local runtime only; GitHub merge does not authorize local execution or editorial approval.
 
