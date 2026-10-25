@@ -1,6 +1,6 @@
 # ContentEngine
 
-ContentEngine là **xưởng sản xuất nội dung** có kiểm soát cho MOTGU: từ câu hỏi thật của khách hàng -> bằng chứng -> Angle -> Outline -> Writer -> Human Voice -> kiểm tra chất lượng -> Founder duyệt -> approved ContentVersion/package. Với MOTGU Website V1.1, package được bàn giao sang **MOTGU OPS Content Release -> Git -> Astro**, không publish trực tiếp từ ContentEngine.
+ContentEngine là **xưởng sản xuất nội dung** có kiểm soát cho MOTGU: từ câu hỏi thật của khách hàng -> bằng chứng -> Angle -> Outline -> Writer -> Human Voice -> kiểm tra chất lượng -> Founder duyệt -> approved ContentVersion/package. Với **Content Production v1 RC1 / Issue #417**, ContentEngine dừng ở deterministic review package để Founder tạo/duyệt/đăng WordPress thủ công; không auto-publish.
 
 Mục tiêu không phải viết thật nhiều bài. Mục tiêu là tạo Pillar/Cluster và Artwork/Journal **đúng, hữu ích, có giọng MOTGU, có nguồn gốc rõ ràng và không tự bịa thêm sự thật**.
 
