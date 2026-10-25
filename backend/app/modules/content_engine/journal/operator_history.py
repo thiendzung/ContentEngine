@@ -40,7 +40,7 @@ HistoryKind = Literal[
 ]
 
 
-class _history_event(BaseModel):
+class OperatorHistoryEvent(BaseModel):
     id: str
     at: datetime
     kind: HistoryKind
