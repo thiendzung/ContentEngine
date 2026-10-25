@@ -1,0 +1,35 @@
+name: Publish Content Production v1 RC1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/releases/CONTENT_PRODUCTION_V1_RC1_GITHUB.md
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@v4
+
+      - name: Create idempotent GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: content-production-v1-rc1
+          RELEASE_TITLE: Content Production v1 RC1
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" \
+            --target "$GITHUB_SHA" \
+            --title "$RELEASE_TITLE" \
+            --notes-file docs/releases/CONTENT_PRODUCTION_V1_RC1_GITHUB.md \
+            --prerelease
