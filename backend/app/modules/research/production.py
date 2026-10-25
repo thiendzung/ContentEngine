@@ -732,25 +732,7 @@ class ResearchRouter:
                     for source in candidates
                     if source.intended_use is IntendedUse.EVIDENCE_CANDIDATE
                 ]
-                selected = choose_sources(evidence_candidates, limit)
-                if len(selected) >= limit:
-                    return selected
-
-                selected_urls = {
-                    source.url.rstrip("/").casefold()
-                    for source in selected
-                }
-                low_bias_discovery = [
-                    source
-                    for source in candidates
-                    if source.intended_use is IntendedUse.DISCOVERY
-                    and source.commercial_bias is CommercialBias.LOW
-                    and source.url.rstrip("/").casefold() not in selected_urls
-                ]
-                selected.extend(
-                    choose_sources(low_bias_discovery, limit - len(selected))
-                )
-                return selected
+                return choose_sources(evidence_candidates, limit)
             if required_use is not None:
                 candidates = [
                     source
