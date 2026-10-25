@@ -63,13 +63,16 @@ if (workspace.includes("setInterval(")) {
 }
 requireText(css, "@media (max-width: 680px)", "narrow breakpoint");
 requireText(css, ".operator-progress-strip", "progress strip");
+requireText(css, "max-width: 1320px", "desktop operator canvas");
+requireText(css, "@media (max-width: 1100px) and (min-width: 721px)", "tablet polish breakpoint");
+requireText(css, ".state-panel", "primary state panel hierarchy");
 requireText(css, "grid-template-columns: 1fr;", "single-column reflow");
 requireText(plan, "UX_UI_READY", "separate UX gate");
 requireText(plan, "BACKEND_INTEGRATION_READY", "separate integration gate");
 requireText(plan, "1440/1024/390/320 px", "320px reflow proof");
 requireText(fixtures, "getOperatorUxHistoryFixture", "history fixture");
 requireText(journalApi, "loadOperatorCaseHistory", "history API client");
-requireText(historyPanel, "Nhật ký bài viết", "readable history panel");
+requireText(historyPanel, "Nhật ký vận hành · tham khảo", "readable history panel");
 requireText(historyPanel, "Tải JSON", "safe JSON export");
 requireText(historyPanel, "Tải Markdown", "safe Markdown export");
 requireText(workspace, "<OperatorCaseHistoryPanel", "history mounted in workspace");

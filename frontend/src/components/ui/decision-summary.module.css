@@ -4,28 +4,42 @@
 
 .businessLayer {
   display: grid;
-  gap: 10px;
+  grid-template-columns: minmax(150px, .7fr) minmax(280px, 1.45fr) minmax(240px, 1fr);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-strong);
 }
 
 .businessItem {
-  display: grid;
-  grid-template-columns: 108px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  min-width: 0;
+  padding: 15px 16px 16px;
+  border-right: 1px solid var(--color-border-soft);
+}
+
+.businessItem:last-child {
+  border-right: 0;
 }
 
 .label {
+  display: block;
   color: var(--color-muted);
   font: 700 .62rem var(--font-ui);
-  letter-spacing: .07em;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  padding-top: 3px;
+  margin-bottom: 7px;
 }
 
 .value {
   min-width: 0;
-  line-height: 1.5;
+  line-height: 1.48;
   overflow-wrap: anywhere;
+}
+
+.businessItem:first-child .value {
+  font-weight: 700;
+}
+
+.businessItem:last-child {
+  background: color-mix(in srgb, var(--color-positive-bg) 55%, transparent);
 }
 
 .value > :first-child {
@@ -38,14 +52,14 @@
 
 .technicalDetails {
   border-top: 1px solid var(--color-border-soft);
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 10px;
+  padding-top: 9px;
 }
 
 .technicalDetails summary {
   cursor: pointer;
   color: var(--color-technical);
-  font: 700 .74rem var(--font-ui);
+  font: 700 .7rem var(--font-ui);
 }
 
 .technicalDetails summary:focus-visible {
@@ -56,17 +70,16 @@
 .technicalBody {
   margin-top: 10px;
   color: var(--color-muted-strong);
-  font: .76rem/1.5 var(--font-ui);
+  font: .74rem/1.5 var(--font-ui);
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 720px) {
-  .businessItem {
-    grid-template-columns: 1fr;
-    gap: 4px;
+@media (max-width: 1100px) {
+  .businessLayer {
+    grid-template-columns: minmax(130px, .7fr) minmax(230px, 1.3fr) minmax(210px, 1fr);
   }
 
-  .label {
-    padding-top: 0;
+  .businessItem {
+    padding: 13px 14px 14px;
   }
 }

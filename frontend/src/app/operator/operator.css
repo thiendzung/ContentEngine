@@ -1,5 +1,8 @@
 .operator-page {
-  max-width: 1280px;
+  width: min(100%, 1320px);
+  max-width: 1320px;
+  margin-inline: auto;
+  padding-inline: 28px;
 }
 
 .operator-hero,
@@ -7,9 +10,9 @@
 .operator-case-header {
   display: flex;
   justify-content: space-between;
-  align-items: end;
-  gap: 32px;
-  margin-bottom: 28px;
+  align-items: flex-start;
+  gap: 36px;
+  margin-bottom: 22px;
 }
 
 .operator-hero h1,
@@ -20,14 +23,38 @@
 
 .operator-subpage-header h1,
 .operator-case-header h1 {
-  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  font-size: clamp(2.35rem, 3.6vw, 3.75rem);
+  line-height: 1.02;
+  letter-spacing: -.025em;
+}
+
+.operator-case-header > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.operator-case-header .intro {
+  max-width: 900px;
+  margin-top: 12px;
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
 .operator-panel {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  padding: 22px;
-  margin-bottom: 18px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+
+.state-panel {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-strong);
+  box-shadow: 0 10px 30px rgba(54, 46, 36, .045);
+}
+
+.state-panel .operator-panel-heading {
+  margin-bottom: 14px;
 }
 
 .operator-panel-heading {
@@ -299,10 +326,12 @@
 }
 
 .operator-header-state {
+  flex: 0 0 210px;
   min-width: 190px;
   display: grid;
   justify-items: end;
   gap: 7px;
+  padding-top: 4px;
 }
 
 .operator-header-state small {
@@ -695,6 +724,73 @@
 .writer-lane-status.queued { background: #f6e8be; color: #765b16; }
 .writer-lane-card > p { margin: 10px 0 0; color: var(--color-muted-strong); font-size: .8rem; }
 
+.operator-history-panel {
+  border-color: var(--color-border-soft);
+  background: color-mix(in srgb, var(--color-surface) 76%, transparent);
+}
+
+.operator-history-panel > .operator-panel-heading h2 {
+  font-size: 1.25rem;
+}
+
+.operator-history-panel > .operator-panel-heading .operator-note {
+  max-width: 620px;
+}
+
+.operator-extra-path {
+  padding-block: 14px;
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+}
+
+.operator-extra-path > summary {
+  font-size: .82rem;
+}
+
+.angle-approval-bar,
+.review-decision-panel {
+  background: color-mix(in srgb, var(--color-positive-bg) 48%, var(--color-surface-strong));
+}
+
+.angle-approval-bar {
+  padding: 16px;
+  border: 1px solid var(--color-positive-border);
+  margin-top: 20px;
+}
+
+.angle-approval-bar .operator-button.primary,
+.review-decision-actions .operator-button {
+  min-height: 42px;
+  padding-inline: 18px;
+}
+
+@media (max-width: 1100px) and (min-width: 721px) {
+  .operator-page {
+    padding-inline: 22px;
+  }
+
+  .operator-case-header {
+    gap: 24px;
+  }
+
+  .operator-case-header h1 {
+    font-size: clamp(2.15rem, 4.2vw, 3.05rem);
+  }
+
+  .operator-header-state {
+    flex-basis: 175px;
+    min-width: 165px;
+  }
+
+  .operator-panel {
+    padding: 18px;
+  }
+
+  .operator-progress-strip li {
+    padding-inline: 8px;
+    font-size: .66rem;
+  }
+}
+
 @media (max-width: 980px) {
   .operator-home-grid,
   .form-grid.two,
@@ -770,21 +866,21 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0;
   list-style: none;
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   padding: 0;
-  border: 1px solid var(--color-border);
-  background: rgba(255, 252, 246, .5);
+  border: 1px solid var(--color-border-soft);
+  background: rgba(255, 252, 246, .35);
 }
 
 .operator-progress-strip li {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 8px 10px;
   border-right: 1px solid var(--color-divider);
   color: #827a70;
-  font: .72rem var(--font-ui);
+  font: .69rem var(--font-ui);
 }
 
 .operator-progress-strip li:last-child { border-right: 0; }
@@ -792,12 +888,12 @@
 .operator-progress-strip li > span {
   display: grid;
   place-items: center;
-  width: 21px;
-  height: 21px;
-  flex: 0 0 21px;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
   border: 1px solid var(--color-border-strong);
   border-radius: 50%;
-  font-size: .65rem;
+  font-size: .61rem;
 }
 
 .operator-progress-strip li.done {
