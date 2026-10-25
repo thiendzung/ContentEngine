@@ -62,6 +62,29 @@ function intentLabel(value: string) {
   return labels[value] ?? value;
 }
 
+function researchReasonLabel(value: string | null | undefined) {
+  if (!value) return null;
+  const labels: Record<string, string> = {
+    default_google_discovery: "Tìm nguồn ban đầu",
+    evidence_candidate_authority_recovery: "Tìm nguồn có thẩm quyền",
+    evidence_candidate_exa_unavailable_use_tavily_once:
+      "Exa không sẵn sàng; dùng Tavily một lần",
+    evidence_candidate_exa_insufficient_use_tavily_once:
+      "Nguồn từ Exa chưa đủ; dùng Tavily một lần",
+    evidence_candidate_fallbacks_exhausted:
+      "Đã dùng hết lượt tìm nguồn có thẩm quyền",
+    internal_knowledge_sufficient: "Nguồn nội bộ đã đủ",
+    insufficient_for_request_external_search_required:
+      "Nguồn nội bộ chưa đủ; cần tìm bên ngoài",
+    serper_sufficient: "Nguồn từ Serper đã đủ để đọc",
+    exa_sufficient: "Nguồn từ Exa đã đủ để đọc",
+    tavily_sufficient: "Nguồn từ Tavily đã đủ để đọc",
+    jina_candidates_exhausted: "Không đọc được đủ trang đã chọn",
+    research_exception: "Nghiên cứu dừng vì lỗi kỹ thuật",
+  };
+  return labels[value] ?? value;
+}
+
 function approvalLabel(stage: string, decision: string | null) {
   const scope = stage === "angle"
     ? "góc tiếp cận"
@@ -77,6 +100,11 @@ function approvalLabel(stage: string, decision: string | null) {
 
 function eventTitle(event: OperatorHistoryEvent) {
   if (event.kind === "command") return intentLabel(event.stage);
+  if (event.kind === "research") {
+    return event.stage === "research_summary"
+      ? "Nghiên cứu nguồn"
+      : `Nguồn nghiên cứu · ${event.provider ?? "không xác định"}`;
+  }
   if (event.kind === "approval") return approvalLabel(event.stage, event.decision);
   if (event.kind === "quality") {
     return operatorQualityStageLabel(event.evaluator_key ?? event.stage);
@@ -89,6 +117,31 @@ function eventTitle(event: OperatorHistoryEvent) {
 }
 
 function eventSummary(event: OperatorHistoryEvent) {
+  if (event.kind === "research") {
+    const reason = researchReasonLabel(event.reason_code);
+    if (event.stage === "research_summary") {
+      const calls = event.provider_call_count;
+      const pages = event.pages_read;
+      const counts = [
+        typeof calls === "number" ? `${calls} lượt provider` : null,
+        typeof pages === "number" ? `${pages} trang đã đọc` : null,
+      ].filter(Boolean).join(" · ");
+      return [counts, reason].filter(Boolean).join(" · ")
+        || "Đã lưu chẩn đoán nghiên cứu an toàn.";
+    }
+    if (event.status === "called") {
+      return reason ? `Đã gọi provider: ${reason}.` : "Provider đã được gọi.";
+    }
+    if (event.status === "skipped") {
+      return reason ? `Không cần gọi: ${reason}.` : "Provider được bỏ qua theo policy.";
+    }
+    if (event.status === "failed") {
+      return reason
+        ? `Provider không trả kết quả dùng được: ${reason}.`
+        : "Provider không trả kết quả dùng được.";
+    }
+    return reason ?? "Provider dừng theo giới hạn nghiên cứu.";
+  }
   if (event.error_code) {
     return "Bước này có vấn đề và đã lưu mã chẩn đoán an toàn.";
   }
@@ -156,6 +209,13 @@ function supportMarkdown(history: OperatorCaseHistory) {
       + (event.error_code ? ` | error=${event.error_code}` : "")
       + (event.decision ? ` | decision=${event.decision}` : "")
       + (event.result ? ` | result=${event.result}` : "")
+      + (event.reason_code ? ` | reason=${event.reason_code}` : "")
+      + (typeof event.provider_call_count === "number"
+        ? ` | provider_calls=${event.provider_call_count}`
+        : "")
+      + (typeof event.pages_read === "number"
+        ? ` | pages_read=${event.pages_read}`
+        : "")
       + (event.run_id ? ` | run=${event.run_id}` : "")
       + (event.step_run_id ? ` | step=${event.step_run_id}` : "")
       + (event.artifact_id ? ` | artifact=${event.artifact_id}` : ""),
@@ -195,6 +255,15 @@ function HistoryRow({ event }: { event: OperatorHistoryEvent }) {
             <div><dt>Bước</dt><dd>{event.stage}</dd></div>
             <div><dt>Trạng thái</dt><dd>{event.status}</dd></div>
             {event.error_code ? <div><dt>Mã lỗi</dt><dd>{event.error_code}</dd></div> : null}
+            {event.reason_code ? (
+              <div><dt>Lý do</dt><dd>{event.reason_code}</dd></div>
+            ) : null}
+            {typeof event.provider_call_count === "number" ? (
+              <div><dt>Lượt provider</dt><dd>{event.provider_call_count}</dd></div>
+            ) : null}
+            {typeof event.pages_read === "number" ? (
+              <div><dt>Trang đã đọc</dt><dd>{event.pages_read}</dd></div>
+            ) : null}
             {event.run_id ? <div><dt>Run</dt><dd>{event.run_id}</dd></div> : null}
             {event.step_run_id ? <div><dt>Step</dt><dd>{event.step_run_id}</dd></div> : null}
             {event.artifact_id ? <div><dt>Artifact</dt><dd>{event.artifact_id}</dd></div> : null}
