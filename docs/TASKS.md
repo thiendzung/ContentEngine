@@ -15,9 +15,12 @@ Plan: `docs/releases/UX_SIMPLE_OPERATOR_V1_PLAN.md`.
 - [x] UX-01A CODED: main navigation now exposes 3 normal choices + advanced menu. Local/browser proof pending.
 - [x] UX-01B CODED: planned-topic selection now derives compact editorial suggestions from canonical Question Map data; explicit Founder confirmation and selection/admission guards remain. Local/browser proof pending.
 - [x] UX-01C CODED: one-case workspace removes interval polling and uses post-action/focus/visibility/manual refresh while preserving exact human gates. Local/browser proof pending.
+- [x] First A/B/C local pass: static/lint/typecheck/build + responsive navigation/selection PASS; real test case hit `operator_manual_intake_receipt_missing`.
+- [x] Reclassified that 409 as `INTEGRATION_BLOCKER`, not `UX_BLOCKER`; deterministic fixture routes now own UI state-matrix acceptance.
+- [ ] Agent Local rerun A/B/C on fixture-mode exact SHA and return `PASS_UX_SIMPLE_ABC_UI` or a specific UX blocker.
 - [ ] UX-01D: per-case read-only timeline and safely redacted support report; no new log database.
 - [ ] UX-01E: Agent Local exact-SHA lint/typecheck/build/browser/contract/keyboard/mobile proof.
-- [ ] MG reviews local evidence and classifies `PASS_UX_SIMPLE_V1` or precise blocker.
+- [ ] MG reviews UI-only A/B/C evidence, then completes UX-01D/UX-01E before classifying `PASS_UX_SIMPLE_V1`.
 - [ ] Founder alone decides merge.
 - [ ] Only after UX verification/merge: Founder performs one real Q07 run; content runtime gate remains separate.
 
