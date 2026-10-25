@@ -45,6 +45,16 @@ requireText(
   'document.addEventListener("visibilitychange"',
   "visibility refresh",
 );
+requireText(
+  workspace,
+  "setReconcileRequired(uxInitialReconcileRequired);",
+  "stale fixture survives initial load",
+);
+requireText(
+  workspace,
+  "setReconcileRequired(false);",
+  "successful reconciliation clears stale state",
+);
 if (workspace.includes("setInterval(")) {
   throw new Error("UX static check failed: interval polling reintroduced");
 }
